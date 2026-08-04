@@ -1,5 +1,5 @@
 //! Net-QA integration tests (debug + `net_qa` feature only).
-#![cfg(all(debug_assertions, feature = "net_qa"))]
+#![cfg(debug_assertions)]
 
 mod app_phase_depth;
 mod battle_fixture;

@@ -15,7 +15,7 @@ mod injury_form;
 mod load;
 mod melee_weapon_form;
 mod mode;
-#[cfg(all(debug_assertions, feature = "net_qa"))]
+#[cfg(debug_assertions)]
 mod net_qa;
 mod placement;
 mod plugin;
@@ -65,7 +65,7 @@ pub use melee_weapon_form::{
 #[cfg(debug_assertions)]
 pub use melee_weapon_form::{write_melee_weapon, write_melee_weapon_in};
 pub use mode::EditorMode;
-#[cfg(all(debug_assertions, feature = "net_qa"))]
+#[cfg(debug_assertions)]
 pub use net_qa::{
     EDITOR_QA_SERVER_NAME, EditorNetQaSystems, EditorQaShotDir, EditorScreenshotPayload,
     EditorShotPollBudget, EditorShotSettle, EditorShotSource, NetQaEditorPlugin,

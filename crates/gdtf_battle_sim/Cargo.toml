@@ -9,14 +9,8 @@ rand_chacha = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 
-[features]
-# sim's OWN `#[cfg(test)]` unit tests see the module via the `any(test, ...)` cfg
-test-support = []
-
 [dev-dependencies]
 ron = { workspace = true }
-# OWN in-crate `#[cfg(test)]` unit tests already see the module via the
-gdtf_battle_sim = { path = ".", features = ["test-support"] }
 
 [lints]
 workspace = true

@@ -1,5 +1,5 @@
 //! Editor screenshot net-QA integration (debug + `net_qa`).
-#![cfg(all(debug_assertions, feature = "net_qa"))]
+#![cfg(debug_assertions)]
 
 mod enqueue;
 mod harness;

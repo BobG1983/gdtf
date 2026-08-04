@@ -54,7 +54,7 @@ fn second_launch_is_already_running() {
     let (port, gate) = spawn_gated_fake_game();
     let mut manager =
         HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
-    let spec = recipe_with_features(&["dynamic_linking", "net_qa", "dev_tools"]);
+    let spec = recipe_with_features(&["dynamic_linking", "file_watcher"]);
 
     let LaunchOutcome::Launched { pid: first_pid, .. } = manager.launch(QaPort::new(port), &spec)
     else {
@@ -73,7 +73,7 @@ fn second_launch_is_already_running() {
     assert_eq!(pid, first_pid, "already-running reports the same child");
     assert_eq!(
         recipe.features().render(),
-        Some("dynamic_linking,net_qa,dev_tools".to_owned()),
+        Some("dynamic_linking,file_watcher".to_owned()),
         "already-running names the recipe the running child was launched from"
     );
     assert_ne!(
@@ -90,7 +90,7 @@ fn a_second_launch_of_a_different_recipe_is_rejected() {
     let (port, gate) = spawn_gated_fake_game();
     let mut manager =
         HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
-    let running_recipe = recipe_with_features(&["dynamic_linking", "net_qa"]);
+    let running_recipe = recipe_with_features(&["dynamic_linking", "dev_tools"]);
 
     let LaunchOutcome::Launched { pid: first_pid, .. } =
         manager.launch(QaPort::new(port), &running_recipe)
@@ -99,7 +99,7 @@ fn a_second_launch_of_a_different_recipe_is_rejected() {
     };
     let second = manager.launch(
         QaPort::new(port),
-        &recipe_with_features(&["dynamic_linking", "net_qa", "dev_tools"]),
+        &recipe_with_features(&["dynamic_linking", "file_watcher"]),
     );
     let LaunchOutcome::Failed(LaunchFailure::RecipeMismatch(running)) = second else {
         unreachable!("a different recipe is rejected, not reported as already running: {second:?}");

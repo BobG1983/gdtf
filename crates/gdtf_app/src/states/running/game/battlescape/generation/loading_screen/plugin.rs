@@ -11,7 +11,7 @@ impl Plugin for LoadingScreenPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(BattleScapeState::Generation), spawn_loading_screen);
 
-        #[cfg(all(debug_assertions, feature = "net_qa"))]
+        #[cfg(debug_assertions)]
         super::capture::register_loading_capture(app);
     }
 }

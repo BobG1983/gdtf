@@ -4,6 +4,7 @@ pub mod command;
 pub mod framing;
 pub mod ids;
 pub mod message;
+pub mod ports;
 
 #[cfg(test)]
 mod test_support;

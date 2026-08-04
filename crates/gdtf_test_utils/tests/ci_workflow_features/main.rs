@@ -2,5 +2,4 @@
 
 mod check;
 mod run_steps;
-mod schema_step;
 mod tree;

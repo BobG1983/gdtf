@@ -1,13 +1,15 @@
 //! Which host the bridge is talking to.
 
+use gdtf_qa_protocol::ports::{EDITOR_QA_PORT, GAME_QA_PORT};
+
 use crate::{
     lifecycle::{LaunchSpec, LifecycleConfig},
     link::QaPort,
 };
 
-const DEFAULT_GAME_PORT: QaPort = QaPort::new(7616);
+const DEFAULT_GAME_PORT: QaPort = QaPort::new(GAME_QA_PORT);
 
-const DEFAULT_EDITOR_PORT: QaPort = QaPort::new(7617);
+const DEFAULT_EDITOR_PORT: QaPort = QaPort::new(EDITOR_QA_PORT);
 
 /// Target process the MCP tools operate on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -92,7 +94,7 @@ mod test {
     fn each_host_carries_its_own_lifecycle_config() {
         assert_eq!(QaHost::Game.lifecycle_config(), LifecycleConfig::game());
         assert_eq!(QaHost::Editor.lifecycle_config(), LifecycleConfig::editor());
-        assert_ne!(
+        assert_eq!(
             QaHost::Game.lifecycle_config().boot_timeout(),
             QaHost::Editor.lifecycle_config().boot_timeout()
         );

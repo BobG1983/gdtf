@@ -1,5 +1,5 @@
 //! `Menu → Game → … → BattleRunning`. `#![cfg(...)]` below keeps this file on the `net_qa`
-#![cfg(all(debug_assertions, feature = "net_qa"))]
+#![cfg(debug_assertions)]
 
 use std::sync::mpsc;
 
