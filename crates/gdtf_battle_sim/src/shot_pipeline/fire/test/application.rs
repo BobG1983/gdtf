@@ -1,12 +1,7 @@
 use super::support::*;
+use crate::resolve_and_apply::WoundRoll;
 
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "this integration test drives two full fire() scenarios (hit + miss) with \
-              many assertions; the injury-arg threading pushes it one line over \
-              the 100 gate — splitting it would obscure the hit-vs-miss comparison"
-)]
 fn fire_at_in_line_target_applies_damage() {
     let mut world = World::new();
     let tuning = CombatTuning::default();
@@ -39,26 +34,19 @@ fn fire_at_in_line_target_applies_damage() {
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
-            state.get_mut(&mut world)
-        else {
+        let Ok((mut shooters, mut arms, mut bodies)) = state.get_mut(&mut world) else {
             return;
         };
         fire(
-            shooter,
             FireOrder {
-                mode:         &mode,
-                target_cell:  Cell::new(8, 5),
+                shooter,
+                mode: &mode,
+                target_cell: Cell::new(8, 5),
                 target_level: Level::new(0),
             },
             &mut shooters,
-            &mut targets,
-            &wears,
-            &mut pieces,
-            &wields,
-            &mut weapons,
-            &melee,
-            &mounted,
+            &mut arms,
+            &mut bodies,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,
@@ -66,12 +54,14 @@ fn fire_at_in_line_target_applies_damage() {
                 slab:        &mut slab,
                 brace_cells: &BraceStairCells::empty(),
             },
-            &tuning,
             &mut shot_r,
-            &mut sev_r,
-            &injury_tables(),
-            &injury_registry(),
-            &mut injury_rng(),
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut sev_r,
+                tables:       &injury_tables(),
+                registry:     &injury_registry(),
+                injury_rng:   &mut injury_rng(),
+            },
         )
     };
 
@@ -143,26 +133,19 @@ fn fire_into_empty_space_is_a_clean_miss() {
     let mut sev_r = severity_rng();
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
-            state.get_mut(&mut world)
-        else {
+        let Ok((mut shooters, mut arms, mut bodies)) = state.get_mut(&mut world) else {
             return;
         };
         fire(
-            shooter,
             FireOrder {
-                mode:         &mode,
-                target_cell:  Cell::new(40, 5),
+                shooter,
+                mode: &mode,
+                target_cell: Cell::new(40, 5),
                 target_level: Level::new(0),
             },
             &mut shooters,
-            &mut targets,
-            &wears,
-            &mut pieces,
-            &wields,
-            &mut weapons,
-            &melee,
-            &mounted,
+            &mut arms,
+            &mut bodies,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,
@@ -170,12 +153,14 @@ fn fire_into_empty_space_is_a_clean_miss() {
                 slab:        &mut slab,
                 brace_cells: &BraceStairCells::empty(),
             },
-            &tuning,
             &mut shot_r,
-            &mut sev_r,
-            &injury_tables(),
-            &injury_registry(),
-            &mut injury_rng(),
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut sev_r,
+                tables:       &injury_tables(),
+                registry:     &injury_registry(),
+                injury_rng:   &mut injury_rng(),
+            },
         )
     };
     assert_eq!(volley.reports.len(), 1, "one round fired into empty space");

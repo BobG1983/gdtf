@@ -6,7 +6,7 @@ use crate::{
     injuries::MovementCostFactor,
     metric::{Cell, CellLevel, Level, MAX_LEVELS},
     occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, TerrainKind},
-    pathfinder::{Path, PlanningView, find_path, reachable_within},
+    pathfinder::{MoveGrids, Path, PlanningView, find_path, reachable_within},
     terrain::floor::FloorCostGrid,
     test_support::{SituationBuilder, key},
     tuning::CombatTuning,
@@ -142,10 +142,12 @@ pub(super) fn ok_path(
     let result = find_path(
         start,
         goal,
-        grid,
-        links,
-        tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy: grid,
+            links,
+            floor_costs: &floor_costs,
+            tuning,
+        },
         MovementCostFactor::IDENTITY,
         &planning,
     );
@@ -166,10 +168,12 @@ pub(super) fn reachable_triples(
     reachable_within(
         start,
         budget,
-        grid,
-        links,
-        tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy: grid,
+            links,
+            floor_costs: &floor_costs,
+            tuning,
+        },
         MovementCostFactor::IDENTITY,
         &planning,
     )
@@ -193,10 +197,12 @@ where
     reachable_within(
         start,
         budget,
-        grid,
-        links,
-        tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy: grid,
+            links,
+            floor_costs: &floor_costs,
+            tuning,
+        },
         MovementCostFactor::IDENTITY,
         planning,
     )

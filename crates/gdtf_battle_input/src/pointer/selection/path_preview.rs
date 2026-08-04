@@ -5,7 +5,7 @@ use gdtf_battle_presenter::PathPreview;
 use gdtf_battle_sim::{
     floor::FloorCostGrid,
     injuries::{InflictedInjuries, MovementCostFactor},
-    pathfinder::{PlanningView, find_path},
+    pathfinder::{MoveGrids, PlanningView, find_path},
     prelude::{CellLevel, Faction, OccupancyGrid, Position},
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
@@ -121,10 +121,12 @@ fn route_for(
     match find_path(
         start,
         goal,
-        &grids.grid,
-        &grids.links,
-        &grids.tuning,
-        &grids.floor_costs,
+        MoveGrids {
+            occupancy:   &grids.grid,
+            links:       &grids.links,
+            floor_costs: &grids.floor_costs,
+            tuning:      &grids.tuning,
+        },
         factor,
         &planning,
     ) {

@@ -1,5 +1,5 @@
 use super::support::*;
-use crate::{los::probe::eye_anchor, metric::pos_to_cell};
+use crate::{los::probe::eye_anchor, march::MarchGrids, metric::pos_to_cell};
 
 #[test]
 fn peek_clears_corner_wall_center_blocks() {
@@ -40,9 +40,11 @@ fn peek_clears_corner_wall_center_blocks() {
     let centred_sighted = has_los(
         &centred,
         &target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );
@@ -56,9 +58,11 @@ fn peek_clears_corner_wall_center_blocks() {
         &centred,
         &target,
         PeekOffset::new(Vec2::new(0.4, 0.0)),
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );

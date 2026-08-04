@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::resolve_and_apply::{ShotSource, WoundRoll};
 
 #[test]
 fn non_ganger_outcomes_are_inert() {
@@ -26,8 +27,10 @@ fn non_ganger_outcomes_are_inert() {
         let mut rng_used = rng();
         let report = resolve_and_apply(
             &non_ganger_outcome(kind),
-            weapon.stats(),
-            Luck::new(3.0),
+            ShotSource {
+                weapon: weapon.stats(),
+                luck:   Luck::new(3.0),
+            },
             Some(TargetGanger {
                 hp:        &mut hp,
                 wounds:    &mut wounds,
@@ -39,11 +42,13 @@ fn non_ganger_outcomes_are_inert() {
             }),
             an_entity(),
             surfaces(&mut cover, &mut slab_ledger()),
-            &tuning,
-            &mut rng_used,
-            &injury_tables(),
-            &injury_registry(),
-            &mut injury_rng(),
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut rng_used,
+                tables:       &injury_tables(),
+                registry:     &injury_registry(),
+                injury_rng:   &mut injury_rng(),
+            },
         );
 
         assert!(

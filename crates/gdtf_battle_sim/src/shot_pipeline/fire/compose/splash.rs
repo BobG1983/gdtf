@@ -1,47 +1,42 @@
 //! Apply AOE splash damage around a primary impact.
 
 use super::{
-    super::query::{BattleGrids, PieceQuery, TargetQuery, WearsQuery},
+    super::query::{BattleGrids, StruckBodies},
     fold::fold_ganger_round,
     snapshot::ShooterSnapshot,
 };
 use crate::{
-    ganger::Position,
-    injuries::{InjuryRegistry, InjuryTables},
     metric::CellLevel,
-    resolve_and_apply::HitReport,
+    resolve_and_apply::{HitReport, WoundRoll},
     resolve_coarse::ShotKind,
-    rng::{InjuryRng, SeverityRng, ShotRng},
-    tuning::CombatTuning,
+    rng::ShotRng,
 };
 
+/// The direct hit an area blast radiates from.
+#[derive(Debug, Clone, Copy)]
+pub(in crate::shot_pipeline::fire) struct PrimaryImpact<'a> {
+    /// Coarse outcome of the direct hit.
+    pub(in crate::shot_pipeline::fire) outcome:  &'a crate::resolve_coarse::ShotOutcome,
+    /// Blast pattern the weapon throws.
+    pub(in crate::shot_pipeline::fire) hit_type: crate::weapon::HitType,
+    /// Report already folded for the direct target.
+    pub(in crate::shot_pipeline::fire) report:   &'a HitReport,
+}
+
 /// Damage every living occupant in the AOE footprint except the primary target.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the splash pass needs the primary outcome / hit-type / shooter origin / the \
-              already-folded primary report (to skip the direct target) / the shooter \
-              snapshot / grids plus the disjoint wears+pieces queries + tuning + the three \
-              distinct RNG streams (shot / severity / injury) + the injury tables/registry; \
-              this is the same irreducible set fold_ganger_round documents, plus the \
-              `AoE`-specific outcome/hit-type/origin/primary inputs"
-)]
 pub(super) fn apply_aoe_splash(
-    outcome: &crate::resolve_coarse::ShotOutcome,
-    hit_type: crate::weapon::HitType,
-    shooter_position: Position,
-    primary: &HitReport,
+    impact: PrimaryImpact<'_>,
     snapshot: &ShooterSnapshot,
     grids: &mut BattleGrids,
-    targets: &mut TargetQuery,
-    wears: &WearsQuery,
-    pieces: &mut PieceQuery,
-    tuning: &CombatTuning,
+    bodies: &mut StruckBodies,
     shot_rng: &mut ShotRng,
-    severity_rng: &mut SeverityRng,
-    tables: &InjuryTables,
-    registry: &InjuryRegistry,
-    injury_rng: &mut InjuryRng,
+    roll: &mut WoundRoll<'_>,
 ) -> Vec<HitReport> {
+    let PrimaryImpact {
+        outcome,
+        hit_type,
+        report: primary,
+    } = impact;
     if matches!(hit_type, crate::weapon::HitType::Single) {
         return Vec::new();
     }
@@ -51,10 +46,10 @@ pub(super) fn apply_aoe_splash(
         _ => None,
     };
 
-    let impact = CellLevel::new(outcome.cell, outcome.level);
-    let shooter_cell: CellLevel = *shooter_position;
+    let at = CellLevel::new(outcome.cell, outcome.level);
+    let shooter_cell: CellLevel = *snapshot.position;
 
-    let affected = crate::aoe::aoe_affected(impact, hit_type, shooter_cell);
+    let affected = crate::aoe::aoe_affected(at, hit_type, shooter_cell);
     let mut reports = Vec::new();
     for cell in affected {
         let Some(occupant) = grids.occupancy.occupant(&cell) else {
@@ -63,7 +58,8 @@ pub(super) fn apply_aoe_splash(
         if Some(occupant) == primary_struck {
             continue;
         }
-        let part = crate::hit_location::roll_body_part(&tuning.body_part_weights, shot_rng.rng());
+        let part =
+            crate::hit_location::roll_body_part(&roll.tuning.body_part_weights, shot_rng.rng());
         let (splash_cell, splash_level) = (cell.cell(), outcome.level);
         let splash_outcome = crate::resolve_coarse::ShotOutcome {
             kind:       ShotKind::Ganger(occupant),
@@ -74,20 +70,7 @@ pub(super) fn apply_aoe_splash(
             muzzle:     outcome.muzzle,
             trajectory: outcome.trajectory,
         };
-        let report = fold_ganger_round(
-            &splash_outcome,
-            occupant,
-            snapshot,
-            grids,
-            targets,
-            wears,
-            pieces,
-            tuning,
-            severity_rng,
-            tables,
-            registry,
-            injury_rng,
-        );
+        let report = fold_ganger_round(&splash_outcome, occupant, snapshot, grids, bodies, roll);
         reports.push(report);
     }
     reports

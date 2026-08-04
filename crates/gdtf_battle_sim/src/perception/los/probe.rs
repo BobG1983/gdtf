@@ -9,10 +9,9 @@ use crate::{
     central_axis::{clamp_within_cell, muzzle_height, target_aim_point},
     cover::CoverLedger,
     ganger::{Facing, Position, Stance, StanceKind},
-    march::{MarchDir, MarchKind, march_vector},
+    march::{MarchDir, MarchGrids, MarchKind, march_vector},
     metric::{CellLevel, SimPos, SimUnit, cell_center},
     occupancy::{OccupancyGrid, StairEyeOffset},
-    surface::SurfaceGrid,
     tuning::CombatTuning,
 };
 
@@ -69,9 +68,7 @@ impl Sighted {
 pub fn has_los(
     from: &Observer,
     to: &Target,
-    occupancy: &OccupancyGrid,
-    surface: &SurfaceGrid,
-    cover: &CoverLedger,
+    grids: MarchGrids<'_>,
     tuning: &CombatTuning,
     is_dead: impl Fn(Entity) -> bool,
 ) -> Sighted {
@@ -83,39 +80,22 @@ pub fn has_los(
     }
 
     let eye = eye_anchor(from, tuning);
-    let aim = aim_anchor(to, occupancy, cover, tuning);
+    let aim = aim_anchor(to, grids.occupancy, grids.cover, tuning);
 
     let dir = MarchDir::new((*aim - *eye).normalize_or_zero());
 
-    let result = march_vector(
-        eye,
-        dir,
-        occupancy,
-        surface,
-        cover,
-        tuning,
-        observer_cell,
-        is_dead,
-    );
+    let result = march_vector(eye, dir, grids, tuning, observer_cell, is_dead);
 
     is_clear(&result, target_cell, eye, aim)
 }
 
 /// Same as [`has_los`] with an explicit peek offset applied to the observer.
 #[must_use]
-#[expect(
-    clippy::too_many_arguments,
-    reason = "has_los_peeking forwards every argument has_los needs plus the explicit \
-              peek displacement — the same arity justification as has_los and can_see; \
-              bundling into a struct would only hide the arity without reducing it"
-)]
 pub fn has_los_peeking(
     from: &Observer,
     to: &Target,
     peek: PeekOffset,
-    occupancy: &OccupancyGrid,
-    surface: &SurfaceGrid,
-    cover: &CoverLedger,
+    grids: MarchGrids<'_>,
     tuning: &CombatTuning,
     is_dead: impl Fn(Entity) -> bool,
 ) -> Sighted {
@@ -123,7 +103,7 @@ pub fn has_los_peeking(
         peek_offset: peek,
         ..*from
     };
-    has_los(&peeking, to, occupancy, surface, cover, tuning, is_dead)
+    has_los(&peeking, to, grids, tuning, is_dead)
 }
 
 /// World position of the observer's eye.

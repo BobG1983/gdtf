@@ -6,7 +6,7 @@ use crate::{
     ganger::Tu,
     injuries::MovementCostFactor,
     occupancy::TerrainKind,
-    pathfinder::{PlanningView, find_path, reachable_within},
+    pathfinder::{MoveGrids, PlanningView, find_path, reachable_within},
 };
 
 #[test]
@@ -31,30 +31,36 @@ fn find_path_is_byte_identical_across_replays() {
     let first = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
     let second = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
     let third = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
@@ -85,20 +91,24 @@ fn reachable_within_is_byte_identical_across_replays() {
     let first = reachable_within(
         start,
         budget,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
     let second = reachable_within(
         start,
         budget,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
@@ -136,10 +146,12 @@ fn hampered_route_steps_are_scaled_and_sum_to_total() {
     let id = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         MovementCostFactor::IDENTITY,
         &planning,
     );
@@ -155,10 +167,12 @@ fn hampered_route_steps_are_scaled_and_sum_to_total() {
     let hampered = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         factor,
         &planning,
     );

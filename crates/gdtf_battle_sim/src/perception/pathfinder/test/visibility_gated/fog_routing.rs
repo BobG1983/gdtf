@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     metric::CellLevel,
-    pathfinder::{PlanningView, find_path},
+    pathfinder::{MoveGrids, PlanningView, find_path},
     visibility::FactionRelation,
 };
 
@@ -29,10 +29,12 @@ fn route_only_through_unseen_is_path_blocked() {
     let blocked = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &gated,
     );
@@ -47,10 +49,12 @@ fn route_only_through_unseen_is_path_blocked() {
     let ok = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &open,
     );
@@ -76,10 +80,12 @@ fn route_through_explored_is_allowed() {
     let result = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );

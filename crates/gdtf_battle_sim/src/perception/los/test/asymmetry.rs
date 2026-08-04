@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn low_sees_tall_but_tall_blocked_by_ground_wall() {
@@ -41,18 +42,22 @@ fn low_sees_tall_but_tall_blocked_by_ground_wall() {
     let low_to_tall = has_los(
         &low_observer,
         &tall_target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );
     let tall_to_low = has_los(
         &tall_observer,
         &low_target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );

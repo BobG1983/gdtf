@@ -1,7 +1,7 @@
 //! acceptance tests — the authored stair-tile eye-offset for height-aware LOS.
 //!   authored stair tile sees over a [`HeightBand::Mid`] cover cell that a ground-level
 use super::support::*;
-use crate::{los::probe::eye_anchor, occupancy::StairEyeOffset};
+use crate::{los::probe::eye_anchor, march::MarchGrids, occupancy::StairEyeOffset};
 
 #[test]
 fn stair_kneel_clears_mid_cover_ground_kneel_blocks() {
@@ -32,9 +32,11 @@ fn stair_kneel_clears_mid_cover_ground_kneel_blocks() {
     let ground_sighted = has_los(
         &ground_kneel,
         &target,
-        &plain_occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &plain_occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );
@@ -57,9 +59,11 @@ fn stair_kneel_clears_mid_cover_ground_kneel_blocks() {
     let stair_sighted = has_los(
         &stair_kneel,
         &target,
-        &stair_occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &stair_occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );

@@ -11,7 +11,7 @@ use gdtf_battle_sim::{
     ganger::{GangRegistry, Speed},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
-    pathfinder::{PlanningView, find_path},
+    pathfinder::{MoveGrids, PlanningView, find_path},
     prelude::{Faction, Position, Stance, StanceKind, Tu},
     rng::BattleSeed,
     situation::Situation,
@@ -97,10 +97,12 @@ pub(crate) fn plan_total(app: &App, start: CellLevel, goal: CellLevel) -> Option
     let path = find_path(
         start,
         goal,
-        grid,
-        links,
-        tuning,
-        floor_costs,
+        MoveGrids {
+            occupancy: grid,
+            links,
+            floor_costs,
+            tuning,
+        },
         gdtf_battle_sim::injuries::MovementCostFactor::IDENTITY,
         &planning,
     )

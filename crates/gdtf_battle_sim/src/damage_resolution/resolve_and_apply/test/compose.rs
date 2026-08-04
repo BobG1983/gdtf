@@ -1,15 +1,10 @@
 use super::support::*;
+use crate::resolve_and_apply::{ShotSource, WoundRoll};
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the reference side mirrors `resolve_and_apply`'s own inputs verbatim so the \
-              equivalence is exact; bundling them would diverge the two sides' shapes"
-)]
 fn compose_by_hand(
-    weapon: &WeaponBundle,
+    source: ShotSource<'_>,
     part: BodyPart,
     piece: ArmorPiece,
-    shooter_luck: Luck,
     toughness: Toughness,
     defender_luck: Luck,
     tuning: &CombatTuning,
@@ -25,14 +20,22 @@ fn compose_by_hand(
     let mut inflicted = InflictedWounds::default();
     let mut rng_b = rng();
 
-    let m = matchup(weapon.damage_type, piece.armor_type);
-    let hit = resolve_hit(weapon.damage, weapon.punch, weapon.shred, &piece, m, tuning);
+    let weapon = source.weapon;
+    let m = matchup(*weapon.damage_type, piece.armor_type);
+    let hit = resolve_hit(
+        *weapon.damage,
+        *weapon.punch,
+        *weapon.shred,
+        &piece,
+        m,
+        tuning,
+    );
     let inputs = SeverityInputs::new(
         hit.penetrating,
         toughness,
         part_severity_mod(part),
-        weapon.fatal_bias,
-        shooter_luck,
+        *weapon.fatal_bias,
+        source.luck,
         defender_luck,
     );
     let severity = roll_severity(&inputs, &tuning.severity_scaling, &mut rng_b);
@@ -82,8 +85,10 @@ fn fold_equals_the_composed_steps() {
     let piece_a = Some(struck_piece(floor, prot, hard, at, &mut integrity_a));
     let report = resolve_and_apply(
         &outcome,
-        weapon.stats(),
-        shooter_luck,
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   shooter_luck,
+        },
         Some(TargetGanger {
             hp: &mut hp_a,
             wounds: &mut wounds_a,
@@ -95,11 +100,13 @@ fn fold_equals_the_composed_steps() {
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut rng_a,
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng_a,
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut injury_rng(),
+        },
     );
 
     let piece = ArmorPiece::new(
@@ -110,10 +117,12 @@ fn fold_equals_the_composed_steps() {
         at,
     );
     let (applied_b, (hp_b, wounds_b, life_b, integrity_b, inflicted_b)) = compose_by_hand(
-        &weapon,
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   shooter_luck,
+        },
         part,
         piece,
-        shooter_luck,
         toughness,
         defender_luck,
         &tuning,
@@ -153,8 +162,10 @@ fn armored_report_carries_the_real_matchup() {
         let mut inflicted = InflictedWounds::default();
         resolve_and_apply(
             &ganger_outcome(entity, part),
-            weapon.stats(),
-            Luck::new(0.0),
+            ShotSource {
+                weapon: weapon.stats(),
+                luck:   Luck::new(0.0),
+            },
             Some(TargetGanger {
                 hp:        &mut hp,
                 wounds:    &mut wounds,
@@ -166,11 +177,13 @@ fn armored_report_carries_the_real_matchup() {
             }),
             entity,
             surfaces(&mut ledger(), &mut slab_ledger()),
-            &tuning,
-            &mut rng(),
-            &injury_tables(),
-            &injury_registry(),
-            &mut injury_rng(),
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut rng(),
+                tables:       &injury_tables(),
+                registry:     &injury_registry(),
+                injury_rng:   &mut injury_rng(),
+            },
         )
     };
 

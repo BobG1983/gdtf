@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn cover_stops_non_strictly_higher_round() {
@@ -17,9 +18,11 @@ fn cover_stops_non_strictly_higher_round() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -51,9 +54,11 @@ fn destroyed_cover_passes_through() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -87,9 +92,11 @@ fn ledger_destroyed_flag_passes_through() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),

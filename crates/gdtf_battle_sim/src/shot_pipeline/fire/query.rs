@@ -1,6 +1,12 @@
 //! ECS query types used by the fire path.
 
-use bevy::ecs::{query::With, system::Query};
+use bevy::{
+    ecs::{
+        query::With,
+        system::{Query, SystemParam},
+    },
+    prelude::Entity,
+};
 
 use crate::{
     armor::{PieceArmorMut, Wears, WornBy},
@@ -96,6 +102,30 @@ pub type WearsQuery<'world, 'state> = Query<'world, 'state, &'static Wears>;
 /// Individual armor piece data.
 pub type PieceQuery<'world, 'state> = Query<'world, 'state, PieceArmorMut, With<WornBy>>;
 
+/// The weapon a combatant wields, with the melee and mounted probes on it.
+#[derive(SystemParam)]
+pub struct WieldedWeapons<'w, 's> {
+    /// Wielded-weapon link on each combatant.
+    pub wields:  WieldsQuery<'w, 's>,
+    /// Weapon stats and magazine.
+    pub weapons: WeaponQuery<'w, 's>,
+    /// Melee weapon filter.
+    pub melee:   MeleeQuery<'w, 's>,
+    /// Mounted weapon filter.
+    pub mounted: MountedQuery<'w, 's>,
+}
+
+/// The bodies and worn armor of everyone a shot can strike.
+#[derive(SystemParam)]
+pub struct StruckBodies<'w, 's> {
+    /// Mutable combatant state.
+    pub targets: TargetQuery<'w, 's>,
+    /// Worn armor sets.
+    pub wears:   WearsQuery<'w, 's>,
+    /// Individual armor pieces.
+    pub pieces:  PieceQuery<'w, 's>,
+}
+
 /// Shared battle grids passed into fire resolution.
 #[derive(Debug)]
 pub struct BattleGrids<'a> {
@@ -111,9 +141,11 @@ pub struct BattleGrids<'a> {
     pub brace_cells: &'a BraceStairCells,
 }
 
-/// One fire order: mode plus target cell/level.
+/// One fire order: who fires, in what mode, at which cell/level.
 #[derive(Debug, Clone, Copy)]
 pub struct FireOrder<'a> {
+    /// Combatant pulling the trigger.
+    pub shooter:      Entity,
     /// Fire mode being used.
     pub mode:         &'a FireModeSpec,
     /// Target cell.

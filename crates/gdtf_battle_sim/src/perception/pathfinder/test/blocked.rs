@@ -3,7 +3,7 @@ use super::support::{
 };
 use crate::{
     occupancy::TerrainKind,
-    pathfinder::{PathBlocked, PlanningView, find_path},
+    pathfinder::{MoveGrids, PathBlocked, PlanningView, find_path},
 };
 
 #[test]
@@ -34,10 +34,12 @@ fn goal_walled_in_is_path_blocked() {
     let result = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
@@ -63,10 +65,12 @@ fn other_storey_without_link_is_path_blocked() {
     let result = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
@@ -92,10 +96,12 @@ fn out_of_grid_goal_is_path_blocked() {
     let result = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );

@@ -1,5 +1,5 @@
 use super::support::*;
-use crate::{ganger::Direction, los::probe::eye_anchor};
+use crate::{ganger::Direction, los::probe::eye_anchor, march::MarchGrids};
 
 #[test]
 fn eye_anchor_is_facing_invariant() {
@@ -87,9 +87,11 @@ fn verdict_is_facing_invariant() {
         verdicts.push(*has_los(
             &observer,
             &target,
-            &occupancy,
-            &surface,
-            &cover,
+            MarchGrids {
+                occupancy: &occupancy,
+                surface:   &surface,
+                cover:     &cover,
+            },
             &tuning,
             no_dead(),
         ));

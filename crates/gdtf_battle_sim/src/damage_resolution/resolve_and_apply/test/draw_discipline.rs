@@ -1,5 +1,8 @@
 use super::support::*;
-use crate::rng::InjuryRng;
+use crate::{
+    resolve_and_apply::{ShotSource, WoundRoll},
+    rng::InjuryRng,
+};
 
 fn fresh_injury_rng() -> InjuryRng {
     injury_rng()
@@ -91,8 +94,10 @@ fn fold_live_ganger(
     let mut inj = fresh_injury_rng();
     let report = resolve_and_apply(
         &outcome,
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         Some(TargetGanger {
             hp: &mut hp,
             wounds: &mut wounds,
@@ -104,11 +109,13 @@ fn fold_live_ganger(
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut sev,
-        &injury_tables(),
-        &injury_registry(),
-        &mut inj,
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut sev,
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut inj,
+        },
     );
     (report, sev, inj)
 }
@@ -193,8 +200,10 @@ fn corpse_skip_takes_neither_draw() {
     let mut inj = fresh_injury_rng();
     let _report = resolve_and_apply(
         &outcome,
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
@@ -206,11 +215,13 @@ fn corpse_skip_takes_neither_draw() {
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut sev,
-        &injury_tables(),
-        &injury_registry(),
-        &mut inj,
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut sev,
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut inj,
+        },
     );
 
     assert_no_severity_draw(sev, "a corpse-skip");
@@ -236,8 +247,10 @@ fn defensive_no_part_takes_neither_draw() {
     let mut inj = fresh_injury_rng();
     let report = resolve_and_apply(
         &outcome,
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
@@ -249,11 +262,13 @@ fn defensive_no_part_takes_neither_draw() {
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut sev,
-        &injury_tables(),
-        &injury_registry(),
-        &mut inj,
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut sev,
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut inj,
+        },
     );
 
     assert_eq!(
@@ -283,16 +298,20 @@ fn structural_and_miss_arms_take_zero_draws_on_both_streams() {
         let mut inj = fresh_injury_rng();
         let _report = resolve_and_apply(
             &outcome,
-            weapon.stats(),
-            Luck::new(0.0),
+            ShotSource {
+                weapon: weapon.stats(),
+                luck:   Luck::new(0.0),
+            },
             None,
             an_entity(),
             surfaces(&mut cover, &mut slab),
-            &tuning,
-            &mut sev,
-            &injury_tables(),
-            &injury_registry(),
-            &mut inj,
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut sev,
+                tables:       &injury_tables(),
+                registry:     &injury_registry(),
+                injury_rng:   &mut inj,
+            },
         );
         let what = format!("a {:?} outcome", outcome.kind);
         assert_no_severity_draw(sev, &what);

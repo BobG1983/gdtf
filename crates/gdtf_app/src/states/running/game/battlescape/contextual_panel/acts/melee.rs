@@ -5,6 +5,7 @@ use gdtf_battle_sim::{
     cover::CoverLedger,
     ganger::{Facing, Faction, LifeState, Position, Stance, StanceKind},
     los::{Observer, PeekOffset, Target, has_los},
+    march::MarchGrids,
     prelude::{Cell, CellLevel, OccupancyGrid},
     surface::SurfaceGrid,
     tuning::CombatTuning,
@@ -121,7 +122,15 @@ fn scan_melee_target(
             stance:   stance.unwrap_or(&standing),
         };
         if *has_los(
-            &observer, &target, occupancy, surface, cover, tuning, is_dead,
+            &observer,
+            &target,
+            MarchGrids {
+                occupancy,
+                surface,
+                cover,
+            },
+            tuning,
+            is_dead,
         ) {
             return Some(entity);
         }

@@ -1,22 +1,15 @@
 //! Fire a multi-round volley from one shooter.
 
-use bevy::prelude::Entity;
-
 use super::{
     compose::{RoundSetup, ShooterReads, TargetGeometry, read_shooter, resolve_round},
-    query::{
-        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
-        WeaponQuery, WearsQuery, WieldsQuery,
-    },
+    query::{BattleGrids, FireOrder, ShooterQuery, StruckBodies, WieldedWeapons},
 };
 use crate::{
-    injuries::{InjuryRegistry, InjuryTables},
     magazine::{FireActor, can_fire, clamp_burst, mode_tu_cost},
-    resolve_and_apply::HitReport,
+    resolve_and_apply::{HitReport, WoundRoll},
     resolve_coarse::ShotOutcome,
-    rng::{InjuryRng, SeverityRng, ShotRng},
+    rng::ShotRng,
     tu::spend_tu,
-    tuning::CombatTuning,
 };
 
 /// Result of firing one volley: per-round reports, outcomes, and splash.
@@ -44,29 +37,17 @@ impl Volley {
 
 /// Fire a volley: spend TU, clamp burst to magazine, resolve each round.
 /// Returns an empty volley when the shooter cannot fire.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "wears/pieces and wields/weapons stay disjoint; injury tables and InjuryRng are separate streams"
-)]
 pub fn fire(
-    shooter: Entity,
     order: FireOrder,
     shooters: &mut ShooterQuery,
-    targets: &mut TargetQuery,
-    wears: &WearsQuery,
-    pieces: &mut PieceQuery,
-    wields: &WieldsQuery,
-    weapons: &mut WeaponQuery,
-    melee: &MeleeQuery,
-    mounted: &MountedQuery,
+    arms: &mut WieldedWeapons,
+    bodies: &mut StruckBodies,
     mut grids: BattleGrids,
-    tuning: &CombatTuning,
     shot_rng: &mut ShotRng,
-    severity_rng: &mut SeverityRng,
-    tables: &InjuryTables,
-    registry: &InjuryRegistry,
-    injury_rng: &mut InjuryRng,
+    roll: &mut WoundRoll<'_>,
 ) -> Volley {
+    let shooter = order.shooter;
+    let tuning = roll.tuning;
     let Some(ShooterReads {
         snapshot,
         weapon: weapon_entity,
@@ -76,12 +57,19 @@ pub fn fire(
         magazine: magazine_now,
         handedness: shooter_handedness,
         hands_available: shooter_hands,
-    }) = read_shooter(shooter, shooters, wields, weapons, melee, mounted)
+    }) = read_shooter(
+        shooter,
+        shooters,
+        &arms.wields,
+        &arms.weapons,
+        &arms.melee,
+        &arms.mounted,
+    )
     else {
         return Volley::empty();
     };
 
-    let Ok((_, _, shooter_life, ..)) = targets.get(shooter) else {
+    let Ok((_, _, shooter_life, ..)) = bodies.targets.get(shooter) else {
         return Volley::empty();
     };
     let shooter_life = *shooter_life;
@@ -134,18 +122,12 @@ pub fn fire(
             setup,
             crate::cone::PriorShots::new(i),
             &mut grids,
-            targets,
-            wears,
-            pieces,
-            tuning,
+            bodies,
             shot_rng,
-            severity_rng,
-            tables,
-            registry,
-            injury_rng,
+            roll,
         );
 
-        if let Ok((.., mut mag_mut, _dot)) = weapons.get_mut(weapon_entity) {
+        if let Ok((.., mut mag_mut, _dot)) = arms.weapons.get_mut(weapon_entity) {
             mag_mut.spend_round();
         }
 

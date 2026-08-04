@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::resolve_and_apply::{ShotSource, WoundRoll};
 
 #[test]
 fn corpse_skip_is_inert_and_draws_nothing() {
@@ -22,8 +23,10 @@ fn corpse_skip_is_inert_and_draws_nothing() {
     let mut rng_used = rng();
     let report = resolve_and_apply(
         &outcome,
-        weapon.stats(),
-        Luck::new(5.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(5.0),
+        },
         Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
@@ -35,11 +38,13 @@ fn corpse_skip_is_inert_and_draws_nothing() {
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut rng_used,
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng_used,
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut injury_rng(),
+        },
     );
 
     assert_eq!(

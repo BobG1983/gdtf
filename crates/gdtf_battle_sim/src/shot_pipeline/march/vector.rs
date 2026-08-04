@@ -4,34 +4,22 @@ use bevy::{math::Vec3, prelude::Entity};
 
 use crate::{
     clearance::{lower_band, round_band_for_cell},
-    cover::CoverLedger,
     march::{
         dda::{MAX_STEPS, MarchState, Step, impact_at},
         geom::{MarchDir, VoxelIndex, key_of, key_of_clamped, point_at, xy_in_grid, z_in_grid},
+        grids::MarchGrids,
         result::{MarchKind, MarchResult},
     },
     metric::{CellLevel, SimPos, pos_to_cell},
-    occupancy::OccupancyGrid,
-    surface::SurfaceGrid,
     tuning::CombatTuning,
 };
 
 /// March a direction from the muzzle until something is hit or the ray leaves the map.
 #[must_use]
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the march reads four independent, deliberately-separate grids (occupancy / \
-              surface / cover / tuning) plus the muzzle, direction, shooter-cell exception, \
-              and the dead-occupant predicate — each a distinct input the DDA must \
-              see; bundling them into a struct would only obscure that they are read-only \
-              and orthogonal"
-)]
 pub fn march_vector(
     muzzle: SimPos,
     dir: MarchDir,
-    occupancy: &OccupancyGrid,
-    surface: &SurfaceGrid,
-    cover: &CoverLedger,
+    grids: MarchGrids<'_>,
     tuning: &CombatTuning,
     shooter_cell: CellLevel,
     is_dead: impl Fn(Entity) -> bool,
@@ -61,12 +49,19 @@ pub fn march_vector(
         let exit_band = round_band_for_cell(state.exit_point(muzzle, dir), tuning);
         let test_band = lower_band(entry_band, exit_band);
         if here != shooter_cell
-            && let Some(result) = impact_at(here, here_point, test_band, occupancy, cover, &is_dead)
+            && let Some(result) = impact_at(
+                here,
+                here_point,
+                test_band,
+                grids.occupancy,
+                grids.cover,
+                &is_dead,
+            )
         {
             return result;
         }
 
-        match state.advance(muzzle, dir, surface, tuning, entry_band) {
+        match state.advance(muzzle, dir, grids.surface, tuning, entry_band) {
             Step::Continue => {}
             Step::Stopped(result) => return result,
         }

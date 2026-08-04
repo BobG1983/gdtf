@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn shooter_own_cell_never_blocks() {
@@ -18,9 +19,11 @@ fn shooter_own_cell_never_blocks() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         shooter_cell,
         no_dead(),
@@ -53,9 +56,11 @@ fn friendly_fire_is_real() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
