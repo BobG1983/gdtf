@@ -19,7 +19,7 @@ use gdtf_battle_sim::{
 const SEED: u64 = 0x0315_0303_1500_D00D;
 
 fn shipped_tuning() -> CombatTuning {
-    const SHIPPED: &str = include_str!("../../../assets/core_tuning/combat.tuning.ron");
+    const SHIPPED: &str = include_str!("../../../../assets/core_tuning/combat.tuning.ron");
     ron::from_str::<CombatTuning>(SHIPPED).unwrap_or_default()
 }
 
