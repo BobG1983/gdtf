@@ -1,3 +1,4 @@
+//! Stair connector pairing: place up, auto-place down, round-trip both endpoints.
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     level::{

@@ -1,3 +1,4 @@
+//! Path-preview pixel proof: route cells render warmer than off-route clear.
 use std::sync::{Mutex, MutexGuard};
 
 use bevy::{
