@@ -13,7 +13,7 @@ description: >-
   NOT create or edit files. It returns the authoritative answer (with doc
   citations and version caveats); the implementer applies it. The orchestrating
   workflow / main session invokes it and relays the answer.
-tools: Read, Grep, Glob, Bash, WebSearch, WebFetch, LSP
+tools: Read, Bash, WebSearch, WebFetch, ToolSearch, LSP
 model: opus
 ---
 

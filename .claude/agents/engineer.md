@@ -4,7 +4,7 @@ description: >-
   Gameplay engineer. Implements Rust/Bevy ECS code per CLAUDE.md and docs/,
   then reports files changed and how to verify. Use for new mechanics, systems,
   components, scene-plugins, sim/presenter work, refactors.
-tools: mcp__gdtf-qa__*, Read, Edit, Write, Grep, Glob, Bash, LSP
+tools: mcp__gdtf-qa__*, Read, Edit, Write, Grep, Glob, Bash, ToolSearch, LSP
 model: opus
 memory: project
 ---
