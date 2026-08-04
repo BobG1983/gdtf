@@ -258,7 +258,7 @@ fn headless_minimal_app_seeds_the_default_registry_and_skips_the_chain() {
     let registry = app.world().get_resource::<SwatchRegistry>();
     assert!(
         registry.is_some(),
-        "a headless registration must seed the DEFAULT registry (the GTW-629 fallback rider)",
+        "a headless registration must seed the DEFAULT registry (the headless fallback)",
     );
     if let Some(registry) = registry {
         assert!(
