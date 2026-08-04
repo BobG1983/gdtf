@@ -1,4 +1,4 @@
-// GTW-440 LEG-pool standin injury. A Major leg wound — a shattered femur: a brutal,
+// LEG-pool standin injury. A Major leg wound — a shattered femur: a brutal,
 // limping crawl. Leg injuries key to the Speed / MovementCostMul stat map (resolution.md
 // injury tables); a Major is a -1/broken-level debuff. Side-agnostic (both legs share
 // the Leg pool). KEY = file stem minus `.injury` => `shattered_femur`.
@@ -10,8 +10,8 @@
     log_text:     "shatters a femur",                        // -> combat log line ("<name> shatters a femur")
     inspect_text: "Shattered Femur -- Hampered (slower movement), -2 Speed", // -> inspect panel
     effects: [
-        MovementCostMul(1.75),                               // GTW-444: each movement step costs 1.75x TU (Major slow)
+        MovementCostMul(1.75),                               // each movement step costs 1.75x TU (Major slow)
         Modify(stat: Speed, amount: -2),                     // leg -> Speed; Major-level attribute debuff
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )

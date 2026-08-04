@@ -1,4 +1,4 @@
-// GTW-440 TORSO-pool standin injury. A Critical torso wound — a gut wound: gushing,
+// TORSO-pool standin injury. A Critical torso wound — a gut wound: gushing,
 // life-threatening, a lasting collapse of resilience. Torso injuries key to the
 // Toughness / Hp stat map (resolution.md injury tables); a Critical is a lost-level
 // debuff plus a heavy bleed. KEY = file stem minus `.injury` => `gut_wound`.
@@ -14,5 +14,5 @@
         Modify(stat: Hp,        amount: -2),                 // torso -> Hp; docks the derived Hp pool MAX
         Bleeding(amount: 3),                                 // torso -> Hp drain; heavy per-turn bleed
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )
