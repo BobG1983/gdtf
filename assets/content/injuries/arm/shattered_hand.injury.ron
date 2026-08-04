@@ -1,10 +1,10 @@
-// GTW-440 ARM-pool hand-disabling injury (migrated from GTW-443's per-side
-// shattered_left_hand / shattered_right_hand into ONE generalized file). A Major wound
-// that wrecks a hand: the ganger keeps one-handed weapons but can no longer brace a
-// two-handed long-arm, and its aim suffers while the hand is ruined.
+// ARM-pool hand-disabling injury (migrated from per-side shattered_left_hand /
+// shattered_right_hand into ONE generalized file). A Major wound that wrecks a hand:
+// the ganger keeps one-handed weapons but can no longer brace a two-handed long-arm,
+// and its aim suffers while the hand is ruined.
 // SIDE-AGNOSTIC: the disabled side is derived from the ROLLED struck part (LeftArm ->
 // the left hand, RightArm -> the right), NOT this file — both arms share this one Arm
-// pool, so a single file serves either side (GTW-440 C3). The `category:` below only
+// pool, so a single file serves either side. The `category:` below only
 // routes this injury into the shared Arm CATEGORY pool.
 // KEY = file stem minus `.injury` => `shattered_hand`.
 (
@@ -15,8 +15,8 @@
     log_text:     "shatters a hand",                // -> combat log line ("<name> shatters a hand")
     inspect_text: "Shattered Hand -- no two-handed weapons, -2 Shooting", // -> inspect panel
     effects: [
-        DisableHand,                                // GTW-443: disables the struck-side hand (fieldless; side from rolled part)
-        Modify(stat: Shooting, amount: -2),         // GTW-443 F3: always-on 1H aim penalty (N tunable per injury)
+        DisableHand,                                // disables the struck-side hand (fieldless; side from rolled part)
+        Modify(stat: Shooting, amount: -2),         // always-on 1H aim penalty (N tunable per injury)
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )

@@ -1,5 +1,5 @@
-// GTW-437 SAMPLE injury (loader fixture). The full >=6-per-severity-per-part content
-// floor is GTW-440 — this file exists only to exercise the loader / tables build.
+// SAMPLE injury (loader fixture). The full >=6-per-severity-per-part content
+// floor is elsewhere — this file exists only to exercise the loader / tables build.
 // KEY = file stem minus `.injury` => `lost_eye`.
 (
     name:         "Lost Eye",                     // display InjuryName (inspect-panel label)
@@ -12,5 +12,5 @@
         Modify(stat: Aim,  amount: -2),           // direct attribute; ripples through Shooting
         Modify(stat: Cool, amount: -1),           // an injury MAY carry more than one effect
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )

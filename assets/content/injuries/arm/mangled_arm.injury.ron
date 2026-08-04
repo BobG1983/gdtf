@@ -1,8 +1,8 @@
-// GTW-440 ARM-pool standin injury. A Critical arm wound — a mangled arm, the hand lost
+// ARM-pool standin injury. A Critical arm wound — a mangled arm, the hand lost
 // for good. Arm injuries key to the Strength / Aim / DisableHand stat map (resolution.md
 // injury tables); a Critical is a lost-limb-level debuff. SIDE-AGNOSTIC: the disabled
 // side is derived from the ROLLED struck part (LeftArm -> left hand, RightArm -> right),
-// NOT this file — both arms share the Arm pool (GTW-440 C3). KEY = stem => `mangled_arm`.
+// NOT this file — both arms share the Arm pool. KEY = stem => `mangled_arm`.
 (
     name:         "Mangled Arm",                             // display InjuryName (inspect-panel label; side-agnostic)
     category:     Arm,                                       // routes into the shared Arm category pool; matches the owning subfolder
@@ -11,9 +11,9 @@
     log_text:     "has an arm mangled",                      // -> combat log line ("<name> has an arm mangled")
     inspect_text: "Mangled Arm -- hand lost, -3 Strength, -2 Shooting", // -> inspect panel
     effects: [
-        DisableHand,                                         // GTW-443: disables the struck-side hand (side from rolled part)
+        DisableHand,                                         // disables the struck-side hand (side from rolled part)
         Modify(stat: Strength, amount: -3),                  // arm -> Strength; Critical lost-level debuff
-        Modify(stat: Shooting, amount: -2),                  // GTW-443 F3: always-on 1H aim penalty for the ruined hand
+        Modify(stat: Shooting, amount: -2),                  // always-on 1H aim penalty for the ruined hand
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )
