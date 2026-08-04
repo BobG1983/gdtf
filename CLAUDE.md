@@ -21,7 +21,7 @@ Autonomous loop tick? `/heartbeat`.
 
 Orchestration uses on-demand sub-agents. Favor fan-out (e.g. `/gate` and `/health-check` spawn parallel read-only design-gate lenses). Sub-agents that review stay read-only. Commit subjects: `Area: summary (GTW-N)`.
 
-Agent memory lives under [`.claude/agent-memory/`](.claude/agent-memory/index.md): `*/ephemeral/` (gitignored, mid-run) and `*/real/` (checked in, durable). Orchestrator path: `.claude/agent-memory/orchestrator/`.
+Orchestrator notes live under [`.claude/agent-memory/orchestrator/`](.claude/agent-memory/orchestrator/real/README.md), hand-maintained. Sub-agents have no memory store — durable knowledge goes in `.claude/rules/`, the agent definition, or `docs/`, all of which are actually read.
 
 ## Binding rules
 
