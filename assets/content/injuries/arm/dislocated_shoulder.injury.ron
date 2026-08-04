@@ -1,4 +1,4 @@
-// GTW-440 ARM-pool standin injury. A Major arm wound — a dislocated shoulder: the arm
+// ARM-pool standin injury. A Major arm wound — a dislocated shoulder: the arm
 // hangs near-useless until reset. Arm injuries key to the Strength / Aim / DisableHand
 // stat map (resolution.md injury tables); a Major is a -1/broken-level debuff. Side-
 // agnostic (both arms share the Arm pool). KEY = stem => `dislocated_shoulder`.
@@ -13,5 +13,5 @@
         Modify(stat: Strength, amount: -2),                  // arm -> Strength; Major-level debuff
         Modify(stat: Aim,      amount: -1),                  // arm -> Aim; an injury MAY carry more than one effect
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )
