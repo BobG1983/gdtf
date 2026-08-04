@@ -2,7 +2,7 @@
 // aside than any other suit; the trade is bulk and a body that slows you down.
 // Top protection, baseline endurance — it stops the hit hard, and the head and core
 // plates seal so tight that nothing slips past unblunted.
-// GTW-374 re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
+// Re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
 (
     head:      (floor: 0, protection: 4, integrity: 55, hardness: 2, armor_type: Plated),
     torso:     (floor: 0, protection: 5, integrity: 65, hardness: 2, armor_type: Plated),  // top protection on the wheel — plate turns the hit

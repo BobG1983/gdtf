@@ -2,7 +2,7 @@
 // don't turn a hit harder than baseline, they simply refuse to give: by a wide margin
 // the deepest integrity on the wheel. It endures where lighter suits tear open —
 // you'll be bleeding long before the suit does.
-// GTW-374 re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
+// Re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
 (
     head:      (floor: 0, protection: 3, integrity: 90,  hardness: 1, armor_type: Void),
     torso:     (floor: 0, protection: 4, integrity: 110, hardness: 1, armor_type: Void),  // top integrity on the wheel — layered to last
