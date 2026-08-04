@@ -17,8 +17,11 @@ Dev loop: **`/next-task` → build → `/gate` → `/docs-sync` → `/land`**.
 - `/land` onto `develop` and close the ticket.
 
 Found a defect? `/file-bug` before fixing. Kit sanity? `/health-check`.
+Memory hygiene? `/dream`. Autonomous loop tick? `/heartbeat`.
 
 Orchestration uses on-demand sub-agents. Favor fan-out (e.g. `/gate` and `/health-check` spawn parallel read-only design-gate lenses). Sub-agents that review stay read-only. Commit subjects: `Area: summary (GTW-N)`.
+
+Agent memory lives under [`.claude/agent-memory/`](.claude/agent-memory/index.md): `*/ephemeral/` (gitignored, mid-run) and `*/real/` (checked in, durable). Orchestrator path: `.claude/agent-memory/orchestrator/`.
 
 ## Binding rules
 
@@ -30,7 +33,7 @@ Short files under `.claude/rules/` — read and follow them:
 - [`linear-discipline.md`](.claude/rules/linear-discipline.md) — every change has a GTW-* ticket; statuses move with the work; labels defined there.
 - [`no-bare-types.md`](.claude/rules/no-bare-types.md) — no bare Rust/std type for a domain value; named newtype that `Deref`s.
 - [`module-layout.md`](.claude/rules/module-layout.md) — module is a directory; mod.rs is wiring-only; size limits.
-- [`plain-language.md`](.claude/rules/plain-language.md) — wording and length; banned words; name the real mechanism.
+- [`plain-language.md`](.claude/rules/plain-language.md) — plain wording and length; name the real mechanism.
 - [`reply-shape.md`](.claude/rules/reply-shape.md) — chat reply structure: answer first, no process narration.
 - [`comment-hygiene.md`](.claude/rules/comment-hygiene.md) — short docs; no ticket ids in comments.
 
@@ -57,11 +60,11 @@ Aliases and feature sets are defined in `.cargo/config.toml`. Do not expand them
 
 `.claude/hooks/pre-commit-gate.sh` blocks commits on `develop`/`main`, red suite, or missing/stale gate-pass. Run `/gate`.
 
-## Git workflow — git flow
+## Git workflow — plain git
 
-- New work: `git flow feature start <gtw-N-slug>`
-- Finish: `git flow feature finish <gtw-N-slug>`
-- Commit only when asked. Keep feature branches local until shared.
+- New work: `git checkout develop && git pull && git checkout -b feature/gtw-N-slug`
+- Finish: merge `--no-ff` into `develop`, push, delete feature branch (see `/land`)
+- No `git flow`. Commit only when asked. Keep feature branches local until shared.
 
 ## Run it
 

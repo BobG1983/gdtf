@@ -9,15 +9,17 @@ Why this rule exists: giant multi-ticket uncommitted working trees that nobody
 can review, bisect, or land are a recurring failure. One ticket = one branch =
 one reviewable change.
 
-`CLAUDE.md`'s git-flow section stays authoritative for the branch model
-(`main` = releases, `develop` = integration). This rule is the process layer
-on top of it.
+Branch model: **`main`** = releases, **`develop`** = integration. Plain git only
+— no `git flow` / git-flow-next dependency.
 
 ## Rules
 
-1. Branch per ticket: `git flow feature start gtw-N-slug` →
-   `feature/gtw-N-slug` off `develop` (start via `/next-task`). Never code
-   directly on `develop` or `main`.
+1. Branch per ticket off develop:
+   ```bash
+   git checkout develop && git pull origin develop
+   git checkout -b feature/gtw-N-slug
+   ```
+   Never code directly on `develop` or `main`.
 2. Never build a multi-ticket tree. One ticket's changes per working tree;
    finish (or stash and file a ticket) before starting the next.
 3. Commit only on gate-pass: `/gate` must be green first. The
@@ -29,8 +31,14 @@ on top of it.
    you must be able to say why every staged file is in the commit.
 5. Commit style: `Area: summary (GTW-N)` subject plus a wrapped body saying
    what changed and why. Match the voice of `git log --oneline -15`.
-6. Land via `/land`: `GIT_EDITOR=true git flow feature finish <name>`, then
-   `git push origin develop`. Landing is the only way work reaches `develop`.
+6. Land via `/land` with plain git (from the main repo if using a worktree):
+   ```bash
+   git checkout develop && git pull origin develop
+   git merge --no-ff feature/gtw-N-slug
+   git push origin develop
+   git branch -d feature/gtw-N-slug
+   ```
+   Landing is the only way work reaches `develop`.
 7. When a workflow spawns a sub-agent to run git plumbing, the same rules
    apply to it — explicit staging, gate-gated commits, ticket-tagged subjects.
 
@@ -40,10 +48,6 @@ To work two INDEPENDENT epics in parallel, use git worktrees — one per epic:
 `git worktree add ../gdtf-<epic> <branch>`. Each worktree builds into its OWN
 local `target/`, which dies with `git worktree remove` — the cold-build cost of
 the worktree's first build is accepted. Only the MAIN tree keeps a persistent
-`./target`, cleaned when it exceeds 100G, checked at land windows. (Worktrees
-previously shared one machine-wide cargo cache via a committed env export; the
-cache grew unbounded — ~590G in a day, filling the disk mid-build — so GTW-661
-removed it.) `.cargo/config.toml`'s `[unstable] checksum-freshness =
-true` STAYS: harmless for local targets, and it guards any future sharing
-against the mtime false-"fresh" hazard. One ticket per worktree still holds
+`./target`, cleaned when it exceeds 100G, checked at land windows. `.cargo/config.toml`'s
+`[unstable] checksum-freshness = true` STAYS. One ticket per worktree still holds
 (Rule 2, per-worktree).
