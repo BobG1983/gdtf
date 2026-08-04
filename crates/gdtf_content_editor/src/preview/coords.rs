@@ -20,8 +20,7 @@ pub(crate) fn uv_to_cell(uv: Vec2, scale: f32, pan: Vec2) -> Cell {
     let world_y = (-(uv.y - 0.5)).mul_add(span, pan.y);
     let cell_x = (world_x / CELL_WORLD).round();
     let cell_y = (-world_y / CELL_WORLD).round();
-    let cell = Cell::new(cell_x as i32, cell_y as i32);
-    cell
+    Cell::new(cell_x as i32, cell_y as i32)
 }
 
 #[must_use]

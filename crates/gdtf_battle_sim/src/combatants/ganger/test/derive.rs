@@ -62,13 +62,11 @@ fn sample_attributes() -> GangerAttributes {
 }
 
 fn round_pool_u16(value: f32) -> u16 {
-    let rounded = value.round().clamp(0.0, f32::from(u16::MAX)) as u16;
-    rounded
+    value.round().clamp(0.0, f32::from(u16::MAX)) as u16
 }
 
 fn round_pool_u8(value: f32) -> u8 {
-    let rounded = value.round().clamp(0.0, f32::from(u8::MAX)) as u8;
-    rounded
+    value.round().clamp(0.0, f32::from(u8::MAX)) as u8
 }
 
 #[test]

@@ -46,11 +46,6 @@ pub fn set_segment_visible(
 type SubLineSegment = (&'static SegmentIndex, &'static Children);
 
 /// Set, replace, or clear the sub-line under a segment. Returns whether the segment was found.
-#[expect(
-    clippy::type_complexity,
-    reason = "param tuple aliased where possible; the spawn/mutate/clear paths fix the \
-    children + colors + sub-text query shapes"
-)]
 pub fn set_segment_sub_line(
     commands: &mut Commands,
     control: Entity,

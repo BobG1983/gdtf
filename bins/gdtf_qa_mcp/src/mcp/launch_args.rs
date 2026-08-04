@@ -1,4 +1,4 @@
-//! Parse MCP launch tool arguments into a [`LaunchSpec`].
+//! Parse MCP launch tool arguments into a [`crate::lifecycle::launch::LaunchSpec`].
 
 use serde_json::Value;
 

@@ -56,10 +56,6 @@ impl ContentFamily for BadgeFamily {
 
 #[derive(Deserialize, TypePath, Debug, Clone)]
 struct Relic {
-    #[expect(
-        dead_code,
-        reason = "no member file exists; the field anchors the schema"
-    )]
     age: u32,
 }
 
