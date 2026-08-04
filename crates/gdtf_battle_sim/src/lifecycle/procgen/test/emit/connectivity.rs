@@ -106,7 +106,7 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
     assert_eq!(
         situation.default_floor,
         floor_piece(),
-        "the default_floor must resolve from the theme registry's nominated terrain (GTW-492)",
+        "the default_floor must resolve from the theme registry's nominated terrain ",
     );
 }
 

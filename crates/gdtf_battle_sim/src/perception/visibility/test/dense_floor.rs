@@ -1,4 +1,4 @@
-//! This FAILS on the pre-GTW-347 code (the sparse `authored_or_occupied_cells` candidate
+//! This FAILS on the previous code (the sparse `authored_or_occupied_cells` candidate
 use super::support::*;
 
 #[test]

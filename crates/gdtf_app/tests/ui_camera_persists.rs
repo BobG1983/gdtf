@@ -1,3 +1,4 @@
+//! UI camera: one camera on enter `Running`; it survives `Running` substate exit.
 use bevy::{
     camera::Camera2d,
     ecs::entity::Entity,

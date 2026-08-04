@@ -2,8 +2,8 @@
 
 How the battlescape combat log gets its lines — the sources, the
 presenter-side forwarder, the classify layer, the coverage contract, and
-how to add a new log source (GTW-328 / GTW-572; the forwarder half moved
-presenter-side in GTW-620 so the whole family lives in ONE crate).
+how to add a new log source (/; the forwarder half moved
+presenter-side in so the whole family lives in ONE crate).
 
 The log is the bottom-left HUD strip of recent combat events that scroll up
 and fade. It is pure VIEW: it reads sim fact messages and ganger names, owns
@@ -27,7 +27,7 @@ no combat rule, and writes nothing back.
   pure phrasing + palette layer: event → `LogLine` (text + swatch + emphasis).
   The shot outcome REUSES the FCT shot classifier verbatim (never duplicated);
   a `None` shot report yields NO line (only a blast-detonation seed produces
-  one on this path — GTW-559), while a genuine clean miss ALWAYS logs
+  one on this path —), while a genuine clean miss ALWAYS logs
   (`"<name> missed"`).
 - **Appender (app)** —
   `crates/gdtf_app/src/states/running/game/battlescape/combat_log/`: the one

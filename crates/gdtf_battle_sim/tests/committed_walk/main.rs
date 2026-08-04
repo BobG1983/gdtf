@@ -1,4 +1,4 @@
-//! HARNESS NOTE (deviation from the ticket's "use `GdtfTestAppBuilder`", as in GTW-354):
+//! HARNESS NOTE (deviation from the ticket's "use `GdtfTestAppBuilder`", as in):
 mod charging;
 mod harness;
 mod interrupts;

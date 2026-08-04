@@ -71,7 +71,7 @@ building the `PrefabRegistry` bucketed per `(theme, size, role)` key,
 `crates/gdtf_battle_sim/src/level/prefab/registry.rs`). At
 battle generation, procgen packs fragments for the requested theme/size into
 the board and DEPLOYS the situation's roster members into the resulting
-player/enemy deployment zones (GTW-744). The content editor (`cargo edrun`)
+player/enemy deployment zones. The content editor (`cargo edrun`)
 authors and saves prefabs to the same tree with the same one-owner path consts.
 
 ## Part 3 — Situations (the battle request)
@@ -96,15 +96,15 @@ so a bad file never strands `Load`
         (gang: "gang_1", member: "Vex 1",       faction: 1),  // faction 1 → the enemy deployment zone
         // … more roster members …
     ],
-    fields: [                            // optional initial hazards (GTW-545)
+    fields: [ // optional initial hazards
         (at: (cell: (x: 9, y: 8), level: 0), field: "toxic_waste_pool"),
     ],
 )
 ```
 
 The situation authors ONLY theme + board size + roster (+ initial fields):
-since GTW-433 the TERRAIN is procgen-generated from `theme` + `grid_size`
-against the loaded prefab library, and since GTW-744 each roster member's SPAWN
+now the TERRAIN is procgen-generated from `theme` + `grid_size`
+against the loaded prefab library, and now each roster member's SPAWN
 CELL / facing / stance is procgen-DERIVED too — `deploy_rosters` places each
 member into its side's deployment zone (faction == `player_faction` → the
 player zone, else the enemy zone) DETERMINISTICALLY by the battle's seed. So a
@@ -136,7 +136,7 @@ fielded on any side. Abridged from the shipped
     members: [
         (
             name:      "Alex Mercer",  // member identity — what a situation's `member:` references
-            speed:     3.0,            // the EIGHT direct attributes (GTW-384 two-layer stat model):
+            speed: 3.0, // the EIGHT direct attributes (two-layer stat model):
             aim:       3.0,            //   raw potential, from which the computed combat stats
             strength:  4.0,            //   (Shooting / HP / Wounds / TU …) are DERIVED at setup
             toughness: 12.0,           //   via assets/core_tuning/stat.tuning.ron
@@ -146,7 +146,7 @@ fielded on any side. Abridged from the shipped
             luck:      1.0,            // severity-roll tail (not a computed stat)
             armor:     "flak_vest",    // armor KEY — a assets/content/armor/ file stem
             weapon:    "volatile_charge",  // ranged weapon KEY — a assets/content/weapons/ranged/ stem
-                                           // (the GTW-547 satchel charge — its on_death Explode fires
+                                           // (the satchel charge — its on_death Explode fires
                                            // when Alex dies; see on-death-authoring.md)
             // melee_weapon: "chainsword",  // OPTIONAL melee KEY; omitted → the "fists" default
         ),
@@ -168,16 +168,16 @@ hot-reloadable like every family ([content-families.md](content-families.md)).
 ### 4b. The CURRENT gang editor surface
 
 Gangs are authored in the CONTENT EDITOR binary (`cargo edrun`), in its GANG
-Workbench mode (GTW-636; the 2026-07-06 ruling — gangs are authored OUTSIDE
+Workbench mode (the 2026-07-06 ruling — gangs are authored OUTSIDE
 the game binary, and the old in-game debug gang editor is GONE). The mode
 (`crates/gdtf_content_editor/src/gang_form/` — model; the egui form is its
 `egui_shell/gang_form_ui/` sibling) loads any gang from the registry (or
 starts a new one), edits members — add/remove/rename, the eight attributes,
 weapon/armor picks plus the `melee_weapon` key — shows the live derived
-stats through the real GTW-384 pipeline, and SAVES back to
+stats through the real pipeline, and SAVES back to
 `assets/content/gangs/<name>.gang.ron` in the exact loader schema (the
 round-trip contract; the write path derives its folder + extension from the
-same one-owner spellings the loader reads — GTW-621/634).
+same one-owner spellings the loader reads — /634).
 
 ## Part 5 — Verify
 
@@ -196,4 +196,4 @@ same one-owner spellings the loader reads — GTW-621/634).
   hot-reloads it; a dangling gang/member/theme/piece reference prints on the
   end-of-`Load` report.
 - **Editor:** `cargo edrun` for terrain/theme/prefab/gang authoring (the GANG
-  Workbench mode owns rosters — GTW-636).
+  Workbench mode owns rosters —).

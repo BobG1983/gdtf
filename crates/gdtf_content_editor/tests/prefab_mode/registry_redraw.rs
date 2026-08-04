@@ -1,4 +1,4 @@
-//! GTW-666 C2/C3(b) — the painted PREVIEW keys on the sprite-def registry: a def
+//! C2/C3(b) — the painted PREVIEW keys on the sprite-def registry: a def
 use std::collections::HashSet;
 
 use bevy::prelude::*;

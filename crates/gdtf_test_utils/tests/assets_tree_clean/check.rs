@@ -46,11 +46,11 @@ fn tracked_assets_tree_is_clean() {
     let rendered = dirty.join("\n");
     assert!(
         dirty.is_empty(),
-        "the tracked assets/ tree has UNSTAGED dirt (assets-tree cleanliness guard, GTW-653) — \
+        "the tracked assets/ tree has UNSTAGED dirt (assets-tree cleanliness guard) — \
          a suite run must never mutate shipped authored content. Dirty entries:\n{rendered}\nIf \
          these are YOUR authored-content edits, stage (git add) or stash them — staged entries \
-         are deliberate intent and pass (GTW-663); if they are not yours, a test wrote into the \
+         are deliberate intent and pass; if they are not yours, a test wrote into the \
          tracked tree through a real save path — find it and re-root it onto a TempDir (the \
-         GTW-555/636 pattern), then restore the files via git checkout."
+         /636 pattern), then restore the files via git checkout."
     );
 }

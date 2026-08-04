@@ -1,4 +1,4 @@
-//! Tests for the authored cyclic orders (relocated from `cycle.rs`, GTW-201).
+//! Tests for the authored cyclic orders (relocated from `cycle.rs`).
 
 use gdtf_battle_sim::prelude::{Direction, StanceKind};
 

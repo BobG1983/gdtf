@@ -88,6 +88,6 @@ fn every_ci_workspace_command_names_both_net_qa_features() {
     let rendered = violations.iter().cloned().collect::<Vec<_>>().join("\n");
     assert!(
         violations.is_empty(),
-        "CI workflow feature violations (GTW-883):\n{rendered}"
+        "CI workflow feature violations:\n{rendered}"
     );
 }

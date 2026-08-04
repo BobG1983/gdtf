@@ -11,7 +11,7 @@ fn the_real_editor_app_captures_through_the_shipped_source() -> TestResult {
     assert!(
         matches!(source, Some(EditorShotSource::Offscreen(_))),
         "the real editor app must carry the capture source its QA plugin installs — \
-         EditorShotSource::Offscreen since GTW-918, never PrimaryWindow; it carries {source:?}",
+         EditorShotSource::Offscreen now, never PrimaryWindow; it carries {source:?}",
     );
     Ok(())
 }

@@ -1,4 +1,4 @@
-//! GTW-670 C4: the WEAPON mode's REAL round-trips — author a MAXIMAL spec (multi fire
+//! the WEAPON mode's REAL round-trips — author a MAXIMAL spec (multi fire
 use std::{num::NonZeroU8, path::Path};
 
 use bevy::{
@@ -221,7 +221,7 @@ fn saved_weapons_round_trip_through_the_real_weapons_loader() {
         "the reloaded MAXIMAL weapon must equal the saved spec field-for-field (the \
          three fire modes incl. Blast/Cone payloads, the (Muzzle,1)+(Rail,3) slots, \
          both attachment keys, the Chem dot, the Explode on-death, and every scalar) — \
-         the GTW-257 stem-key round-trip through the REAL loader",
+         the stem-key round-trip through the REAL loader",
     );
     assert_eq!(
         registry.spec(&WeaponName::new("tempdir_scrap_tube".to_owned())),

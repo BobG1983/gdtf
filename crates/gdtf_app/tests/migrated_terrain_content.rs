@@ -1,3 +1,4 @@
+//! Terrain load: shipped migrated terrain and theme content resolve by UUID.
 use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
@@ -62,7 +63,7 @@ fn shipped_migrated_terrain_and_theme_content_resolves_by_uuid() {
             registry.len(),
             MIGRATED_TERRAIN_DEF_COUNT,
             "the registry must hold every migrated terrain def (reconciled flat 8 + 4 + 4, plus \
-             the GTW-469 EW-wall companions 2 + 1 + 1) — a count mismatch means a piece was \
+             the EW-wall companions 2 + 1 + 1) — a count mismatch means a piece was \
              silently dropped (C2)",
         );
         for uuid in industrial_hive_flat_eight() {

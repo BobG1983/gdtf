@@ -1,3 +1,4 @@
+//! Size field sync: grid changes update spans; commit reclamps the edit level.
 use bevy::prelude::*;
 use gdtf_battle_sim::level::{GridHeight, GridLevels, GridSize, GridWidth};
 use gdtf_content_editor::{

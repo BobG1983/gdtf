@@ -1,8 +1,8 @@
 # On-Death Effect Authoring Guide
 
 How to author what a dying thing DOES — the `on_death:` field a weapon or a
-terrain piece carries (GTW-547; palette-isolated in GTW-552; runtime merged
-into the effects family in GTW-638). A volatile satchel charge detonating on
+terrain piece carries (palette-isolated in; runtime merged
+into the effects family in). A volatile satchel charge detonating on
 its wielder's corpse, a fuel drum leaving burning ground when smashed — both
 are one authored field, no code.
 
@@ -33,13 +33,13 @@ named-field RON form). Magnitudes below are shape examples, not tuned values.
 
 ```ron
 on_death: Some(Explode(
-    hit_type:    Blast(radius: 1),  // AoE template (GTW-541): Blast / Cone / Line / Single
+    hit_type: Blast(radius: 1), // AoE template: Blast / Cone / Line / Single
     damage:      8,                 // flat HP drained per affected ganger (no RNG, bypasses armor)
     damage_type: Blast,             // wheel-node flavour (presentation only)
 )),
 ```
 
-**`LeaveField`** — spawn a persistent GTW-545 field at the death cell. From the
+**`LeaveField`** — spawn a persistent field at the death cell. From the
 shipped `assets/content/terrain/sump_waste/waste_drum.terrain_def.ron`:
 
 ```ron

@@ -91,7 +91,7 @@ fn the_boundary_dot_tick_resolves_before_a_same_frame_enemy_act() {
     assert!(
         ticks.iter().all(|tick| tick.at == origin),
         "the boundary DotTicked lands at the mover's TURN-START cell — the clock \
-         resolves BEFORE the same-frame act's step (GTW-658): {ticks:?}",
+         resolves BEFORE the same-frame act's step: {ticks:?}",
     );
     assert_eq!(
         hp_of(&app, mover),

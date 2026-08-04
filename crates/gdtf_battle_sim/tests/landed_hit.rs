@@ -246,7 +246,7 @@ fn real_path_ganger_shot_lands_on_at_least_one_seed() {
         .and_then(|g| g.occupant_band(&enemy_cell()));
     assert!(
         enemy_band.is_some(),
-        "the production sync must publish the enemy's occupant band (GTW-304); got {enemy_band:?}",
+        "the production sync must publish the enemy's occupant band; got {enemy_band:?}",
     );
 
     let seeds: [u64; 8] = [
@@ -270,7 +270,7 @@ fn real_path_ganger_shot_lands_on_at_least_one_seed() {
         lands > 0,
         "at least one of {} seeds must LAND a shot on the enemy (Hp drop / wound) — got {lands} \
          hits. 0 hits means the occupant band is never published and the round passes straight \
-         through the ganger (GTW-304).",
+         through the ganger.",
         seeds.len(),
     );
 }

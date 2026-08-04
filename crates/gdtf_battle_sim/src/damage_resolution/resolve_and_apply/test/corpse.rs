@@ -62,7 +62,7 @@ fn corpse_skip_is_inert_and_draws_nothing() {
     );
     assert!(
         inflicted.is_empty(),
-        "a corpse-skip must record NO InflictedWound (GTW-279)",
+        "a corpse-skip must record NO InflictedWound ",
     );
 
     let mut rng_fresh = rng();

@@ -163,7 +163,7 @@ fn highlight_follows_the_gamepad_cursor() {
     assert_eq!(
         emitted,
         vec![HighlightRequest::new(cell, CellVisibility::NotSquadVisible)],
-        "the highlight request must follow the gamepad cursor's resolved cell (GTW-11: \
+        "the highlight request must follow the gamepad cursor's resolved cell ( \
          NotSquadVisible — no fog seeded, fail-closed)",
     );
     if let Some(cell) = cell {

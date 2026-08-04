@@ -1,4 +1,4 @@
-//! GTW-298 authoritative cluster structure + responsive (non-px) sizing of content and bands.
+//! authoritative cluster structure + responsive (non-px) sizing of content and bands.
 
 use bevy::prelude::*;
 use gdtf_app::test_support::{

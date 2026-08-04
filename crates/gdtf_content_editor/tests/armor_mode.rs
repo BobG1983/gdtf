@@ -1,4 +1,4 @@
-//! GTW-479 C3/A2: the ARMOR mode's REAL round-trip — author an armor suit in the form
+//! C3/A2: the ARMOR mode's REAL round-trip — author an armor suit in the form
 use std::path::Path;
 
 use bevy::{
@@ -116,7 +116,7 @@ fn saved_armor_round_trips_through_the_real_armor_family_loader() {
         reloaded,
         Some(&spec),
         "the reloaded armor must equal the saved spec (all six per-part pieces: floor / \
-         protection / integrity / hardness / armor_type) — the GTW-269 stem-key round-trip \
+         protection / integrity / hardness / armor_type) — the stem-key round-trip \
          through the REAL loader",
     );
 }

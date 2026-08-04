@@ -2,8 +2,8 @@
 
 How to create, extend, and maintain the injury table — from a new `.injury.ron` file
 to adding a brand-new `InjuryEffect` variant end-to-end. This guide documents the
-**current, landed state** of the injury system (GTW-405 / GTW-437 / GTW-438 / GTW-440 /
-GTW-443 / GTW-444 / GTW-436 / GTW-550) and is the primary reference for content authors
+**current, landed state** of the injury system (/ / / /
+ / / /) and is the primary reference for content authors
 and engineers extending injury mechanics.
 
 ---
@@ -16,7 +16,7 @@ Injuries live under `assets/content/injuries/<CATEGORY>/`, where `CATEGORY` is o
 four pools that map to the body's broad anatomy. (Injuries are one of the two
 deliberately BESPOKE loaders — one folder, two asset types, two resources — so
 its folder/extension spellings are the one-owner consts in
-`crates/gdtf_content_families/src/injuries/layout.rs`, GTW-634; see
+`crates/gdtf_content_families/src/injuries/layout.rs`,; see
 [content-families.md](content-families.md) Parts 3–4.)
 
 | Category folder | Body parts that draw from it | Theme |
@@ -26,7 +26,7 @@ its folder/extension spellings are the one-owner consts in
 | `arm/` | **both** LeftArm AND RightArm | Strength, Aim, DisableHand |
 | `leg/` | **both** LeftLeg AND RightLeg | Speed, MovementCostMul |
 
-**Why shared pools?** Both arms and both legs share one category pool each (GTW-440).
+**Why shared pools?** Both arms and both legs share one category pool each.
 A wound to the right arm and a wound to the left arm both draw from the `arm/` pool.
 The exact struck side (`LeftArm` / `RightArm`) is recorded on the `GainedInjury` and
 drives side-sensitive effects (e.g. `DisableHand`), but the table lookup collapses to
@@ -62,7 +62,7 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
         MovementCostMul(1.25),                                  // each step costs 1.25x TU (>= 1.0 = slower)
         Modify(stat: Speed, amount: -1),                        // docks the Speed attribute (-1)
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics)
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics)
 )
 ```
 
@@ -77,7 +77,7 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
 | `log_text` | `LogText` (quoted string) | Combat-log clause |
 | `inspect_text` | `InspectText` (quoted string) | Persistent inspect-panel description |
 | `effects` | `Vec<InjuryEffect>` (≥ 1) | The mechanical effects — see the effect vocabulary below |
-| `post_heal` | `PostHeal` enum | **Omit** — defaults to `Deferred` (GTW-23 not yet built; see note below) |
+| `post_heal` | `PostHeal` enum | **Omit** — defaults to `Deferred` (not yet built; see note below) |
 
 **Severity semantics:**
 
@@ -87,8 +87,8 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
 | `Major` | 2 | Significant; benched until healed (campaign) |
 | `Critical` | 3 | Severe; benched + healing risk (campaign) |
 
-**`post_heal` note (GTW-23):** omit `post_heal:` entirely — the field defaults to
-`Deferred`, which is the only live variant. When GTW-23 Healing lands it will add
+**`post_heal` note:** omit `post_heal:` entirely — the field defaults to
+`Deferred`, which is the only live variant. When Healing lands it will add
 `Clean` and `Partial` variants (a clean or partial heal with optional residual effects);
 until then the authored value is parsed but never read at runtime. Omitting the field is
 both correct and forward-compatible.
@@ -96,7 +96,7 @@ both correct and forward-compatible.
 ### 1c. The weighting file — adding the injury to a bucket
 
 Weighting files live in `assets/content/injuries/weighting/`, **one per
-`(category, context)`** (GTW-452): a category has one file per wound SOURCE — the
+`(category, context)`**: a category has one file per wound SOURCE — the
 ranged shot, the melee strike, and the fall — and all of them weight the **same shared
 per-category injury pool**. No injury definition is ever duplicated per source; only the
 weights differ.
@@ -143,7 +143,7 @@ that source's file:
   over the sorted bucket — higher weight = more likely. The authored order does NOT
   affect determinism (rows are canonically sorted at build time).
 - `context:` names the wound source (`Ranged` / `Melee` / `Fall`). It **defaults to
-  `Ranged`** when the field is omitted (back-compat with pre-GTW-452 files) — so a
+  `Ranged`** when the field is omitted (back-compat with files) — so a
   MISSPELLED `context:` key is silently read as a ranged table and replaces the real
   ranged one. Spell it exactly, and keep the file name and the `context:` field in step.
 - One file per `(category, context)`: a second file with the same pair replaces the first
@@ -152,7 +152,7 @@ that source's file:
 - An injury referenced by no bucket in **any** context `warn!`s (it can never be
   rolled) — also never a crash.
 
-**Every context is sampled in play (GTW-821):** the four `*.melee.weighting.ron` files
+**Every context is sampled in play:** the four `*.melee.weighting.ron` files
 joined the ranged and fall ones as live, sampled content when the melee strike
 (`melee::resolve_melee_strike`) started routing its blow through the shared wound core
 with `DamageContext::Melee` — a connecting strike whose §6 wound is non-graze and
@@ -181,7 +181,7 @@ per-side `BodyPart` is needed in the authored schema.
 
 This section is for engineers adding a new *kind* of mechanical effect. Injury-effect
 behaviour lives in the **injury-effect palette** at
-`crates/gdtf_battle_sim/src/effects/injuries/` (GTW-550): one self-contained file per
+`crates/gdtf_battle_sim/src/effects/injuries/`: one self-contained file per
 effect implementing the shared `ApplyInjuryEffect` trait (gain-time fold / read-side
 projection / heal), plus the closed serde enum in
 `crates/gdtf_battle_sim/src/effects/injuries/effect.rs` whose trait impl is a single
@@ -269,7 +269,7 @@ the READ side, which stays distributed by design. Budget for these when they app
 
 ## Part 3 — Worked examples
 
-### Example A — `DisableHand` (GTW-443)
+### Example A — `DisableHand`
 
 `DisableHand` is a **fieldless, inert-at-gain** effect. It disables the hand on the
 injury's struck arm.
@@ -306,7 +306,7 @@ with one arm disabled cannot fire a two-handed weapon.
 `Modify(Shooting, -N)` effect in the same injury's `effects` Vec — so the penalty
 flows through the normal modifier layer while `DisableHand` only gates two-handed fire.
 
-**Side-from-part (GTW-440 C3):** the def at `arm/shattered_hand.injury.ron` is
+**Side-from-part:** the def at `arm/shattered_hand.injury.ron` is
 side-agnostic (`category: Arm` routes it into the Arm pool). When a wound rolls
 `RightArm`, `RolledInjury` is stamped with `part: RightArm` — so the `DisableHand`
 disables the RIGHT hand, even though the def was authored with `category: Arm`. The
@@ -315,7 +315,7 @@ gained injury) is authoritative.
 
 ---
 
-### Example B — `MovementCostMul` (GTW-444)
+### Example B — `MovementCostMul`
 
 `MovementCostMul` is a **multiplicative, accumulated** effect (the "Hampered" status).
 It slows movement by multiplying the terrain per-step floor TU cost.
@@ -345,7 +345,7 @@ accumulated product).
 **Pathfinder and walk integration:** BOTH the pathfinder cost-function (move-range /
 path preview) AND the committed walk's per-step TU charge call
 `movement_cost_factor()` and scale each step by it — so the previewed path cost equals
-the TU actually charged (GTW-444 C3, preview == charge consistency).
+the TU actually charged (C3, preview == charge consistency).
 
 **Part-agnostic:** `MovementCostMul` slows the ganger regardless of which body part
 the injury struck. A Leg injury is the natural author, but the fold does not key on
@@ -355,7 +355,7 @@ the part.
 
 ## Part 4 — Hot-reload
 
-The injury system supports **live hot-reload** (GTW-374 pattern): editing any
+The injury system supports **live hot-reload** (pattern): editing any
 `.injury.ron` or `.weighting.ron` file while the game is running triggers
 `redrive_injuries_on_asset_event` in
 `crates/gdtf_app/src/states/load/systems/resolve/injuries.rs`, which rebuilds BOTH
@@ -368,18 +368,18 @@ be re-applied by the projector on the next derivation — no restart needed.
 
 ---
 
-## Part 5 — `post_heal` (GTW-23 — schema-only, not yet built)
+## Part 5 — `post_heal` (schema-only, not yet built)
 
 Every `.injury.ron` schema carries a `post_heal:` field. **Omit it** — it defaults to
 `Deferred`, the only live variant. The field is parsed and stored but never read at
 runtime in the current sim.
 
-When GTW-23 Healing lands, `PostHeal` will gain `Clean(..)` and `Partial(..)` variants,
+When Healing lands, `PostHeal` will gain `Clean(..)` and `Partial(..)` variants,
 and the runtime will begin reading this field to apply post-battle healing semantics:
 
 - `Clean` — a clean heal that fully clears the injury (often no residual).
 - `Partial` — a partial heal that leaves a permanent residual (usually a lasting stat
   debuff).
 
-Until GTW-23 is built, `Deferred` is the correct and forward-compatible choice for all
+Until is built, `Deferred` is the correct and forward-compatible choice for all
 authored injuries.

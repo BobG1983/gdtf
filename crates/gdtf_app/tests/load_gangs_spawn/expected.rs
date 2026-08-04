@@ -1,4 +1,4 @@
-//! GTW-744: the spawn CELLS are no longer authored (the deploy step derives them from the
+//! the spawn CELLS are no longer authored (the deploy step derives them from the
 use std::collections::HashMap;
 
 use bevy::prelude::{Entity, World};

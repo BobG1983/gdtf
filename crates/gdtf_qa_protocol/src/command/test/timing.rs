@@ -1,4 +1,4 @@
-//! Round-trip pins for [`CommandTiming`] and the `#[serde(default)]` it backs (GTW-942).
+//! Round-trip pins for [`CommandTiming`] and the `#[serde(default)]` it backs.
 use crate::{
     command::{CommandEntry, CommandTiming},
     test_support::assert_ron_round_trip,

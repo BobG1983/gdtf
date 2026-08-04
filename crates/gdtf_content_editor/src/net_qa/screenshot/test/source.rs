@@ -122,7 +122,7 @@ fn the_plugin_installs_the_shipped_capture_source() {
     assert!(
         matches!(source, Some(EditorShotSource::Offscreen(_))),
         "NetQaEditorPlugin must install the capture source the shipped editor captures \
-         through — EditorShotSource::Offscreen since GTW-918, never PrimaryWindow; it \
+         through — EditorShotSource::Offscreen now, never PrimaryWindow; it \
          installed {source:?}",
     );
 }

@@ -1,4 +1,4 @@
-//! Sprite sheets: all SheetRole PNGs load from the sprites folder under a real AssetServer.
+//! Sprite sheets: all `SheetRole` PNGs load from the sprites folder under a real `AssetServer`.
 use std::{
     path::PathBuf,
     sync::{Mutex, MutexGuard},

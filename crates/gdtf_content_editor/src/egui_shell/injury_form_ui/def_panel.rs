@@ -1,4 +1,4 @@
-//! The INJURY tab's CENTRAL def editor (GTW-654 C1) — the authored
+//! The INJURY tab's CENTRAL def editor — the authored
 //! authoring shape drawn over the sim's own [`InjuryEffect`] enum.
 
 use bevy_egui::egui;

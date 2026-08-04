@@ -1,3 +1,4 @@
+//! Blast resolve: no phantom miss lines when a grenade impact resolves.
 use bevy::prelude::*;
 use gdtf_app::test_support::{AppState, BattleScapeState, CombatLogLine, RunningState};
 use gdtf_battle_presenter::ShotImpactResolved;

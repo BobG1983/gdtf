@@ -28,7 +28,7 @@ fn picker_offers_exactly_the_def_authorable_vocabulary() {
     ] {
         assert!(
             offered.contains(&newly_authorable),
-            "{newly_authorable:?} must be offered by the derived picker (GTW-566 C5)",
+            "{newly_authorable:?} must be offered by the derived picker ",
         );
     }
     for excluded in [
@@ -40,7 +40,7 @@ fn picker_offers_exactly_the_def_authorable_vocabulary() {
     ] {
         assert!(
             !offered.contains(&excluded),
-            "{excluded:?} must NOT be offered by the picker (GTW-566 C5)",
+            "{excluded:?} must NOT be offered by the picker ",
         );
     }
 }
@@ -183,7 +183,7 @@ fn terrain_def_round_trips_through_the_loader_parser() {
     let reloaded = ron::de::from_str::<TerrainDef>(&serialized);
     assert!(
         reloaded.is_ok(),
-        "the serialized def must round-trip through the TerrainDef deserializer (the GTW-487 \
+        "the serialized def must round-trip through the TerrainDef deserializer (the \
          loader's parser): {:?}",
         reloaded.as_ref().err(),
     );

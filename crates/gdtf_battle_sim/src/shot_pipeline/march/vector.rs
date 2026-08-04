@@ -22,7 +22,7 @@ use crate::{
     clippy::too_many_arguments,
     reason = "the march reads four independent, deliberately-separate grids (occupancy / \
               surface / cover / tuning) plus the muzzle, direction, shooter-cell exception, \
-              and the GTW-317 dead-occupant predicate — each a distinct input the DDA must \
+              and the dead-occupant predicate — each a distinct input the DDA must \
               see; bundling them into a struct would only obscure that they are read-only \
               and orthogonal"
 )]

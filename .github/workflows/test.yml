@@ -44,7 +44,7 @@ jobs:
         with:
           cache-on-failure: true
 
-      # Both `net_qa` features are named (GTW-883). A package-qualified feature turns on only
+      # Both `net_qa` features are named. A package-qualified feature turns on only
       # that package's feature: `grimdark_turfwar/net_qa` reaches the GAME's
       # `gdtf_app::dev::net_qa`, `gdtf_content_editor/net_qa` reaches the EDITOR's own
       # `gdtf_content_editor::net_qa`. Without both, the editor's `src/net_qa/` module and its
@@ -54,7 +54,7 @@ jobs:
       - name: Run tests
         run: cargo test --workspace --features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa
 
-      # GTW-939: the `gdtf_qa_protocol` `schema` feature, tested WITH the feature on. Its
+      # the `gdtf_qa_protocol` `schema` feature, tested WITH the feature on. Its
       # `schemars` dependency is optional, so the `#[cfg_attr(feature = "schema", derive(...))]`
       # derives across `src/ids/` and the whole `src/ids/test/schema.rs` module compile nowhere
       # in the step above — deleting them would leave this workflow green.

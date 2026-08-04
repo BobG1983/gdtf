@@ -1,3 +1,4 @@
+//! Hotkey focus: digit and F keys are ignored while egui wants the keyboard.
 use bevy::{
     input::{
         ButtonState,

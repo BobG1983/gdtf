@@ -171,7 +171,7 @@ fn picking_hits_a_panel_while_the_board_click_is_absorbed() {
     assert!(
         !hovered_cell(&app),
         "with the pointer over a HUD panel the battle picker must resolve NO hovered cell \
-         (the GTW-380 cursor_over_ui gate), even with the picking backend live",
+         (the cursor_over_ui gate), even with the picking backend live",
     );
 
     click_once(&mut app);

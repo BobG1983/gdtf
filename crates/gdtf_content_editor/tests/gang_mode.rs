@@ -68,7 +68,7 @@ fn advance_to_editing(app: &mut App) {
     assert!(
         reached,
         "the editor never reached EditorState::Editing — the Load gate (now including the \
-         GTW-636 GangRegistry + MeleeWeaponRegistry) did not resolve or fall back",
+          GangRegistry + MeleeWeaponRegistry) did not resolve or fall back",
     );
     for _ in 0..4 {
         app.update();
@@ -132,6 +132,6 @@ fn saved_gang_round_trips_through_the_real_gangs_family_loader() {
         reloaded,
         Some(&roster),
         "the reloaded gang must equal the saved roster (names + attributes + weapon/armor \
-         keys + the authored melee_weapon) — the GTW-415 round-trip through the REAL loader",
+         keys + the authored melee_weapon) — the round-trip through the REAL loader",
     );
 }

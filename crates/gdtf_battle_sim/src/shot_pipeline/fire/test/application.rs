@@ -4,7 +4,7 @@ use super::support::*;
 #[expect(
     clippy::too_many_lines,
     reason = "this integration test drives two full fire() scenarios (hit + miss) with \
-              many assertions; the GTW-438 injury-arg threading pushes it one line over \
+              many assertions; the injury-arg threading pushes it one line over \
               the 100 gate — splitting it would obscure the hit-vs-miss comparison"
 )]
 fn fire_at_in_line_target_applies_damage() {

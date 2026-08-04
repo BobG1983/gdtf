@@ -1,4 +1,4 @@
-// GTW-487 C1 test fixture — a NEW UUID-keyed UuidThemeDef under the per-theme directory
+// C1 test fixture — a NEW UUID-keyed UuidThemeDef under the per-theme directory
 // layout `terrain/<theme>/<theme>.terrain_theme.ron`. NOT shipped game content; exists only
 // to exercise the new theme-def folder loader (the migration of real content is T06). Its
 // `default_floor` + `terrain` palette reference the sibling deck.terrain_def.ron by its

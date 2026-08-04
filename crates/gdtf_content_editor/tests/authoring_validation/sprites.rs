@@ -1,4 +1,4 @@
-//! GTW-663 C3: the terrain→sprite-def edge's authoring-time pin — a terrain
+//! the terrain→sprite-def edge's authoring-time pin — a terrain
 //! authoring time).
 
 use gdtf_assets::ContentIntegrityReport;
@@ -21,7 +21,7 @@ fn dangling_terrain_graphic_name_surfaces_in_the_editor_at_authoring_time() {
     assert!(
         has_dangling_ref(report, "SpriteDefRegistry", DANGLING_GRAPHIC),
         "the terrain def's dangling graphic_name must be reported at authoring time \
-         (the GTW-663 terrain→sprite-def edge); report: {:?}",
+         (the terrain→sprite-def edge); report: {:?}",
         report.findings(),
     );
 }

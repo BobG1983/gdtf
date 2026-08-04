@@ -132,6 +132,6 @@ fn empty_state_hides_content_with_display_none() {
     assert_eq!(
         visibility::<WeaponContent>(&mut app),
         Some(Visibility::Hidden),
-        "the content is also Visibility::Hidden (GTW-275 contract preserved)",
+        "the content is also Visibility::Hidden (contract preserved)",
     );
 }

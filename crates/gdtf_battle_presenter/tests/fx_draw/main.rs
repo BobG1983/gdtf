@@ -1,3 +1,4 @@
+//! FX draw: blast, flash, fall, FCT, death, and field sprites on the live path.
 mod blast;
 mod consequence_fct;
 mod death_and_fields;

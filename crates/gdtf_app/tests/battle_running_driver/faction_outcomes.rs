@@ -3,7 +3,7 @@ use gdtf_test_utils::advance_until;
 
 use super::harness::*;
 
-// === GTW-239 — end BattleRunning on the sim's outcome signal (BattleWon OR BattleLost). ===
+// === end BattleRunning on the sim's outcome signal (BattleWon OR BattleLost). ===
 
 #[test]
 fn battle_won_in_battle_running_ends_the_battle_to_animate_out() {

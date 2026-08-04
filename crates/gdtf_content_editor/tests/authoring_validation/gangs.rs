@@ -1,4 +1,4 @@
-//! GTW-651: the GANG equipment-refs edge joins the editor's authoring-time
+//! the GANG equipment-refs edge joins the editor's authoring-time
 use bevy::asset::{AssetEvent, AssetServer, Assets};
 use gdtf_assets::{ContentFamily, ContentFolderHandle, ContentIntegrityReport, RonAsset};
 use gdtf_battle_sim::{
@@ -91,7 +91,7 @@ fn gang_hot_edit_rearms_validation_and_republishes_current_findings() {
         app.world()
             .get_resource::<ContentFolderHandle<GangsFamily>>()
             .is_some(),
-        "the loader's persistent gangs ContentFolderHandle must survive past Load (GTW-533)",
+        "the loader's persistent gangs ContentFolderHandle must survive past Load ",
     );
     app.world_mut()
         .write_message(AssetEvent::Modified { id: handle.id() });

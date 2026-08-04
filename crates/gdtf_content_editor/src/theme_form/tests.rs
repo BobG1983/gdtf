@@ -151,7 +151,7 @@ fn theme_def_round_trips_through_the_loader_parser() {
     let reloaded = ron::de::from_str::<UuidThemeDef>(&serialized);
     assert!(
         reloaded.is_ok(),
-        "the serialized def must round-trip through the UuidThemeDef deserializer (the GTW-487 \
+        "the serialized def must round-trip through the UuidThemeDef deserializer (the \
          theme loader's parser): {:?}",
         reloaded.as_ref().err(),
     );

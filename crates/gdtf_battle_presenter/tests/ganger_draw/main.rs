@@ -1,3 +1,4 @@
+//! Ganger draw: spawn, posture, life state, fog visibility, and storey mirrors.
 mod fog_visibility;
 mod harness;
 mod life_state;

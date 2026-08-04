@@ -174,6 +174,6 @@ fn dead_occupant_cell_reads_none() {
         .and_then(|g| g.occupant_band(&start_cell()));
     assert_eq!(
         band, None,
-        "the publisher cleared the freed cell's band when the ganger died (GTW-459)",
+        "the publisher cleared the freed cell's band when the ganger died ",
     );
 }

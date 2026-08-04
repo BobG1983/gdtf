@@ -134,13 +134,13 @@ fn the_boundary_field_tick_resolves_before_a_same_frame_enemy_act() {
     assert_eq!(
         life_of(&app, mover),
         LifeState::Dead,
-        "a field drain that empties HP KILLS (the GTW-544 DOT-kills precedent)",
+        "a field drain that empties HP KILLS (the DOT-kills precedent)",
     );
     let movements = drain_movements(&mut app);
     assert!(
         movements.is_empty(),
         "the same-frame act resolves AFTER the clock: the boundary kill means NO \
-         step and NO MovementOccurred (GTW-658): {movements:?}",
+         step and NO MovementOccurred: {movements:?}",
     );
     let at = app.world().get::<Position>(mover).map(|p| **p);
     assert_eq!(

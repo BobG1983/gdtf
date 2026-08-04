@@ -42,7 +42,7 @@ fn move_off_stair_clears_upper_presence() {
     assert_eq!(
         grid_occupant(&app, upper),
         None,
-        "old upper slot must be cleared when moving off the stair (GTW-391)",
+        "old upper slot must be cleared when moving off the stair ",
     );
     assert_eq!(grid_band(&app, upper), None, "old upper band must be gone");
     assert_eq!(
@@ -95,7 +95,7 @@ fn go_prone_in_place_on_stair_clears_upper() {
     assert_eq!(
         grid_occupant(&app, upper),
         None,
-        "upper slot must be cleared when going prone in place (GTW-391 Test 7)",
+        "upper slot must be cleared when going prone in place (Test 7)",
     );
     assert_eq!(grid_band(&app, upper), None);
 }
@@ -137,7 +137,7 @@ fn stair_to_stair_move_relocates_upper() {
     assert_eq!(
         grid_occupant(&app, upper_b),
         Some(ganger),
-        "new upper must be written on the new stair (GTW-391)",
+        "new upper must be written on the new stair ",
     );
     assert_eq!(grid_band(&app, upper_b), Some(HeightBand::Low));
 }
@@ -174,12 +174,12 @@ fn dead_on_stair_clears_upper_presence() {
     assert_eq!(
         grid_occupant(&app, stair),
         None,
-        "lower slot must be cleared when DEAD (GTW-459 C1)",
+        "lower slot must be cleared when DEAD ",
     );
     assert_eq!(
         grid_occupant(&app, upper),
         None,
-        "upper slot must also be cleared when killed on a stair (GTW-391 Test 9)",
+        "upper slot must also be cleared when killed on a stair (Test 9)",
     );
     assert_eq!(grid_band(&app, upper), None);
 }
@@ -216,21 +216,21 @@ fn downed_on_stair_retains_both_cells() {
     assert_eq!(
         grid_occupant(&app, stair),
         Some(ganger),
-        "a downed stair-occupant HOLDS its lower cell (GTW-459 C2)",
+        "a downed stair-occupant HOLDS its lower cell ",
     );
     assert_eq!(
         grid_band(&app, stair),
         Some(HeightBand::High),
-        "the downed lower cell keeps its stance band, still occluding fire (GTW-459 C2/C5)",
+        "the downed lower cell keeps its stance band, still occluding fire ",
     );
     assert_eq!(
         grid_occupant(&app, upper),
         Some(ganger),
-        "a downed stair-occupant HOLDS its upper cell too (GTW-459 C2)",
+        "a downed stair-occupant HOLDS its upper cell too ",
     );
     assert_eq!(
         grid_band(&app, upper),
         Some(HeightBand::Low),
-        "the downed upper cell keeps its Low band, still occluding fire (GTW-459 C2/C5)",
+        "the downed upper cell keeps its Low band, still occluding fire ",
     );
 }

@@ -137,7 +137,7 @@ fn longest_shipped_weapon_name_does_not_overlap_reload_button() {
     assert!(
         !name_rect.overlaps(&reload_rect),
         "the weapon name label ({:?}..{:?}) must NOT overlap the Reload button ({:?}..{:?}) — \
-         GTW-733: the name row and the Reload button must not share the same pixels",
+         the name row and the Reload button must not share the same pixels",
         name_rect.min,
         name_rect.max,
         reload_rect.min,

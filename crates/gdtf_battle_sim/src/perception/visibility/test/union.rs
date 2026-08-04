@@ -55,7 +55,7 @@ fn union_fov_reveals_stair_upper_cell_to_upper_observer() {
     assert!(
         visible.contains(&upper_cell),
         "the stair upper cell must be revealed to an upper-level observer by union_fov \
-         (GTW-391 Test 3 — per-candidate-cell fog scan reveals the upper presence)",
+         (Test 3 — per-candidate-cell fog scan reveals the upper presence)",
     );
 }
 

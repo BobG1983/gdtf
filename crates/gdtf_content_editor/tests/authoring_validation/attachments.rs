@@ -1,4 +1,4 @@
-//! GTW-669 C4: the weapon→attachment edge's authoring-time pins — the editor
+//! the weapon→attachment edge's authoring-time pins — the editor
 use bevy::asset::AssetServer;
 use gdtf_assets::{ContentFamily, ContentIntegrityReport};
 use gdtf_battle_sim::{
@@ -109,7 +109,7 @@ fn attachment_save_reload_rearms_validation_and_republishes_weapon_findings() {
         let referrer = dangling_ref_referrer(report, "AttachmentRegistry", DANGLING_SCOPE);
         assert!(
             referrer.is_some(),
-            "the weapon's dangling attachment key must surface at authoring time (the GTW-669 \
+            "the weapon's dangling attachment key must surface at authoring time (the \
              weapon→attachment edge — is check_weapon_attachment_refs registered in the \
              editor?); report: {:?}",
             report.findings(),

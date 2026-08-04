@@ -1,3 +1,4 @@
+//! Presenter foundation: battlescape scene runs the top-down presenter plugin.
 use gdtf_app::test_support::{AppState, GameState, RunningState};
 use gdtf_battle_presenter::TopDownRendererActive;
 use gdtf_battle_sim::{injuries::InjuryRegistry, tuning::CombatTuning, weapon::WeaponRegistry};

@@ -1,4 +1,4 @@
-//! GTW-669 C5/A2: the ATTACHMENT mode's REAL round-trip — author an attachment item
+//! C5/A2: the ATTACHMENT mode's REAL round-trip — author an attachment item
 use std::path::Path;
 
 use bevy::{
@@ -134,6 +134,6 @@ fn saved_attachment_round_trips_through_the_real_attachments_loader() {
         Some(&spec),
         "the reloaded attachment must equal the saved spec (display name / Rail slot / \
          the GainFireMode burst-cone payload / Silence / the Aim magnitude) — the \
-         GTW-549 stem-key round-trip through the REAL loader",
+          stem-key round-trip through the REAL loader",
     );
 }
