@@ -43,18 +43,7 @@ Bevy ECS gotchas (system ordering, change detection, schedules, state transition
 
 ## The one definition of green
 
-**Authority: [`.claude/rules/verification.md`](.claude/rules/verification.md).** Everything else points there.
-
-```bash
-cargo fmt --check
-cargo dclippy -- -D warnings
-cargo dtest
-cargo dbuild
-cargo doc --workspace --no-deps
-cargo doc-full
-```
-
-Aliases and feature sets are defined in `.cargo/config.toml`. Do not expand them by hand.
+**[`.claude/rules/verification.md`](.claude/rules/verification.md) — go read it.**
 
 ## Commit guard
 
