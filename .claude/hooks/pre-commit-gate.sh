@@ -130,28 +130,12 @@ if [ -z "$PASS_BRANCH" ] || [ -z "$PASS_HEAD" ] || [ -z "$CUR_HEAD" ] \
   exit 2
 fi
 
-# --- (2b) Scope: DOCS gate-pass cannot cover a wider (FULL) tree. ---
-SCOPE_SCRIPT="$REPO_DIR/.claude/hooks/suite-scope.sh"
-PASS_SCOPE="$(sed -n 's/^SCOPE=//p' "$GATE_PASS" | head -n1)"
-[ -n "$PASS_SCOPE" ] || PASS_SCOPE="FULL"
-CURRENT_SCOPE="FULL"
-if [ -x "$SCOPE_SCRIPT" ]; then
-  CURRENT_SCOPE="$("$SCOPE_SCRIPT" --staged --from "$PASS_HEAD" 2>/dev/null || echo FULL)"
-  case "$CURRENT_SCOPE" in FULL|DOCS) ;; *) CURRENT_SCOPE="FULL" ;; esac
-fi
-if [ "$PASS_SCOPE" = "DOCS" ] && [ "$CURRENT_SCOPE" = "FULL" ]; then
-  echo "commit blocked: gate-pass SCOPE=DOCS but staged/since-gate changes need FULL — re-run /gate" >&2
-  exit 2
-fi
-
-# --- (3) Suite gate: pre-commit runs a fast FULL subset; DOCS skips cargo. ---
+# --- (3) Suite gate: pre-commit always runs the fast FULL subset. ---
+# Docs-only skip is an agent decision in /gate and /land (skill prose), not
+# automated here. This hook stays fail-closed: always cargo.
 # Full green is the eight aliases in verification.md via /gate.
-# Pre-commit FULL subset: fmt, dclippy, dtest, dbuild (four alias steps).
+# Pre-commit subset: fmt, dclippy, dtest, dbuild (four alias steps).
 # Use `.cargo/config.toml` aliases — never hand-typed feature lists.
-if [ "$CURRENT_SCOPE" = "DOCS" ] && [ "$PASS_SCOPE" = "DOCS" ]; then
-  exit 0
-fi
-
 SUITE_CMD="${PRE_COMMIT_GATE_SUITE_CMD:-cargo fmt --check && cargo dclippy -- -D warnings && cargo dtest && cargo dbuild}"
 SUITE_OUTPUT="$(cd "$REPO_DIR" && bash -c "$SUITE_CMD" 2>&1)"
 SUITE_STATUS=$?

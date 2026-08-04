@@ -57,7 +57,7 @@ Release binary builds are packaging-time only (not a CI gate).
 
 ### Suite scope (docs-only skip)
 
-Scope comes from **changed paths**, not from the ticket title. Default is **FULL** (run cargo). `.claude/hooks/suite-scope.sh` prints `FULL` or `DOCS`: only allowlisted `*.md` under `docs/`, `.claude/`, and the repo root may be `DOCS`. `docs/tooling/qa-commands.md` and `.claude/rules/verification.md` always force `FULL`. Empty or mixed diffs fail closed to `FULL`. `/gate` writes `SCOPE=` into `.claude/.gate-pass`; pre-commit re-derives scope and refuses if the tree is wider than the recorded scope. This does not change the eight-command list above.
+Scope is agent judgment in the `/gate` skill (and re-checked by `/land`), not a script. Default **FULL**. **DOCS** only when every changed path is allowlisted markdown under `docs/`, `.claude/`, or the repo root — except `docs/tooling/qa-commands.md` and this file, which always force FULL. Pre-commit always runs its cargo subset. This does not change the eight-command list above.
 
 ## Rules
 
