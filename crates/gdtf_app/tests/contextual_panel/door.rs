@@ -53,7 +53,7 @@ fn adjacent_closed_door_offers_open_door() {
 
     assert!(
         open_door_visible(&mut app),
-        "an 8-adjacent CLOSED door must reveal the Open Door button (GTW-315)",
+        "an 8-adjacent CLOSED door must reveal the Open Door button",
     );
     assert!(
         root_visible(&mut app),

@@ -64,7 +64,7 @@ fn adjacent_vacant_emplacement_offers_enter() {
 
     assert!(
         enter_emplacement_visible(&mut app),
-        "an 8-adjacent VACANT emplacement must reveal the Enter button (GTW-543)",
+        "an 8-adjacent VACANT emplacement must reveal the Enter button",
     );
     assert!(
         root_visible(&mut app),
@@ -117,7 +117,7 @@ fn exit_offered_only_to_the_occupant() {
 
     assert!(
         exit_emplacement_visible(&mut app),
-        "the selection manning an emplacement must reveal the Exit button (GTW-543)",
+        "the selection manning an emplacement must reveal the Exit button",
     );
     assert!(
         root_visible(&mut app),
