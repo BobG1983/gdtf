@@ -2,24 +2,27 @@
 
 Design for the fight → consequences → next fight loop. Parent: post-action epic under Battlescape.
 
-**Status:** proposed for sign-off (GTW-678, GTW-679). Do not implement until Accepted on those tickets.
+**Status:**
+
+- **GTW-678 injury carry — Accepted** (in-battle injury table already defined; no second post-action roll).
+- **GTW-679 advancement — proposed** (use-bump cap amended below). Do not implement until Accepted.
 
 Related built systems:
 
-- Named injuries already roll **per hit in battle** and land on `InflictedInjuries` (see [wounds-and-roster.md](../combat/wounds-and-roster.md)).
+- Named injuries already roll **per hit in battle** and land on `InflictedInjuries` (see [wounds-and-roster.md](../combat/wounds-and-roster.md)). That **is** the injury roll — location × severity × source weighting is already specified and live.
 - Attributes improve by use; XP buys skills (see [stats.md](../combat/stats.md)) — neither campaign track is built yet.
 
 ---
 
-## 1. Injury after battle (GTW-678)
+## 1. Injury after battle (GTW-678) — Accepted
 
 ### Conflict with older MVP text
 
-`mvp.md` used to say the post-action screen **rolls** survivors on the Injury table. Combat now rolls the named injury table **during** the fight. A second full table roll would double-punish and fight the ledger.
+`mvp.md` used to say the post-action screen **rolls** survivors on the Injury table. Combat already rolls the named injury table **during** the fight. A second full table roll would double-punish and fight the ledger.
 
 ### Decision
 
-**No post-action re-roll of the injury table for MVP.**
+**No post-action re-roll of the injury table for MVP.** The in-battle roll is the definition.
 
 | Who | What happens at battle end |
 | --- | --- |
@@ -79,23 +82,40 @@ Enemy gangers: no XP track for MVP.
 
 Count **UsageTally** during battle from existing act messages (shots, melee swings, moves, etc. — implement under the UsageTally ticket).
 
-At outcome latch, **once per battle**:
+At outcome latch, **once per battle**, sum all sources into a per-attribute bump, then clamp.
 
-| Tally signal (example) | Attribute bump |
+#### Default use (ordinary fight work)
+
+| Tally signal (example) | Default bump |
 | --- | --- |
 | Ranged attacks resolved ≥ 1 | Aim +1 |
 | Melee attacks resolved ≥ 1 | Strength +1 |
 | Move acts / cells entered ≥ N (tunable, default 5) | Speed +1 |
 | Ended battle conscious after taking HP damage | Grit +1 |
 
+Default from use is **+1** for that attribute when the signal fires. Meeting the bar harder does **not** by itself stack more default bumps (one default grant per attribute per battle).
+
+#### Special extras
+
+Other sources may add **extra +1** (or more, if that source says so) on top of the default:
+
+- Content / skills / injuries / mission rewards that explicitly grant an attribute train bonus
+- Future “feat” or objective tags (e.g. first blood, last stand) when those systems exist
+
+Each special is data-authored; the apply step just sums them.
+
+#### Cap
+
+**Hard ceiling: +3 to any one attribute from all sources in one battle.**  
+Sum(default use + specials), then `min(sum, 3)`. Unused headroom is fine (many fights stay at +1).
+
 Rules:
 
-- At most **+1 per attribute per battle**.
 - Only **living** gangers (Dead get no bumps).
 - Bumps write to **base attributes** on the campaign roster, then re-derive combat stats for the next fight.
 - No mid-battle permanent attribute growth.
 
-Other attributes (Toughness, Reflexes, Cool, Luck) stay flat until a later use map expands.
+Other attributes (Toughness, Reflexes, Cool, Luck) stay flat until a later use map expands. Specials may still target them once content exists; same +3 cap.
 
 ### XP bank vs skills
 
@@ -111,7 +131,7 @@ All of the above runs **once** when the battle outcome latches (same moment as B
 
 1. UsageTally from act messages.
 2. Kill log (for kill XP and grudges later).
-3. Advancement apply function (pure sim, seeded tests).
+3. Advancement apply function (pure sim, seeded tests) — including special bonus hooks + +3 clamp.
 4. Wire into BattleResults / roster fold.
 5. Post-action UI readout.
 
@@ -131,11 +151,13 @@ Placeholder outcome + Continue stays until this data exists.
 
 ## 4. Open questions for sign-off
 
-Reply on GTW-678 / GTW-679 (or Accept as written):
+**Injury (678):** Accepted as written — carry ledger only; in-battle roll is the definition.
 
-1. **Injury:** Agree no second injury-table roll — carry ledger only?
-2. **Downed:** Recover with ledger only for MVP (no capture)?
-3. **XP mix:** Participation + kill + survival OK?
-4. **Default magnitudes:** 2 / 3 / 1 OK as tuning starting points?
-5. **Use map:** Aim / Strength / Speed / Grit only for v0 OK?
+Remaining (679 / shared):
+
+1. **Downed:** Recover with ledger only for MVP (no capture)?
+2. **XP mix:** Participation + kill + survival OK?
+3. **Default XP magnitudes:** 2 / 3 / 1 OK as tuning starting points?
+4. **Use map:** Aim / Strength / Speed / Grit as the default-use set for v0 OK?
+5. **Use cap:** default +1 from use, specials can add, hard max **+3** per attribute per battle OK?
 6. **Skills:** XP bank visible but no purchase UI in v0 OK?
