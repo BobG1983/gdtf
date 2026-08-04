@@ -43,20 +43,20 @@ that canon is part of the contract ALONGSIDE the ticket.
    are aliases defined in `.cargo/config.toml` for `clippy`/`test`/`build` with the
    `dynamic_linking` feature enabled, plus `dev_tools` and BOTH `net_qa` features
    (`grimdark_turfwar/net_qa` for the game's module, `gdtf_content_editor/net_qa` for the
-   editor's — a package-qualified feature turns on only that package's, so both are named;
-   GTW-877). Typing the equivalent flags by hand risks silently dropping a feature and
+   editor's — a package-qualified feature turns on only that package's, so both are named).
+   Typing the equivalent flags by hand risks silently dropping a feature and
    falling back to a slow, fully static rebuild, or leaving a feature-gated module dark —
    exactly the drift this instruction exists to prevent. `doc-full` is the same command
    with `dev_tools` + both `net_qa` features enabled, catching intra-doc-link regressions
-   inside those feature-gated modules that plain `doc` alone would miss (GTW-790, GTW-877).
+   inside those feature-gated modules that plain `doc` alone would miss.
    Green = all SIX exit 0. `cargo doc`/`doc-full` enforce `broken_intra_doc_links` /
    `private_intra_doc_links` = `"deny"` (only surface under `cargo doc`, not
    clippy/build/test). The workspace `Cargo.toml` denies clippy
    all/pedantic/correctness plus unwrap/expect/panic/todo/unimplemented and
    missing_docs, so fmt-clean and lint-clean ARE part of green. Red → the gate FAILS
    immediately; fix the suite before anything else.
-   Steps 4a–4c add three BLOCKING structural checks (insufficient tests, unwired
-   systems/plugins, oversized files) that fail the gate like a clause violation and
+   Steps 4a–4d add BLOCKING structural checks (insufficient tests, unwired
+   systems/plugins, oversized files, no leftover ticket ids) that fail the gate like a clause violation and
    route through the same step-7 repair loop. These are JUDGMENT checks scoped to the
    diff — they live HERE and in the design-gate reviewers, NOT the pre-commit hook,
    which stays a deterministic branch/gate-pass/suite backstop and makes no design call.
@@ -150,20 +150,24 @@ that canon is part of the contract ALONGSIDE the ticket.
    { git diff develop...HEAD --name-only -- '*.rs'; git ls-files -o --exclude-standard -- '*.rs'; } \
      | sort -u | while read -r f; do [ -f "$f" ] && wc -l "$f"; done   # >400 blocks, >300 warns
    ```
-4d. **Blocking check — comment hygiene.**
-    No `GTW-N` (or any ticket id) in any `//`, `///`, or `//!` comment.
+4d. **Blocking check — no leftover ticket ids, comment hygiene.**
+    No `GTW-N` (or any ticket id) ANYWHERE in the tree — comments, asserts, docs,
+    assets, configs, the lot. Any hit fails the gate.
     No banned jargon from `plain-language.md` in comments.
     Doc comments (`///` / `//!`) max 2 lines; longer = violation unless the
     ticket explicitly requires a longer contract note.
     Mechanism (run from repo root):
 
     ```bash
-    # ticket ids in comments
-    rg -n --type rust '^\s*//.*(GTW-\d+)' crates bins
+    # ANY remaining GTW- string fails the gate — empty output required
+    rg -n 'GTW-' --glob '!target/**' --glob '!.git/**' .
     # banned words in comments
     rg -n --type rust -i '^\s*//.*(seam|byte[- ]identical|sanctioned|leverage|canonical)\b' crates bins
     # doc blocks longer than 2 lines (3+ consecutive)
     rg -U --type rust -n '^(//!|///).*\n(//!|///).*\n(//!|///)' crates bins
+    ```
+
+    If the first `rg` prints anything, the gate FAILS. Strip every hit before re-gating.
 
 5. **Verify the diff first-hand via the design-gate workflow.** This is a workflow
    orchestration step, not a standing team. **Default: a 3-lens adversarial fan-out** —
@@ -187,12 +191,12 @@ that canon is part of the contract ALONGSIDE the ticket.
      resources, `EventWriter` vs `MessageWriter`).
    **Lightweight option:** when a single pass is enough, spawn ONE design-gate sub-agent
    carrying all three lenses (it already encodes 4a–4c). Either way pass the ticket id(s),
-   the numbered contract (including 4a–4c), the touched `docs/` paths, the diff, and this
+   the numbered contract (including 4a–4d), the touched `docs/` paths, the diff, and this
    instruction verbatim: "Verify every clause FIRST-HAND — read the code and run what you
    must (including `cargo drun` or a headless
    Bevy integration test for runtime behavior); do not trust the implementer's claims or
-   this summary; also enforce the test-sufficiency, unwired-systems, and file-size checks
-   (4a–4c) and run the green suite yourself." When MULTIPLE tickets were named, the
+   this summary; also enforce the test-sufficiency, unwired-systems, file-size, and no-GTW
+   checks (4a–4d) and run the green suite yourself." When MULTIPLE tickets were named, the
    reviewers audit the ONE combined diff against the combined contract (every clause of
    every named ticket) in a single pass. Reviewers are READ-ONLY and report back to the
    spawning session; they do not spawn further sub-agents. **Merge ANY-NON-COMPLIANT-
