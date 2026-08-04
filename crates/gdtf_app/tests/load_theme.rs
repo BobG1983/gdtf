@@ -1,3 +1,4 @@
+//! Theme load: good path resolves fonts; bad path falls back to default and still releases.
 #[path = "load_suite/gate.rs"]
 mod gate;
 
