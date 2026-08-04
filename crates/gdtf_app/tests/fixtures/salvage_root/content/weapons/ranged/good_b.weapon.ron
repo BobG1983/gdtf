@@ -1,6 +1,4 @@
-// GTW-582 fixture weapon — the SECOND well-formed sibling of broken.weapon.ron: the C4
-// per-file salvage must load BOTH good siblings (NOT shipped content; loaded only by
-// tests/load_ref_salvage.rs). Stats arbitrary.
+// Well-formed salvage sibling of broken.weapon.ron.
 (
     base_spread:   0.15,
     accuracy:      0.9,

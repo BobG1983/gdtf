@@ -1,14 +1,7 @@
-// GTW-659 fixture field — WELL-FORMED RON except for the DELIBERATE `Turns(0)`
-// duration. A zero-turn field is unrepresentable (FieldTurns wraps NonZeroU8), so
-// this file must FAIL DESERIALIZATION LOUDLY and flow through the per-file salvage
-// into a MalformedFile finding on the ContentIntegrityReport — the sim must never
-// see it. Pre-GTW-659 this parsed and reached the sim, where it behaved as
-// Turns(1) (tick_fields drains occupants BEFORE tick_down_and_expire), so the
-// authored value lied by one. No silent clamp-to-1 (NOT shipped content; loaded
-// only by tests/load_ref_salvage.rs).
+// Deliberately invalid: Turns(0) is unrepresentable. Must fail deserialization.
 (
-    damage:             3,        // flat per-turn HP drain (bypasses armor)
-    damage_type:        Chem,     // wheel-node flavour (presentation only)
-    immune_armor_types: [],       // no immunity — irrelevant to the rejection
-    duration:           Turns(0), // the zero-degenerate duration under test
+    damage:             3,
+    damage_type:        Chem,
+    immune_armor_types: [],
+    duration:           Turns(0),
 )

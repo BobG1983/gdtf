@@ -1,8 +1,4 @@
-// GTW-643 fixture weapon — WELL-FORMED RON except for the DELIBERATE `turns: 0` in the
-// `dot:` profile. A zero-turn DOT is unrepresentable (DotTurns wraps NonZeroU8), so this
-// file must FAIL DESERIALIZATION LOUDLY and flow through the per-file salvage into a
-// MalformedFile finding on the ContentIntegrityReport — the sim must never see it. No
-// silent clamp-to-1 (NOT shipped content; loaded only by tests/load_ref_salvage.rs).
+// Deliberately invalid: DOT turns: 0 is unrepresentable. Must fail deserialization.
 (
     base_spread:   0.10,
     accuracy:      1.0,
@@ -21,8 +17,6 @@
     ],
     stable: false,
     handedness:    OneHanded,
-    // The zero-degenerate DOT under test: a duration of 0 turns must be REJECTED at
-    // deserialization (a DOT with no turns to tick makes no sense — GTW-643 user ruling).
     dot: Some((
         damage:      4,
         damage_type: Plasma,
