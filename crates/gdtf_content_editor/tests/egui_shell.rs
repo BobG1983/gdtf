@@ -1,3 +1,4 @@
+//! Editor shell: model resources exist in Editing; mode switches work.
 use bevy::prelude::*;
 use gdtf_content_editor::{
     CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, EditorState, HoveredCell, MapEditorPlugin,
@@ -61,8 +62,7 @@ fn editing_inserts_the_kept_model_resources() {
     );
     assert!(
         world.get_resource::<HoveredCell>().is_some(),
-        "the HoveredCell model (GTW-512 C1.5 — written by the live hover + the QA capture) must be \
-         inserted in Editing",
+        "the HoveredCell model (written by the live hover + the QA capture) must be inserted in Editing",
     );
 }
 
