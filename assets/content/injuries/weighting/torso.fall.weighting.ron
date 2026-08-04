@@ -1,10 +1,10 @@
-// GTW-452 FALL per-source weighting for the TORSO pool — the SAME shared torso injury
+// FALL per-source weighting for the TORSO pool — the SAME shared torso injury
 // defs, weighted for a fall's kinetic landing. No injury def is duplicated; only the
 // weights differ per source (resolution.md injury tables). Landing on the torso cracks ribs
 // far more often than it opens a laceration.
 (
     category: Torso,                                       // the Torso category this file weights
-    context:  Fall,                                        // GTW-452: the fall per-source table
+    context:  Fall,                                        // the fall per-source table
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "cracked_rib",     weight: 12),           // -1 Toughness (a hard landing)
         (injury: "deep_laceration", weight: 3),            // bleeding (low from a fall)
