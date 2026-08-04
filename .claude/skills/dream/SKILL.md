@@ -28,9 +28,10 @@ Layout: [`.claude/agent-memory/`](../../agent-memory/index.md) (see GTW-952).
 
 ## Pass 2 — Consolidate
 
-1. Within each `real/`, find near-duplicates.
+1. Within each `real/`, find near-duplicates, or memories where the core lesson can be merged.
 2. Merge only after re-checking the merged claim. Drop false claims with a one-line reason.
 3. Refresh `index.md` so it links every real file and nothing under ephemeral.
+4. Delete any ephemeral files that are now redundant, and report what was dropped and why.
 
 ## Report (required)
 
