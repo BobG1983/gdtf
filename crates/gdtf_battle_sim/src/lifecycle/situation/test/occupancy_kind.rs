@@ -1,4 +1,4 @@
-//! each terrain piece's own SPEC VARIANT, NOT from which authoring list (`walls` vs.
+//! Occupancy kind comes from each terrain piece's own spec variant.
 use super::support::*;
 use crate::test_support::test_pieces;
 

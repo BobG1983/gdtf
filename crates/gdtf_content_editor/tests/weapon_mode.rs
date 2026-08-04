@@ -1,4 +1,4 @@
-//! the WEAPON mode's REAL round-trips — author a MAXIMAL spec (multi fire
+//! Weapon mode: maximal-spec authoring round-trips through save and reload.
 use std::{num::NonZeroU8, path::Path};
 
 use bevy::{

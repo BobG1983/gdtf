@@ -20,7 +20,6 @@ impl CapturePath {
 }
 
 /// Parse an optional path string into a [`CapturePath`].
-///
 /// Returns `None` when the value is missing, empty, or only whitespace.
 #[must_use]
 pub fn parse_shot_path(value: Option<&str>) -> Option<CapturePath> {

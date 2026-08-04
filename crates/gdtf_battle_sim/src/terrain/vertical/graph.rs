@@ -70,9 +70,7 @@ impl VerticalLinkGraph {
 ///
 /// # Errors
 ///
-/// Returns [`InvalidVerticalLink::LevelOutOfRange`] if either end is outside valid levels,
-/// [`InvalidVerticalLink::DanglingCell`] if an end is not an authored cell,
-/// or [`InvalidVerticalLink::SameLevel`] if both ends share a Z.
+/// Returns [`InvalidVerticalLink::LevelOutOfRange`] if either end is outside valid levels, [`InvalidVerticalLink::DanglingCell`] if an end is not an authored cell, or [`InvalidVerticalLink::SameLevel`] if both ends share a Z.
 pub fn build_vertical_link_graph(
     situation: &Situation,
 ) -> Result<VerticalLinkGraph, InvalidVerticalLink> {

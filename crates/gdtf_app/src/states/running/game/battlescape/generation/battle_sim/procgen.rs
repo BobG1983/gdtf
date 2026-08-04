@@ -1,6 +1,4 @@
-//! Merge generated terrain with the authored situation's gangers and spawn data.
-//! Live path that makes procgen drive real battles. Shipped skirmish authors no
-//! inline terrain and no placement cells; terrain comes from procgen.
+//! Merge generated terrain with the authored situation's gangers and spawns.
 use bevy::prelude::warn;
 use gdtf_assets::{ContentFinding, FindingDetail, FindingReferrer};
 use gdtf_battle_sim::{

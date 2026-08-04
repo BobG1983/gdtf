@@ -22,7 +22,6 @@ impl InflictedWound {
 }
 
 /// List of wounds currently on a combatant.
-///
 /// Appended via [`record`](InflictedWounds::record).
 #[derive(Deref, Component, Debug, Clone, PartialEq, Eq, Default)]
 pub struct InflictedWounds(Vec<InflictedWound>);

@@ -1,4 +1,4 @@
-//! and the authored magazine pair. The six SHARED damage-group fields (`damage` /
+//! Weapon form damage and magazine fields.
 use bevy_egui::egui;
 use gdtf_battle_sim::{
     magazine::ReloadTu,

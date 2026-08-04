@@ -1,4 +1,4 @@
-//! Contextual act seam: pending targets and drain into sim requests.
+//! Pending contextual act targets and drain into sim requests.
 
 use bevy::{ecs::message::Message, prelude::*};
 use gdtf_battle_presenter::PlaybackGate;

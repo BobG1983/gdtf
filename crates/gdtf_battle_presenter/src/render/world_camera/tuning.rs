@@ -7,7 +7,6 @@ use serde::Deserialize;
 use super::pan::{EdgeBandPx, PanSpeed};
 
 /// Seconds the cursor must dwell on a screen edge before edge-pan starts.
-///
 /// `#[serde(transparent)]` so the `.ron` authors the inner number directly.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
@@ -31,7 +30,6 @@ impl Default for DwellDelaySeconds {
 }
 
 /// World-unit margin beyond map bounds the camera may still reach.
-///
 /// `#[serde(transparent)]` so the `.ron` authors the inner number directly.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
@@ -55,7 +53,6 @@ impl Default for BoundsMarginWorld {
 }
 
 /// Camera pan speeds, edge band, dwell, and bounds margin.
-///
 /// Each field is `#[serde(default)]` so a `.ron` that omits a field falls back to the shipped default.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Deserialize, TypePath, Default)]
 #[serde(default)]

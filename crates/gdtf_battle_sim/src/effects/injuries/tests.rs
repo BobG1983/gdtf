@@ -1,4 +1,4 @@
-//! `#[cfg(test)]`; this suite proves the enum bridge (parse + delegation), not the
+//! Injury effect enum bridge: parse and delegation.
 use super::{ApplyInjuryEffect, InjuryEffect, LedgerAccumulators, MovementCostFactor, StatDelta};
 use crate::injuries::{BleedAfflicted, StatDeltaLedger, StatTarget};
 

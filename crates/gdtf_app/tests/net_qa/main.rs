@@ -1,4 +1,4 @@
-//! The `#![cfg(all(debug_assertions, feature = "net_qa"))]` gate (below, after this crate
+//! Net-QA integration tests (debug + `net_qa` feature only).
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod app_phase_depth;

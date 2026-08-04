@@ -1,4 +1,5 @@
-//! only binds it to [`GangsFamily`] with the authored gang stems. The
+//! Load gangs into [`GangsFamily`] by authored gang stems.
+//! Value-agnostic: presence only; spawn cells come from deploy.
 mod load_suite;
 
 use gdtf_app::test_support::AppState;

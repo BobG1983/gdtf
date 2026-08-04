@@ -79,7 +79,6 @@ pub(crate) struct WoundSynthesis {
 }
 
 /// Resolve hit, roll severity, apply damage, and optionally roll an injury.
-///
 /// Returns `None` when the target is already dead.
 #[must_use]
 pub(crate) fn synthesize_wound(inputs: WoundCoreInputs<'_>) -> Option<WoundSynthesis> {

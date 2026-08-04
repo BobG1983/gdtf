@@ -1,4 +1,4 @@
-//! The `#![cfg(all(debug_assertions, feature = "net_qa"))]` gate (below, after this crate doc so
+//! Editor present-command net-QA integration (debug + `net_qa`).
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod harness;

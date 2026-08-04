@@ -48,14 +48,7 @@ fn hp_damage_to_u16(damage: HpDamage) -> Hp {
     Hp::new(clamped)
 }
 
-/// Apply a resolved hit to a combatant.
-///
-/// - Dead targets are left alone.
-/// - HP and wound capacity are reduced.
-/// - A non-None severity is recorded.
-/// - Armor integrity is worn when present.
-/// - Life state is updated to Downed or Dead when thresholds are crossed.
-///
+/// Apply a resolved hit: HP, wounds, armor wear, life state. Skips dead targets.
 /// Returns the armor-wear outcome.
 #[must_use]
 pub fn apply_hit(

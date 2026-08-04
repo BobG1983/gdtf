@@ -1,4 +1,4 @@
-//! The `#![cfg(all(debug_assertions, feature = "net_qa"))]` gate (below, after this crate doc
+//! Editor screenshot net-QA integration (debug + `net_qa`).
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod enqueue;

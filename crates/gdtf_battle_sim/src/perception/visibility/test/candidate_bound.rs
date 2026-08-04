@@ -1,4 +1,4 @@
-//! only authored/occupied cells, so an in-disc open floor cell was never a candidate — that
+//! Visibility candidates include open floor cells inside the disc.
 use super::support::*;
 
 #[test]

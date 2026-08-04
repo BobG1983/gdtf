@@ -11,7 +11,6 @@ use crate::{
 };
 
 /// Captures a screenshot after settle frames, then exits when the file lands.
-///
 /// Inactive when no path is configured (`from_env` missing/blank).
 pub struct ScreenshotCapturePlugin {
     path:   Option<CapturePath>,

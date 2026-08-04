@@ -1,6 +1,4 @@
-//! Shared builders, harness, and registries for unit and integration tests.
-//!
-//! Compiled under `#[cfg(any(test, feature = "test-support"))]` (see crate root).
+//! Shared builders, harnesses, and registries for unit and integration tests.
 
 mod actor;
 mod ganger;

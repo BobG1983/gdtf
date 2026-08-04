@@ -1,5 +1,4 @@
 //! Bevy helpers that insert a resource on state enter and remove it on exit.
-//!
 //! Use when a resource should only exist while a given app state is active.
 
 use bevy::{
@@ -10,7 +9,6 @@ use bevy::{
 /// Extension on [`App`] for state-scoped resources.
 pub trait StateScopedResourceAppExt {
     /// Insert `R` when entering `state`, remove it when leaving.
-    ///
     /// `seed` builds the resource value each time the state is entered.
     fn init_state_scoped_resource<S: States, R: Resource>(
         &mut self,

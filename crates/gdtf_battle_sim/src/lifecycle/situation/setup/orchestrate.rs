@@ -18,8 +18,7 @@ use crate::{
 ///
 /// # Errors
 ///
-/// Returns [`BattleSetupError`] when vertical links are invalid, roster/weapon/armor
-/// resolution fails, gangers share a cell, or field/cover setup cannot complete.
+/// Returns [`BattleSetupError`] when vertical links are invalid, roster/weapon/armor resolution fails, gangers share a cell, or field/cover setup cannot complete.
 pub fn setup_battle(
     situation: &Situation,
     registries: BattleRegistries<'_>,
