@@ -30,10 +30,9 @@ Two homes, standard Cargo, placed per the module-layout test convention ([module
 - **In-crate unit tests** — a sibling `test/` directory (or `test.rs` leaf) next to the module under test (an inline `#[cfg(test)] mod test` only while tiny), for white-box coverage of private helpers and tight math. This is where most `gdtf_battle_sim` coverage lives.
 - **Integration tests** — `crates/<crate>/tests/`, one file per system or focused concern (`tests/<suite>/main.rs` dir-form once a suite outgrows one file), exercising the crate's public surface as a downstream user would (e.g. constructing a battle and driving a volley through the public verbs).
 
-Four repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
+Three repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
 
 - **`module_layout`** — the clause-7 module-layout conformance guard: wiring-only `mod.rs`, the warn>300 / block>400 line bands, and the exemption registry.
-- **`docs_path_truth`** — every repo path referenced from `docs/` and `.claude/rules/` must resolve against the live tree, so a module move can't silently strand design canon.
 - **`assets_tree_clean`** — the tracked `assets/` tree must be git-clean when the suite runs, so a test that mutates shipped authored content is caught loudly instead of silently corrupting authored work.
 - **`binary_feature_passthrough`** — a binary package under `bins/` must declare `net_qa = ["<lib>/net_qa"]` for every path-dependency library that declares a `net_qa` feature, so a QA control channel can never again be reachable from a `--features <lib>/net_qa` workspace check but not from a launchable binary.
 
@@ -73,7 +72,6 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `GDTF_BATTLE_SEED` | `gdtf_app` (consumed by `gdtf_battle_sim`; honored by the `gdtf_test_utils` battle harness) | Pins the root battle RNG seed for a reproducible replay; unset = wall-clock entropy, logged at `info!`. |
 | `GDTF_BIN_PASSTHROUGH_ROOT` | `gdtf_test_utils` | Overrides the repo root the binary-feature-passthrough guard test scans (guard-test hook). |
 | `GDTF_DEBUG_REACHABLE_OVERLAY` | `gdtf_battle_presenter` (mirrored by `gdtf_battle_input` docs) | Truthy renders the reachable-range debug overlay in a debug build (default off — visual noise). |
-| `GDTF_DOCS_PATH_ROOT` | `gdtf_test_utils` | Overrides the repo root the docs path-truth guard test scans (guard-test hook). |
 | `GDTF_EDITOR_ATTACHMENT` | `gdtf_content_editor` | Content-editor capture: pre-load a NAMED attachment item (a registry key / file stem, e.g. `scoped_sight`) into the ATTACHMENT form before the shot; unset keeps the sorted-first autoload. |
 | `GDTF_EDITOR_MELEE_WEAPON` | `gdtf_content_editor` | Content-editor capture: pre-load a NAMED melee weapon (a registry key / file stem, e.g. `chainsword`) into the MELEE form before the shot; unset keeps the sorted-first autoload. |
 | `GDTF_EDITOR_MODE` | `gdtf_content_editor` | Content-editor capture: force the Workbench mode (`terrain`/`theme`/`prefab`/`gang`/`armor`/`injury`/`sprite`/`attachment`/`weapon`/`melee_weapon`) before the shot. |

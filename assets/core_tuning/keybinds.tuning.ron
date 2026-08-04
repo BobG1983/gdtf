@@ -7,7 +7,7 @@
 //
 // `select_clear` / `level_up` / `level_down` are consumed by the keyboard surface;
 // `stance_cycle` / `aim_toggle` / `facing_cycle` are declared here and consumed over
-// the shared intent seam — so the act keys live in ONE authoritative table from the
+// the shared intent path — so the act keys live in ONE authoritative table from the
 // start. (The `fire_mode_cycle` binding was removed — the blind cycle was replaced by
 // the popup fire-mode picker.)
 //
@@ -15,7 +15,7 @@
 // gang in (z,y,x) order. They bind to the SAME key (Tab): the keyboard surface reads
 // `select_next` and pushes SelectPrev when Shift is held, else SelectNext — so Tab = Next,
 // Shift+Tab = Prev are ONE physical chord. The on-bar Prev/Next buttons push the same two
-// intents through the same seam (ADR-0001 — keys + buttons share one dispatch).
+// intents through the same path (ADR-0001 — keys + buttons share one dispatch).
 //
 // `toggle_full_view` flips the presenter ViewMode between DownToActive (draw
 // 0..=active, the default) and FullView (draw ALL storeys — the UFO full-stack view). It

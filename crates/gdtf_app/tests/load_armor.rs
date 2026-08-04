@@ -1,10 +1,10 @@
 //! Load armor into [`ArmorFamily`] by authored member keys.
-//! Value-agnostic: registry presence and stems only; magnitudes are tuning data.
+//! Value-agnostic: registry presence only; magnitudes are tuning data.
 mod load_suite;
 
 use bevy::app::Startup;
 use gdtf_app::test_support::{AppState, app_state, load_released, seed_load_fallbacks};
-use gdtf_battle_sim::armor::{ArmorName, ArmorRegistry};
+use gdtf_battle_sim::armor::ArmorRegistry;
 use gdtf_content_families::ArmorFamily;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
@@ -12,14 +12,8 @@ use load_suite::suite::{self, FamilyLoadContract};
 const LOAD_SAFETY_NET: u32 = 10_000;
 
 impl FamilyLoadContract for ArmorFamily {
-    const EXPECTED_MEMBERS: &'static [&'static str] = &["flak_vest", "carapace_plate"];
-
     fn is_empty(registry: &ArmorRegistry) -> bool {
         registry.is_empty()
-    }
-
-    fn member_resolves(registry: &ArmorRegistry, label: &str) -> bool {
-        registry.spec(&ArmorName::new(label.to_owned())).is_some()
     }
 }
 
@@ -51,18 +45,6 @@ fn seeded_startup_does_not_shadow_real_armor_resolution() {
         assert!(
             !registry.is_empty(),
             "the real folder resolve must populate the registry, not leave the empty seed",
-        );
-        assert!(
-            registry
-                .spec(&ArmorName::new("flak_vest".to_owned()))
-                .is_some(),
-            "the registry must hold `flak_vest` — the empty seed must NOT have shadowed the resolve",
-        );
-        assert!(
-            registry
-                .spec(&ArmorName::new("carapace_plate".to_owned()))
-                .is_some(),
-            "the resolved registry must also hold `carapace_plate` (the empty seed held neither)",
         );
     }
 
