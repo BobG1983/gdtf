@@ -93,11 +93,6 @@ pub(super) fn z_in_grid(z: VoxelIndex) -> InGrid {
 
 /// `CellLevel` from voxel indices (caller must ensure bounds).
 pub(super) fn key_of(x: VoxelIndex, y: VoxelIndex, z: VoxelIndex) -> CellLevel {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "z is checked in 0..MAX_LEVELS before this is called, so the u8 cast cannot truncate or wrap"
-    )]
     let level = Level::new(*z as u8);
     CellLevel::new(Cell::new(*x, *y), level)
 }

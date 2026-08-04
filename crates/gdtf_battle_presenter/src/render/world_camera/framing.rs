@@ -25,10 +25,6 @@ pub fn camera_focus(centers: impl IntoIterator<Item = Vec2>) -> Option<Vec2> {
     if count == 0 {
         return None;
     }
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "ganger counts are tiny (a handful per gang); u32->f32 is exact in range"
-    )]
     let divisor = count as f32;
     Some(sum / divisor)
 }

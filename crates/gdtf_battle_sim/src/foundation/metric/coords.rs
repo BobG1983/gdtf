@@ -80,12 +80,6 @@ impl CellLevel {
     /// Storey index.
     #[must_use]
     pub fn level(&self) -> Level {
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "z is a storey index constructed from a Level's u8; clamped to \
-                      0..=u8::MAX here so the cast cannot wrap or sign-flip"
-        )]
         let storey = self.0.z.clamp(0, i32::from(u8::MAX)) as u8;
         Level::new(storey)
     }
@@ -132,10 +126,6 @@ impl SimPos {
 /// World-space center of a cell on a level.
 #[must_use]
 pub fn cell_center(cell: Cell, level: Level) -> SimPos {
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "grid coords are tiny (0..60 / 0..8); the f32 conversion is exact for this range"
-    )]
     SimPos::new(cell.x as f32 + 0.5, cell.y as f32 + 0.5, f32::from(*level))
 }
 
@@ -147,21 +137,12 @@ pub fn pos_to_cell(pos: SimPos) -> (Cell, Level) {
         *floor_axis(SimUnit::new(pos.y)),
     );
     let storey = (*floor_axis(SimUnit::new(pos.z))).clamp(0, i32::from(u8::MAX));
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "clamped to 0..=u8::MAX above, so this u8 cast cannot truncate or wrap"
-    )]
     let level = Level::new(storey as u8);
     (cell, level)
 }
 
 fn floor_axis(coord: SimUnit) -> CellUnit {
     let floored = coord.floor();
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "clamped to the i32 range below, so the cast cannot wrap; fractional part is gone after floor"
-    )]
     let clamped = floored.clamp(i32::MIN as f32, i32::MAX as f32) as i32;
     CellUnit::new(clamped)
 }

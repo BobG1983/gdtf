@@ -83,12 +83,6 @@ fn skill_with_delta(derived: StatMagnitude, sum: StatDeltaSum) -> StatMagnitude 
 fn pool_max_u8_with_delta(derived_max: PoolValue, sum: StatDeltaSum) -> PoolValue {
     let docked = i32::from(*derived_max) + i32::from(*sum);
     let floor = i32::from(*derived_max).min(1);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "clamped to floor..=u8::MAX above (floor is 0 or 1), so the cast cannot \
-                  wrap or go negative"
-    )]
     let floored = docked.clamp(floor, i32::from(u8::MAX)) as u8;
     PoolValue::new(floored)
 }
@@ -96,12 +90,6 @@ fn pool_max_u8_with_delta(derived_max: PoolValue, sum: StatDeltaSum) -> PoolValu
 fn pool_max_u16_with_delta(derived_max: Hp, sum: StatDeltaSum) -> Hp {
     let docked = i32::from(*derived_max) + i32::from(*sum);
     let floor = i32::from(*derived_max).min(1);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "clamped to floor..=u16::MAX above (floor is 0 or 1), so the cast cannot \
-                  wrap or go negative"
-    )]
     let floored = docked.clamp(floor, i32::from(u16::MAX)) as u16;
     Hp::new(floored)
 }

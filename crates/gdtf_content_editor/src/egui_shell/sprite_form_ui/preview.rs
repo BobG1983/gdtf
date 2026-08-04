@@ -100,11 +100,6 @@ pub(super) fn anchor_section(
     }
 }
 
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "sprite-local pixel coordinates are small (a sprite is tens of pixels); the f32 \
-              casts are exact within f32's 24-bit integer range (the sheet_uv precedent)"
-)]
 fn draw_preview_with_marker(ui: &mut egui::Ui, draft: &SpriteDraft, texture: &PreviewTexture) {
     let (image_w, image_h) = (*texture.width() as f32, *texture.height() as f32);
     if image_w <= 0.0 || image_h <= 0.0 {

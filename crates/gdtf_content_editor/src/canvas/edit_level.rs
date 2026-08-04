@@ -20,12 +20,6 @@ impl CurrentEditLevel {
         let current = i32::from(*self.0);
         let max = i32::from(*size.levels()).saturating_sub(1);
         let next = (current + delta.delta()).clamp(0, max);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "next is clamped to [0, levels-1] with levels <= MAX_LEVELS (u8), so it fits \
-                      a u8 without wrap or sign-flip"
-        )]
         let storey = next as u8;
         Self(Level::new(storey))
     }

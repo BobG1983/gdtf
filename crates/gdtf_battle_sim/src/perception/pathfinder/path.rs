@@ -25,10 +25,6 @@ impl PathCost {
     /// Narrow to a `Tu` value, saturating at `u8::MAX`.
     #[must_use]
     pub const fn to_tu(self) -> Tu {
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "saturated to u8::MAX above before the cast, so it cannot truncate or wrap"
-        )]
         let narrowed = if self.0 > u8::MAX as u32 {
             u8::MAX
         } else {

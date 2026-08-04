@@ -41,10 +41,6 @@ impl AxisDda {
         }
         let step = if *dir > 0.0 { 1 } else { -1 };
         let t_delta = (1.0 / *dir).abs();
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "voxel indices are tiny (0..60 / 0..8); the f32 conversion is exact for this range"
-        )]
         let next_boundary = if step > 0 {
             (*index as f32 + 1.0) - *origin
         } else {

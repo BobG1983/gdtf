@@ -39,11 +39,6 @@ pub(super) const fn wound_cost(severity: Severity, costs: WoundCosts) -> WoundCo
 
 /// Convert signed HP damage into an unsigned amount that can be subtracted.
 fn hp_damage_to_u16(damage: HpDamage) -> Hp {
-    #[expect(
-        clippy::cast_sign_loss,
-        clippy::cast_possible_truncation,
-        reason = "clamped into [0, u16::MAX] first, so the cast can neither wrap nor lose a sign"
-    )]
     let clamped = damage.clamp(0, i32::from(u16::MAX)) as u16;
     Hp::new(clamped)
 }

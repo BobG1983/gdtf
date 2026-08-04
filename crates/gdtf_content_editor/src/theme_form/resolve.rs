@@ -12,11 +12,6 @@ const HP_BAR_CEILING: f32 = 1000.0;
 /// Human-readable terrain summary and HP-bar fraction for a def.
 #[must_use]
 pub fn resolved_stats(def: &TerrainDef) -> (String, f32) {
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "structural HP is a small u32 pool well within f32 exact range; the readout shows \
-                  a rounded HP and an HP-bar fraction"
-    )]
     let (kind, hp, protection, hardness, band) = match &def.sim_kind {
         TerrainSimKind::Wall {
             hp,

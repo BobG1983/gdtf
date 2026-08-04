@@ -8,11 +8,6 @@ pub(crate) const PREVIEW_VIEW_SPAN: f32 = 320.0;
 
 #[must_use]
 pub(crate) fn cell_center_world(cell: Cell) -> Vec2 {
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "cell coords are small grid indices (0..=60); the f32 cast is exact well within \
-                  f32's 24-bit integer range"
-    )]
     let (x, y) = (cell.x as f32, cell.y as f32);
     Vec2::new(x * CELL_WORLD, -y * CELL_WORLD)
 }
@@ -25,12 +20,6 @@ pub(crate) fn uv_to_cell(uv: Vec2, scale: f32, pan: Vec2) -> Cell {
     let world_y = (-(uv.y - 0.5)).mul_add(span, pan.y);
     let cell_x = (world_x / CELL_WORLD).round();
     let cell_y = (-world_y / CELL_WORLD).round();
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "the rounded grid coordinate is a small integer; the caller clamps out-of-bounds \
-                  cells via the EditorMap / evaluate_placement bounds check, so an out-of-range \
-                  value is rejected downstream rather than silently wrapping into the grid"
-    )]
     let cell = Cell::new(cell_x as i32, cell_y as i32);
     cell
 }
