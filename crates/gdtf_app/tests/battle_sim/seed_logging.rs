@@ -52,7 +52,7 @@ fn captured_log() -> String {
         .unwrap_or_default()
 }
 
-#[allow(
+#[expect(
     unsafe_code,
     reason = "env-var test must mutate the process environment"
 )]
@@ -61,7 +61,7 @@ fn set_seed_env(key: &str, value: &str) {
     unsafe { std::env::set_var(key, value) };
 }
 
-#[allow(
+#[expect(
     unsafe_code,
     reason = "env-var test must mutate the process environment"
 )]

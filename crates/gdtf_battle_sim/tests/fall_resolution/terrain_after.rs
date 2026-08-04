@@ -46,10 +46,6 @@ fn probe_stops_on_slab(app: &App) -> bool {
     let surface = app.world().resource::<SurfaceGrid>();
     let cover = app.world().resource::<CoverLedger>();
     let tuning = app.world().resource::<CombatTuning>();
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "the column x/y are tiny grid coords, exact in f32"
-    )]
     let muzzle = SimPos::new(COL_X as f32 + 0.5, COL_Y as f32 + 0.5, 0.5);
     let dir = Vec3::new(0.0, 0.0, 1.0);
     let result = march_vector(

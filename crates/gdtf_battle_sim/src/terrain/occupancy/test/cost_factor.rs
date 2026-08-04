@@ -39,13 +39,6 @@ fn hampered_factor_scales_step_cost_by_ceil_of_product() {
             "the open neighbour must still be reachable under a factor"
         );
         let Some(scaled) = scaled else { return };
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "base is a small u8 floor cost and mult <= 3.0, so the ceil of the product \
-                      fits a u8 and is non-negative — this is the test's expected reference \
-                      value, computed the SAME way as the production scale_by_factor"
-        )]
         let expected = (base as f32 * mult).ceil() as u32;
         assert_eq!(
             u32::from(*scaled),

@@ -96,18 +96,10 @@ pub fn melee_damage_mult(margin: FightMargin, tuning: &MeleeTuning) -> MeleeDama
 
 const fn round_to_i32(value: DamageReal) -> DamageMagnitude {
     let rounded = value.get().round();
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "clamped to the i32 range below, so the cast cannot wrap; fractional part is gone after round"
-    )]
     let clamped = rounded.clamp(i32::MIN as f32, i32::MAX as f32) as i32;
     DamageMagnitude::new(clamped)
 }
 
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "i32 damage → f32 for the melee multiply; resolved-damage magnitudes are far inside f32's exact-integer range"
-)]
 fn scale_damage(component: DamageMagnitude, mult: MeleeDamageMult) -> DamageMagnitude {
     round_to_i32(DamageReal::new(*component as f32 * *mult))
 }

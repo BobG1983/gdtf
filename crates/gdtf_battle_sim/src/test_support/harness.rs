@@ -43,7 +43,6 @@ pub fn full_vision() -> SquadVisibility {
         for y in 0..GRID_HEIGHT {
             for x in 0..GRID_WIDTH {
                 #[expect(
-                    clippy::cast_possible_truncation,
                     clippy::cast_possible_wrap,
                     reason = "x/y are 0..60 and level is 0..MAX_LEVELS (8) by the loop bounds, so \
                               the usize/u8 -> i32/u8 narrowing cannot truncate or wrap"

@@ -15,11 +15,6 @@ use crate::{
 
 fn charge_to_u8(charge: TuCharge) -> Tu {
     let rounded = charge.round();
-    #[expect(
-        clippy::cast_sign_loss,
-        clippy::cast_possible_truncation,
-        reason = "clamped into [0.0, u8::MAX] first, so the cast can neither wrap nor lose a sign; fractional part is gone after round"
-    )]
     let clamped = rounded.clamp(0.0, f32::from(u8::MAX)) as u8;
     Tu::new(clamped)
 }

@@ -6,7 +6,7 @@ use gdtf_ui::{ActiveSegment, SegmentSelected, SegmentedControl};
 use super::order::{mode_for_index, mode_index};
 use crate::states::running::game::battlescape::action_bar::components::ModeControl;
 
-#[allow(
+#[expect(
     clippy::too_many_arguments,
     reason = "melee probe plus Wields and weapon queries so the ranged mode resolves cleanly"
 )]

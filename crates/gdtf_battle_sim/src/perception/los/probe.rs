@@ -136,17 +136,7 @@ pub(super) fn eye_anchor(observer: &Observer, tuning: &CombatTuning) -> SimPos {
         StanceKind::Standing | StanceKind::Crouching => *observer.stair_eye_offset,
     };
     let peek = *observer.peek_offset;
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "grid coords are tiny (0..60); the f32 conversion of the integer \
-                  corner is exact for this range"
-    )]
     let eye_x = *clamp_within_cell(SimUnit::new(center.x + peek.x), SimUnit::new(cell.x as f32));
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "grid coords are tiny (0..60); the f32 conversion of the integer \
-                  corner is exact for this range"
-    )]
     let eye_y = *clamp_within_cell(SimUnit::new(center.y + peek.y), SimUnit::new(cell.y as f32));
     SimPos::new(eye_x, eye_y, base_z + stair_z)
 }

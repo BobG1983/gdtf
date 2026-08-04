@@ -124,12 +124,6 @@ impl ReactionCapReal {
     }
 }
 
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "the caller guards val >= 0.0 and applies floor() before calling here, \
-              so the cast is always lossless for any sane tuning magnitude"
-)]
 const fn floor_to_u32(val: ReactionCapReal) -> ReactionCap {
     ReactionCap::new(val.0 as u32)
 }

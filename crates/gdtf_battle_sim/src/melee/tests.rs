@@ -52,10 +52,6 @@ fn connect_rate_and_mean_margin(attacker: f32, defender: f32) -> (usize, f32) {
         }
         margin_sum += *outcome.margin;
     }
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "SAMPLE_LEN is far inside f32's exact-integer range; the mean is a test statistic, not a pinned magnitude"
-    )]
     let mean = margin_sum / SAMPLE_LEN as f32;
     (connects, mean)
 }

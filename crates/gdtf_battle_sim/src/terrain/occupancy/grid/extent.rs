@@ -42,7 +42,6 @@ impl OccupancyGrid {
         let y = plane / GRID_WIDTH;
         let x = plane % GRID_WIDTH;
         #[expect(
-            clippy::cast_possible_truncation,
             clippy::cast_possible_wrap,
             reason = "x/y are 0..60 and level is 0..MAX_LEVELS (8) by the index's own \
                       construction, so these conversions cannot truncate, wrap, or sign-flip"

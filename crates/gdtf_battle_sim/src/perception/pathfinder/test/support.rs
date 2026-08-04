@@ -28,7 +28,6 @@ pub(super) fn full_vision() -> SquadVisibility {
         for y in 0..GRID_HEIGHT {
             for x in 0..GRID_WIDTH {
                 #[expect(
-                    clippy::cast_possible_truncation,
                     clippy::cast_possible_wrap,
                     reason = "x/y are 0..60 and level is 0..MAX_LEVELS (8) by the loop bounds, so \
                               the usize/u8 -> i32/u8 narrowing cannot truncate or wrap"
@@ -126,12 +125,6 @@ pub(super) fn step_cost_between(
     if !diagonal {
         return Tu::new(move_cost);
     }
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "move_cost is a small u8; move_cost * √2 rounds to a value that fits a u8 and is \
-                  non-negative, so the cast cannot truncate or sign-flip"
-    )]
     let octile = (f32::from(move_cost) * std::f32::consts::SQRT_2).round() as u8;
     Tu::new(octile)
 }

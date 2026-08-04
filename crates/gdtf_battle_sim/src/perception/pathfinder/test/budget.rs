@@ -11,10 +11,6 @@ fn cell_at_budget_included_one_step_over_excluded() {
     let open = u16::from(*tuning.move_costs.open);
     let within = open * 5;
 
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "open is <= 8 in the default table, so 5 * open and 6 * open fit a u8 budget"
-    )]
     let budget = Tu::new(within as u8);
     let set = reachable_triples(start, budget, &grid, &links, &tuning);
 
@@ -27,10 +23,6 @@ fn cell_at_budget_included_one_step_over_excluded() {
         "the cell one step OVER budget is excluded",
     );
     let within_cost = set.iter().find(|(c, _)| *c == (10, 5, 0)).map(|(_, c)| *c);
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "within fits a u8 as established above"
-    )]
     let within_tu = Tu::new(within as u8);
     assert_eq!(
         within_cost,

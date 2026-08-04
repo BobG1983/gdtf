@@ -13,19 +13,11 @@ use crate::{
 /// Round a float damage value back to an integer magnitude.
 const fn round_to_i32(value: DamageReal) -> DamageMagnitude {
     let rounded = value.get().round();
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "clamped to the i32 range below, so the cast cannot wrap; fractional part is gone after round"
-    )]
     let clamped = rounded.clamp(i32::MIN as f32, i32::MAX as f32) as i32;
     DamageMagnitude::new(clamped)
 }
 
 /// Scale a damage magnitude by a matchup multiplier.
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "i32 stat → f32 for the matchup multiply; weapon punch/shred magnitudes are far inside f32's exact-integer range"
-)]
 pub(super) fn scale_by_matchup(stat: DamageMagnitude, mult: MatchupMultiplier) -> DamageMagnitude {
     round_to_i32(DamageReal::new(*stat as f32 * *mult))
 }

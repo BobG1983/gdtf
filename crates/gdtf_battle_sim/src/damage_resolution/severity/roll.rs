@@ -62,10 +62,6 @@ impl SeverityInputs {
 }
 
 /// Convert penetrating damage to a float for the score formula.
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "penetrating damage is a small non-negative count, far inside f32's exact-integer range"
-)]
 fn pen_to_f32(pen: PenetratingDamage) -> DamageReal {
     DamageReal::new(*pen as f32)
 }
