@@ -138,6 +138,8 @@ opt-level = 1
 
 [profile.dev.package."*"]
 opt-level = 3
+# Dependencies only: smaller/faster links in dev without stripping our crates.
+debug = false
 
 [profile.release]
 codegen-units = 1

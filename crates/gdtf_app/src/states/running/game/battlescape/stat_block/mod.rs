@@ -15,7 +15,7 @@ pub(in crate::states::running::game::battlescape) use update::{
     StatBlockData, StatBlockWidgets, clear_stat_block, update_stat_block,
 };
 
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 pub(crate) mod test_support {
     pub use super::{
         components::{

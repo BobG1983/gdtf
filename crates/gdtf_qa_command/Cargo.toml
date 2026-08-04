@@ -8,16 +8,11 @@ bevy = { workspace = true }
 serde = { workspace = true }
 serde_json = "1"
 schemars = { workspace = true }
-gdtf_qa_protocol = { path = "../gdtf_qa_protocol", features = ["schema"] }
+gdtf_qa_protocol = { path = "../gdtf_qa_protocol" }
 gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport" }
 
 [features]
 dynamic_linking = ["bevy/dynamic_linking", "gdtf_net_qa_transport/dynamic_linking"]
-test-support = []
-
-[dev-dependencies]
-# command set and the assertions. The crate's own in-src `#[cfg(test)]` tests already see
-gdtf_qa_command = { path = ".", features = ["test-support"] }
 
 [lints]
 workspace = true

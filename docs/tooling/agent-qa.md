@@ -7,10 +7,10 @@ is that published list, read at run time — not a fixed tool set. See
 [qa-commands.md](qa-commands.md) for how a command is added. This is the QA
 control channel. It has three processes and one shared wire contract:
 
-- **The game**, built with the `net_qa` feature, opens a loopback TCP listener
+- **The game**, in debug builds, opens a loopback TCP listener
   that publishes its own command list and runs a named command against the live
   app.
-- **The content editor**, built with ITS `net_qa` feature, opens a SECOND
+- **The content editor**, in debug builds, opens a SECOND
   loopback listener on its own port, publishing its own command list. It is a
   separate process from the game and can run at the same time.
 - **The MCP host** (`gdtf_qa_mcp`) speaks a hand-rolled JSON-RPC 2.0 subset on
@@ -39,7 +39,7 @@ the call omits falls back to the default game recipe, so a bare `launch`
 still runs:
 
 ```bash
-cargo run -p grimdark_turfwar --features dynamic_linking,net_qa
+cargo run -p grimdark_turfwar --features dynamic_linking,dev_tools
 ```
 
 in the MCP host's own directory. A call that names them runs what it names —
@@ -100,7 +100,7 @@ is missing, that is a defect to file, not a reason to bypass the host.
 A bare `launch(host="editor")` runs:
 
 ```bash
-cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher,net_qa
+cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher
 ```
 
 in the MCP host's own directory, with `GDTF_EDITOR_NET_QA=1` and
@@ -112,7 +112,7 @@ serves both hosts with no per-host branch. It is NOT a caller argument: setting
 `GDTF_NET_QA` on an editor child would leave the editor inert with no listener
 on the port the launcher is about to probe.
 
-**Warm the build first.** The editor's `dynamic_linking,net_qa` combination is
+**Warm the build first.** The editor's `dynamic_linking,dev_tools` combination is
 one nothing else in the repo produces — `cargo dbuild` builds the GAME binary,
 and the workspace checks never link an editor binary — so the first
 `launch(host="editor")` against a given checkout is usually a COLD BUILD of the whole
@@ -120,7 +120,7 @@ editor. Two things follow:
 
 - The editor's boot timeout is **600 seconds**, not the game's 180
   (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`).
-- Run `cargo edqabuild` in the checkout you are about to QA before calling
+- Run `cargo edbuild` in the checkout you are about to QA before calling
   `launch(host="editor")`, and the launch answers in seconds instead.
 
 If a launch does time out, the failure is not a bare "timed out": it names the
@@ -139,11 +139,11 @@ launchable editor could open a port at all.
 
 ```bash
 GDTF_EDITOR_NET_QA=1 GDTF_EDITOR_NET_QA_PORT=7617 \
-  cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher,net_qa
+  cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher
 ```
 
-`cargo edqarun` (`.cargo/config.toml`) is the same command as an alias, and
-`cargo edqabuild` builds without running. The plain `edrun` / `edbuild` aliases
+`cargo edrun` (`.cargo/config.toml`) is the same command as an alias, and
+`cargo edbuild` builds without running. The plain `edrun` / `edbuild` aliases
 include `file_watcher` (hot-reload RON) and deliberately leave `net_qa` off — a
 normal dev editor should not pay the QA feature's compile cost.
 
@@ -217,7 +217,7 @@ open a port by accident:
 
 2. **The compile gate** at the plugin wiring site,
    `crates/gdtf_app/src/dev/plugin.rs`, is
-   `cfg!(all(debug_assertions, feature = "net_qa"))` — the server code is only
+   `cfg!(debug_assertions)` — the server code is only
    compiled in a debug build with the feature on. A release build never contains
    it, because it opens a listener.
 
@@ -239,7 +239,7 @@ The editor mirrors all three gates with its own names: the binary feature
 `net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_net_qa_transport", "dep:image"]` in
 `crates/gdtf_content_editor/Cargo.toml`; the wiring site
 `crates/gdtf_content_editor/src/app.rs` is
-`cfg(all(debug_assertions, feature = "net_qa"))`; and
+`cfg(debug_assertions)`; and
 `NetQaEditorPlugin::from_env` reads `GDTF_EDITOR_NET_QA`. That binary feature is
 pinned by a conformance test —
 `crates/gdtf_test_utils/tests/binary_feature_passthrough/` fails the suite if a
@@ -395,3 +395,6 @@ The two hosts are independent: a game child on `7616` and an editor child on
 `bins/gdtf_qa_mcp/src/serve.rs` and looked up by `HostSet::pair` in
 `bins/gdtf_qa_mcp/src/hosts/set.rs`. Each call reaches the child its `host`
 argument names, and a `stop` aimed at the editor never touches the game.
+
+
+> **GTW-965 / GTW-969:** `net_qa` is no longer a cargo feature; QA modules compile under `debug_assertions` and always listen on the shared ports in `gdtf_qa_protocol::ports`. Env arming (`GDTF_NET_QA` / `GDTF_EDITOR_NET_QA` and port vars) is removed.

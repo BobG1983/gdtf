@@ -1,3 +1,5 @@
+//! CI workflows stay on the static green subset (no dynamic_linking / dev_tools).
+
 use std::{collections::BTreeSet, fs};
 
 use crate::{
@@ -5,21 +7,13 @@ use crate::{
     tree::{repo_root, workflow_files},
 };
 
-const GAME_FEATURE: &str = "grimdark_turfwar/net_qa";
-
-const EDITOR_FEATURE: &str = "gdtf_content_editor/net_qa";
-
 const STATIC_ONLY_BAN: &str = "dynamic_linking";
 
 const REQUIRED_COMMANDS: [(&str, &str); 2] = [
-    (
-        ".github/workflows/test.yml",
-        "cargo test --workspace --features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa",
-    ),
+    (".github/workflows/test.yml", "cargo test --workspace"),
     (
         ".github/workflows/clippy.yml",
-        "cargo clippy --workspace --all-targets --features \
-         grimdark_turfwar/net_qa,gdtf_content_editor/net_qa -- -D warnings",
+        "cargo clippy --workspace --all-targets -- -D warnings",
     ),
 ];
 
@@ -36,7 +30,7 @@ fn workspace_cargo_commands(text: &str) -> Vec<String> {
 }
 
 #[test]
-fn every_ci_workspace_command_names_both_net_qa_features() {
+fn every_ci_workspace_command_is_static() {
     let root = repo_root();
     let files = workflow_files(&root);
     let mut violations: BTreeSet<String> = BTreeSet::new();
@@ -51,22 +45,18 @@ fn every_ci_workspace_command_names_both_net_qa_features() {
             continue;
         };
         for command in workspace_cargo_commands(&text) {
-            for feature in [GAME_FEATURE, EDITOR_FEATURE] {
-                if !command.contains(feature) {
-                    violations.insert(format!(
-                        "MISSING {file} — `{command}` does not name `{feature}`; without it that \
-                         package's `net_qa` module compiles nowhere in CI and its gated test \
-                         binaries report 0 tests"
-                    ));
-                }
-            }
             if command.contains(STATIC_ONLY_BAN) {
                 violations.insert(format!(
                     "STATIC {file} — `{command}` names `{STATIC_ONLY_BAN}`; CI green is the \
                      static subset"
                 ));
             }
-            reached.insert((file.clone(), command));
+            if command.contains("net_qa") || command.contains("schema") {
+                violations.insert(format!(
+                    "STALE {file} — `{command}` still names net_qa/schema features"
+                ));
+            }
+            reached.insert((file.clone(), command.split_whitespace().collect::<Vec<_>>().join(" ")));
         }
     }
     for (file, command) in REQUIRED_COMMANDS {
@@ -76,18 +66,13 @@ fn every_ci_workspace_command_names_both_net_qa_features() {
         );
         if !reached.contains(&pair) {
             violations.insert(format!(
-                "UNREACHED {file} — the walk never saw `{}`; either the command changed or the \
-                 line reader stopped seeing it",
-                pair.1
+                "UNREACHED {file} — never saw `{command}`"
             ));
         }
     }
-    for line in &violations {
-        eprintln!("{line}");
-    }
-    let rendered = violations.iter().cloned().collect::<Vec<_>>().join("\n");
     assert!(
         violations.is_empty(),
-        "CI workflow feature violations:\n{rendered}"
+        "CI workspace feature guard failed:\n{}",
+        violations.into_iter().collect::<Vec<_>>().join("\n")
     );
 }

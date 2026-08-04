@@ -21,11 +21,11 @@ enum Wiring {
         port:       NetQaPort,
         io_timeout: NetIoTimeout,
     },
-    #[cfg(feature = "test-support")]
+    #[cfg(feature = "headless_test")]
     Channels {
         inbox: std::sync::Mutex<Option<mpsc::Receiver<IncomingRequest>>>,
     },
-    #[cfg(feature = "test-support")]
+    #[cfg(feature = "headless_test")]
     Bound {
         listener:   std::sync::Mutex<Option<TcpListener>>,
         io_timeout: NetIoTimeout,
@@ -40,7 +40,7 @@ crate::support_item! {
 
 impl NetQaPlugin {
     crate::support_item! {
-        /// Build from environment under `cfg(all(debug_assertions, feature = "net_qa"))`.
+        /// Build from environment under `cfg(debug_assertions)`.
         #[must_use]
         fn from_env() -> Self {
             let wiring = if net_qa_enabled() {
@@ -56,7 +56,7 @@ impl NetQaPlugin {
     }
 
     /// Build a plugin that reads from an in-process inbox (tests).
-    #[cfg(feature = "test-support")]
+    #[cfg(feature = "headless_test")]
     #[must_use]
     pub const fn with_channels(inbox: mpsc::Receiver<IncomingRequest>) -> Self {
         Self {
@@ -71,7 +71,7 @@ impl NetQaPlugin {
     /// # Errors
     ///
     /// Returns an IO error if the listener cannot bind.
-    #[cfg(feature = "test-support")]
+    #[cfg(feature = "headless_test")]
     pub fn listening(port: NetQaPort) -> std::io::Result<(Self, NetQaPort)> {
         let (listener, bound) = bind_listener(port)?;
         let plugin = Self {
@@ -117,7 +117,7 @@ impl Plugin for NetQaPlugin {
                 );
                 serve(app, listener, *io_timeout);
             }
-            #[cfg(feature = "test-support")]
+            #[cfg(feature = "headless_test")]
             Wiring::Bound {
                 listener,
                 io_timeout,
@@ -127,7 +127,7 @@ impl Plugin for NetQaPlugin {
                 };
                 serve(app, listener, *io_timeout);
             }
-            #[cfg(feature = "test-support")]
+            #[cfg(feature = "headless_test")]
             Wiring::Channels { inbox } => {
                 let Some(rx) = inbox.lock().ok().and_then(|mut guard| guard.take()) else {
                     return;

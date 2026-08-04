@@ -120,7 +120,7 @@ mod tests {
         assert_eq!(spec.package().as_str(), "grimdark_turfwar");
         assert_eq!(
             spec.features().render(),
-            Some("dynamic_linking,net_qa".to_owned())
+            Some("dynamic_linking,dev_tools".to_owned())
         );
         assert!(spec.working_dir().is_none());
         assert!(spec.env().is_empty());
@@ -138,7 +138,7 @@ mod tests {
         };
         let Ok(spec) = parse_game(&json!({
             "package": "grimdark_turfwar",
-            "features": ["dynamic_linking", "net_qa", "dev_tools"],
+            "features": ["dynamic_linking", "dev_tools"],
             "working_dir": dir,
             "env": { "GDTF_BATTLE_SEED": "42" },
         })) else {
@@ -146,7 +146,7 @@ mod tests {
         };
         assert_eq!(
             spec.features().render(),
-            Some("dynamic_linking,net_qa,dev_tools".to_owned())
+            Some("dynamic_linking,dev_tools".to_owned())
         );
         assert_eq!(
             spec.working_dir().map(|path| path.to_path_buf()),
@@ -160,12 +160,12 @@ mod tests {
 
     #[test]
     fn features_accept_a_comma_separated_string() {
-        let Ok(spec) = parse_game(&json!({ "features": "net_qa, dev_tools" })) else {
+        let Ok(spec) = parse_game(&json!({ "features": "dev_tools" })) else {
             unreachable!("a comma-separated feature string parses");
         };
         assert_eq!(
             spec.features().render(),
-            Some("net_qa,dev_tools".to_owned())
+            Some("dev_tools".to_owned())
         );
     }
 

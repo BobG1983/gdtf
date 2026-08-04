@@ -1,12 +1,12 @@
 //! Procgen stepper plugin (`dev_tools`).
 
 use bevy::prelude::*;
-#[cfg(not(feature = "test-support"))]
+#[cfg(not(feature = "headless_test"))]
 use bevy_egui::EguiPrimaryContextPass;
-#[cfg(not(feature = "test-support"))]
+#[cfg(not(feature = "headless_test"))]
 use gdtf_battle_sim::procgen::StagedProcgen;
 
-#[cfg(not(feature = "test-support"))]
+#[cfg(not(feature = "headless_test"))]
 use super::ui::draw_stepper_panel;
 use super::{
     drive::{advance_stepper_drive, cleanup_stepper_drive, engage_stepper, finish_stepper_drive},
@@ -29,7 +29,7 @@ impl ProcgenStepperPlugin {
     }
 
     /// Whether the stepper is enabled.
-    #[cfg(feature = "test-support")]
+    #[cfg(feature = "headless_test")]
     #[must_use]
     pub const fn enabled(&self) -> bool {
         self.enabled
@@ -55,7 +55,7 @@ impl Plugin for ProcgenStepperPlugin {
                 .run_if(in_state(BattleScapeState::Generation)),
         );
         app.add_systems(OnExit(BattleScapeState::Generation), cleanup_stepper_drive);
-        #[cfg(not(feature = "test-support"))]
+        #[cfg(not(feature = "headless_test"))]
         app.add_systems(
             EguiPrimaryContextPass,
             draw_stepper_panel.run_if(resource_exists::<StagedProcgen>),

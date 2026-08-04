@@ -13,9 +13,9 @@ gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
 ron = { workspace = true }
 gdtf_screenshot = { path = "../gdtf_screenshot" }
 gdtf_state_scoped = { path = "../gdtf_state_scoped" }
-gdtf_qa_protocol = { path = "../gdtf_qa_protocol", optional = true }
-gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport", optional = true }
-image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+gdtf_qa_protocol = { path = "../gdtf_qa_protocol" }
+gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport" }
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [dev-dependencies]
 gdtf_test_utils = { path = "../gdtf_test_utils" }
@@ -24,8 +24,6 @@ tempfile = "3"
 [features]
 dynamic_linking = ["bevy/dynamic_linking"]
 file_watcher = ["bevy/file_watcher"]
-# default feature set and never in a release build: the module is ALSO `cfg(debug_assertions)`-gated
-net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_net_qa_transport", "dep:image"]
 
 [lints]
 workspace = true

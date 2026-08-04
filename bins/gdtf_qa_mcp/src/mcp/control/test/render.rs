@@ -47,7 +47,7 @@ fn a_recipe_mismatch_is_a_tool_error_naming_both_recipes() {
     let dir = a_directory_that_is_not_the_hosts();
     let running = LaunchSpec::new(
         CargoPackage::new("grimdark_turfwar".to_owned()),
-        FeatureList::new(vec![FeatureName::new("net_qa".to_owned())]),
+        FeatureList::new(vec![FeatureName::new("dev_tools".to_owned())]),
         Some(WorkingDir::new(dir.clone())),
         EnvOverrides::default(),
         QaChannel::game(),

@@ -36,7 +36,7 @@ impl PortraitIndex {
 }
 
 /// Portrait atlas index for a ganger name (test helper).
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 #[must_use]
 pub fn portrait_index_for_name(name: Option<&GangerName>) -> usize {
     *PortraitIndex::for_name(name)

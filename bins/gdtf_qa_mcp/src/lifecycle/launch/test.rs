@@ -10,12 +10,11 @@ use super::{
 fn feature_list_renders_comma_joined_and_empty_is_none() {
     let features = FeatureList::new(vec![
         FeatureName::new("dynamic_linking".to_owned()),
-        FeatureName::new("net_qa".to_owned()),
         FeatureName::new("dev_tools".to_owned()),
     ]);
     assert_eq!(
         features.render(),
-        Some("dynamic_linking,net_qa,dev_tools".to_owned())
+        Some("dynamic_linking,dev_tools".to_owned())
     );
     assert_eq!(FeatureList::default().render(), None);
 }
@@ -26,7 +25,7 @@ fn game_default_is_the_previous_hardcoded_recipe() {
     assert_eq!(spec.package().as_str(), "grimdark_turfwar");
     assert_eq!(
         spec.features().render(),
-        Some("dynamic_linking,net_qa".to_owned())
+        Some("dynamic_linking,dev_tools".to_owned())
     );
     assert!(spec.working_dir().is_none());
     assert!(spec.env().is_empty());
@@ -104,7 +103,7 @@ fn editor_default_is_the_editor_binary_over_the_editor_channel() {
     assert_eq!(spec.package().as_str(), "gdtf_content_editor_bin");
     assert_eq!(
         spec.features().render(),
-        Some("dynamic_linking,file_watcher,net_qa".to_owned())
+        Some("dynamic_linking,file_watcher".to_owned())
     );
     assert_eq!(spec.channel().enable().as_str(), "GDTF_EDITOR_NET_QA");
     assert_eq!(spec.channel().port().as_str(), "GDTF_EDITOR_NET_QA_PORT");

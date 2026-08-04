@@ -32,7 +32,7 @@ fn launch_schema() -> Value {
             "features": { "type": ["array", "string"],
                           "items": { "type": "string" },
                           "description": "Cargo features to enable, as an array or a \
-                           comma-separated string; omit for dynamic_linking,net_qa. Add \
+                           comma-separated string; omit for dynamic_linking,dev_tools. Add \
                            dev_tools to QA a dev build of the game." },
             "working_dir": { "type": "string",
                              "description": "Directory to run the build in — the \

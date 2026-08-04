@@ -5,7 +5,7 @@ pub(in crate::states) use plugin::LoadScenePlugin;
 #[cfg(test)]
 pub(crate) use systems::hot_reload_test_support;
 mod fallbacks;
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 pub use fallbacks::seed_load_fallbacks;
 mod resources;
 crate::support_use!(resources::LoadedSituation;);

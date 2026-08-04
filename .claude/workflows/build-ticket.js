@@ -60,8 +60,6 @@ cargo dtest
 cargo dbuild
 cargo doc --workspace --no-deps
 cargo doc-full
-cargo clippy-schema -- -D warnings
-cargo test-schema
 \`\`\`
 
 Run SEQUENTIALLY, one command per tool call. PIN THE DIRECTORY on every cargo call

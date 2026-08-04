@@ -17,7 +17,7 @@ use gdtf_qa_protocol::{
 use super::serve::handle_client;
 use crate::{channel::IncomingRequest, config::NetIoTimeout};
 
-/// its wiring on `cfg(all(debug_assertions, feature = "net_qa"))` and an env var) whose
+/// its wiring on `cfg(debug_assertions)` and an env var) whose
 pub fn run_listener(
     listener: TcpListener,
     request_tx: Sender<IncomingRequest>,

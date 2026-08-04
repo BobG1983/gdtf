@@ -14,7 +14,6 @@ gdtf_content_editor = { path = "../../crates/gdtf_content_editor" }
 [features]
 dynamic_linking = ["gdtf_content_editor/dynamic_linking"]
 file_watcher = ["gdtf_content_editor/file_watcher"]
-net_qa = ["gdtf_content_editor/net_qa"]
 
 [lints]
 workspace = true

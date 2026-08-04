@@ -11,7 +11,7 @@ crate::support_item! {
 
 impl QaShotDir {
     crate::support_item! {
-                                                #[cfg(any(test, feature = "test-support"))]
+                                                #[cfg(any(test, feature = "headless_test"))]
         const fn new(dir: PathBuf) -> Self {
             Self(dir)
         }

@@ -28,7 +28,7 @@ impl ShotPollBudget {
     const DEFAULT: Self = Self(240);
 
     crate::support_item! {
-                                                #[cfg(any(test, feature = "test-support"))]
+                                                #[cfg(any(test, feature = "headless_test"))]
         const fn new(frames: u32) -> Self {
             Self(frames)
         }

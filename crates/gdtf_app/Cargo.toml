@@ -12,36 +12,27 @@ gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
 gdtf_battle_input = { path = "../gdtf_battle_input" }
 serde = { workspace = true }
-# stays normal because the `#[cfg(test)]` modules ride the lib target.
 ron = { workspace = true }
-gdtf_screenshot = { path = "../gdtf_screenshot", optional = true }
-gdtf_qa_protocol = { path = "../gdtf_qa_protocol", optional = true }
-gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport", optional = true }
-gdtf_qa_command = { path = "../gdtf_qa_command", optional = true }
-schemars = { workspace = true, optional = true }
+gdtf_screenshot = { path = "../gdtf_screenshot" }
+gdtf_qa_protocol = { path = "../gdtf_qa_protocol" }
+gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport" }
+gdtf_qa_command = { path = "../gdtf_qa_command" }
+schemars = { workspace = true }
 bevy_egui = { version = "0.41", optional = true }
-image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [dev-dependencies]
 gdtf_test_utils = { path = "../gdtf_test_utils" }
 gdtf_state_scoped = { path = "../gdtf_state_scoped" }
-gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
 tempfile = "3"
-gdtf_qa_command = { path = "../gdtf_qa_command", features = ["test-support"] }
 serde_json = "1"
+
 [features]
 dynamic_linking = ["bevy/dynamic_linking"]
-test-support = ["gdtf_qa_command?/test-support"]
+# Headless integration tests: strips egui-only paths where needed.
+headless_test = []
 file_watcher = ["bevy/file_watcher"]
 dev_tools = ["dep:bevy_egui"]
-net_qa = [
-    "dep:gdtf_qa_protocol",
-    "dep:gdtf_net_qa_transport",
-    "dep:gdtf_qa_command",
-    "dep:gdtf_screenshot",
-    "dep:image",
-    "dep:schemars",
-]
 
 [lints]
 workspace = true

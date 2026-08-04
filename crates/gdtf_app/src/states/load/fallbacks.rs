@@ -1,22 +1,22 @@
 //! Headless load fallbacks for tests without an asset server.
 
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 use bevy::prelude::*;
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 use gdtf_battle_sim::{
     injuries::{InjuryRegistry, InjuryTables},
     level::PrefabRegistry,
     procgen::ProcgenTuning,
     tuning::CombatTuning,
 };
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 use gdtf_ui::theme::default_theme;
 
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 use crate::states::load::resources::LoadedSituation;
 
 /// Insert default load resources for headless tests when assets are absent.
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 pub fn seed_load_fallbacks(asset_server: Option<Res<AssetServer>>, mut commands: Commands) {
     commands.insert_resource(default_theme());
     commands.insert_resource(CombatTuning::default());
