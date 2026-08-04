@@ -52,7 +52,7 @@ const HOUSE_RULES = `
 4. **No unwrap/expect/panic/todo/unimplemented.** Doc every pub item. Typed domain values (no-bare-types.md).
    Files: warn >300 / block >400. mod.rs is wiring only.
 
-5. **Plain language.** Banned: "seam", "sanctioned", "byte identical". Name the real mechanism.
+5. **Plain language.** See plain-language.md — short plain wording; quoted failures stay whole.
 
 6. **Report failures verbatim.** Never summarise a failure away.
 `

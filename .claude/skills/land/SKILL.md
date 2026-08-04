@@ -13,6 +13,8 @@ Binding background: `.claude/rules/git-workflow.md`, `.claude/rules/linear-disci
 
 Resolve `GTW-N` from argument or branch. Must match the `TICKET=` set in `.claude/.gate-pass`.
 
+Evidence is the tree (`verification.md` rule 6): re-derive changed files with `git status` / `git diff` / `git diff --stat`. Do not trust an implementer file list or line counts. Report vs tree conflict → tree wins; state the discrepancy.
+
 ## Preconditions — any failure: refuse, state which, stop
 
 1. **Gate passed for this tree.** `.claude/.gate-pass` exists; `TICKET=` matches; `FINGERPRINT=` equals a fresh recompute of the /gate fingerprint command.

@@ -30,7 +30,7 @@ Short files under `.claude/rules/` — read and follow them:
 - [`linear-discipline.md`](.claude/rules/linear-discipline.md) — every change has a GTW-* ticket; statuses move with the work; labels defined there.
 - [`no-bare-types.md`](.claude/rules/no-bare-types.md) — no bare Rust/std type for a domain value; named newtype that `Deref`s.
 - [`module-layout.md`](.claude/rules/module-layout.md) — module is a directory; mod.rs is wiring-only; size limits.
-- [`plain-language.md`](.claude/rules/plain-language.md) — wording and length; banned words; name the real mechanism.
+- [`plain-language.md`](.claude/rules/plain-language.md) — plain wording and length in tickets, code, commits, chat; quoted failures stay verbatim.
 - [`reply-shape.md`](.claude/rules/reply-shape.md) — chat reply structure: answer first, no process narration.
 - [`comment-hygiene.md`](.claude/rules/comment-hygiene.md) — short docs; no ticket ids in comments.
 

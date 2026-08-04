@@ -33,9 +33,13 @@ Decide scope from **changed paths** (staged, committed on the branch vs `develop
 
 **DOCS means:** do not run cargo. State that scope was DOCS and which paths you used.
 
-**FULL means:** run the full suite from [`.claude/rules/verification.md`](../../rules/verification.md). All eight must exit 0. Use the aliases. Red → fail immediately.
+**FULL means:** run the full suite from [`.claude/rules/verification.md`](../../rules/verification.md). Use the aliases. Red → fail immediately.
 
 Pre-commit does not implement this skip — it always runs its cargo subset. Scope is agent judgment in this skill and in `/land`.
+
+## Evidence
+
+Implementer prose is not evidence (`verification.md` rule 6). Re-derive the diff and file list from git. On report vs tree conflict: tree wins; report the discrepancy.
 
 ## Steps
 
@@ -45,24 +49,26 @@ Pre-commit does not implement this skip — it always runs its cargo subset. Sco
 
 3. **Restate the contract as clause-numbered** (C1, C2, …). One clause per requirement. Faithful to the ticket and any `docs/` it invokes. Multi-ticket: combine and attribute. Contract is then read-only.
 
-4. **Gather the diff** (including untracked):
+4. **Gather the diff** (including untracked) from the tree — not from any prior report:
 
    ```bash
    git status
    git diff develop...HEAD
+   git diff --stat develop...HEAD
    git ls-files -o --exclude-standard
    ```
 
 5. **Blocking checks** (fail the gate like a clause violation):
-   - **4a Tests** — every behavioral clause has a real-path, assertion-bearing, pin-discriminating test (`verification.md` rules 2–3).
-   - **4b Wiring** — systems/plugins/resources that the ticket claims run are actually registered.
-   - **4c Size** — warn >300 / block >400 lines unless cohesive and ticket-sanctioned.
-   - **4d Hygiene** — no `GTW-` strings, no banned jargon, short doc comments.
+   - **4a Tests present** — every behavioral clause has a real-path, assertion-bearing, pin-discriminating test (`verification.md` rules 2 and 4).
+   - **4b Existing tests vs production** — same change must not alter production code and the **assertions** of existing covering tests (`verification.md` rule 3). Inspect `-` lines in test diffs. Signals: changed `assert!`/`assert_eq!`/`assert_ne!`/`matches!`/`should_panic`, removed `#[test]`, new `#[ignore]`, new cfg gating a test out — alongside non-test source changes. Import/path/type renames only are fine. Brand-new tests for new behaviour are required and allowed. A repair-loop test failure is surfaced, not fixed by rewriting the test.
+   - **4c Wiring** — systems/plugins/resources that the ticket claims run are actually registered.
+   - **4d Size** — warn >300 / block >400 lines unless cohesive and the ticket allows it.
+   - **4e Hygiene** — no `GTW-` strings in comments, plain language, short doc comments.
 
-6. **Design-gate fan-out.** Spawn three parallel read-only design-gate sub-agents (fidelity / tests / structure+Bevy). Pass the contract, diff, and instruction to verify first-hand. Merge any-non-compliant-blocks.
+6. **Design-gate fan-out.** Spawn three parallel read-only design-gate sub-agents (fidelity / tests / structure+Bevy). Pass the contract and instruct them to verify from the tree first-hand. Merge any-non-compliant-blocks.
 
-7. **Relay the verdict.** Per-clause PASS / VIOLATION with evidence.
+7. **Relay the verdict.** Per-clause PASS / VIOLATION with evidence from the tree.
 
-8. **On violations, repair the code** (not the contract). Max 2 repair rounds, then stop and report.
+8. **On violations, repair the code** (not the contract, not existing test expectations). Max 2 repair rounds, then stop and report. If a repair breaks an existing test, stop and surface it.
 
 9. **On full PASS, write `.claude/.gate-pass`** (TICKET, BRANCH, HEAD, FINGERPRINT, **SCOPE**). Move ticket(s) to In Review via Linear MCP. Point at `/docs-sync` then `/land`.
