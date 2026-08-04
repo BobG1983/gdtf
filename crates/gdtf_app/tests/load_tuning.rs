@@ -1,3 +1,4 @@
+//! Combat tuning load: gate holds without it; real path resolves; failure uses default.
 #[path = "load_suite/gate.rs"]
 mod gate;
 
