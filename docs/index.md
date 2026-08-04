@@ -31,12 +31,11 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 
 ## Engineering
 
-- [decisions/0001-rust-bevy-rewrite.md](decisions/0001-rust-bevy-rewrite.md) — the model / view split: the render-free authoritative sim (`gdtf_battle_sim`), the landed top-down 16×16 sprite battle presenter that mirrors it (`gdtf_battle_presenter`, with the iso renderer deferred behind `BattlePresenterMode`), the one-way `gdtf_battle_input → gdtf_battle_presenter → gdtf_battle_sim` chain, and the message-driven sim↔app boundary (recorded in the ADR's Decision / Consequences).
+- [architecture.md](architecture.md) — the model/view split (the render-free authoritative sim `gdtf_battle_sim`, the presenter that mirrors it, the one-way input → presenter → sim chain), the `bevy_ui` / `egui` boundary, and the `AppState` tree.
 - [testing.md](testing.md) — the Rust test suite: how to run it, suite layout, conventions (injected seeded RNG, render-free model tests), and what it pins vs. what it deliberately doesn't.
 - [ui-picking-arbitration.md](ui-picking-arbitration.md) — how a mouse press is arbitrated between the UI and the battle world: Bevy's UI picking backend is already installed by `UiPlugin`, how it coexists with the battle `cursor_over_ui` gate, the minimum arbitration rule ("one pointer position, one owner per frame"), the wiring spec for the picking rollout, and the keyboard / gamepad activation state.
-- [decisions/](decisions/index.md) — architecture decision records (ADRs): the why behind the structural and engine choices.
 
 ## Tooling
 
 - [tooling/agent-qa.md](tooling/agent-qa.md) — the agent QA control channel: how the MCP host launches the game, the `net_qa` feature + `GDTF_NET_QA` env double gate, the five MCP tools an agent calls, and the JSON-RPC-stdio / framed-RON wire shape.
-- [tooling/qa-commands.md](tooling/qa-commands.md) — how to add a QA command: the file, the one line in a host's list, and the test — written from `app.phase`, the command that exists. See [ADR 0008](decisions/0008-qa-command-courier.md) for why the shape is what it is.
+- [tooling/qa-commands.md](tooling/qa-commands.md) — how to add a QA command: the file, the one line in a host's list, and the test — written from `app.phase`, the command that exists. It also records why the shape is what it is.

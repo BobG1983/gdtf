@@ -10,7 +10,7 @@ The intended *eventual* look is **isometric projection** (UFO:EU-style dimetric)
 
 **The shipped first pass is a top-down 16×16 SPRITE renderer**, not iso. `gdtf_battle_presenter` draws the battle on a dedicated world camera (`WorldCamera`, beneath the UI camera) from the role-separated `alt_tileset_terrain` / `alt_tileset_characters` / `alt_tileset_effects` sheets (one `TextureAtlasLayout` per sheet), via a single `CELL_PX` (= 16.0) cell↔world bridge (`cell_to_world(cell, level)` / `world_to_cell`) and a per-level draw-z. The sim's 8 facings collapse to the sheet's 4 sprite frames through the pure `facing_frame` map (N/NE/NW→UP, E→RIGHT, SE/S/SW→DOWN, W→LEFT). The renderer is chosen by the `BattlePresenterMode` enum; the **isometric renderer is the deferred alternate behind that enum**.
 
-**TBD (Bevy):** the *iso* render setup — camera type (orthographic dimetric camera vs. 2D iso), the iso cell→screen projection, and any iso-specific camera controller — is pinned when the deferred iso renderer is built. The top-down camera, projection, and window/render config (design resolution, nearest-neighbor texture filtering, the app-wide UI theme) are landed in `gdtf_battle_presenter` + the `gdtf_app` window/render plugins, configured in the Bevy `App` (no `project.godot`).
+**TBD (Bevy):** the *iso* render setup — camera type (orthographic dimetric camera vs. 2D iso), the iso cell→screen projection, and any iso-specific camera controller — is pinned when the deferred iso renderer is built. The top-down camera, projection, and window/render config (design resolution, nearest-neighbor texture filtering, the app-wide UI theme) are landed in `gdtf_battle_presenter` + the `gdtf_app` window/render plugins, configured in the Bevy `App`.
 
 ## Arena size
 
@@ -29,7 +29,7 @@ The ceiling and reference numbers come from *UFO: Enemy Unknown* (source: UFOpae
 
 - **60×60 is the hard max** — battle-tested and correct.
 - **Cap the *common* mission at 40–50.** 60×60 is exactly where the last-enemy hunt becomes the infamous slog; reserve it for set-pieces (base defense, the big turf showdown). Pacing is part of whether generated situations stay fun.
-- **8 Z-levels** — the full 60×60×8 battle-space. Verticality is load-bearing for situations (rooftop overwatch, roof campers) and is **not** deferred: the model is **level-true end to end**. The coarse occupancy/surface grids carry all **8 storeys** (a `MAX_LEVELS` constant on the sim's coarse-occupancy type; maps may author right up to the 8-level ceiling), position everywhere is the pair `(cell, level)`, and gangers change storeys **only over authored stair/ladder links** (a situation's `vertical_links`, validated and poured into the movement graph). The view slices **X-COM-style** — every layer above the active view level is hard-hidden (presenter sets those entities to `Visibility::Hidden`, no dimming). **TBD (Bevy):** map authoring format — situations are Bevy assets (a custom asset type loaded via the asset server / a `bevy_reflect` scene), not Godot `.tres` resources; the greybox fixtures (a multi-storey city with door gaps, roof stairs, interior floors, and a tower; a small two-storey proof — platform, stair, roofed room with a rooftop enemy) are content to re-author as gdtf assets. Taller maps are content authoring, not engineering.
+- **8 Z-levels** — the full 60×60×8 battle-space. Verticality is load-bearing for situations (rooftop overwatch, roof campers) and is **not** deferred: the model is **level-true end to end**. The coarse occupancy/surface grids carry all **8 storeys** (a `MAX_LEVELS` constant on the sim's coarse-occupancy type; maps may author right up to the 8-level ceiling), position everywhere is the pair `(cell, level)`, and gangers change storeys **only over authored stair/ladder links** (a situation's `vertical_links`, validated and poured into the movement graph). The view slices **X-COM-style** — every layer above the active view level is hard-hidden (presenter sets those entities to `Visibility::Hidden`, no dimming). **TBD (Bevy):** map authoring format — situations are Bevy assets (a custom asset type loaded via the asset server / a `bevy_reflect` scene); the greybox fixtures (a multi-storey city with door gaps, roof stairs, interior floors, and a tower; a small two-storey proof — platform, stair, roofed room with a rooftop enemy) are content to re-author as gdtf assets. Taller maps are content authoring, not engineering.
 
 ## Core mechanics (v0)
 
@@ -56,3 +56,33 @@ Note: reaction fire is **not** deferred — it's intrinsic to the Time Units eco
 ## Resolution model — settled
 
 The full attack pipeline (dispersion accuracy, projectile travel, physical/destructible cover, probabilistic hit-location, damage, wounds, opposed-Fight melee, intrinsic reaction fire, bleed-out) is designed — see [resolution.md](resolution.md). Remaining open work is numeric **tuning** (TU costs per action, accuracy/kickback values, clearance band edges, body-part weights, severity distribution, reaction cap, bleed rate), tracked there.
+
+## Movement — adjacency and search
+
+**8-connected movement, octile diagonal cost, no corner-cutting.** Ratified 2026-06-22.
+
+Gangers move on 8 directions, not 4, matching the 8-way `Direction` compass the sim
+already uses for facing. XCOM: EU is the precedent — true 8-directional tile movement
+with diagonals weighted heavier. Necromunda offers no grid precedent either way; it is
+inch-based and gridless.
+
+Two sub-rules are mandatory, and both are exploit fixes rather than taste:
+
+- **Diagonal cost is octile — about √2 × orthogonal.** With integer TU the ratio is
+  approximated (orthogonal 4 / diagonal 6, ratio 1.5, on the existing min-cost-4 scale).
+  Flat same-cost diagonals are rejected outright: they make diagonal dashes strictly
+  best and hand back ~41% free distance per step.
+- **No corner-cutting between two edge-adjacent blocked cells.** A diagonal step is
+  illegal when both shared-edge orthogonal neighbours are blocked — otherwise a ganger
+  phases through the corner where two walls meet. This matters constantly on cover-heavy
+  maps.
+
+**Search is one weighted uniform-cost core (Dijkstra)** over the same cost function, with
+a deterministic tie-break so a replay from a seed produces the same route. The search is
+adjacency-agnostic — it works identically for 4- or 8-connected, so the choice above
+locks nothing in the algorithm.
+
+Routing also excludes never-seen cells; see [visibility.md](visibility.md) for the
+UNSEEN rule, which is a fog constraint rather than a movement one.
+
+**Code site:** `crates/gdtf_battle_sim/src/perception/pathfinder/`.

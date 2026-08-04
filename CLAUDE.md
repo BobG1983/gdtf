@@ -2,7 +2,7 @@
 
 A turn-based tactics **situation generator** (Necromunda campaign × XCOM) — grimdark.
 Core loop: `fight → consequences on survivors → carry the scarred roster forward → fight again, changed`.
-This is the **Rust + Bevy 0.19** rewrite of the Godot game *grimdark*. Design canon lives in [`docs/`](docs/index.md).
+Built in **Rust + Bevy 0.19**. Design canon lives in [`docs/`](docs/index.md).
 
 Work queue is Linear (project **GDTF**, tickets **GTW-***). Use the Linear MCP; do not hardcode team names or hand-edit task state.
 
@@ -36,6 +36,7 @@ Short files under `.claude/rules/` — read and follow them:
 - [`plain-language.md`](.claude/rules/plain-language.md) — plain wording and length; name the real mechanism.
 - [`reply-shape.md`](.claude/rules/reply-shape.md) — chat reply structure: answer first, no process narration.
 - [`comment-hygiene.md`](.claude/rules/comment-hygiene.md) — short docs; no ticket ids in comments.
+- [`code-navigation.md`](.claude/rules/code-navigation.md) — symbol questions go to the LSP; a grep count is not a caller count.
 - [`bevy-systems.md`](.claude/rules/bevy-systems.md) — SystemParam / QueryData / split; no too_many_arguments expects on systems.
 - [`background-work.md`](.claude/rules/background-work.md) — never poll; sub-agents always run backgrounded; relay every result.
 

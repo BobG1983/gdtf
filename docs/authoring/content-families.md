@@ -31,7 +31,7 @@ That one line yields the WHOLE chain — encoded once, never per-family:
 |-----------|---------------|
 | Loader + resolve | A `Startup` kick-off folder-loads recursively; the resolve gates on the folder finishing, folds every member through `insert_member`, and inserts the registry EXACTLY once |
 | Per-file salvage | A malformed member fails ALONE (a `malformed file:` finding on the integrity report); every well-formed sibling still loads |
-| Fail-closed folder | A genuinely un-enumerable folder `warn!`s and publishes an EMPTY registry, so a presence-gated `Load` flow is never stranded (ADR-0003) |
+| Fail-closed folder | A genuinely un-enumerable folder `warn!`s and publishes an EMPTY registry, so a presence-gated `Load` flow is never stranded |
 | Live redrive (hot-reload) | Editing a member under `cargo drun` rebuilds the whole registry in place via the persistent `ContentFolderHandle`, logging the reload |
 | `TypeId` member filter | A mixed folder (terrain + theme defs share one tree) never mistypes a member |
 | Headless fallback | A `MinimalPlugins` app (no `AssetServer`) registers no chain and seeds `Registry::default()` instead — no panic, and a presence-gated flow still releases |

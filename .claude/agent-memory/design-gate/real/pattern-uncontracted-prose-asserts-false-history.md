@@ -9,7 +9,7 @@ When a ticket dictates verbatim replacement text for a docs passage and the impl
 extra explanatory prose around it, pickaxe every symbol and attribution the NEW prose claims
 history for: `git log --oneline --all -S "<symbol>" -- bins/ crates/`.
 
-**Why:** a docs fix to ADR 0007 added, beyond the dictated text, that `GetEditorState` "was
+**Why:** a docs fix to the design canon added, beyond the dictated text, that `GetEditorState` "was
 removed outright" by a named ticket and that a second ticket "struck its name from this file so
 the retired type no longer reads as the plan". `git log --all -S GetEditorState -- bins/
 crates/` returns NOTHING — the name never existed in Rust code, so nothing removed it and there
@@ -19,10 +19,10 @@ record. The ticket description repeated the same wrong belief, so trusting a tic
 narrative is not enough.
 
 The false prose was struck.
-`docs/decisions/0007-net-qa-command-discoverability.md:21` now says only that the
+`docs/tooling/qa-commands.md:21` now says only that the
 `Get*QueryOptions` / `Query*(kind)` pair "was deleted", with no attribution, and `GetEditorState`
 appears nowhere in `docs/`. The all-history pickaxe returns two commits, both docs-only: the
-ADR's creation and the fix itself.
+the design canon's creation and the fix itself.
 
 **How to apply:** for any docs diff, (1) compare the landed passage against the dictated text
 word for word and treat additions as uncontracted, (2) pickaxe every symbol name and ticket

@@ -18,11 +18,11 @@ NEW decoder read an OLD frame; the other direction loses data. `RunCommand.optio
 older host handed a `Run` carrying `options` drops the riders and runs the command anyway —
 exactly the silent narrowing the `Unavailable { code: NotBuilt }` refusal exists to prevent.
 The rule and its worked case are written down at
-`docs/decisions/0008-qa-command-courier.md:88-98`: the version number covers the shapes of the
+`docs/tooling/qa-commands.md:88-98`: the version number covers the shapes of the
 `command` vocabulary, a field added to one of them moves it, and adding a COMMAND never does.
 
 **How to apply:** on any change touching `gdtf_qa_protocol`, grep `ProtocolVersion::CURRENT`
-and read the rule at `docs/decisions/0008-qa-command-courier.md:96-98`. If a shipped payload
+and read the rule at `docs/tooling/qa-commands.md:96-98`. If a shipped payload
 gained or changed a field and CURRENT did not move, ask (a) does the rule cover that shape,
 and (b) is the exception written anywhere binding — a `Proposed` decision record is not the
 contract while the accepted one says the opposite. Check the round-trip pins too: "old frame →

@@ -1,10 +1,7 @@
 {
-  "statusLine": {
-    "type": "command",
-    "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/statusline.py\""
-  },
   "permissions": {
     "allow": [
+      "mcp__gdtf-qa__*",
       "mcp__claude_ai_Linear__*",
       "mcp__linear-server__*"
     ],

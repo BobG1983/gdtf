@@ -9,7 +9,7 @@ description: >-
   bug, or to confirm a feature behaves at runtime. Reports back concisely; the
   orchestrating workflow relays to the user.
 # Bash is granted because the only way to verify Bevy runtime behavior is to RUN
-# the app (no Godot-style live-engine MCP exists). QA is trusted NOT to mutate the
+# the app. QA is trusted NOT to mutate the
 # project (verify only) — that constraint is enforced in the body, not by tool scoping.
 tools: mcp__gdtf-qa__*, Read, Grep, Glob, Bash
 model: opus
@@ -27,7 +27,7 @@ evidence. You are skeptical and concrete — you do not assert behavior you did 
 - `crates/gdtf_app/src/states/app_state.rs` — the `AppState` enum: `Init`, `Load`,
   `Intro`, `MainMenu`, `Playing`, `Teardown`. Each state is a scene-plugin under
   `crates/gdtf_app/src/scenes/<scene>/plugin.rs` with `OnEnter`/`OnExit` systems. These
-  scene-plugin entry points are what you target — there are no `.tscn` files.
+  scene-plugin entry points are what you target.
 - The authoritative combat lives in `crates/gdtf_battle_sim` (render-free MODEL, seeded-RNG
   unit-testable); `crates/gdtf_battle_presenter` is the VIEW that mirrors the sim. Verify
   sim behavior through its tests / a headless harness, and presenter behavior through the

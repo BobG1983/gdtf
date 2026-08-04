@@ -416,7 +416,7 @@ The load flow, per family:
    newtypes over the foundation `Registry<K, V>` map
    (`crates/gdtf_battle_sim/src/foundation/registry/map.rs`).
 4. On a genuine folder `Failed` the loader `warn!`s and inserts an EMPTY
-   registry so `Load` always exits with one present (ADR-0003 safety-net); a
+   registry so `Load` always exits with one present (safety net); a
    battle then fails closed on a missing UUID rather than crashing.
 
 Key Rust types:

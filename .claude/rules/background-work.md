@@ -1,3 +1,7 @@
+---
+paths: ["**/*"]
+---
+
 # Background work — never poll, always relay
 
 Why this rule exists: on 2026-08-04 a long stretch of the session landed nothing.

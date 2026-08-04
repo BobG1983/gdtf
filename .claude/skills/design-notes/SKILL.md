@@ -3,19 +3,18 @@ name: design-notes
 description: >-
   Durably capture VERY high-value, long-lived design knowledge into docs/ — the
   game's canon, not a scratchpad. Classifies a note as a math/formula, a design
-  pillar, a key decision (ADR), an invariant, or a glossary term, routes it to the
+  pillar, an invariant, or a glossary term, routes it to the
   correct docs/ home with enforced structure (frontmatter, a one-line statement,
   the WHY, source/derivation, pillar + litmus links, glossary/code linkage), and
   adds the index pointer. Use when the user says "note this down", "capture this
-  decision", "this is canon", "record this formula/pillar/invariant", "log an ADR",
+  decision", "this is canon", "record this formula/pillar/invariant",
   or right after a design decision is reached.
 when_to_use: >-
   Use to PERMANENTLY record canon: a combat formula and its derivation, a design
-  pillar, a key architectural/design decision (as an ADR), an invariant that must
-  always hold, or a glossary term that will drive Rust identifiers. NOT for
+  pillar, an invariant that must always hold, or a glossary term that will drive Rust identifiers. NOT for
   transient TODOs, ticket notes, or ephemeral context — this writes the contract
   the rest of the kit measures work against.
-argument-hint: "[the note, e.g. \"ADR: square grid for battlescape\" or \"formula: effPen\"]"
+argument-hint: "[the note, e.g. \"invariant: the sim never reads the presenter\" or \"formula: effPen\"]"
 allowed-tools: Read, Write, Edit, Grep, Glob
 disable-model-invocation: false
 user-invocable: true
@@ -40,21 +39,17 @@ in a sprint, it's a ticket comment, not canon — decline and say so.
 | --- | --- | --- |
 | **MATH / FORMULA** | `docs/combat/<topic>.md` (or the relevant doc) | formula + derivation + worked example + units + code site |
 | **DESIGN PILLAR / canon** | `docs/pillars/` | thesis statement + why it's load-bearing + what it forbids |
-| **KEY DECISION** | `docs/decisions/NNNN-slug.md` (ADR) | Status / Context / Decision / Consequences / Alternatives |
 | **INVARIANT** | the relevant doc (combat/architecture) + glossary if named | the property + how it's enforced/tested |
 | **GLOSSARY TERM** | `docs/glossary.md` | the term + meaning + the Rust identifier it drives |
 
-If a note is genuinely two kinds (e.g. a decision that introduces a formula),
-the **ADR** is the canonical record and the formula doc links to it — do not
-duplicate the prose; cross-link.
+If a note is genuinely two kinds (e.g. an invariant that rests on a formula), the
+formula doc is the record and the invariant links to it — do not duplicate the prose;
+cross-link.
 
 ## 2. Route to the correct docs/ home
 
 - Start from `docs/index.md` to find the live home; grep `docs/` for the topic so
   you EXTEND an existing section instead of creating a parallel one.
-- **ADRs** live under `docs/decisions/`. The number is the **next zero-padded
-  4-digit** value: `ls docs/decisions/ | grep -Eo '^[0-9]{4}'` → max + 1 (start at
-  `0001` if empty). Filename: `NNNN-<kebab-slug>.md`.
 - A glossary term drives **Rust identifiers** — record the exact identifier it
   maps to (a `struct`/`component`/`Resource`/field) so code stays in the house
   vocabulary (no "unit"/"soldier" where "ganger" exists).
@@ -84,19 +79,17 @@ headings, dense prose, no changelog noise). Canon is read often.
 
 - Write/extend the doc with the structure above, then add a **one-line pointer to
   `docs/index.md`** under the right section so it's discoverable.
-- For an **ADR**, ALSO add a pointer to `docs/decisions/index.md` (create it with
-  an `# Decisions` heading + intro line if absent).
 - Re-ground engine specifics to Bevy: ECS systems/components/resources,
   `Query`/`Commands`, schedules, `AppState` (`OnEnter`/`OnExit`), `glam`
-  `IVec2`/`Vec3`. Never carry Godot terms (node/`.tscn`/`res://`) into new canon.
+  `IVec2`/`Vec3`. Canon names Bevy concepts only — entity, component, system,
+  resource, asset — never another engine's vocabulary.
 
 ## 5. Commit path (canon is part of the contract)
 
 A quick capture **writes the doc immediately** and ends there — then OFFER the
 follow-up. For a committed canon change, hand off:
 
-- **/gate → /land** — branch off `develop` (`feature/gtw-N-<slug>`), gate the
-  docs diff through the read-only `design-gate` review, land as `Docs: <summary>
+- **/gate → /land** — branch off `develop` (`feature/gtw-N-<slug>`), gate the docs diff through the read-only `design-gate` review, land as `Docs: <summary>
   (GTW-N)`. Needs a `GTW-N` ticket in project **GDTF** (discover the owning team
   via the Linear MCP — do not hardcode a team name; this skill files a follow-up
   ticket only if asked, hence Linear MCP is otherwise out of its tool scope).
@@ -105,41 +98,6 @@ follow-up. For a committed canon change, hand off:
   old claims.
 
 Stage docs **explicitly by name** — never `-A`/`.` (`.claude/rules/git-workflow.md`).
-
-## ADR template (copy verbatim into `docs/decisions/NNNN-slug.md`)
-
-```markdown
----
-title: <decision in a noun phrase>
-kind: adr
-status: Accepted        # Proposed | Accepted | Superseded by NNNN | Deprecated
-date: <YYYY-MM-DD>
-pillars: [N, ...]       # pillar numbers this decision serves
----
-
-# ADR NNNN: <decision in a noun phrase>
-
-**<One-line statement of what we decided.>**
-
-## Status
-Accepted — <date>. (If superseded later, change to "Superseded by ADR NNNN".)
-
-## Context
-The forces at play: the problem, constraints, the relevant pillars
-(`../pillars/`) and any prior canon. Why a decision is needed now.
-
-## Decision
-What we are doing, stated plainly. Name the Rust crate/module/type it lands in
-(`crates/<crate>/src/<module>.rs`) or mark **TBD (Bevy):** if not yet built.
-
-## Consequences
-What becomes easier and what becomes harder. Invariants this creates; tests or
-schedules it implies. Litmus check vs `../litmus-tests.md`.
-
-## Alternatives considered
-- **<Option B>** — why rejected.
-- **<Option C>** — why rejected.
-```
 
 ## Formula-note template (copy into `docs/combat/<topic>.md` or the relevant doc)
 

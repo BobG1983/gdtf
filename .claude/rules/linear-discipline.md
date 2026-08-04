@@ -48,7 +48,7 @@ Without a team filter, team-scoped labels are silently omitted.
 | Improvement | Better existing behaviour, not a new feature | Author | Ticket Done / canceled |
 | Hygiene | Internal quality only: tooling, docs, agent process, tests, build speed. No user-visible product change | Author | Ticket Done / canceled |
 | Tech Debt | Known debt to pay down | Author | Ticket Done / canceled |
-| Documentation | Docs-only (canon, ADRs, guides) | Author | Ticket Done / canceled |
+| Documentation | Docs-only (canon, guides) | Author | Ticket Done / canceled |
 | AI Workflow | Agent loop, skills, memory, process — not product MCP commands | Author | Ticket Done / canceled |
 | MCP | QA MCP host, net_qa channel, protocol/transport, evidence over the wire | Author | Ticket Done / canceled |
 | Editor | Content editor (bevy_egui) work | Author | Ticket Done / canceled |

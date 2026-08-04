@@ -215,7 +215,7 @@ The loader:
 4. Inserts every `(ArmorName, ArmorSpec)` into the `ArmorRegistry`.
 
 On failure (bad folder) it inserts an EMPTY `ArmorRegistry` so `Load` always
-exits with one present (ADR-0003 safety-net); a battle then fails closed on a
+exits with one present (safety net); a battle then fails closed on a
 missing armor key rather than crashing.
 
 Key Rust types (all in `crates/gdtf_battle_sim/src/equipment/armor/`):

@@ -13,7 +13,7 @@ survivors rarely use the phrasing of the sentence that was cited.
 then the sibling module, then the crate — and the last survivor is usually a doc that states
 the same claim as the reason for something else. Docs under `docs/` are the most common
 resting place, because nothing compiles them. A live one:
-`docs/decisions/0007-net-qa-command-discoverability.md:116-121` still describes the editor's
+`docs/tooling/qa-commands.md:116-121` still describes the editor's
 QA query pair as built — `GetEditorQueryOptions` / `QueryEditor(EditorQueryKind)` with a
 `topic_available(kind, model)` predicate in
 `crates/gdtf_content_editor/src/net_qa/snapshot/topics.rs`. None of that exists: there is no

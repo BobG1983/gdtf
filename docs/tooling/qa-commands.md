@@ -9,7 +9,7 @@ A QA command is how an agent drives or reads a running GDTF process. Adding one 
 file, one line in a host's list, and a test**. It moves no protocol version, adds no wire
 variant, and changes nothing in the MCP courier — because a command is DATA carried inside
 two frozen envelope variants rather than a variant of its own
-([ADR 0008](../decisions/0008-qa-command-courier.md)).
+(see [Why the shape is what it is](#why-the-shape-is-what-it-is) below).
 
 Everything below is written from the ONE command that exists today,
 [`crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs).
@@ -205,3 +205,35 @@ fix it in one round trip: `Unknown` lists every name the host does offer, `BadAr
 carries the schema your body failed against, `Unavailable` names the precondition that is
 missing, and a rider this build has not implemented (`await_ready`, `capture`) is refused
 `Unavailable` with code `NotBuilt` rather than run without it.
+
+## Why the shape is what it is
+
+**A host publishes ONE list of typed commands, and the wire carries any command in two
+variants that never change.**
+
+- A command is a unit struct implementing `QaCommand` (`crates/gdtf_qa_command`): two
+  associated types whose JSON Schemas are **derived** from the Rust types, a name, a
+  summary, a declared timing, a pure availability predicate over that host's facts type,
+  and the registration of an ordinary Bevy system.
+- A host owns one `&[&dyn ErasedCommand<F>]` — the game's is `GAME_COMMANDS` in
+  `crates/gdtf_app/src/dev/net_qa/commands/set.rs`. The catalogue walk, the admission scan
+  and the registration walk all read that same slice, so **a command cannot be advertised
+  without being admissible and wired**.
+- The wire surface is exactly two request variants (`Catalogue`, `Run`) and two response
+  variants (`Catalogue`, `Outcome`). A command is *data* inside them, so adding one moves
+  no protocol version and adds no variant.
+- The MCP courier exposes exactly two tools, `commands` and `run`. **Neither names a
+  command**, in its schema or its description. A client discovers what it can call by
+  calling `commands` against the running host, and reads schemas the host derived from its
+  own Rust types.
+- **Exactly one system per host drains the request inbox.** `NetInbox::drain()` takes
+  everything in the channel, so a second router would swallow the first one's requests
+  nondeterministically. The command layer widens the existing router with `Catalogue` and
+  `Run` arms rather than registering its own.
+- A command's preconditions are answered by its availability predicate, as
+  `Unavailable { code, note }` — not by route-time state gates. The router can only ever
+  answer something blunter, and a per-command precondition is per-command knowledge.
+
+**What this buys:** adding a command needs no courier rebuild, no protocol bump, and no
+MCP reconnect. That property is the reason for the shape, and losing it is the signal that
+a change has gone wrong.
