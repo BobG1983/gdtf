@@ -1,9 +1,8 @@
-// GTW-470 EW-orientation companion of stair_ns_down.terrain_def.ron. A distinct AUTHORED tile: SAME
-// sim semantics as the NS descending stair (sim_kind = Slab), the ONLY difference is
-// presenter_kind.graphic_name = "stair_ew_down" (the NS descending-stair sprite rotated 90deg).
-// Orientation is PRESENTATION-ONLY — the author places the correct orientation in a prefab.
+// EW-orientation companion of stair_ns_down. Same sim semantics (sim_kind = Slab);
+// only difference is presenter_kind.graphic_name = "stair_ew_down" (NS sprite rotated 90deg).
+// Orientation is presentation-only — author places the correct orientation in a prefab.
 (
-    // Stable authored key — the industrial_hive EW descending-stair companion TerrainUuid.
+    // Stable authored key — industrial_hive EW descending-stair TerrainUuid.
     key: "00000000-0000-0000-0000-01840a910010",
     display_name: "Deck Stair Down (EW)",
     sim_kind: Slab(
@@ -12,8 +11,8 @@
         armor_hardness:   2,     // punch ignored (copied)
     ),
     presenter_kind: Slab(
-        graphic_name: "stair_ew_down", // the EW descending-stair sprite — NS down rotated 90deg (index 345)
-        footfall:     None,            // no authored footfall (the slab footfall seam is optional)
+        graphic_name: "stair_ew_down", // EW descending-stair sprite — NS down rotated 90deg
+        footfall:     None,            // no authored footfall
     ),
     tags: [],
 )

@@ -28,7 +28,7 @@ fn adjacent_alive_opposing_offers_shove() {
 
     assert!(
         shove_visible(&mut app),
-        "an 8-adjacent alive opposing ganger must reveal the Shove button (GTW-525)",
+        "an 8-adjacent alive opposing ganger must reveal the Shove button",
     );
     assert!(
         root_visible(&mut app),

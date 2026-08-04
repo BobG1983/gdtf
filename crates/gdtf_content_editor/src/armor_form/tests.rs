@@ -107,8 +107,7 @@ fn edited_armor_round_trips_through_the_loader_schema() {
     reloaded.load_armor(&name, &reloaded_spec);
     assert_eq!(
         reloaded, edited,
-        "the reloaded armor must equal the edited draft (name + all six per-part pieces) — \
-         the GTW-269 stem-key round-trip",
+        "the reloaded armor must equal the edited draft (name + all six per-part pieces)",
     );
 }
 

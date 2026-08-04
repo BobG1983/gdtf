@@ -138,7 +138,7 @@ fn save_path_is_themed_sized_and_dot_prefab_ron() {
     let path = prefab_save_path("Industrial Hive", size(), "entry_room");
     assert!(
         path.starts_with(Path::new(WORKSPACE_ASSETS_ROOT).join(PREFABS_FOLDER)),
-        "under the ONE shared assets root + prefab folder (GTW-634): {path:?}",
+        "under the ONE shared assets root + prefab folder: {path:?}",
     );
     let tail: Vec<_> = path
         .components()

@@ -1,20 +1,15 @@
-// GTW-469 EW-orientation companion of tunnel_wall.terrain_def.ron. A distinct AUTHORED tile:
-// SAME sim semantics as the NS tunnel_wall (sim_kind = Wall — LOS + pathfinding blocking is
-// IDENTICAL), magnitudes COPIED verbatim from the NS def. The ONLY difference is
-// presenter_kind.graphic_name = "wall_ew" (the row-2 east-west sprite, the NS `wall` rotated 90deg).
-// Orientation is PRESENTATION-ONLY — the author places the correct orientation in a prefab.
+// EW companion of tunnel_wall. Same sim, different graphic.
 (
-    // Stable authored key — the underhive `tunnel_wall` EW companion TerrainUuid.
     key: "00000000-0000-0000-0000-01840a920005",
     display_name: "Tunnel Wall (EW)",
     sim_kind: Wall(
-        hp:               55,    // structural HP (copied from the NS tunnel_wall)
-        armor_protection: 7,     // damage-reduction (copied)
-        armor_hardness:   3,     // penetration shrugged off (copied)
-        height_band:      High,  // full-height blocking geometry
+        hp:               55,
+        armor_protection: 7,
+        armor_hardness:   3,
+        height_band:      High,
     ),
     presenter_kind: Wall(
-        graphic_name: "wall_ew", // the EW (row-2) sprite — the NS `wall` rotated 90deg
+        graphic_name: "wall_ew",
     ),
     tags: [BlocksVision, BlocksPathfinding],
 )

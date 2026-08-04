@@ -1,30 +1,16 @@
-// GTW-490 migration of assets/content/terrain/deck_floor.terrain.ron to the NEW UUID-keyed
-// per-theme TerrainDef model (GTW-484/487). This is the theme's DEFAULT FLOOR (the
-// terrain_theme.ron `default_floor` points at this UUID).
-//
-// SUB-DECISION (logged in docs/authoring/terrain-content-migration.md): the OLD `Floor` kind is RETIRED — the new
-// TerrainSimKind is Wall/Cover/Slab only, and `TerrainDef` carries NO MoveCost field in this
-// slice (the floor move-cost-from-default-floor seam is a T07+ consumer concern). A walkable
-// deck is structurally a SLAB, so deck_floor migrates to a `Slab` sim_kind (the GTW-487
-// `deck.terrain_def.ron` fixture precedent). The flat floor authored NO HP/armor (move-only),
-// so the structural toughness is COPIED from this theme's sibling structural slab
-// `deck_slab` (120 / 4 / 2). The flat move_cost (4) is the real authored value carried
-// FORWARD as this note until the T07 move-cost seam lands (no field to hold it yet).
-// presenter_kind.graphic_name = the flat file's `graphic` TileRoles key ("floor"); the old
-// atlas index is INTENTIONALLY DROPPED.
+// Theme default floor. Structurally a slab.
 (
-    // Stable authored key — the industrial_hive `deck_floor` TerrainUuid (the theme default floor).
+    // Stable authored key — industrial_hive deck_floor TerrainUuid (theme default floor).
     key: "00000000-0000-0000-0000-01840a910004",
     display_name: "Deck Floor",
     sim_kind: Slab(
-        hp:               120,   // structural toughness (copied from sibling deck_slab; see header)
-        armor_protection: 4,     // damage soak (copied from sibling deck_slab)
-        armor_hardness:   2,     // punch ignored (copied from sibling deck_slab)
-        // flat move_cost was 4 — carried forward in the header until the T07 move-cost seam.
+        hp:               120,   // structural toughness (matches deck_slab)
+        armor_protection: 4,     // damage soak
+        armor_hardness:   2,     // punch ignored
     ),
     presenter_kind: Slab(
-        graphic_name: "floor",            // flat file's `graphic` TileRoles key
-        footfall:     Some("footfall_metal"),  // flat file's footfall key (Slab-only, optional)
+        graphic_name: "floor",
+        footfall:     Some("footfall_metal"),
     ),
     tags: [],
 )

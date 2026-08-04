@@ -1,20 +1,17 @@
-// GTW-470 EW-orientation companion of door_ns.terrain_def.ron. A distinct AUTHORED tile: SAME sim
-// semantics as the NS door (sim_kind = Wall + Openable; LOS + pathfinding blocking identical), the
-// ONLY difference is presenter_kind.graphic_name = "door_ew" (the NS door sprite rotated 90deg).
-// Orientation is PRESENTATION-ONLY — the author places the correct orientation in a prefab.
+// EW-orientation companion of door_ns. Same sim semantics (Wall + Openable);
+// only difference is graphic_name = "door_ew". Orientation is presentation-only.
 (
-    // Stable authored key — the industrial_hive EW `door` companion TerrainUuid.
+    // Stable authored key — industrial_hive EW door companion TerrainUuid.
     key: "00000000-0000-0000-0000-01840a91000c",
     display_name: "Bulkhead Door (EW)",
     sim_kind: Wall(
-        hp:               40,    // structural HP (copied from the NS door)
+        hp:               40,    // structural HP (copied from NS)
         armor_protection: 6,     // damage soak (copied)
         armor_hardness:   3,     // punch ignored (copied)
-        height_band:      High,  // a closed door fills the cell; nothing flies over it within a storey
+        height_band:      High,
     ),
     presenter_kind: Wall(
-        graphic_name: "door_ew", // the EW door sprite — the NS door rotated 90deg (TileRoles index 341)
+        graphic_name: "door_ew", // EW door sprite — NS door rotated 90deg
     ),
-    // SIM-OWNED tags: identical to the NS door (orientation is presentation-only).
     tags: [Openable, BlocksVision, BlocksPathfinding],
 )

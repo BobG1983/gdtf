@@ -1,23 +1,15 @@
-// GTW-490 migration of the `sludge_floor` tile from assets/content/themes/sump_waste.theme.ron
-// to the NEW UUID-keyed per-theme TerrainDef model (GTW-484/487). SUB-DECISION
-// (docs/authoring/terrain-content-migration.md): the OLD `Floor` kind is RETIRED; a walkable floor migrates to a
-// `Slab` sim_kind (the GTW-487 default-floor precedent). The catalog tile authored only
-// move_cost (6), carried FORWARD as this note until the T07 move-cost seam (no field yet); the
-// structural toughness is COPIED from this theme's structural slab (gantry_slab 35 / 4 / 2).
-// The old atlas_index (6) is DROPPED and mapped to its matching TileRoles key `floor`.
+// Theme default floor. Structurally a slab.
 (
-    // Stable authored key — the sump_waste `sludge_floor` TerrainUuid (the theme default floor).
     key: "00000000-0000-0000-0000-01840a930001",
     display_name: "Sludge Floor",
     sim_kind: Slab(
-        hp:               35,    // structural toughness (copied from sibling gantry_slab; see header)
-        armor_protection: 4,     // damage soak (copied from sibling gantry_slab)
-        armor_hardness:   2,     // punch ignored (copied from sibling gantry_slab)
-        // catalog move_cost was 6 — carried forward in the header until the T07 move-cost seam.
+        hp:               35,
+        armor_protection: 4,
+        armor_hardness:   2,
     ),
     presenter_kind: Slab(
-        graphic_name: "floor",   // old atlas_index 6 -> matching TileRoles key
-        footfall:     None,      // no authored footfall in the catalog tile
+        graphic_name: "floor",
+        footfall:     None,
     ),
     tags: [],
 )

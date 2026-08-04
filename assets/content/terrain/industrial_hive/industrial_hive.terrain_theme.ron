@@ -1,18 +1,11 @@
-// GTW-490 migration of assets/content/themes/industrial_hive.theme.ron to the NEW UUID-keyed
-// UuidThemeDef model (GTW-485/487). RECONCILIATION (see docs/authoring/terrain-content-migration.md): the FLAT 8
-// terrain pieces are the SOURCE OF TRUTH for this theme (NOT the old 4-tile ThemeTileCatalog).
-// The old `deck_plating` tile maps onto the flat `deck_floor` piece by display intent, so this
-// theme's default_floor is the migrated `deck_floor` def's UUID. The old per-tile atlas_index
-// is INTENTIONALLY DROPPED (the presenter resolves the index via TileRoles by each def's
-// presenter_kind.graphic_name, never a per-def index).
+// Industrial Hive theme.
 (
-    // Stable authored key — the IndustrialHive ThemeUuid.
+    // Stable authored key — IndustrialHive ThemeUuid.
     key: "00000000-0000-0000-0000-01840a900001",
     display_name: "Industrial Hive",
-    // The default floor terrain (deck_floor) — the tile a generated level fills empty ground
-    // with. Its move cost will ride this referenced TerrainDef once the T07 move-cost seam lands.
+    // Default floor terrain — empty ground fill.
     default_floor: "00000000-0000-0000-0000-01840a910004",
-    // This theme's reconciled terrain palette — all 8 flat pieces, by their migrated UUIDs.
+    // Theme terrain palette.
     terrain: [
         "00000000-0000-0000-0000-01840a910001",  // barricade
         "00000000-0000-0000-0000-01840a910002",  // bulkhead_wall
@@ -22,14 +15,14 @@
         "00000000-0000-0000-0000-01840a910006",  // gantry_slab
         "00000000-0000-0000-0000-01840a910007",  // heavy_bulkhead
         "00000000-0000-0000-0000-01840a910008",  // supply_crate
-        "00000000-0000-0000-0000-01840a910009",  // bulkhead_wall_ew   (GTW-469 EW orientation)
-        "00000000-0000-0000-0000-01840a91000a",  // heavy_bulkhead_ew  (GTW-469 EW orientation)
-        "00000000-0000-0000-0000-01840a91000b",  // door_ns        (GTW-470 NS door, Wall+Openable)
-        "00000000-0000-0000-0000-01840a91000c",  // door_ew        (GTW-470 EW door, Wall+Openable)
-        "00000000-0000-0000-0000-01840a91000d",  // stair_ns_up    (GTW-470 NS stair up,   Slab)
-        "00000000-0000-0000-0000-01840a91000e",  // stair_ns_down  (GTW-470 NS stair down, Slab)
-        "00000000-0000-0000-0000-01840a91000f",  // stair_ew_up    (GTW-470 EW stair up,   Slab)
-        "00000000-0000-0000-0000-01840a910010",  // stair_ew_down  (GTW-470 EW stair down, Slab)
-        "00000000-0000-0000-0000-01840a910011",  // heavy_bolter_emplacement (GTW-543, Emplacement)
+        "00000000-0000-0000-0000-01840a910009",  // bulkhead_wall_ew
+        "00000000-0000-0000-0000-01840a91000a",  // heavy_bulkhead_ew
+        "00000000-0000-0000-0000-01840a91000b",  // door_ns
+        "00000000-0000-0000-0000-01840a91000c",  // door_ew
+        "00000000-0000-0000-0000-01840a91000d",  // stair_ns_up
+        "00000000-0000-0000-0000-01840a91000e",  // stair_ns_down
+        "00000000-0000-0000-0000-01840a91000f",  // stair_ew_up
+        "00000000-0000-0000-0000-01840a910010",  // stair_ew_down
+        "00000000-0000-0000-0000-01840a910011",  // heavy_bolter_emplacement
     ],
 )
