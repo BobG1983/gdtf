@@ -15,8 +15,8 @@ If that's fun, we have a game and the rest is layers. If it isn't, no amount of 
 - **Move + shoot on time units** (a **TU** economy, not AP), **cover**, **line of sight**, **damage**, **death**. There is **no to-hit %** — resolution is a sampled dispersion-cone trajectory ray-marched through the coarse occupancy grid (see [resolution.md](../combat/resolution.md)). This is the render-free sim core (`gdtf_battle_sim`) and the first thing to land with tests.
 - The **7-type weapon/armor matchup** (see [matchup.md](../combat/matchup.md)) — this is cheap data and it's the part most likely to need tuning, so wire it early. The matchup multiplies **punch & shred** (favorable/neutral/resisted), not raw damage.
 - On mission end, a **post-action screen** that:
-  - rolls survivors on the **Injury table** (see [wounds-and-roster.md](../combat/wounds-and-roster.md)) — **not yet built**; the design has wound severity rolled **per hit, in battle**, with the named injury tables as a separate card,
-  - applies **XP / advancement** — **not yet built**,
+  - **carries in-battle named injuries** onto the roster — no second injury-table roll (see [post-action.md](post-action.md); proposed),
+  - **applies XP + minimal use-based attribute bumps** — [post-action.md](post-action.md) (proposed),
   - **persists the roster** — **not yet built** (battle wear is battle-scoped; cross-battle carry of the scarred roster is open work).
 
   The screen itself is a **placeholder** (outcome word + Continue back to the menu) and maps to the transition from the aftermath back out to the main-menu screen (`RunningState::Menu`, under `AppState::Running`) on the way to `AppState::Teardown`.

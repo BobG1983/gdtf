@@ -10,7 +10,7 @@ Necromunda vocabulary is the house style. **Code identifiers must follow it** �
 | **Turf** | A controlled region on the geoscape. |
 | **Grudge** | Recorded enmity between gangs/fighters with memory. |
 | **Bottle** | A gang voluntarily routing/withdrawing from a fight (Necromunda morale). |
-| **Injury** | A lasting condition rolled (location × severity) when a fighter takes a Wound; docks an attribute. The named condition + attribute dock (Injury Tables) is not yet built — today a Wound carries its tier + struck location and spends the Wounds pool. |
+| **Injury** | A lasting named condition rolled (location × severity × source) when a fighter takes a non-graze Wound; docks attributes via the ledger. Rolled **in battle**; post-action carries the ledger (no second table roll for MVP — see [mvp/post-action.md](mvp/post-action.md)). |
 | **Damage / Armor Types** | The shared 7-type wheel — armor: Plated, Refractive, Flak, Void, Hazard, Reinforced, Ceramic; damage: Kinetic, Las, Plasma, Chem, Shock, Blast, Rend (see [combat/matchup.md](combat/matchup.md)). |
 | **WeaponName** | A weapon's human-facing name (e.g. "autogun") — a newtype component on the armed ganger, taken from the `.weapon.ron` filename stem (also the registry key). UI-only; combat-math never reads it (see [combat/weapons-and-armor.md](combat/weapons-and-armor.md)). |
 | **FireMode** | A weapon's fire-mode **selector** — an authored `Vec` of the modes it offers (any subset of Single / Burst / Full, in order); a component on the armed ganger (see [combat/weapons-and-armor.md](combat/weapons-and-armor.md)). |
