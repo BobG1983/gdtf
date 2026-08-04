@@ -101,15 +101,15 @@ impl Default for ReactionPMax {
 #[derive(Debug, Clone, Copy, PartialEq, Default, Deserialize)]
 pub struct ReactionTuning {
     /// Cap base.
-    pub cap_base: ReactionCapBase,
+    pub cap_base:            ReactionCapBase,
     /// Cap per reactions.
-    pub cap_per_reactions: ReactionCapPerReactions,
+    pub cap_per_reactions:   ReactionCapPerReactions,
     /// Probability floor.
-    pub p_min: ReactionPMin,
+    pub p_min:               ReactionPMin,
     /// Probability ceiling.
-    pub p_max: ReactionPMax,
+    pub p_max:               ReactionPMax,
     /// Suppression radius in cells.
-    pub suppression_radius: SuppressionRadius,
+    pub suppression_radius:  SuppressionRadius,
     /// Stability penalty while suppressed.
     pub suppression_penalty: SuppressionStabilityPenalty,
 }

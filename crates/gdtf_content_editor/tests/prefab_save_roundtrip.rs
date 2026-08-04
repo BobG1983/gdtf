@@ -1,5 +1,5 @@
-//! GTW-662 C2/A2: the PREFAB save's REAL fs round-trip — author an [`EditorMap`] through the
-//! without polluting the version-controlled `assets/` tree. Prefabs are a declared GTW-570
+//! C2/A2: the PREFAB save's REAL fs round-trip — author an [`EditorMap`] through the
+//! without polluting the version-controlled `assets/` tree. Prefabs are a declared
 #![cfg(debug_assertions)]
 
 use gdtf_battle_sim::{
@@ -125,7 +125,7 @@ fn saved_prefab_round_trips_through_the_real_game_prefab_loader() {
     assert_eq!(
         prefab.spec(),
         &expected,
-        "the reloaded prefab spec must equal the saved projection — the GTW-489 round-trip \
+        "the reloaded prefab spec must equal the saved projection — the round-trip \
          through the REAL game loader",
     );
 }

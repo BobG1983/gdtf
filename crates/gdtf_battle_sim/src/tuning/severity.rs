@@ -109,28 +109,28 @@ impl Default for SeverityEdges {
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct SeverityScaling {
     /// Penetration / damage scale.
-    pub pen_damage_scale: PenDamageScale,
+    pub pen_damage_scale:     PenDamageScale,
     /// Toughness mitigation.
     pub toughness_mitigation: ToughnessMitigation,
     /// Shooter luck scale.
-    pub shooter_luck_scale: ShooterLuckScale,
+    pub shooter_luck_scale:   ShooterLuckScale,
     /// Defender luck scale.
-    pub defender_luck_scale: DefenderLuckScale,
+    pub defender_luck_scale:  DefenderLuckScale,
     /// Random spread.
-    pub random_spread: RandomSpread,
+    pub random_spread:        RandomSpread,
     /// Band edges.
-    pub edges: SeverityEdges,
+    pub edges:                SeverityEdges,
 }
 
 impl Default for SeverityScaling {
     fn default() -> Self {
         Self {
-            pen_damage_scale: PenDamageScale::new(1.0),
+            pen_damage_scale:     PenDamageScale::new(1.0),
             toughness_mitigation: ToughnessMitigation::new(1.0),
-            shooter_luck_scale: ShooterLuckScale::new(1.0),
-            defender_luck_scale: DefenderLuckScale::new(1.0),
-            random_spread: RandomSpread::new(10.0),
-            edges: SeverityEdges::default(),
+            shooter_luck_scale:   ShooterLuckScale::new(1.0),
+            defender_luck_scale:  DefenderLuckScale::new(1.0),
+            random_spread:        RandomSpread::new(10.0),
+            edges:                SeverityEdges::default(),
         }
     }
 }

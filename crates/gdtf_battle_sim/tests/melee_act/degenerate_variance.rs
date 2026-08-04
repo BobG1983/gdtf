@@ -49,7 +49,6 @@ fn run_degenerate_variance_strike() -> (Option<u16>, Option<u8>, Option<u8>, usi
     )
 }
 
-
 #[test]
 fn variance_zero_melee_strike_resolves_without_panic() {
     let mut app = battle_app_with_tuning(degenerate_variance_tuning());
@@ -77,17 +76,16 @@ fn variance_zero_melee_strike_resolves_without_panic() {
 
     assert!(
         melee_hits(&app) >= 1,
-        "GTW-640: a variance-0.0 strike must RESOLVE and connect (MeleeResolved emitted)",
+        "a variance-0.0 strike must RESOLVE and connect (MeleeResolved emitted)",
     );
     let Some(hp_after) = hp_of(&app, target) else {
         unreachable!("the target persists");
     };
     assert!(
         hp_after < hp_before,
-        "GTW-640: the variance-0.0 connecting strike applies damage ({hp_after} < {hp_before})",
+        "the variance-0.0 connecting strike applies damage ({hp_after} < {hp_before})",
     );
 }
-
 
 #[test]
 fn degenerate_variance_battle_replays_identically_under_same_seed() {
@@ -95,7 +93,7 @@ fn degenerate_variance_battle_replays_identically_under_same_seed() {
     let second = run_degenerate_variance_strike();
     assert_eq!(
         first, second,
-        "GTW-640/644: the same seed + the same degenerate-variance battle must replay to \
+        "the same seed + the same degenerate-variance battle must replay to \
          identical outcomes (hp, wounds, tu, hits)",
     );
 }
@@ -122,7 +120,7 @@ fn degenerate_exchange_leaves_subsequent_fight_draws_aligned() {
         let after_live = opposed_fight(attacker, defender, live, &mut reference);
         assert_eq!(
             after_degenerate, after_live,
-            "GTW-644: exchange {i} after a degenerate opposed roll must equal the same-seed \
+            "exchange {i} after a degenerate opposed roll must equal the same-seed \
              exchange after a live one — the degenerate roll must consume exactly two draws",
         );
     }

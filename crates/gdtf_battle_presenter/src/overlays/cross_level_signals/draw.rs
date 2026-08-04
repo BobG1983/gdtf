@@ -58,7 +58,7 @@ const BADGE_LABEL_COLOR: Color = Color::srgb(0.95, 0.97, 0.95);
 #[derive(Debug, Clone, PartialEq)]
 struct BadgeDraw {
     world: Vec3,
-    tint: Color,
+    tint:  Color,
     label: String,
 }
 

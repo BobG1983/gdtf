@@ -1,4 +1,4 @@
-// GTW-582 fixture gang — ONE roster member whose equipment keys dangle ON PURPOSE
+// fixture gang — ONE roster member whose equipment keys dangle ON PURPOSE
 // (weapon / armor / melee-weapon, all file-stem keyed), so the end-of-Load
 // reference-integrity pass can be asserted to report each gang-side edge (NOT shipped
 // content; loaded only by tests/load_ref_integrity.rs). Attribute magnitudes are

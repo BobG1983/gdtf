@@ -38,11 +38,11 @@ pub(super) fn seed_cover_terrain(
             .spawn((
                 TerrainCell::new(cover.at),
                 resolved.piece_kind,
-                entry.max_hp,           
-                entry.height_band,      
-                entry.armor_protection, 
-                entry.armor_hardness,   
-                resolved.graphic, 
+                entry.max_hp,
+                entry.height_band,
+                entry.armor_protection,
+                entry.armor_hardness,
+                resolved.graphic,
             ))
             .id();
         if *resolved.blocks_path {

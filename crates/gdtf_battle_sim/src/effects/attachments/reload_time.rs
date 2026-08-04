@@ -43,7 +43,7 @@ impl ApplyAttachmentEffect for ApplyReloadTime {
             clippy::cast_sign_loss,
             reason = "the scaled reload cost is clamped non-negative above and a reload TU is a \
                       small u8 count, so the f32 -> u8 floor cannot truncate meaningfully or \
-                      sign-flip (the GTW-542 scale_reload precedent this isolates)"
+                      sign-flip (the scale_reload precedent this isolates)"
         )]
         let tu = scaled as u8;
         let rebuilt = Magazine::new(

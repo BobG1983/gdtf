@@ -54,7 +54,6 @@ fn pan_camera_keyboard_pans_regardless_of_cursor() {
     );
 }
 
-
 #[test]
 fn pan_camera_mouse_edge_waits_for_the_dwell_delay() {
     use std::time::Duration;

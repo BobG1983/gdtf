@@ -86,7 +86,7 @@ impl SheetRole {
 #[derive(Debug, Clone)]
 pub struct SheetAtlas {
     /// Loaded sheet image.
-    pub image: Handle<Image>,
+    pub image:  Handle<Image>,
     /// Grid layout for the sheet.
     pub layout: Handle<TextureAtlasLayout>,
 }
@@ -127,7 +127,7 @@ pub fn load_topdown_atlases(
         sheets.insert(
             role,
             SheetAtlas {
-                image: load_sheet_image(&asset_server, role),
+                image:  load_sheet_image(&asset_server, role),
                 layout: layouts.add(layout),
             },
         );

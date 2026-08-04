@@ -55,7 +55,7 @@ impl ReactionShotFired {
 pub struct WalkInProgress {
     remaining_cells: Vec<CellLevel>,
     remaining_costs: Vec<Tu>,
-    seen_enemies: Option<HashSet<CellLevel>>,
+    seen_enemies:    Option<HashSet<CellLevel>>,
 }
 
 impl WalkInProgress {
@@ -69,7 +69,7 @@ impl WalkInProgress {
         Self {
             remaining_cells: cells,
             remaining_costs: costs,
-            seen_enemies: None,
+            seen_enemies:    None,
         }
     }
 

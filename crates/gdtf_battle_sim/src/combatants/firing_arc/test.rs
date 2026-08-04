@@ -26,7 +26,7 @@ fn ninety_degrees_off_is_out_of_arc_for_120() {
 
 #[test]
 fn target_exactly_at_arc_edge_is_inclusive_in_arc() {
-    let edge = Cell::new(8, 8); 
+    let edge = Cell::new(8, 8);
     let arc_at_edge = FiringArc::new(90.0);
     assert!(
         *target_in_arc(Direction::East, ACTOR, edge, &arc_at_edge),
@@ -50,7 +50,7 @@ fn co_located_target_is_in_arc_no_nan() {
 
 #[test]
 fn arc_width_drives_containment() {
-    let off_axis = Cell::new(5, 8); 
+    let off_axis = Cell::new(5, 8);
     assert!(
         *target_in_arc(Direction::East, ACTOR, off_axis, &FiringArc::new(200.0)),
         "a wide (200°) arc must admit a 90°-off target",

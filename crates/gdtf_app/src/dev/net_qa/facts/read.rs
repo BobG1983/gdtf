@@ -11,15 +11,15 @@ use crate::{
 
 #[derive(SystemParam)]
 pub(crate) struct GameFactsParam<'w> {
-        app:         Res<'w, State<AppState>>,
-        running:     Option<Res<'w, State<RunningState>>>,
-        game:        Option<Res<'w, State<GameState>>>,
-        battlescape: Option<Res<'w, State<BattleScapeState>>>,
-        aftermath:   Option<Res<'w, State<AfterMathState>>>,
+    app:         Res<'w, State<AppState>>,
+    running:     Option<Res<'w, State<RunningState>>>,
+    game:        Option<Res<'w, State<GameState>>>,
+    battlescape: Option<Res<'w, State<BattleScapeState>>>,
+    aftermath:   Option<Res<'w, State<AfterMathState>>>,
 }
 
 impl GameFactsParam<'_> {
-                        pub(crate) fn sample(&self) -> GameFacts {
+    pub(crate) fn sample(&self) -> GameFacts {
         GameFacts::new(AppPhaseNet::new(
             LifecyclePhaseNet::from_state(self.app.get()),
             self.running

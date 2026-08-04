@@ -72,7 +72,6 @@ fn fireable_enemy_cost_resolves_off_weapon_and_is_nonzero() {
     );
 }
 
-
 #[test]
 fn hovering_shootable_cover_populates_cell_and_mode_tu_cost() {
     let mut app = fire_target_app();

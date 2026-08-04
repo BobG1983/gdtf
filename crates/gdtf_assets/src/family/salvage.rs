@@ -49,7 +49,7 @@ struct SalvageMember<T>
 where
     T: TypePath + Send + Sync + 'static,
 {
-    path: SalvageMemberPath,
+    path:   SalvageMemberPath,
     handle: Handle<RonAsset<T>>,
 }
 
@@ -59,7 +59,7 @@ pub struct RonFolderSalvage<T>
 where
     T: TypePath + Send + Sync + 'static,
 {
-    folder: SalvageFolder,
+    folder:  SalvageFolder,
     members: Vec<SalvageMember<T>>,
 }
 
@@ -95,7 +95,7 @@ where
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MalformedMember {
     /// Path of the bad file.
-    pub path: FindingReferrer,
+    pub path:  FindingReferrer,
     /// Load error detail.
     pub error: FindingDetail,
 }
@@ -110,7 +110,7 @@ where
     /// All members resolved (loaded or failed).
     Settled {
         /// Successfully loaded members.
-        loaded: Vec<SalvagedMember<'a, T>>,
+        loaded:    Vec<SalvagedMember<'a, T>>,
         /// Failed members.
         malformed: Vec<MalformedMember>,
     },
@@ -161,7 +161,7 @@ where
     for member in &salvage.members {
         match asset_server.load_state(member.handle.id()) {
             LoadState::Failed(error) => malformed.push(MalformedMember {
-                path: FindingReferrer::new(member.path.as_str().to_owned()),
+                path:  FindingReferrer::new(member.path.as_str().to_owned()),
                 error: FindingDetail::new(error.to_string()),
             }),
             LoadState::Loaded => {
@@ -212,7 +212,7 @@ pub fn report_malformed_members(
         );
         if let Some(report) = report.as_deref_mut() {
             report.record(ContentFinding::MalformedFile {
-                path: member.path,
+                path:   member.path,
                 family: family.clone(),
                 detail: member.error,
             });

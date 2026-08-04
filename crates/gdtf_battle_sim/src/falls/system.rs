@@ -44,33 +44,33 @@ type FallerQuery<'world, 'state> = Query<
 /// Grids and tables needed to resolve falls.
 #[derive(SystemParam)]
 pub struct FallGrids<'w> {
-    surface: Option<Res<'w, SurfaceGrid>>,
+    surface:   Option<Res<'w, SurfaceGrid>>,
     occupancy: Option<Res<'w, OccupancyGrid>>,
-    tuning: Option<Res<'w, CombatTuning>>,
-    tables: Option<Res<'w, InjuryTables>>,
-    registry: Option<Res<'w, InjuryRegistry>>,
+    tuning:    Option<Res<'w, CombatTuning>>,
+    tables:    Option<Res<'w, InjuryTables>>,
+    registry:  Option<Res<'w, InjuryRegistry>>,
 }
 
 /// RNG streams for fall wound rolls.
 #[derive(SystemParam)]
 pub struct FallRngs<'w> {
     severity: Option<ResMut<'w, SeverityRng>>,
-    injury: Option<ResMut<'w, InjuryRng>>,
+    injury:   Option<ResMut<'w, InjuryRng>>,
 }
 
 /// Armor queries for the falling ganger.
 #[derive(SystemParam)]
 pub struct FallArmor<'w, 's> {
-    wears: Query<'w, 's, &'static Wears>,
+    wears:  Query<'w, 's, &'static Wears>,
     pieces: Query<'w, 's, PieceArmorMut, bevy::prelude::With<WornBy>>,
 }
 
 /// Outbound fall / injury / death messages.
 #[derive(SystemParam)]
 pub struct FallSignals<'w> {
-    fell: MessageWriter<'w, FallOccurred>,
+    fell:     MessageWriter<'w, FallOccurred>,
     injuries: MessageWriter<'w, InjuryInflicted>,
-    deaths: MessageWriter<'w, OnDeathOccurred>,
+    deaths:   MessageWriter<'w, OnDeathOccurred>,
 }
 
 /// On [`SlabDestroyed`], move gangers down and resolve fall hits.
@@ -132,11 +132,11 @@ pub fn apply_falls(
                         .get_mut(piece_entity)
                         .ok()
                         .map(|piece| StruckPiece {
-                            floor: *piece.floor,
+                            floor:      *piece.floor,
                             protection: *piece.protection,
-                            hardness: *piece.hardness,
+                            hardness:   *piece.hardness,
                             armor_type: *piece.armor_type,
-                            integrity: piece.integrity.into_inner(),
+                            integrity:  piece.integrity.into_inner(),
                         })
                 });
 
@@ -146,22 +146,22 @@ pub fn apply_falls(
                     storeys: landing.storeys,
                     part,
                     target: TargetGanger {
-                        hp: &mut hp,
-                        wounds: &mut wounds,
-                        life: &mut life,
-                        piece: piece_view,
+                        hp:        &mut hp,
+                        wounds:    &mut wounds,
+                        life:      &mut life,
+                        piece:     piece_view,
                         inflicted: &mut inflicted,
                         toughness: *toughness,
-                        luck: *luck,
+                        luck:      *luck,
                     },
                     target_entity: entity,
                 },
                 FallWoundEnv {
-                    tuning: &tuning,
-                    tables: &tables,
-                    registry: &registry,
+                    tuning:       &tuning,
+                    tables:       &tables,
+                    registry:     &registry,
                     severity_rng: &mut severity_rng,
-                    injury_rng: &mut injury_rng,
+                    injury_rng:   &mut injury_rng,
                 },
             );
 

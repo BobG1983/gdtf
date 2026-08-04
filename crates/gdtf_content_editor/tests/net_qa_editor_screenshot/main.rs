@@ -112,7 +112,7 @@ fn a_claimed_capture_lands_a_png_on_disk() -> TestResult {
     assert!(
         lit > 0,
         "the capture at {} is a fully black {}x{} frame — the editor's camera is not rendering \
-         into the render target the capture reads (GTW-922), so the PNG shows nothing",
+         into the render target the capture reads, so the PNG shows nothing",
         png.display(),
         decoded.width(),
         decoded.height(),

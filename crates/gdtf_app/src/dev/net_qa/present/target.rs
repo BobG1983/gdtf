@@ -11,7 +11,7 @@ const CAPTURE_FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
 pub(in crate::dev::net_qa) struct QaCaptureTarget(Handle<Image>);
 
 impl QaCaptureTarget {
-        const fn new(handle: Handle<Image>) -> Self {
+    const fn new(handle: Handle<Image>) -> Self {
         Self(handle)
     }
 }

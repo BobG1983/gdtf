@@ -1,7 +1,7 @@
 use crate::mcp::tools::name::ToolName;
 
 impl ToolName {
-        pub(super) const fn description(self) -> &'static str {
+    pub(super) const fn description(self) -> &'static str {
         match self {
             Self::Launch => {
                 "Start a child process and wait for its QA channel to answer. `host` picks \

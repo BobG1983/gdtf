@@ -20,46 +20,46 @@ pub enum TerrainSimKind {
     /// Full wall.
     Wall {
         /// Hit points.
-        hp: CoverHp,
+        hp:               CoverHp,
         /// Armor protection.
         armor_protection: ArmorProtection,
         /// Armor hardness.
-        armor_hardness: ArmorHardness,
+        armor_hardness:   ArmorHardness,
         /// Height band for cover.
-        height_band: HeightBand,
+        height_band:      HeightBand,
     },
     /// Partial cover.
     Cover {
         /// Hit points.
-        hp: CoverHp,
+        hp:               CoverHp,
         /// Armor protection.
         armor_protection: ArmorProtection,
         /// Armor hardness.
-        armor_hardness: ArmorHardness,
+        armor_hardness:   ArmorHardness,
         /// Height band for cover.
-        height_band: HeightBand,
+        height_band:      HeightBand,
     },
     /// Floor slab.
     Slab {
         /// Hit points.
-        hp: SlabHp,
+        hp:               SlabHp,
         /// Armor protection.
         armor_protection: ArmorProtection,
         /// Armor hardness.
-        armor_hardness: ArmorHardness,
+        armor_hardness:   ArmorHardness,
     },
     /// Weapon emplacement.
     Emplacement {
         /// Hit points.
-        hp: CoverHp,
+        hp:               CoverHp,
         /// Armor protection.
         armor_protection: ArmorProtection,
         /// Armor hardness.
-        armor_hardness: ArmorHardness,
+        armor_hardness:   ArmorHardness,
         /// Height band for cover.
-        height_band: HeightBand,
+        height_band:      HeightBand,
         /// Mounted weapon key.
-        mounted_weapon: WeaponName,
+        mounted_weapon:   WeaponName,
     },
 }
 
@@ -94,7 +94,7 @@ pub enum TerrainPresenterKind {
         /// Graphic key.
         graphic_name: TerrainGraphicKey,
         /// Optional footfall sound.
-        footfall: Option<FootfallSound>,
+        footfall:     Option<FootfallSound>,
     },
     /// Emplacement graphic.
     Emplacement {

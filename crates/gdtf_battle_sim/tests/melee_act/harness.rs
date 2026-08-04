@@ -84,10 +84,9 @@ pub(crate) fn life_of(app: &App, entity: Entity) -> Option<LifeState> {
     app.world().get::<LifeState>(entity).copied()
 }
 
-
 #[derive(Resource, Default)]
 pub(crate) struct MeleeLog {
-        hits: Vec<MeleeResolved>,
+    hits: Vec<MeleeResolved>,
 }
 
 pub(crate) fn record_melee(

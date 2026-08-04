@@ -10,7 +10,6 @@ use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed
 
 use super::{actors::*, harness::*};
 
-
 fn spawn_throw_actor(
     app: &mut App,
     x: i32,

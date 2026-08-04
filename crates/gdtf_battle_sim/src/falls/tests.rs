@@ -24,7 +24,6 @@ fn cell() -> Cell {
     Cell::new(3, 4)
 }
 
-
 #[test]
 fn drop_lands_on_ground_when_no_lower_slab() {
     let surface = SurfaceGrid::new();
@@ -126,7 +125,6 @@ fn drop_distance_is_always_at_least_one() {
     );
 }
 
-
 struct Faller {
     hp:        Hp,
     wounds:    Wounds,
@@ -137,7 +135,7 @@ struct Faller {
 }
 
 impl Faller {
-            fn fresh() -> Self {
+    fn fresh() -> Self {
         Self {
             hp:        Hp::new(1000),
             wounds:    Wounds::new(200),
@@ -148,7 +146,7 @@ impl Faller {
         }
     }
 
-        fn target(&mut self) -> TargetGanger<'_> {
+    fn target(&mut self) -> TargetGanger<'_> {
         TargetGanger {
             hp:        &mut self.hp,
             wounds:    &mut self.wounds,
@@ -258,7 +256,6 @@ fn corpse_faller_is_skipped_without_damage() {
     assert_eq!(*faller.hp, hp_before, "a corpse takes no HP loss");
     assert_eq!(*faller.wounds, wounds_before, "a corpse spends no Wounds");
 }
-
 
 #[test]
 fn fall_signal_and_landing_carry_their_fields() {

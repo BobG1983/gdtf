@@ -4,7 +4,7 @@ name: Formatting
 # clippy -D warnings, and test — all WITHOUT the `dynamic_linking` feature, which
 # is a dev-iteration speedup only and is never used for release artifacts. The
 # static release-binary build (`cargo build -p grimdark_turfwar --release`) is NOT
-# run here: it is deferred to the (much-later) packaging process. See GTW-140.
+# run here: it is deferred to the (much-later) packaging process. See.
 on:
   push:
     branches: [develop]

@@ -8,7 +8,6 @@ use crate::{
     weapon::MagazineSize,
 };
 
-
 #[test]
 fn can_fire_true_when_all_guards_pass() {
     let tuning = CombatTuning::default();
@@ -16,7 +15,7 @@ fn can_fire_true_when_all_guards_pass() {
     let m = mode(0.2, 1);
 
     let life = LifeState::Alive;
-    let tu = Tu::new(255); 
+    let tu = Tu::new(255);
     let tu_max = TuMax::new(100);
     let aiming = Aiming::new(false);
     let magazine = Magazine::new(LoadedRounds::new(10), size, RELOAD_TU);
@@ -27,7 +26,6 @@ fn can_fire_true_when_all_guards_pass() {
         "an alive, affordable, loaded shooter at an in-bounds target can fire"
     );
 }
-
 
 #[test]
 fn can_fire_false_when_not_alive() {
@@ -48,7 +46,6 @@ fn can_fire_false_when_not_alive() {
         );
     }
 }
-
 
 #[test]
 fn can_fire_false_when_tu_short_of_mode_charge() {
@@ -101,7 +98,6 @@ fn aiming_costs_strictly_more_tu_than_hip_fire() {
     );
 }
 
-
 #[test]
 fn can_fire_false_when_magazine_empty() {
     let tuning = CombatTuning::default();
@@ -120,7 +116,6 @@ fn can_fire_false_when_magazine_empty() {
         "an empty magazine cannot fire even when everything else is affordable"
     );
 }
-
 
 #[test]
 fn in_bounds_uses_grid_width_height_and_max_levels() {
@@ -157,7 +152,6 @@ fn in_bounds_uses_grid_width_height_and_max_levels() {
         "negative y is out of bounds"
     );
 }
-
 
 #[test]
 fn can_fire_takes_no_los_input_and_passes_regardless() {

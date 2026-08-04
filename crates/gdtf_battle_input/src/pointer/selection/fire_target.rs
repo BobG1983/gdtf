@@ -16,13 +16,13 @@ use crate::{InspectTarget, SelectedFireMode, selection::resources::SelectedShoot
 /// Resources read when resolving the fire-target highlight.
 #[derive(SystemParam)]
 pub struct FireTargetReads<'w> {
-    selected: Res<'w, SelectedShooter>,
+    selected:  Res<'w, SelectedShooter>,
     fire_mode: Res<'w, SelectedFireMode>,
-    inspect: Res<'w, InspectTarget>,
+    inspect:   Res<'w, InspectTarget>,
     occupancy: Res<'w, OccupancyGrid>,
-    player: Res<'w, PlayerFaction>,
-    tuning: Res<'w, CombatTuning>,
-    squad: Option<Res<'w, SquadVisibility>>,
+    player:    Res<'w, PlayerFaction>,
+    tuning:    Res<'w, CombatTuning>,
+    squad:     Option<Res<'w, SquadVisibility>>,
 }
 
 /// Update the fire-target highlight from hover and selection.

@@ -19,7 +19,6 @@ use gdtf_test_utils::{MessageProbePlugin, clear_mouse, press_left, probed};
 
 use super::harness::*;
 
-
 const PLAYER_FACTION: Faction = Faction::new(0);
 
 const VIEWPORT_RECT: URect = URect {
@@ -145,7 +144,6 @@ fn click_in_the_bottom_margin_resolves_none_and_does_not_move() {
         "a left-click in the bottom margin must emit NO MoveRequested (no move through the UI)",
     );
 }
-
 
 fn spawn_ui_panel(app: &mut App, center: Vec2, size: Vec2) {
     app.world_mut().spawn((

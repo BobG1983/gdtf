@@ -14,7 +14,7 @@ use crate::{CELL_PX, CellVisibility, WORLD_RENDER_LAYER, cell_to_world};
 #[derive(Message, Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HighlightRequest {
     #[deref]
-    cell: Option<CellLevel>,
+    cell:       Option<CellLevel>,
     visibility: CellVisibility,
 }
 

@@ -177,8 +177,8 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
             gdtf_battle_sim::fire::fire(
                 shooter,
                 FireOrder {
-                    mode: &mode,
-                    target_cell: Cell::new(target_cell().x, target_cell().y),
+                    mode:         &mode,
+                    target_cell:  Cell::new(target_cell().x, target_cell().y),
                     target_level: Level::new(0),
                 },
                 &mut shooters,
@@ -190,10 +190,10 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
                 &melee,
                 &mounted,
                 BattleGrids {
-                    occupancy: &occupancy,
-                    surface: &surface,
-                    cover: &mut cover,
-                    slab: &mut slab,
+                    occupancy:   &occupancy,
+                    surface:     &surface,
+                    cover:       &mut cover,
+                    slab:        &mut slab,
                     brace_cells: &BraceStairCells::empty(),
                 },
                 &tuning,
@@ -206,8 +206,8 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         }
         Err(_) => Volley {
             reports: Vec::new(),
-            shots: Vec::new(),
-            splash: Vec::new(),
+            shots:   Vec::new(),
+            splash:  Vec::new(),
         },
     };
     state.apply(app.world_mut());

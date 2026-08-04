@@ -1,4 +1,4 @@
-// GTW-651 test fixture — ONE gang whose member's every equipment key DANGLES against this
+// test fixture — ONE gang whose member's every equipment key DANGLES against this
 // fixture root (validate_root materializes no weapons / armor / melee folders, so each of
 // those families fails closed to its EMPTY registry): the editor's authoring-time gang
 // equipment-refs check must surface each key as a `DanglingRef` finding.

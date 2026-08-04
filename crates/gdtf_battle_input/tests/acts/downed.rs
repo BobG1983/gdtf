@@ -10,7 +10,6 @@ use gdtf_test_utils::probed;
 
 use super::harness::*;
 
-
 #[test]
 fn downed_intents_emit_requests_for_selection_over_carried_target() {
     let mut app = acts_app();

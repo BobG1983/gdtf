@@ -49,7 +49,7 @@ fn off_storey_route_cells_hard_cut() {
     let l0 = Level::new(0);
     let l1 = Level::new(1);
     let on0_a = CellLevel::new(Cell::new(5, 5), l0);
-    let on0_b = CellLevel::new(Cell::new(6, 5), l0); 
+    let on0_b = CellLevel::new(Cell::new(6, 5), l0);
     let on1_a = CellLevel::new(Cell::new(8, 5), l1);
     let on1_b = CellLevel::new(Cell::new(9, 5), l1);
 

@@ -84,9 +84,9 @@ fn relation_to(
 /// Grid resources needed for reachable-cell planning.
 #[derive(SystemParam)]
 pub struct ReachableGrids<'w> {
-    pub(crate) grid: Res<'w, OccupancyGrid>,
-    pub(crate) links: Res<'w, VerticalLinkGraph>,
-    pub(crate) squad: Res<'w, SquadVisibility>,
-    pub(crate) tuning: Res<'w, CombatTuning>,
+    pub(crate) grid:        Res<'w, OccupancyGrid>,
+    pub(crate) links:       Res<'w, VerticalLinkGraph>,
+    pub(crate) squad:       Res<'w, SquadVisibility>,
+    pub(crate) tuning:      Res<'w, CombatTuning>,
     pub(crate) floor_costs: Res<'w, FloorCostGrid>,
 }

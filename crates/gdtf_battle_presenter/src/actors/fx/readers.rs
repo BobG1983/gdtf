@@ -38,7 +38,7 @@ pub(super) fn fx_sprite_scaled(
         effects.image.clone(),
         TextureAtlas {
             layout: effects.layout.clone(),
-            index: *index,
+            index:  *index,
         },
     );
     sprite.custom_size = Some(Vec2::splat(CELL_PX * scale));

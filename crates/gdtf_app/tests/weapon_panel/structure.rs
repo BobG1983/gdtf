@@ -1,4 +1,4 @@
-//! GTW-298 authoritative cluster structure + responsive (non-px) sizing of content and bands.
+//! authoritative cluster structure + responsive (non-px) sizing of content and bands.
 
 use bevy::prelude::*;
 use gdtf_app::test_support::{
@@ -12,7 +12,6 @@ use gdtf_battle_sim::{
 };
 
 use super::harness::*;
-
 
 #[test]
 fn weapon_content_has_responsive_min_height_not_px() {

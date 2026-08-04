@@ -7,7 +7,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn shove_tagged_ranged_connect_knocks_target_back() {
     let mut app = battle_app(false, true);
@@ -53,7 +52,6 @@ const fn single_shot_mode() -> FireModeSpec {
     )
 }
 
-
 #[test]
 fn non_shove_ranged_connect_does_not_knock_back() {
     let mut app = battle_app(false, false);
@@ -89,7 +87,6 @@ fn non_shove_ranged_connect_does_not_knock_back() {
         "a NON-`shove` gun never knocks the target back — even on a connecting shot"
     );
 }
-
 
 #[test]
 fn shove_tagged_ranged_miss_does_not_knock_back() {

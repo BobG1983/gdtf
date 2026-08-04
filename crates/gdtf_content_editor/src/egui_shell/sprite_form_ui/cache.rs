@@ -7,12 +7,12 @@ use gdtf_content_families::sprites::SpriteImagePath;
 
 #[derive(Default)]
 pub(crate) struct SpritePreviewCache {
-            textures:    HashMap<SpriteImagePath, Handle<Image>>,
-                path_exists: HashMap<SpriteImagePath, bool>,
+    textures:    HashMap<SpriteImagePath, Handle<Image>>,
+    path_exists: HashMap<SpriteImagePath, bool>,
 }
 
 impl SpritePreviewCache {
-                        pub(crate) fn handle(
+    pub(crate) fn handle(
         &mut self,
         asset_server: &AssetServer,
         path: &SpriteImagePath,
@@ -23,7 +23,7 @@ impl SpritePreviewCache {
             .clone()
     }
 
-                            pub(super) fn path_exists(&mut self, path: &SpriteImagePath) -> bool {
+    pub(super) fn path_exists(&mut self, path: &SpriteImagePath) -> bool {
         *self.path_exists.entry(path.clone()).or_insert_with(|| {
             Path::new(WORKSPACE_ASSETS_ROOT)
                 .join(path.as_str())

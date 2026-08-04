@@ -56,7 +56,7 @@ fn every_referenced_path_resolves() {
     );
     for file in &files {
         let Ok(bytes) = fs::read(root.join(file)) else {
-            continue; 
+            continue;
         };
         let text = String::from_utf8_lossy(&bytes);
         for reference in root_anchored(&text) {
@@ -79,6 +79,6 @@ fn every_referenced_path_resolves() {
     let rendered = dead.iter().cloned().collect::<Vec<_>>().join("\n");
     assert!(
         dead.is_empty(),
-        "dead path references (docs path-truth gate, GTW-626):\n{rendered}"
+        "dead path references (docs path-truth gate):\n{rendered}"
     );
 }

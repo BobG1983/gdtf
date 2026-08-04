@@ -10,7 +10,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize, TypePath, Debug, Clone, PartialEq, Eq)]
 struct Swatch {
-        tone: u32,
+    tone: u32,
 }
 
 #[derive(Resource, Default, Debug, PartialEq, Eq)]
@@ -33,8 +33,8 @@ impl ContentFamily for SwatchFamily {
 
 #[derive(Deserialize, TypePath, Debug, Clone, PartialEq, Eq)]
 struct Badge {
-        key:   String,
-        glyph: String,
+    key:   String,
+    glyph: String,
 }
 
 #[derive(Resource, Default, Debug, PartialEq, Eq)]
@@ -56,7 +56,7 @@ impl ContentFamily for BadgeFamily {
 
 #[derive(Deserialize, TypePath, Debug, Clone)]
 struct Relic {
-        #[allow(
+    #[allow(
         dead_code,
         reason = "no member file exists; the field anchors the schema"
     )]

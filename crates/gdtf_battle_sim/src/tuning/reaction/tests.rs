@@ -10,7 +10,6 @@ use crate::{
     rng::{BattleSeed, ReactionRng},
 };
 
-
 #[test]
 fn reaction_cap_is_monotone_nondecreasing_in_reactions() {
     let tuning = ReactionTuning::default();
@@ -66,7 +65,6 @@ fn clamp_probability_passes_through_in_range_value() {
     );
 }
 
-
 const ROLL_LEN: usize = 64;
 
 #[test]
@@ -85,7 +83,6 @@ fn rolls_interrupt_is_deterministic_replayable_under_same_seed() {
         "same seed + same probability must yield an identical interrupt sequence",
     );
 }
-
 
 #[test]
 fn higher_watcher_score_yields_strictly_higher_probability() {
@@ -129,7 +126,6 @@ fn mover_spending_more_tu_lowers_its_score_and_raises_watcher_probability() {
     );
 }
 
-
 #[test]
 fn extremes_clamp_strictly_inside_zero_and_one() {
     let tuning = ReactionTuning::default();
@@ -160,7 +156,6 @@ fn extremes_clamp_strictly_inside_zero_and_one() {
         "an overwhelming mover must clamp to p_min",
     );
 }
-
 
 #[test]
 fn cap_blocks_at_limit_and_reset_reopens() {
@@ -195,7 +190,6 @@ fn cap_blocks_at_limit_and_reset_reopens() {
         "after reset, may_interrupt must be true again",
     );
 }
-
 
 #[test]
 fn reaction_score_with_zero_tu_max_is_zero_and_finite() {

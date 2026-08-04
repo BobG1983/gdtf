@@ -37,7 +37,7 @@ fn reachable_draws_hard_cuts_to_active_storey_level_0() {
     let set = ReachableCells::new([
         (c0(1, 1), Tu::new(4)),
         (c0(2, 1), Tu::new(8)),
-        (c1(3, 3), Tu::new(20)), 
+        (c1(3, 3), Tu::new(20)),
     ]);
     let draws = reachable_draws(&set, Level::new(0));
     assert_eq!(
@@ -54,11 +54,11 @@ fn reachable_draws_hard_cuts_to_active_storey_level_0() {
 #[test]
 fn reachable_draws_hard_cuts_to_active_storey_level_1() {
     let set = ReachableCells::new([
-        (c0(1, 1), Tu::new(4)),  
-        (c0(2, 1), Tu::new(8)),  
-        (c1(2, 2), Tu::new(20)), 
-        (c1(3, 2), Tu::new(24)), 
-        (c1(2, 3), Tu::new(24)), 
+        (c0(1, 1), Tu::new(4)),
+        (c0(2, 1), Tu::new(8)),
+        (c1(2, 2), Tu::new(20)),
+        (c1(3, 2), Tu::new(24)),
+        (c1(2, 3), Tu::new(24)),
     ]);
     let draws = reachable_draws(&set, Level::new(1));
     assert_eq!(

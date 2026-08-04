@@ -12,9 +12,9 @@ use crate::states::running::game::battlescape::weapon_panel::components::{
 
 #[derive(bevy::ecs::query::QueryData)]
 pub(in crate::states::running::game::battlescape::weapon_panel) struct WeaponData {
-        name:     Option<&'static WeaponName>,
-        magazine: Option<&'static Magazine>,
-                    drawn:    Option<&'static DrawnMagazine>,
+    name:     Option<&'static WeaponName>,
+    magazine: Option<&'static Magazine>,
+    drawn:    Option<&'static DrawnMagazine>,
 }
 
 type ContentFilter = (
@@ -37,10 +37,10 @@ type ReloadFilter = (
 
 #[derive(bevy::ecs::system::SystemParam)]
 pub(in crate::states::running::game::battlescape::weapon_panel) struct WeaponWidgets<'w, 's> {
-            content:  Query<'w, 's, (&'static mut Visibility, &'static mut Node), ContentFilter>,
-        name:     Query<'w, 's, &'static mut Text, NameFilter>,
-        magazine: Query<'w, 's, (&'static mut Text, &'static mut Visibility), MagazineFilter>,
-        reload:   Query<'w, 's, &'static mut Visibility, ReloadFilter>,
+    content:  Query<'w, 's, (&'static mut Visibility, &'static mut Node), ContentFilter>,
+    name:     Query<'w, 's, &'static mut Text, NameFilter>,
+    magazine: Query<'w, 's, (&'static mut Text, &'static mut Visibility), MagazineFilter>,
+    reload:   Query<'w, 's, &'static mut Visibility, ReloadFilter>,
 }
 
 fn set_text(text: &mut Text, value: &str) {

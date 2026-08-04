@@ -9,15 +9,15 @@ use super::stats::ArmorPiece;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
 pub struct ArmorSpec {
     /// Head piece.
-    pub head: ArmorPiece,
+    pub head:      ArmorPiece,
     /// Torso piece.
-    pub torso: ArmorPiece,
+    pub torso:     ArmorPiece,
     /// Left arm.
-    pub left_arm: ArmorPiece,
+    pub left_arm:  ArmorPiece,
     /// Right arm.
     pub right_arm: ArmorPiece,
     /// Left leg.
-    pub left_leg: ArmorPiece,
+    pub left_leg:  ArmorPiece,
     /// Right leg.
     pub right_leg: ArmorPiece,
 }
@@ -41,11 +41,11 @@ impl ArmorSpec {
     #[must_use]
     pub const fn uniform(piece: ArmorPiece) -> Self {
         Self {
-            head: piece,
-            torso: piece,
-            left_arm: piece,
+            head:      piece,
+            torso:     piece,
+            left_arm:  piece,
             right_arm: piece,
-            left_leg: piece,
+            left_leg:  piece,
             right_leg: piece,
         }
     }

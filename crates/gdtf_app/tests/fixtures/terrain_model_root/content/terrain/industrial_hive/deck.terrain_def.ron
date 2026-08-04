@@ -1,4 +1,4 @@
-// GTW-487 C1 test fixture — a NEW UUID-keyed TerrainDef under the per-theme directory
+// C1 test fixture — a NEW UUID-keyed TerrainDef under the per-theme directory
 // layout `terrain/<theme>/<tile>.terrain_def.ron`. NOT shipped game content; exists only to
 // exercise the new terrain-def folder loader (the migration of real content is T06). Slab
 // kind so the theme's default-floor terrain resolves to something walkable.

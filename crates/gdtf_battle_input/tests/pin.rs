@@ -1,3 +1,4 @@
+//! Pin: inspect/pin selection against fire mode and shooter state.
 use bevy::{input::ButtonInput, prelude::*};
 use gdtf_battle_input::{
     GdtfBattleInputPlugin, InspectMode, InspectTarget, SelectedFireMode, SelectedShooter,
@@ -134,7 +135,6 @@ fn effective(app: &App) -> Option<InspectMode> {
         .map(InspectTarget::effective)
 }
 
-
 #[test]
 fn clicking_cover_pins_that_cell() {
     let mut app = pin_app();
@@ -152,7 +152,6 @@ fn clicking_cover_pins_that_cell() {
     );
 }
 
-
 #[test]
 fn clicking_an_enemy_pins_that_cell() {
     let mut app = pin_app();
@@ -169,7 +168,6 @@ fn clicking_an_enemy_pins_that_cell() {
         "clicking an enemy fighter must pin the inspect panel on its cell",
     );
 }
-
 
 #[test]
 fn clicking_an_empty_tile_unpins_and_hover_resumes() {
@@ -197,7 +195,6 @@ fn clicking_an_empty_tile_unpins_and_hover_resumes() {
         "after unpin the panel follows hover (no longer Pinned)",
     );
 }
-
 
 #[test]
 fn clicking_own_ganger_selects_and_keeps_the_pin() {
@@ -232,7 +229,6 @@ fn clicking_own_ganger_selects_and_keeps_the_pin() {
     );
 }
 
-
 #[test]
 fn clicking_to_fire_keeps_the_pin() {
     let mut app = pin_app();
@@ -255,7 +251,6 @@ fn clicking_to_fire_keeps_the_pin() {
         "a fire click must leave the panel pinned on the enemy (never unpin)",
     );
 }
-
 
 #[test]
 fn hover_does_not_change_the_panel_while_pinned() {

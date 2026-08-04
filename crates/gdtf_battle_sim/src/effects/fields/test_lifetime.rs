@@ -1,4 +1,4 @@
-//! GTW-659 — the `Turns(n)` LIFETIME pin on the REAL schedule: an authored
+//! — the `Turns(n)` LIFETIME pin on the REAL schedule: an authored
 use bevy::prelude::{App, Entity, Messages, MinimalPlugins};
 
 use super::{FieldDamage, FieldDef, FieldDuration, FieldRegistry, FieldTicked, ImmuneArmorTypes};

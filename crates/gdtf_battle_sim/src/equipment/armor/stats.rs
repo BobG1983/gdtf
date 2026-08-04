@@ -186,13 +186,13 @@ impl ArmorType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default)]
 pub struct ArmorPiece {
     /// Damage floor.
-    pub floor: ArmorFloor,
+    pub floor:      ArmorFloor,
     /// Protection.
     pub protection: ArmorProtection,
     /// Integrity.
-    pub integrity: ArmorIntegrity,
+    pub integrity:  ArmorIntegrity,
     /// Hardness.
-    pub hardness: ArmorHardness,
+    pub hardness:   ArmorHardness,
     /// Armor type.
     pub armor_type: ArmorType,
 }

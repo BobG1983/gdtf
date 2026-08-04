@@ -82,7 +82,7 @@ pub(crate) fn barrel_terrain_registry() -> TerrainDefRegistry {
             key:            BARREL,
             display_name:   TerrainDisplayName::new("Fuel Barrel".to_owned()),
             sim_kind:       TerrainSimKind::Cover {
-                hp:               CoverHp::new(1), 
+                hp:               CoverHp::new(1),
                 armor_protection: gdtf_battle_sim::armor::ArmorProtection::new(0),
                 armor_hardness:   gdtf_battle_sim::armor::ArmorHardness::new(0),
                 height_band:      gdtf_battle_sim::cover::HeightBand::Low,

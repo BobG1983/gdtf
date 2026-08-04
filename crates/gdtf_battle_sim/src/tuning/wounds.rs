@@ -77,9 +77,9 @@ impl Default for ExecuteTu {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct WoundCosts {
     /// Minor.
-    pub minor: WoundCost,
+    pub minor:    WoundCost,
     /// Major.
-    pub major: WoundCost,
+    pub major:    WoundCost,
     /// Critical.
     pub critical: WoundCost,
 }
@@ -87,8 +87,8 @@ pub struct WoundCosts {
 impl Default for WoundCosts {
     fn default() -> Self {
         Self {
-            minor: WoundCost(1),
-            major: WoundCost(2),
+            minor:    WoundCost(1),
+            major:    WoundCost(2),
             critical: WoundCost(3),
         }
     }

@@ -137,7 +137,7 @@ fn burst_kills_front_with_nothing_behind_does_not_re_wound_corpse() {
 #[test]
 fn single_shot_passes_through_preexisting_corpse_to_live_target() {
     let mut world = World::new();
-    let mode = burst_mode(1); 
+    let mode = burst_mode(1);
     let shooter = spawn_shooter(&mut world, mode);
     let corpse = line_ganger(&mut world, front_cell(), 0, LifeState::Dead);
     let live = line_ganger(&mut world, behind_cell(), 6, LifeState::Alive);

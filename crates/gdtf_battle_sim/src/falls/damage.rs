@@ -29,20 +29,20 @@ fn fall_damage_magnitude(per_storey: PerStoreyDamage, storeys: StoreysFallen) ->
 
 /// Inputs describing the fall impact on a target.
 pub(crate) struct FallImpact<'a> {
-    pub per_storey: PerStoreyDamage,
-    pub storeys: StoreysFallen,
-    pub part: crate::armor::BodyPart,
-    pub target: TargetGanger<'a>,
+    pub per_storey:    PerStoreyDamage,
+    pub storeys:       StoreysFallen,
+    pub part:          crate::armor::BodyPart,
+    pub target:        TargetGanger<'a>,
     pub target_entity: Entity,
 }
 
 /// Shared tables and RNGs for fall wound resolution.
 pub(crate) struct FallWoundEnv<'a> {
-    pub tuning: &'a CombatTuning,
-    pub tables: &'a InjuryTables,
-    pub registry: &'a InjuryRegistry,
+    pub tuning:       &'a CombatTuning,
+    pub tables:       &'a InjuryTables,
+    pub registry:     &'a InjuryRegistry,
     pub severity_rng: &'a mut SeverityRng,
-    pub injury_rng: &'a mut InjuryRng,
+    pub injury_rng:   &'a mut InjuryRng,
 }
 
 /// Resolve fall damage into an optional rolled injury.

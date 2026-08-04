@@ -94,13 +94,13 @@ fn default_floor_fill_is_anchored_to_the_ground_storey() {
     assert_eq!(
         ground_fill, expected_cells,
         "the default-floor fill must be spawned on the GROUND storey (storey 0, z≈0) — one sprite \
-         per cell — even when the edit cursor is on an upper storey (GTW-535); expected \
+         per cell — even when the edit cursor is on an upper storey; expected \
          {expected_cells}, got {ground_fill}",
     );
 
     assert_eq!(
         upper_fill, 0,
         "the unpainted ACTIVE upper storey (storey 2, z≈2·gap) must draw NO default-floor fill — \
-         the fill does not follow the edit cursor up the stack (GTW-535); got {upper_fill}",
+         the fill does not follow the edit cursor up the stack; got {upper_fill}",
     );
 }

@@ -1,4 +1,4 @@
-//! HARNESS NOTE (deviation from the ticket's "use `GdtfTestAppBuilder`", as in GTW-355): the
+//! HARNESS NOTE (deviation from the ticket's "use `GdtfTestAppBuilder`", as in): the
 mod cap;
 mod harness;
 mod mounted_reactor;

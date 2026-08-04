@@ -143,7 +143,7 @@ fn wall_entity_carries_graphic_and_slab_carries_footfall() {
     assert_eq!(
         wall_graphic,
         Some(TerrainGraphicKey::new("spec-wall-graphic".to_owned())),
-        "the spawned WALL entity must carry the def's presenter graphic (GTW-491 NET-NEW: a \
+        "the spawned WALL entity must carry the def's presenter graphic (NET-NEW: a \
          wall carried NO graphic on the old model)",
     );
 

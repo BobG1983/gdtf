@@ -5,7 +5,6 @@ use bevy::{
     prelude::{Commands, Entity, MinimalPlugins},
     scene::ScenePlugin,
 };
-use gdtf_battle_sim::test_support::{test_armor_registry, test_weapon_registry};
 use gdtf_battle_sim::{
     cone::{ConeAngle, PriorShots},
     cover::HeightBand,
@@ -15,6 +14,7 @@ use gdtf_battle_sim::{
     sample_cone::ConcentrationP,
     situation::{BattleRegistries, BattleSetup, Situation, setup_battle},
     stability::RecoilGrowth,
+    test_support::{test_armor_registry, test_weapon_registry},
     tuning::{GangerStatTuning, RecoilClimb},
 };
 

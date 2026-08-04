@@ -47,7 +47,7 @@ pub enum NetIntent {
         /// Target cell-level.
         target: CellLevelNet,
         /// Selected fire mode index.
-        mode: FireModeIndex,
+        mode:   FireModeIndex,
     },
     /// Move to a destination cell.
     Move {

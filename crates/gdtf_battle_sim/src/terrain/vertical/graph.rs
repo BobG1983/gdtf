@@ -34,7 +34,7 @@ pub enum InvalidVerticalLink {
 /// Indexed graph of vertical links for pathfinding.
 #[derive(Resource, Debug, Clone, Default)]
 pub struct VerticalLinkGraph {
-    links: Vec<VerticalLink>,
+    links:     Vec<VerticalLink>,
     by_origin: HashMap<CellLevel, Vec<usize>>,
 }
 

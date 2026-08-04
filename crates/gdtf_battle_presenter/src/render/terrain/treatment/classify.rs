@@ -30,7 +30,7 @@ pub enum IsolateView {
 /// Combined view + isolate settings used when classifying a storey.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StoreyViewMode {
-    view: ViewMode,
+    view:    ViewMode,
     isolate: IsolateView,
 }
 

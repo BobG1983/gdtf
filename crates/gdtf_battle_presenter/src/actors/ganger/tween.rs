@@ -13,7 +13,7 @@ const TWEEN_SECONDS: f32 = 0.2;
 pub struct SpriteTween {
     source: Vec3,
     target: Vec3,
-    clock: Timer,
+    clock:  Timer,
 }
 
 impl SpriteTween {

@@ -28,7 +28,7 @@ pub struct SuppressionApplied {
     /// Who was suppressed.
     pub ganger: Entity,
     /// Where they stood.
-    pub at: CellLevel,
+    pub at:     CellLevel,
 }
 
 impl SuppressionApplied {

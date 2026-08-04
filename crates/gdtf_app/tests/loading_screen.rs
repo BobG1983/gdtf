@@ -1,3 +1,4 @@
+//! Loading screen: shows in `Generation`, then despawns when `AnimateIn` begins.
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State, ui::GlobalZIndex};
 use gdtf_app::test_support::{
     AppState, BattleScapeState, GameState, LoadingScreenRoot, RunningState,

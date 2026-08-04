@@ -104,7 +104,7 @@ impl Footprint {
 /// Axis-aligned rect on the board.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RegionRect {
-    origin: Cell,
+    origin:    Cell,
     footprint: Footprint,
 }
 

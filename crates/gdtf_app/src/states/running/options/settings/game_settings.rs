@@ -6,13 +6,13 @@ use super::stepper::ProcgenStepperEnabled;
 
 #[derive(Resource, Clone, Copy, PartialEq, Eq, Debug)]
 pub(in crate::states::running::options) struct GameSettings {
-        pub(in crate::states::running::options) sound:           SoundEnabled,
-            #[cfg(feature = "dev_tools")]
+    pub(in crate::states::running::options) sound:           SoundEnabled,
+    #[cfg(feature = "dev_tools")]
     pub(in crate::states::running::options) procgen_stepper: ProcgenStepperEnabled,
 }
 
 impl GameSettings {
-                #[cfg(test)]
+    #[cfg(test)]
     #[must_use]
     pub(in crate::states::running::options) const fn with_sound(
         mut self,
@@ -24,7 +24,7 @@ impl GameSettings {
 }
 
 impl Default for GameSettings {
-                fn default() -> Self {
+    fn default() -> Self {
         Self {
             sound: SoundEnabled::new(true),
             #[cfg(feature = "dev_tools")]

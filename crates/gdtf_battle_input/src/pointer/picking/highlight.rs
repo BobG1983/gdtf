@@ -28,16 +28,13 @@ pub fn emit_highlight_request(
             && cell_squad_visible(squad.as_deref(), &cell, relation).is_squad_visible();
         (occupant_visible || *grid.is_blocked(&cell)).then_some(cell)
     });
-    let visibility = highlighted.map_or(
-        CellVisibility::NotSquadVisible,
-        |cell| {
-            let relation = grid
-                .as_ref()
-                .and_then(|grid| grid.occupant(&cell))
-                .map(|occupant| occupant_relation(occupant, &factions, player.as_deref()));
-            cell_squad_visible(squad.as_deref(), &cell, relation)
-        },
-    );
+    let visibility = highlighted.map_or(CellVisibility::NotSquadVisible, |cell| {
+        let relation = grid
+            .as_ref()
+            .and_then(|grid| grid.occupant(&cell))
+            .map(|occupant| occupant_relation(occupant, &factions, player.as_deref()));
+        cell_squad_visible(squad.as_deref(), &cell, relation)
+    });
     requests.write(HighlightRequest::new(highlighted, visibility));
 }
 

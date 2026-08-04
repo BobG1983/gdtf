@@ -41,7 +41,7 @@ mod tests {
     use super::{autoload_first_injury, autoload_weighting_table};
     use crate::injury_form::{InjuryDraft, WeightingDraft};
 
-        fn fixture_def(name: &str) -> InjuryDef {
+    fn fixture_def(name: &str) -> InjuryDef {
         let ron = format!(
             "(name: \"{name}\", category: Leg, severity: Minor, popup_text: \"X\", \
              log_text: \"x\", inspect_text: \"x\", effects: [DisableHand])",
@@ -54,7 +54,7 @@ mod tests {
         def
     }
 
-            #[test]
+    #[test]
     fn seeds_first_sorted_injury_exactly_once() {
         let registry = InjuryRegistry::new([
             (
@@ -80,7 +80,7 @@ mod tests {
         assert_eq!(empty_seeded.key(), "");
     }
 
-                #[test]
+    #[test]
     fn seeds_first_category_table_exactly_once() {
         let row = WeightedInjuryEntry::new(
             InjuryName::new("broken_nose".to_owned()),

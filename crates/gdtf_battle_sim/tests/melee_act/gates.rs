@@ -11,7 +11,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn gate_non_adjacent_produces_no_melee() {
     let mut app = battle_app();

@@ -96,9 +96,9 @@ fn box_node(border_vw: f32, radius_vw: f32, theme: &GdtfTheme, kind: BoxKind) ->
         border: UiRect::all(Val::Vw(border_vw)),
         border_radius: BorderRadius::all(Val::Vw(radius_vw)),
         padding: UiRect {
-            left: Val::Vw(*margin.l),
-            right: Val::Vw(*margin.r),
-            top: Val::Vh(*margin.t),
+            left:   Val::Vw(*margin.l),
+            right:  Val::Vw(*margin.r),
+            top:    Val::Vh(*margin.t),
             bottom: Val::Vh(*margin.b),
         },
         ..default()

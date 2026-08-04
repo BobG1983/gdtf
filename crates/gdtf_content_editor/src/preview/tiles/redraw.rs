@@ -130,13 +130,13 @@ pub(crate) fn redraw_preview_tiles(
 }
 
 struct StoreyPass<'a> {
-        map:           &'a EditorMap,
-        registry:      &'a TerrainDefRegistry,
-            sprites:       &'a SpriteDefRegistry,
-            asset_server:  &'a AssetServer,
-        overlays:      &'a PreviewOverlayImages,
-        default_floor: Option<TerrainUuid>,
-        size:          GridSize,
+    map:           &'a EditorMap,
+    registry:      &'a TerrainDefRegistry,
+    sprites:       &'a SpriteDefRegistry,
+    asset_server:  &'a AssetServer,
+    overlays:      &'a PreviewOverlayImages,
+    default_floor: Option<TerrainUuid>,
+    size:          GridSize,
 }
 
 fn draw_storey(

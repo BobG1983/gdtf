@@ -18,9 +18,9 @@ use crate::{
 /// Writers used after a successful melee connect.
 pub(super) struct MeleeConnectSignals<'a, 'r, 'f, 's, 'd> {
     pub(super) resolved: &'a mut MessageWriter<'r, MeleeResolved>,
-    pub(super) facts: &'a mut MeleeFacts<'f>,
-    pub(super) shoves: &'a mut MessageWriter<'s, ShoveRequested>,
-    pub(super) deaths: &'a mut MessageWriter<'d, OnDeathOccurred>,
+    pub(super) facts:    &'a mut MeleeFacts<'f>,
+    pub(super) shoves:   &'a mut MessageWriter<'s, ShoveRequested>,
+    pub(super) deaths:   &'a mut MessageWriter<'d, OnDeathOccurred>,
 }
 
 /// Write outcome messages for a connected melee strike.

@@ -6,7 +6,6 @@ use crate::{
     test_support::{SituationBuilder, ganger_at},
 };
 
-
 #[test]
 fn wall_is_path_blocked_after_setup() {
     let wall_cell = cl(2, 2, 0);

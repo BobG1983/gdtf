@@ -1,11 +1,11 @@
 # Content Reference Integrity — the unified dangling-reference contract
 
 How GDTF validates the authored content graph, what a finding looks like, and
-what happens to a malformed file or a dangling key (GTW-582, Q3 ruling
+what happens to a malformed file or a dangling key ( Q3 ruling
 2026-07-02). This is the authoring-facing contract. The HOST-AGNOSTIC per-edge
 checks (gang equipment, weapon attachments, theme/emplacement terrain,
 injury weighting, terrain `graphic_name` — shared by game and editor since
-GTW-630) live at
+) live at
 `crates/gdtf_content_families/src/validate/`; the game-bespoke edges
 (situation, prefabs) and the game's registration at
 `crates/gdtf_app/src/states/load/systems/validate/mod.rs`; the editor's
@@ -26,11 +26,11 @@ findings persist in the `ContentIntegrityReport` resource. Validation is loud,
 existing runtime guards (a battle setup still aborts fail-closed on a bad key)
 stay in place. Mistakes become visible at `Load`, not at battle-request time.
 
-The **content editor runs the same pass** (GTW-630) over the edges it loads —
+The **content editor runs the same pass** over the edges it loads —
 theme → terrain UUIDs, emplacement → mounted-weapon keys, the gang
 equipment keys (weapon / armor / melee incl. the implicit `fists` default —
-GTW-651), the injury-weighting keys (GTW-654), and the terrain
-`graphic_name` → sprite-def keys (GTW-663) — and RE-ARMS it on every
+), the injury-weighting keys, and the terrain
+`graphic_name` → sprite-def keys — and RE-ARMS it on every
 hot-reload of a watched registry: the
 report is reset, re-checked against the current content, and re-published.
 The watch set spans every registry the registered checks read, so an edit to
@@ -55,7 +55,7 @@ authoring time (at the save/edit), not on the next game launch.
 | situation `fields[].field` | field key | `assets/content/fields/` stems | file stem |
 | theme `default_floor` + `terrain` palette | terrain UUID | terrain defs | UUID |
 | terrain def `Emplacement.mounted_weapon` | weapon key | ranged weapon stems | file stem |
-| terrain def `presenter_kind.graphic_name` | sprite-def name | `assets/content/sprites/` stems (GTW-663) | file stem |
+| terrain def `presenter_kind.graphic_name` | sprite-def name | `assets/content/sprites/` stems | file stem |
 | prefab `theme` (`assets/content/maps/`) | theme UUID | theme defs | UUID |
 | prefab `placements[].piece` | terrain UUID | terrain defs | UUID |
 
@@ -83,7 +83,7 @@ graph integrity is CI-enforced, magnitudes never are).
 
 A `.ron` that fails to parse used to fail its whole folder — Bevy's
 `load_folder` aborts on the first bad member — and the folder then resolved to
-an EMPTY registry: every sibling vanished for one typo. Since GTW-582 the
+an EMPTY registry: every sibling vanished for one typo. Since the
 resolve SALVAGES the folder per-file: every well-formed sibling still loads,
 and the malformed file alone fails, loudly, as a `malformed file:` finding on
 the same report. A folder that cannot be enumerated at all (a missing
@@ -123,7 +123,7 @@ registries:
 
 Only game-bespoke edges (families the editor never loads — situations,
 prefabs) live in the game crate's `validate/` instead (the injuries edge
-moved to the shared crate in GTW-654 when the editor started loading the
+moved to the shared crate in when the editor started loading the
 injuries family).
 
 ## Fixing a finding

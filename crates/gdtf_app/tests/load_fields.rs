@@ -7,7 +7,7 @@ use gdtf_content_families::FieldsFamily;
 use load_suite::suite::{self, FamilyLoadContract};
 
 impl FamilyLoadContract for FieldsFamily {
-        const EXPECTED_MEMBERS: &'static [&'static str] = &["toxic_waste_pool"];
+    const EXPECTED_MEMBERS: &'static [&'static str] = &["toxic_waste_pool"];
 
     fn is_empty(registry: &FieldDefRegistry) -> bool {
         registry.is_empty()

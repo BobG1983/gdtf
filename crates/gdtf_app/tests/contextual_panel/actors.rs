@@ -10,7 +10,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 pub(crate) fn at(x: i32, y: i32) -> Position {
     Position::new(CellLevel::new(Cell::new(x, y), Level::new(0)))
 }

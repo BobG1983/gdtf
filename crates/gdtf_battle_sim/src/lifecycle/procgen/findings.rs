@@ -24,7 +24,7 @@ pub struct EmittedLevel {
     /// Authored situation ready for setup.
     pub situation: Situation,
     /// Soft findings from generation.
-    pub findings: Vec<ProcgenFinding>,
+    pub findings:  Vec<ProcgenFinding>,
     /// Player and enemy deployment zones.
-    pub zones: DeploymentZones,
+    pub zones:     DeploymentZones,
 }

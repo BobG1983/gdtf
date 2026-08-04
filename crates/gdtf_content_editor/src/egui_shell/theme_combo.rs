@@ -2,16 +2,16 @@ use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
 
 #[derive(Clone, Debug)]
 pub(crate) struct ThemeOption {
-        label: String,
-        key:   ThemeUuid,
+    label: String,
+    key:   ThemeUuid,
 }
 
 impl ThemeOption {
-        pub(crate) fn label(&self) -> &str {
+    pub(crate) fn label(&self) -> &str {
         &self.label
     }
 
-        pub(crate) const fn key(&self) -> ThemeUuid {
+    pub(crate) const fn key(&self) -> ThemeUuid {
         self.key
     }
 }

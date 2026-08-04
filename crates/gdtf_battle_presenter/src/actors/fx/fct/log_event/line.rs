@@ -7,8 +7,8 @@ use super::super::text::{CombatText, FctEmphasis};
 /// Text, color, and emphasis for a combat log line.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LogLine {
-    text: CombatText,
-    color: Color,
+    text:     CombatText,
+    color:    Color,
     emphasis: FctEmphasis,
 }
 

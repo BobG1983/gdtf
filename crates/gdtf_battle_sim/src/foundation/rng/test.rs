@@ -17,7 +17,6 @@ fn severity_stream(root: u64) -> Vec<u64> {
     (0..STREAM_LEN).map(|_| rng.next_u64()).collect()
 }
 
-
 #[test]
 fn same_seed_same_stream() {
     let a = shot_stream(0xDEAD_BEEF);
@@ -52,7 +51,6 @@ fn battle_seed_derefs_to_inner() {
     let seed = BattleSeed::new(7);
     assert_eq!(*seed, 7u64);
 }
-
 
 #[test]
 fn stream_independence_shot_unaffected_by_severity_draws() {
@@ -131,7 +129,6 @@ fn all_six_streams_produce_distinct_sequences() {
     }
 }
 
-
 const PINNED_SHOT_FIRST_U64: u64 = 0xb6e6_9916_cc82_4771;
 
 #[test]
@@ -153,7 +150,6 @@ fn pinned_severity_first_draw() {
     assert_eq!(actual, PINNED, "SeverityRng pinned first draw changed");
 }
 
-
 #[test]
 fn fnv1a64_is_stable() {
     let computed = fnv1a64(BattleSeed::new(0), b"gdtf.rng.shot.v1");
@@ -165,7 +161,6 @@ fn fnv1a64_is_stable() {
          or label were altered"
     );
 }
-
 
 fn rs_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {

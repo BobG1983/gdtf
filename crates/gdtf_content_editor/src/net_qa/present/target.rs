@@ -14,7 +14,7 @@ const CAPTURE_FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
 pub(in crate::net_qa) struct EditorQaCaptureTarget(ImageRenderTarget);
 
 impl EditorQaCaptureTarget {
-        pub(in crate::net_qa) const fn new(target: ImageRenderTarget) -> Self {
+    pub(in crate::net_qa) const fn new(target: ImageRenderTarget) -> Self {
         Self(target)
     }
 }

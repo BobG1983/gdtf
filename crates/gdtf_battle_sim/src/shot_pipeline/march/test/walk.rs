@@ -4,8 +4,8 @@ use super::support::*;
 fn flat_axis_aligned_ray_walks_expected_cell_sequence() {
     let tuning = CombatTuning::default();
     let surface = SurfaceGrid::new();
-    let muzzle = center(2, 2, 0); 
-    let dir = Vec3::new(1.0, 0.0, 0.0); 
+    let muzzle = center(2, 2, 0);
+    let dir = Vec3::new(1.0, 0.0, 0.0);
 
     for next_x in 3..=8 {
         let mut cover = CoverLedger::new();
@@ -39,8 +39,8 @@ fn flat_axis_aligned_ray_walks_expected_cell_sequence() {
 #[test]
 fn diagonal_climbing_ray_walks_expected_staircase() {
     let tuning = CombatTuning::default();
-    let surface = SurfaceGrid::new(); 
-    let muzzle = center(0, 0, 0); 
+    let surface = SurfaceGrid::new();
+    let muzzle = center(0, 0, 0);
     let dir = Vec3::new(1.0, 1.0, 1.0);
 
     let expected = [

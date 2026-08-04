@@ -56,7 +56,7 @@ pub(in crate::states::running::game::battlescape::generation) fn register_loadin
 mod tests {
     use super::LOADING_SHOT_ENV;
 
-                    #[test]
+    #[test]
     fn env_var_name_is_the_scene_contract() {
         assert_eq!(LOADING_SHOT_ENV, "GDTF_LOADING_SHOT");
     }

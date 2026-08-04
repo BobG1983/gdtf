@@ -18,7 +18,7 @@ impl StartBattleRequested {
         }
     }
 
-            pub(crate) const fn seed(&self) -> Option<BattleSeed> {
+    pub(crate) const fn seed(&self) -> Option<BattleSeed> {
         self.seed
     }
 }

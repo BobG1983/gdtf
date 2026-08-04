@@ -21,29 +21,29 @@ use crate::{
 #[serde(default)]
 pub struct Situation {
     /// Explicitly placed gangers.
-    pub gangers: Vec<PlacedGanger>,
+    pub gangers:        Vec<PlacedGanger>,
     /// Roster members without fixed cells (procgen places them).
-    pub rosters: Vec<RosterMember>,
+    pub rosters:        Vec<RosterMember>,
     /// Theme key.
-    pub theme: ThemeUuid,
+    pub theme:          ThemeUuid,
     /// Board size.
-    pub grid_size: GridSize,
+    pub grid_size:      GridSize,
     /// Wall cover placements.
-    pub walls: Vec<CoverSpawn>,
+    pub walls:          Vec<CoverSpawn>,
     /// Scatter cover placements.
-    pub scatter: Vec<CoverSpawn>,
+    pub scatter:        Vec<CoverSpawn>,
     /// Slab placements.
-    pub slabs: Vec<SlabSpawn>,
+    pub slabs:          Vec<SlabSpawn>,
     /// Vertical links between levels.
     pub vertical_links: Vec<VerticalLink>,
     /// Player's faction index.
     pub player_faction: Faction,
     /// Default floor terrain when no per-cell floor is authored.
-    pub default_floor: TerrainUuid,
+    pub default_floor:  TerrainUuid,
     /// Per-cell floor overrides.
-    pub floors: Vec<FloorSpawn>,
+    pub floors:         Vec<FloorSpawn>,
     /// Area-damage field placements.
-    pub fields: Vec<FieldSpawn>,
+    pub fields:         Vec<FieldSpawn>,
 }
 
 impl Situation {

@@ -62,13 +62,13 @@ pub fn march_arc(
         || !*z_in_grid(VoxelIndex::new(target.z))
     {
         return MarchResult {
-            kind: MarchKind::Miss,
-            at: key_of_clamped(
+            kind:   MarchKind::Miss,
+            at:     key_of_clamped(
                 VoxelIndex::new(thrower.x),
                 VoxelIndex::new(thrower.y),
                 VoxelIndex::new(thrower.z),
             ),
-            band: round_band_for_cell(muzzle, tuning),
+            band:   round_band_for_cell(muzzle, tuning),
             impact: muzzle,
         };
     }
@@ -103,9 +103,9 @@ pub fn march_arc(
     }
 
     MarchResult {
-        kind: MarchKind::Ground,
-        at: CellLevel::new(target_cell, target_level),
-        band: round_band_for_cell(landing, tuning),
+        kind:   MarchKind::Ground,
+        at:     CellLevel::new(target_cell, target_level),
+        band:   round_band_for_cell(landing, tuning),
         impact: landing,
     }
 }
@@ -175,9 +175,9 @@ fn roof_block_at(
     let slab_key = key_of(VoxelIndex::new(cell.x), VoxelIndex::new(cell.y), boundary);
     if surface.slab_state(&slab_key) == SlabState::Present {
         return Some(MarchResult {
-            kind: MarchKind::Slab,
-            at: slab_key,
-            band: round_band_for_cell(cross, tuning),
+            kind:   MarchKind::Slab,
+            at:     slab_key,
+            band:   round_band_for_cell(cross, tuning),
             impact: cross,
         });
     }

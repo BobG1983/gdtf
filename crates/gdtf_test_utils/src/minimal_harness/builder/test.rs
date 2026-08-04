@@ -5,7 +5,7 @@ use super::*;
 
 #[test]
 fn starting_in_running_enters_running_menu_after_one_update() {
-    // GTW-322 — entering `Running` enters `Menu`, whose `spawn_menu` now authors its tree
+    // — entering `Running` enters `Menu`, whose `spawn_menu` now authors its tree
     let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();

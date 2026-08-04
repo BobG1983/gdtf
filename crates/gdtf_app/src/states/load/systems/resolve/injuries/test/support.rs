@@ -61,7 +61,7 @@ pub(super) fn weighting(
     parsed.ok()
 }
 
-/// [`weighting`] fixture above is the pre-GTW-452 shape (its `#[serde(default)]`
+/// [`weighting`] fixture above is the previous shape (its `#[serde(default)]`
 pub(super) fn weighting_in_context(
     category: InjuryCategory,
     context: DamageContext,

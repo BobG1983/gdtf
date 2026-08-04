@@ -7,7 +7,7 @@ use crate::{EditorMode, canvas::CanvasZoom, terrain_form::TerrainKindChoice};
 pub(super) struct ForcedMode(EditorMode);
 
 impl ForcedMode {
-                    pub(super) fn from_env_value(value: &str) -> Option<Self> {
+    pub(super) fn from_env_value(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "terrain" => Some(Self(EditorMode::Terrain)),
             "theme" => Some(Self(EditorMode::Theme)),
@@ -28,7 +28,7 @@ impl ForcedMode {
 pub(super) struct ForcedTerrainKind(TerrainKindChoice);
 
 impl ForcedTerrainKind {
-                pub(super) fn from_env_value(value: &str) -> Option<Self> {
+    pub(super) fn from_env_value(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "wall" => Some(Self(TerrainKindChoice::Wall)),
             "cover" => Some(Self(TerrainKindChoice::Cover)),
@@ -43,7 +43,7 @@ impl ForcedTerrainKind {
 pub(super) struct ForcedAttachment(AttachmentName);
 
 impl ForcedAttachment {
-                pub(super) fn from_env_value(value: &str) -> Option<Self> {
+    pub(super) fn from_env_value(value: &str) -> Option<Self> {
         let key = value.trim();
         (!key.is_empty()).then(|| Self(AttachmentName::new(key.to_owned())))
     }
@@ -53,7 +53,7 @@ impl ForcedAttachment {
 pub(super) struct ForcedWeapon(WeaponName);
 
 impl ForcedWeapon {
-                    pub(super) fn from_env_value(value: &str) -> Option<Self> {
+    pub(super) fn from_env_value(value: &str) -> Option<Self> {
         let key = value.trim();
         (!key.is_empty()).then(|| Self(WeaponName::new(key.to_owned())))
     }
@@ -63,7 +63,7 @@ impl ForcedWeapon {
 pub(super) struct ForcedMeleeWeapon(WeaponName);
 
 impl ForcedMeleeWeapon {
-                    pub(super) fn from_env_value(value: &str) -> Option<Self> {
+    pub(super) fn from_env_value(value: &str) -> Option<Self> {
         let key = value.trim();
         (!key.is_empty()).then(|| Self(WeaponName::new(key.to_owned())))
     }
@@ -73,7 +73,7 @@ impl ForcedMeleeWeapon {
 pub(super) struct ForcedZoom(CanvasZoom);
 
 impl ForcedZoom {
-                    pub(super) fn from_env_value(value: &str) -> Option<Self> {
+    pub(super) fn from_env_value(value: &str) -> Option<Self> {
         let factor = value.trim().parse::<f32>().ok().filter(|f| f.is_finite())?;
         Some(Self(CanvasZoom::identity().scaled(factor)))
     }
@@ -81,12 +81,12 @@ impl ForcedZoom {
 
 #[derive(Resource, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ForcedView {
-                    Full,
-                Isolate,
+    Full,
+    Isolate,
 }
 
 impl ForcedView {
-                    pub(super) fn from_env_value(value: &str) -> Option<Self> {
+    pub(super) fn from_env_value(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "full" | "fullview" | "full_view" => Some(Self::Full),
             "isolate" => Some(Self::Isolate),

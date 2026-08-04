@@ -29,11 +29,11 @@ use crate::EditorState;
 enum Wiring {
     Disabled,
     Listener {
-        port: NetQaPort,
+        port:       NetQaPort,
         io_timeout: NetIoTimeout,
     },
     Bound {
-        listener: Mutex<Option<TcpListener>>,
+        listener:   Mutex<Option<TcpListener>>,
         io_timeout: NetIoTimeout,
     },
 }
@@ -49,7 +49,7 @@ impl NetQaEditorPlugin {
     pub fn from_env() -> Self {
         let wiring = if editor_net_qa_enabled() {
             Wiring::Listener {
-                port: editor_port_from_env(),
+                port:       editor_port_from_env(),
                 io_timeout: DEFAULT_IO_TIMEOUT,
             }
         } else {
@@ -67,7 +67,7 @@ impl NetQaEditorPlugin {
         let (listener, bound) = bind_listener(port)?;
         let plugin = Self {
             wiring: Wiring::Bound {
-                listener: Mutex::new(Some(listener)),
+                listener:   Mutex::new(Some(listener)),
                 io_timeout: DEFAULT_IO_TIMEOUT,
             },
         };

@@ -11,8 +11,8 @@ const CAPTURE_LIMIT: Duration = Duration::from_secs(30);
 const CAPTURE_STEP: Duration = Duration::from_millis(1);
 
 enum Stream {
-        Out,
-        Err,
+    Out,
+    Err,
 }
 
 fn child_printing(lines: &[(Stream, &str)]) -> Box<dyn ManagedChild> {

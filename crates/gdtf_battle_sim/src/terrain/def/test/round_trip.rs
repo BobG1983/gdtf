@@ -121,7 +121,7 @@ fn slab_with_path_override(over: Option<BlocksPathingOverride>) -> TerrainDef {
     }
 }
 
-/// GTW-705 (special item) — the [`BlocksPathingOverride`] wrap is `#[serde(transparent)]`, so an
+/// (special item) — the [`BlocksPathingOverride`] wrap is `#[serde(transparent)]`, so an
 #[test]
 fn blocks_pathing_override_serializes_transparently() {
     for over in [

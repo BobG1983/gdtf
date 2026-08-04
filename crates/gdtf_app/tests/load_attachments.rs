@@ -15,7 +15,7 @@ use load_suite::suite::{self, FamilyLoadContract};
 const REDRIVE_SENTINEL: &str = "Redrive Sentinel";
 
 impl FamilyLoadContract for AttachmentsFamily {
-                const EXPECTED_MEMBERS: &'static [&'static str] = &["scoped_sight", "suppressor"];
+    const EXPECTED_MEMBERS: &'static [&'static str] = &["scoped_sight", "suppressor"];
 
     fn is_empty(registry: &AttachmentRegistry) -> bool {
         registry.is_empty()
@@ -29,15 +29,15 @@ impl FamilyLoadContract for AttachmentsFamily {
 }
 
 impl FamilyBehaviorContract for AttachmentsFamily {
-            const SALVAGE_FIXTURE_ROOT: &'static str = "attachment_salvage_root";
+    const SALVAGE_FIXTURE_ROOT: &'static str = "attachment_salvage_root";
 
-        const SALVAGE_GOOD_MEMBERS: &'static [&'static str] = &["good_optic", "good_grip"];
+    const SALVAGE_GOOD_MEMBERS: &'static [&'static str] = &["good_optic", "good_grip"];
 
-        const SALVAGE_BROKEN_FILE: &'static str = "broken.attachment.ron";
+    const SALVAGE_BROKEN_FILE: &'static str = "broken.attachment.ron";
 
-            const MISSING_FOLDER_FIXTURE_ROOT: &'static str = "missing_family_root";
+    const MISSING_FOLDER_FIXTURE_ROOT: &'static str = "missing_family_root";
 
-            const PROBE_MEMBER: &'static str = "scoped_sight";
+    const PROBE_MEMBER: &'static str = "scoped_sight";
 
     fn is_empty(registry: &AttachmentRegistry) -> bool {
         registry.is_empty()

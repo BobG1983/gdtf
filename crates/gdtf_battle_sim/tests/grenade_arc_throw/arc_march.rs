@@ -7,7 +7,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 fn arc_tuning() -> CombatTuning {
     CombatTuning::default()
 }
@@ -63,7 +62,6 @@ fn a_same_level_lob_is_not_self_blocked_by_a_same_level_roof() {
         "a same-level lob clears cover but stays under the same-level roof, landing on target: {landing:?}",
     );
 }
-
 
 #[test]
 fn a_steep_lob_is_blocked_by_an_intermediate_roof_it_crosses_mid_segment() {
@@ -126,7 +124,6 @@ fn march_arc_is_a_pure_function() {
     let b = march_arc(at_level(6, 5, 2), ground(9, 6), &surface, &arc_tuning());
     assert_eq!(a, b, "march_arc is deterministic (no RNG): {a:?} vs {b:?}");
 }
-
 
 #[test]
 fn trajectory_defaults_to_straight_when_omitted() {

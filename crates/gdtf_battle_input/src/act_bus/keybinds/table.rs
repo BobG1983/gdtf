@@ -116,23 +116,23 @@ impl BoundKey {
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Deserialize, TypePath)]
 pub struct Keybinds {
     /// Clear selection.
-    pub select_clear: BoundKey,
+    pub select_clear:     BoundKey,
     /// Step active level up.
-    pub level_up: BoundKey,
+    pub level_up:         BoundKey,
     /// Step active level down.
-    pub level_down: BoundKey,
+    pub level_down:       BoundKey,
     /// Toggle full-view mode.
     pub toggle_full_view: BoundKey,
     /// Cycle stance.
-    pub stance_cycle: BoundKey,
+    pub stance_cycle:     BoundKey,
     /// Toggle aiming.
-    pub aim_toggle: BoundKey,
+    pub aim_toggle:       BoundKey,
     /// Cycle facing.
-    pub facing_cycle: BoundKey,
+    pub facing_cycle:     BoundKey,
     /// Select next player ganger.
-    pub select_next: BoundKey,
+    pub select_next:      BoundKey,
     /// Select previous player ganger.
-    pub select_prev: BoundKey,
+    pub select_prev:      BoundKey,
 }
 
 impl Keybinds {

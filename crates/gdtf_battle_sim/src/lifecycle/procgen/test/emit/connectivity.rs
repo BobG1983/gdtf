@@ -106,7 +106,7 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
     assert_eq!(
         situation.default_floor,
         floor_piece(),
-        "the default_floor must resolve from the theme registry's nominated terrain (GTW-492)",
+        "the default_floor must resolve from the theme registry's nominated terrain ",
     );
 }
 
@@ -178,7 +178,7 @@ fn open_cells_form_one_component(occupied: &[RegionRect], board_w: i32, board_h:
 
     let open_total = blocked.iter().filter(|b| !**b).count();
     let Some(start) = blocked.iter().position(|b| !*b) else {
-        return true; 
+        return true;
     };
 
     let mut seen = vec![false; total];

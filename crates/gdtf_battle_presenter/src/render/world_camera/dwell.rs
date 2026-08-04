@@ -31,7 +31,7 @@ impl Default for DwellElapsed {
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Default)]
 pub struct PanEdgeDwellState {
     /// Mouse cursor edge dwell.
-    pub mouse: DwellElapsed,
+    pub mouse:   DwellElapsed,
     /// Virtual gamepad cursor edge dwell.
     pub gamepad: DwellElapsed,
 }

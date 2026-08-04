@@ -4,7 +4,7 @@ use super::support::*;
 fn move_dispatch_emits_one_movement_occurred_with_from_and_to() {
     let mut app = headless_app();
     let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
-    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); 
+    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0));
 
     app.world_mut()
         .write_message(MoveRequested::new(actor, dest));
@@ -64,7 +64,7 @@ fn blocked_move_emits_no_movement_occurred() {
 fn move_dispatch_steps_the_actor_and_spends_the_dest_terrain_cost() {
     let mut app = headless_app();
     let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
-    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); 
+    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0));
 
     let expected_cost = app
         .world()
@@ -99,7 +99,7 @@ fn move_dispatch_and_occupancy_co_schedule_fills_dest_and_frees_source() {
     app.add_plugins(OccupancyMaintenancePlugin);
 
     let source = CellLevel::new(Cell::new(10, 10), Level::new(0));
-    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); 
+    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0));
     let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
 
     app.update();
@@ -115,8 +115,8 @@ fn move_dispatch_and_occupancy_co_schedule_fills_dest_and_frees_source() {
 
     app.world_mut()
         .write_message(MoveRequested::new(actor, dest));
-    app.update(); 
-    app.update(); 
+    app.update();
+    app.update();
 
     assert_eq!(
         app.world().get::<Position>(actor).copied(),

@@ -26,20 +26,20 @@ impl PostHeal {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, TypePath)]
 pub struct InjuryDef {
     /// Stable name key.
-    pub name: InjuryName,
+    pub name:         InjuryName,
     /// Body-part category this injury belongs to.
-    pub category: InjuryCategory,
+    pub category:     InjuryCategory,
     /// Severity tier.
-    pub severity: Severity,
+    pub severity:     Severity,
     /// Short text for UI popups.
-    pub popup_text: PopupText,
+    pub popup_text:   PopupText,
     /// Text for the act log.
-    pub log_text: LogText,
+    pub log_text:     LogText,
     /// Longer inspect text.
     pub inspect_text: InspectText,
     /// Effects applied when the injury is gained.
-    pub effects: Vec<InjuryEffect>,
+    pub effects:      Vec<InjuryEffect>,
     /// Behavior after healing.
     #[serde(default = "PostHeal::deferred")]
-    pub post_heal: PostHeal,
+    pub post_heal:    PostHeal,
 }

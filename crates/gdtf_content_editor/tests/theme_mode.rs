@@ -1,4 +1,4 @@
-//! GTW-662 C2/A2: the THEME mode's REAL fs round-trip — author a theme in the form model,
+//! C2/A2: the THEME mode's REAL fs round-trip — author a theme in the form model,
 //! without polluting the version-controlled `assets/` tree. Only `content/terrain/` is
 #![cfg(debug_assertions)]
 

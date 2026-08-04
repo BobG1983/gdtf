@@ -3,7 +3,6 @@ pub(super) use bevy::{
     prelude::{Entity, World},
 };
 
-pub(super) use crate::test_support::{single_mode, target_bundle};
 pub(super) use crate::{
     armor::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart, WornBy,
@@ -28,6 +27,7 @@ pub(super) use crate::{
     severity::Severity,
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
+    test_support::{single_mode, target_bundle},
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FightMode, FightModeKind,

@@ -29,7 +29,7 @@ pub enum FireArcDecision {
     /// Must spend turn TU then fire.
     TurnThenFire {
         /// Facing to adopt.
-        facing: Direction,
+        facing:    Direction,
         /// Turn cost.
         turn_cost: Tu,
     },

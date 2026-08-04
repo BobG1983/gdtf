@@ -5,7 +5,7 @@ fn ray_leaving_the_top_is_a_sky_miss() {
     let tuning = CombatTuning::default();
     let grid = OccupancyGrid::new();
     let cover = CoverLedger::new();
-    let surface = SurfaceGrid::new(); 
+    let surface = SurfaceGrid::new();
 
     let muzzle = center(3, 3, 0);
     let dir = Vec3::new(0.0, 0.0, 1.0);
@@ -89,15 +89,15 @@ fn no_target_stop_round_continues_to_the_blocker_behind() {
     let surface = SurfaceGrid::new();
     let entity = spawn_entity();
 
-    let aim = key(5, 2, 0); 
-    let behind = key(7, 2, 0); 
+    let aim = key(5, 2, 0);
+    let behind = key(7, 2, 0);
     let mut grid = OccupancyGrid::new();
     grid.set_occupant(aim, Some(entity));
-    grid.set_occupant_band(aim, Some(HeightBand::Low)); 
+    grid.set_occupant_band(aim, Some(HeightBand::Low));
 
     let behind_cover = cover_entry(HeightBand::High);
     let mut cover = CoverLedger::new();
-    cover.insert(behind, behind_cover); 
+    cover.insert(behind, behind_cover);
 
     let muzzle = at_height(2, 2, 0, high_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);

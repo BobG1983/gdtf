@@ -7,11 +7,6 @@ pub(super) use bevy::{
 };
 
 pub(super) use super::super::*;
-pub(super) use crate::test_support::{
-    GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, arbitrary_armor, ganger_at, key,
-    test_armor_registry, test_gang_registry, test_melee_weapon_registry, test_terrain_registry,
-    test_weapon_registry as test_registry,
-};
 pub(super) use crate::{
     armor::{ArmorHardness, ArmorName, ArmorProtection, ArmorRegistry, ArmorSpec, BodyPart, Wears},
     cover::{CoverHp, CoverLedger, Destroyed, HeightBand},
@@ -33,6 +28,11 @@ pub(super) use crate::{
         entity::{BlocksPathfinding, TerrainCell, TerrainPieceKind},
         floor::FloorCostGrid,
         piece::{FootfallSound, TerrainGraphicKey},
+    },
+    test_support::{
+        GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, arbitrary_armor, ganger_at, key,
+        test_armor_registry, test_gang_registry, test_melee_weapon_registry, test_terrain_registry,
+        test_weapon_registry as test_registry,
     },
     tuning::GangerStatTuning,
     vertical::{InvalidVerticalLink, LinkKind, VerticalLink, VerticalLinkGraph},

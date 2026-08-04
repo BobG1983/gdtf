@@ -14,7 +14,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn clearing_shot_returns_miss_carrying_trajectory() {
     let tuning = CombatTuning::default();
@@ -137,7 +136,6 @@ fn downward_shot_off_bottom_returns_ground() {
         "a ground outcome carries no body part",
     );
 }
-
 
 #[test]
 fn shot_outcome_variants_construct_and_inspect() {

@@ -1,4 +1,4 @@
-// GTW-261 failure-path fixture: deliberately MALFORMED situation RON.
+// failure-path fixture: deliberately MALFORMED situation RON.
 //
 // This file exists ONLY to drive the situation load to LoadState::Failed in
 // `load_situation.rs`'s AC3 failure-path test, so the resolve falls back to an

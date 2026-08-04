@@ -21,14 +21,14 @@ type ModeSegment = (&'static SegmentIndex, &'static Children);
 
 #[derive(SystemParam)]
 pub(in crate::states::running::game::battlescape) struct ModeCostInputs<'w, 's> {
-        selected:       Res<'w, SelectedShooter>,
-        tuning:         Res<'w, CombatTuning>,
-        shooters:       Query<'w, 's, CostShooter>,
-        wields:         Query<'w, 's, &'static Wields>,
-        weapons:        Query<'w, 's, CostWeapon, With<WieldedBy>>,
-            melee:          Query<'w, 's, (), With<MeleeWeapon>>,
-        aim_changed:    Query<'w, 's, (), Changed<Aiming>>,
-        added_controls: Query<'w, 's, (), Added<ModeControl>>,
+    selected:       Res<'w, SelectedShooter>,
+    tuning:         Res<'w, CombatTuning>,
+    shooters:       Query<'w, 's, CostShooter>,
+    wields:         Query<'w, 's, &'static Wields>,
+    weapons:        Query<'w, 's, CostWeapon, With<WieldedBy>>,
+    melee:          Query<'w, 's, (), With<MeleeWeapon>>,
+    aim_changed:    Query<'w, 's, (), Changed<Aiming>>,
+    added_controls: Query<'w, 's, (), Added<ModeControl>>,
 }
 
 #[allow(

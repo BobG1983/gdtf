@@ -61,7 +61,7 @@ impl SpriteFps {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, TypePath)]
 pub struct SpriteAnimation {
     /// Frames per second.
-    pub fps: SpriteFps,
+    pub fps:    SpriteFps,
     /// Ordered frame sources.
     pub frames: Vec<SpriteSource>,
 }
@@ -70,12 +70,12 @@ pub struct SpriteAnimation {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, TypePath)]
 pub struct SpriteDef {
     /// Default image source.
-    pub source: SpriteSource,
+    pub source:    SpriteSource,
     /// Cell anchor.
-    pub anchor: SpriteAnchor,
+    pub anchor:    SpriteAnchor,
     /// Optional per-facing sources.
     #[serde(default)]
-    pub facings: Option<SpriteFacings>,
+    pub facings:   Option<SpriteFacings>,
     /// Optional animation.
     #[serde(default)]
     pub animation: Option<SpriteAnimation>,

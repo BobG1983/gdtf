@@ -29,12 +29,12 @@ fn full_view_toggle_changes_the_drawn_tile_set() {
     assert_eq!(
         app.world().get_resource::<ViewMode>().copied(),
         Some(ViewMode::DownToActive),
-        "the prefab viewport opens in the default DownToActive view (GTW-532 C1)",
+        "the prefab viewport opens in the default DownToActive view ",
     );
     assert_eq!(
         app.world().get_resource::<IsolateView>().copied(),
         Some(IsolateView::On(ContextDepth::new(1))),
-        "the editor opens with the GTW-594 Isolate default (one onion storey below)",
+        "the editor opens with the Isolate default (one onion storey below)",
     );
     {
         let world = app.world_mut();
@@ -108,7 +108,7 @@ fn full_view_toggle_changes_the_drawn_tile_set() {
     assert!(
         full_view > down_to_active,
         "toggling to FullView must draw MORE tiles than DownToActive — the upper-storey block \
-         re-appears (the mode switch changes the drawn storey range / tile set, GTW-532 C2); \
+         re-appears (the mode switch changes the drawn storey range / tile set, C2); \
          DownToActive={down_to_active}, FullView={full_view}",
     );
 }

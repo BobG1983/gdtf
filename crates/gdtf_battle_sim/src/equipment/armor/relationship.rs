@@ -45,15 +45,15 @@ impl Wears {
 #[query_data(mutable)]
 pub struct PieceArmorMut {
     /// Body part.
-    pub part: &'static BodyPart,
+    pub part:       &'static BodyPart,
     /// Floor.
-    pub floor: &'static ArmorFloor,
+    pub floor:      &'static ArmorFloor,
     /// Protection.
     pub protection: &'static ArmorProtection,
     /// Integrity (mutable for wear).
-    pub integrity: &'static mut ArmorIntegrity,
+    pub integrity:  &'static mut ArmorIntegrity,
     /// Hardness.
-    pub hardness: &'static ArmorHardness,
+    pub hardness:   &'static ArmorHardness,
     /// Type.
     pub armor_type: &'static ArmorType,
 }

@@ -15,13 +15,13 @@ fn key(x: i32, y: i32, z: u8) -> CellLevel {
 #[test]
 fn destroyed_slab_adjacent_to_drawn_floor_emits_drop_depth() {
     let hole = key(5, 5, 2);
-    let floor = key(6, 5, 2); 
+    let floor = key(6, 5, 2);
 
     let mut surface = SurfaceGrid::new();
     surface.set_slab(floor, SlabState::Present);
-    surface.destroy_slab(hole); 
+    surface.destroy_slab(hole);
 
-    let occupancy = OccupancyGrid::new(); 
+    let occupancy = OccupancyGrid::new();
 
     let drawn: HashSet<Cell> = std::iter::once(floor.cell()).collect();
     let explored: HashSet<CellLevel> = [hole, floor].into_iter().collect();
@@ -40,7 +40,7 @@ fn destroyed_slab_adjacent_to_drawn_floor_emits_drop_depth() {
 #[test]
 fn ground_level_never_emits_drop_depth() {
     let hole = key(5, 5, 0);
-    let surface = SurfaceGrid::new(); 
+    let surface = SurfaceGrid::new();
     let occupancy = OccupancyGrid::new();
     let drawn: HashSet<Cell> = std::iter::once(hole.cell()).collect();
     let squad = SquadVisibility::omniscient(&occupancy);
@@ -64,7 +64,7 @@ fn unexplored_hole_emits_no_drop_depth() {
 
     let occupancy = OccupancyGrid::new();
     let drawn: HashSet<Cell> = std::iter::once(floor.cell()).collect();
-    let squad = SquadVisibility::default(); 
+    let squad = SquadVisibility::default();
 
     let drops = gather_drop_depth(Level::new(2), &surface, &occupancy, &drawn, &squad);
 

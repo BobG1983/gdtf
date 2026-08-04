@@ -24,7 +24,7 @@ mod tests {
     use super::autoload_first_armor;
     use crate::armor_form::ArmorDraft;
 
-            #[test]
+    #[test]
     fn seeds_first_sorted_armor_exactly_once() {
         let registry = ArmorRegistry::new([
             (

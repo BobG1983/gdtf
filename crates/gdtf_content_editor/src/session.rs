@@ -9,9 +9,9 @@ use gdtf_battle_sim::{
 /// Theme, grid size, and selected tile for the prefab canvas.
 #[derive(Resource, Debug, Clone, PartialEq, Eq)]
 pub struct MapEditorSession {
-    theme: ThemeUuid,
+    theme:         ThemeUuid,
     default_floor: Option<TerrainUuid>,
-    grid_size: GridSize,
+    grid_size:     GridSize,
     selected_tile: Option<TerrainUuid>,
 }
 
@@ -80,9 +80,9 @@ impl MapEditorSession {
 impl Default for MapEditorSession {
     fn default() -> Self {
         Self {
-            theme: ThemeUuid::nil(),
+            theme:         ThemeUuid::nil(),
             default_floor: None,
-            grid_size: GridSize::default(),
+            grid_size:     GridSize::default(),
             selected_tile: None,
         }
     }

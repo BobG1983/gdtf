@@ -8,7 +8,7 @@ use crate::{effects::fields::FieldKey, metric::CellLevel, terrain::def::TerrainU
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct CoverSpawn {
     /// Cell.
-    pub at: CellLevel,
+    pub at:    CellLevel,
     /// Terrain piece key.
     pub piece: TerrainUuid,
 }
@@ -25,7 +25,7 @@ impl CoverSpawn {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct SlabSpawn {
     /// Cell.
-    pub at: CellLevel,
+    pub at:    CellLevel,
     /// Terrain piece key.
     pub piece: TerrainUuid,
 }
@@ -42,7 +42,7 @@ impl SlabSpawn {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct FloorSpawn {
     /// Cell.
-    pub at: CellLevel,
+    pub at:    CellLevel,
     /// Terrain piece key.
     pub piece: TerrainUuid,
 }
@@ -59,7 +59,7 @@ impl FloorSpawn {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct FieldSpawn {
     /// Cell.
-    pub at: CellLevel,
+    pub at:    CellLevel,
     /// Field key.
     pub field: FieldKey,
 }

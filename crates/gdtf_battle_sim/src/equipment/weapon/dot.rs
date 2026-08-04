@@ -46,11 +46,11 @@ impl DotTurns {
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct DotProfile {
     /// Per-turn damage.
-    pub damage: DotDamage,
+    pub damage:      DotDamage,
     /// Damage channel.
     pub damage_type: DamageType,
     /// Duration in turns.
-    pub turns: DotTurns,
+    pub turns:       DotTurns,
 }
 
 impl DotProfile {
@@ -68,9 +68,9 @@ impl DotProfile {
 impl Default for DotProfile {
     fn default() -> Self {
         Self {
-            damage: DotDamage::default(),
+            damage:      DotDamage::default(),
             damage_type: DamageType::default(),
-            turns: DotTurns::new(NonZeroU8::MIN),
+            turns:       DotTurns::new(NonZeroU8::MIN),
         }
     }
 }
@@ -83,7 +83,7 @@ pub struct Dot {
     /// Damage per turn.
     pub per_turn_damage: DotDamage,
     /// Damage channel.
-    pub damage_type: DamageType,
+    pub damage_type:     DamageType,
 }
 
 impl Dot {
@@ -93,7 +93,7 @@ impl Dot {
         Self {
             remaining_turns: profile.turns,
             per_turn_damage: profile.damage,
-            damage_type: profile.damage_type,
+            damage_type:     profile.damage_type,
         }
     }
 

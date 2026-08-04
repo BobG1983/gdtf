@@ -3,7 +3,7 @@ use super::super::{
     SpriteImagePath, SpritePx, SpriteRect, SpriteSource,
 };
 
-/// A minimal sheet-rect def (the shape every GTW-663 seed authors).
+/// A minimal sheet-rect def (the shape every seed authors).
 const SHEET_DEF: &str = r#"(
     source: Sheet(
         sheet: "sprites/alt_tileset_terrain.png",

@@ -5,7 +5,7 @@ use super::{
 use crate::{ganger::Tu, injuries::MovementCostFactor, metric::CellLevel};
 
 fn orthogonal_step_cost(target: CellLevel, factor: MovementCostFactor) -> Option<Tu> {
-    let grid = OccupancyGrid::new(); 
+    let grid = OccupancyGrid::new();
     let floor_costs = default_floor_costs();
     let origin = key(target.x - 1, target.y, 0);
     pathable_neighbors(origin, &grid, &floor_costs, factor)

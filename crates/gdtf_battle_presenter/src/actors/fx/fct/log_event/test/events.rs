@@ -80,7 +80,7 @@ fn a_suppressed_move_rejection_logs_a_pinned_line_only() {
         };
         assert!(
             classify_log_event(&event).is_empty(),
-            "{reason:?} must stay unsurfaced (no log line) — pre-GTW-537 behavior preserved",
+            "{reason:?} must stay unsurfaced (no log line) — previous behavior preserved",
         );
     }
 }

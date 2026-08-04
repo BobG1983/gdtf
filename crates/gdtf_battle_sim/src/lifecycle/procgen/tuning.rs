@@ -110,11 +110,11 @@ impl Default for DeadRectScatterCount {
 #[serde(default)]
 pub struct ProcgenTuning {
     /// Minimum board occupancy fraction.
-    pub min_density_floor: MinDensityFloor,
+    pub min_density_floor:           MinDensityFloor,
     /// Maximum board occupancy fraction.
-    pub max_coverage_cap: MaxCoverageCap,
+    pub max_coverage_cap:            MaxCoverageCap,
     /// Area above which a prefab is "large".
     pub large_prefab_area_threshold: LargePrefabAreaThreshold,
     /// Scatter attempts into dead rects.
-    pub dead_rect_scatter_count_k: DeadRectScatterCount,
+    pub dead_rect_scatter_count_k:   DeadRectScatterCount,
 }

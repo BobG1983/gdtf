@@ -12,7 +12,7 @@ impl ScreenshotPayload {
         }
     }
 
-            pub(in crate::dev::net_qa) const fn name(&self) -> Option<&ShotName> {
+    pub(in crate::dev::net_qa) const fn name(&self) -> Option<&ShotName> {
         self.0.as_ref()
     }
 }

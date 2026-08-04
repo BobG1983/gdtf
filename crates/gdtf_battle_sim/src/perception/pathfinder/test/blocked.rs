@@ -26,7 +26,7 @@ fn goal_walled_in_is_path_blocked() {
     let tuning = tuning();
 
     let start = cell(0, 0, 0);
-    let goal = cell(5, 5, 0); 
+    let goal = cell(5, 5, 0);
 
     let floor_costs = default_floor_costs(&tuning);
     let squad = full_vision();
@@ -55,7 +55,7 @@ fn other_storey_without_link_is_path_blocked() {
     let tuning = tuning();
 
     let start = cell(2, 2, 0);
-    let goal = cell(2, 2, 3); 
+    let goal = cell(2, 2, 3);
 
     let floor_costs = default_floor_costs(&tuning);
     let squad = full_vision();
@@ -84,7 +84,7 @@ fn out_of_grid_goal_is_path_blocked() {
     let tuning = tuning();
 
     let start = cell(1, 1, 0);
-    let goal = cell(-5, -5, 0); 
+    let goal = cell(-5, -5, 0);
 
     let floor_costs = default_floor_costs(&tuning);
     let squad = full_vision();

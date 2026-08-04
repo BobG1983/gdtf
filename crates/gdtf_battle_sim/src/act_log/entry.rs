@@ -7,10 +7,10 @@ use super::{deed::ActDeed, provenance::ActProvenance, seq::ActSeq};
 /// Fully sequenced act stored in the log.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ActEntry {
-    seq: ActSeq,
-    actor: Entity,
+    seq:        ActSeq,
+    actor:      Entity,
     provenance: ActProvenance,
-    deed: ActDeed,
+    deed:       ActDeed,
 }
 
 impl ActEntry {
@@ -59,11 +59,11 @@ impl ActEntry {
 #[derive(Debug, Clone, PartialEq)]
 pub struct RecordedAct {
     /// Acting entity.
-    pub actor: Entity,
+    pub actor:      Entity,
     /// Origin of the act.
     pub provenance: ActProvenance,
     /// What happened.
-    pub deed: ActDeed,
+    pub deed:       ActDeed,
 }
 
 impl RecordedAct {

@@ -23,28 +23,28 @@ type CallLog = Arc<Mutex<Vec<ChildCall>>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ChildCall {
-        Poll,
-        Terminate,
-        WaitUntilExit,
-        Kill,
-        Reap,
-            ReadFailureTail,
+    Poll,
+    Terminate,
+    WaitUntilExit,
+    Kill,
+    Reap,
+    ReadFailureTail,
 }
 
 struct ReapGatedChild {
-        tail:   FailureTail,
-        status: ChildStatus,
-        calls:  CallLog,
+    tail:   FailureTail,
+    status: ChildStatus,
+    calls:  CallLog,
 }
 
 impl ReapGatedChild {
-        fn record(&self, call: ChildCall) {
+    fn record(&self, call: ChildCall) {
         if let Ok(mut calls) = self.calls.lock() {
             calls.push(call);
         }
     }
 
-        fn reaped(&self) -> bool {
+    fn reaped(&self) -> bool {
         self.calls
             .lock()
             .is_ok_and(|calls| calls.contains(&ChildCall::Reap))
@@ -93,8 +93,8 @@ impl ManagedChild for ReapGatedChild {
 }
 
 struct ReapGatedSpawner {
-        status: ChildStatus,
-        calls:  CallLog,
+    status: ChildStatus,
+    calls:  CallLog,
 }
 
 impl ChildSpawner for ReapGatedSpawner {

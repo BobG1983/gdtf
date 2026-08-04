@@ -10,8 +10,8 @@ fn corpse_skip_is_inert_and_draws_nothing() {
 
     let mut hp = Hp::new(15);
     let mut wounds = Wounds::new(3);
-    let mut life = LifeState::Dead; 
-    let mut integrity = piece_integrity(1); 
+    let mut life = LifeState::Dead;
+    let mut integrity = piece_integrity(1);
     let mut inflicted = InflictedWounds::default();
 
     let hp_before = hp;
@@ -62,7 +62,7 @@ fn corpse_skip_is_inert_and_draws_nothing() {
     );
     assert!(
         inflicted.is_empty(),
-        "a corpse-skip must record NO InflictedWound (GTW-279)",
+        "a corpse-skip must record NO InflictedWound ",
     );
 
     let mut rng_fresh = rng();

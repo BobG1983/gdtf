@@ -25,7 +25,7 @@ pub struct PlanningView<'a, R>
 where
     R: Fn(Entity) -> FactionRelation,
 {
-    squad: &'a SquadVisibility,
+    squad:       &'a SquadVisibility,
     relation_of: R,
 }
 

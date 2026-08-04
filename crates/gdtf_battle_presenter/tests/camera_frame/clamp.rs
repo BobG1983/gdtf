@@ -20,7 +20,6 @@ fn field_centre_y() -> f32 {
     f32::midpoint(min.y, max.y)
 }
 
-
 #[test]
 fn clamp_pulls_out_of_bounds_camera_back_inside() {
     let mut app = App::new();
@@ -82,7 +81,6 @@ fn clamp_pulls_out_of_bounds_camera_back_inside() {
         "after the clamp the viewport must stay within the RELAXED (bounds + margin) y bounds",
     );
 }
-
 
 fn relaxed_clamp_app(at: Vec2) -> App {
     let mut app = App::new();

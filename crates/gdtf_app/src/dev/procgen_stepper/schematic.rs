@@ -108,7 +108,7 @@ mod test {
 
     use super::footprint_rect;
 
-                #[test]
+    #[test]
     fn footprint_rect_maps_a_region_with_a_y_flip() {
         let Ok(grid) = GridSize::new(GridWidth::new(20), GridHeight::new(20), GridLevels::new(1))
         else {
@@ -123,7 +123,7 @@ mod test {
         );
     }
 
-            #[test]
+    #[test]
     fn bottom_left_placement_sits_at_the_box_bottom() {
         let Ok(grid) = GridSize::new(GridWidth::new(20), GridHeight::new(20), GridLevels::new(1))
         else {

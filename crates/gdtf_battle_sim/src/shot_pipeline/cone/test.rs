@@ -62,8 +62,8 @@ fn first_shot_recoil_term_is_identity() {
 fn each_prior_shot_widens_the_cone_monotonically() {
     let base = BaseSpread::new(0.15);
     let firemode = ModeConeMult::new(1.0);
-    let kick = Kickback::new(0.12); 
-    let growth = RecoilGrowth::new(0.8); 
+    let kick = Kickback::new(0.12);
+    let growth = RecoilGrowth::new(0.8);
     let stab = cone_mult(0.9);
     let aim = AimConeMult::new(1.0);
 
@@ -97,8 +97,8 @@ fn each_prior_shot_widens_the_cone_monotonically() {
 fn steadier_recoil_growth_widens_strictly_less() {
     let base = BaseSpread::new(0.2);
     let firemode = ModeConeMult::new(1.0);
-    let prior = PriorShots::new(3); 
-    let kick = Kickback::new(0.15); 
+    let prior = PriorShots::new(3);
+    let kick = Kickback::new(0.15);
     let stab = cone_mult(0.8);
     let aim = AimConeMult::new(1.0);
 

@@ -22,7 +22,7 @@ fn install_global_capture() {
 struct CaptureLayer;
 
 struct MessageVisitor {
-        message: Option<String>,
+    message: Option<String>,
 }
 
 impl Visit for MessageVisitor {

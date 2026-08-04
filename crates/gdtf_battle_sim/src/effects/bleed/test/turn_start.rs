@@ -53,7 +53,7 @@ fn a_mid_turn_act_does_not_tick_the_bleed_clock() {
     assert_eq!(
         wounds_of(&app, downed),
         start,
-        "an act resolving mid-turn must NOT tick the bleed clock (GTW-641: bleeds \
+        "an act resolving mid-turn must NOT tick the bleed clock ( bleeds \
          happen at turn start, never from act resolution)",
     );
 

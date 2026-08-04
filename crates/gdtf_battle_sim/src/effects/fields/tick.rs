@@ -22,9 +22,9 @@ pub struct FieldTicked {
     /// Occupant entity.
     pub occupant: Entity,
     /// Cell of the field.
-    pub at: CellLevel,
+    pub at:       CellLevel,
     /// Damage dealt.
-    pub amount: FieldDamage,
+    pub amount:   FieldDamage,
 }
 
 impl FieldTicked {
@@ -49,7 +49,7 @@ pub struct FieldAfflicted {
     /// Occupant entity.
     pub occupant: Entity,
     /// Cell of the field.
-    pub at: CellLevel,
+    pub at:       CellLevel,
 }
 
 impl FieldAfflicted {
@@ -114,9 +114,9 @@ pub fn tick_fields(
         }
 
         let mut drain = OccupantDrain {
-            hp: &mut hp,
-            life: &mut life,
-            ticks: &mut writer,
+            hp:     &mut hp,
+            life:   &mut life,
+            ticks:  &mut writer,
             deaths: &mut deaths,
         };
         for consequence in &consequences {

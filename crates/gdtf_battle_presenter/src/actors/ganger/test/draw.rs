@@ -128,4 +128,3 @@ fn faction_tints_are_distinct() {
         "the two factions must read as two distinct colours",
     );
 }
-

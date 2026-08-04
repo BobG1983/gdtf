@@ -1,4 +1,4 @@
-//! GTW-744: the spawn CELLS are no longer authored (the deploy step derives them from the
+//! the spawn CELLS are no longer authored (the deploy step derives them from the
 use std::collections::HashMap;
 
 use bevy::prelude::{Entity, World};
@@ -13,10 +13,10 @@ use gdtf_battle_sim::{
 
 struct Expected {
     name:       &'static str,
-            attributes: [f32; 8],
+    attributes: [f32; 8],
     weapon:     &'static str,
     armor:      &'static str,
-            gang:       &'static str,
+    gang:       &'static str,
     faction:    u8,
     life_state: LifeState,
 }

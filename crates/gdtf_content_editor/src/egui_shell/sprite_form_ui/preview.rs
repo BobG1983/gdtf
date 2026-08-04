@@ -15,17 +15,17 @@ const PREVIEW_MAX_EDGE: f32 = 160.0;
 const CROSSHAIR_ARM: f32 = 10.0;
 
 pub(crate) struct PreviewTexture {
-        id:     egui::TextureId,
-        width:  SpritePx,
-        height: SpritePx,
+    id:     egui::TextureId,
+    width:  SpritePx,
+    height: SpritePx,
 }
 
 impl PreviewTexture {
-        pub(super) const fn width(&self) -> SpritePx {
+    pub(super) const fn width(&self) -> SpritePx {
         self.width
     }
 
-        pub(super) const fn height(&self) -> SpritePx {
+    pub(super) const fn height(&self) -> SpritePx {
         self.height
     }
 }

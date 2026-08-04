@@ -38,9 +38,9 @@ fn a_process_that_ignores_the_graceful_signal_is_escalated_to_a_kill() {
 }
 
 struct HeldPort {
-        port:   QaPort,
-        pid:    ChildPid,
-        status: Arc<Mutex<Option<ExitStatus>>>,
+    port:   QaPort,
+    pid:    ChildPid,
+    status: Arc<Mutex<Option<ExitStatus>>>,
 }
 
 fn spawn_a_listener_held_until_its_process_dies() -> HeldPort {

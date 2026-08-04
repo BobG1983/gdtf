@@ -4,7 +4,6 @@ use crate::{
     weapon::{MagazineSize, ModeShots},
 };
 
-
 #[test]
 fn magazine_clamps_request_to_magazine_size() {
     let size = MagazineSize::new(12);
@@ -34,7 +33,6 @@ fn magazine_clamps_request_to_magazine_size() {
     assert_eq!(*full.rounds(), *size, "loaded() fills to MagazineSize");
     assert!(*full.is_full(), "loaded() is full");
 }
-
 
 #[test]
 fn spend_round_is_saturating_on_empty_and_decrements_exactly() {
@@ -67,7 +65,6 @@ fn spend_round_is_saturating_on_empty_and_decrements_exactly() {
     );
 }
 
-
 #[test]
 fn refill_tops_loaded_rounds_to_capacity() {
     let size = MagazineSize::new(30);
@@ -94,7 +91,6 @@ fn refill_tops_loaded_rounds_to_capacity() {
         "refilling a full magazine leaves it full"
     );
 }
-
 
 #[test]
 fn clamp_burst_bounds_shots_to_rounds_left() {

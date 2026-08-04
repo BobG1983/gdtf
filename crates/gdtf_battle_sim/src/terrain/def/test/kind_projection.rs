@@ -59,7 +59,7 @@ fn every_sim_kind_projects_to_its_piece_kind() {
             sim_kind_of(kind).kind(),
             kind,
             "TerrainSimKind::kind() must project the {kind:?} sim variant back onto \
-             TerrainPieceKind::{kind:?} (GTW-574 C1)",
+             TerrainPieceKind::{kind:?} ",
         );
     }
 }
@@ -71,14 +71,14 @@ fn every_presenter_kind_projects_to_its_piece_kind() {
             presenter_kind_of(kind).kind(),
             kind,
             "TerrainPresenterKind::kind() must project the {kind:?} presenter variant back \
-             onto TerrainPieceKind::{kind:?} (GTW-574 C1)",
+             onto TerrainPieceKind::{kind:?} ",
         );
     }
 }
 
 #[test]
 fn piece_kind_inventory_is_complete_and_distinct() {
-            const fn ordinal(kind: TerrainPieceKind) -> usize {
+    const fn ordinal(kind: TerrainPieceKind) -> usize {
         match kind {
             TerrainPieceKind::Wall => 0,
             TerrainPieceKind::Cover => 1,
@@ -97,6 +97,6 @@ fn piece_kind_inventory_is_complete_and_distinct() {
     }
     assert!(
         seen.iter().all(|covered| *covered),
-        "TerrainPieceKind::ALL must cover every variant exactly once (GTW-574 C1)",
+        "TerrainPieceKind::ALL must cover every variant exactly once ",
     );
 }

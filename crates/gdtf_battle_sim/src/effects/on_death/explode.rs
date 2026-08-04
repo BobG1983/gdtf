@@ -28,7 +28,7 @@ impl ExplodeDamage {
 /// Fans blast damage to occupants in the hit area.
 pub struct ApplyExplode {
     hit_type: HitType,
-    damage: ExplodeDamage,
+    damage:   ExplodeDamage,
 }
 
 impl ApplyExplode {

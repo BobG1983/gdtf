@@ -1,4 +1,4 @@
-//! GTW-390 acceptance tests — the authored stair-tile eye-offset for height-aware LOS.
+//! acceptance tests — the authored stair-tile eye-offset for height-aware LOS.
 //!   authored stair tile sees over a [`HeightBand::Mid`] cover cell that a ground-level
 use super::support::*;
 use crate::{los::probe::eye_anchor, occupancy::StairEyeOffset};
@@ -119,7 +119,7 @@ fn stair_facing_invariant() {
                 reference.z.to_bits()
             ),
             "rotating facing to {dir:?} on a stair cell must NOT move the \
-             facing-neutral stair eye anchor (GTW-390 facing-invariant)"
+             facing-neutral stair eye anchor (facing-invariant)"
         );
     }
 }
@@ -127,7 +127,7 @@ fn stair_facing_invariant() {
 #[test]
 fn non_stair_cell_yields_zero_offset() {
     let tuning = CombatTuning::default();
-    let plain = OccupancyGrid::new(); 
+    let plain = OccupancyGrid::new();
 
     let queried_cell = key(5, 5, 0);
     let offset = plain.stair_eye_offset_at(&queried_cell);

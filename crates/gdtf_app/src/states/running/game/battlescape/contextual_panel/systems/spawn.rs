@@ -34,10 +34,9 @@ pub(in crate::states::running::game::battlescape) fn spawn_contextual_panel(
             node.flex_direction = FlexDirection::Column;
             node.row_gap = Val::Vh(CONTEXTUAL_PANEL_ROW_GAP_VH);
         });
-    commands.entity(panel).insert((
-        ContextualPanelRoot,
-        Visibility::Hidden,
-    ));
+    commands
+        .entity(panel)
+        .insert((ContextualPanelRoot, Visibility::Hidden));
 
     match bottom_bar.iter().next() {
         Some(bar) => {

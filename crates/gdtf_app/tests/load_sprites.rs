@@ -8,7 +8,7 @@ use gdtf_content_families::{
 use load_suite::suite::{self, FamilyLoadContract};
 
 impl FamilyLoadContract for SpriteDefsFamily {
-                    const EXPECTED_MEMBERS: &'static [&'static str] = &[
+    const EXPECTED_MEMBERS: &'static [&'static str] = &[
         "floor",
         "floor_alt_panel",
         "wall",

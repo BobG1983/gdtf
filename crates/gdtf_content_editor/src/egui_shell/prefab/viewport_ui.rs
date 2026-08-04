@@ -21,14 +21,14 @@ use crate::{
 const SCROLL_PER_NOTCH: f32 = 50.0;
 
 pub(crate) struct ViewportCtx<'a> {
-        pub(crate) map:        &'a mut EditorMap,
-        pub(crate) session:    &'a MapEditorSession,
-        pub(crate) edit_level: &'a CurrentEditLevel,
-        pub(crate) hovered:    &'a mut HoveredCell,
-        pub(crate) zoom:       &'a mut CanvasZoom,
-        pub(crate) pan:        &'a mut PreviewPan,
-        pub(crate) registry:   Option<&'a TerrainDefRegistry>,
-            pub(crate) themes:     Option<&'a UuidThemeRegistry>,
+    pub(crate) map:        &'a mut EditorMap,
+    pub(crate) session:    &'a MapEditorSession,
+    pub(crate) edit_level: &'a CurrentEditLevel,
+    pub(crate) hovered:    &'a mut HoveredCell,
+    pub(crate) zoom:       &'a mut CanvasZoom,
+    pub(crate) pan:        &'a mut PreviewPan,
+    pub(crate) registry:   Option<&'a TerrainDefRegistry>,
+    pub(crate) themes:     Option<&'a UuidThemeRegistry>,
 }
 
 pub(crate) fn viewport_panel(
@@ -122,7 +122,7 @@ fn paint_at_uv(ctx: &mut ViewportCtx<'_>, uv: egui::Vec2, level: Level) {
         &placement,
         ctx.session.grid_size(),
     );
-    let _ = ctx.themes; 
+    let _ = ctx.themes;
 }
 
 fn local_uv(p: egui::Pos2, rect: egui::Rect) -> egui::Vec2 {

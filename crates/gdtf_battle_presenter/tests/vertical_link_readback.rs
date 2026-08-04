@@ -38,8 +38,8 @@ const MAX_READBACK_UPDATES: usize = 240;
 
 #[derive(Resource, Default, Clone, Copy)]
 struct CapturedPixel {
-    captured: bool,
-    rgba: [u8; 4],
+    captured:       bool,
+    rgba:           [u8; 4],
     max_brightness: u16,
 }
 

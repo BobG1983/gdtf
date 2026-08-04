@@ -106,9 +106,9 @@ fn drain_pipe<R: std::io::Read>(pipe: R, sink: &Arc<Mutex<OutputRing>>) {
 
 /// Real OS child with threaded stdout/stderr capture.
 pub struct ProcessChild {
-    child: Child,
-    pid: ChildPid,
-    tail: Arc<Mutex<OutputRing>>,
+    child:   Child,
+    pid:     ChildPid,
+    tail:    Arc<Mutex<OutputRing>>,
     readers: Vec<JoinHandle<()>>,
 }
 

@@ -36,7 +36,7 @@ pub(super) fn handle_client(
         loop {
             let frame = match decoder.next_frame() {
                 Ok(Some(frame)) => frame,
-                Ok(None) => break, 
+                Ok(None) => break,
                 Err(_) => return,
             };
             if handle_frame(

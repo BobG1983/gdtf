@@ -1,4 +1,4 @@
-//! GTW-664 C4/A2: the SPRITE mode's REAL round-trip — author a sprite def (anchor +
+//! C4/A2: the SPRITE mode's REAL round-trip — author a sprite def (anchor +
 use std::path::Path;
 
 use bevy::{
@@ -143,7 +143,7 @@ fn saved_sprite_round_trips_through_the_real_sprite_defs_loader() {
         reloaded,
         Some(&def),
         "the reloaded sprite must equal the saved def (source sheet+rect / anchor / the \
-         East facing override / the 2-frame 2.5fps animation) — the GTW-663 stem-key \
+         East facing override / the 2-frame 2.5fps animation) — the stem-key \
          round-trip through the REAL loader",
     );
 }

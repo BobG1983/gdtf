@@ -33,7 +33,6 @@ fn stabilizes(app: &App) -> Vec<StabilizeDownedRequested> {
     probed::<StabilizeDownedRequested>(app)
 }
 
-
 #[test]
 fn adjacent_downed_enemy_offers_execute() {
     let mut app = battle_running_app();
@@ -147,7 +146,6 @@ fn moving_actor_away_hides_panel_without_respawn() {
         "the panel root entity must persist (Visibility toggle, not respawn)",
     );
 }
-
 
 #[test]
 fn pressing_execute_emits_execute_downed_requested_for_target() {

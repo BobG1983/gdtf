@@ -218,11 +218,11 @@ impl Srgba4 {
 #[derive(Deserialize, Clone, Copy, PartialEq, Debug)]
 pub struct MarginSpec {
     /// Left.
-    pub left: f32,
+    pub left:   f32,
     /// Right.
-    pub right: f32,
+    pub right:  f32,
     /// Top.
-    pub top: f32,
+    pub top:    f32,
     /// Bottom.
     pub bottom: f32,
 }

@@ -5,8 +5,7 @@ fn slab_key(x: i32, y: i32, level: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(level))
 }
 
-fn occupancy_update_tick(_grid: &SurfaceGrid) {
-}
+fn occupancy_update_tick(_grid: &SurfaceGrid) {}
 
 #[test]
 fn destroyed_slab_stays_destroyed_across_tick_and_resets() {

@@ -1,4 +1,4 @@
-//! GTW-671 C4: the MELEE mode's REAL round-trips — author a MAXIMAL spec (multi fight
+//! the MELEE mode's REAL round-trips — author a MAXIMAL spec (multi fight
 use gdtf_battle_sim::{
     equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity, WeaponSlots},
     weapon::{
@@ -91,7 +91,7 @@ fn saved_melee_weapons_round_trip_through_the_real_melee_loader() {
         "the reloaded MAXIMAL melee weapon must equal the saved spec field-for-field \
          (both fight modes incl. Thrust TU/strikes, the (Counterweight,1)+(Pommel,2) \
          slots, both attachment keys, reach 3, shove ON, and every damage scalar) — \
-         the GTW-257 stem-key round-trip through the REAL loader",
+         the stem-key round-trip through the REAL loader",
     );
     assert_eq!(
         registry.spec(&WeaponName::new("tempdir_shiv".to_owned())),

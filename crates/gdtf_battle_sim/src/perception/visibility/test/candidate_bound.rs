@@ -65,7 +65,7 @@ fn open_floor_cell_in_disc_with_clear_los_is_revealed() {
     );
     assert!(
         visible.contains(&neighbour),
-        "an in-disc open-floor cell with clear LOS is revealed (the GTW-347 fix)"
+        "an in-disc open-floor cell with clear LOS is revealed (the fix)"
     );
     assert!(
         !visible.is_empty(),

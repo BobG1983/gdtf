@@ -9,7 +9,6 @@ use crate::{
     test_support::{SituationBuilder, ganger_at},
 };
 
-
 #[test]
 fn test1_one_entity_per_terrain_piece() {
     let mut app = headless_app();
@@ -42,10 +41,7 @@ fn test1_counts_all_kinds() {
 
     let mut app = headless_app();
 
-    let scatter = CoverSpawn::new(
-        cl(9, 9, 0),
-        crate::test_support::test_pieces::COVER,
-    );
+    let scatter = CoverSpawn::new(cl(9, 9, 0), crate::test_support::test_pieces::COVER);
     let situation = SituationBuilder::new()
         .with_ganger(ganger_at(cl(0, 0, 0), 0))
         .with_ganger(ganger_at(cl(1, 1, 0), 1))
@@ -70,7 +66,6 @@ fn test1_counts_all_kinds() {
         "Test 1: 2 walls + 1 scatter + 2 slabs = 5 TerrainCell entities",
     );
 }
-
 
 #[test]
 fn test2_cover_entity_carries_authored_stats() {

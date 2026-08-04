@@ -17,7 +17,7 @@ use crate::states::running::game::battlescape::{
 struct BarGapVw(f32);
 
 impl BarGapVw {
-        const BAR: Self = Self(0.625);
+    const BAR: Self = Self(0.625);
 }
 
 pub(in crate::states::running::game::battlescape) fn spawn_action_bar(

@@ -18,7 +18,6 @@ fn fade(ttl: f32, fade_in: f32, fade_out: f32) -> LogLineFade {
     )
 }
 
-
 #[test]
 fn a_fresh_line_starts_transparent_and_fades_in() {
     let f = fade(5.0, 0.2, 1.0);
@@ -32,7 +31,7 @@ fn a_fresh_line_starts_transparent_and_fades_in() {
 #[test]
 fn mid_fade_in_the_alpha_is_a_partial_ramp_up() {
     let mut f = fade(5.0, 0.2, 1.0);
-    f.advance(Duration::from_millis(100)); 
+    f.advance(Duration::from_millis(100));
     assert!(
         approx(f.alpha(), 0.5),
         "halfway through fade-in alpha is ~0.5, got {}",
@@ -43,7 +42,7 @@ fn mid_fade_in_the_alpha_is_a_partial_ramp_up() {
 #[test]
 fn the_hold_phase_is_full_opacity() {
     let mut f = fade(5.0, 0.2, 1.0);
-    f.advance(Duration::from_secs_f32(2.0)); 
+    f.advance(Duration::from_secs_f32(2.0));
     assert!(
         approx(f.alpha(), 1.0),
         "in the hold phase alpha is full, got {}",
@@ -65,7 +64,7 @@ fn mid_fade_out_the_alpha_is_a_partial_ramp_down() {
 #[test]
 fn overlapping_fade_windows_are_scaled_to_fit_the_life() {
     let mut f = fade(1.0, 0.8, 0.8);
-    f.advance(Duration::from_secs_f32(0.999)); 
+    f.advance(Duration::from_secs_f32(0.999));
     assert!(
         f.alpha() < 0.1,
         "with windows scaled to fit, the alpha still fades to ~0 by end of life, got {}",
@@ -85,7 +84,6 @@ fn the_clock_finishes_at_end_of_life() {
         "the clock finishes once the TTL has elapsed",
     );
 }
-
 
 #[test]
 fn a_slide_eases_toward_zero_without_snapping() {
@@ -116,15 +114,14 @@ fn a_slide_eases_toward_zero_without_snapping() {
 
 #[test]
 fn a_reflow_displaces_the_slide_by_the_freed_height() {
-    let mut slide = LineSlide::new(0.0); 
-    slide.displace(15.0); 
+    let mut slide = LineSlide::new(0.0);
+    slide.displace(15.0);
     assert!(
         approx(slide.current(), 15.0),
         "the freed height is added to the offset, got {}",
         slide.current(),
     );
 }
-
 
 #[test]
 fn the_panel_height_grows_toward_a_taller_target() {

@@ -1,4 +1,4 @@
-//! GTW-804: Hello/version negotiation over the EDITOR's REAL net-QA listener, on BOTH sides of
+//! Hello/version negotiation over the EDITOR's REAL net-QA listener, on BOTH sides of
 //! The `#![cfg(all(debug_assertions, feature = "net_qa"))]` gate (below, after this crate doc
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 

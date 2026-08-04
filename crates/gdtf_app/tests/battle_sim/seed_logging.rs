@@ -8,7 +8,6 @@ use gdtf_battle_sim::rng::{BattleSeed, ShotRng};
 
 use super::harness::*;
 
-
 static LOG_CAPTURE: LazyLock<Arc<Mutex<Vec<u8>>>> = LazyLock::new(|| {
     let buf = Arc::new(Mutex::new(Vec::new()));
     let _installed = tracing_subscriber::fmt()
@@ -79,7 +78,7 @@ fn resolve_root_seed_drives_streams_and_logs() {
     LazyLock::force(&LOG_CAPTURE);
 
     set_seed_env(SEED_ENV_VAR, &PINNED.to_string());
-    let mut app = walk_app(None); 
+    let mut app = walk_app(None);
     let reached = drive_to_generation(&mut app);
     clear_seed_env(SEED_ENV_VAR);
     assert!(

@@ -1,4 +1,4 @@
-//! GTW-587 — the authored per-def blocking OVERRIDES (`blocks_pathing` / `blocks_los`) and
+//! — the authored per-def blocking OVERRIDES (`blocks_pathing` / `blocks_los`) and
 use bevy::math::Vec3;
 
 use super::super::{

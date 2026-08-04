@@ -68,7 +68,7 @@ fn shipped_situation_ron_deserializes_with_required_structure() {
     );
     assert!(
         situation.gangers.is_empty(),
-        "the shipped file must author NO placed gangers (GTW-744: procgen derives the cells); \
+        "the shipped file must author NO placed gangers ( procgen derives the cells); \
          found {}",
         situation.gangers.len(),
     );
@@ -110,7 +110,6 @@ fn shipped_situation_ron_deserializes_with_required_structure() {
         "the migrated shipped file must author NO default_floor (procgen supplies it)",
     );
 }
-
 
 /// struct-level `#[serde(default)]` supplies [`Faction::default`] = `Faction(0)`
 #[test]

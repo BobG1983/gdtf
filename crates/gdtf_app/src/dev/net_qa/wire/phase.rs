@@ -5,15 +5,15 @@ use crate::states::{AfterMathState, AppState, BattleScapeState, GameState, Runni
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub(crate) enum LifecyclePhaseNet {
-        Init,
-        Load,
-        Intro,
-        Running,
-        Teardown,
+    Init,
+    Load,
+    Intro,
+    Running,
+    Teardown,
 }
 
 impl LifecyclePhaseNet {
-        pub(crate) const fn from_state(state: &AppState) -> Self {
+    pub(crate) const fn from_state(state: &AppState) -> Self {
         match state {
             AppState::Init => Self::Init,
             AppState::Load => Self::Load,
@@ -26,14 +26,14 @@ impl LifecyclePhaseNet {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub(crate) enum RunningPhaseNet {
-        Menu,
-        Game,
-        Options,
-        Quit,
+    Menu,
+    Game,
+    Options,
+    Quit,
 }
 
 impl RunningPhaseNet {
-        pub(crate) const fn from_state(state: RunningState) -> Self {
+    pub(crate) const fn from_state(state: RunningState) -> Self {
         match state {
             RunningState::Menu => Self::Menu,
             RunningState::Game => Self::Game,
@@ -45,13 +45,13 @@ impl RunningPhaseNet {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub(crate) enum GamePhaseNet {
-        Setup,
-        HiveScape,
-        BattleScape,
+    Setup,
+    HiveScape,
+    BattleScape,
 }
 
 impl GamePhaseNet {
-        pub(crate) const fn from_state(state: GameState) -> Self {
+    pub(crate) const fn from_state(state: GameState) -> Self {
         match state {
             GameState::Setup => Self::Setup,
             GameState::HiveScape => Self::HiveScape,
@@ -62,15 +62,15 @@ impl GamePhaseNet {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub(crate) enum BattleScapePhaseNet {
-        Generation,
-        AnimateIn,
-        BattleRunning,
-        AnimateOut,
-        AfterMath,
+    Generation,
+    AnimateIn,
+    BattleRunning,
+    AnimateOut,
+    AfterMath,
 }
 
 impl BattleScapePhaseNet {
-        pub(crate) const fn from_state(state: BattleScapeState) -> Self {
+    pub(crate) const fn from_state(state: BattleScapeState) -> Self {
         match state {
             BattleScapeState::Generation => Self::Generation,
             BattleScapeState::AnimateIn => Self::AnimateIn,
@@ -83,13 +83,13 @@ impl BattleScapePhaseNet {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub(crate) enum AfterMathPhaseNet {
-        AnimateIn,
-        DisplayAftermath,
-        AnimateOut,
+    AnimateIn,
+    DisplayAftermath,
+    AnimateOut,
 }
 
 impl AfterMathPhaseNet {
-        pub(crate) const fn from_state(state: AfterMathState) -> Self {
+    pub(crate) const fn from_state(state: AfterMathState) -> Self {
         match state {
             AfterMathState::AnimateIn => Self::AnimateIn,
             AfterMathState::DisplayAftermath => Self::DisplayAftermath,
@@ -101,15 +101,15 @@ impl AfterMathPhaseNet {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct AppPhaseNet {
-        app:         LifecyclePhaseNet,
-        running:     Option<RunningPhaseNet>,
-        game:        Option<GamePhaseNet>,
-        battlescape: Option<BattleScapePhaseNet>,
-        aftermath:   Option<AfterMathPhaseNet>,
+    app:         LifecyclePhaseNet,
+    running:     Option<RunningPhaseNet>,
+    game:        Option<GamePhaseNet>,
+    battlescape: Option<BattleScapePhaseNet>,
+    aftermath:   Option<AfterMathPhaseNet>,
 }
 
 impl AppPhaseNet {
-        pub(crate) const fn new(
+    pub(crate) const fn new(
         app: LifecyclePhaseNet,
         running: Option<RunningPhaseNet>,
         game: Option<GamePhaseNet>,

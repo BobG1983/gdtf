@@ -52,12 +52,12 @@ fn ganger_pops(verdict: &GangerVerdict) -> Vec<ClassifiedPop> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StructuralKind {
-            Cover,
-        Slab,
+    Cover,
+    Slab,
 }
 
 impl StructuralKind {
-        const fn noun(self) -> &'static str {
+    const fn noun(self) -> &'static str {
         match self {
             Self::Cover => "Cover",
             Self::Slab => "Slab",

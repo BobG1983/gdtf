@@ -106,9 +106,9 @@ mod tests {
             unreachable!("the occupant was just spawned with Hp + LifeState");
         };
         let mut drain = OccupantDrain {
-            hp: &mut hp,
-            life: &mut life,
-            ticks: &mut ticks,
+            hp:     &mut hp,
+            life:   &mut life,
+            ticks:  &mut ticks,
             deaths: &mut deaths,
         };
         ApplyDrain::new(FieldDamage::new(damage)).drain_occupant(

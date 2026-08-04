@@ -5,8 +5,8 @@ use gdtf_battle_input::PanelNavOrder;
 struct FocusRingPx(f32);
 
 impl FocusRingPx {
-        const WIDTH: Self = Self(2.0);
-            const OFFSET: Self = Self(1.0);
+    const WIDTH: Self = Self(2.0);
+    const OFFSET: Self = Self(1.0);
 }
 
 const FOCUS_RING_COLOR: Color = Color::srgb(1.0, 0.82, 0.2);

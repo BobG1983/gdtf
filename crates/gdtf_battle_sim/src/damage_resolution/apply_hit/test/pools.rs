@@ -30,7 +30,7 @@ fn graze_subtracts_hp_and_spends_no_wound() {
     assert_eq!(*wounds, 5, "a graze (Severity::None) must spend NO Wound");
     assert!(
         inflicted.is_empty(),
-        "a graze (Severity::None) registers no Wound, so it must record NO InflictedWound (GTW-279 AC3)"
+        "a graze (Severity::None) registers no Wound, so it must record NO InflictedWound "
     );
     assert_eq!(
         life,

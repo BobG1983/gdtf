@@ -20,7 +20,7 @@ fn a_full_round_bleeds_a_live_downed_ganger() {
         wounds_of(&app, downed),
         start - rate,
         "one full round (a player End Turn) must drain exactly bleed_rate from a live \
-         Downed ganger — the bleed-out clock is wired into the turn cycle (GTW-336)",
+         Downed ganger — the bleed-out clock is wired into the turn cycle ",
     );
     assert_eq!(
         life_of(&app, downed),
@@ -45,7 +45,7 @@ fn the_clock_ticks_once_per_full_round_not_per_turn_boundary() {
     let mut app = live_app();
     let downed = bleeding_ganger(&mut app, PLAYER, LifeState::Downed, start);
 
-    end_turn(&mut app); 
+    end_turn(&mut app);
     assert_eq!(
         wounds_of(&app, downed),
         start - rate,
@@ -53,7 +53,7 @@ fn the_clock_ticks_once_per_full_round_not_per_turn_boundary() {
          ticks once — NOT once per TurnStarted, which would double it)",
     );
 
-    end_turn(&mut app); 
+    end_turn(&mut app);
     assert_eq!(
         wounds_of(&app, downed),
         start - rate * 2,

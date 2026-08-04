@@ -12,7 +12,6 @@ use gdtf_ui::{DisabledButton, SegmentSubText};
 
 use super::harness::*;
 
-
 pub(crate) fn add_probes(app: &mut App) {
     app.add_plugins((
         MessageProbePlugin::<SetStanceRequested>::default(),

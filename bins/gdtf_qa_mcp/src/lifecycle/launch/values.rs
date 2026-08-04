@@ -141,7 +141,7 @@ impl Deref for EnvVarValue {
 /// One env override pair.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnvVar {
-    name: EnvVarName,
+    name:  EnvVarName,
     value: EnvVarValue,
 }
 

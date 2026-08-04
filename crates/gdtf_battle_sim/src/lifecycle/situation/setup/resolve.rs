@@ -33,7 +33,7 @@ pub(super) fn resolve_members<'s, 'g>(
         };
         let Some(member) = roster.member(&placed.member) else {
             return Err(BattleSetupError::GangMemberNotFound {
-                gang: placed.gang.clone(),
+                gang:   placed.gang.clone(),
                 member: placed.member.clone(),
             });
         };
@@ -102,7 +102,7 @@ pub(super) fn resolve_armor_specs(
     reason = "the resolved cover pieces and their captured on-death entries are produced \
               by ONE walls-then-scatter walk and consumed together by the orchestrator; \
               splitting the pair into a named struct would add a new abstraction the \
-              GTW-583 split rules strike (P9 — no new types to shrink counts)"
+              split rules strike (P9 — no new types to shrink counts)"
 )]
 pub(super) fn resolve_covers(
     situation: &Situation,

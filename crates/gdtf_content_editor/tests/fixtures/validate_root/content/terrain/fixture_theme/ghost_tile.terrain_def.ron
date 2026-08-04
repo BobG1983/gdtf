@@ -1,4 +1,4 @@
-// GTW-663 fixture terrain def — a registry-PRESENT def whose presenter-half `graphic_name`
+// fixture terrain def — a registry-PRESENT def whose presenter-half `graphic_name`
 // names a sprite def this root never defines (the root materializes no content/sprites/ at
 // all, so the SpriteDefRegistry fails closed EMPTY), so the terrain→sprite-def edge dangles
 // ON PURPOSE (NOT shipped content; loaded only by tests/authoring_validation/ — the

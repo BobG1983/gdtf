@@ -1,6 +1,6 @@
 use super::support::*;
 
-// === GTW-237 — the roster-grounded WIN/LOSS outcome census (check_outcome). The
+// === the roster-grounded WIN/LOSS outcome census (check_outcome). The
 
 #[test]
 fn all_enemies_down_with_live_player_emits_one_battle_won_and_no_loss() {

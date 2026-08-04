@@ -6,7 +6,6 @@ use crate::{
     test_support::{SituationBuilder, ganger_at},
 };
 
-
 #[test]
 fn test5_terrain_index_and_slab_ledger_removed_on_teardown() {
     let mut app = headless_app();
@@ -44,6 +43,6 @@ fn test5_terrain_index_and_slab_ledger_removed_on_teardown() {
     assert!(
         app.world().get_resource::<SlabLedger>().is_none(),
         "Test 5 (blocker 1, leak fix): SlabLedger must be absent after teardown (pre-existing \
-         leak — it was never removed until GTW-395)",
+         leak — it was never removed until)",
     );
 }

@@ -1,7 +1,7 @@
 //! authored-override seed) and the owned-payload contract of the lifecycle
 use super::support::*;
 
-// === GTW-226 AC1 — PlayerFaction is a public newtype Resource over Faction with
+// === AC1 — PlayerFaction is a public newtype Resource over Faction with
 // new() + a derived Deref reading the inner Faction back. ===
 
 #[test]
@@ -13,7 +13,6 @@ fn player_faction_constructs_and_derefs_to_its_inner_faction() {
         "PlayerFaction::new(Faction(2)) must Deref back to Faction(2)",
     );
 }
-
 
 #[test]
 fn authored_player_faction_overrides_the_default_seed() {

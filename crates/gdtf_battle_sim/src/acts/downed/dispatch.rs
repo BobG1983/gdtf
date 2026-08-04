@@ -40,14 +40,14 @@ pub fn dispatch_stabilize_downed(
             continue;
         };
         let actor = Actor {
-            pos: actor_pos,
-            life: actor_life,
+            pos:     actor_pos,
+            life:    actor_life,
             faction: actor_faction,
         };
         let target = DownedTarget {
-            pos: target_pos,
-            life: target_life,
-            faction: target_faction,
+            pos:          target_pos,
+            life:         target_life,
+            faction:      target_faction,
             bleeding_out: target_bleeding.copied(),
         };
         stabilize_downed(&actor, &target, request.target, &mut commands, &tuning);
@@ -70,14 +70,14 @@ pub fn dispatch_execute_downed(
             continue;
         };
         let actor = Actor {
-            pos: actor_pos,
-            life: actor_life,
+            pos:     actor_pos,
+            life:    actor_life,
             faction: actor_faction,
         };
         let target = DownedTarget {
-            pos: target_pos,
-            life: target_life,
-            faction: target_faction,
+            pos:          target_pos,
+            life:         target_life,
+            faction:      target_faction,
             bleeding_out: target_bleeding.copied(),
         };
         let Ok((_, mut life, ..)) = gangers.get_mut(request.target) else {

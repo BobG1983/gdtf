@@ -10,14 +10,14 @@ use serde::Deserialize;
 
 #[derive(Resource, Deserialize, TypePath, Debug, Clone, PartialEq, Eq)]
 struct HotSwatch {
-        label: String,
-        count: u32,
+    label: String,
+    count: u32,
 }
 
 #[derive(Resource, Debug, Clone, PartialEq, Eq)]
 struct MappedSwatch {
-        doubled: u32,
-            sub:     Handle<RonAsset<HotSwatch>>,
+    doubled: u32,
+    sub:     Handle<RonAsset<HotSwatch>>,
 }
 
 fn map_swatch(spec: &HotSwatch, asset_server: &AssetServer) -> MappedSwatch {

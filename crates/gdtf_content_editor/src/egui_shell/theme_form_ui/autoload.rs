@@ -11,7 +11,6 @@ pub(crate) fn load_theme_into_form(draft: &mut ThemeDraft, def: &UuidThemeDef) {
     );
 }
 
-
 pub(crate) fn resolve_autoload(
     session_theme: ThemeUuid,
     themes: &UuidThemeRegistry,

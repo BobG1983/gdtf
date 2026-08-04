@@ -27,49 +27,49 @@ pub struct CombatTuning {
     /// Projectile range bands.
     pub projectile_band_edges: ProjectileBandEdges,
     /// Severity curve scaling.
-    pub severity_scaling: SeverityScaling,
+    pub severity_scaling:      SeverityScaling,
     /// Wound pool costs.
-    pub wound_costs: WoundCosts,
+    pub wound_costs:           WoundCosts,
     /// Bleed rate.
-    pub bleed_rate: BleedRate,
+    pub bleed_rate:            BleedRate,
     /// Stabilize TU.
-    pub stabilize_tu: StabilizeTu,
+    pub stabilize_tu:          StabilizeTu,
     /// Execute TU.
-    pub execute_tu: ExecuteTu,
+    pub execute_tu:            ExecuteTu,
     /// Stance change TU.
-    pub stance_change_tu: StanceChangeTu,
+    pub stance_change_tu:      StanceChangeTu,
     /// Facing turn TU.
-    pub turn_tu: TurnTu,
+    pub turn_tu:               TurnTu,
     /// Shove TU.
-    pub shove_tu: ShoveTu,
+    pub shove_tu:              ShoveTu,
     /// Open door TU.
-    pub open_door_tu: OpenDoorTu,
+    pub open_door_tu:          OpenDoorTu,
     /// Enter emplacement TU.
-    pub enter_emplacement_tu: EnterEmplacementTu,
+    pub enter_emplacement_tu:  EnterEmplacementTu,
     /// Exit emplacement TU.
-    pub exit_emplacement_tu: ExitEmplacementTu,
+    pub exit_emplacement_tu:   ExitEmplacementTu,
     /// Throw TU.
-    pub throw_tu: ThrowTu,
+    pub throw_tu:              ThrowTu,
     /// Per-terrain move costs.
-    pub move_costs: MoveCosts,
+    pub move_costs:            MoveCosts,
     /// Vertical link TU.
-    pub link_tu: LinkTu,
+    pub link_tu:               LinkTu,
     /// Body-part hit weights.
-    pub body_part_weights: BodyPartWeights,
+    pub body_part_weights:     BodyPartWeights,
     /// Cone / stability tuning.
-    pub cone_stability: ConeStabilityTuning,
+    pub cone_stability:        ConeStabilityTuning,
     /// Armor matchup multipliers.
-    pub matchup_multipliers: MatchupMultipliers,
+    pub matchup_multipliers:   MatchupMultipliers,
     /// Firing arc degrees.
-    pub firing_arc: FiringArc,
+    pub firing_arc:            FiringArc,
     /// View range cells.
-    pub view_range: ViewRange,
+    pub view_range:            ViewRange,
     /// Explored-tile dim factor (optional / legacy).
-    pub explored_dim: ExploredDim,
+    pub explored_dim:          ExploredDim,
     /// Reaction fire tuning.
-    pub reaction: ReactionTuning,
+    pub reaction:              ReactionTuning,
     /// Melee tuning.
-    pub melee: MeleeTuning,
+    pub melee:                 MeleeTuning,
     /// Fall damage per storey.
-    pub per_storey_damage: PerStoreyDamage,
+    pub per_storey_damage:     PerStoreyDamage,
 }

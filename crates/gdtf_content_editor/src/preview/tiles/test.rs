@@ -31,7 +31,7 @@ fn only_the_active_class_is_full_bright() {
     let ghost_alpha = GHOST_BELOW_TINT.alpha();
     assert!(
         ghost_alpha < 1.0,
-        "the below-ghost is translucent (hue+alpha — GTW-594 C2); got alpha {ghost_alpha}",
+        "the below-ghost is translucent (hue+alpha — C2); got alpha {ghost_alpha}",
     );
 }
 

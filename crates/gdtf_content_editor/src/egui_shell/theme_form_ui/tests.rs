@@ -79,7 +79,6 @@ fn single_theme_registry(
     UuidThemeRegistry::new([(t_key, def)])
 }
 
-
 #[test]
 fn resolve_autoload_nil_returns_none() {
     let slab = terrain_key(1);
@@ -98,7 +97,7 @@ fn resolve_autoload_nil_returns_none() {
 fn resolve_autoload_absent_key_returns_none() {
     let slab = terrain_key(2);
     let registered = theme_key(2);
-    let absent = theme_key(99); 
+    let absent = theme_key(99);
     let registry = single_theme_registry(registered, vec![slab], slab);
 
     let result = resolve_autoload(absent, &registry);
@@ -132,7 +131,6 @@ fn resolve_autoload_present_key_returns_some_def() {
         "the returned def carries the correct display name from the registry",
     );
 }
-
 
 #[test]
 fn load_theme_into_form_replaces_draft_with_def_parts() {
@@ -222,7 +220,7 @@ fn load_then_save_round_trips_identical() {
     assert!(
         reloaded.is_ok(),
         "the serialized def must round-trip through the UuidThemeDef deserializer (the \
-         GTW-487 theme loader's parser): {:?}",
+          theme loader's parser): {:?}",
         reloaded.as_ref().err(),
     );
     let Ok(reloaded) = reloaded else {

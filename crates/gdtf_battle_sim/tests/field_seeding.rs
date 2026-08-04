@@ -94,7 +94,6 @@ fn situation_with_field(field_cell: CellLevel) -> (Situation, GangRegistry) {
     (situation, gangs)
 }
 
-
 #[test]
 fn authored_field_seeds_the_field_registry() {
     let field_cell = ground(4, 4);
@@ -123,7 +122,6 @@ fn authored_field_seeds_the_field_registry() {
     }
 }
 
-
 #[test]
 fn situation_without_fields_deserializes_to_an_empty_list() {
     // `#[serde(default)]`, so this must parse and carry NO fields.
@@ -141,7 +139,6 @@ fn situation_without_fields_deserializes_to_an_empty_list() {
         );
     }
 }
-
 
 #[test]
 fn authored_fields_ron_parses_into_field_spawns() {
@@ -172,7 +169,6 @@ fn authored_fields_ron_parses_into_field_spawns() {
     }
 }
 
-
 #[test]
 fn unknown_field_key_aborts_with_field_not_found() {
     let (mut situation, gangs) = SituationBuilder::new()
@@ -194,7 +190,6 @@ fn unknown_field_key_aborts_with_field_not_found() {
         "an aborted setup inserts NO FieldRegistry (abort-first, no partial world)",
     );
 }
-
 
 #[test]
 fn turns_field_def_round_trips_through_ron() {
