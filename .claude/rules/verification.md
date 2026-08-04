@@ -62,3 +62,5 @@ Release binary builds are packaging-time only (not a CI gate).
 3. **Scene / state / app behavior** needs a headless integration test (`gdtf_test_utils::GdtfTestAppBuilder`) asserting on `State` / `World`. Reserve live app runs (`cargo drun`) for rendering, real input, and layout.
 4. **Report failures verbatim** — paste the assert, compiler, or clippy output.
 5. **`/gate` is the gatekeeper** — this suite plus the design-gate audit. No gate-pass, no commit.
+
+6. **Do not pin changeable literals in tests.** If an ordinary content or tuning edit (new weapon file, renamed stem, magnitude tweak) turns a test red, the test is pinning a changeable literal — assert the **property** instead (non-empty registry, deserializes a `Cone` somewhere, gate waits on the resource). Exact filenames, counts, and magnitudes belong in content data, not in `assert!`. Dedicated guard crates under `gdtf_test_utils/tests/` are the exception: they pin repo structure on purpose.

@@ -16,16 +16,8 @@ use load_suite::suite::{self, FamilyLoadContract};
 const REDRIVE_SENTINEL: &str = "Redrive Sentinel";
 
 impl FamilyLoadContract for AttachmentsFamily {
-    const EXPECTED_MEMBERS: &'static [&'static str] = &["scoped_sight", "suppressor"];
-
     fn is_empty(registry: &AttachmentRegistry) -> bool {
         registry.is_empty()
-    }
-
-    fn member_resolves(registry: &AttachmentRegistry, label: &str) -> bool {
-        registry
-            .spec(&AttachmentName::new(label.to_owned()))
-            .is_some()
     }
 }
 
