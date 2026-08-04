@@ -1,4 +1,4 @@
-// GDTF gang roster — "gang_0" (GTW-414/415). A faction-agnostic, reusable roster: a
+// GDTF gang roster — "gang_0". A faction-agnostic, reusable roster: a
 // list of MEMBERS, each carrying identity + the eight direct attributes + a weapon KEY +
 // an armor KEY. NO faction, NO placement — those are assigned per-battle by the situation
 // (assets/content/situations/*.ron), so this roster can be fielded on any side at any position.
@@ -7,7 +7,7 @@
 // its file stem. It loads as a loose `.gang.ron` through the RonAsset<GangRoster> folder
 // loader, keyed into the GangRegistry by `gang_0`. Render-free, pixel-free.
 //
-// GTW-414 migration: the SINGLE faction-0 ganger that used to be inlined in
+// Migration: the SINGLE faction-0 ganger that used to be inlined in
 // skirmish.ron — "Alex Mercer" — carried over here VERBATIM (same eight attributes, same
 // flak_vest armor, same stub_pistol weapon). The situation now references this gang +
 // member by name and supplies the placement (cell / facing / stance) + faction.
@@ -29,9 +29,9 @@
             grit:      19.0,           // Grit attribute — resilience; the dominant derived HP + Morale term (→ HP ~34)
             luck:      1.0,            // Luck attribute — directional fortune; the severity-roll tail (not a computed stat)
             armor:     "flak_vest",    // armor KEY — resolves to assets/content/armor/flak_vest.armor.ron at setup
-            weapon:    "volatile_charge",  // GTW-547: a volatile satchel-charge weapon — its `on_death` Explode effect detonates a radius-1 blast at Alex's body when Alex dies (resolves to assets/content/weapons/ranged/volatile_charge.weapon.ron at setup), making the on-death Explode LIVE in the shipped skirmish
+            weapon:    "volatile_charge",  // volatile satchel-charge weapon — its `on_death` Explode effect detonates a radius-1 blast at Alex's body when Alex dies (resolves to assets/content/weapons/ranged/volatile_charge.weapon.ron at setup)
         ),
-        // GTW-546: a grenadier — carries the ARC-trajectory grenade launcher, so the contextual
+        // A grenadier — carries the ARC-trajectory grenade launcher, so the contextual
         // THROW button is LIVE in the shipped playable skirmish (a player ganger that wields a
         // TrajectoryStyle::Arc weapon reveals the Throw button when a cell is hovered, lobbing a
         // Blast at range over cover / through roof holes). Player-faction only — the AI never acts
@@ -49,7 +49,7 @@
             grit:      19.0,           // Grit attribute — resilience (→ HP ~34, a survivable grenadier)
             luck:      1.0,            // Luck attribute — the severity-roll tail
             armor:     "flak_vest",    // armor KEY — resolves to assets/content/armor/flak_vest.armor.ron at setup
-            weapon:    "grenade_launcher",  // GTW-546: the ARC-trajectory, magazine-fed grenade launcher (resolves to assets/content/weapons/ranged/grenade_launcher.weapon.ron) — makes the contextual THROW act LIVE in the shipped skirmish
+            weapon:    "grenade_launcher",  // the ARC-trajectory, magazine-fed grenade launcher (resolves to assets/content/weapons/ranged/grenade_launcher.weapon.ron)
         ),
     ],
 )
