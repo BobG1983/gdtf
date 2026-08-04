@@ -1,4 +1,4 @@
-//! (`states::load::systems::resolve::injuries::test::context`, which proves the authored
+//! Load injury contexts and prove authored weighting resolves.
 use gdtf_app::test_support::AppState;
 use gdtf_battle_sim::{
     armor::{BodyPart, InjuryCategory},

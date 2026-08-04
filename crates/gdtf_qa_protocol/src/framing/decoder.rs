@@ -56,8 +56,7 @@ impl FrameDecoder {
     ///
     /// # Errors
     ///
-    /// Returns [`WireError::Oversize`] when a declared length exceeds the max frame size;
-    /// the decoder stays poisoned and keeps returning that error on later calls.
+    /// Returns [`WireError::Oversize`] when a declared length exceeds the max frame size; the decoder stays poisoned and keeps returning that error on later calls.
     pub fn next_frame(&mut self) -> Result<Option<Frame>, WireError> {
         if let Some(err) = self.poison {
             return Err(err);

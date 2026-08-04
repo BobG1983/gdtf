@@ -1,4 +1,4 @@
-//! `cfg(all(debug_assertions, feature = "net_qa"))` (the gate is applied at the module
+//! Present command stays inert when net-QA is not active.
 use bevy::{app::App, camera::RenderTarget, prelude::*, winit::WinitSettings};
 
 use crate::net_qa::{

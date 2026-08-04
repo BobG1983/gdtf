@@ -1,7 +1,5 @@
-//! only binds it to [`ArmorFamily`] with the authored member keys. The
-//! assertions stay VALUE-AGNOSTIC (registry presence + authored filename-stem
-//! keys) — the authored armor magnitudes are tuning DATA, never pinned (the
-//! brittle-test rule). The field-to-slot conversion MECHANISM is covered by
+//! Load armor into [`ArmorFamily`] by authored member keys.
+//! Value-agnostic: registry presence and stems only; magnitudes are tuning data.
 mod load_suite;
 
 use bevy::app::Startup;

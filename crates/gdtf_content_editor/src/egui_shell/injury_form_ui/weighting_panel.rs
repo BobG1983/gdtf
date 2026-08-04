@@ -1,4 +1,4 @@
-//! is impossible to author by construction (the combo offers only resolving keys, and
+//! Injury weighting panel; combo only offers resolving keys.
 use bevy_egui::egui;
 use gdtf_battle_sim::{
     armor::InjuryCategory,

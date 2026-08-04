@@ -8,7 +8,6 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 
 /// Index into a sheet grid.
-///
 /// `#[serde(transparent)]` so an authored role-table field parses as a bare integer.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(transparent)]

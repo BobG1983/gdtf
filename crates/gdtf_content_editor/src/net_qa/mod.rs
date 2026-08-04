@@ -1,4 +1,4 @@
-//! `cfg(all(debug_assertions, feature = "net_qa"))` (the wiring site in `crate::app` applies
+//! Editor net-QA host wiring (debug + `net_qa` feature).
 mod config;
 mod env;
 mod plugin;

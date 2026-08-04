@@ -4,7 +4,6 @@ use bevy::prelude::*;
 use serde::Deserialize;
 
 /// World units per second at full pan input.
-///
 /// `#[serde(transparent)]` so the `.ron` authors the inner number directly.
 #[derive(Deref, Clone, Copy, PartialEq, Debug, Deserialize)]
 #[serde(transparent)]
@@ -28,7 +27,6 @@ impl Default for PanSpeed {
 }
 
 /// Pixel width of the screen-edge pan band.
-///
 /// `#[serde(transparent)]` so the `.ron` authors the inner number directly.
 #[derive(Deref, Clone, Copy, PartialEq, Debug, Deserialize)]
 #[serde(transparent)]

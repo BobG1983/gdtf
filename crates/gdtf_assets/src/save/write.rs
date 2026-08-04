@@ -33,14 +33,11 @@ pub fn serialize_ron_pretty<T: Serialize>(value: &T) -> Result<String, RonSaveEr
         .map_err(|err| RonSaveError::Serialize(err.to_string()))
 }
 
-/// Serialize `value` and write it to `path` (debug builds only).
-///
-/// Creates parent directories when needed.
+/// Serialize `value` and write it to `path` (debug builds only). Creates parent directories when needed.
 ///
 /// # Errors
 ///
-/// Returns [`RonSaveError::Serialize`] on encode failure, or [`RonSaveError::Write`]
-/// if creating directories or writing the file fails.
+/// Returns [`RonSaveError::Serialize`] on encode failure, or [`RonSaveError::Write`] if creating directories or writing the file fails.
 #[cfg(debug_assertions)]
 pub fn write_ron_pretty<T: Serialize>(path: &Path, value: &T) -> Result<(), RonSaveError> {
     let serialized = serialize_ron_pretty(value)?;

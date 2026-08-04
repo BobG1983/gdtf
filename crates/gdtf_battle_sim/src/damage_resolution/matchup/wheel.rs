@@ -85,7 +85,6 @@ pub fn matchup(weapon: DamageType, armor: ArmorType) -> Matchup {
 }
 
 /// Multiplier applied to punch/shred for a given matchup outcome.
-///
 /// Parsed as a bare RON scalar via `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, serde::Deserialize)]
 #[serde(transparent)]

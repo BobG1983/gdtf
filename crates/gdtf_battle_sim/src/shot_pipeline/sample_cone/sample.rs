@@ -24,7 +24,6 @@ impl ShotDir {
 }
 
 /// Sample a direction around the aim axis inside the cone.
-///
 /// Higher concentration pulls samples closer to the axis.
 #[must_use]
 pub fn sample_cone_vector(

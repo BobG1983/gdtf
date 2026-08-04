@@ -1,5 +1,5 @@
-//! only binds it to [`TerrainDefsFamily`] with the KNOWN authored UUIDs. The
-//! VALUE-AGNOSTIC: presence + known-UUID resolution only — no authored terrain
+//! Load terrain into [`TerrainDefsFamily`] by known authored UUIDs.
+//! Value-agnostic: presence and UUID resolution only.
 mod load_suite;
 
 use bevy::asset::uuid::Uuid;

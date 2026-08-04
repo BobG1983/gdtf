@@ -16,8 +16,7 @@ pub enum FitRejection {
 ///
 /// # Errors
 ///
-/// Returns [`FitRejection::UndeclaredSlot`] if the weapon never lists that slot,
-/// or [`FitRejection::SlotAtCapacity`] if every slot of that kind is already used.
+/// Returns [`FitRejection::UndeclaredSlot`] if the weapon never lists that slot, or [`FitRejection::SlotAtCapacity`] if every slot of that kind is already used.
 pub fn attachment_fits(
     slots: &WeaponSlots,
     fitted: &[AttachmentSlot],

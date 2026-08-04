@@ -1,4 +1,4 @@
-//! [`PREVIEW_VIEW_SPAN`]-world-unit view (independent of the offscreen texture's pixel size, so
+//! Preview world coordinates independent of offscreen texture size.
 use bevy::math::Vec2;
 use gdtf_battle_sim::prelude::Cell;
 

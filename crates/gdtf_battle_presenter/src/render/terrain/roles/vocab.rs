@@ -1,7 +1,6 @@
 //! Terrain tile role vocabulary and authored-key mapping.
 
 /// Role of a terrain tile graphic.
-///
 /// [`as_key`](TileRole::as_key) is the authored key and [`from_key`](TileRole::from_key) its inverse.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TileRole {

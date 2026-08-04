@@ -3,7 +3,6 @@
 use bevy::prelude::*;
 
 /// Which theme bucket a node draws from.
-///
 /// The `#[default]` ([`ThemeRole::Background`]) is a spawn-seed sentinel only.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ThemeRole {

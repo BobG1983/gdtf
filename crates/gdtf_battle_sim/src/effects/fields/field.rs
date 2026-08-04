@@ -1,5 +1,4 @@
 //! Catalog authoring for battlefield fields.
-//!
 //! [`FieldDef`] is the catalog side: damage, damage type, immune armor types, duration.
 
 use bevy::reflect::TypePath;

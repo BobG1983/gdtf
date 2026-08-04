@@ -1,5 +1,4 @@
-//! checkbox (an unchecked box IS the authored `None` — the serde-default identity).
-//! Enable seeds carry DOCUMENTED identities the author immediately re-tunes (the
+//! Optional weapon fields; unchecked means authored `None`.
 use bevy_egui::egui;
 use gdtf_battle_sim::{
     effects::{

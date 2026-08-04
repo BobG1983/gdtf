@@ -48,7 +48,6 @@ pub trait ApplyInjuryEffect {
     ///
     /// # Errors
     ///
-    /// Returns [`HealError::NeedsRefold`] when the ledger must be rebuilt from remaining injuries
-    /// instead of a simple reverse delta.
+    /// Returns [`HealError::NeedsRefold`] when the ledger must be rebuilt from remaining injuries instead of a simple reverse delta.
     fn heal(&self, accumulators: &mut LedgerAccumulators<'_>) -> Result<(), HealError>;
 }
