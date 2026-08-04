@@ -1,10 +1,10 @@
-// GTW-452 MELEE per-source weighting for the LEG pool (both legs share it) — the SAME
+// MELEE per-source weighting for the LEG pool (both legs share it) — the SAME
 // shared leg injury defs as leg.weighting.ron (ranged), weighted for close combat. No
 // injury def is duplicated; only the weights differ per source (resolution.md injury
 // tables).
 (
     category: Leg,                                         // the shared Leg category this file weights
-    context:  Melee,                                       // GTW-452: the melee per-source table
+    context:  Melee,                                       // the melee per-source table
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "torn_hamstring", weight: 8),             // -1 Speed
         (injury: "twisted_ankle",  weight: 5),             // MovementCostMul 1.25 (Hampered)

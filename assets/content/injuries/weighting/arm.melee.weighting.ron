@@ -1,10 +1,10 @@
-// GTW-452 MELEE per-source weighting for the ARM pool (both arms share it) — the SAME
+// MELEE per-source weighting for the ARM pool (both arms share it) — the SAME
 // shared arm injury defs as arm.weighting.ron (ranged), weighted for close combat. No
 // injury def is duplicated; only the weights differ per source (resolution.md injury
 // tables). A parried melee blow dislocates a shoulder or shatters a hand more readily.
 (
     category: Arm,                                         // the shared Arm category this file weights
-    context:  Melee,                                       // GTW-452: the melee per-source table
+    context:  Melee,                                       // the melee per-source table
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "torn_muscle",     weight: 8),            // -1 Aim
         (injury: "bruised_forearm", weight: 6),            // -1 Strength
