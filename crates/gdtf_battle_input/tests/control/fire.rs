@@ -81,7 +81,7 @@ fn left_click_cover_with_fire_mode_fires_at_the_cover_cell() {
         fire.len(),
         1,
         "exactly one FireRequested on a Left press over shootable cover with a fire mode \
-         (cover/walls are valid fire targets, GTW-377)",
+         (cover/walls are valid fire targets)",
     );
     assert!(
         moves(&app).is_empty(),

@@ -25,7 +25,7 @@ fn attachment_spec_parses_with_effect_list() {
     assert_eq!(
         spec.slot,
         AttachmentSlot::Muzzle,
-        "the GTW-554 slot the item occupies round-trips"
+        "the slot the item occupies round-trips"
     );
     assert_eq!(
         spec.effects.len(),
@@ -51,7 +51,7 @@ fn attachment_spec_defaults_to_empty_effects() {
     );
     assert!(
         ron::de::from_str::<AttachmentSpec>("(display_name: \"No Slot\")").is_err(),
-        "an item omitting the REQUIRED `slot:` field fails to parse (GTW-554)"
+        "an item omitting the REQUIRED `slot:` field fails to parse"
     );
 }
 
