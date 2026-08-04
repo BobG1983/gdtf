@@ -1,20 +1,16 @@
-// GTW-490 migration of assets/content/terrain/debris_pile.terrain.ron to the NEW UUID-keyed
-// per-theme TerrainDef model (GTW-484/487). Magnitudes COPIED verbatim from the flat file.
-// Scatter FOLDS INTO Cover (the new model has no Scatter kind) — debris is a low, fragile
-// cover prop with the same structural model. presenter_kind.graphic_name = the flat file's
-// `graphic` TileRoles key ("rubble"); the old atlas index is INTENTIONALLY DROPPED.
+// Debris pile — low fragile cover.
 (
-    // Stable authored key — the industrial_hive `debris_pile` TerrainUuid.
+    // Stable authored key — industrial_hive debris_pile TerrainUuid.
     key: "00000000-0000-0000-0000-01840a910003",
     display_name: "Debris Pile",
     sim_kind: Cover(
-        hp:               8,     // structural HP (copied)
-        armor_protection: 1,     // damage soak (copied)
-        armor_hardness:   0,     // punch ignored (copied)
-        height_band:      Low,   // low loose debris
+        hp:               8,     // structural HP
+        armor_protection: 1,     // damage soak
+        armor_hardness:   0,     // punch ignored
+        height_band:      Low,
     ),
     presenter_kind: Cover(
-        graphic_name: "rubble",  // flat file's `graphic` TileRoles key
+        graphic_name: "rubble",
     ),
     tags: [],
 )

@@ -1,27 +1,18 @@
-// GTW-490 migration of assets/content/terrain/supply_crate.terrain.ron to the NEW UUID-keyed
-// per-theme TerrainDef model (GTW-484/487). Magnitudes COPIED verbatim from the flat file.
-// presenter_kind.graphic_name = the flat file's `graphic` TileRoles key ("cover"); the old
-// atlas index is INTENTIONALLY DROPPED.
+// Supply crate. On death leaves an incendiary field at its cell.
 (
-    // Stable authored key — the industrial_hive `supply_crate` TerrainUuid.
+    // Stable authored key — industrial_hive supply_crate TerrainUuid.
     key: "00000000-0000-0000-0000-01840a910008",
     display_name: "Supply Crate",
     sim_kind: Cover(
-        hp:               20,    // structural HP (copied)
-        armor_protection: 3,     // damage soak (copied)
-        armor_hardness:   1,     // punch ignored (copied)
-        height_band:      Low,   // shootable-over: a Mid/High round clears it
+        hp:               20,    // structural HP
+        armor_protection: 3,     // damage soak
+        armor_hardness:   1,     // punch ignored
+        height_band:      Low,   // shootable-over: Mid/High round clears it
     ),
     presenter_kind: Cover(
-        graphic_name: "cover",   // flat file's `graphic` TileRoles key
+        graphic_name: "cover",
     ),
     tags: [],
-    // GTW-547 (on-death effects, child GTW-41g): the crate is packed with volatile munitions —
-    // DESTROYING it (a shot / melee smash that depletes its HP to zero) leaves a persistent
-    // incendiary field (the shipped `incendiary_fire` GTW-545 field) at its cell, so blowing the
-    // crate turns its cell into a burning hazard the survivors must route around. This is LIVE in
-    // the IndustrialHive theme the shipped skirmish generates from — any supply_crate procgen
-    // places carries it. `on_death` defaults to `None` when omitted, so every other def is
-    // unaffected.
+    // Packed with volatile munitions — destroying it leaves a persistent incendiary field.
     on_death: Some(LeaveField(field: "incendiary_fire")),
 )
