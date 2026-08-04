@@ -32,7 +32,7 @@ type ResyncData = (
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct FxPipelineProbe<'w, 's> {
     projectiles: Query<'w, 's, (), With<ShotProjectile>>,
-    pending: Query<'w, 's, (), With<PendingImpact>>,
+    pending:     Query<'w, 's, (), With<PendingImpact>>,
 }
 
 impl FxPipelineProbe<'_, '_> {

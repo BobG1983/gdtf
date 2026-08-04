@@ -14,7 +14,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandCatalogue {
     /// Host server name.
-    pub host: ServerNameNet,
+    pub host:    ServerNameNet,
     /// Registered commands.
     pub entries: Vec<CommandEntry>,
 }
@@ -31,16 +31,16 @@ impl CommandCatalogue {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandEntry {
     /// Command id.
-    pub command: CommandName,
+    pub command:      CommandName,
     /// Short description.
-    pub summary: CommandSummary,
+    pub summary:      CommandSummary,
     /// Immediate vs deferred (`#[serde(default)]` for older frames).
     #[serde(default)]
-    pub timing: CommandTiming,
+    pub timing:       CommandTiming,
     /// JSON schema for arguments.
-    pub arguments: ArgSchemaJson,
+    pub arguments:    ArgSchemaJson,
     /// JSON schema for the reply body.
-    pub reply: ReplySchemaJson,
+    pub reply:        ReplySchemaJson,
     /// Whether the command can run right now.
     pub availability: CommandAvailability,
 }

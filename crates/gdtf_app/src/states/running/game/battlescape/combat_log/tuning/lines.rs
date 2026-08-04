@@ -6,7 +6,7 @@ use serde::Deserialize;
 pub(crate) struct MaxVisibleLines(usize);
 
 impl MaxVisibleLines {
-        pub(crate) const DEFAULT: usize = 6;
+    pub(crate) const DEFAULT: usize = 6;
 }
 
 impl Default for MaxVisibleLines {
@@ -20,9 +20,9 @@ impl Default for MaxVisibleLines {
 pub(crate) struct LineTtlSeconds(f32);
 
 impl LineTtlSeconds {
-        pub(crate) const DEFAULT: f32 = 5.0;
+    pub(crate) const DEFAULT: f32 = 5.0;
 
-                #[cfg(test)]
+    #[cfg(test)]
     #[must_use]
     pub(crate) const fn from_secs(secs: f32) -> Self {
         Self(secs)
@@ -40,7 +40,7 @@ impl Default for LineTtlSeconds {
 pub(crate) struct FadeFraction(f32);
 
 impl FadeFraction {
-        pub(crate) const DEFAULT: f32 = 0.35;
+    pub(crate) const DEFAULT: f32 = 0.35;
 }
 
 impl Default for FadeFraction {
@@ -54,7 +54,7 @@ impl Default for FadeFraction {
 pub(crate) struct LineLerpRate(f32);
 
 impl LineLerpRate {
-        pub(crate) const DEFAULT: f32 = 12.0;
+    pub(crate) const DEFAULT: f32 = 12.0;
 }
 
 impl Default for LineLerpRate {
@@ -68,9 +68,9 @@ impl Default for LineLerpRate {
 pub(crate) struct FadeInSeconds(f32);
 
 impl FadeInSeconds {
-        pub(crate) const DEFAULT: f32 = 0.18;
+    pub(crate) const DEFAULT: f32 = 0.18;
 
-        #[cfg(test)]
+    #[cfg(test)]
     #[must_use]
     pub(crate) const fn from_secs(secs: f32) -> Self {
         Self(secs)
@@ -88,9 +88,9 @@ impl Default for FadeInSeconds {
 pub(crate) struct FadeOutSeconds(f32);
 
 impl FadeOutSeconds {
-        pub(crate) const DEFAULT: f32 = 0.9;
+    pub(crate) const DEFAULT: f32 = 0.9;
 
-        #[cfg(test)]
+    #[cfg(test)]
     #[must_use]
     pub(crate) const fn from_secs(secs: f32) -> Self {
         Self(secs)
@@ -108,7 +108,7 @@ impl Default for FadeOutSeconds {
 pub(crate) struct LineFontPt(f32);
 
 impl LineFontPt {
-            pub(crate) const DEFAULT: f32 = 20.0;
+    pub(crate) const DEFAULT: f32 = 20.0;
 }
 
 impl Default for LineFontPt {

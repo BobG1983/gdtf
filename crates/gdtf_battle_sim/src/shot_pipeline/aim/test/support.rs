@@ -20,11 +20,11 @@ pub(super) struct ShooterState {
     pub(super) aiming:     Aiming,
     pub(super) position:   Position,
     pub(super) facing:     Facing,
-                pub(super) suppressed: Option<Suppressed>,
+    pub(super) suppressed: Option<Suppressed>,
 }
 
 impl ShooterState {
-                pub(super) fn new(
+    pub(super) fn new(
         x: i32,
         y: i32,
         storey: u8,
@@ -41,13 +41,13 @@ impl ShooterState {
         }
     }
 
-                pub(super) fn suppressed_from(mut self, sx: i32, sy: i32, storey: u8) -> Self {
+    pub(super) fn suppressed_from(mut self, sx: i32, sy: i32, storey: u8) -> Self {
         let origin = CellLevel::new(Cell::new(sx, sy), Level::new(storey));
         self.suppressed = Some(Suppressed::new(SuppressorCell::new(origin)));
         self
     }
 
-        pub(super) fn as_shooter(&self) -> Shooter<'_> {
+    pub(super) fn as_shooter(&self) -> Shooter<'_> {
         Shooter {
             stance:     &self.stance,
             aiming:     &self.aiming,

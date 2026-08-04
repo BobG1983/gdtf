@@ -106,10 +106,10 @@ pub fn dispatch_melee(
                 &mut pieces,
                 &mut world,
                 MeleeStreams {
-                    fight: &mut fight_rng,
-                    shot: &mut shot_rng,
+                    fight:    &mut fight_rng,
+                    shot:     &mut shot_rng,
                     severity: &mut severity_rng,
-                    injury: &mut injury_rng,
+                    injury:   &mut injury_rng,
                 },
                 &mut resolved,
                 &mut facts,

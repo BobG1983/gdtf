@@ -9,7 +9,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn walk_bump_stops_when_next_cell_becomes_occupied() {
     let mut app = battle_app();
@@ -88,7 +87,6 @@ fn walk_bump_stops_when_next_cell_becomes_occupied() {
     );
 }
 
-
 #[test]
 fn walk_stops_when_a_new_enemy_is_revealed() {
     let mut app = battle_app();
@@ -139,7 +137,6 @@ fn walk_stops_when_a_new_enemy_is_revealed() {
         "the enemy entered the squad VISIBLE set — the reveal is what stopped the walk",
     );
 }
-
 
 #[test]
 fn walk_stops_on_a_synthetic_reaction_interrupt() {

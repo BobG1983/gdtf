@@ -27,8 +27,8 @@ where
     Spec: TypePath + Send + Sync + 'static,
     T: Resource,
 {
-    path: HotRonPath,
-    map: HotRonMapFn<Spec, T>,
+    path:     HotRonPath,
+    map:      HotRonMapFn<Spec, T>,
     fallback: Option<HotRonFallbackFn<T>>,
 }
 

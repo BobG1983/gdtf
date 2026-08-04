@@ -74,7 +74,7 @@ pub struct HitResult {
     /// Damage that penetrated.
     pub penetrating: PenetratingDamage,
     /// HP that should be subtracted.
-    pub hp_damage: HpDamage,
+    pub hp_damage:   HpDamage,
     /// Integrity that should be worn off the armor.
-    pub wear: IntegrityWear,
+    pub wear:        IntegrityWear,
 }

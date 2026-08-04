@@ -8,7 +8,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn a_blast_shot_damages_every_occupant_in_the_radius() {
     let hit = HitType::Blast {
@@ -77,7 +76,6 @@ fn a_blast_shot_damages_every_occupant_in_the_radius() {
     );
 }
 
-
 #[test]
 fn a_single_shot_damages_only_the_direct_target_no_splash() {
     let hit = HitType::Single;
@@ -132,7 +130,6 @@ fn a_single_shot_damages_only_the_direct_target_no_splash() {
         "a Single shot does NOT splash the eastern bystander (no AoE — the identity property)",
     );
 }
-
 
 #[test]
 fn the_blast_outcome_is_reproducible_under_the_same_seed() {

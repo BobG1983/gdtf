@@ -12,15 +12,15 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MeleeWeaponHit<'a> {
     /// Base damage.
-    pub damage: &'a WeaponDamage,
+    pub damage:      &'a WeaponDamage,
     /// Punch.
-    pub punch: &'a WeaponPunch,
+    pub punch:       &'a WeaponPunch,
     /// Shred.
-    pub shred: &'a WeaponShred,
+    pub shred:       &'a WeaponShred,
     /// Damage type for armor matchup.
     pub damage_type: &'a DamageType,
     /// Fatal bias.
-    pub fatal_bias: &'a FatalBias,
+    pub fatal_bias:  &'a FatalBias,
 }
 
 /// Attacker and defender fight stats (and attacker luck).
@@ -31,23 +31,23 @@ pub struct Combatants {
     /// Defender fight value.
     pub defender_fight: Fight,
     /// Attacker luck.
-    pub attacker_luck: Luck,
+    pub attacker_luck:  Luck,
 }
 
 /// Shared tables and RNGs for a melee strike.
 pub struct MeleeStrikeEnv<'a> {
     /// Combat tuning.
-    pub tuning: &'a CombatTuning,
+    pub tuning:       &'a CombatTuning,
     /// Injury tables.
-    pub tables: &'a InjuryTables,
+    pub tables:       &'a InjuryTables,
     /// Injury registry.
-    pub registry: &'a InjuryRegistry,
+    pub registry:     &'a InjuryRegistry,
     /// Fight stream.
-    pub fight_rng: &'a mut FightRng,
+    pub fight_rng:    &'a mut FightRng,
     /// Body-part / shot stream.
-    pub shot_rng: &'a mut ShotRng,
+    pub shot_rng:     &'a mut ShotRng,
     /// Severity stream.
     pub severity_rng: &'a mut SeverityRng,
     /// Injury stream.
-    pub injury_rng: &'a mut InjuryRng,
+    pub injury_rng:   &'a mut InjuryRng,
 }

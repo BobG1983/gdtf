@@ -53,7 +53,6 @@ fn equip_thin_armor(app: &mut App, ganger: Entity) {
     }
 }
 
-
 fn point_blank_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
@@ -129,7 +128,7 @@ fn spawn_prone_enemy(app: &mut App) -> Entity {
 }
 
 fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
-                type FireQueries<'w, 's> = (
+    type FireQueries<'w, 's> = (
         ShooterQuery<'w, 's>,
         TargetQuery<'w, 's>,
         WearsQuery<'w, 's>,

@@ -49,7 +49,7 @@ fn drain_movements(app: &mut App) -> Vec<MovementOccurred> {
 #[test]
 fn the_boundary_dot_tick_resolves_before_a_same_frame_enemy_act() {
     let per_turn = 5u16;
-    let start_hp = per_turn + 10; 
+    let start_hp = per_turn + 10;
     let origin = ground(10, 10);
     let dest = ground(11, 10);
 

@@ -59,7 +59,7 @@ pub enum GridSizeError {
     /// Any axis was zero.
     Empty {
         /// Requested width.
-        width: GridWidth,
+        width:  GridWidth,
         /// Requested height.
         height: GridHeight,
         /// Requested levels.
@@ -112,7 +112,7 @@ impl std::error::Error for GridSizeError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(try_from = "GridSizeDef", into = "GridSizeDef")]
 pub struct GridSize {
-    width: GridWidth,
+    width:  GridWidth,
     height: GridHeight,
     levels: GridLevels,
 }
@@ -175,7 +175,7 @@ impl GridSize {
 impl Default for GridSize {
     fn default() -> Self {
         Self {
-            width: GridWidth::new(MAX_GRID_SPAN),
+            width:  GridWidth::new(MAX_GRID_SPAN),
             height: GridHeight::new(MAX_GRID_SPAN),
             levels: GridLevels::new(MAX_LEVELS),
         }
@@ -186,7 +186,7 @@ impl Default for GridSize {
 #[derive(Deserialize, Serialize)]
 pub struct GridSizeDef {
     /// Width in cells.
-    width: GridWidth,
+    width:  GridWidth,
     /// Height in cells.
     height: GridHeight,
     /// Level count.
@@ -204,7 +204,7 @@ impl TryFrom<GridSizeDef> for GridSize {
 impl From<GridSize> for GridSizeDef {
     fn from(size: GridSize) -> Self {
         Self {
-            width: size.width,
+            width:  size.width,
             height: size.height,
             levels: size.levels,
         }

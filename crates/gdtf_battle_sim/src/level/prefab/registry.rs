@@ -38,9 +38,9 @@ pub struct PrefabKey {
     /// Theme this prefab belongs to.
     pub theme: ThemeUuid,
     /// Grid size the prefab fills.
-    pub size: GridSize,
+    pub size:  GridSize,
     /// Spawn role (player, enemy, fill).
-    pub role: SpawnRole,
+    pub role:  SpawnRole,
 }
 
 impl PrefabKey {

@@ -15,8 +15,8 @@ use super::harness::*;
 
 #[derive(Resource, Default)]
 struct AppliedLog {
-        cells:   Vec<CellLevel>,
-            gangers: Vec<bevy::prelude::Entity>,
+    cells:   Vec<CellLevel>,
+    gangers: Vec<bevy::prelude::Entity>,
 }
 
 fn record_applied(
@@ -46,16 +46,15 @@ fn applied_count_for(app: &App, cell: CellLevel) -> usize {
         .map_or(0, |log| log.cells.iter().filter(|c| **c == cell).count())
 }
 
-
 #[test]
 fn producer_suppresses_in_radius_opposing_ganger_only() {
     let mut app = battle_app(1);
     with_applied_log(&mut app);
 
     let target = ground(8, 5);
-    let in_radius_player = target; 
+    let in_radius_player = target;
     let out_of_radius_player = ground(20, 20);
-    let same_faction_near = ground(8, 6); 
+    let same_faction_near = ground(8, 6);
     let situation = SituationBuilder::new()
         .with_gangers([
             ganger(in_radius_player, PLAYER, Direction::West),
@@ -121,7 +120,6 @@ fn producer_suppresses_in_radius_opposing_ganger_only() {
         "the SuppressionApplied signal must carry the freshly-pinned ganger entity",
     );
 }
-
 
 #[test]
 fn idempotent_refresh_emits_suppression_applied_once() {

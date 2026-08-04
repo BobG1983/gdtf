@@ -13,7 +13,7 @@ use super::draft::AutoloadState;
 #[derive(Resource, Clone, PartialEq, Eq, Debug)]
 pub struct WeightingDraft {
     weighting: InjuryWeighting,
-    autoload: AutoloadState,
+    autoload:  AutoloadState,
 }
 
 impl WeightingDraft {
@@ -81,12 +81,12 @@ impl Default for WeightingDraft {
         Self {
             weighting: InjuryWeighting {
                 category: InjuryCategory::Head,
-                context: DamageContext::Ranged,
-                minor: Vec::new(),
-                major: Vec::new(),
+                context:  DamageContext::Ranged,
+                minor:    Vec::new(),
+                major:    Vec::new(),
                 critical: Vec::new(),
             },
-            autoload: AutoloadState::Pending,
+            autoload:  AutoloadState::Pending,
         }
     }
 }

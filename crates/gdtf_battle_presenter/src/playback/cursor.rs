@@ -47,9 +47,9 @@ pub enum ActHoldPhase {
         /// Whether the FX pipeline was seen busy at least once.
         seen_busy: FxSeenBusy,
         /// Hard cap on how long to wait for impact.
-        cap: Timer,
+        cap:       Timer,
         /// Beat after impact (or cap) before releasing.
-        beat: Duration,
+        beat:      Duration,
     },
 }
 
@@ -76,8 +76,8 @@ impl ActHold {
         Self {
             phase: ActHoldPhase::AwaitingImpact {
                 seen_busy: FxSeenBusy::new(false),
-                cap: Timer::from_seconds(cap_seconds.max(0.0), TimerMode::Once),
-                beat: Duration::from_secs_f32(beat_seconds.max(0.0)),
+                cap:       Timer::from_seconds(cap_seconds.max(0.0), TimerMode::Once),
+                beat:      Duration::from_secs_f32(beat_seconds.max(0.0)),
             },
         }
     }
@@ -128,7 +128,7 @@ impl ActHold {
 /// Where the view has read in the act log, and any active hold.
 #[derive(Resource, Debug, Default)]
 pub struct PlaybackCursor {
-    shown: ActSeq,
+    shown:   ActSeq,
     holding: Option<ActHold>,
     skipped: SkippedActs,
 }

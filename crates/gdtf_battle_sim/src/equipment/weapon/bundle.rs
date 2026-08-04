@@ -14,73 +14,73 @@ pub struct WeaponStats<'a> {
     /// Base spread.
     pub base_spread: &'a BaseSpread,
     /// Accuracy.
-    pub accuracy: &'a Accuracy,
+    pub accuracy:    &'a Accuracy,
     /// Kickback.
-    pub kickback: &'a Kickback,
+    pub kickback:    &'a Kickback,
     /// Fatal bias.
-    pub fatal_bias: &'a FatalBias,
+    pub fatal_bias:  &'a FatalBias,
     /// Damage.
-    pub damage: &'a WeaponDamage,
+    pub damage:      &'a WeaponDamage,
     /// Punch.
-    pub punch: &'a WeaponPunch,
+    pub punch:       &'a WeaponPunch,
     /// Shred.
-    pub shred: &'a WeaponShred,
+    pub shred:       &'a WeaponShred,
     /// Damage type.
     pub damage_type: &'a DamageType,
     /// Stability.
-    pub stable: &'a Stable,
+    pub stable:      &'a Stable,
     /// Optional brace bonus from attachments.
     pub brace_bonus: Option<&'a WeaponBraceBonus>,
     /// Optional DOT profile.
-    pub dot: Option<&'a DotProfile>,
+    pub dot:         Option<&'a DotProfile>,
 }
 
 /// Full component set for a spawned ranged weapon.
 #[derive(Bundle, Debug, Clone, PartialEq)]
 pub struct WeaponBundle {
     /// Marker.
-    pub marker: Weapon,
+    pub marker:      Weapon,
     /// Name.
-    pub name: WeaponName,
+    pub name:        WeaponName,
     /// Base spread.
     pub base_spread: BaseSpread,
     /// Accuracy.
-    pub accuracy: Accuracy,
+    pub accuracy:    Accuracy,
     /// Kickback.
-    pub kickback: Kickback,
+    pub kickback:    Kickback,
     /// Fatal bias.
-    pub fatal_bias: FatalBias,
+    pub fatal_bias:  FatalBias,
     /// Damage.
-    pub damage: WeaponDamage,
+    pub damage:      WeaponDamage,
     /// Punch.
-    pub punch: WeaponPunch,
+    pub punch:       WeaponPunch,
     /// Shred.
-    pub shred: WeaponShred,
+    pub shred:       WeaponShred,
     /// Damage type.
     pub damage_type: DamageType,
     /// Magazine.
-    pub magazine: Magazine,
+    pub magazine:    Magazine,
     /// Fire modes.
-    pub fire_mode: FireMode,
+    pub fire_mode:   FireMode,
     /// Stability.
-    pub stable: Stable,
+    pub stable:      Stable,
     /// Shove tag.
-    pub shove: Shove,
+    pub shove:       Shove,
     /// Handedness.
-    pub handedness: Handedness,
+    pub handedness:  Handedness,
     /// Trajectory style.
-    pub trajectory: TrajectoryStyle,
+    pub trajectory:  TrajectoryStyle,
 }
 
 /// Damage numbers group used when building a bundle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DamageProfile {
     /// Damage.
-    pub damage: WeaponDamage,
+    pub damage:      WeaponDamage,
     /// Punch.
-    pub punch: WeaponPunch,
+    pub punch:       WeaponPunch,
     /// Shred.
-    pub shred: WeaponShred,
+    pub shred:       WeaponShred,
     /// Damage type.
     pub damage_type: DamageType,
 }
@@ -107,13 +107,13 @@ impl DamageProfile {
 #[derive(Debug, Clone, PartialEq)]
 pub struct HandlingProfile {
     /// Magazine.
-    pub magazine: Magazine,
+    pub magazine:   Magazine,
     /// Fire modes.
-    pub fire_mode: FireMode,
+    pub fire_mode:  FireMode,
     /// Stability.
-    pub stable: Stable,
+    pub stable:     Stable,
     /// Shove.
-    pub shove: Shove,
+    pub shove:      Shove,
     /// Handedness.
     pub handedness: Handedness,
     /// Trajectory.
@@ -185,16 +185,16 @@ impl WeaponBundle {
     pub const fn stats(&self) -> WeaponStats<'_> {
         WeaponStats {
             base_spread: &self.base_spread,
-            accuracy: &self.accuracy,
-            kickback: &self.kickback,
-            fatal_bias: &self.fatal_bias,
-            damage: &self.damage,
-            punch: &self.punch,
-            shred: &self.shred,
+            accuracy:    &self.accuracy,
+            kickback:    &self.kickback,
+            fatal_bias:  &self.fatal_bias,
+            damage:      &self.damage,
+            punch:       &self.punch,
+            shred:       &self.shred,
             damage_type: &self.damage_type,
-            stable: &self.stable,
+            stable:      &self.stable,
             brace_bonus: None,
-            dot: None,
+            dot:         None,
         }
     }
 }

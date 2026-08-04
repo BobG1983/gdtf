@@ -48,7 +48,6 @@ fn smash_reduces_adjacent_cover_hp_and_emits_resolved() {
     );
 }
 
-
 #[test]
 fn repeated_smashing_destroys_cover_and_fires_the_destroyed_signal() {
     let (mut app, seed) = battle_app(0x5508_0B0B);
@@ -92,7 +91,6 @@ fn repeated_smashing_destroys_cover_and_fires_the_destroyed_signal() {
     );
 }
 
-
 #[test]
 fn the_structural_smash_is_seed_independent_no_fight_roll() {
     let run_with_seed = |seed: u64| -> Option<u32> {
@@ -125,7 +123,6 @@ fn the_structural_smash_is_seed_independent_no_fight_roll() {
         "precondition: the smash actually reduced the cover HP (a real, non-vacuous outcome)",
     );
 }
-
 
 #[test]
 fn a_non_adjacent_structure_is_not_smashed() {

@@ -178,7 +178,7 @@ fn open_cells_form_one_component(occupied: &[RegionRect], board_w: i32, board_h:
 
     let open_total = blocked.iter().filter(|b| !**b).count();
     let Some(start) = blocked.iter().position(|b| !*b) else {
-        return true; 
+        return true;
     };
 
     let mut seen = vec![false; total];

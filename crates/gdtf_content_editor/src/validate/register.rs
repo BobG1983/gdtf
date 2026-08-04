@@ -26,15 +26,15 @@ use super::rearm::rearm_validation_on_content_change;
 
 #[derive(bevy::ecs::system::SystemParam)]
 pub(super) struct ValidationGraphResources<'w> {
-        weapons:       Option<Res<'w, WeaponRegistry>>,
-        melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
-        armor:         Option<Res<'w, ArmorRegistry>>,
-        gangs:         Option<Res<'w, GangRegistry>>,
-            terrain:       Option<Res<'w, TerrainDefRegistry>>,
-        themes:        Option<Res<'w, UuidThemeRegistry>>,
-        injuries:      Option<Res<'w, InjuryRegistry>>,
-        sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
-        attachments:   Option<Res<'w, AttachmentRegistry>>,
+    weapons:       Option<Res<'w, WeaponRegistry>>,
+    melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
+    armor:         Option<Res<'w, ArmorRegistry>>,
+    gangs:         Option<Res<'w, GangRegistry>>,
+    terrain:       Option<Res<'w, TerrainDefRegistry>>,
+    themes:        Option<Res<'w, UuidThemeRegistry>>,
+    injuries:      Option<Res<'w, InjuryRegistry>>,
+    sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
+    attachments:   Option<Res<'w, AttachmentRegistry>>,
 }
 
 pub(super) const fn validation_graph_ready(graph: ValidationGraphResources) -> bool {

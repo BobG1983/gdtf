@@ -28,7 +28,7 @@ mod tests {
     use super::autoload_first_melee_weapon;
     use crate::melee_weapon_form::MeleeWeaponDraft;
 
-            #[test]
+    #[test]
     fn seeds_first_sorted_melee_weapon_exactly_once() {
         let seed = MeleeWeaponDraft::new_melee_weapon();
         let registry = MeleeWeaponRegistry::new([

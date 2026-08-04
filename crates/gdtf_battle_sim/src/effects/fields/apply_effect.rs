@@ -15,17 +15,17 @@ pub struct OccupantArmor<'a, 'w, 's> {
     /// Wears relationship on the ganger.
     pub wears: &'a Wears,
     /// Armor type components on worn pieces.
-    pub worn: &'a Query<'w, 's, &'static ArmorType, With<WornBy>>,
+    pub worn:  &'a Query<'w, 's, &'static ArmorType, With<WornBy>>,
 }
 
 /// Mutable handles used when draining an occupant.
 pub struct OccupantDrain<'a, 'hp, 'life, 'wt, 'wd> {
     /// Hit points.
-    pub hp: &'a mut Mut<'hp, Hp>,
+    pub hp:     &'a mut Mut<'hp, Hp>,
     /// Life state.
-    pub life: &'a mut Mut<'life, LifeState>,
+    pub life:   &'a mut Mut<'life, LifeState>,
     /// Field tick messages.
-    pub ticks: &'a mut MessageWriter<'wt, FieldTicked>,
+    pub ticks:  &'a mut MessageWriter<'wt, FieldTicked>,
     /// Death messages.
     pub deaths: &'a mut MessageWriter<'wd, OnDeathOccurred>,
 }

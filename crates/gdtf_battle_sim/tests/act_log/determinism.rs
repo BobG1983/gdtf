@@ -72,7 +72,6 @@ fn the_log_preserves_seeded_determinism() {
     );
 }
 
-
 #[derive(bevy::prelude::Resource, Default)]
 struct ShotLog(HitFingerprint);
 

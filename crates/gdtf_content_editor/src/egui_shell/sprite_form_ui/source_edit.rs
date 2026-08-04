@@ -7,19 +7,19 @@ use super::cache::SpritePreviewCache;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum SourceKindChoice {
-        File,
-        Sheet,
+    File,
+    Sheet,
 }
 
 impl SourceKindChoice {
-        const fn of(source: &SpriteSource) -> Self {
+    const fn of(source: &SpriteSource) -> Self {
         match source {
             SpriteSource::File(_) => Self::File,
             SpriteSource::Sheet { .. } => Self::Sheet,
         }
     }
 
-        const fn label(self) -> &'static str {
+    const fn label(self) -> &'static str {
         match self {
             Self::File => "File",
             Self::Sheet => "Sheet",

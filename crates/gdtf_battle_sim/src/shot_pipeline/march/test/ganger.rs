@@ -13,7 +13,7 @@ fn ganger_at_equal_band_impacts_returning_entity() {
     let cover = CoverLedger::new();
 
     let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
-    let dir = Vec3::new(1.0, 0.0, 0.0); 
+    let dir = Vec3::new(1.0, 0.0, 0.0);
 
     let result = march_vector(
         muzzle,
@@ -51,7 +51,7 @@ fn upper_shooter_march_terminates_on_stair_upper_cell() {
     grid.set_occupant_band(upper_cell, Some(HeightBand::Low));
 
     let muzzle = at_height(2, 2, 1, low_above_floor(&tuning));
-    let dir = Vec3::new(1.0, 0.0, 0.0); 
+    let dir = Vec3::new(1.0, 0.0, 0.0);
 
     let result = march_vector(
         muzzle,

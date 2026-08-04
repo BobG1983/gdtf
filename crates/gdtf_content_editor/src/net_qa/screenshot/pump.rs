@@ -23,16 +23,16 @@ use super::{
 struct FramesLeft(u32);
 
 enum FrameTick {
-        Live,
-        Expired,
+    Live,
+    Expired,
 }
 
 impl FramesLeft {
-        const fn new(frames: u32) -> Self {
+    const fn new(frames: u32) -> Self {
         Self(frames)
     }
 
-        const fn tick(&mut self) -> FrameTick {
+    const fn tick(&mut self) -> FrameTick {
         if self.0 == 0 {
             return FrameTick::Expired;
         }
@@ -42,14 +42,14 @@ impl FramesLeft {
 }
 
 enum ShotStage {
-        Settling(FramesLeft),
-        Capturing(FramesLeft),
+    Settling(FramesLeft),
+    Capturing(FramesLeft),
 }
 
 struct EditorShot {
-        path:      CapturePath,
-        responder: Responder,
-        stage:     ShotStage,
+    path:      CapturePath,
+    responder: Responder,
+    stage:     ShotStage,
 }
 
 #[derive(Resource, Default)]
@@ -81,10 +81,10 @@ pub(in crate::net_qa) fn drive_editor_screenshots(
 
 #[derive(SystemParam)]
 pub(in crate::net_qa) struct ShotTunables<'w> {
-        settle: Res<'w, EditorShotSettle>,
-        budget: Res<'w, EditorShotPollBudget>,
-        dir:    Res<'w, EditorQaShotDir>,
-        source: Res<'w, EditorShotSource>,
+    settle: Res<'w, EditorShotSettle>,
+    budget: Res<'w, EditorShotPollBudget>,
+    dir:    Res<'w, EditorQaShotDir>,
+    source: Res<'w, EditorShotSource>,
 }
 
 fn claim_requests(

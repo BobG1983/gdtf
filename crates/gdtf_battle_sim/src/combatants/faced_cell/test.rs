@@ -10,7 +10,6 @@ fn shooter_at(x: i32, y: i32, storey: u8) -> Position {
     Position::new(CellLevel::new(Cell::new(x, y), Level::new(storey)))
 }
 
-
 #[test]
 fn all_eight_directions_advance_by_signed_unit_step() {
     let cases = [
@@ -42,7 +41,6 @@ fn all_eight_directions_advance_by_signed_unit_step() {
     }
 }
 
-
 #[test]
 fn northeast_diagonal_crosses_from_cell_center_not_corner() {
     let level = 2u8;
@@ -61,7 +59,6 @@ fn northeast_diagonal_crosses_from_cell_center_not_corner() {
     );
     assert_eq!(faced_level, Level::new(level));
 }
-
 
 #[test]
 fn level_is_preserved_for_a_non_zero_level() {
@@ -85,7 +82,6 @@ fn level_is_preserved_for_a_non_zero_level() {
         );
     }
 }
-
 
 #[test]
 fn west_facing_at_zero_floors_to_negative_cell() {

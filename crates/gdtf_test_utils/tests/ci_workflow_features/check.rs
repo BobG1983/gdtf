@@ -48,7 +48,7 @@ fn every_ci_workspace_command_names_both_net_qa_features() {
     );
     for file in &files {
         let Ok(text) = fs::read_to_string(root.join(file)) else {
-            continue; 
+            continue;
         };
         for command in workspace_cargo_commands(&text) {
             for feature in [GAME_FEATURE, EDITOR_FEATURE] {

@@ -127,7 +127,7 @@ fn stair_facing_invariant() {
 #[test]
 fn non_stair_cell_yields_zero_offset() {
     let tuning = CombatTuning::default();
-    let plain = OccupancyGrid::new(); 
+    let plain = OccupancyGrid::new();
 
     let queried_cell = key(5, 5, 0);
     let offset = plain.stair_eye_offset_at(&queried_cell);

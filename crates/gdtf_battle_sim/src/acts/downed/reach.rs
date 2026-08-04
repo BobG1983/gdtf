@@ -36,9 +36,9 @@ pub fn is_8_adjacent(a: Position, b: Position) -> Adjacent8 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Actor {
     /// Position.
-    pub pos: Position,
+    pub pos:     Position,
     /// Life state.
-    pub life: LifeState,
+    pub life:    LifeState,
     /// Faction.
     pub faction: Faction,
 }
@@ -47,11 +47,11 @@ pub struct Actor {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DownedTarget {
     /// Position.
-    pub pos: Position,
+    pub pos:          Position,
     /// Life state.
-    pub life: LifeState,
+    pub life:         LifeState,
     /// Faction.
-    pub faction: Faction,
+    pub faction:      Faction,
     /// Present when still bleeding out.
     pub bleeding_out: Option<BleedingOut>,
 }

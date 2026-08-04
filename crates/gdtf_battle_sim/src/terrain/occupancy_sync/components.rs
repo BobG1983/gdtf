@@ -77,7 +77,7 @@ impl SlabDestroyed {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GroundAccrued {
     /// Board cell.
-    pub cell: Cell,
+    pub cell:   Cell,
     /// Damage amount.
     pub amount: GroundDamage,
 }

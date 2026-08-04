@@ -20,7 +20,7 @@ impl BandEdge {
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProjectileBandEdges {
     /// Boundary between low and mid.
-    pub low_mid: BandEdge,
+    pub low_mid:  BandEdge,
     /// Boundary between mid and high.
     pub mid_high: BandEdge,
 }
@@ -28,7 +28,7 @@ pub struct ProjectileBandEdges {
 impl Default for ProjectileBandEdges {
     fn default() -> Self {
         Self {
-            low_mid: BandEdge(0.33),
+            low_mid:  BandEdge(0.33),
             mid_high: BandEdge(0.67),
         }
     }

@@ -18,7 +18,6 @@ fn shoves(app: &App) -> Vec<ShoveRequested> {
     probed::<ShoveRequested>(app)
 }
 
-
 #[test]
 fn adjacent_alive_opposing_offers_shove() {
     let mut app = battle_running_app();

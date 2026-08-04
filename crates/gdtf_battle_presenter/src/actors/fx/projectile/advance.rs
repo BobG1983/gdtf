@@ -35,12 +35,12 @@ pub fn advance_projectiles(
         transform.translation = travel.position();
         if arrived {
             let pending = PendingImpact {
-                at: travel.arrival(),
-                damage: travel.damage(),
-                anchor: travel.anchor(),
+                at:      travel.arrival(),
+                damage:  travel.damage(),
+                anchor:  travel.anchor(),
                 shooter: travel.shooter(),
-                report: travel.report(),
-                pops: travel.take_pops(),
+                report:  travel.report(),
+                pops:    travel.take_pops(),
             };
             commands.spawn_scene(bsn! { template(move |_| Ok(pending.clone())) });
             commands.entity(entity).despawn();

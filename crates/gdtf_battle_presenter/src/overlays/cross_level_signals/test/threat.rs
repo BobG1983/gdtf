@@ -60,7 +60,7 @@ fn visible_enemy_below_emits_threat_below() {
 #[test]
 fn unseen_enemy_emits_no_threat() {
     let enemy_key = key(10, 10, 3);
-    let squad = SquadVisibility::default(); 
+    let squad = SquadVisibility::default();
     let pos = Position::new(enemy_key);
     let faction = Faction::new(1);
     let life = LifeState::Alive;

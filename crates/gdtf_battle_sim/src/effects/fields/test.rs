@@ -83,7 +83,6 @@ fn tick_count_for(app: &App, occupant: Entity) -> usize {
         .map_or(0, |c| c.iter().filter(|t| t.occupant == occupant).count())
 }
 
-
 #[test]
 fn field_damages_an_unprotected_occupant_each_round() {
     let cell = ground(4, 4);
@@ -121,7 +120,6 @@ fn field_damages_an_unprotected_occupant_each_round() {
     );
 }
 
-
 #[test]
 fn immune_armor_skips_the_field_damage() {
     let cell = ground(2, 2);
@@ -148,7 +146,6 @@ fn immune_armor_skips_the_field_damage() {
         "an immune occupant emits NO FieldTicked (it took no damage)",
     );
 }
-
 
 #[test]
 fn turns_field_counts_down_and_is_removed_after_n_rounds() {
@@ -184,7 +181,6 @@ fn turns_field_counts_down_and_is_removed_after_n_rounds() {
     );
 }
 
-
 #[test]
 fn permanent_field_never_expires() {
     let cell = ground(5, 5);
@@ -206,7 +202,6 @@ fn permanent_field_never_expires() {
         );
     }
 }
-
 
 #[test]
 fn a_field_tick_that_empties_hp_flips_the_occupant_to_dead() {
@@ -232,7 +227,6 @@ fn a_field_tick_that_empties_hp_flips_the_occupant_to_dead() {
         "a field drain that empties HP KILLS (Dead — the DOT-kills precedent)",
     );
 }
-
 
 #[derive(Resource, Default, Deref, DerefMut)]
 struct CapturedAfflicted(Vec<crate::effects::fields::FieldAfflicted>);

@@ -23,7 +23,7 @@ pub struct WithCamera;
 
 /// Headless `DefaultPlugins` app for UI tests.
 pub struct GdtfUiTestAppBuilder<Phase> {
-    app: App,
+    app:    App,
     _phase: PhantomData<fn() -> Phase>,
 }
 
@@ -76,7 +76,7 @@ impl GdtfUiTestAppBuilder<NoCamera> {
     pub fn with_ui_camera(mut self) -> GdtfUiTestAppBuilder<WithCamera> {
         self.app.world_mut().spawn(Camera2d);
         GdtfUiTestAppBuilder {
-            app: self.app,
+            app:    self.app,
             _phase: PhantomData,
         }
     }

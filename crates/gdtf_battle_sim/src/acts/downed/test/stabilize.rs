@@ -3,7 +3,6 @@ use super::support::{
     run_stabilize, stabilize_pass,
 };
 
-
 #[test]
 fn can_stabilize_true_for_the_canonical_ally_setup() {
     let (a, t) = stabilize_pass();
@@ -86,7 +85,6 @@ fn can_stabilize_rejects_a_target_that_is_not_bleeding_out() {
     );
 }
 
-
 #[test]
 fn stabilize_downed_removes_the_condition_and_never_touches_life() {
     let (a, t) = stabilize_pass();
@@ -105,7 +103,6 @@ fn stabilize_downed_removes_the_condition_and_never_touches_life() {
         "a stabilized ganger remains Downed (the verb never touches LifeState)",
     );
 }
-
 
 #[test]
 fn stabilize_act_iff_predicate_both_directions() {

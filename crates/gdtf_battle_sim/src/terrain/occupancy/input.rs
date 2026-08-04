@@ -8,7 +8,7 @@ use crate::{cover::HeightBand, metric::CellLevel, occupancy::TerrainKind};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TerrainPlacement {
     /// Cell and level.
-    pub at: CellLevel,
+    pub at:      CellLevel,
     /// Terrain kind.
     pub terrain: TerrainKind,
 }
@@ -25,11 +25,11 @@ impl TerrainPlacement {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct OccupantPlacement {
     /// Cell and level.
-    pub at: CellLevel,
+    pub at:       CellLevel,
     /// Occupant entity.
     pub occupant: Entity,
     /// Height band of the occupant silhouette.
-    pub band: HeightBand,
+    pub band:     HeightBand,
 }
 
 impl OccupantPlacement {
@@ -44,7 +44,7 @@ impl OccupantPlacement {
 #[derive(Debug, Clone, Default)]
 pub struct OccupancyInput {
     /// Terrain placements.
-    pub terrain: Vec<TerrainPlacement>,
+    pub terrain:   Vec<TerrainPlacement>,
     /// Occupant placements.
     pub occupants: Vec<OccupantPlacement>,
 }

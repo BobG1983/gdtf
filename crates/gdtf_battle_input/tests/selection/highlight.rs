@@ -6,7 +6,6 @@ use gdtf_test_utils::{clear_mouse, press_left};
 
 use super::harness::*;
 
-
 #[test]
 fn selection_highlight_snaps_to_cell_and_hides_on_clear() {
     let level = Level::new(0);

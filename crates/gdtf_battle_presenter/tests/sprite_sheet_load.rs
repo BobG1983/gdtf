@@ -106,7 +106,6 @@ fn all_sheet_role_pngs_load_from_sprites_folder() {
     let effects = load_sheet(&app, SheetRole::Effects);
     let portraits = load_sheet(&app, SheetRole::Portraits);
 
-
     advance_until_load_state(&mut app, terrain.id(), |s| s.is_loaded(), LOAD_SAFETY_NET);
     assert_loaded(
         &app,

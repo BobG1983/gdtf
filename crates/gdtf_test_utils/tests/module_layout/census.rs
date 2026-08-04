@@ -1,13 +1,13 @@
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Band {
-        Mod,
-        Integration,
-        SrcTest,
-        Logic,
+    Mod,
+    Integration,
+    SrcTest,
+    Logic,
 }
 
 impl Band {
-        pub(crate) const fn label(self) -> &'static str {
+    pub(crate) const fn label(self) -> &'static str {
         match self {
             Self::Mod => "mod",
             Self::Integration => "integration",
@@ -91,7 +91,7 @@ fn fn_names(stripped: &str) -> Vec<String> {
             i += 1;
         }
         if i == at + 2 {
-            continue; 
+            continue;
         }
         let start = i;
         while bytes.get(i).is_some_and(|b| is_word(*b)) {
@@ -134,7 +134,7 @@ fn plugin_for(seg: &str) -> bool {
                 i += 1;
             }
             if i == at + word.len() {
-                continue; 
+                continue;
             }
             if bytes.get(i..i + 3) == Some(b"for") && bytes.get(i + 3).is_none_or(|b| !is_word(*b))
             {

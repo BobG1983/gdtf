@@ -4,7 +4,7 @@ use bevy::prelude::*;
 pub(super) struct OptionsGapVh(f32);
 
 impl OptionsGapVh {
-        pub(super) const SCREEN: Self = Self(1.38889);
+    pub(super) const SCREEN: Self = Self(1.38889);
 }
 
 pub(super) const TOGGLE_LONG_VW: f32 = 3.75;

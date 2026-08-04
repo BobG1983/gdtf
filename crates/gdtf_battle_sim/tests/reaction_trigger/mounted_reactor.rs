@@ -89,7 +89,6 @@ fn carried_gun_loaded(app: &mut App, ganger: Entity, mount: Entity) -> bool {
     })
 }
 
-
 #[test]
 fn empty_mounted_gun_offer_is_skipped_without_cap_spend() {
     let mut app = battle_app(forced_reaction_tuning(1));
@@ -143,7 +142,6 @@ fn empty_mounted_gun_offer_is_skipped_without_cap_spend() {
          roll — never cap-charged on its CARRIED gun's eligibility",
     );
 }
-
 
 #[test]
 fn mixed_tick_mounted_empty_and_carried_eligible_spend_tracks_shots() {

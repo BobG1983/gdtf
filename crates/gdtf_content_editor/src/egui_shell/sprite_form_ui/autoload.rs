@@ -27,7 +27,7 @@ mod tests {
     use super::autoload_first_sprite;
     use crate::sprite_form::SpriteDraft;
 
-        fn def(path: &str) -> SpriteDef {
+    fn def(path: &str) -> SpriteDef {
         SpriteDef {
             source:    SpriteSource::File(SpriteImagePath::new(path.to_owned())),
             anchor:    SpriteAnchor {
@@ -39,7 +39,7 @@ mod tests {
         }
     }
 
-            #[test]
+    #[test]
     fn seeds_first_sorted_sprite_exactly_once() {
         let registry = SpriteDefRegistry::new([
             (

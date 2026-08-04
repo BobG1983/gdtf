@@ -82,7 +82,7 @@ fn drain_rejects(app: &mut App) -> Vec<MoveRejected> {
 #[test]
 fn the_boundary_field_tick_resolves_before_a_same_frame_enemy_act() {
     let per_turn = 10u16;
-    let start_hp = per_turn - 2; 
+    let start_hp = per_turn - 2;
     let field_cell = ground(10, 10);
     let dest = ground(11, 10);
 

@@ -96,7 +96,7 @@ pub(crate) fn fatal_tuning() -> CombatTuning {
 
 #[derive(Resource, Default)]
 pub(crate) struct InjuryLog {
-        entries: Vec<(Entity, String)>,
+    entries: Vec<(Entity, String)>,
 }
 
 fn record_injuries(mut reader: MessageReader<InjuryInflicted>, mut log: ResMut<InjuryLog>) {

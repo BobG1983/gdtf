@@ -15,20 +15,20 @@ use super::picks::{FootfallChoice, TerrainKindChoice};
 /// In-progress terrain def being authored.
 #[derive(Resource, Clone, Debug, PartialEq, Eq)]
 pub struct TerrainDraft {
-    display_name: String,
-    kind: TerrainKindChoice,
-    cover_hp: CoverHp,
-    slab_hp: SlabHp,
+    display_name:     String,
+    kind:             TerrainKindChoice,
+    cover_hp:         CoverHp,
+    slab_hp:          SlabHp,
     armor_protection: ArmorProtection,
-    armor_hardness: ArmorHardness,
-    height_band: HeightBand,
-    graphic: TileRole,
-    footfall: FootfallChoice,
-    mounted_weapon: Option<WeaponName>,
-    tags: Vec<TerrainTag>,
-    blocks_pathing: Option<bool>,
-    blocks_los: Option<LosBlocking>,
-    uuid: Option<TerrainUuid>,
+    armor_hardness:   ArmorHardness,
+    height_band:      HeightBand,
+    graphic:          TileRole,
+    footfall:         FootfallChoice,
+    mounted_weapon:   Option<WeaponName>,
+    tags:             Vec<TerrainTag>,
+    blocks_pathing:   Option<bool>,
+    blocks_los:       Option<LosBlocking>,
+    uuid:             Option<TerrainUuid>,
 }
 
 impl TerrainDraft {
@@ -210,20 +210,20 @@ impl TerrainDraft {
 impl Default for TerrainDraft {
     fn default() -> Self {
         Self {
-            display_name: String::new(),
-            kind: TerrainKindChoice::default(),
-            cover_hp: CoverHp::new(40),
-            slab_hp: SlabHp::new(50),
+            display_name:     String::new(),
+            kind:             TerrainKindChoice::default(),
+            cover_hp:         CoverHp::new(40),
+            slab_hp:          SlabHp::new(50),
             armor_protection: ArmorProtection::new(4),
-            armor_hardness: ArmorHardness::new(2),
-            height_band: HeightBand::High,
-            graphic: TileRole::Floor,
-            footfall: FootfallChoice::default(),
-            mounted_weapon: None,
-            tags: Vec::new(),
-            blocks_pathing: None,
-            blocks_los: None,
-            uuid: None,
+            armor_hardness:   ArmorHardness::new(2),
+            height_band:      HeightBand::High,
+            graphic:          TileRole::Floor,
+            footfall:         FootfallChoice::default(),
+            mounted_weapon:   None,
+            tags:             Vec::new(),
+            blocks_pathing:   None,
+            blocks_los:       None,
+            uuid:             None,
         }
     }
 }

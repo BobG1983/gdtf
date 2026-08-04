@@ -16,7 +16,7 @@ pub struct WithState;
 
 /// `MinimalPlugins` headless app builder.
 pub struct GdtfTestAppBuilder<Phase> {
-    app: App,
+    app:    App,
     _phase: PhantomData<fn() -> Phase>,
 }
 
@@ -55,7 +55,7 @@ impl GdtfTestAppBuilder<NoState> {
             .resource_mut::<NextState<AppState>>()
             .set(state);
         GdtfTestAppBuilder {
-            app: self.app,
+            app:    self.app,
             _phase: PhantomData,
         }
     }
@@ -64,7 +64,7 @@ impl GdtfTestAppBuilder<NoState> {
     #[must_use]
     pub fn default_start(self) -> GdtfTestAppBuilder<WithState> {
         GdtfTestAppBuilder {
-            app: self.app,
+            app:    self.app,
             _phase: PhantomData,
         }
     }

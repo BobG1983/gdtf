@@ -134,16 +134,16 @@ pub enum HitType {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct FireModeSpec {
     /// Single / burst / full.
-    pub kind: ModeKind,
+    pub kind:       ModeKind,
     /// Cone mult.
-    pub cone_mult: ModeConeMult,
+    pub cone_mult:  ModeConeMult,
     /// TU cost as fraction of max.
     pub tu_percent: ModeTuPercent,
     /// Shots fired.
-    pub shots: ModeShots,
+    pub shots:      ModeShots,
     /// Hit geometry (defaults to single).
     #[serde(default)]
-    pub hit_type: HitType,
+    pub hit_type:   HitType,
 }
 
 impl FireModeSpec {

@@ -25,22 +25,22 @@ impl SlotIndex {
 /// Authoritative occupancy grid: terrain, occupants, stairs, path and vision blocking.
 #[derive(Resource, Debug, Clone)]
 pub struct OccupancyGrid {
-    pub(super) slots: Box<[OccupancySlot]>,
+    pub(super) slots:           Box<[OccupancySlot]>,
     pub(super) destroyed_cover: DestroyedCover,
-    pub(super) occupant_bands: HashMap<CellLevel, HeightBand>,
-    pub(super) stair_cells: HashSet<CellLevel>,
-    pub(super) path_blocking: PathBlocking,
+    pub(super) occupant_bands:  HashMap<CellLevel, HeightBand>,
+    pub(super) stair_cells:     HashSet<CellLevel>,
+    pub(super) path_blocking:   PathBlocking,
     pub(super) vision_blocking: VisionBlocking,
 }
 
 impl Default for OccupancyGrid {
     fn default() -> Self {
         Self {
-            slots: vec![OccupancySlot::default(); SLOT_COUNT].into_boxed_slice(),
+            slots:           vec![OccupancySlot::default(); SLOT_COUNT].into_boxed_slice(),
             destroyed_cover: DestroyedCover::new(),
-            occupant_bands: HashMap::default(),
-            stair_cells: HashSet::default(),
-            path_blocking: PathBlocking::new(),
+            occupant_bands:  HashMap::default(),
+            stair_cells:     HashSet::default(),
+            path_blocking:   PathBlocking::new(),
             vision_blocking: VisionBlocking::new(),
         }
     }

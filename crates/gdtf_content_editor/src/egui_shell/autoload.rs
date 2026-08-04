@@ -31,13 +31,13 @@ use crate::{
 
 pub(super) struct ModeSyncBundles<'a, 'gang, 'armor, 'injury, 'sprite, 'attach, 'weapon, 'melee, 's>
 {
-        pub(super) gang:         &'a mut GangParams<'gang>,
-        pub(super) armor:        &'a mut ArmorParams<'armor>,
-        pub(super) injury:       &'a mut InjuryParams<'injury>,
-        pub(super) sprite:       &'a mut SpriteParams<'sprite, 's>,
-        pub(super) attachment:   &'a mut AttachmentParams<'attach>,
-        pub(super) weapon:       &'a mut WeaponParams<'weapon>,
-        pub(super) melee_weapon: &'a mut MeleeWeaponParams<'melee>,
+    pub(super) gang:         &'a mut GangParams<'gang>,
+    pub(super) armor:        &'a mut ArmorParams<'armor>,
+    pub(super) injury:       &'a mut InjuryParams<'injury>,
+    pub(super) sprite:       &'a mut SpriteParams<'sprite, 's>,
+    pub(super) attachment:   &'a mut AttachmentParams<'attach>,
+    pub(super) weapon:       &'a mut WeaponParams<'weapon>,
+    pub(super) melee_weapon: &'a mut MeleeWeaponParams<'melee>,
 }
 
 pub(super) fn run_form_syncs(

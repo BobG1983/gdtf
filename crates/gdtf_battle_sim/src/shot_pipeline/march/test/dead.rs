@@ -91,7 +91,7 @@ fn first_occupant_dead_wall_behind_returns_wall() {
     grid.set_occupant(corpse_cell, Some(corpse));
     grid.set_occupant_band(corpse_cell, Some(HeightBand::Low));
     let mut cover = CoverLedger::new();
-    cover.insert(wall_cell, cover_entry(HeightBand::High)); 
+    cover.insert(wall_cell, cover_entry(HeightBand::High));
 
     let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);

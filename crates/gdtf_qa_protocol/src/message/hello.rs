@@ -40,7 +40,7 @@ pub struct HelloFacts {
     /// Server protocol version.
     pub protocol: ProtocolVersion,
     /// Server name.
-    pub server: ServerNameNet,
+    pub server:   ServerNameNet,
 }
 
 impl HelloFacts {

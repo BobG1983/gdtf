@@ -82,7 +82,6 @@ fn wound_label_renders_tier_and_location() {
     assert!(critical.contains("Head"), "location word: {critical}");
 }
 
-
 #[derive(bevy::prelude::Resource)]
 struct ProbeRefs(super::components::StatBlockRefs);
 

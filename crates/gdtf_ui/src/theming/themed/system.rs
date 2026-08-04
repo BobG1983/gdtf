@@ -108,9 +108,9 @@ fn box_node(node: Option<&Node>, border_vw: f32, radius_vw: f32, margin: Content
     themed_node.border = UiRect::all(Val::Vw(border_vw));
     themed_node.border_radius = BorderRadius::all(Val::Vw(radius_vw));
     themed_node.padding = UiRect {
-        left: Val::Vw(*margin.l),
-        right: Val::Vw(*margin.r),
-        top: Val::Vh(*margin.t),
+        left:   Val::Vw(*margin.l),
+        right:  Val::Vw(*margin.r),
+        top:    Val::Vh(*margin.t),
         bottom: Val::Vh(*margin.b),
     };
     themed_node

@@ -13,7 +13,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn weapon_content_has_responsive_min_height_not_px() {
     let mut app = battle_running_app();

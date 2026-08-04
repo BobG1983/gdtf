@@ -40,7 +40,7 @@ impl DeploymentZone {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DeploymentZones {
     player: DeploymentZone,
-    enemy: DeploymentZone,
+    enemy:  DeploymentZone,
 }
 
 impl DeploymentZones {

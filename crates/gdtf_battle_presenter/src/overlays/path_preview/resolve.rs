@@ -14,9 +14,9 @@ pub(super) const EXPLORED_ALPHA_SCALE: f32 = 0.45;
 pub(super) const LINK_MARKER_TINT: Color = Color::srgba(0.3, 0.7, 1.0, 0.7);
 
 pub(super) struct StepDraw {
-        pub(super) cell: CellLevel,
+    pub(super) cell: CellLevel,
     /// The resolved tint — [`PREVIEW_TINT`] (VISIBLE) or its [`EXPLORED_ALPHA_SCALE`]-reduced
-        pub(super) tint: Color,
+    pub(super) tint: Color,
 }
 
 ///   (VISIBLE → full [`PREVIEW_TINT`]; EXPLORED-not-VISIBLE → [`EXPLORED_ALPHA_SCALE`]-reduced

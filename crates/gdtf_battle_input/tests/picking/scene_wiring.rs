@@ -7,7 +7,6 @@ use gdtf_ui::theme::default_theme;
 
 const BUDGET: u32 = 96;
 
-
 fn game_state(app: &App) -> Option<GameState> {
     app.world()
         .get_resource::<State<GameState>>()

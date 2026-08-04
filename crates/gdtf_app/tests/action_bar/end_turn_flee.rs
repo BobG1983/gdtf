@@ -11,7 +11,6 @@ use gdtf_ui::DisabledButton;
 
 use super::{harness::*, probes::*};
 
-
 #[test]
 fn end_turn_button_is_enabled_not_disabled() {
     let mut app = battle_running_app();
@@ -70,14 +69,12 @@ fn end_turn_button_emits_one_end_turn_requested_without_selection() {
     );
 }
 
-
 fn button_label(app: &App, button: Entity) -> Option<String> {
     let children = app.world().get::<Children>(button)?;
     children
         .iter()
         .find_map(|child| app.world().get::<Text>(child).map(|text| text.0.clone()))
 }
-
 
 #[test]
 fn flee_button_spawns_enabled_in_battle() {
@@ -104,7 +101,6 @@ fn flee_button_spawns_enabled_in_battle() {
         "the flee button must be labelled \"Flee\"",
     );
 }
-
 
 #[test]
 fn flee_button_press_ends_battle() {
@@ -138,7 +134,6 @@ fn flee_button_press_ends_battle() {
     );
 }
 
-
 #[test]
 fn flee_button_inert_without_battle_in_progress() {
     let mut app = battle_running_app();
@@ -166,7 +161,6 @@ fn flee_button_inert_without_battle_in_progress() {
     );
 }
 
-
 #[test]
 fn flee_button_despawns_on_exit_battle_running() {
     let mut app = battle_running_app();
@@ -189,7 +183,6 @@ fn flee_button_despawns_on_exit_battle_running() {
         "the flee button must be despawned once the battle leaves BattleRunning (with the bar)",
     );
 }
-
 
 #[test]
 fn end_turn_and_flee_buttons_are_both_enabled() {

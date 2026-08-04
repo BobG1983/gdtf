@@ -45,18 +45,18 @@ type ShoveGangerQuery<'world, 'state> = Query<
 /// Grid and table resources for shove resolution.
 #[derive(SystemParam)]
 pub struct ShoveGrids<'w> {
-    surface: Option<Res<'w, SurfaceGrid>>,
+    surface:   Option<Res<'w, SurfaceGrid>>,
     occupancy: Option<Res<'w, OccupancyGrid>>,
-    tuning: Option<Res<'w, CombatTuning>>,
-    tables: Option<Res<'w, InjuryTables>>,
-    registry: Option<Res<'w, InjuryRegistry>>,
+    tuning:    Option<Res<'w, CombatTuning>>,
+    tables:    Option<Res<'w, InjuryTables>>,
+    registry:  Option<Res<'w, InjuryRegistry>>,
 }
 
 /// RNG streams used when a shove causes a fall or injury.
 #[derive(SystemParam)]
 pub struct ShoveRngs<'w> {
     severity: Option<ResMut<'w, SeverityRng>>,
-    injury: Option<ResMut<'w, InjuryRng>>,
+    injury:   Option<ResMut<'w, InjuryRng>>,
 }
 
 /// Spend TU, resolve shove destination, and apply falls/injuries.

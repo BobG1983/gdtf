@@ -3,7 +3,6 @@ use bevy::prelude::{Commands, World};
 use super::support::*;
 use crate::rng::ReactionRng;
 
-
 #[test]
 fn setup_request_seeds_rng_inserts_resources_and_signals_ready() {
     let mut app = headless_app();
@@ -75,7 +74,6 @@ fn setup_threads_the_message_seed_through_rng_streams() {
     );
 }
 
-
 #[test]
 fn setup_runs_setup_battle_on_the_real_commands_path() {
     let situation = two_ganger_situation();
@@ -95,7 +93,6 @@ fn setup_runs_setup_battle_on_the_real_commands_path() {
          count (the real setup_battle ran, not a stub)",
     );
 }
-
 
 #[test]
 fn failed_setup_emits_no_ready_and_inserts_no_resource() {
@@ -157,7 +154,6 @@ fn dangling_link_fixture_yields_the_typed_error() {
     );
 }
 
-
 #[test]
 fn teardown_removes_battle_resources_and_leaves_tuning() {
     let mut app = headless_app();
@@ -218,7 +214,6 @@ fn teardown_removes_battle_resources_and_leaves_tuning() {
     );
 }
 
-
 #[test]
 fn battle_in_progress_tracks_the_battle_active_window() {
     let mut app = headless_app();
@@ -273,7 +268,6 @@ fn failed_setup_inserts_no_battle_in_progress() {
         "a FAILED setup must NOT insert PlayerFaction (the Ok-only seed)",
     );
 }
-
 
 #[test]
 fn reaction_rng_present_after_setup_and_absent_after_teardown() {

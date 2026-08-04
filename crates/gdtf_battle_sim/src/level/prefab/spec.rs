@@ -15,12 +15,12 @@ const fn default_role() -> SpawnRole {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 pub struct PrefabSpec {
     /// Theme this fragment belongs to.
-    pub theme: ThemeUuid,
+    pub theme:      ThemeUuid,
     /// Grid size of the fragment.
-    pub size: GridSize,
+    pub size:       GridSize,
     /// Role this fragment plays when a level is assembled. Defaults to fill.
     #[serde(default = "default_role")]
-    pub role: SpawnRole,
+    pub role:       SpawnRole,
     /// Terrain placements inside the fragment.
     pub placements: Vec<TerrainPlacementEntry>,
 }

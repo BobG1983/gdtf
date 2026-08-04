@@ -109,8 +109,8 @@ pub fn dispatch_fire(
         let target = grids.occupant_at(aim_cell_level);
 
         let order = FireOrder {
-            mode: &request.mode,
-            target_cell: request.target_cell,
+            mode:         &request.mode,
+            target_cell:  request.target_cell,
             target_level: request.target_level,
         };
         let mut shooters = shooter_set.p0();

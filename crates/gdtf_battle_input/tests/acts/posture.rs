@@ -10,11 +10,10 @@ use gdtf_test_utils::{press_key, probed};
 
 use super::harness::*;
 
-
 #[derive(Clone)]
 enum Drive {
-        Key(KeyCode),
-        Intent(ActIntent),
+    Key(KeyCode),
+    Intent(ActIntent),
 }
 
 fn drive_one_act(drive: Drive) -> (App, Entity) {

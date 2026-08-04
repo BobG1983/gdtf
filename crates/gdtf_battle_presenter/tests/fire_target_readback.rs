@@ -34,8 +34,8 @@ const MAX_READBACK_UPDATES: usize = 60;
 
 #[derive(Resource, Default, Clone, Copy)]
 struct CapturedPixel {
-        captured: bool,
-        rgba:     [u8; 4],
+    captured: bool,
+    rgba:     [u8; 4],
 }
 
 static GPU_LOCK: Mutex<()> = Mutex::new(());

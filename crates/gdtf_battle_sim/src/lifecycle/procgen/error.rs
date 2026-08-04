@@ -40,30 +40,30 @@ pub enum PackingError {
         /// Theme key.
         theme: ThemeUuid,
         /// Deployment role.
-        role: SpawnRole,
+        role:  SpawnRole,
     },
     /// Prefab does not fit the region at this anchor.
     FootprintDoesNotFit {
         /// Anchor tried.
-        anchor: Anchor,
+        anchor:    Anchor,
         /// Prefab size.
         footprint: Footprint,
         /// Available region.
-        region: RegionRect,
+        region:    RegionRect,
     },
     /// Player zone is smaller than the minimum side.
     PlayerFootprintTooSmall {
         /// Actual size.
         footprint: Footprint,
         /// Required minimum side.
-        min_side: MinPlayerSide,
+        min_side:  MinPlayerSide,
     },
     /// Zone cannot stand the roster size.
     DeploymentZoneTooSmall {
         /// Anchor of the zone.
-        anchor: Anchor,
+        anchor:   Anchor,
         /// Members that need cells.
-        demand: RosterDemand,
+        demand:   RosterDemand,
         /// Standable cells available.
         capacity: ZoneCapacity,
     },

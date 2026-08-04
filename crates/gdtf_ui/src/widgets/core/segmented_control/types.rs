@@ -30,13 +30,13 @@ impl SegmentSubLabel {
 #[derive(Component, Clone, Copy, PartialEq, Debug, Default)]
 pub struct SegmentColors {
     /// Active segment background.
-    pub active_bg: Color,
+    pub active_bg:   Color,
     /// Active segment text.
     pub active_text: Color,
     /// Inactive segment background.
-    pub base_bg: Color,
+    pub base_bg:     Color,
     /// Inactive segment text.
-    pub base_text: Color,
+    pub base_text:   Color,
 }
 
 /// Marks the control root.
@@ -85,5 +85,5 @@ pub struct SegmentSelected {
     /// Control entity.
     pub control: Entity,
     /// Selected segment index.
-    pub index: SegmentIndex,
+    pub index:   SegmentIndex,
 }

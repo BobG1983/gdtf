@@ -8,7 +8,7 @@ use gdtf_content_families::TerrainDefsFamily;
 use load_suite::suite::{self, FamilyLoadContract};
 
 impl FamilyLoadContract for TerrainDefsFamily {
-            const EXPECTED_MEMBERS: &'static [&'static str] = &["deck_floor", "bulkhead_wall"];
+    const EXPECTED_MEMBERS: &'static [&'static str] = &["deck_floor", "bulkhead_wall"];
 
     fn is_empty(registry: &TerrainDefRegistry) -> bool {
         registry.is_empty()

@@ -11,7 +11,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 fn link_graph_with_link(from: CellLevel, to: CellLevel) -> VerticalLinkGraph {
     let link = VerticalLink::new(from, to, LinkKind::stair());
     let situation = SituationBuilder::new()
@@ -44,7 +43,7 @@ fn decide_left_click_matches_the_contract_precedence() {
         let _enemy = place_enemy(&mut app, target);
         app.world_mut()
             .insert_resource(InspectTarget::new(Some(target)));
-        seed_fog(&mut app, &[target], &[]); 
+        seed_fog(&mut app, &[target], &[]);
 
         let outcome = decide(&mut app);
         assert!(

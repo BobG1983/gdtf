@@ -175,7 +175,7 @@ fn shred_adds_to_wear_and_matchup_leaves_damage_floor() {
         "shred > 0 must raise integrity wear above the shred = 0 baseline",
     );
 
-    let soaked = armor_piece(3, 30, 40); 
+    let soaked = armor_piece(3, 30, 40);
     let soak_resolve = |matchup: Matchup| {
         resolve_hit(
             WeaponDamage::new(2),

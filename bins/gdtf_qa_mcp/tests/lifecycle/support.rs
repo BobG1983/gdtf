@@ -31,7 +31,7 @@ pub(crate) struct StubSpawner;
 pub(crate) struct GatedStubSpawner(FakeGameGate);
 
 impl GatedStubSpawner {
-        pub(crate) const fn new(gate: FakeGameGate) -> Self {
+    pub(crate) const fn new(gate: FakeGameGate) -> Self {
         Self(gate)
     }
 }
@@ -72,7 +72,7 @@ fn await_captured_stderr(child: &dyn ManagedChild) {
 pub(crate) struct FakeGameGate(Arc<AtomicBool>);
 
 impl FakeGameGate {
-        pub(crate) fn open(&self) {
+    pub(crate) fn open(&self) {
         self.0.store(true, Ordering::SeqCst);
     }
 }

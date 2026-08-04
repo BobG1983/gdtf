@@ -48,7 +48,6 @@ fn fire_mode(app: &App) -> Option<FireModeSpec> {
     app.world().get_resource::<SelectedFireMode>().map(|m| **m)
 }
 
-
 #[test]
 fn selecting_armed_ganger_defaults_fire_mode_to_single() {
     let mut app = acts_app();
@@ -68,8 +67,6 @@ fn selecting_armed_ganger_defaults_fire_mode_to_single() {
         "selecting an armed ganger must default SelectedFireMode to its FireMode::single()",
     );
 }
-
-
 
 #[test]
 fn left_click_emits_one_fire_requested() {
@@ -110,7 +107,6 @@ fn left_click_emits_one_fire_requested() {
         "target level from the hovered cell"
     );
 }
-
 
 #[test]
 fn can_fire_failure_blocks_fire_requested() {

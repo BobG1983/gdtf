@@ -24,7 +24,6 @@ pub(crate) const PLAYER_FACTION: Faction = Faction::new(0);
 pub(crate) const ENEMY_FACTION: Faction = Faction::new(1);
 pub(crate) const LEVEL: Level = Level::new(0);
 
-
 pub(crate) fn control_app() -> App {
     let mut app = App::new();
     app.add_plugins((
@@ -126,7 +125,6 @@ pub(crate) fn selected(app: &App) -> Option<Entity> {
         .get_resource::<SelectedShooter>()
         .and_then(|s| **s)
 }
-
 
 pub(crate) fn add_probes(app: &mut App) {
     app.add_plugins((

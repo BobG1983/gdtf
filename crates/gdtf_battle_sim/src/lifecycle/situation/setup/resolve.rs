@@ -33,7 +33,7 @@ pub(super) fn resolve_members<'s, 'g>(
         };
         let Some(member) = roster.member(&placed.member) else {
             return Err(BattleSetupError::GangMemberNotFound {
-                gang: placed.gang.clone(),
+                gang:   placed.gang.clone(),
                 member: placed.member.clone(),
             });
         };

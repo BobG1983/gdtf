@@ -32,7 +32,6 @@ pub(crate) fn active_level(app: &App) -> Option<Level> {
     app.world().get_resource::<ActiveLevel>().map(|l| **l)
 }
 
-
 #[test]
 fn level_up_intent_raises_active_level_through_the_seam() {
     let level = Level::new(0);
@@ -97,7 +96,6 @@ fn selection_clear_intent_clears_through_the_seam() {
         "a SelectionClear intent must clear the selection through the drain",
     );
 }
-
 
 #[test]
 fn bound_level_up_key_press_raises_active_level() {

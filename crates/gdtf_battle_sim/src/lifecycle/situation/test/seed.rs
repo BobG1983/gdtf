@@ -18,10 +18,10 @@ fn cover_ledger_seeded_from_fixture_wall() {
         return;
     };
     let expected = CoverEntry::seeded(
-        CoverHp::new(120),       
-        HeightBand::High,        
-        ArmorProtection::new(8), 
-        ArmorHardness::new(4),   
+        CoverHp::new(120),
+        HeightBand::High,
+        ArmorProtection::new(8),
+        ArmorHardness::new(4),
     );
     assert_eq!(
         ledger.peek(&wall_cell).copied(),

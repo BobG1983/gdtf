@@ -7,7 +7,7 @@ use crate::{metric::CellLevel, tuning::MoveCost};
 /// Move cost for each cell; falls back to a default when no override is set.
 #[derive(Resource, Debug, Clone, PartialEq, Eq)]
 pub struct FloorCostGrid {
-    default: MoveCost,
+    default:   MoveCost,
     overrides: HashMap<CellLevel, MoveCost>,
 }
 

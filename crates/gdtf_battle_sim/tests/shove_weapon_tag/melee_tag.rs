@@ -2,7 +2,6 @@ use gdtf_battle_sim::{acts::MeleeRequested, ganger::Direction, test_support::Sit
 
 use super::harness::*;
 
-
 #[test]
 fn shove_tagged_melee_connect_knocks_target_back() {
     let mut app = battle_app(true, false);
@@ -34,7 +33,6 @@ fn shove_tagged_melee_connect_knocks_target_back() {
     );
 }
 
-
 #[test]
 fn non_shove_melee_connect_does_not_knock_back() {
     let mut app = battle_app(false, false);
@@ -60,7 +58,6 @@ fn non_shove_melee_connect_does_not_knock_back() {
         "a NON-`shove` weapon never knocks the target back (the target stays put on a connect)"
     );
 }
-
 
 #[test]
 fn shove_tagged_melee_miss_does_not_knock_back() {

@@ -4,7 +4,6 @@ use gdtf_battle_sim::{
     weapon::WeaponSpec,
 };
 
-
 #[test]
 fn attachment_spec_parses_effects_from_ron() {
     let ron = r#"(

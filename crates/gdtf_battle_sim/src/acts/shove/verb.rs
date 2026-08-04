@@ -21,7 +21,7 @@ pub enum ShoveOutcome {
     /// Target was pushed off unsupported ground and fell.
     Fell {
         /// Cell they were shoved into (start of fall).
-        dest: CellLevel,
+        dest:    CellLevel,
         /// Where the fall lands.
         landing: DropLanding,
     },

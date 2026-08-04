@@ -56,7 +56,7 @@ fn every_referenced_path_resolves() {
     );
     for file in &files {
         let Ok(bytes) = fs::read(root.join(file)) else {
-            continue; 
+            continue;
         };
         let text = String::from_utf8_lossy(&bytes);
         for reference in root_anchored(&text) {

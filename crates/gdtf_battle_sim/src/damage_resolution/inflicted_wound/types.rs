@@ -8,7 +8,7 @@ use crate::{armor::BodyPart, severity::Severity};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InflictedWound {
     /// Severity of the wound.
-    pub tier: Severity,
+    pub tier:     Severity,
     /// Body part that was hit.
     pub location: BodyPart,
 }

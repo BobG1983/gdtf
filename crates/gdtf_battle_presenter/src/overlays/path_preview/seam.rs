@@ -7,7 +7,7 @@ use gdtf_battle_sim::prelude::{CellLevel, Tu};
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
 pub struct PathPreview {
     cells: Vec<CellLevel>,
-    cost: Tu,
+    cost:  Tu,
 }
 
 impl PathPreview {
@@ -22,7 +22,7 @@ impl PathPreview {
     pub const fn cleared() -> Self {
         Self {
             cells: Vec::new(),
-            cost: Tu::new(0),
+            cost:  Tu::new(0),
         }
     }
 

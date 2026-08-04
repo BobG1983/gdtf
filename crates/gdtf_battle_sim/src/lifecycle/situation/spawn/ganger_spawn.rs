@@ -16,39 +16,39 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct GangerSpawn {
     /// Spawn cell.
-    pub at: CellLevel,
+    pub at:         CellLevel,
     /// Display name.
-    pub name: GangerName,
+    pub name:       GangerName,
     /// Faction index.
-    pub faction: Faction,
+    pub faction:    Faction,
     /// Facing direction.
-    pub facing: Facing,
+    pub facing:     Facing,
     /// Stance.
-    pub stance: Stance,
+    pub stance:     Stance,
     /// Aiming state.
-    pub aiming: Aiming,
+    pub aiming:     Aiming,
     /// Life state.
     pub life_state: LifeState,
     /// Speed stat.
-    pub speed: Speed,
+    pub speed:      Speed,
     /// Aim stat.
-    pub aim: Aim,
+    pub aim:        Aim,
     /// Strength / fight stat.
-    pub strength: Strength,
+    pub strength:   Strength,
     /// Toughness.
-    pub toughness: Toughness,
+    pub toughness:  Toughness,
     /// Reflexes.
-    pub reflexes: Reflexes,
+    pub reflexes:   Reflexes,
     /// Cool.
-    pub cool: Cool,
+    pub cool:       Cool,
     /// Grit.
-    pub grit: Grit,
+    pub grit:       Grit,
     /// Luck.
-    pub luck: Luck,
+    pub luck:       Luck,
     /// Armor key.
-    pub armor: crate::armor::ArmorName,
+    pub armor:      crate::armor::ArmorName,
     /// Primary weapon key.
-    pub weapon: WeaponName,
+    pub weapon:     WeaponName,
 }
 
 impl GangerSpawn {
@@ -68,17 +68,17 @@ impl GangerSpawn {
             ),
         );
         let member = GangMember {
-            name: self.name.clone(),
-            speed: self.speed,
-            aim: self.aim,
-            strength: self.strength,
-            toughness: self.toughness,
-            reflexes: self.reflexes,
-            cool: self.cool,
-            grit: self.grit,
-            luck: self.luck,
-            armor: self.armor.clone(),
-            weapon: self.weapon.clone(),
+            name:         self.name.clone(),
+            speed:        self.speed,
+            aim:          self.aim,
+            strength:     self.strength,
+            toughness:    self.toughness,
+            reflexes:     self.reflexes,
+            cool:         self.cool,
+            grit:         self.grit,
+            luck:         self.luck,
+            armor:        self.armor.clone(),
+            weapon:       self.weapon.clone(),
             melee_weapon: None,
         };
         (placed, member)

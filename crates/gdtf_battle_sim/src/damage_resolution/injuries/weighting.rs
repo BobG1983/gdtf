@@ -43,11 +43,11 @@ pub struct InjuryWeighting {
     pub category: InjuryCategory,
     /// Damage context (defaults to Ranged when omitted).
     #[serde(default)]
-    pub context: DamageContext,
+    pub context:  DamageContext,
     /// Minor-severity rows.
-    pub minor: Vec<WeightedInjuryEntry>,
+    pub minor:    Vec<WeightedInjuryEntry>,
     /// Major-severity rows.
-    pub major: Vec<WeightedInjuryEntry>,
+    pub major:    Vec<WeightedInjuryEntry>,
     /// Critical-severity rows.
     pub critical: Vec<WeightedInjuryEntry>,
 }

@@ -10,7 +10,7 @@ use load_suite::suite::{self, FamilyLoadContract};
 const LOAD_SAFETY_NET: u32 = 10_000;
 
 impl FamilyLoadContract for GangsFamily {
-        const EXPECTED_MEMBERS: &'static [&'static str] = &["gang_0", "gang_1"];
+    const EXPECTED_MEMBERS: &'static [&'static str] = &["gang_0", "gang_1"];
 
     fn is_empty(registry: &GangRegistry) -> bool {
         registry.is_empty()

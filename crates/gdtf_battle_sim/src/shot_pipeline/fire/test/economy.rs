@@ -3,7 +3,7 @@ use super::support::*;
 #[test]
 fn charge_is_taken_once_and_reflects_aiming() {
     let tuning = CombatTuning::default();
-    let mode = single_mode(0.3, 5); 
+    let mode = single_mode(0.3, 5);
 
     let hip_charge = mode_tu_cost(&mode, &TuMax::new(100), &Aiming::new(false), &tuning);
     let aim_charge = mode_tu_cost(&mode, &TuMax::new(100), &Aiming::new(true), &tuning);
@@ -98,7 +98,7 @@ fn charge_is_taken_once_and_reflects_aiming() {
 fn ammo_clamps_the_burst_and_drains_the_magazine() {
     let mut world = World::new();
     let tuning = CombatTuning::default();
-    let mode = single_mode(0.1, 8); 
+    let mode = single_mode(0.1, 8);
     let shooter = spawn_shooter(
         &mut world,
         ShooterSpec {
@@ -106,7 +106,7 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
             y: 5,
             tu: 200,
             tu_max: 100,
-            ammo: 3, 
+            ammo: 3,
             mode,
             aiming: false,
         },

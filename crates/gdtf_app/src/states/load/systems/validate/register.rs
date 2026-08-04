@@ -26,18 +26,18 @@ use crate::states::{AppState, load::resources::LoadedSituation};
 
 #[derive(SystemParam)]
 pub(super) struct ReferenceGraphResources<'w> {
-        situation:     Option<Res<'w, LoadedSituation>>,
-        gangs:         Option<Res<'w, GangRegistry>>,
-        weapons:       Option<Res<'w, WeaponRegistry>>,
-        melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
-        armor:         Option<Res<'w, ArmorRegistry>>,
-        attachments:   Option<Res<'w, AttachmentRegistry>>,
-        fields:        Option<Res<'w, FieldDefRegistry>>,
-        injuries:      Option<Res<'w, InjuryRegistry>>,
-        terrain:       Option<Res<'w, TerrainDefRegistry>>,
-        sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
-        themes:        Option<Res<'w, UuidThemeRegistry>>,
-        prefabs:       Option<Res<'w, PrefabRegistry>>,
+    situation:     Option<Res<'w, LoadedSituation>>,
+    gangs:         Option<Res<'w, GangRegistry>>,
+    weapons:       Option<Res<'w, WeaponRegistry>>,
+    melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
+    armor:         Option<Res<'w, ArmorRegistry>>,
+    attachments:   Option<Res<'w, AttachmentRegistry>>,
+    fields:        Option<Res<'w, FieldDefRegistry>>,
+    injuries:      Option<Res<'w, InjuryRegistry>>,
+    terrain:       Option<Res<'w, TerrainDefRegistry>>,
+    sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
+    themes:        Option<Res<'w, UuidThemeRegistry>>,
+    prefabs:       Option<Res<'w, PrefabRegistry>>,
 }
 
 pub(super) const fn reference_graph_ready(graph: ReferenceGraphResources) -> bool {

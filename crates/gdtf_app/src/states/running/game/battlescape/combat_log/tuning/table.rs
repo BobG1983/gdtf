@@ -11,16 +11,16 @@ use super::{
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Deserialize, TypePath, Default)]
 #[serde(default)]
 pub(crate) struct CombatLogTuning {
-        pub(crate) max_visible_lines:      MaxVisibleLines,
-        pub(crate) line_ttl_seconds:       LineTtlSeconds,
-        pub(crate) fade_fraction:          FadeFraction,
-        pub(crate) panel_width_vw:         PanelWidthVw,
-        pub(crate) line_font_pt:           LineFontPt,
-        pub(crate) line_lerp_rate:         LineLerpRate,
-        pub(crate) fade_in_seconds:        FadeInSeconds,
-        pub(crate) fade_out_seconds:       FadeOutSeconds,
-        pub(crate) height_lerp_rate:       HeightLerpRate,
-            pub(crate) bottom_clearance_lines: BottomClearanceLines,
+    pub(crate) max_visible_lines:      MaxVisibleLines,
+    pub(crate) line_ttl_seconds:       LineTtlSeconds,
+    pub(crate) fade_fraction:          FadeFraction,
+    pub(crate) panel_width_vw:         PanelWidthVw,
+    pub(crate) line_font_pt:           LineFontPt,
+    pub(crate) line_lerp_rate:         LineLerpRate,
+    pub(crate) fade_in_seconds:        FadeInSeconds,
+    pub(crate) fade_out_seconds:       FadeOutSeconds,
+    pub(crate) height_lerp_rate:       HeightLerpRate,
+    pub(crate) bottom_clearance_lines: BottomClearanceLines,
 }
 
 const COMBAT_LOG_RON_PATH: &str = "core_tuning/combat_log.tuning.ron";

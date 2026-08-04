@@ -40,7 +40,6 @@ fn injury_stream_unadvanced(app: &mut App) -> bool {
     live.next_u64() == expected
 }
 
-
 #[test]
 fn connecting_melee_wound_rolls_a_melee_table_injury_onto_the_ledger() {
     let (app, _attacker, target) = drive_forced_strike(wounding_tuning());
@@ -70,7 +69,6 @@ fn connecting_melee_wound_rolls_a_melee_table_injury_onto_the_ledger() {
     );
 }
 
-
 #[test]
 fn melee_injury_is_deterministic_under_the_same_seed() {
     let run = || -> Vec<String> {
@@ -88,7 +86,6 @@ fn melee_injury_is_deterministic_under_the_same_seed() {
         "the same seed + the same request must yield the identical melee injury",
     );
 }
-
 
 #[test]
 fn grazing_melee_strike_takes_no_injury_draw() {
@@ -108,7 +105,6 @@ fn grazing_melee_strike_takes_no_injury_draw() {
     );
 }
 
-
 #[test]
 fn fatal_melee_strike_takes_no_injury_draw() {
     let (mut app, _attacker, target) = drive_forced_strike(fatal_tuning());
@@ -127,7 +123,6 @@ fn fatal_melee_strike_takes_no_injury_draw() {
     );
 }
 
-
 #[test]
 fn wounding_melee_strike_advances_the_injury_stream() {
     let (mut app, _attacker, _target) = drive_forced_strike(wounding_tuning());
@@ -137,7 +132,6 @@ fn wounding_melee_strike_advances_the_injury_stream() {
          control the graze / fatal zero-draw asserts would pass on a dead injury path",
     );
 }
-
 
 #[test]
 fn missed_melee_strike_rolls_no_injury() {

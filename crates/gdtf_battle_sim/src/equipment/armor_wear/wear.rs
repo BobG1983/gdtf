@@ -13,9 +13,9 @@ pub struct ArmorDamaged {
     /// Wearer.
     pub ganger: Entity,
     /// Body part.
-    pub part: BodyPart,
+    pub part:   BodyPart,
     /// Integrity removed.
-    pub delta: IntegrityWear,
+    pub delta:  IntegrityWear,
 }
 
 impl ArmorDamaged {
@@ -47,7 +47,7 @@ pub struct ArmorBroken {
     /// Wearer.
     pub ganger: Entity,
     /// Body part.
-    pub part: BodyPart,
+    pub part:   BodyPart,
 }
 
 impl ArmorBroken {

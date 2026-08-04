@@ -209,7 +209,6 @@ fn explode_chain_reaction_kills_then_terminates() {
     assert_eq!(hp_of(&app, b_ganger), 0, "B's HP was emptied by A's blast");
 }
 
-
 #[derive(Resource, Default, Deref, DerefMut)]
 struct CapturedDeaths(Vec<OnDeathOccurred>);
 

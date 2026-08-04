@@ -15,7 +15,6 @@ fn fall_signals(app: &App) -> Vec<FallOccurred> {
         .unwrap_or_default()
 }
 
-
 #[test]
 fn shove_pushes_target_one_cell_away_from_shover() {
     let mut app = shove_app();
@@ -52,12 +51,11 @@ fn shove_pushes_target_one_cell_away_from_shover() {
     );
 }
 
-
 #[test]
 fn shove_off_a_ledge_falls_via_523_and_fires_falloccurred() {
     let mut app = shove_app();
     let mut surface = SurfaceGrid::new();
-    surface.set_slab(upper(6, 5, 2), SlabState::Present); 
+    surface.set_slab(upper(6, 5, 2), SlabState::Present);
     app.insert_resource(surface);
     app.insert_resource(OccupancyGrid::new());
     let shover = shove_ganger(app.world_mut(), upper(5, 5, 2), 0);
@@ -91,7 +89,6 @@ fn shove_off_a_ledge_falls_via_523_and_fires_falloccurred() {
     );
 }
 
-
 #[test]
 fn shove_onto_supported_cell_moves_without_falling() {
     let mut app = shove_app();
@@ -122,7 +119,6 @@ fn shove_onto_supported_cell_moves_without_falling() {
         "a supported shove deals NO damage (pure displacement — the shove itself never wounds)"
     );
 }
-
 
 #[test]
 fn shove_into_an_occupied_cell_is_a_noop() {

@@ -97,8 +97,8 @@ pub(crate) fn effect_roles(app: &App) -> Option<EffectRoles> {
 }
 
 pub(crate) fn advance_past_ttl(app: &mut App) {
-        const STEP: std::time::Duration = std::time::Duration::from_millis(250);
-        const STEPS: u32 = 8;
+    const STEP: std::time::Duration = std::time::Duration::from_millis(250);
+    const STEPS: u32 = 8;
 
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::ManualDuration(STEP));

@@ -7,7 +7,6 @@ use gdtf_test_utils::advance_until;
 
 use super::harness::*;
 
-
 #[test]
 fn contextual_panel_spawns_hidden_in_battle() {
     let mut app = battle_running_app();

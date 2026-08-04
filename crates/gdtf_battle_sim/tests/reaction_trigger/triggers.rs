@@ -6,7 +6,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn ac1_ac2_ac7_acting_player_is_interrupted_by_an_enemy_watcher() {
     let mut app = battle_app(forced_reaction_tuning(8));
@@ -82,7 +81,6 @@ fn ac1_ac2_ac7_acting_player_is_interrupted_by_an_enemy_watcher() {
     );
 }
 
-
 #[test]
 fn ac3_no_interrupt_when_the_actor_acts_outside_los() {
     let mut app = battle_app(forced_reaction_tuning(8));
@@ -133,7 +131,6 @@ fn ac3_no_interrupt_when_the_actor_acts_outside_los() {
         "AC3: with no interrupt the player walks freely to its destination",
     );
 }
-
 
 #[test]
 fn ac5_a_player_watcher_interrupts_an_acting_enemy_on_the_enemy_turn() {
@@ -188,7 +185,6 @@ fn ac5_a_player_watcher_interrupts_an_acting_enemy_on_the_enemy_turn() {
         "AC5: the enemy ACTUALLY moved (the brain drove it) — the interrupt saw a real step",
     );
 }
-
 
 #[test]
 fn the_interrupt_sequence_is_deterministic_across_identical_runs() {

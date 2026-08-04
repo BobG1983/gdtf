@@ -11,14 +11,14 @@ crate::support_item! {
 pub(in crate::states::running::game::battlescape::status_panel) struct Steadiness(f32);
 
 impl Steadiness {
-                                        #[must_use]
+    #[must_use]
     pub(in crate::states::running::game::battlescape::status_panel) fn from_cone_mult(
         cone_mult: ConeMult,
     ) -> Self {
         Self((1.0 - *cone_mult).clamp(0.0, 1.0))
     }
 
-                #[must_use]
+    #[must_use]
     pub(in crate::states::running::game::battlescape::status_panel) const fn fill_fraction(
         self,
     ) -> FillFraction {

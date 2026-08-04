@@ -60,7 +60,7 @@ pub fn animate_impact(
         );
         impact_resolved.write(ShotImpactResolved {
             shooter: impact.shooter,
-            report: impact.report.clone(),
+            report:  impact.report.clone(),
         });
         commands.entity(seed_entity).despawn();
     }

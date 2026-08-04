@@ -8,7 +8,7 @@ fn suppressed_move_toward_suppressor_is_rejected() {
     suppress_from(&mut app, actor, 20, 10);
     author_cover(&mut app, 12, 10);
 
-    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); 
+    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0));
     app.world_mut()
         .write_message(MoveRequested::new(actor, dest));
     app.update();
@@ -38,7 +38,7 @@ fn suppressed_move_to_exposed_farther_cell_is_rejected() {
     let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
     suppress_from(&mut app, actor, 20, 10);
 
-    let dest = CellLevel::new(Cell::new(9, 10), Level::new(0)); 
+    let dest = CellLevel::new(Cell::new(9, 10), Level::new(0));
     app.world_mut()
         .write_message(MoveRequested::new(actor, dest));
     app.update();
@@ -68,7 +68,7 @@ fn suppressed_move_farther_behind_cover_is_accepted() {
     suppress_from(&mut app, actor, 20, 10);
     author_cover(&mut app, 10, 10);
 
-    let dest = CellLevel::new(Cell::new(9, 10), Level::new(0)); 
+    let dest = CellLevel::new(Cell::new(9, 10), Level::new(0));
     app.world_mut()
         .write_message(MoveRequested::new(actor, dest));
     app.update();
@@ -96,7 +96,7 @@ fn unsuppressed_move_with_same_geometry_is_unaffected() {
     let mut app = headless_app();
     let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
 
-    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); 
+    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0));
     app.world_mut()
         .write_message(MoveRequested::new(actor, dest));
     app.update();

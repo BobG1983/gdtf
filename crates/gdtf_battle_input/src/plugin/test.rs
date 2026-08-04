@@ -4,8 +4,8 @@ use crate::{InputSystems, plugin::build::GdtfBattleInputPlugin};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ProbeBand {
-        Input,
-        Sim,
+    Input,
+    Sim,
 }
 
 #[derive(bevy::prelude::Resource, Default)]

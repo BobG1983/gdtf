@@ -35,7 +35,6 @@ fn plugin_bundles_runtime_and_registers_lifecycle_messages() {
     );
 }
 
-
 #[test]
 fn bundled_runtime_is_inert_pre_battle_and_post_teardown() {
     let mut app = headless_app();
@@ -98,7 +97,6 @@ fn simulate_gate_run_if_references_battle_in_progress_not_occupancy_grid() {
         "the Simulate band must NOT gate on the incidental OccupancyGrid proxy any more",
     );
 }
-
 
 #[test]
 fn no_lifecycle_message_means_no_setup_or_teardown() {

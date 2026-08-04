@@ -8,28 +8,28 @@ use crate::net_qa::present::{EditorQaCaptureTarget, aims_at};
 pub(in crate::net_qa) struct CaptureAimDetail(String);
 
 impl CaptureAimDetail {
-        pub(in crate::net_qa) const fn new(detail: String) -> Self {
+    pub(in crate::net_qa) const fn new(detail: String) -> Self {
         Self(detail)
     }
 
-        pub(in crate::net_qa) fn as_str(&self) -> &str {
+    pub(in crate::net_qa) fn as_str(&self) -> &str {
         &self.0
     }
 }
 
 pub(in crate::net_qa) enum CaptureAim {
-            Confirmed,
-            Refused(CaptureAimDetail),
+    Confirmed,
+    Refused(CaptureAimDetail),
 }
 
 #[derive(SystemParam)]
 pub(in crate::net_qa) struct EditorCaptureAim<'w, 's> {
-            target:  Option<Res<'w, EditorQaCaptureTarget>>,
-            cameras: Query<'w, 's, &'static RenderTarget, With<PrimaryEguiContext>>,
+    target:  Option<Res<'w, EditorQaCaptureTarget>>,
+    cameras: Query<'w, 's, &'static RenderTarget, With<PrimaryEguiContext>>,
 }
 
 impl EditorCaptureAim<'_, '_> {
-                                    pub(in crate::net_qa) fn verify(&self, source: &EditorShotSource) -> CaptureAim {
+    pub(in crate::net_qa) fn verify(&self, source: &EditorShotSource) -> CaptureAim {
         let EditorShotSource::Offscreen(wanted) = source else {
             return CaptureAim::Confirmed;
         };

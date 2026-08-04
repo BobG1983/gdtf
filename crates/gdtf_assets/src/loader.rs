@@ -20,7 +20,7 @@ where
     T: TypePath,
 {
     extensions: Vec<&'static str>,
-    _payload: PhantomData<fn() -> T>,
+    _payload:   PhantomData<fn() -> T>,
 }
 
 impl<T> RonAssetLoader<T>
@@ -44,7 +44,7 @@ where
     fn default() -> Self {
         Self {
             extensions: vec!["ron"],
-            _payload: PhantomData,
+            _payload:   PhantomData,
         }
     }
 }

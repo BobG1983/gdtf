@@ -5,25 +5,25 @@ use crate::mcp::content::{text_content, tool_error};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(in crate::mcp) enum CatalogueDetail {
-        Summary,
-        Full,
+    Summary,
+    Full,
 }
 
 impl CatalogueDetail {
-        const fn label(self) -> &'static str {
+    const fn label(self) -> &'static str {
         match self {
             Self::Summary => "Summary",
             Self::Full => "Full",
         }
     }
 
-        pub(in crate::mcp) const ALL: [Self; 2] = [Self::Summary, Self::Full];
+    pub(in crate::mcp) const ALL: [Self; 2] = [Self::Summary, Self::Full];
 
-        fn from_label(word: &str) -> Option<Self> {
+    fn from_label(word: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|level| level.label() == word)
     }
 
-            pub(in crate::mcp) fn labels() -> Vec<&'static str> {
+    pub(in crate::mcp) fn labels() -> Vec<&'static str> {
         Self::ALL.into_iter().map(Self::label).collect()
     }
 }

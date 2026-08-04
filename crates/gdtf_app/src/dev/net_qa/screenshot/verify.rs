@@ -1,8 +1,8 @@
 use gdtf_screenshot::CapturePath;
 
 pub(in crate::dev::net_qa) enum ShotFile {
-        NotReady,
-        Ready,
+    NotReady,
+    Ready,
 }
 
 pub(in crate::dev::net_qa) fn inspect_shot(path: &CapturePath) -> ShotFile {

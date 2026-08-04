@@ -42,9 +42,9 @@ struct ModifiedCount(usize);
 
 #[derive(Resource, Default)]
 struct QuietProbe {
-        terrain_redirtied: RedirtyCount,
-        store_poked:       StorePoked,
-        modified_events:   ModifiedCount,
+    terrain_redirtied: RedirtyCount,
+    store_poked:       StorePoked,
+    modified_events:   ModifiedCount,
 }
 
 fn record_quiet_probe(

@@ -4,7 +4,7 @@ use super::support::*;
 fn stabilize_dispatch_from_adjacent_ally_removes_the_condition_and_keeps_downed() {
     let mut app = headless_app();
     let actor = spawn_downed_actor(app.world_mut(), 10, 10, 1);
-    let target = spawn_downed_target(app.world_mut(), 11, 10, 1); 
+    let target = spawn_downed_target(app.world_mut(), 11, 10, 1);
 
     app.world_mut()
         .write_message(StabilizeDownedRequested::new(actor, target));
@@ -25,7 +25,7 @@ fn stabilize_dispatch_from_adjacent_ally_removes_the_condition_and_keeps_downed(
 fn execute_dispatch_from_adjacent_enemy_kills_the_target() {
     let mut app = headless_app();
     let actor = spawn_downed_actor(app.world_mut(), 10, 10, 1);
-    let target = spawn_downed_target(app.world_mut(), 11, 10, 2); 
+    let target = spawn_downed_target(app.world_mut(), 11, 10, 2);
 
     app.world_mut()
         .write_message(ExecuteDownedRequested::new(actor, target));
@@ -42,7 +42,7 @@ fn execute_dispatch_from_adjacent_enemy_kills_the_target() {
 fn faction_gate_holds_end_to_end_through_dispatch() {
     let mut app = headless_app();
     let enemy_actor = spawn_downed_actor(app.world_mut(), 10, 10, 1);
-    let downed_enemy = spawn_downed_target(app.world_mut(), 11, 10, 2); 
+    let downed_enemy = spawn_downed_target(app.world_mut(), 11, 10, 2);
     app.world_mut()
         .write_message(StabilizeDownedRequested::new(enemy_actor, downed_enemy));
     app.update();
@@ -53,7 +53,7 @@ fn faction_gate_holds_end_to_end_through_dispatch() {
 
     let mut app2 = headless_app();
     let ally_actor = spawn_downed_actor(app2.world_mut(), 10, 10, 1);
-    let downed_ally = spawn_downed_target(app2.world_mut(), 11, 10, 1); 
+    let downed_ally = spawn_downed_target(app2.world_mut(), 11, 10, 1);
     app2.world_mut()
         .write_message(ExecuteDownedRequested::new(ally_actor, downed_ally));
     app2.update();

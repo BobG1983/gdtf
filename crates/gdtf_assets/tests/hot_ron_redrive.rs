@@ -21,8 +21,8 @@ use serde::Deserialize;
 
 #[derive(Resource, Deserialize, TypePath, Debug, Clone, PartialEq, Eq)]
 struct HotSwatch {
-        label: String,
-        count: u32,
+    label: String,
+    count: u32,
 }
 
 #[derive(Resource, Default)]
@@ -168,7 +168,7 @@ fn install_global_capture() {
 struct CaptureLayer;
 
 struct MessageVisitor {
-        message: Option<String>,
+    message: Option<String>,
 }
 
 impl Visit for MessageVisitor {

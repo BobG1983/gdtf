@@ -84,15 +84,14 @@ pub(crate) fn cover_destroyed_flag(app: &App, at: CellLevel) -> bool {
         .is_some_and(|entry| *entry.destroyed)
 }
 
-
 #[derive(Resource, Default)]
 pub(crate) struct MeleeLog {
-        hits: Vec<MeleeResolved>,
+    hits: Vec<MeleeResolved>,
 }
 
 #[derive(Resource, Default)]
 pub(crate) struct DestroyedLog {
-        hits: Vec<CoverDestroyed>,
+    hits: Vec<CoverDestroyed>,
 }
 
 pub(crate) fn record_melee(

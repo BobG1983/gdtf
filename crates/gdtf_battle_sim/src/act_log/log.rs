@@ -14,14 +14,14 @@ use crate::ganger::LifeState;
 /// Ordered act history with capacity limit and prior-state maps.
 #[derive(Resource, Debug)]
 pub struct ActLog {
-    entries: VecDeque<ActEntry>,
-    next_seq: ActSeq,
-    capacity: ActLogCapacity,
-    dropped: ActLogDropped,
-    prior_pose: HashMap<Entity, PoseFacts>,
-    prior_vitals: HashMap<Entity, VitalsFacts>,
+    entries:        VecDeque<ActEntry>,
+    next_seq:       ActSeq,
+    capacity:       ActLogCapacity,
+    dropped:        ActLogDropped,
+    prior_pose:     HashMap<Entity, PoseFacts>,
+    prior_vitals:   HashMap<Entity, VitalsFacts>,
     prior_magazine: HashMap<Entity, MagazineFacts>,
-    prior_life: HashMap<Entity, LifeState>,
+    prior_life:     HashMap<Entity, LifeState>,
     prior_position: HashMap<Entity, PositionFacts>,
 }
 

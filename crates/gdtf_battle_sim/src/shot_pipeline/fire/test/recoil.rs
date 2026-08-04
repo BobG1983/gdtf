@@ -9,7 +9,7 @@ use super::support::*;
 fn recoil_climbs_across_burst_and_resets_between_calls() {
     let mut tuning = CombatTuning::default();
     tuning.cone_stability.recoil_climb = crate::tuning::RecoilClimb::new(2.0);
-    let mode = single_mode(0.1, 3); 
+    let mode = single_mode(0.1, 3);
 
     let run = || {
         let mut world = World::new();

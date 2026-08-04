@@ -19,17 +19,17 @@ use crate::states::{
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(in crate::states::running::game::battlescape) enum ContextualPanelSystems {
-            Offer,
-        Toggle,
-            Rank,
-            Press,
+    Offer,
+    Toggle,
+    Rank,
+    Press,
 }
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(in crate::states::running::game::battlescape) enum ContextualPanelSpawnSystems {
-        Root,
-        Buttons,
-        Order,
+    Root,
+    Buttons,
+    Order,
 }
 
 pub(in crate::states::running::game::battlescape) fn configure_contextual_panel_sets(
@@ -65,7 +65,7 @@ pub(in crate::states::running::game::battlescape) fn configure_contextual_panel_
 }
 
 pub(in crate::states::running::game::battlescape) trait ContextualPanelActAppExt {
-                                        fn add_contextual_act_button<A: ContextualPanelAct, M>(
+    fn add_contextual_act_button<A: ContextualPanelAct, M>(
         &mut self,
         offer: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self;

@@ -1,10 +1,5 @@
 pub(super) use bevy::{ecs::message::Messages, prelude::App};
 
-pub(super) use crate::test_support::{
-    SimAppBuilder, SituationBuilder, fixtures, ganger_at, key,
-    test_armor_registry as armor_registry, test_gang_registry,
-    test_melee_weapon_registry as melee_weapon_registry, test_weapon_registry as weapon_registry,
-};
 pub(super) use crate::{
     acts::FireRequested,
     armor::Wears,
@@ -20,6 +15,12 @@ pub(super) use crate::{
     rng::{BattleSeed, ShotRng},
     situation::{BattleRegistries, BattleSetupError, Situation, setup_battle},
     surface::SurfaceGrid,
+    test_support::{
+        SimAppBuilder, SituationBuilder, fixtures, ganger_at, key,
+        test_armor_registry as armor_registry, test_gang_registry,
+        test_melee_weapon_registry as melee_weapon_registry,
+        test_weapon_registry as weapon_registry,
+    },
     tuning::{CombatTuning, GangerStatTuning},
     vertical::{InvalidVerticalLink, LinkKind, VerticalLink, VerticalLinkGraph},
     weapon::{FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
@@ -37,12 +38,12 @@ pub(super) fn two_ganger_situation_player_faction_one() -> Situation {
 
 pub(super) fn dangling_link_situation() -> (Situation, VerticalLink) {
     let present = key(4, 4, 0);
-    let missing = key(4, 4, 1); 
+    let missing = key(4, 4, 1);
     let link = VerticalLink::new(present, missing, LinkKind::stair());
     let situation = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
-        .slab_at(present) 
-        .vertical_link(link) 
+        .slab_at(present)
+        .vertical_link(link)
         .build();
     (situation, link)
 }

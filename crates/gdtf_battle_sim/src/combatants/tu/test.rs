@@ -5,17 +5,16 @@ use crate::{
     tu::{can_spend_tu, reset_tu, spend_tu},
 };
 
-
 #[test]
 fn can_spend_tu_is_true_iff_pool_at_least_cost() {
     let cases = [
-        (10u8, 10u8, true), 
-        (10, 9, true),      
-        (10, 11, false),    
-        (0, 0, true),       
-        (0, 1, false),      
-        (200, 50, true),    
-        (50, 200, false),   
+        (10u8, 10u8, true),
+        (10, 9, true),
+        (10, 11, false),
+        (0, 0, true),
+        (0, 1, false),
+        (200, 50, true),
+        (50, 200, false),
     ];
     for (pool, cost, expected) in cases {
         assert_eq!(
@@ -25,7 +24,6 @@ fn can_spend_tu_is_true_iff_pool_at_least_cost() {
         );
     }
 }
-
 
 #[test]
 fn spend_tu_over_spend_saturates_to_zero() {
@@ -48,7 +46,6 @@ fn spend_tu_over_spend_saturates_to_zero() {
     );
 }
 
-
 #[test]
 fn spend_tu_affordable_decrements_exactly() {
     let cases = [(60u8, 10u8), (60, 0), (100, 100), (7, 3)];
@@ -63,7 +60,6 @@ fn spend_tu_affordable_decrements_exactly() {
         );
     }
 }
-
 
 #[test]
 fn reset_tu_restores_pool_to_max_from_zero() {
@@ -89,7 +85,6 @@ fn reset_tu_is_independent_of_pre_reset_pool() {
         );
     }
 }
-
 
 #[test]
 fn tu_and_tu_max_are_distinct_newtypes_read_via_deref() {

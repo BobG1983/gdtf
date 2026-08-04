@@ -16,16 +16,16 @@ pub struct ShotProjectile;
 /// Flight path, stagger, and payload for a shot projectile.
 #[derive(Component, Debug, Clone)]
 pub struct ProjectileTravel {
-    from: Vec3,
-    to: Vec3,
-    damage: DamageType,
-    launch: Timer,
+    from:     Vec3,
+    to:       Vec3,
+    damage:   DamageType,
+    launch:   Timer,
     velocity: ProjectileVelocity,
     traveled: f32,
-    pops: Vec<ClassifiedPop>,
-    anchor: (Cell, Level),
-    shooter: Entity,
-    report: Option<HitReport>,
+    pops:     Vec<ClassifiedPop>,
+    anchor:   (Cell, Level),
+    shooter:  Entity,
+    report:   Option<HitReport>,
 }
 
 impl ProjectileTravel {

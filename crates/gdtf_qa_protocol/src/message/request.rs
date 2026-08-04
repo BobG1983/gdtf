@@ -20,12 +20,12 @@ pub enum QaRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RunCommand {
     /// Command to run.
-    pub command: CommandName,
+    pub command:   CommandName,
     /// JSON argument blob for the command.
     pub arguments: CommandArgsJson,
     /// Optional run flags (`#[serde(default)]` for older frames).
     #[serde(default)]
-    pub options: RunOptions,
+    pub options:   RunOptions,
 }
 
 impl RunCommand {

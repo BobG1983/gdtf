@@ -8,11 +8,11 @@ use crate::command::ErasedCommand;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandRow {
     /// Command name.
-    pub name: CommandName,
+    pub name:      CommandName,
     /// Argument schema JSON.
     pub arguments: ArgSchemaJson,
     /// Reply schema JSON.
-    pub reply: ReplySchemaJson,
+    pub reply:     ReplySchemaJson,
 }
 
 /// Result of a unique-name check.
@@ -34,7 +34,7 @@ pub enum SchemaCheck {
         /// Command that published the bad schema.
         command: CommandName,
         /// Which side failed.
-        which: SchemaSide,
+        which:   SchemaSide,
     },
 }
 
@@ -53,9 +53,9 @@ pub fn command_rows<F>(commands: &[&dyn ErasedCommand<F>]) -> Vec<CommandRow> {
     commands
         .iter()
         .map(|command| CommandRow {
-            name: command.name(),
+            name:      command.name(),
             arguments: command.arg_schema(),
-            reply: command.reply_schema(),
+            reply:     command.reply_schema(),
         })
         .collect()
 }
@@ -80,13 +80,13 @@ pub fn check_schemas_parse(rows: &[CommandRow]) -> SchemaCheck {
         if serde_json::from_str::<serde_json::Value>(row.arguments.as_str()).is_err() {
             return SchemaCheck::Unparseable {
                 command: row.name.clone(),
-                which: SchemaSide::Arguments,
+                which:   SchemaSide::Arguments,
             };
         }
         if serde_json::from_str::<serde_json::Value>(row.reply.as_str()).is_err() {
             return SchemaCheck::Unparseable {
                 command: row.name.clone(),
-                which: SchemaSide::Reply,
+                which:   SchemaSide::Reply,
             };
         }
     }

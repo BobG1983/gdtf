@@ -7,7 +7,7 @@ const SPEED: CursorSpeed = CursorSpeed::new(100.0);
 
 #[test]
 fn move_cursor_flips_y_and_scales() {
-    let start = Vec2::new(400.0, 300.0); 
+    let start = Vec2::new(400.0, 300.0);
 
     let up = move_cursor(start, Vec2::new(0.0, 1.0), SPEED, 0.5, WINDOW);
     assert!(

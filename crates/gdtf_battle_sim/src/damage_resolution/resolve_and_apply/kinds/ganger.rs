@@ -34,28 +34,28 @@ const BARE_FLESH: ArmorPiece = ArmorPiece::new(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AppliedDamage {
     /// Matchup used for the hit.
-    pub matchup: Matchup,
+    pub matchup:    Matchup,
     /// Hit resolution result.
-    pub hit: HitResult,
+    pub hit:        HitResult,
     /// Wound severity.
-    pub severity: Severity,
+    pub severity:   Severity,
     /// Life state after the hit.
     pub life_after: LifeState,
     /// Armor wear outcome.
-    pub wear: ArmorWearOutcome,
+    pub wear:       ArmorWearOutcome,
 }
 
 /// Full verdict for a ganger hit.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GangerVerdict {
     /// Target entity.
-    pub target: Entity,
+    pub target:      Entity,
     /// Body part that was hit.
-    pub part: BodyPart,
+    pub part:        BodyPart,
     /// Applied damage details.
-    pub applied: AppliedDamage,
+    pub applied:     AppliedDamage,
     /// Injury that was rolled, if any.
-    pub injury: Option<RolledInjury>,
+    pub injury:      Option<RolledInjury>,
     /// DOT that was applied, if any.
     pub dot_applied: Option<Dot>,
 }
@@ -137,11 +137,11 @@ pub(in crate::damage_resolution::resolve_and_apply) fn fold(
         target: target_entity,
         part,
         applied: AppliedDamage {
-            matchup: synthesis.matchup,
-            hit: synthesis.hit,
-            severity: synthesis.severity,
+            matchup:    synthesis.matchup,
+            hit:        synthesis.hit,
+            severity:   synthesis.severity,
             life_after: synthesis.life_after,
-            wear: synthesis.wear,
+            wear:       synthesis.wear,
         },
         injury: synthesis.injury,
         dot_applied,

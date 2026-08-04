@@ -28,7 +28,6 @@ fn expected_player_focus() -> Vec2 {
     camera_focus(centers).unwrap_or(Vec2::ZERO)
 }
 
-
 #[test]
 fn frame_on_units_centres_once_and_latches() {
     let mut app = App::new();

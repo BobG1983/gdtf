@@ -18,7 +18,7 @@ use crate::dev::net_qa::{
 enum Wiring {
     Disabled,
     Listener {
-        port: NetQaPort,
+        port:       NetQaPort,
         io_timeout: NetIoTimeout,
     },
     #[cfg(feature = "test-support")]
@@ -27,7 +27,7 @@ enum Wiring {
     },
     #[cfg(feature = "test-support")]
     Bound {
-        listener: std::sync::Mutex<Option<TcpListener>>,
+        listener:   std::sync::Mutex<Option<TcpListener>>,
         io_timeout: NetIoTimeout,
     },
 }
@@ -76,7 +76,7 @@ impl NetQaPlugin {
         let (listener, bound) = bind_listener(port)?;
         let plugin = Self {
             wiring: Wiring::Bound {
-                listener: std::sync::Mutex::new(Some(listener)),
+                listener:   std::sync::Mutex::new(Some(listener)),
                 io_timeout: DEFAULT_IO_TIMEOUT,
             },
         };

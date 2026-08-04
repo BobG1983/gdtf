@@ -17,9 +17,9 @@ const DEFAULT_PROBE_TIMEOUT: ProbeTimeout = ProbeTimeout::new(Duration::from_mil
 /// Timing knobs for launch readiness and stop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LifecycleConfig {
-    boot_timeout: BootTimeout,
+    boot_timeout:  BootTimeout,
     poll_interval: PollInterval,
-    kill_grace: KillGrace,
+    kill_grace:    KillGrace,
     probe_timeout: ProbeTimeout,
 }
 

@@ -13,9 +13,9 @@ pub struct AiTarget {
     /// Enemy entity.
     pub entity: Entity,
     /// Enemy cell.
-    pub cell: Cell,
+    pub cell:   Cell,
     /// Enemy level.
-    pub level: Level,
+    pub level:  Level,
 }
 
 impl AiTarget {

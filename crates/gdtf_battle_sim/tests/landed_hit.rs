@@ -185,8 +185,8 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
         let _volley = gdtf_battle_sim::fire::fire(
             shooter,
             FireOrder {
-                mode: &mode,
-                target_cell: Cell::new(enemy_cell().x, enemy_cell().y),
+                mode:         &mode,
+                target_cell:  Cell::new(enemy_cell().x, enemy_cell().y),
                 target_level: Level::new(0),
             },
             &mut shooters,
@@ -198,10 +198,10 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
             &melee,
             &mounted,
             BattleGrids {
-                occupancy: &occupancy,
-                surface: &surface,
-                cover: &mut cover,
-                slab: &mut slab,
+                occupancy:   &occupancy,
+                surface:     &surface,
+                cover:       &mut cover,
+                slab:        &mut slab,
                 brace_cells: &BraceStairCells::empty(),
             },
             &tuning,

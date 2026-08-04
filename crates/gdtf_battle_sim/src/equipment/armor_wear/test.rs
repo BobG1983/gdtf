@@ -119,7 +119,7 @@ fn zero_wear_on_protecting_piece_is_unaffected() {
 fn armor_broken_is_a_buffered_message_read_in_a_headless_app() {
     use bevy::prelude::{IntoScheduleConfigs, Resource};
 
-            #[derive(Resource, Default)]
+    #[derive(Resource, Default)]
     struct Captured(Vec<ArmorBroken>);
 
     let ganger = a_ganger();

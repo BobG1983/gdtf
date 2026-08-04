@@ -55,7 +55,7 @@ pub enum FactionRelation {
 /// Visible and explored cells for one squad.
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
 pub struct SquadVisibility {
-    visible: HashSet<CellLevel>,
+    visible:  HashSet<CellLevel>,
     explored: HashSet<CellLevel>,
 }
 

@@ -20,48 +20,48 @@ pub struct WeaponSpec {
     /// Base spread.
     pub base_spread: BaseSpread,
     /// Accuracy.
-    pub accuracy: Accuracy,
+    pub accuracy:    Accuracy,
     /// Kickback.
-    pub kickback: Kickback,
+    pub kickback:    Kickback,
     /// Fatal bias.
-    pub fatal_bias: FatalBias,
+    pub fatal_bias:  FatalBias,
     /// Damage.
-    pub damage: WeaponDamage,
+    pub damage:      WeaponDamage,
     /// Punch.
-    pub punch: WeaponPunch,
+    pub punch:       WeaponPunch,
     /// Shred.
-    pub shred: WeaponShred,
+    pub shred:       WeaponShred,
     /// Damage type.
     pub damage_type: DamageType,
     /// Accepted ammo class.
     #[serde(default)]
-    pub accepts: AmmoType,
+    pub accepts:     AmmoType,
     /// Magazine template (size / reload; live rounds filled on spawn).
-    pub magazine: Magazine,
+    pub magazine:    Magazine,
     /// Fire modes.
-    pub fire_mode: FireMode,
+    pub fire_mode:   FireMode,
     /// Stability.
-    pub stable: Stable,
+    pub stable:      Stable,
     /// Shove on hit.
     #[serde(default)]
-    pub shove: Shove,
+    pub shove:       Shove,
     /// Handedness.
-    pub handedness: Handedness,
+    pub handedness:  Handedness,
     /// Trajectory.
     #[serde(default)]
-    pub trajectory: TrajectoryStyle,
+    pub trajectory:  TrajectoryStyle,
     /// Attachment slots.
     #[serde(default)]
-    pub slots: WeaponSlots,
+    pub slots:       WeaponSlots,
     /// Pre-fitted attachment names.
     #[serde(default)]
     pub attachments: Vec<AttachmentName>,
     /// Optional DOT on hit.
     #[serde(default)]
-    pub dot: Option<DotProfile>,
+    pub dot:         Option<DotProfile>,
     /// Optional on-death effect.
     #[serde(default)]
-    pub on_death: Option<crate::effects::on_death::OnDeathEffect>,
+    pub on_death:    Option<crate::effects::on_death::OnDeathEffect>,
 }
 
 impl WeaponSpec {
@@ -97,7 +97,7 @@ impl WeaponSpec {
 /// Extra components to attach after the main bundle (DOT, on-death).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct WeaponSpawnSiblings {
-    dot: Option<DotProfile>,
+    dot:      Option<DotProfile>,
     on_death: Option<crate::effects::on_death::OnDeath>,
 }
 

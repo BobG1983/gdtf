@@ -6,7 +6,6 @@ use crate::{
     tuning::{StanceChangeTu, TurnTu},
 };
 
-
 #[test]
 fn set_aiming_toggles_flag_and_charges_no_tu() {
     let mut aiming = Aiming::new(false);
@@ -20,7 +19,6 @@ fn set_aiming_toggles_flag_and_charges_no_tu() {
     assert!(!*aiming, "set_aiming(false) must clear the aim flag");
     assert_eq!(*tu, 30, "toggling aim off must not spend any TU either");
 }
-
 
 #[test]
 fn set_stance_to_different_stance_spends_exactly_the_cost() {
@@ -51,7 +49,6 @@ fn set_stance_to_different_stance_spends_exactly_the_cost() {
     );
 }
 
-
 #[test]
 fn set_stance_to_same_stance_is_a_no_op() {
     let cost = StanceChangeTu::new(8);
@@ -74,7 +71,6 @@ fn set_stance_to_same_stance_is_a_no_op() {
         "re-asserting the held stance must not spend any TU"
     );
 }
-
 
 #[test]
 fn set_facing_to_different_facing_spends_exactly_the_cost() {
@@ -124,7 +120,6 @@ fn set_facing_to_different_facing_spends_exactly_the_cost() {
     );
 }
 
-
 #[test]
 fn set_facing_to_same_facing_is_a_no_op() {
     let cost = TurnTu::new(4);
@@ -147,7 +142,6 @@ fn set_facing_to_same_facing_is_a_no_op() {
         "re-asserting the held facing must not spend any TU"
     );
 }
-
 
 #[test]
 fn set_facing_partial_turn_spends_exactly_the_afforded_steps() {
@@ -184,10 +178,9 @@ fn set_facing_partial_turn_spends_exactly_the_afforded_steps() {
     );
 }
 
-
 #[test]
 fn set_facing_with_pool_below_one_step_does_not_turn_or_charge() {
-    let c = 5u8; 
+    let c = 5u8;
     let cost = TurnTu::new(c);
     let mut facing = Facing::new(Direction::North);
     let mut tu = Tu::new(c - 1);
@@ -220,7 +213,6 @@ fn set_facing_with_pool_below_one_step_does_not_turn_or_charge() {
     );
     assert_eq!(*tu, 0, "a broke ganger is not charged");
 }
-
 
 #[test]
 fn set_stance_charge_saturates_when_cost_exceeds_pool() {

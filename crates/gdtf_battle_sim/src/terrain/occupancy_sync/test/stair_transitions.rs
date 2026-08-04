@@ -9,7 +9,7 @@ fn move_off_stair_clears_upper_presence() {
     let mut app = headless_app();
     let stair = key(8, 8, 2);
     let upper = key(8, 8, 3);
-    let dest = key(9, 9, 2); 
+    let dest = key(9, 9, 2);
 
     mark_stair(&mut app, stair);
 

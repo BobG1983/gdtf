@@ -13,11 +13,11 @@ const TRANSITION_BUDGET: u32 = 32;
 const LOAD_SAFETY_NET: u32 = 10_000;
 
 pub(crate) trait FamilyLoadContract: ContentFamily {
-                    const EXPECTED_MEMBERS: &'static [&'static str];
+    const EXPECTED_MEMBERS: &'static [&'static str];
 
-        fn is_empty(registry: &Self::Registry) -> bool;
+    fn is_empty(registry: &Self::Registry) -> bool;
 
-            fn member_resolves(registry: &Self::Registry, label: &str) -> bool;
+    fn member_resolves(registry: &Self::Registry, label: &str) -> bool;
 }
 
 pub(crate) fn loader_no_ops_without_asset_server<F: FamilyLoadContract>() {

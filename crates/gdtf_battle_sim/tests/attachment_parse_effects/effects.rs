@@ -27,7 +27,6 @@ fn spawn_lone_player_weapon(effects: Vec<AttachmentEffect>) -> (App, Entity) {
     (app, weapon)
 }
 
-
 #[test]
 fn silence_effect_spawns_the_silenced_component() {
     let (app, weapon) = spawn_lone_player_weapon(vec![AttachmentEffect::Silence]);
@@ -116,7 +115,6 @@ fn reload_time_effect_lowers_the_magazine_reload_tu() {
         "a ReloadTime attachment lowers the weapon's reload_tu (fast {fast} < baseline {base})",
     );
 }
-
 
 #[test]
 fn empty_attachments_spawn_with_no_effects() {

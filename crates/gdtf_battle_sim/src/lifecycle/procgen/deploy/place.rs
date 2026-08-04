@@ -101,8 +101,8 @@ fn deploy_side(
 
     if standable.len() < members.len() {
         return Err(PackingError::DeploymentZoneTooSmall {
-            anchor: zone.anchor(),
-            demand: RosterDemand::new(members.len()),
+            anchor:   zone.anchor(),
+            demand:   RosterDemand::new(members.len()),
             capacity: ZoneCapacity::new(standable.len()),
         });
     }
@@ -152,7 +152,7 @@ fn blocking_grid(terrain: &Situation) -> OccupancyGrid {
         .map(|cover| TerrainPlacement::new(cover.at, TerrainKind::Wall))
         .collect();
     let input = OccupancyInput {
-        terrain: terrain_placements,
+        terrain:   terrain_placements,
         occupants: Vec::new(),
     };
     OccupancyGrid::build_from_occupancy_input(&input, &HashSet::default())

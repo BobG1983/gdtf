@@ -19,66 +19,66 @@ pub struct BackgroundTheme {
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct PanelTheme {
     /// Panel fill.
-    pub color: PanelColor,
+    pub color:         PanelColor,
     /// Border color.
-    pub border_color: BorderColor,
+    pub border_color:  BorderColor,
     /// Border width.
-    pub border_width: BorderWidthVw,
+    pub border_width:  BorderWidthVw,
     /// Corner radius.
     pub corner_radius: CornerRadiusVw,
     /// Content margin.
-    pub margin: ContentMargin,
+    pub margin:        ContentMargin,
 }
 
 /// Button chrome and text section.
 #[derive(Clone, PartialEq, Debug)]
 pub struct ButtonTheme {
     /// Default fill.
-    pub color: ButtonColor,
+    pub color:         ButtonColor,
     /// Disabled fill.
-    pub disabled: DisabledColor,
+    pub disabled:      DisabledColor,
     /// Active/selected fill.
-    pub active: ActiveColor,
+    pub active:        ActiveColor,
     /// Hover fill.
-    pub hover: HoverColor,
+    pub hover:         HoverColor,
     /// Pressed fill.
-    pub pressed: PressedColor,
+    pub pressed:       PressedColor,
     /// Caption color.
-    pub text_color: TextColor,
+    pub text_color:    TextColor,
     /// Caption size.
-    pub font_size_pt: FontSizePt,
+    pub font_size_pt:  FontSizePt,
     /// Border color.
-    pub border_color: BorderColor,
+    pub border_color:  BorderColor,
     /// Border width.
-    pub border_width: BorderWidthVw,
+    pub border_width:  BorderWidthVw,
     /// Corner radius.
     pub corner_radius: CornerRadiusVw,
     /// Content margin.
-    pub margin: ContentMargin,
+    pub margin:        ContentMargin,
     /// Caption font handle.
-    pub font: Handle<Font>,
+    pub font:          Handle<Font>,
 }
 
 /// Title text section.
 #[derive(Clone, PartialEq, Debug)]
 pub struct TitleTheme {
     /// Title color.
-    pub text_color: TextColor,
+    pub text_color:   TextColor,
     /// Title size.
     pub font_size_pt: FontSizePt,
     /// Title font handle.
-    pub font: Handle<Font>,
+    pub font:         Handle<Font>,
 }
 
 /// Body text section.
 #[derive(Clone, PartialEq, Debug)]
 pub struct TextTheme {
     /// Body color.
-    pub text_color: TextColor,
+    pub text_color:   TextColor,
     /// Body size.
     pub font_size_pt: FontSizePt,
     /// Body font handle.
-    pub font: Handle<Font>,
+    pub font:         Handle<Font>,
 }
 
 /// Full runtime UI theme resource.
@@ -87,13 +87,13 @@ pub struct GdtfTheme {
     /// Default font asset key.
     pub default_font: FontKey,
     /// Background section.
-    pub background: BackgroundTheme,
+    pub background:   BackgroundTheme,
     /// Panel section.
-    pub panel: PanelTheme,
+    pub panel:        PanelTheme,
     /// Button section.
-    pub button: ButtonTheme,
+    pub button:       ButtonTheme,
     /// Title section.
-    pub title: TitleTheme,
+    pub title:        TitleTheme,
     /// Body text section.
-    pub text: TextTheme,
+    pub text:         TextTheme,
 }

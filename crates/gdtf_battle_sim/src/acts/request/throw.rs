@@ -10,7 +10,7 @@ pub struct ThrowGrenadeRequested {
     /// Thrower.
     pub thrower: Entity,
     /// Target cell/level.
-    pub target: CellLevel,
+    pub target:  CellLevel,
 }
 
 impl ThrowGrenadeRequested {
@@ -25,7 +25,7 @@ impl ThrowGrenadeRequested {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ThrowResolved {
     /// Impact cell.
-    pub at: CellLevel,
+    pub at:     CellLevel,
     /// Damage type of the blast.
     pub damage: DamageType,
 }

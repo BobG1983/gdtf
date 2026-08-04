@@ -34,30 +34,30 @@ pub struct DamageTypeFx {
     /// One tile per compass direction.
     pub directions: [TileIndex; DIRECTION_COUNT],
     /// Impact animation frames.
-    pub impact: [TileIndex; IMPACT_FRAME_COUNT],
+    pub impact:     [TileIndex; IMPACT_FRAME_COUNT],
 }
 
 /// Authored tile indices for all effect families.
 #[derive(Resource, Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
 pub struct EffectRoles {
     /// Bleed tick flash.
-    pub bleed: TileIndex,
+    pub bleed:           TileIndex,
     /// Armor break flash.
-    pub armor_break: TileIndex,
+    pub armor_break:     TileIndex,
     /// Cover destroyed flash.
     pub cover_destroyed: TileIndex,
     /// Melee strike flash.
-    pub melee_strike: TileIndex,
+    pub melee_strike:    TileIndex,
     /// Fall impact flash.
-    pub fall_impact: TileIndex,
+    pub fall_impact:     TileIndex,
     /// Kinetic / blast projectile family.
-    pub orange: DamageTypeFx,
+    pub orange:          DamageTypeFx,
     /// Las / shock projectile family.
-    pub blue: DamageTypeFx,
+    pub blue:            DamageTypeFx,
     /// Chem projectile family.
-    pub green: DamageTypeFx,
+    pub green:           DamageTypeFx,
     /// Plasma / rend projectile family.
-    pub purple: DamageTypeFx,
+    pub purple:          DamageTypeFx,
 }
 
 impl EffectRoles {

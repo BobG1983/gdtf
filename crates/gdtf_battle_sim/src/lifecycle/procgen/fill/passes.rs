@@ -15,7 +15,7 @@ const DEAD_RECT_MIN_SIDE: i32 = 4;
 pub(super) struct CoverageFraction(f32);
 
 impl CoverageFraction {
-        const fn new(fraction: f32) -> Self {
+    const fn new(fraction: f32) -> Self {
         Self(fraction)
     }
 }
@@ -24,7 +24,7 @@ impl CoverageFraction {
 pub(super) struct BucketIndex(usize);
 
 impl BucketIndex {
-        pub(super) const fn new(index: usize) -> Self {
+    pub(super) const fn new(index: usize) -> Self {
         Self(index)
     }
 }
@@ -33,7 +33,7 @@ impl BucketIndex {
 pub(super) struct DeadRectCount(usize);
 
 impl DeadRectCount {
-        const fn new(count: usize) -> Self {
+    const fn new(count: usize) -> Self {
         Self(count)
     }
 }

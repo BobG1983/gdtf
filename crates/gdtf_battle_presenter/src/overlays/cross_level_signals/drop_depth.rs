@@ -32,13 +32,13 @@ pub(super) fn gather_drop_depth(
     for cell in candidates {
         let key = CellLevel::new(cell, active_level);
         if !*squad.is_cell_explored(&key) {
-            continue; 
+            continue;
         }
         if occupancy.terrain(&key) != TerrainKind::Open {
-            continue; 
+            continue;
         }
         if surface.slab_state(&key) == SlabState::Present {
-            continue; 
+            continue;
         }
         if let Some(landing) = resolve_drop(cell, active_level, surface) {
             out.push((cell, landing.storeys));

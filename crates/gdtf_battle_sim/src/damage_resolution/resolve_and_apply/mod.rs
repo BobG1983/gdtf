@@ -11,7 +11,9 @@ mod test;
 pub use fold::resolve_and_apply;
 pub(crate) use kinds::cover::{cover_armor_piece, cover_damage_from_hp};
 pub use kinds::{
-    cover::CoverVerdict, ganger::AppliedDamage, ganger::GangerVerdict, ground::GroundAccrual,
+    cover::CoverVerdict,
+    ganger::{AppliedDamage, GangerVerdict},
+    ground::GroundAccrual,
     slab::SlabVerdict,
 };
 pub use report::{HitReport, HitVerdict, Protecting, StruckPiece, StruckSurfaces, TargetGanger};

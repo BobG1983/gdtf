@@ -26,11 +26,11 @@ pub enum MarchKind {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MarchResult {
     /// What was hit.
-    pub kind: MarchKind,
+    pub kind:   MarchKind,
     /// Cell and level of impact.
-    pub at: CellLevel,
+    pub at:     CellLevel,
     /// Height band at impact.
-    pub band: HeightBand,
+    pub band:   HeightBand,
     /// World position of impact.
     pub impact: SimPos,
 }

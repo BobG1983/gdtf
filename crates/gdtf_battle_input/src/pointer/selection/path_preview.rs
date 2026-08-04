@@ -64,10 +64,10 @@ fn relation_to(
 /// Grid resources needed to plan a path preview.
 #[derive(SystemParam)]
 pub struct PreviewGrids<'w> {
-    grid: Res<'w, OccupancyGrid>,
-    links: Res<'w, VerticalLinkGraph>,
-    squad: Res<'w, SquadVisibility>,
-    tuning: Res<'w, CombatTuning>,
+    grid:        Res<'w, OccupancyGrid>,
+    links:       Res<'w, VerticalLinkGraph>,
+    squad:       Res<'w, SquadVisibility>,
+    tuning:      Res<'w, CombatTuning>,
     floor_costs: Res<'w, FloorCostGrid>,
 }
 

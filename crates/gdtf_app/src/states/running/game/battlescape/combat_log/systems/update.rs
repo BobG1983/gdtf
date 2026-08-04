@@ -85,11 +85,11 @@ fn height_target(content: f32, max_slide: f32, clearance: f32) -> f32 {
 mod test {
     use super::height_target;
 
-            fn approx(actual: f32, expected: f32) -> bool {
+    fn approx(actual: f32, expected: f32) -> bool {
         (actual - expected).abs() < 1e-4
     }
 
-                    #[test]
+    #[test]
     fn the_target_reserves_bottom_clearance_above_the_content_sum() {
         let content = 80.0;
         let clearance = 10.0;
@@ -105,7 +105,7 @@ mod test {
         );
     }
 
-                #[test]
+    #[test]
     fn the_clearance_stacks_with_an_active_slide() {
         let target = height_target(80.0, 6.0, 10.0);
         assert!(
@@ -114,7 +114,7 @@ mod test {
         );
     }
 
-            #[test]
+    #[test]
     fn an_empty_log_collapses_to_zero_with_no_clearance_sliver() {
         let target = height_target(0.0, 0.0, 10.0);
         assert!(

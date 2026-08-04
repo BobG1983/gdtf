@@ -8,7 +8,6 @@ use gdtf_test_utils::press_mouse;
 
 use super::harness::*;
 
-
 #[test]
 fn right_click_turns_to_face_the_hovered_cell() {
     {
@@ -51,7 +50,6 @@ fn right_click_turns_to_face_the_hovered_cell() {
     }
 }
 
-
 #[test]
 fn forced_enemy_selection_emits_nothing_on_left_or_right() {
     {
@@ -80,7 +78,6 @@ fn forced_enemy_selection_emits_nothing_on_left_or_right() {
         );
     }
 }
-
 
 #[test]
 fn drain_emits_each_new_intent_exactly_once() {

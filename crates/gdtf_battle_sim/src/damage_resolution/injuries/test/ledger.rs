@@ -99,13 +99,13 @@ fn gain_folds_a_multi_effect_injury_and_stacks_across_injuries() {
         },
     ]));
 
-    assert_eq!(ledger.delta_for(StatTarget::Aim), StatDeltaSum::new(-5)); 
+    assert_eq!(ledger.delta_for(StatTarget::Aim), StatDeltaSum::new(-5));
     assert_eq!(
         ledger.delta_for(StatTarget::Shooting),
         StatDeltaSum::new(-1)
-    ); 
-    assert_eq!(ledger.bleed(), BleedAfflicted::new(3)); 
-    assert_eq!(ledger.gained().len(), 2); 
+    );
+    assert_eq!(ledger.bleed(), BleedAfflicted::new(3));
+    assert_eq!(ledger.gained().len(), 2);
 }
 
 #[test]

@@ -13,8 +13,8 @@ use crate::states::{
 struct MenuActionTarget(RunningState);
 
 impl MenuActionTarget {
-        const OPTIONS: Self = Self(RunningState::Options);
-        const QUIT: Self = Self(RunningState::Quit);
+    const OPTIONS: Self = Self(RunningState::Options);
+    const QUIT: Self = Self(RunningState::Quit);
 }
 
 type PressedButton<M> = (Changed<Interaction>, With<M>, Without<DisabledButton>);

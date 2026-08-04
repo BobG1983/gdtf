@@ -46,7 +46,7 @@ fn ci_runs_the_schema_feature_package_scoped() {
     let mut reached: BTreeSet<(String, String)> = BTreeSet::new();
     for file in &files {
         let Ok(text) = fs::read_to_string(root.join(file)) else {
-            continue; 
+            continue;
         };
         for command in cargo_commands(&text) {
             if command.contains(SCHEMA_FEATURE) && !command.contains(SCHEMA_PACKAGE) {

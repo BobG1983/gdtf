@@ -104,7 +104,7 @@ fn no_overlay_cells_when_flag_off() {
     let foot = cell(5, 5, 0);
     let head = cell(5, 5, 1);
     let Some(links) = stair_graph(foot, head) else {
-        return; 
+        return;
     };
 
     let mut app = reachable_app(links, false);
@@ -132,7 +132,7 @@ fn populates_reachable_cells_matching_reachable_within_including_l1() {
     let foot = cell(5, 5, 0);
     let head = cell(5, 5, 1);
     let Some(links) = stair_graph(foot, head) else {
-        return; 
+        return;
     };
 
     let mut app = reachable_app(links, true);

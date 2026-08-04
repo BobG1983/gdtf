@@ -39,7 +39,7 @@ pub struct RunOptions {
     /// Wait for readiness up to this many seconds.
     pub await_ready: Option<AwaitBudget>,
     /// Take a screenshot after the command.
-    pub capture: Option<CaptureRider>,
+    pub capture:     Option<CaptureRider>,
 }
 
 impl RunOptions {

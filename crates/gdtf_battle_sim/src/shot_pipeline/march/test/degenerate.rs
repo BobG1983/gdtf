@@ -8,7 +8,7 @@ fn direction_leaving_grid_immediately_is_a_graceful_miss() {
     let surface = SurfaceGrid::new();
 
     let muzzle = center(0, 0, 0);
-    let dir = Vec3::new(-1.0, 0.0, 0.0); 
+    let dir = Vec3::new(-1.0, 0.0, 0.0);
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),

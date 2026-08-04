@@ -66,7 +66,7 @@ impl CellNet {
 #[serde(deny_unknown_fields)]
 pub struct CellLevelNet {
     /// Floor cell.
-    pub cell: CellNet,
+    pub cell:  CellNet,
     /// Storey.
     pub level: LevelNet,
 }

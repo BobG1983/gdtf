@@ -188,7 +188,7 @@ fn validate_enforces_default_floor_in_terrain() {
     let mut stray = ThemeDraft::new_theme();
     stray.set_display_name("Hive".to_owned());
     stray.toggle_terrain(slab);
-    stray.set_default_floor(wall); 
+    stray.set_default_floor(wall);
     assert_eq!(
         stray.default_floor(),
         None,

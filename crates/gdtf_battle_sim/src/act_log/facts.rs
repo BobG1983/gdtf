@@ -31,11 +31,11 @@ impl SuppressedNow {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PoseFacts {
     /// Facing direction.
-    pub facing: Facing,
+    pub facing:     Facing,
     /// Stance.
-    pub stance: Stance,
+    pub stance:     Stance,
     /// Aim state.
-    pub aiming: Aiming,
+    pub aiming:     Aiming,
     /// Suppression flag.
     pub suppressed: SuppressedNow,
 }
@@ -62,15 +62,15 @@ impl PoseFacts {
 #[derive(Debug, Clone, PartialEq)]
 pub struct VitalsFacts {
     /// Time units remaining.
-    pub tu: Tu,
+    pub tu:        Tu,
     /// Hit points.
-    pub hp: Hp,
+    pub hp:        Hp,
     /// Wound capacity / track.
-    pub wounds: Wounds,
+    pub wounds:    Wounds,
     /// Inflicted wound list.
     pub inflicted: InflictedWounds,
     /// Inflicted injuries.
-    pub injuries: InflictedInjuries,
+    pub injuries:  InflictedInjuries,
 }
 
 impl VitalsFacts {

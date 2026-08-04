@@ -35,7 +35,6 @@ fn has_log_line(lines: &[(String, Color)], text: &str, color: Color) -> bool {
     })
 }
 
-
 #[test]
 fn a_movement_message_appends_a_line_with_the_classified_text() {
     let mut app = battle_running_app();

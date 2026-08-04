@@ -57,4 +57,3 @@ fn terrain_library_row(
         }
     });
 }
-

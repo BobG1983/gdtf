@@ -202,7 +202,6 @@ fn fire_one_shot(app: &mut App, seed: u64) -> (Entity, Entity) {
     (shooter_e, target_e)
 }
 
-
 #[test]
 fn a_penetrating_dot_shot_attaches_a_dot() {
     let (mut app, seed) = battle_app(0x5544_0A0A, Some(dot_profile()));
@@ -217,7 +216,6 @@ fn a_penetrating_dot_shot_attaches_a_dot() {
     );
 }
 
-
 #[test]
 fn a_non_dot_weapon_attaches_nothing() {
     let (mut app, seed) = battle_app(0x5544_0F0F, None);
@@ -230,7 +228,6 @@ fn a_non_dot_weapon_attaches_nothing() {
     );
 }
 
-
 #[test]
 fn a_fully_soaked_dot_shot_attaches_no_dot() {
     let (mut app, seed) = soaked_battle_app(0x5544_0B0B);
@@ -242,7 +239,6 @@ fn a_fully_soaked_dot_shot_attaches_no_dot() {
          still bruise (the DOT gate is penetration, not HP loss)",
     );
 }
-
 
 #[test]
 fn a_second_penetrating_dot_hit_refreshes_not_stacks() {

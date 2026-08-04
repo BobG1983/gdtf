@@ -17,14 +17,14 @@ pub enum LaunchOutcome {
         /// Port it is listening on.
         port: QaPort,
         /// Process id.
-        pid: ChildPid,
+        pid:  ChildPid,
     },
     /// Already running with a matching recipe.
     AlreadyRunning {
         /// Port in use.
-        port: QaPort,
+        port:   QaPort,
         /// Process id.
-        pid: ChildPid,
+        pid:    ChildPid,
         /// Recipe that was already launched.
         recipe: Box<LaunchSpec>,
     },
@@ -40,7 +40,7 @@ pub enum LaunchFailure {
     /// Boot timeout without readiness.
     Timeout {
         /// Captured output tail.
-        tail: FailureTail,
+        tail:   FailureTail,
         /// How long we waited.
         waited: BootTimeout,
     },
@@ -53,7 +53,7 @@ pub enum LaunchFailure {
         /// Port in use.
         port: QaPort,
         /// Best-effort pid of the holder.
-        pid: OrphanPid,
+        pid:  OrphanPid,
     },
 }
 
@@ -70,14 +70,14 @@ pub enum StopOutcome {
         /// Port that was freed.
         port: QaPort,
         /// Orphan pid.
-        pid: OrphanPid,
+        pid:  OrphanPid,
     },
     /// An orphan is still holding the port.
     OrphanHeld {
         /// Port still held.
         port: QaPort,
         /// Orphan pid.
-        pid: OrphanPid,
+        pid:  OrphanPid,
     },
     /// Nothing was running on that port.
     NotRunning,

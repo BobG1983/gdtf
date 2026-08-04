@@ -100,13 +100,13 @@ pub type PieceQuery<'world, 'state> = Query<'world, 'state, PieceArmorMut, With<
 #[derive(Debug)]
 pub struct BattleGrids<'a> {
     /// Occupancy grid.
-    pub occupancy: &'a OccupancyGrid,
+    pub occupancy:   &'a OccupancyGrid,
     /// Surface / slab grid.
-    pub surface: &'a SurfaceGrid,
+    pub surface:     &'a SurfaceGrid,
     /// Cover ledger (mutable for damage).
-    pub cover: &'a mut CoverLedger,
+    pub cover:       &'a mut CoverLedger,
     /// Slab ledger (mutable for damage).
-    pub slab: &'a mut SlabLedger,
+    pub slab:        &'a mut SlabLedger,
     /// Brace-capable stair cells.
     pub brace_cells: &'a BraceStairCells,
 }
@@ -115,9 +115,9 @@ pub struct BattleGrids<'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct FireOrder<'a> {
     /// Fire mode being used.
-    pub mode: &'a FireModeSpec,
+    pub mode:         &'a FireModeSpec,
     /// Target cell.
-    pub target_cell: Cell,
+    pub target_cell:  Cell,
     /// Target level.
     pub target_level: Level,
 }

@@ -67,7 +67,6 @@ fn fog_hidden_enemy_occupant_does_not_light_the_reticle() {
     );
 }
 
-
 fn add_highlight_probe(app: &mut App) {
     app.add_plugins(MessageProbePlugin::<HighlightRequest>::default());
 }

@@ -15,20 +15,20 @@ pub(super) fn impact_frame_scale(frame: usize) -> f32 {
 
 #[derive(Component, Debug, Clone)]
 pub struct ImpactAnimation {
-        damage:        DamageType,
-        frame:         usize,
-                frame_seconds: ImpactFrameSeconds,
-        clock:         Timer,
+    damage:        DamageType,
+    frame:         usize,
+    frame_seconds: ImpactFrameSeconds,
+    clock:         Timer,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ImpactStep {
-        Showing(usize),
-        Finished,
+    Showing(usize),
+    Finished,
 }
 
 impl ImpactAnimation {
-                                            #[must_use]
+    #[must_use]
     pub fn new(damage: DamageType, frame_seconds: ImpactFrameSeconds) -> Self {
         Self {
             damage,
@@ -38,12 +38,12 @@ impl ImpactAnimation {
         }
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn damage(&self) -> DamageType {
         self.damage
     }
 
-                                                pub(super) fn advance(&mut self, delta: std::time::Duration) -> ImpactStep {
+    pub(super) fn advance(&mut self, delta: std::time::Duration) -> ImpactStep {
         if !self.clock.tick(delta).is_finished() {
             return ImpactStep::Showing(self.frame);
         }

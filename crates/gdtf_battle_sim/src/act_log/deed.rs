@@ -33,9 +33,9 @@ pub enum ActDeed {
     /// Single-cell step.
     Stepped {
         /// Cell left.
-        from: Cell,
+        from:     Cell,
         /// Cell entered.
-        to: Cell,
+        to:       Cell,
         /// Position after the step.
         position: PositionFacts,
     },
@@ -57,7 +57,7 @@ pub enum ActDeed {
         /// Optional target entity.
         target: Option<Entity>,
         /// Fire mode.
-        mode: ModeKind,
+        mode:   ModeKind,
         /// Rounds spent.
         rounds: RoundCount,
     },
@@ -97,15 +97,15 @@ pub enum ActDeed {
         /// Level before the fall.
         from_level: Level,
         /// Landing level.
-        to_level: Level,
+        to_level:   Level,
         /// Storeys fallen.
-        storeys: StoreysFallen,
+        storeys:    StoreysFallen,
     },
 
     /// HP damage applied to a target.
     Struck {
         /// Target entity.
-        target: Entity,
+        target:    Entity,
         /// HP removed.
         hp_damage: HpDamage,
     },
@@ -149,7 +149,7 @@ pub enum ActDeed {
     /// DOT tick.
     DotTicked {
         /// Location.
-        at: CellLevel,
+        at:     CellLevel,
         /// Amount applied.
         amount: DotDamage,
     },
@@ -157,7 +157,7 @@ pub enum ActDeed {
     /// Field tick.
     FieldTicked {
         /// Location.
-        at: CellLevel,
+        at:     CellLevel,
         /// Amount applied.
         amount: FieldDamage,
     },
@@ -171,7 +171,7 @@ pub enum ActDeed {
     /// Melee hit landed.
     MeleeLanded {
         /// Hit location.
-        at: CellLevel,
+        at:     CellLevel,
         /// Damage type.
         damage: DamageType,
     },
@@ -179,7 +179,7 @@ pub enum ActDeed {
     /// Thrown weapon/item landed.
     ThrowLanded {
         /// Impact location.
-        at: CellLevel,
+        at:     CellLevel,
         /// Damage type.
         damage: DamageType,
     },
@@ -189,8 +189,8 @@ pub enum ActDeed {
         /// Previous life state.
         from: LifeState,
         /// New life state.
-        to: LifeState,
+        to:   LifeState,
         /// Position at change.
-        at: PositionFacts,
+        at:   PositionFacts,
     },
 }

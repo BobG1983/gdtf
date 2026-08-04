@@ -87,19 +87,19 @@ impl Grit {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GangerAttributes {
     /// Speed.
-    pub speed: Speed,
+    pub speed:     Speed,
     /// Aim.
-    pub aim: Aim,
+    pub aim:       Aim,
     /// Strength.
-    pub strength: Strength,
+    pub strength:  Strength,
     /// Toughness.
     pub toughness: Toughness,
     /// Reflexes.
-    pub reflexes: Reflexes,
+    pub reflexes:  Reflexes,
     /// Cool.
-    pub cool: Cool,
+    pub cool:      Cool,
     /// Grit.
-    pub grit: Grit,
+    pub grit:      Grit,
     /// Luck.
-    pub luck: Luck,
+    pub luck:      Luck,
 }

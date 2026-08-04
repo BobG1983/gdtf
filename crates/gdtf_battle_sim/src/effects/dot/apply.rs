@@ -10,7 +10,7 @@ pub struct DotApplied {
     /// Target entity.
     pub target: Entity,
     /// DOT profile to apply.
-    pub dot: Dot,
+    pub dot:    Dot,
 }
 
 impl DotApplied {
@@ -25,7 +25,7 @@ impl DotApplied {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DotAfflicted {
     /// Ganger entity.
-    pub ganger: Entity,
+    pub ganger:   Entity,
     /// Damage per turn.
     pub per_turn: DotDamage,
 }

@@ -20,7 +20,6 @@ pub(crate) const BUDGET: u32 = 96;
 
 pub(crate) const STABLE_CONTROL_BUTTONS: usize = 6;
 
-
 pub(crate) fn battlescape_state(app: &App) -> Option<BattleScapeState> {
     app.world()
         .get_resource::<State<BattleScapeState>>()

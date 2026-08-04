@@ -12,7 +12,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn same_seed_yields_same_outcome() {
     let tuning = CombatTuning::default();
@@ -49,11 +48,10 @@ fn same_seed_yields_same_outcome() {
     );
 }
 
-
 struct CombatSnapshot {
     hp:     Hp,
     wounds: Wounds,
-            armor:  Vec<i32>,
+    armor:  Vec<i32>,
     tu:     Tu,
 }
 
@@ -155,7 +153,6 @@ fn resolve_coarse_mutates_no_combat_state() {
         "the shooter's Tu is unchanged (no fire economy)"
     );
 }
-
 
 #[test]
 fn resolve_coarse_reads_the_passed_grid() {

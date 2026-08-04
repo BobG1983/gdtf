@@ -3,7 +3,7 @@ use super::support::*;
 #[test]
 fn ganger_wielding_both_a_ranged_and_a_melee_weapon_still_fires_the_ranged_weapon() {
     let tuning = CombatTuning::default();
-    let mode = single_mode(0.3, 5); 
+    let mode = single_mode(0.3, 5);
 
     let mut world = World::new();
     let shooter = spawn_shooter(

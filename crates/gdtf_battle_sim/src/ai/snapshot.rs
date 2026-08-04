@@ -44,18 +44,18 @@ pub(super) type EnemyTurnGangers<'world, 'state> = Query<
 /// One ganger's fields needed by the AI brain.
 #[derive(Clone, Copy)]
 pub(super) struct GangerRow {
-    pub(super) entity: Entity,
+    pub(super) entity:   Entity,
     pub(super) position: Position,
-    pub(super) stance: Stance,
-    pub(super) facing: Facing,
-    pub(super) aiming: Aiming,
-    pub(super) life: LifeState,
-    pub(super) tu: Tu,
-    pub(super) tu_max: TuMax,
-    pub(super) faction: Faction,
-    pub(super) walking: MidWalk,
-    pub(super) hands: HandsAvailable,
-    pub(super) factor: MovementCostFactor,
+    pub(super) stance:   Stance,
+    pub(super) facing:   Facing,
+    pub(super) aiming:   Aiming,
+    pub(super) life:     LifeState,
+    pub(super) tu:       Tu,
+    pub(super) tu_max:   TuMax,
+    pub(super) faction:  Faction,
+    pub(super) walking:  MidWalk,
+    pub(super) hands:    HandsAvailable,
+    pub(super) factor:   MovementCostFactor,
 }
 
 /// `CellLevel` from a position.

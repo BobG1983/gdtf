@@ -11,7 +11,7 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GroundAccrual {
     /// Cell that was hit.
-    pub cell: Cell,
+    pub cell:   Cell,
     /// Damage amount.
     pub amount: GroundDamage,
 }

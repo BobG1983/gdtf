@@ -4,13 +4,13 @@ use super::super::text::{CombatText, FctEmphasis};
 
 #[derive(Debug, Clone)]
 pub(in crate::actors::fx) struct ClassifiedPop {
-        pub(super) text:     CombatText,
-            pub(super) color:    Color,
-            pub(super) emphasis: FctEmphasis,
+    pub(super) text:     CombatText,
+    pub(super) color:    Color,
+    pub(super) emphasis: FctEmphasis,
 }
 
 impl ClassifiedPop {
-        pub(super) const fn new(text: CombatText, color: Color) -> Self {
+    pub(super) const fn new(text: CombatText, color: Color) -> Self {
         Self {
             text,
             color,
@@ -18,7 +18,7 @@ impl ClassifiedPop {
         }
     }
 
-            pub(super) const fn new_bold(text: CombatText, color: Color) -> Self {
+    pub(super) const fn new_bold(text: CombatText, color: Color) -> Self {
         Self {
             text,
             color,
@@ -26,15 +26,15 @@ impl ClassifiedPop {
         }
     }
 
-            pub(in crate::actors::fx) const fn text(&self) -> &CombatText {
+    pub(in crate::actors::fx) const fn text(&self) -> &CombatText {
         &self.text
     }
 
-            pub(in crate::actors::fx) const fn color(&self) -> Color {
+    pub(in crate::actors::fx) const fn color(&self) -> Color {
         self.color
     }
 
-            pub(in crate::actors::fx) const fn emphasis(&self) -> FctEmphasis {
+    pub(in crate::actors::fx) const fn emphasis(&self) -> FctEmphasis {
         self.emphasis
     }
 }

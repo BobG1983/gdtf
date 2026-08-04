@@ -28,7 +28,7 @@ fn ganger_sprite(appearance: GangerAppearance, atlases: &TopDownAtlases) -> Opti
         chars.image.clone(),
         TextureAtlas {
             layout: chars.layout.clone(),
-            index: appearance.atlas_index,
+            index:  appearance.atlas_index,
         },
     );
     sprite.custom_size = Some(Vec2::splat(CELL_PX));

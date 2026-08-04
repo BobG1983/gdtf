@@ -88,13 +88,13 @@ pub fn insert_sim_resources(app: &mut App, seed: BattleSeed) {
               documented); a state machine would obscure the builder-with-overrides shape"
 )]
 pub struct SimAppBuilder {
-    seed: u64,
-    acts: bool,
-    battle: bool,
-    registries: bool,
-    full_vision: bool,
+    seed:           u64,
+    acts:           bool,
+    battle:         bool,
+    registries:     bool,
+    full_vision:    bool,
     player_faction: Option<u8>,
-    tuning: Option<CombatTuning>,
+    tuning:         Option<CombatTuning>,
 }
 
 impl SimAppBuilder {
@@ -102,13 +102,13 @@ impl SimAppBuilder {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            seed: TEST_SEED,
-            acts: false,
-            battle: false,
-            registries: false,
-            full_vision: false,
+            seed:           TEST_SEED,
+            acts:           false,
+            battle:         false,
+            registries:     false,
+            full_vision:    false,
             player_faction: None,
-            tuning: None,
+            tuning:         None,
         }
     }
 

@@ -1,6 +1,5 @@
 pub(super) use bevy::prelude::{App, Entity, Messages, Update, World};
 
-pub(super) use crate::test_support::{SimAppBuilder, TEST_PLAYER_GANG, single_mode, target_bundle};
 pub(super) use crate::{
     acts::*,
     armor::{ArmorHardness, ArmorProtection},
@@ -19,6 +18,7 @@ pub(super) use crate::{
     resolve_coarse::ShotKind,
     shot_fired::ShotFired,
     terrain::floor::FloorCostGrid,
+    test_support::{SimAppBuilder, TEST_PLAYER_GANG, single_mode, target_bundle},
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,

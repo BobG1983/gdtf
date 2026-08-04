@@ -12,12 +12,12 @@ use super::super::fct::ClassifiedPop;
 /// Pending impact FX and FCT pops for an in-flight or just-arrived shot.
 #[derive(Component, Debug, Clone)]
 pub struct PendingImpact {
-    pub(in crate::actors::fx) at: Vec3,
-    pub(in crate::actors::fx) damage: DamageType,
-    pub(in crate::actors::fx) pops: Vec<ClassifiedPop>,
-    pub(in crate::actors::fx) anchor: (Cell, Level),
+    pub(in crate::actors::fx) at:      Vec3,
+    pub(in crate::actors::fx) damage:  DamageType,
+    pub(in crate::actors::fx) pops:    Vec<ClassifiedPop>,
+    pub(in crate::actors::fx) anchor:  (Cell, Level),
     pub(in crate::actors::fx) shooter: Entity,
-    pub(in crate::actors::fx) report: Option<HitReport>,
+    pub(in crate::actors::fx) report:  Option<HitReport>,
 }
 
 impl PendingImpact {

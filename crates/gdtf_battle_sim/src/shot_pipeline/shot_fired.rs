@@ -14,21 +14,21 @@ use crate::{
 #[derive(Message, Debug, Clone, PartialEq)]
 pub struct ShotFired {
     /// Shooter entity.
-    pub shooter: Entity,
+    pub shooter:      Entity,
     /// Muzzle position.
-    pub muzzle: SimPos,
+    pub muzzle:       SimPos,
     /// Trajectory direction.
-    pub trajectory: ShotDir,
+    pub trajectory:   ShotDir,
     /// Impact cell.
-    pub impact_cell: Cell,
+    pub impact_cell:  Cell,
     /// Impact level.
     pub impact_level: Level,
     /// What was hit (or miss).
-    pub kind: ShotKind,
+    pub kind:         ShotKind,
     /// Damage type of the weapon.
-    pub damage: DamageType,
+    pub damage:       DamageType,
     /// Optional full hit report after damage fold.
-    pub report: Option<HitReport>,
+    pub report:       Option<HitReport>,
 }
 
 impl ShotFired {

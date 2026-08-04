@@ -4,7 +4,7 @@ use super::support::*;
 fn enemy_never_routes_through_a_downed_friendly() {
     use crate::occupancy::TerrainKind;
 
-    const ENEMY_GANG: u8 = 9; 
+    const ENEMY_GANG: u8 = 9;
 
     let mut app = headless_app();
     app.add_plugins(OccupancyMaintenancePlugin);

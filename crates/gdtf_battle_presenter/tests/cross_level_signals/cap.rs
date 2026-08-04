@@ -77,10 +77,10 @@ fn four_candidates_across_producers_draw_only_the_top_three_in_priority_order() 
         .insert_resource(ActiveLevel::new(active_level));
 
     let cell = Cell::new(5, 5);
-    let near_enemy = key(5, 5, 2); 
-    let far_enemy = key(5, 5, 6); 
-    let hole = key(5, 5, 3); 
-    let floor = key(6, 5, 3); 
+    let near_enemy = key(5, 5, 2);
+    let far_enemy = key(5, 5, 6);
+    let hole = key(5, 5, 3);
+    let floor = key(6, 5, 3);
 
     let mut surface = SurfaceGrid::new();
     surface.set_slab(floor, SlabState::Present);

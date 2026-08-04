@@ -12,16 +12,16 @@ use gdtf_battle_sim::{
 
 fn seed_spec() -> MeleeWeaponSpec {
     MeleeWeaponSpec {
-        damage: WeaponDamage::new(0),
-        punch: WeaponPunch::new(0),
-        shred: WeaponShred::new(0),
+        damage:      WeaponDamage::new(0),
+        punch:       WeaponPunch::new(0),
+        shred:       WeaponShred::new(0),
         damage_type: DamageType::Kinetic,
-        fatal_bias: FatalBias::new(0.0),
-        handedness: Handedness::OneHanded,
-        reach: Reach::DEFAULT,
-        fight_mode: FightMode::new(vec![structural_swing_mode()]),
-        shove: Shove::new(false),
-        slots: WeaponSlots::default(),
+        fatal_bias:  FatalBias::new(0.0),
+        handedness:  Handedness::OneHanded,
+        reach:       Reach::DEFAULT,
+        fight_mode:  FightMode::new(vec![structural_swing_mode()]),
+        shove:       Shove::new(false),
+        slots:       WeaponSlots::default(),
         attachments: Vec::new(),
     }
 }
@@ -41,8 +41,8 @@ enum AutoloadState {
 /// In-progress melee weapon being authored.
 #[derive(Resource, Clone, PartialEq, Debug)]
 pub struct MeleeWeaponDraft {
-    name: String,
-    spec: MeleeWeaponSpec,
+    name:     String,
+    spec:     MeleeWeaponSpec,
     autoload: AutoloadState,
 }
 
@@ -51,8 +51,8 @@ impl MeleeWeaponDraft {
     #[must_use]
     pub fn new_melee_weapon() -> Self {
         Self {
-            name: String::new(),
-            spec: seed_spec(),
+            name:     String::new(),
+            spec:     seed_spec(),
             autoload: AutoloadState::Done,
         }
     }
@@ -101,8 +101,8 @@ impl MeleeWeaponDraft {
 impl Default for MeleeWeaponDraft {
     fn default() -> Self {
         Self {
-            name: String::new(),
-            spec: seed_spec(),
+            name:     String::new(),
+            spec:     seed_spec(),
             autoload: AutoloadState::Pending,
         }
     }

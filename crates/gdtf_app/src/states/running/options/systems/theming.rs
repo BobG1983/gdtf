@@ -14,7 +14,7 @@ use crate::states::running::options::{
 pub(in crate::states::running::options) trait ToggleValue:
     Copy
 {
-        fn is_on(self) -> bool;
+    fn is_on(self) -> bool;
 }
 
 impl ToggleValue for SoundEnabled {
@@ -32,22 +32,22 @@ impl ToggleValue for ProcgenStepperEnabled {
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub(in crate::states::running::options) struct ToggleColors {
-        off:    Color,
-        on:     Color,
-        knob:   Color,
-            border: Color,
+    off:    Color,
+    on:     Color,
+    knob:   Color,
+    border: Color,
 }
 
 impl ToggleColors {
-        pub(in crate::states::running::options) fn track<V: ToggleValue>(&self, value: V) -> Color {
+    pub(in crate::states::running::options) fn track<V: ToggleValue>(&self, value: V) -> Color {
         if value.is_on() { self.on } else { self.off }
     }
 
-        pub(in crate::states::running::options) const fn knob(&self) -> Color {
+    pub(in crate::states::running::options) const fn knob(&self) -> Color {
         self.knob
     }
 
-        pub(in crate::states::running::options) const fn border(&self) -> Color {
+    pub(in crate::states::running::options) const fn border(&self) -> Color {
         self.border
     }
 }
