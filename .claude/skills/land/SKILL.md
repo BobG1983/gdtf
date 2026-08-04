@@ -37,7 +37,7 @@ Resolve `GTW-N` from argument or branch. Must match the `TICKET=` set in `.claud
 1. Stage explicit files by name — never `git add -A`, `-u`, or `.`.
 2. Commit: subject `Area: summary (GTW-N)`, body what changed and why. Match `git log --oneline -15` voice. Pre-commit hook re-checks gate-pass; do not use `--no-verify`.
 3. `OLD=$(git rev-parse origin/develop)`.
-4. Plain git finish (from the **main** repo if this is a worktree):
+4. Plain git finish:
 
    ```bash
    git checkout develop
