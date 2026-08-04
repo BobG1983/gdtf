@@ -2,7 +2,7 @@
 name: next-task
 description: >-
   Pick the next Linear ticket and start it the disciplined way — clean tree on
-  develop, feature branch with plain git, ticket restated as numbered contract,
+  develop, feature branch, ticket restated as numbered contract,
   then implement and finish via /gate → /docs-sync → /land.
 argument-hint: "[GTW-N]"
 ---
@@ -19,7 +19,7 @@ argument-hint: "[GTW-N]"
 
 `git status --porcelain` empty **and** on `develop`. Otherwise refuse.
 
-## 3. Branch (plain git)
+## 3. Branch
 
 ```bash
 git checkout develop && git pull origin develop

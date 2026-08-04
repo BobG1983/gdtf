@@ -18,7 +18,7 @@ Evidence rules: [`.claude/rules/verification.md`](../../rules/verification.md).
 
 1. **Scope.** Argument, recent diff, or recently-Done tickets. Name the changed systems.
 
-2. **Ticket + branch** (if not already on a feature branch). Create/claim a GTW ticket if needed; `git checkout -b feature/gtw-N-docs-sync-<slug>` off develop (plain git). Never edit docs on develop/main.
+2. **Ticket + branch** (if not already on a feature branch). Create/claim a GTW ticket if needed; `git checkout -b feature/gtw-N-docs-sync-<slug>` off develop. Never edit docs on develop/main.
 
 3. **Map the docs.** Grep `docs/` for the changed names/paths. List affected docs before editing.
 

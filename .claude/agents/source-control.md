@@ -2,8 +2,8 @@
 name: source-control
 description: >-
   The git / source-control manager for gdtf (the Rust/Bevy rewrite of grimdark
-  turf war). Owns the repository: stages and commits changes, drives the plain-git
-  branch model (feature branches off develop), and pushes to the remote — so the
+  turf war). Owns the repository: stages and commits changes, drives the branch
+  model (feature branches off develop), and pushes to the remote — so the
   orchestrating workflow and code-writing sub-agents never hand-run git plumbing.
   Use when work needs to be committed, a branch started or finished, history
   inspected, or changes pushed/shared. Reports back concisely.

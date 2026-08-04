@@ -50,7 +50,7 @@ Bevy ECS gotchas (system ordering, change detection, schedules, state transition
 
 `.claude/hooks/pre-commit-gate.sh` blocks commits on `develop`/`main`, red suite, or missing/stale gate-pass. Run `/gate`.
 
-## Git workflow — plain git
+## Git workflow
 
 - New work: `git checkout develop && git pull && git checkout -b feature/gtw-N-slug`
 - Finish: merge `--no-ff` into `develop`, push, delete feature branch (see `/land`)
