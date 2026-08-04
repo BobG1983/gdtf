@@ -1,5 +1,5 @@
-// GDTF edge-pan tuning — the HOT-RELOADABLE numbers that drive the GTW-250 camera pan
-// navigation (mouse-edge + keyboard + gamepad) and the GTW-299 edge-band dwell delay.
+// GDTF edge-pan tuning — the HOT-RELOADABLE numbers that drive camera pan
+// navigation (mouse-edge + keyboard + gamepad) and the edge-band dwell delay.
 // Migrated out of Rust consts (PAN_SPEED / EDGE_BAND_PX) so pan speed / edge band / dwell
 // tune WITHOUT a rebuild: edit a value, save, and the running game re-derives it live
 // through the same RonAsset<T> loader the theme / situation / tile-roles / fx-tuning tables

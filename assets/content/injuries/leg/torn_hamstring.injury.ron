@@ -1,4 +1,4 @@
-// GTW-440 LEG-pool standin injury. A Minor leg wound — a torn hamstring that saps the
+// LEG-pool standin injury. A Minor leg wound — a torn hamstring that saps the
 // quickness. Leg injuries key to the Speed / MovementCostMul stat map (resolution.md
 // injury tables); a Minor is a LIGHT debuff. Side-agnostic (both legs share the Leg
 // pool); the rolled struck part records which leg. KEY = stem => `torn_hamstring`.
@@ -12,5 +12,5 @@
     effects: [
         Modify(stat: Speed, amount: -1),                     // leg -> Speed; light Minor debuff (sapped quickness)
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )

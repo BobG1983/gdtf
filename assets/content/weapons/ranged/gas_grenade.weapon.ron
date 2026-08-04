@@ -1,11 +1,11 @@
-// Gas grenade — a lobbed canister that bursts into a wide chem cloud (GTW-546, child
-// GTW-41d). A THROWN weapon: `trajectory: Arc` lofts it over walls / cover onto a target cell,
+// Gas grenade — a lobbed canister that bursts into a wide chem cloud.
+// A THROWN weapon: `trajectory: Arc` lofts it over walls / cover onto a target cell,
 // blocked only by an intact roof (a hole / window lets it drop through). On landing it fans a
 // radius-2 Chem blast — a wide, low-punch cloud that Flak / Hazard armor mitigates per the
 // matchup wheel. Everyone in the radius is caught (true friendly fire — resolution.md §2).
 //
 // The single `Single` fire mode carries the AoE template (`hit_type: Blast(radius: 2)`) the
-// throw dispatch reads at the arc's landing (GTW-541 resolver). `trajectory: Arc` makes it a
+// throw dispatch reads at the arc's landing. `trajectory: Arc` makes it a
 // blind lob — no line-of-sight gate. Its `base_spread` / `accuracy` / `kickback` / `fatal_bias`
 // are authored to satisfy serde but are UNUSED by the deterministic arc throw (no cone sample).
 (
@@ -17,18 +17,18 @@
     punch:         0,
     shred:         0,
     damage_type:   Chem, // toxin / gas — the matchup-wheel node (a DAMAGE flavour)
-    accepts:       Grenade, // GTW-775: a thrown grenade munition (a Grenade carrying a Chem payload)
+    accepts:       Grenade, // a thrown grenade munition (a Grenade carrying a Chem payload)
     magazine: (
         size:      2,
         reload_tu: 20,
     ),
-    trajectory: Arc, // GTW-546: a lobbed grenade — parabola blocked by roofs, passes holes/windows
+    trajectory: Arc, // a lobbed grenade — parabola blocked by roofs, passes holes/windows
     fire_mode: [
         // The gas burst — a wide radius-2 Chem cloud at the arc's landing cell.
         (kind: Single, cone_mult: 1.0, tu_percent: 0.35, shots: 1, hit_type: Blast(radius: 2)),
     ],
     stable: false,
     handedness:    OneHanded, // a one-handed thrown grenade
-    // GTW-554: a thrown explosive takes NO fittings — `slots:` is deliberately omitted (the
+    // A thrown explosive takes NO fittings — `slots:` is deliberately omitted (the
     // empty default), so no attachment fits it (fail-closed).
 )

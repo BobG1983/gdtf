@@ -2,32 +2,32 @@
 // seal alike. Ugly, hated, and merciless against the unprotected. It does not aim
 // so much as DRENCH: a short, wide fan of acid that catches everyone in the wedge.
 //
-// GTW-771 (child GTW-41): a short-range Cone sprayer. Its one spray mode carries the
-// AoE template `hit_type: Cone(range, angle)` the GTW-541 resolver reads at the impact
+// A short-range Cone sprayer. Its one spray mode carries the
+// AoE template `hit_type: Cone(range, angle)` the resolver reads at the impact
 // cell — a shallow, wide teardrop of chem, not a single-target shot.
 (
     base_spread:   0.10,
     accuracy:      1.0,
     kickback:      0.05,
     fatal_bias:    0.0,
-    damage:        6,   // GTW-374: halved from 12 (combat re-balance, slower lethality)
-    punch:         2,   // GTW-374: halved from 5 (floor of 5/2)
-    shred:         1,   // GTW-374: halved from 2
+    damage:        6,   // halved from 12 (combat re-balance, slower lethality)
+    punch:         2,   // halved from 5 (floor of 5/2)
+    shred:         1,   // halved from 2
     damage_type:   Chem,
-    accepts:       Canister,  // GTW-775: drenches from a pressurized chem tank (the munition it accepts)
+    accepts:       Canister,  // drenches from a pressurized chem tank (the munition it accepts)
     magazine: (
         size:      12,
         reload_tu: 12,
     ),
     fire_mode: [
-        // A single wide spray. GTW-771: the chem fan is a Cone — 4 cells deep (short range)
+        // A single wide spray. Chem fan is a Cone — 4 cells deep (short range)
         // and 30 degrees off the fire direction on each side (a wide-ish teardrop). The chem
         // catches every unprotected body in the wedge (true friendly fire — resolution.md §2).
         (kind: Single, cone_mult: 1.0, tu_percent: 0.40, shots: 1, hit_type: Cone(range: 4, angle: 30.0)),
     ],
     stable: false,
-    handedness:    TwoHanded,  // GTW-443: a two-handed long-arm - refused below two working hands
-    // GTW-554: a pressure hose has no muzzle thread and no sight dovetail — only a tank rail.
+    handedness:    TwoHanded,  // a two-handed long-arm - refused below two working hands
+    // A pressure hose has no muzzle thread and no sight dovetail — only a tank rail.
     slots: [
         (Rail, 1),  // one utility mount on the tank harness
     ],

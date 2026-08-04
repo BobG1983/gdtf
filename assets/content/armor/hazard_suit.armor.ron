@@ -1,7 +1,7 @@
 // hazard_suit — sealed chem/bio coveralls that wrap the limbs as fully as the
 // core. Baseline protection, even all over, nowhere left bare — the suit that
 // covers what others leave exposed.
-// GTW-374 re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
+// Re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
 (
     head:      (floor: 0, protection: 3, integrity: 50, hardness: 1, armor_type: Hazard),
     torso:     (floor: 0, protection: 4, integrity: 60, hardness: 1, armor_type: Hazard),  // most hits land here

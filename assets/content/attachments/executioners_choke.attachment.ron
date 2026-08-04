@@ -1,11 +1,11 @@
-// Executioner's choke — a savage muzzle: adds fatal-bias (nastier §6 wound buckets). GTW-549
-// data-driven attachment ITEM (the grimdark "ExecutionersChoke" tag), mapped to the FatalBias
-// effect. The magnitude lives HERE on the item; applied post-spawn. (The GTW-542 tag also
+// Executioner's choke — a savage muzzle: adds fatal-bias (nastier §6 wound buckets).
+// Data-driven attachment ITEM (the grimdark "ExecutionersChoke" tag), mapped to the FatalBias
+// effect. The magnitude lives HERE on the item; applied post-spawn. (An older tag also
 // widened the cone; a cone-widen effect is USER-REVIEW — the shipped default is the fatal-bias
 // bump alone, using the existing closed vocabulary rather than a net-new effect variant.)
 (
     display_name: "Executioner's Choke",
-    slot: Muzzle,  // GTW-554: a savage muzzle choke — occupies the Muzzle slot
+    slot: Muzzle,  // a savage muzzle choke — occupies the Muzzle slot
     effects: [
         FatalBias(2.0),  // +2.0 to the weapon's severity-score addend — tunable
     ],

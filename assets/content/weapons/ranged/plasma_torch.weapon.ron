@@ -2,7 +2,7 @@
 // burning long after the shot lands. Where it PENETRATES armour it seeds a lingering
 // plasma burn that eats the target for several turns (a damage-over-time weapon).
 //
-// GTW-544 (DOT, child GTW-41e of GTW-41): the `dot:` profile below makes this a DOT weapon.
+// The `dot:` profile below makes this a DOT weapon.
 // On a shot that lands a hit which PENETRATES armour (penetrating damage > 0), the sim
 // attaches (or refreshes — DOTs do not stack) a Dot on the struck ganger: it eats `damage`
 // HP per turn for `turns` turns, bypassing armour, with no injury roll and no RNG. A fully
@@ -17,7 +17,7 @@
     punch:         6,        // strong penetration — a plasma torch bites through plate
     shred:         2,
     damage_type:   Plasma,   // the matchup-wheel node (a superheated DAMAGE flavour)
-    accepts:       Flask,    // GTW-775: fed by a volatile plasma flask (the munition it accepts)
+    accepts:       Flask,    // fed by a volatile plasma flask (the munition it accepts)
     magazine: (
         size:      8,
         reload_tu: 14,
@@ -26,12 +26,12 @@
         (kind: Single, cone_mult: 1.0, tu_percent: 0.40, shots: 1),
     ],
     stable: false,
-    handedness:    TwoHanded, // GTW-443: a two-handed torch — refused below two working hands
-    // GTW-554: a cutting torch has no muzzle thread and no sight dovetail — only a body rail.
+    handedness:    TwoHanded, // a two-handed torch — refused below two working hands
+    // A cutting torch has no muzzle thread and no sight dovetail — only a body rail.
     slots: [
         (Rail, 1),  // one utility mount on the torch body
     ],
-    // GTW-544: the damage-over-time burn a PENETRATING hit seeds — 4 HP/turn for 3 turns,
+    // Damage-over-time burn a PENETRATING hit seeds — 4 HP/turn for 3 turns,
     // bypassing armour (the per-turn tick has no matchup soak). `damage_type` here is the
     // burn's presentation flavour (Plasma), not a soak lookup.
     dot: Some((

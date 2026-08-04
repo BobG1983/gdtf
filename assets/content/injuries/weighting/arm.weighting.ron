@@ -1,4 +1,4 @@
-// GTW-440 per-CATEGORY weighting for the ARM pool — the SHARED pool BOTH arms draw from
+// Per-CATEGORY weighting for the ARM pool — the SHARED pool BOTH arms draw from
 // (replaces the per-side left_arm / right_arm weighting files; the rolled struck part
 // records which arm, the pool is one). Every `injury:` is an InjuryName KEY (the
 // `.injury.ron` file stem under arm/); an unknown key WARNs + is skipped at table-build.
@@ -6,7 +6,7 @@
 // key to the Strength / Aim / DisableHand stat map (resolution.md injury tables).
 (
     category: Arm,                                         // the shared Arm category this file weights (both arms)
-    context:  Ranged,                                      // GTW-452: the ranged per-source table
+    context:  Ranged,                                      // the ranged per-source table
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "bruised_forearm", weight: 10),           // -1 Strength
         (injury: "torn_muscle",     weight: 8),            // -1 Aim

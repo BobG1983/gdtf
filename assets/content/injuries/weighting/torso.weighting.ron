@@ -1,11 +1,11 @@
-// GTW-440 per-CATEGORY weighting for the TORSO pool (one weighting file per category;
+// Per-CATEGORY weighting for the TORSO pool (one weighting file per category;
 // the Torso category = the Torso body part). Every `injury:` is an InjuryName KEY (the
 // `.injury.ron` file stem under torso/); an unknown key WARNs + is skipped at
 // table-build. Authored order does NOT affect determinism (canonically sorted at build).
 // Torso injuries key to the Toughness / Hp stat map (resolution.md injury tables).
 (
     category: Torso,                                       // the Torso category this file weights
-    context:  Ranged,                                      // GTW-452: the ranged per-source table
+    context:  Ranged,                                      // the ranged per-source table
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "cracked_rib",     weight: 10),           // -1 Toughness
         (injury: "deep_laceration", weight: 7),            // bleeding (Hp drain)

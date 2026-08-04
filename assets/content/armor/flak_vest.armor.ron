@@ -2,7 +2,7 @@
 // soak a modest punch and let you keep moving, but they're leaky: the weave always
 // lets a bruise through. The reference budget the matchup wheel is measured against —
 // the Flak armor_type places it, and so does that stubborn floor that never reads zero.
-// GTW-374 re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
+// Re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
 (
     head:      (floor: 2, protection: 3, integrity: 50, hardness: 1, armor_type: Flak),
     torso:     (floor: 2, protection: 4, integrity: 60, hardness: 1, armor_type: Flak),  // most hits land here — highest leak-through on the wheel

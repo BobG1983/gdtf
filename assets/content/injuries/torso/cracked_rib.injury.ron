@@ -1,4 +1,4 @@
-// GTW-440 TORSO-pool standin injury. A Minor torso wound — a cracked rib, sharp on
+// TORSO-pool standin injury. A Minor torso wound — a cracked rib, sharp on
 // every breath. Torso injuries key to the Toughness / Hp stat map (resolution.md injury
 // tables); a Minor is a LIGHT debuff. KEY = stem minus `.injury` => `cracked_rib`.
 (
@@ -11,5 +11,5 @@
     effects: [
         Modify(stat: Toughness, amount: -1),     // torso -> Toughness; light Minor debuff
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )

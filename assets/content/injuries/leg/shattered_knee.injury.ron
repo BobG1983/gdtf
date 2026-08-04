@@ -1,10 +1,10 @@
-// GTW-440 LEG-pool "Hampered" injury (migrated from GTW-444's per-side
-// shattered_left_knee / shattered_right_knee into ONE generalized file). A Major wound
-// that wrecks a knee: the ganger keeps fighting but moves slower — every movement step
-// costs more TU. "Hampered" is the player-facing status term; MovementCostMul is the
-// neutral code name for the per-step movement-TU multiplier.
+// LEG-pool "Hampered" injury (migrated from per-side shattered_left_knee /
+// shattered_right_knee into ONE generalized file). A Major wound that wrecks a knee:
+// the ganger keeps fighting but moves slower — every movement step costs more TU.
+// "Hampered" is the player-facing status term; MovementCostMul is the neutral code
+// name for the per-step movement-TU multiplier.
 // SIDE-AGNOSTIC: both legs share this one Leg pool; the rolled struck part records which
-// leg, but MovementCostMul slows the ganger regardless of side (GTW-440 C3). The
+// leg, but MovementCostMul slows the ganger regardless of side. The
 // `category:` below only routes this injury into the shared Leg CATEGORY pool.
 // KEY = file stem minus `.injury` => `shattered_knee`.
 (
@@ -15,8 +15,8 @@
     log_text:     "shatters a knee",                           // -> combat log line ("<name> shatters a knee")
     inspect_text: "Shattered Knee -- Hampered (slower movement), -1 Speed", // -> inspect panel
     effects: [
-        MovementCostMul(1.5),                                  // GTW-444: each movement step costs 1.5x TU (>=1.0 = slower)
+        MovementCostMul(1.5),                                  // each movement step costs 1.5x TU (>=1.0 = slower)
         Modify(stat: Speed, amount: -1),                       // flavor: a wrecked knee also docks the Speed attribute
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )

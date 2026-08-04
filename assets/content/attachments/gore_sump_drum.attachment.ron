@@ -1,13 +1,11 @@
 // Gore-sump drum — an oversized magazine: adds capacity (more rounds before a reload) at the
-// cost of a SLOWER reload (the bulk takes longer to swap). GTW-549 data-driven attachment ITEM
+// cost of a SLOWER reload (the bulk takes longer to swap). Data-driven attachment ITEM
 // (the grimdark "GoreSumpDrum" tag). Magnitudes live HERE on the item; applied post-spawn.
 // The slow reload is authored as a ReloadTime > 1.0 (the reload-cost scale is a BIDIRECTIONAL
 // multiplier, so > 1.0 makes the swap slower — the drum's bulk; < 1.0 would speed it).
 (
     display_name: "Gore-Sump Drum",
-    // GTW-584: re-slotted Rail -> Magazine. An oversized ammo drum is a magazine, so it
-    // belongs in the magazine well now that one exists (GTW-554 hung it off the Rail only
-    // because there was no Magazine slot yet). Fits only a gun declaring a Magazine slot.
+    // Oversized ammo drum — belongs in the magazine well. Fits only a gun declaring a Magazine slot.
     slot: Magazine,
     effects: [
         ExtraAmmo(15),      // +15 magazine capacity — tunable

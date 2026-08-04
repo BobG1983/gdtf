@@ -1,11 +1,11 @@
 // Dead man's brace — a rigid brace that steadies the aim: adds a GRADUATED per-item
-// WeaponBraceBonus of §1a stability-score points (a tighter cone / less recoil climb). GTW-549
-// data-driven attachment ITEM (the grimdark "DeadmansBrace" tag), mapped to the Stability
+// WeaponBraceBonus of §1a stability-score points (a tighter cone / less recoil climb).
+// Data-driven attachment ITEM (the grimdark "DeadmansBrace" tag), mapped to the Stability
 // effect — the brace seam, DISTINCT from a sight's Aim (Accuracy) bonus. The magnitude lives
 // HERE on the item; applied post-spawn.
 (
     display_name: "Dead Man's Brace",
-    slot: Rail,  // GTW-554: an under-rail rigid brace / foregrip — the Rail slot
+    slot: Rail,  // an under-rail rigid brace / foregrip — the Rail slot
     effects: [
         Stability(20.0),  // +20 stability-score points (graduated brace) — tunable
     ],

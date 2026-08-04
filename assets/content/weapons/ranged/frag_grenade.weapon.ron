@@ -1,4 +1,4 @@
-// Frag grenade — a lobbed fragmentation charge (GTW-546, child GTW-41d). A THROWN weapon:
+// Frag grenade — a lobbed fragmentation charge. A THROWN weapon:
 // `trajectory: Arc` lofts it over walls / cover onto a target cell, blocked only by an intact
 // roof (a hole / window lets it drop through). On landing it fans a radius-1 Blast — a tight
 // concussion + shrapnel node that tears everyone in the ring (true friendly fire —
@@ -6,7 +6,7 @@
 // `damage_type: Blast` (the matchup-wheel flavour), radius-1.
 //
 // The single `Single` fire mode carries the AoE template (`hit_type: Blast(radius: 1)`) the
-// throw dispatch reads at the arc's landing (GTW-541 resolver). `trajectory: Arc` makes it a
+// throw dispatch reads at the arc's landing. `trajectory: Arc` makes it a
 // blind lob — no line-of-sight gate. Its cone/accuracy fields satisfy serde but are UNUSED by
 // the deterministic arc throw (no cone sample).
 (
@@ -18,18 +18,18 @@
     punch:         2,
     shred:         1,
     damage_type:   Blast, // explosives / concussion — the matchup-wheel node (a DAMAGE flavour)
-    accepts:       Grenade, // GTW-775: a self-contained thrown fragmentation grenade (the munition)
+    accepts:       Grenade, // a self-contained thrown fragmentation grenade (the munition)
     magazine: (
         size:      2,
         reload_tu: 18,
     ),
-    trajectory: Arc, // GTW-546: a lobbed grenade — parabola blocked by roofs, passes holes/windows
+    trajectory: Arc, // a lobbed grenade — parabola blocked by roofs, passes holes/windows
     fire_mode: [
         // The fragmentation detonation — a radius-1 Blast at the arc's landing cell.
         (kind: Single, cone_mult: 1.0, tu_percent: 0.35, shots: 1, hit_type: Blast(radius: 1)),
     ],
     stable: false,
     handedness:    OneHanded, // a one-handed thrown grenade
-    // GTW-554: a thrown explosive takes NO fittings — `slots:` is deliberately omitted (the
+    // A thrown explosive takes NO fittings — `slots:` is deliberately omitted (the
     // empty default), so no attachment fits it (fail-closed).
 )
