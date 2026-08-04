@@ -1,3 +1,4 @@
+//! Hot RON chain: load once, map hook, fallback on fail, headless no-op.
 use bevy::{
     asset::{AssetServer, Handle},
     prelude::*,
