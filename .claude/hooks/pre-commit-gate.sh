@@ -3,8 +3,8 @@
 #
 # WHY THIS EXISTS: to make three failure modes impossible at the tool boundary,
 # before git runs:
-#   1. Branch guard — git flow is binding (CLAUDE.md): features branch off
-#      develop via `git flow feature start <name>`; never commit directly to
+#   1. Branch guard — features branch off develop (plain git:
+#      git checkout -b feature/<name>); never commit directly to
 #      develop or main.
 #   2. Gate-pass guard — /gate records a pass in .claude/.gate-pass (TICKET /
 #      BRANCH / HEAD / FINGERPRINT lines). A commit is allowed only if that
@@ -109,7 +109,7 @@ REPO_DIR="$(git -C "$TARGET_DIR" rev-parse --show-toplevel 2>/dev/null || echo "
 BRANCH="$(git -C "$TARGET_DIR" branch --show-current 2>/dev/null || true)"
 case "$BRANCH" in
   develop|main)
-    echo "commit blocked: use a feature branch (git flow feature start ...)" >&2
+    echo "commit blocked: use a feature branch (git checkout -b feature/...)" >&2
     exit 2
     ;;
 esac

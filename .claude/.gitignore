@@ -1,7 +1,9 @@
-# Machine-local gate bookkeeping and agent memory — never committed.
+# Gate bookkeeping — never commit.
 .gate-pass
-agent-memory/
 
-# Per-developer overrides (personal model / effortLevel) — committed config is
-# settings.json; this file layers on top and stays out of version control.
+# Ephemeral agent memory is written mid-run and must not dirty the tree.
+# Real memory under agent-memory/*/real/ is checked in; only /dream writes it.
+agent-memory/*/ephemeral/
+
+# Per-developer overrides (personal model / effortLevel).
 settings.local.json
