@@ -6,10 +6,13 @@ Necromunda vocabulary is the house style. **Code identifiers must follow it** �
 | ------ | --------- |
 | **Gang** | A faction / the player's roster as a unit. One gang is the **player faction** (the gang the human controls); every other fielded gang is an **enemy**. |
 | **Ganger** | An individual combatant. *Not* "unit" or "soldier". Named, persistent, mortal. |
-| **Out of the fight** | A ganger who is `Downed` or `Dead` — incapacitated, no longer counting toward keeping their gang in the battle (see [combat/wounds-and-roster.md](combat/wounds-and-roster.md) for the two-pool downing/death model). A gang is defeated when all its gangers are out of the fight; the player wins / loses on this (see the battle-outcome beat in [combat/combat.md](combat/combat.md)). |
+| **Out of the fight** | A ganger who is `Downed`, `Dead`, or **`Bottled`** — no longer counting toward keeping their gang in the battle (body: [wounds-and-roster.md](combat/wounds-and-roster.md); mind: [morale.md](combat/morale.md)). A gang is defeated when all its gangers are out of the fight. |
 | **Turf** | A controlled region on the geoscape. |
 | **Grudge** | Recorded enmity between gangs/fighters with memory. |
-| **Bottle** | A gang voluntarily routing/withdrawing from a fight (Necromunda morale). |
+| **Bottle** | (1) Psych life pool (psych Wounds) on a ganger — empty → **Bottled**. (2) Historical Necromunda sense: a side routing from a fight — **gang-wide bottle is not v0**. See [combat/morale.md](combat/morale.md). |
+| **Morale** | Psych HP pool — stress buffer derived from Grit + Cool; damaged by shocks; not the same as suppression. See [combat/morale.md](combat/morale.md). |
+| **Bottled** | Ganger terminal psych state: out of this fight (no acts), still on the roster after. Parallel to Downed/Dead on the body track. |
+| **Nerve effect** | Named battle psych condition (hesitant, reckless, …) rolled from data when a shock bites — analogous to an Injury, for the mind. |
 | **Injury** | A lasting named condition rolled (location × severity × source) when a fighter takes a non-graze Wound; docks attributes via the ledger. Rolled **in battle**; post-action carries the ledger (no second table roll for MVP — see [mvp/post-action.md](mvp/post-action.md)). |
 | **Damage / Armor Types** | The shared 7-type wheel — armor: Plated, Refractive, Flak, Void, Hazard, Reinforced, Ceramic; damage: Kinetic, Las, Plasma, Chem, Shock, Blast, Rend (see [combat/matchup.md](combat/matchup.md)). |
 | **WeaponName** | A weapon's human-facing name (e.g. "autogun") — a newtype component on the armed ganger, taken from the `.weapon.ron` filename stem (also the registry key). UI-only; combat-math never reads it (see [combat/weapons-and-armor.md](combat/weapons-and-armor.md)). |

@@ -23,6 +23,7 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 - [combat/two-paradox-tournament.md](combat/two-paradox-tournament.md) — the underlying two-paradox / Paley math and how it maps to game systems.
 - [combat/weapons-and-armor.md](combat/weapons-and-armor.md) — weapon & armor stats, the per-hit damage/penetration formula, and how the matchup wheel hooks in.
 - [combat/wounds-and-roster.md](combat/wounds-and-roster.md) — the wound table and roster persistence (the heart of the generator).
+- [combat/morale.md](combat/morale.md) — Morale / Bottle, nerve effects (proposed; GTW-40).
 
 ## Authoring
 
