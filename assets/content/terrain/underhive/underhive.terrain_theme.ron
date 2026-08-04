@@ -1,20 +1,13 @@
-// GTW-490 migration of assets/content/themes/underhive.theme.ron to the NEW UUID-keyed
-// UuidThemeDef model (GTW-485/487). The underhive theme has no flat counterpart, so its 4
-// catalog tiles migrate to per-theme TerrainDefs (see the sibling *.terrain_def.ron files).
-// The old per-tile atlas_index is INTENTIONALLY DROPPED (the presenter resolves the index via
-// TileRoles by each def's presenter_kind.graphic_name).
+// Underhive theme.
 (
-    // Stable authored key — the Underhive ThemeUuid.
     key: "00000000-0000-0000-0000-01840a900002",
     display_name: "Underhive",
-    // The default floor terrain (rockcrete_floor).
     default_floor: "00000000-0000-0000-0000-01840a920001",
-    // This theme's terrain palette, by migrated UUID.
     terrain: [
-        "00000000-0000-0000-0000-01840a920001",  // rockcrete_floor (default floor)
+        "00000000-0000-0000-0000-01840a920001",  // rockcrete_floor
         "00000000-0000-0000-0000-01840a920002",  // tunnel_wall
         "00000000-0000-0000-0000-01840a920003",  // scrap_barricade
         "00000000-0000-0000-0000-01840a920004",  // rubble_pile
-        "00000000-0000-0000-0000-01840a920005",  // tunnel_wall_ew     (GTW-469 EW orientation)
+        "00000000-0000-0000-0000-01840a920005",  // tunnel_wall_ew
     ],
 )
