@@ -86,9 +86,8 @@ The psychological track mirrors the physical one (see [stats.md](stats.md)): **M
 
 ## Advancement
 
-- **Stats improve via use** (Xenonauts model); **XP is a separate track** buying **skills / abilities** — see [stats.md](stats.md).
+- **Training improves attributes**; **XP buys skills only** — never each other's job. See [stats.md](stats.md) and [post-action.md](../mvp/post-action.md) (proposed).
 - Advancement and injury are the two opposing forces shaping a ganger over a campaign (gains vs scars).
-- MVP magnitudes and apply timing: [post-action.md](../mvp/post-action.md) (proposed).
 
 ## Grudges (logged now, surfaced later)
 

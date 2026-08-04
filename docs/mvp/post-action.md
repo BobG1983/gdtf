@@ -5,12 +5,12 @@ Design for the fight → consequences → next fight loop. Parent: post-action e
 **Status:**
 
 - **GTW-678 injury carry — Accepted** (in-battle injury table already defined; no second post-action roll).
-- **GTW-679 advancement — proposed** (combined stress + feat training). Do not implement until Accepted.
+- **GTW-679 advancement — proposed** (training vs XP split + combined specials). Do not implement until Accepted.
 
 Related built systems:
 
 - Named injuries already roll **per hit in battle** and land on `InflictedInjuries` (see [wounds-and-roster.md](../combat/wounds-and-roster.md)). That **is** the injury roll — location × severity × source weighting is already specified and live.
-- Attributes improve by use; XP buys skills (see [stats.md](../combat/stats.md)) — neither campaign track is built yet.
+- Advancement tracks: see [stats.md](../combat/stats.md) — **not built yet**.
 
 ---
 
@@ -57,16 +57,23 @@ Data first (no UI): BattleResults + kill log + roster fold. Then screen copy. He
 
 ---
 
-## 2. XP and minimal advancement (GTW-679)
+## 2. Advancement (GTW-679)
 
-### Canon (unchanged)
+### Two tracks — hard split
 
-Two tracks:
+| Track | What it changes | How you earn it |
+| --- | --- | --- |
+| **Training** | **Base attributes** (Aim, Strength, Speed, …) | Fight work: use, stress/fail, feats, surviving bad wounds, MVP |
+| **XP** | **Skill bank only** | Participation, kills, survival |
 
-1. **Use-based attributes** — train by using, stressing/failing, landing feats, and surviving bad fights (Xenonauts-style).
-2. **XP** — a separate bank that **buys skills**, never raw attribute points.
+**XP never buys attribute points. Training never grants skills.**  
+Skills cost XP when a skill system exists; until then the bank just accrues and shows on the post-action screen.
 
-### Accrual events (per player ganger, once at outcome latch)
+This is the Xenonauts-style “get better by doing / suffering,” plus a Necromunda-style XP-for-skills wallet.
+
+### XP accrual (skill bank only)
+
+Per player ganger, once at outcome latch:
 
 | Event | When it counts | Default XP (tunable) |
 | --- | --- | --- |
@@ -78,9 +85,9 @@ No XP for taking damage or for enemy deaths you did not cause. Magnitudes live i
 
 Enemy gangers: no XP track for MVP.
 
-### Use-based attributes — combined layers
+### Training — attribute growth
 
-At outcome latch, for each living player ganger, sum every grant that fired, **per attribute**, then clamp.
+At outcome latch, for each living player ganger, sum every training grant that fired, **per attribute**, then clamp.
 
 **Hard ceiling: +3 per attribute per battle.**
 
@@ -88,9 +95,11 @@ At outcome latch, for each living player ganger, sum every grant that fired, **p
 bump = min(3, default_use + stress + feats + survive + mvp)
 ```
 
-Each named grant fires **at most once per ganger per battle** (even if the act happened many times). Dead gangers get nothing.
+Each named grant fires **at most once per ganger per battle** (even if the act happened many times). Dead gangers get no training.
 
-Kill **XP** still stacks per kill. Attribute grants below are once-per-row.
+Training writes to **base attributes** on the campaign roster, then re-derive combat stats for the next fight. No mid-battle permanent attribute growth.
+
+Kill **XP** still stacks per kill. Training grants below are once-per-row.
 
 ---
 
@@ -124,7 +133,7 @@ Train when the stat was **tested or failed**.
 
 #### Layer C — Feats / critical success (+1, unless noted)
 
-Clean wins and named battle feats. Combined from both earlier lists.
+Clean wins and named battle feats.
 
 | Special | When | Extra | Attribute |
 | --- | --- | --- | --- |
@@ -157,8 +166,10 @@ These stack with default Grit / stress, then hit the +3 cap (e.g. default + brin
 | Rule | Detail |
 | --- | --- |
 | Who | Highest attributed kill count among living player gangers at outcome. Tie → most non-graze wounds inflicted. Still tied → lowest stable id (deterministic). |
-| Reward | **+1** to the attribute that received the largest pre-MVP bump this battle; if none, **Cool**. |
+| Reward | **+1 training** to the attribute that received the largest pre-MVP bump this battle; if none, **Cool**. |
 | None | If no player ganger got a kill and no wounds inflicted, **no MVP**. |
+
+MVP is training, not XP.
 
 ---
 
@@ -166,12 +177,10 @@ These stack with default Grit / stress, then hit the +3 cap (e.g. default + brin
 
 | Fight | What fires | Capped result |
 | --- | --- | --- |
-| Shot a lot, missed, no kills | Aim use +1, Missed shot +1 | **Aim +2** |
-| Shot, missed, one ranged kill | use + miss + ranged kill | **Aim +3** |
-| Two kills, multi-kill | Aim/Strength kill rows + Cool multi-kill +1 | as mapped |
-| Major injury, Downed, recovered | Got hurt Toughness +1; Walked it off +1 Grit; Brink +2 Grit; use Grit if HP lost | **Toughness +1**, **Grit +3** (cap) |
-| Solo survivor win | Last of the squad Cool +2 (+ other Cool if any) | **Cool** up to +3 |
-| Squad ace | kills + feats + MVP +1 | best attr up to **+3** |
+| Shot a lot, missed, no kills | Aim use +1, Missed shot +1 | **Aim +2** (training); small participation XP only |
+| Shot, missed, one ranged kill | use + miss + ranged kill | **Aim +3** training; + kill XP |
+| Major injury, Downed, recovered | Got hurt Toughness +1; Walked it off +1 Grit; Brink +2 Grit | **Toughness +1**, **Grit +3** training |
+| Squad ace | training layers + MVP +1 | best attr up to **+3**; XP from kills |
 
 ---
 
@@ -181,22 +190,24 @@ Reload, stance change, open door, enter emplacement, empty grenade throw, panick
 
 ---
 
-### XP bank vs skills
+### Skills (XP spend)
 
-- Accrued XP sums onto the ganger’s **skill XP bank**.
-- **Skill purchase UI and skill content are not MVP** unless a separate ticket lands them. Post-action shows the bank number so the track is visible.
-- XP never converts into free attribute points.
+- Skill purchase UI and skill content are **not MVP** unless a separate ticket lands them.
+- Post-action still shows the **skill XP bank** so the track is visible.
+- When skills exist: spend XP → learn skill; attributes still only move via training.
 
 ### When
 
-All of the above runs **once** when the battle outcome latches (same moment as BattleResults), before or as the post-action screen opens. Not per act.
+Training + XP both apply **once** when the battle outcome latches (same moment as BattleResults), before or as the post-action screen opens. Not per act.
 
 ### Build order after Accept
 
 1. UsageTally + miss/hit/wound/kill/Downed/shove signals from act messages (shared log).
-2. Advancement apply (pure sim, seeded tests) — all layers + +3 clamp + deterministic MVP.
+2. Apply functions (pure sim, seeded tests):
+   - `apply_training` — layers + +3 clamp + deterministic MVP → base attributes
+   - `apply_xp` — participation / kills / survival → skill bank only
 3. Wire into BattleResults / roster fold.
-4. Post-action UI: bumps + which specials fired (short names) + MVP badge.
+4. Post-action UI: training bumps + special names, XP gained, bank total, MVP badge.
 
 Dependencies that gate individual rows: Morale stress needs Morale live; Overloaded needs encumbrance. Ship the rest first; those two rows stay defined but inactive until their systems exist.
 
@@ -207,7 +218,7 @@ Dependencies that gate individual rows: Morale stress needs Morale live; Overloa
 Post-action UI shows, for the player roster:
 
 - Outcome (win / lose).
-- Per ganger: alive/dead, carried injuries, XP gained, attribute bumps with special names, MVP badge if any, running skill XP.
+- Per ganger: alive/dead, carried injuries, **training** bumps (with special names), **XP** gained + bank, MVP badge if any.
 - Continue → roster write-back → next battle or menu (mission chaining is a separate ticket).
 
 Placeholder outcome + Continue stays until this data exists.
@@ -218,9 +229,11 @@ Placeholder outcome + Continue stays until this data exists.
 
 **Injury (678):** Accepted.
 
-Remaining (679):
+**Split (679):** Training = attributes; XP = skills only — confirmed direction.
+
+Remaining:
 
 1. **Downed:** Recover with ledger only for MVP (no capture)?
 2. **XP mix:** Participation + kill + survival at 2 / 3 / 1 OK?
 3. **Combined training table** (use + stress + feats + survive + MVP) + hard max +3 OK?
-4. **Skills:** XP bank visible, no purchase UI in v0 OK?
+4. **Skills:** bank visible, no purchase UI in v0 OK?
