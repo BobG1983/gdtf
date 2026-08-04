@@ -17,7 +17,7 @@ Dev loop: **`/next-task` → build → `/gate` → `/docs-sync` → `/land`**.
 - `/land` onto `develop` and close the ticket.
 
 Found a defect? `/file-bug` before fixing. Kit sanity? `/health-check`.
-Memory hygiene? `/dream`. Autonomous loop tick? `/heartbeat`.
+Autonomous loop tick? `/heartbeat`.
 
 Orchestration uses on-demand sub-agents. Favor fan-out (e.g. `/gate` and `/health-check` spawn parallel read-only design-gate lenses). Sub-agents that review stay read-only. Commit subjects: `Area: summary (GTW-N)`.
 
