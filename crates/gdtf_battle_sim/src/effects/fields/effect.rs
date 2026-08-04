@@ -15,7 +15,7 @@ pub enum FieldEffect {
     /// Drain HP from occupants.
     Drain {
         /// Damage per tick.
-        damage: FieldDamage,
+        damage:      FieldDamage,
         /// Damage channel.
         damage_type: DamageType,
     },
@@ -34,7 +34,7 @@ impl FieldEffect {
     pub fn consequences_of(def: &FieldDef) -> Vec<Self> {
         vec![
             Self::Drain {
-                damage: def.damage,
+                damage:      def.damage,
                 damage_type: def.damage_type,
             },
             Self::Immunity {

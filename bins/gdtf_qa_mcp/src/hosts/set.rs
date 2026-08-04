@@ -5,7 +5,7 @@ use crate::{lifecycle::HostLifecycle, link::QaLink};
 
 /// Link and lifecycle for one host.
 pub struct HostPair<'a> {
-    link: &'a mut dyn QaLink,
+    link:      &'a mut dyn QaLink,
     lifecycle: &'a mut dyn HostLifecycle,
 }
 
@@ -33,7 +33,7 @@ impl<'a> HostPair<'a> {
 
 /// Game and editor pairs together.
 pub struct HostSet<'a> {
-    game: HostPair<'a>,
+    game:   HostPair<'a>,
     editor: HostPair<'a>,
 }
 

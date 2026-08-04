@@ -31,7 +31,7 @@ fn every_binary_passes_through_its_library_net_qa_feature() {
     );
     for bin_manifest in &manifests {
         let Ok(bin_text) = fs::read_to_string(root.join(bin_manifest)) else {
-            continue; 
+            continue;
         };
         let bin_dir = Path::new(bin_manifest)
             .parent()
@@ -39,10 +39,10 @@ fn every_binary_passes_through_its_library_net_qa_feature() {
         for (dep_name, dep_path) in path_dependencies(&bin_text) {
             let lib_manifest = root.join(bin_dir).join(&dep_path).join("Cargo.toml");
             let Ok(lib_text) = fs::read_to_string(&lib_manifest) else {
-                continue; 
+                continue;
             };
             if feature_declaration(&lib_text, QA_FEATURE).is_none() {
-                continue; 
+                continue;
             }
             let expected = format!("{QA_FEATURE} = [\"{dep_name}/{QA_FEATURE}\"]");
             match feature_declaration(&bin_text, QA_FEATURE) {
@@ -79,6 +79,6 @@ fn every_binary_passes_through_its_library_net_qa_feature() {
     let rendered = violations.iter().cloned().collect::<Vec<_>>().join("\n");
     assert!(
         violations.is_empty(),
-        "binary feature passthrough violations (GTW-878):\n{rendered}"
+        "binary feature passthrough violations:\n{rendered}"
     );
 }

@@ -1,8 +1,8 @@
 use gdtf_screenshot::CapturePath;
 
 pub(in crate::net_qa) enum ShotFile {
-        NotReady,
-        Ready,
+    NotReady,
+    Ready,
 }
 
 pub(in crate::net_qa) fn inspect_shot(path: &CapturePath) -> ShotFile {
@@ -26,7 +26,7 @@ mod test {
 
     use super::{ShotFile, inspect_shot};
 
-        fn finished_png_bytes() -> Vec<u8> {
+    fn finished_png_bytes() -> Vec<u8> {
         let image = image::RgbaImage::from_pixel(2, 2, image::Rgba([9, 9, 9, 255]));
         let mut bytes = Vec::new();
         let encoded = image.write_to(&mut Cursor::new(&mut bytes), image::ImageFormat::Png);
@@ -34,7 +34,7 @@ mod test {
         bytes
     }
 
-        fn write_file(path: &Path, bytes: &[u8]) {
+    fn write_file(path: &Path, bytes: &[u8]) {
         let written = fs::write(path, bytes);
         assert!(
             written.is_ok(),
@@ -42,7 +42,7 @@ mod test {
         );
     }
 
-                    #[test]
+    #[test]
     fn an_unfinished_file_is_never_ready() {
         let Ok(tmp) = tempfile::TempDir::new() else {
             unreachable!("a temp directory is available");
@@ -77,7 +77,7 @@ mod test {
         );
     }
 
-        #[test]
+    #[test]
     fn a_complete_png_is_ready() {
         let Ok(tmp) = tempfile::TempDir::new() else {
             unreachable!("a temp directory is available");

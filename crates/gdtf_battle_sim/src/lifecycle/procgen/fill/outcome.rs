@@ -8,8 +8,8 @@ use super::super::{
 /// Player/enemy placement plus fill prefabs and leftover dead space.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FilledPlacement {
-    pub(super) placement: Placement,
-    pub(super) fill: Vec<PlacedPrefab>,
+    pub(super) placement:  Placement,
+    pub(super) fill:       Vec<PlacedPrefab>,
     pub(super) dead_space: Vec<RegionRect>,
 }
 

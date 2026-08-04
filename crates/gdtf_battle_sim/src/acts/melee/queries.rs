@@ -64,26 +64,26 @@ pub(super) type MeleeWeaponQuery<'world, 'state> = Query<
 #[derive(SystemParam)]
 pub struct MeleeWorld<'w> {
     pub(super) occupancy: Res<'w, OccupancyGrid>,
-    pub(super) surface: Res<'w, SurfaceGrid>,
-    pub(super) cover: ResMut<'w, CoverLedger>,
-    pub(super) tuning: Res<'w, CombatTuning>,
-    pub(super) tables: Option<Res<'w, InjuryTables>>,
-    pub(super) registry: Option<Res<'w, InjuryRegistry>>,
+    pub(super) surface:   Res<'w, SurfaceGrid>,
+    pub(super) cover:     ResMut<'w, CoverLedger>,
+    pub(super) tuning:    Res<'w, CombatTuning>,
+    pub(super) tables:    Option<Res<'w, InjuryTables>>,
+    pub(super) registry:  Option<Res<'w, InjuryRegistry>>,
 }
 
 /// Optional RNGs required for a melee contest.
 #[derive(SystemParam)]
 pub struct MeleeRngs<'w> {
-    pub(super) fight: Option<ResMut<'w, FightRng>>,
-    pub(super) shot: Option<ResMut<'w, ShotRng>>,
+    pub(super) fight:    Option<ResMut<'w, FightRng>>,
+    pub(super) shot:     Option<ResMut<'w, ShotRng>>,
     pub(super) severity: Option<ResMut<'w, SeverityRng>>,
-    pub(super) injury: Option<ResMut<'w, InjuryRng>>,
+    pub(super) injury:   Option<ResMut<'w, InjuryRng>>,
 }
 
 /// Writers for struck / armor break / injury outcomes.
 #[derive(SystemParam)]
 pub struct MeleeFacts<'w> {
-    pub(super) struck: MessageWriter<'w, MeleeStruck>,
-    pub(super) breaks: MessageWriter<'w, ArmorBroken>,
+    pub(super) struck:   MessageWriter<'w, MeleeStruck>,
+    pub(super) breaks:   MessageWriter<'w, ArmorBroken>,
     pub(super) injuries: MessageWriter<'w, InjuryInflicted>,
 }

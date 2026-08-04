@@ -1,4 +1,4 @@
-//! Prefab folder load: registry resolves by ThemeUuid + size + role.
+//! Prefab folder load: registry resolves by `ThemeUuid` + size + role.
 use std::path::PathBuf;
 
 use gdtf_app::test_support::{AppState, app_state, load_released};

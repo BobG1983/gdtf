@@ -58,7 +58,6 @@ pub(super) fn bleeding_count_for(app: &App, ganger: Entity) -> usize {
         .map_or(0, |c| c.iter().filter(|b| b.ganger == ganger).count())
 }
 
-
 pub(super) const SEED: u64 = 0x5A1C_AC75;
 
 pub(super) const PLAYER: Faction = Faction::new(0);

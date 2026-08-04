@@ -40,9 +40,9 @@ const MAX_READBACK_UPDATES: usize = 90;
 
 #[derive(Resource, Default, Clone, Copy)]
 struct CapturedFrame {
-        captured:       bool,
-        mean:           [u8; 4],
-                max_red_excess: i16,
+    captured:       bool,
+    mean:           [u8; 4],
+    max_red_excess: i16,
 }
 
 static GPU_LOCK: Mutex<()> = Mutex::new(());

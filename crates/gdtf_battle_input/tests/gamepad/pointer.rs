@@ -20,7 +20,6 @@ use gdtf_test_utils::{MessageProbe, MessageProbePlugin, probed};
 
 use super::harness::*;
 
-
 fn synthetic_camera() -> Camera {
     let mut projection = Projection::Orthographic(OrthographicProjection::default_2d());
     projection.update(TARGET_SIZE.x, TARGET_SIZE.y);
@@ -163,14 +162,13 @@ fn highlight_follows_the_gamepad_cursor() {
     assert_eq!(
         emitted,
         vec![HighlightRequest::new(cell, CellVisibility::NotSquadVisible)],
-        "the highlight request must follow the gamepad cursor's resolved cell (GTW-11: \
+        "the highlight request must follow the gamepad cursor's resolved cell ( \
          NotSquadVisible — no fog seeded, fail-closed)",
     );
     if let Some(cell) = cell {
         let _ = cell_to_world(cell.cell(), LEVEL);
     }
 }
-
 
 #[test]
 fn mouse_reclaims_the_pointer() {

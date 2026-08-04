@@ -89,7 +89,6 @@ fn player_count_at(app: &mut App, cell: CellLevel) -> usize {
         .count()
 }
 
-
 #[test]
 fn setup_inserts_and_fills_squad_visibility() {
     let mut app = battle_app();
@@ -120,7 +119,6 @@ fn setup_inserts_and_fills_squad_visibility() {
         "the spawn-time fog must see the enemy on clear ground within view range",
     );
 }
-
 
 #[test]
 fn moving_player_reveals_new_cells_and_retains_explored() {
@@ -169,7 +167,6 @@ fn moving_player_reveals_new_cells_and_retains_explored() {
         "a cell that left VISIBLE must STAY in EXPLORED (monotone accrual)",
     );
 }
-
 
 #[test]
 fn downing_player_drops_its_fov() {
@@ -229,7 +226,6 @@ fn downing_player_drops_its_fov() {
     );
 }
 
-
 #[test]
 fn cover_destroyed_triggers_a_recompute() {
     let mut app = battle_app();
@@ -257,7 +253,6 @@ fn cover_destroyed_triggers_a_recompute() {
         "after the CoverDestroyed-triggered recompute, the player still sees its own cell",
     );
 }
-
 
 #[test]
 fn teardown_removes_squad_visibility() {

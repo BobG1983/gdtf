@@ -13,7 +13,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn resolve_coarse_yields_ganger_outcome_on_real_path() {
     let shooter_at = key(2, 2, 0);

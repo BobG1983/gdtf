@@ -12,8 +12,8 @@ pub struct AttachmentSpec {
     /// Display name.
     pub display_name: WeaponName,
     /// Slot this attachment occupies.
-    pub slot: AttachmentSlot,
+    pub slot:         AttachmentSlot,
     /// Effects applied when fitted.
     #[serde(default)]
-    pub effects: Vec<AttachmentEffect>,
+    pub effects:      Vec<AttachmentEffect>,
 }

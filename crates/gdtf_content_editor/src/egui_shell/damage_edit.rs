@@ -7,12 +7,12 @@ use gdtf_battle_sim::weapon::{
 const HANDEDNESS_OPTIONS: [Handedness; 2] = [Handedness::OneHanded, Handedness::TwoHanded];
 
 pub(in crate::egui_shell) struct DamageGroupFields<'a> {
-        pub(in crate::egui_shell) damage:      &'a mut WeaponDamage,
-        pub(in crate::egui_shell) punch:       &'a mut WeaponPunch,
-        pub(in crate::egui_shell) shred:       &'a mut WeaponShred,
-        pub(in crate::egui_shell) damage_type: &'a mut DamageType,
-        pub(in crate::egui_shell) fatal_bias:  &'a mut FatalBias,
-        pub(in crate::egui_shell) handedness:  &'a mut Handedness,
+    pub(in crate::egui_shell) damage:      &'a mut WeaponDamage,
+    pub(in crate::egui_shell) punch:       &'a mut WeaponPunch,
+    pub(in crate::egui_shell) shred:       &'a mut WeaponShred,
+    pub(in crate::egui_shell) damage_type: &'a mut DamageType,
+    pub(in crate::egui_shell) fatal_bias:  &'a mut FatalBias,
+    pub(in crate::egui_shell) handedness:  &'a mut Handedness,
 }
 
 pub(in crate::egui_shell) fn damage_group(

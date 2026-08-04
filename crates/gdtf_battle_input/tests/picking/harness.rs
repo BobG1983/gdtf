@@ -15,7 +15,6 @@ use gdtf_battle_sim::prelude::{BattleInProgress, CellLevel, Level};
 
 pub(crate) const TARGET_SIZE: Vec2 = Vec2::new(1280.0, 720.0);
 
-
 pub(crate) fn synthetic_camera() -> Camera {
     let mut projection = Projection::Orthographic(OrthographicProjection::default_2d());
     projection.update(TARGET_SIZE.x, TARGET_SIZE.y);

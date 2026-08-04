@@ -45,7 +45,6 @@ crate::support_item! {
     struct LevelDownButton;
 }
 
-
 crate::support_item! {
                                                     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct EndTurnButton;

@@ -18,7 +18,7 @@ pub struct FieldCellSprite;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct FieldDraw {
-    cell: CellLevel,
+    cell:        CellLevel,
     damage_type: DamageType,
 }
 
@@ -52,7 +52,7 @@ fn field_draws(fields: &FieldRegistry, active_level: Level) -> Vec<FieldDraw> {
         .iter()
         .filter(|(cell, _placed)| cell.z == active_z)
         .map(|(cell, placed)| FieldDraw {
-            cell: *cell,
+            cell:        *cell,
             damage_type: placed.def().damage_type,
         })
         .collect();

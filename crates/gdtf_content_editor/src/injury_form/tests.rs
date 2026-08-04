@@ -105,7 +105,7 @@ fn edited_def_round_trips_through_the_loader_schema() {
     assert_eq!(
         reloaded, edited,
         "the reloaded injury must equal the edited draft (key + every def field incl. \
-         the five effect rows) — the GTW-437 stem-key round-trip",
+         the five effect rows) — the stem-key round-trip",
     );
 }
 

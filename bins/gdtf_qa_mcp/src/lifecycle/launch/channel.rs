@@ -14,7 +14,7 @@ const EDITOR_PORT_VAR: &str = "GDTF_EDITOR_NET_QA_PORT";
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QaChannel {
     enable: EnvVarName,
-    port: EnvVarName,
+    port:   EnvVarName,
 }
 
 impl QaChannel {

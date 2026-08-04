@@ -71,7 +71,7 @@ pub(crate) fn advance_to_published(app: &mut App) {
     );
     assert!(
         published,
-        "the editor never published the content-integrity report — the GTW-630 authoring-time \
+        "the editor never published the content-integrity report — the authoring-time \
          validation pass is not registered (ContentValidationDone was never stamped)",
     );
     for _ in 0..4 {

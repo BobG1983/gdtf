@@ -14,10 +14,10 @@ use crate::{
 };
 
 struct DownInjuryRun {
-        downed:            bool,
-        ledger_has_injury: bool,
-        injured_index:     Option<usize>,
-        downed_index:      Option<usize>,
+    downed:            bool,
+    ledger_has_injury: bool,
+    injured_index:     Option<usize>,
+    downed_index:      Option<usize>,
 }
 
 fn run_down_injury(seed: u64) -> DownInjuryRun {
@@ -137,6 +137,6 @@ fn a_downing_hit_records_its_injury_before_the_down() {
         injured_index < downed_index,
         "the injury (append index {injured_index}) must be logged BEFORE the down (append \
          index {downed_index}) — record_acts records consequence(injury) before life(Downed); \
-         a reversal is the GTW-728 defect",
+         a reversal is the defect",
     );
 }

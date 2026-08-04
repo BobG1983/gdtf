@@ -1,4 +1,4 @@
-// GTW-582 fixture weighting — ONE row naming an injury key that no `.injury.ron` in this
+// fixture weighting — ONE row naming an injury key that no `.injury.ron` in this
 // root defines (the injuries defs folders are deliberately un-materialized), so the
 // weightings→injuries edge dangles ON PURPOSE (NOT shipped content; loaded only by
 // tests/load_ref_integrity.rs). The build keeps its warn-skip semantics; the unified pass

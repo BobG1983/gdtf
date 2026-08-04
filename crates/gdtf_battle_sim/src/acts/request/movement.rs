@@ -10,7 +10,7 @@ pub struct MoveRequested {
     /// Actor.
     pub actor: Entity,
     /// Destination.
-    pub dest: CellLevel,
+    pub dest:  CellLevel,
 }
 
 impl MoveRequested {

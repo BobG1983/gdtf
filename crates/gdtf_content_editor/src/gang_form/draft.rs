@@ -18,8 +18,8 @@ enum AutoloadState {
 /// In-progress gang roster being authored.
 #[derive(Resource, Clone, PartialEq, Debug)]
 pub struct GangDraft {
-    name: String,
-    members: Vec<GangMember>,
+    name:     String,
+    members:  Vec<GangMember>,
     autoload: AutoloadState,
 }
 
@@ -28,8 +28,8 @@ impl GangDraft {
     #[must_use]
     pub const fn new_gang() -> Self {
         Self {
-            name: String::new(),
-            members: Vec::new(),
+            name:     String::new(),
+            members:  Vec::new(),
             autoload: AutoloadState::Done,
         }
     }
@@ -78,17 +78,17 @@ impl GangDraft {
     /// Append a default member.
     pub fn add_member(&mut self) {
         self.members.push(GangMember {
-            name: GangerName::new(DEFAULT_MEMBER_NAME.to_owned()),
-            speed: default(),
-            aim: default(),
-            strength: default(),
-            toughness: default(),
-            reflexes: default(),
-            cool: default(),
-            grit: default(),
-            luck: default(),
-            armor: ArmorName::new(String::new()),
-            weapon: WeaponName::new(String::new()),
+            name:         GangerName::new(DEFAULT_MEMBER_NAME.to_owned()),
+            speed:        default(),
+            aim:          default(),
+            strength:     default(),
+            toughness:    default(),
+            reflexes:     default(),
+            cool:         default(),
+            grit:         default(),
+            luck:         default(),
+            armor:        ArmorName::new(String::new()),
+            weapon:       WeaponName::new(String::new()),
             melee_weapon: None,
         });
     }
@@ -107,8 +107,8 @@ impl GangDraft {
 impl Default for GangDraft {
     fn default() -> Self {
         Self {
-            name: String::new(),
-            members: Vec::new(),
+            name:     String::new(),
+            members:  Vec::new(),
             autoload: AutoloadState::Pending,
         }
     }

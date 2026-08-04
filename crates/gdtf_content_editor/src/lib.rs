@@ -27,9 +27,9 @@ mod session;
 mod sprite_form;
 mod state;
 mod terrain_form;
-mod theme_form;
 mod terrain_graphics;
 mod theme_dir;
+mod theme_form;
 mod validate;
 mod weapon_form;
 

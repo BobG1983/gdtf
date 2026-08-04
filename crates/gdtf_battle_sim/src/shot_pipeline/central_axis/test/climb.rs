@@ -68,7 +68,7 @@ fn climb_aim_dir_is_unit_length_for_arbitrary_inputs() {
         ),
         (
             SimPos::new(0.0, 0.0, 0.0),
-            SimPos::new(0.0, 0.0, 6.0), 
+            SimPos::new(0.0, 0.0, 6.0),
             PriorShots::new(2),
         ),
     ];

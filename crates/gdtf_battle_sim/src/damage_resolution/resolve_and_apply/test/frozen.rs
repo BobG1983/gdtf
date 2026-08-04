@@ -19,7 +19,7 @@ fn report_is_a_frozen_record_of_named_newtypes() {
         life_after: LifeState::Downed,
         wear:       ArmorWearOutcome::Broke(ArmorBroken::new(entity, BodyPart::Torso)),
     };
-    let applied_copy = applied; 
+    let applied_copy = applied;
     assert_eq!(
         applied, applied_copy,
         "AppliedDamage must be Copy + PartialEq"

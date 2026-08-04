@@ -56,7 +56,7 @@ fn setup_seeds_empty_inflicted_wounds_onto_each_ganger() {
         let record = q.get(world, entity);
         assert!(
             record.is_ok(),
-            "{who} must carry a seeded InflictedWounds component (GTW-279 AC2)",
+            "{who} must carry a seeded InflictedWounds component ",
         );
         assert!(
             record.is_ok_and(|r| r.is_empty()),

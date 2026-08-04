@@ -19,8 +19,8 @@ use crate::states::{
 
 #[derive(Resource, Debug, Clone)]
 pub(super) struct ProcgenStepperContext {
-            authored: Situation,
-        seed:     BattleSeed,
+    authored: Situation,
+    seed:     BattleSeed,
 }
 
 pub(super) fn engage_stepper(

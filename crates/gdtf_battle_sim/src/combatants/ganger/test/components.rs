@@ -8,7 +8,6 @@ use crate::{
     metric::{Cell, CellLevel, Level},
 };
 
-
 fn assert_independent<C: Component + Copy + PartialEq + core::fmt::Debug>(component: C) {
     let mut world = World::new();
     let id = world.spawn(component).id();
@@ -90,7 +89,6 @@ fn luck_inserts_and_queries_independently() {
     assert_independent(Luck::new(2.5));
 }
 
-
 #[test]
 fn attribute_stats_construct_and_read_back_via_deref() {
     let shooting = Shooting::new(2.5);
@@ -145,7 +143,6 @@ fn sibling_components_are_independently_queryable() {
     let mut tu_query = world.query::<&Tu>();
     assert_eq!(tu_query.get(&world, id), Ok(&Tu::new(25)));
 }
-
 
 #[test]
 fn defaults_are_the_documented_initial_values() {

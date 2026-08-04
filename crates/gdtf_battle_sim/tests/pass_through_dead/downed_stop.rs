@@ -9,7 +9,7 @@ use super::harness::*;
 #[test]
 fn downed_occupant_still_stops_the_round() {
     let mut world = World::new();
-    let mode = burst_mode(1); 
+    let mode = burst_mode(1);
     let shooter = spawn_shooter(&mut world, mode);
     let downed = line_ganger(&mut world, front_cell(), 4, LifeState::Downed);
     let behind = line_ganger(&mut world, behind_cell(), 6, LifeState::Alive);

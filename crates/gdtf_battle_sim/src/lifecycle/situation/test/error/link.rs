@@ -4,11 +4,11 @@ use super::super::support::*;
 #[test]
 fn setup_aborts_on_invalid_vertical_link() {
     let present = key(4, 4, 0);
-    let missing = key(4, 4, 1); 
+    let missing = key(4, 4, 1);
     let link = VerticalLink::new(present, missing, LinkKind::stair());
     let (situation, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
-        .slab_at(present) 
+        .slab_at(present)
         .vertical_link(link)
         .build_with_gangs();
 

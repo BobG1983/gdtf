@@ -1,3 +1,4 @@
+//! Camera pan: WASD moves the world camera and stays inside battlefield bounds.
 use bevy::{
     ecs::prelude::With,
     input::{ButtonInput, keyboard::KeyCode},

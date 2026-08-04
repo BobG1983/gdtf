@@ -9,8 +9,8 @@ use serde::Deserialize;
 
 #[derive(Deserialize, TypePath, Debug, PartialEq, Eq)]
 struct LoaderFixture {
-        label: String,
-            count: u32,
+    label: String,
+    count: u32,
 }
 
 const GOOD_FIXTURE_PATH: &str = "test/ron_loader_fixture.ron";

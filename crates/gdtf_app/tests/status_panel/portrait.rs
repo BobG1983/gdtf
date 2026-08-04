@@ -47,7 +47,6 @@ fn portrait_index(app: &mut App) -> Option<usize> {
         .and_then(|n| n.texture_atlas.as_ref().map(|a: &TextureAtlas| a.index))
 }
 
-
 #[test]
 fn portrait_index_is_deterministic_for_the_selected_ganger() {
     let mut app = load_battle_running_app();

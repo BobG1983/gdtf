@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
 
 /// Default effect used by a new injury draft.
 pub(crate) const DEFAULT_EFFECT: InjuryEffect = InjuryEffect::Modify {
-    stat: StatTarget::Speed,
+    stat:   StatTarget::Speed,
     amount: StatDelta::new(-1),
 };
 
@@ -24,22 +24,22 @@ pub(super) enum AutoloadState {
 
 fn seed_def() -> InjuryDef {
     InjuryDef {
-        name: InjuryName::new(String::new()),
-        category: InjuryCategory::Head,
-        severity: Severity::Minor,
-        popup_text: PopupText::new(String::new()),
-        log_text: LogText::new(String::new()),
+        name:         InjuryName::new(String::new()),
+        category:     InjuryCategory::Head,
+        severity:     Severity::Minor,
+        popup_text:   PopupText::new(String::new()),
+        log_text:     LogText::new(String::new()),
         inspect_text: InspectText::new(String::new()),
-        effects: vec![DEFAULT_EFFECT],
-        post_heal: PostHeal::Deferred,
+        effects:      vec![DEFAULT_EFFECT],
+        post_heal:    PostHeal::Deferred,
     }
 }
 
 /// In-progress injury being authored.
 #[derive(Resource, Clone, PartialEq, Debug)]
 pub struct InjuryDraft {
-    key: String,
-    def: InjuryDef,
+    key:      String,
+    def:      InjuryDef,
     autoload: AutoloadState,
 }
 
@@ -48,8 +48,8 @@ impl InjuryDraft {
     #[must_use]
     pub fn new_injury() -> Self {
         Self {
-            key: String::new(),
-            def: seed_def(),
+            key:      String::new(),
+            def:      seed_def(),
             autoload: AutoloadState::Done,
         }
     }
@@ -99,8 +99,8 @@ impl InjuryDraft {
 impl Default for InjuryDraft {
     fn default() -> Self {
         Self {
-            key: String::new(),
-            def: seed_def(),
+            key:      String::new(),
+            def:      seed_def(),
             autoload: AutoloadState::Pending,
         }
     }

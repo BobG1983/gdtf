@@ -17,10 +17,10 @@ pub enum PopAnchor {
 /// Text, color, weight, and anchor for one consequence pop.
 #[derive(Debug, Clone)]
 pub struct ConsequencePop {
-    text: CombatText,
-    color: Color,
+    text:     CombatText,
+    color:    Color,
     emphasis: FctEmphasis,
-    anchor: PopAnchor,
+    anchor:   PopAnchor,
 }
 
 impl ConsequencePop {

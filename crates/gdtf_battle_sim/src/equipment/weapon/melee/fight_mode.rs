@@ -54,7 +54,7 @@ impl Display for FightModeKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FightModeSpec {
     /// Kind.
-    pub kind: FightModeKind,
+    pub kind:    FightModeKind,
     /// TU cost.
     pub tu_cost: TuCost,
     /// Strikes.

@@ -9,5 +9,5 @@ pub struct ShotImpactResolved {
     /// Shooter entity that fired the round.
     pub shooter: Entity,
     /// Hit report if the round connected.
-    pub report: Option<HitReport>,
+    pub report:  Option<HitReport>,
 }

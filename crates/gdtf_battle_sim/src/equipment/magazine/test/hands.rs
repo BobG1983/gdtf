@@ -8,7 +8,6 @@ use crate::{
     weapon::{Handedness, MagazineSize},
 };
 
-
 #[test]
 fn two_handed_weapon_refused_below_two_hands() {
     let tuning = CombatTuning::default();

@@ -80,16 +80,16 @@ pub enum ContentFinding {
         /// Authoring context.
         referrer: FindingReferrer,
         /// Missing key.
-        target: FindingTarget,
+        target:   FindingTarget,
         /// Registry family.
-        family: FindingFamily,
+        family:   FindingFamily,
         /// Key scheme used.
-        scheme: ReferenceKeyScheme,
+        scheme:   ReferenceKeyScheme,
     },
     /// A single file failed to load; siblings may still be ok.
     MalformedFile {
         /// Path of the bad file.
-        path: FindingReferrer,
+        path:   FindingReferrer,
         /// Registry family.
         family: FindingFamily,
         /// Load error detail.
@@ -100,7 +100,7 @@ pub enum ContentFinding {
         /// Context of the fallback.
         context: FindingReferrer,
         /// Why fallback was used.
-        detail: FindingDetail,
+        detail:  FindingDetail,
     },
 }
 

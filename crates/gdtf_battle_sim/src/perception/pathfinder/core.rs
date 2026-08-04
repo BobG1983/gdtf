@@ -28,8 +28,8 @@ fn cell_key(cell: CellLevel) -> CellKey {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct FrontierNode {
     priority: PathCost,
-    cost: PathCost,
-    cell: CellLevel,
+    cost:     PathCost,
+    cell:     CellLevel,
 }
 
 impl Ord for FrontierNode {
@@ -51,12 +51,12 @@ pub(super) struct SearchGrids<'a, R>
 where
     R: Fn(Entity) -> FactionRelation,
 {
-    pub(super) grid: &'a OccupancyGrid,
-    pub(super) links: &'a VerticalLinkGraph,
-    pub(super) tuning: &'a CombatTuning,
+    pub(super) grid:        &'a OccupancyGrid,
+    pub(super) links:       &'a VerticalLinkGraph,
+    pub(super) tuning:      &'a CombatTuning,
     pub(super) floor_costs: &'a FloorCostGrid,
-    pub(super) factor: MovementCostFactor,
-    pub(super) planning: &'a PlanningView<'a, R>,
+    pub(super) factor:      MovementCostFactor,
+    pub(super) planning:    &'a PlanningView<'a, R>,
 }
 
 impl<R> SearchGrids<'_, R>
@@ -143,8 +143,8 @@ where
     field.prev.insert(start, None);
     frontier.push(Reverse(FrontierNode {
         priority: heuristic(start),
-        cost: PathCost::ZERO,
-        cell: start,
+        cost:     PathCost::ZERO,
+        cell:     start,
     }));
 
     while let Some(Reverse(node)) = frontier.pop() {
@@ -171,8 +171,8 @@ where
             field.prev.insert(neighbour, Some(node.cell));
             frontier.push(Reverse(FrontierNode {
                 priority: PathCost::new(*next_cost + *heuristic(neighbour)),
-                cost: next_cost,
-                cell: neighbour,
+                cost:     next_cost,
+                cell:     neighbour,
             }));
         }
     }

@@ -33,15 +33,15 @@ pub trait HostLifecycle {
 }
 
 struct RunningChild {
-    child: Box<dyn ManagedChild>,
-    port: QaPort,
+    child:  Box<dyn ManagedChild>,
+    port:   QaPort,
     recipe: LaunchSpec,
 }
 
 /// Default host lifecycle implementation.
 pub struct HostManager {
     spawner: Box<dyn ChildSpawner>,
-    config: LifecycleConfig,
+    config:  LifecycleConfig,
     running: Option<RunningChild>,
     orphans: Box<dyn OrphanWatch>,
 }
@@ -136,8 +136,8 @@ impl HostLifecycle for HostManager {
                 )));
             }
             return LaunchOutcome::AlreadyRunning {
-                port: running.port,
-                pid: running.child.pid(),
+                port:   running.port,
+                pid:    running.child.pid(),
                 recipe: Box::new(running.recipe.clone()),
             };
         }

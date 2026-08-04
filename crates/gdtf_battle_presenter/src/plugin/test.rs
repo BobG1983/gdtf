@@ -55,13 +55,13 @@ fn mode_switch_selects_the_named_renderer_branch() {
 
 #[test]
 fn draw_stages_run_scene_then_compose_then_overlay() {
-        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
     enum StageTag {
         Scene,
         Compose,
         Overlay,
     }
-        #[derive(Resource, Default)]
+    #[derive(Resource, Default)]
     struct RunOrder(Vec<StageTag>);
 
     let mut app = App::new();

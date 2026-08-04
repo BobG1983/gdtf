@@ -71,17 +71,17 @@ pub struct InBounds(bool);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FireActor<'a> {
     /// Life state.
-    pub life: &'a LifeState,
+    pub life:            &'a LifeState,
     /// Current TU.
-    pub tu: &'a Tu,
+    pub tu:              &'a Tu,
     /// Max TU.
-    pub tu_max: &'a TuMax,
+    pub tu_max:          &'a TuMax,
     /// Aiming flag.
-    pub aiming: &'a Aiming,
+    pub aiming:          &'a Aiming,
     /// Magazine.
-    pub magazine: &'a Magazine,
+    pub magazine:        &'a Magazine,
     /// Weapon handedness.
-    pub handedness: Handedness,
+    pub handedness:      Handedness,
     /// Available hands.
     pub hands_available: HandsAvailable,
 }

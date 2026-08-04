@@ -9,9 +9,9 @@ use super::deadline::{DEADLINE_BUDGET, DeadlineTick, FrameDeadline};
 use crate::channel::Responder;
 
 struct Pending<P> {
-    payload: P,
+    payload:   P,
     responder: Responder,
-    deadline: FrameDeadline,
+    deadline:  FrameDeadline,
 }
 
 impl<P> Pending<P> {

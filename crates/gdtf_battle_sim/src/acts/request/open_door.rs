@@ -8,7 +8,7 @@ pub struct OpenDoorRequested {
     /// Actor.
     pub actor: Entity,
     /// Door entity.
-    pub door: Entity,
+    pub door:  Entity,
 }
 
 impl OpenDoorRequested {

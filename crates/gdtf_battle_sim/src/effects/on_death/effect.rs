@@ -16,9 +16,9 @@ pub enum OnDeathEffect {
     /// Explosion at the death cell.
     Explode {
         /// Hit geometry.
-        hit_type: HitType,
+        hit_type:    HitType,
         /// Damage amount.
-        damage: ExplodeDamage,
+        damage:      ExplodeDamage,
         /// Damage channel.
         damage_type: DamageType,
     },

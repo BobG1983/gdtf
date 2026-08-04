@@ -16,22 +16,22 @@ use crate::{SelectedShooter, selection::cell_order_key};
 /// Message writers for sim act requests.
 #[derive(SystemParam)]
 pub struct ActWriters<'w> {
-    pub(super) fire: MessageWriter<'w, FireRequested>,
+    pub(super) fire:     MessageWriter<'w, FireRequested>,
     pub(super) movement: MessageWriter<'w, MoveRequested>,
-    pub(super) stance: MessageWriter<'w, SetStanceRequested>,
-    pub(super) aiming: MessageWriter<'w, SetAimingRequested>,
-    pub(super) facing: MessageWriter<'w, SetFacingRequested>,
-    pub(super) reload: MessageWriter<'w, ReloadRequested>,
+    pub(super) stance:   MessageWriter<'w, SetStanceRequested>,
+    pub(super) aiming:   MessageWriter<'w, SetAimingRequested>,
+    pub(super) facing:   MessageWriter<'w, SetFacingRequested>,
+    pub(super) reload:   MessageWriter<'w, ReloadRequested>,
     pub(super) end_turn: MessageWriter<'w, EndTurnRequested>,
 }
 
 /// Queries used when cycling or validating player selection.
 #[derive(SystemParam)]
 pub struct SelectionCycleReads<'w, 's> {
-    player: Option<Res<'w, PlayerFaction>>,
-    gangers: Query<'w, 's, (Entity, &'static Faction, &'static Position)>,
+    player:   Option<Res<'w, PlayerFaction>>,
+    gangers:  Query<'w, 's, (Entity, &'static Faction, &'static Position)>,
     factions: Query<'w, 's, &'static Faction>,
-    lifes: Query<'w, 's, &'static LifeState>,
+    lifes:    Query<'w, 's, &'static LifeState>,
 }
 
 impl SelectionCycleReads<'_, '_> {

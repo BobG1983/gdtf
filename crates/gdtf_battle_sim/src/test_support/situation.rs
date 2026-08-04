@@ -49,7 +49,7 @@ pub const fn wall_at(at: CellLevel) -> CoverSpawn {
 #[derive(Debug, Clone, Default)]
 pub struct SituationBuilder {
     situation: Situation,
-    gangers: Vec<GangerSpawn>,
+    gangers:   Vec<GangerSpawn>,
 }
 
 impl SituationBuilder {

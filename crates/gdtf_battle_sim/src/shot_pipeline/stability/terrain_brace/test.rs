@@ -24,11 +24,10 @@ fn surface_with_slabs(present: &[CellLevel]) -> SurfaceGrid {
     grid
 }
 
-
 #[test]
 fn kneeling_on_brace_stair_under_present_slab_braces() {
     let stair = cl(3, 4, 0);
-    let overhead_slab = cl(3, 4, 1); 
+    let overhead_slab = cl(3, 4, 1);
     let brace = brace_cells(&[stair]);
     let surface = surface_with_slabs(&[overhead_slab]);
     let pos = Position::new(stair);
@@ -39,7 +38,6 @@ fn kneeling_on_brace_stair_under_present_slab_braces() {
         "kneeling on a brace stair under a Present slab must earn the terrain brace",
     );
 }
-
 
 #[test]
 fn standing_does_not_brace() {
@@ -71,7 +69,6 @@ fn prone_does_not_brace() {
     );
 }
 
-
 #[test]
 fn destroyed_overhead_slab_revokes_brace() {
     let stair = cl(3, 4, 0);
@@ -88,7 +85,6 @@ fn destroyed_overhead_slab_revokes_brace() {
         "a Destroyed overhead slab must revoke the terrain brace (C4)",
     );
 }
-
 
 #[test]
 fn non_stair_cell_no_brace() {
@@ -119,16 +115,15 @@ fn absent_overhead_slab_no_brace() {
     );
 }
 
-
 #[test]
 fn upper_stair_endpoint_does_not_brace() {
-    let lower = cl(2, 3, 0); 
-    let upper = cl(2, 3, 2); 
+    let lower = cl(2, 3, 0);
+    let upper = cl(2, 3, 2);
 
     let brace = brace_cells(&[lower]);
 
-    let overhead_lower = cl(2, 3, 1); 
-    let overhead_upper = cl(2, 3, 3); 
+    let overhead_lower = cl(2, 3, 1);
+    let overhead_upper = cl(2, 3, 3);
     let surface = surface_with_slabs(&[overhead_lower, overhead_upper]);
 
     let result_lower = terrain_braces(
@@ -154,7 +149,6 @@ fn upper_stair_endpoint_does_not_brace() {
     );
 }
 
-
 #[test]
 fn cell_above_top_storey_is_none() {
     let top = cl(0, 0, MAX_LEVELS - 1);
@@ -174,7 +168,6 @@ fn cell_above_non_top_storey() {
         "cell_above must return (x, y, z+1) for a non-top storey",
     );
 }
-
 
 #[test]
 fn terrain_braced_true_matches_stable_true_in_deref() {

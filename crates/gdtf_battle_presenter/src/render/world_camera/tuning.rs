@@ -61,9 +61,9 @@ impl Default for BoundsMarginWorld {
 #[serde(default)]
 pub struct PanTuning {
     /// Pixel width of the screen-edge pan band.
-    pub edge_band_px: EdgeBandPx,
+    pub edge_band_px:        EdgeBandPx,
     /// World units per second when panning at full stick/key.
-    pub pan_speed: PanSpeed,
+    pub pan_speed:           PanSpeed,
     /// Cursor dwell before edge pan engages.
     pub dwell_delay_seconds: DwellDelaySeconds,
     /// Extra world margin past map edges.

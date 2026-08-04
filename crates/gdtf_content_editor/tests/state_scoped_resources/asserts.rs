@@ -91,88 +91,88 @@ pub(crate) fn assert_all_scoped_resources_seeded(app: &App) {
     assert_eq!(
         world.get_resource::<EditorMode>(),
         Some(&EditorMode::default()),
-        "EditorMode seeds to the default Prefab mode (GTW-474)",
+        "EditorMode seeds to the default Prefab mode ",
     );
     assert_eq!(
         world.get_resource::<EditorMap>(),
         Some(&EditorMap::new()),
-        "EditorMap seeds empty (GTW-426)",
+        "EditorMap seeds empty ",
     );
     assert_eq!(
         world.get_resource::<CurrentEditLevel>(),
         Some(&CurrentEditLevel::ground()),
-        "CurrentEditLevel seeds to the ground storey (GTW-500 C1)",
+        "CurrentEditLevel seeds to the ground storey ",
     );
     assert_eq!(
         world.get_resource::<CanvasZoom>(),
         Some(&CanvasZoom::identity()),
-        "CanvasZoom seeds to the unzoomed identity (GTW-500 C3)",
+        "CanvasZoom seeds to the unzoomed identity ",
     );
     assert_eq!(
         world.get_resource::<TerrainDraft>(),
         Some(&TerrainDraft::default()),
-        "TerrainDraft seeds to a fresh default draft (GTW-474)",
+        "TerrainDraft seeds to a fresh default draft ",
     );
     assert_eq!(
         world.get_resource::<HoveredCell>(),
         Some(&HoveredCell::new()),
-        "HoveredCell seeds empty — nothing hovered (GTW-512 C1.5)",
+        "HoveredCell seeds empty — nothing hovered (C1.5)",
     );
     assert_eq!(
         world.get_resource::<PreviewPan>(),
         Some(&PreviewPan::origin()),
-        "PreviewPan seeds to the origin (GTW-515 C4.8)",
+        "PreviewPan seeds to the origin (C4.8)",
     );
     assert_eq!(
         world.get_resource::<ViewMode>(),
         Some(&ViewMode::default()),
-        "ViewMode seeds to the default DownToActive (GTW-532)",
+        "ViewMode seeds to the default DownToActive ",
     );
     assert_eq!(
         world.get_resource::<IsolateView>(),
         Some(&IsolateView::On(ContextDepth::new(1))),
-        "IsolateView seeds ON with one onion storey below — the GTW-594 editor default \
+        "IsolateView seeds ON with one onion storey below — the editor default \
          (the battlescape's own init_resource default stays Off)",
     );
     assert_eq!(
         world.get_resource::<GangDraft>(),
         Some(&GangDraft::default()),
-        "GangDraft seeds to the pristine autoload-pending form (GTW-636)",
+        "GangDraft seeds to the pristine autoload-pending form ",
     );
     assert_eq!(
         world.get_resource::<ArmorDraft>(),
         Some(&ArmorDraft::default()),
-        "ArmorDraft seeds to the pristine autoload-pending form (GTW-479)",
+        "ArmorDraft seeds to the pristine autoload-pending form ",
     );
     assert_eq!(
         world.get_resource::<InjuryDraft>(),
         Some(&InjuryDraft::default()),
-        "InjuryDraft seeds to the pristine autoload-pending form (GTW-654)",
+        "InjuryDraft seeds to the pristine autoload-pending form ",
     );
     assert_eq!(
         world.get_resource::<WeightingDraft>(),
         Some(&WeightingDraft::default()),
-        "WeightingDraft seeds to the pristine autoload-pending form (GTW-654 C2)",
+        "WeightingDraft seeds to the pristine autoload-pending form ",
     );
     assert_eq!(
         world.get_resource::<SpriteDraft>(),
         Some(&SpriteDraft::default()),
-        "SpriteDraft seeds to the pristine autoload-pending form (GTW-664)",
+        "SpriteDraft seeds to the pristine autoload-pending form ",
     );
     assert_eq!(
         world.get_resource::<AttachmentDraft>(),
         Some(&AttachmentDraft::default()),
-        "AttachmentDraft seeds to the pristine autoload-pending form (GTW-669)",
+        "AttachmentDraft seeds to the pristine autoload-pending form ",
     );
     assert_eq!(
         world.get_resource::<WeaponDraft>(),
         Some(&WeaponDraft::default()),
-        "WeaponDraft seeds to the pristine autoload-pending form (GTW-670)",
+        "WeaponDraft seeds to the pristine autoload-pending form ",
     );
     assert_eq!(
         world.get_resource::<MeleeWeaponDraft>(),
         Some(&MeleeWeaponDraft::default()),
-        "MeleeWeaponDraft seeds to the pristine autoload-pending form (GTW-671)",
+        "MeleeWeaponDraft seeds to the pristine autoload-pending form ",
     );
     assert_minted_seeds(world);
 }

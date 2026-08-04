@@ -14,7 +14,7 @@ use load_suite::suite::{self, FamilyLoadContract};
 const LOAD_SAFETY_NET: u32 = 10_000;
 
 impl FamilyLoadContract for WeaponsFamily {
-        const EXPECTED_MEMBERS: &'static [&'static str] = &["stub_pistol", "las_carbine"];
+    const EXPECTED_MEMBERS: &'static [&'static str] = &["stub_pistol", "las_carbine"];
 
     fn is_empty(registry: &WeaponRegistry) -> bool {
         registry.is_empty()

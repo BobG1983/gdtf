@@ -30,7 +30,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 fn grenade_spec(radius: u8) -> WeaponSpec {
     WeaponSpec {
         base_spread: BaseSpread::new(0.2),

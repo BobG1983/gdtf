@@ -4,7 +4,7 @@ use super::support::*;
 fn enemy_never_routes_through_a_downed_friendly() {
     use crate::occupancy::TerrainKind;
 
-    const ENEMY_GANG: u8 = 9; 
+    const ENEMY_GANG: u8 = 9;
 
     let mut app = headless_app();
     app.add_plugins(OccupancyMaintenancePlugin);
@@ -45,7 +45,7 @@ fn enemy_never_routes_through_a_downed_friendly() {
             .get_resource::<OccupancyGrid>()
             .and_then(|g| g.occupant(&downed_cell)),
         Some(friendly),
-        "the downed friendly must STILL occupy its cell (GTW-459 C1) — the precondition \
+        "the downed friendly must STILL occupy its cell — the precondition \
          for this regression test",
     );
 
@@ -64,14 +64,14 @@ fn enemy_never_routes_through_a_downed_friendly() {
             app.world().get::<Position>(enemy).copied(),
             Some(Position::new(downed_cell)),
             "the enemy must NEVER write a Position onto the downed friendly's cell \
-             (GTW-459 C4) — it routed through / onto the downed body",
+              — it routed through / onto the downed body",
         );
     }
 
     assert!(
         saw_unreachable,
         "the planner must refuse to route through the downed body — a \
-         MoveRejection::Unreachable is expected (GTW-459 C4); had Downed freed its cell, \
+         MoveRejection::Unreachable is expected; had Downed freed its cell, \
          find_path would have routed (10,10)->(11,10)->(12,10) instead",
     );
     assert_eq!(
@@ -80,6 +80,6 @@ fn enemy_never_routes_through_a_downed_friendly() {
             Cell::new(10, 10),
             Level::new(0)
         ))),
-        "the enemy stays at its start cell — no route through the downed body (GTW-459)",
+        "the enemy stays at its start cell — no route through the downed body ",
     );
 }

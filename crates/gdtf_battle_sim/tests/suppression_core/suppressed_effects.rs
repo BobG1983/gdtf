@@ -47,7 +47,6 @@ fn seed_cover(app: &mut App, cell: CellLevel, entry: CoverEntry) {
     ledger.insert(cell, entry);
 }
 
-
 #[test]
 fn suppressed_reactor_consumes_zero_reaction_rng_draws() {
     let fresh_first_draw = reaction_rng(SEED).next_u64();
@@ -70,7 +69,7 @@ fn suppressed_reactor_consumes_zero_reaction_rng_draws() {
             app.world_mut().entity_mut(watcher).insert(Suppressed::new(
                 gdtf_battle_sim::ganger::SuppressorCell::new(ground(6, 5)),
             ));
-            step(&mut app, 1); 
+            step(&mut app, 1);
         }
         let mode = wielded_single_mode(&mut app, actor);
         app.world_mut().write_message(FireRequested::new(
@@ -120,7 +119,6 @@ fn suppressed_reactor_consumes_zero_reaction_rng_draws() {
          suppressed watcher never fires, so its TU is higher ({supp_tu})",
     );
 }
-
 
 #[test]
 fn suppression_clears_at_the_suppressed_units_own_turn_start() {
@@ -175,13 +173,12 @@ fn suppression_clears_at_the_suppressed_units_own_turn_start() {
     );
 }
 
-
 #[test]
 fn auto_stance_drops_behind_cover_without_charging_tu() {
     let run = |cover: Option<CoverEntry>| -> (Option<StanceKind>, Option<u8>) {
         let mut app = battle_app(0);
         let unit_cell = ground(8, 5);
-        let cover_cell = ground(7, 5); 
+        let cover_cell = ground(7, 5);
         let situation = SituationBuilder::new()
             .with_gangers([
                 ganger(unit_cell, PLAYER, Direction::East),

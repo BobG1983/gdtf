@@ -83,7 +83,7 @@ pub struct VerticalLink {
     /// Origin cell.
     pub from: CellLevel,
     /// Destination cell.
-    pub to: CellLevel,
+    pub to:   CellLevel,
     /// Stair or ladder, and directionality.
     pub kind: LinkKind,
 }

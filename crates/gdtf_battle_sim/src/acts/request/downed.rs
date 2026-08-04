@@ -6,7 +6,7 @@ use bevy::prelude::{Entity, Message};
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StabilizeDownedRequested {
     /// Actor performing the action.
-    pub actor: Entity,
+    pub actor:  Entity,
     /// Downed target.
     pub target: Entity,
 }
@@ -23,7 +23,7 @@ impl StabilizeDownedRequested {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ExecuteDownedRequested {
     /// Actor performing the action.
-    pub actor: Entity,
+    pub actor:  Entity,
     /// Downed target.
     pub target: Entity,
 }

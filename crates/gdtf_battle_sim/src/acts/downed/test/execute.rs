@@ -3,7 +3,6 @@ use super::support::{
     execute_downed, execute_pass, pos,
 };
 
-
 #[test]
 fn can_execute_true_for_the_canonical_enemy_setup() {
     let (a, t) = execute_pass();
@@ -70,7 +69,6 @@ fn can_execute_ignores_bleeding_out_condition() {
     );
 }
 
-
 #[test]
 fn execute_downed_kills_the_target() {
     let (a, t) = execute_pass();
@@ -86,7 +84,6 @@ fn execute_downed_kills_the_target() {
         "execute_downed must transition the target outright to Dead",
     );
 }
-
 
 #[test]
 fn execute_act_iff_predicate_both_directions() {

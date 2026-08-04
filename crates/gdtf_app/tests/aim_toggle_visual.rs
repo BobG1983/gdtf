@@ -1,3 +1,4 @@
+//! Aim toggle: button active state tracks the selected shooter's aiming mode.
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{AimToggleButton, AppState, BattleScapeState, RunningState};
 use gdtf_battle_input::SelectedShooter;
@@ -12,7 +13,6 @@ use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{SwitchState, theme::default_theme};
 
 const BUDGET: u32 = 96;
-
 
 fn battlescape_state(app: &App) -> Option<BattleScapeState> {
     app.world()
@@ -112,7 +112,6 @@ fn spawn_and_select(app: &mut App, faction: Faction, aiming: bool) -> Entity {
         .insert_resource(SelectedShooter::new(ganger));
     ganger
 }
-
 
 #[test]
 fn aim_button_active_follows_selected_ganger_aiming() {

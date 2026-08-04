@@ -151,7 +151,7 @@ fn theme_def_round_trips_through_the_loader_parser() {
     let reloaded = ron::de::from_str::<UuidThemeDef>(&serialized);
     assert!(
         reloaded.is_ok(),
-        "the serialized def must round-trip through the UuidThemeDef deserializer (the GTW-487 \
+        "the serialized def must round-trip through the UuidThemeDef deserializer (the \
          theme loader's parser): {:?}",
         reloaded.as_ref().err(),
     );
@@ -188,7 +188,7 @@ fn validate_enforces_default_floor_in_terrain() {
     let mut stray = ThemeDraft::new_theme();
     stray.set_display_name("Hive".to_owned());
     stray.toggle_terrain(slab);
-    stray.set_default_floor(wall); 
+    stray.set_default_floor(wall);
     assert_eq!(
         stray.default_floor(),
         None,

@@ -29,27 +29,27 @@ impl GangName {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GangMember {
     /// Display name.
-    pub name: GangerName,
+    pub name:         GangerName,
     /// Speed attribute.
-    pub speed: Speed,
+    pub speed:        Speed,
     /// Aim attribute.
-    pub aim: Aim,
+    pub aim:          Aim,
     /// Strength attribute.
-    pub strength: Strength,
+    pub strength:     Strength,
     /// Toughness attribute.
-    pub toughness: Toughness,
+    pub toughness:    Toughness,
     /// Reflexes attribute.
-    pub reflexes: Reflexes,
+    pub reflexes:     Reflexes,
     /// Cool attribute.
-    pub cool: Cool,
+    pub cool:         Cool,
     /// Grit attribute.
-    pub grit: Grit,
+    pub grit:         Grit,
     /// Luck attribute.
-    pub luck: Luck,
+    pub luck:         Luck,
     /// Armor loadout key.
-    pub armor: ArmorName,
+    pub armor:        ArmorName,
     /// Primary weapon key.
-    pub weapon: WeaponName,
+    pub weapon:       WeaponName,
     /// Optional melee weapon key.
     #[serde(default)]
     pub melee_weapon: Option<WeaponName>,
@@ -60,14 +60,14 @@ impl GangMember {
     #[must_use]
     pub const fn attributes(&self) -> crate::ganger::GangerAttributes {
         crate::ganger::GangerAttributes {
-            speed: self.speed,
-            aim: self.aim,
-            strength: self.strength,
+            speed:     self.speed,
+            aim:       self.aim,
+            strength:  self.strength,
             toughness: self.toughness,
-            reflexes: self.reflexes,
-            cool: self.cool,
-            grit: self.grit,
-            luck: self.luck,
+            reflexes:  self.reflexes,
+            cool:      self.cool,
+            grit:      self.grit,
+            luck:      self.luck,
         }
     }
 }

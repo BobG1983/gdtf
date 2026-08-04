@@ -10,7 +10,7 @@ pub struct OnDeathOccurred {
     /// Entity that died (placeholder for cover).
     pub entity: Entity,
     /// Cell where death happened.
-    pub at: CellLevel,
+    pub at:     CellLevel,
 }
 
 impl OnDeathOccurred {

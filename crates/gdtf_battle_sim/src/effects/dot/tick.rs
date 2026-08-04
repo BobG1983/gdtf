@@ -23,7 +23,7 @@ pub struct DotTicked {
     /// Ganger entity.
     pub ganger: Entity,
     /// Cell where the tick happened.
-    pub at: CellLevel,
+    pub at:     CellLevel,
     /// Damage dealt this tick.
     pub amount: DotDamage,
 }

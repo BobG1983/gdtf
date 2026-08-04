@@ -62,7 +62,7 @@ impl DamageApplied {
 /// Authoritative surface state: slab presence and ground damage.
 #[derive(Resource, Debug, Clone, Default)]
 pub struct SurfaceGrid {
-    slabs: HashMap<CellLevel, SlabState>,
+    slabs:  HashMap<CellLevel, SlabState>,
     ground: HashMap<Cell, GroundDamage>,
 }
 
@@ -71,7 +71,7 @@ impl SurfaceGrid {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            slabs: HashMap::default(),
+            slabs:  HashMap::default(),
             ground: HashMap::default(),
         }
     }

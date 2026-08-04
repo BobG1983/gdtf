@@ -98,10 +98,9 @@ pub(crate) fn is_walking(app: &App, entity: Entity) -> bool {
     app.world().get::<WalkInProgress>(entity).is_some()
 }
 
-
 #[derive(Resource, Default)]
 pub(crate) struct ShotLog {
-            rounds: Vec<(Entity, bool)>,
+    rounds: Vec<(Entity, bool)>,
 }
 
 pub(crate) fn record_shots(

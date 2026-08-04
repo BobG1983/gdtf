@@ -9,8 +9,8 @@ use gdtf_battle_sim::{
 const fn seed_spec() -> AttachmentSpec {
     AttachmentSpec {
         display_name: WeaponName::new(String::new()),
-        slot: AttachmentSlot::Muzzle,
-        effects: Vec::new(),
+        slot:         AttachmentSlot::Muzzle,
+        effects:      Vec::new(),
     }
 }
 
@@ -23,8 +23,8 @@ enum AutoloadState {
 /// In-progress attachment being authored.
 #[derive(Resource, Clone, PartialEq, Debug)]
 pub struct AttachmentDraft {
-    name: String,
-    spec: AttachmentSpec,
+    name:     String,
+    spec:     AttachmentSpec,
     autoload: AutoloadState,
 }
 
@@ -33,8 +33,8 @@ impl AttachmentDraft {
     #[must_use]
     pub const fn new_attachment() -> Self {
         Self {
-            name: String::new(),
-            spec: seed_spec(),
+            name:     String::new(),
+            spec:     seed_spec(),
             autoload: AutoloadState::Done,
         }
     }
@@ -83,8 +83,8 @@ impl AttachmentDraft {
 impl Default for AttachmentDraft {
     fn default() -> Self {
         Self {
-            name: String::new(),
-            spec: seed_spec(),
+            name:     String::new(),
+            spec:     seed_spec(),
             autoload: AutoloadState::Pending,
         }
     }

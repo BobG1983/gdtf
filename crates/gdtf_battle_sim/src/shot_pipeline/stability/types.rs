@@ -10,22 +10,22 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct StabilityTerms {
     /// Weapon is inherently stable (bipod etc).
-    pub stable: Stable,
+    pub stable:         Stable,
     /// Shooter is braced against terrain.
     pub terrain_braced: TerrainBraced,
     /// Attachment brace bonus.
-    pub brace_bonus: WeaponBraceBonus,
+    pub brace_bonus:    WeaponBraceBonus,
     /// Emplacement contribution.
-    pub emplacement: EmplacementStability,
+    pub emplacement:    EmplacementStability,
 }
 
 impl Default for StabilityTerms {
     fn default() -> Self {
         Self {
-            stable: Stable::new(false),
+            stable:         Stable::new(false),
             terrain_braced: TerrainBraced::new(false),
-            brace_bonus: WeaponBraceBonus::none(),
-            emplacement: EmplacementStability::none(),
+            brace_bonus:    WeaponBraceBonus::none(),
+            emplacement:    EmplacementStability::none(),
         }
     }
 }

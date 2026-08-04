@@ -1,4 +1,4 @@
-//! GTW-651 C3(c): the GANG mode's own SAVE path feeds the authoring-validation
+//! the GANG mode's own SAVE path feeds the authoring-validation
 use bevy::asset::AssetServer;
 use gdtf_assets::{ContentFamily, ContentIntegrityReport};
 use gdtf_battle_sim::weapon::WeaponName;

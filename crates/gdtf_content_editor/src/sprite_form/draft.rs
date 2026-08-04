@@ -10,12 +10,12 @@ const SEED_FPS: SpriteFps = SpriteFps::new(1.0);
 
 const fn seed_def() -> SpriteDef {
     SpriteDef {
-        source: SpriteSource::File(SpriteImagePath::new(String::new())),
-        anchor: SpriteAnchor {
+        source:    SpriteSource::File(SpriteImagePath::new(String::new())),
+        anchor:    SpriteAnchor {
             x: SpritePx::new(0),
             y: SpritePx::new(0),
         },
-        facings: None,
+        facings:   None,
         animation: None,
     }
 }
@@ -29,8 +29,8 @@ enum AutoloadState {
 /// In-progress sprite being authored.
 #[derive(Resource, Clone, PartialEq, Debug)]
 pub struct SpriteDraft {
-    name: String,
-    def: SpriteDef,
+    name:     String,
+    def:      SpriteDef,
     autoload: AutoloadState,
 }
 
@@ -39,8 +39,8 @@ impl SpriteDraft {
     #[must_use]
     pub const fn new_sprite() -> Self {
         Self {
-            name: String::new(),
-            def: seed_def(),
+            name:     String::new(),
+            def:      seed_def(),
             autoload: AutoloadState::Done,
         }
     }
@@ -132,7 +132,7 @@ impl SpriteDraft {
     pub fn enable_animation(&mut self) {
         if self.def.animation.is_none() {
             self.def.animation = Some(SpriteAnimation {
-                fps: SEED_FPS,
+                fps:    SEED_FPS,
                 frames: vec![self.def.source.clone()],
             });
         }
@@ -201,8 +201,8 @@ impl SpriteDraft {
 impl Default for SpriteDraft {
     fn default() -> Self {
         Self {
-            name: String::new(),
-            def: seed_def(),
+            name:     String::new(),
+            def:      seed_def(),
             autoload: AutoloadState::Pending,
         }
     }

@@ -3,13 +3,13 @@ use crate::{ganger::Tu, occupancy::TerrainKind};
 
 #[test]
 fn cell_at_budget_included_one_step_over_excluded() {
-    let grid = grid_with(&[]); 
+    let grid = grid_with(&[]);
     let links = no_links();
     let tuning = tuning();
     let start = cell(5, 5, 0);
 
     let open = u16::from(*tuning.move_costs.open);
-    let within = open * 5; 
+    let within = open * 5;
 
     #[expect(
         clippy::cast_possible_truncation,
@@ -41,7 +41,7 @@ fn cell_at_budget_included_one_step_over_excluded() {
 
 #[test]
 fn every_reachable_cell_is_within_budget() {
-    let grid = grid_with(&[(cell(7, 5, 0), TerrainKind::Wall)]); 
+    let grid = grid_with(&[(cell(7, 5, 0), TerrainKind::Wall)]);
     let links = no_links();
     let tuning = tuning();
     let start = cell(5, 5, 0);

@@ -86,7 +86,7 @@ fn the_lethal_tick_emits_bleeding_and_flips_to_dead() {
 #[test]
 fn a_dead_bled_out_ganger_is_skipped_next_tick() {
     let rate = bleed_rate();
-    let start = rate; 
+    let start = rate;
 
     let mut app = bleed_app();
     let ganger = app

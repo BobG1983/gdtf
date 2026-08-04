@@ -1,3 +1,4 @@
+//! Fire target GPU readback: highlighted cell renders red; cleared cell is dark.
 use std::{
     path::PathBuf,
     sync::{Mutex, MutexGuard},
@@ -33,8 +34,8 @@ const MAX_READBACK_UPDATES: usize = 60;
 
 #[derive(Resource, Default, Clone, Copy)]
 struct CapturedPixel {
-        captured: bool,
-        rgba:     [u8; 4],
+    captured: bool,
+    rgba:     [u8; 4],
 }
 
 static GPU_LOCK: Mutex<()> = Mutex::new(());

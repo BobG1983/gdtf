@@ -83,8 +83,8 @@ impl FctEmphasis {
 /// Component driving rise and fade of a floating combat text entity.
 #[derive(Component, Debug, Clone)]
 pub struct FloatingCombatText {
-    rise: FctRiseRate,
-    ttl: Timer,
+    rise:       FctRiseRate,
+    ttl:        Timer,
     base_alpha: f32,
 }
 

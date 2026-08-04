@@ -11,7 +11,6 @@ use crate::{
 };
 
 pub(crate) fn register_load(app: &mut App) {
-
     app.register_content_family::<WeaponsFamily>();
     app.register_content_family::<ArmorFamily>();
     app.register_content_family::<TerrainDefsFamily>();

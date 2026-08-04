@@ -60,7 +60,6 @@ fn install_torso_injury_content(app: &mut App) {
     ]));
 }
 
-
 #[test]
 fn fall_drops_hp_fires_injury_and_damage_is_monotone_in_storeys() {
     let per_storey = PerStoreyDamage::new(6);
@@ -95,7 +94,6 @@ fn fall_drops_hp_fires_injury_and_damage_is_monotone_in_storeys() {
     );
 }
 
-
 #[test]
 fn falls_are_deterministic_under_same_seed() {
     let run = || -> (u8, u16, u8) {
@@ -125,7 +123,6 @@ fn falls_are_deterministic_under_same_seed() {
         "same seed + same event order must yield identical fall outcomes"
     );
 }
-
 
 #[test]
 fn hot_edit_per_storey_damage_changes_fall_damage() {

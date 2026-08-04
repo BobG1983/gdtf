@@ -89,9 +89,9 @@ impl BleedAfflicted {
 /// All active injuries and the accumulated effects they produce.
 #[derive(Component, Debug, Clone, PartialEq, Default)]
 pub struct InflictedInjuries {
-    gained: Vec<GainedInjury>,
-    deltas: StatDeltaLedger,
-    bleed: BleedAfflicted,
+    gained:   Vec<GainedInjury>,
+    deltas:   StatDeltaLedger,
+    bleed:    BleedAfflicted,
     movement: MovementCostFactor,
 }
 
@@ -99,8 +99,8 @@ impl InflictedInjuries {
     /// Apply a new injury and fold its effects into the ledgers.
     pub fn gain(&mut self, record: GainedInjury) {
         let mut accumulators = LedgerAccumulators {
-            deltas: &mut self.deltas,
-            bleed: &mut self.bleed,
+            deltas:   &mut self.deltas,
+            bleed:    &mut self.bleed,
             movement: &mut self.movement,
         };
         for effect in &record.effects {

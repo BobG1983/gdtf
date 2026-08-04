@@ -15,7 +15,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 const AC6_WIN_W: u32 = 1600;
 const AC6_WIN_H: u32 = 1200;
 const AC6_SCALE: f32 = 2.0;

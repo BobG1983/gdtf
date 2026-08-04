@@ -118,10 +118,9 @@ fn reachable_within_is_byte_identical_across_replays() {
     );
 }
 
-
 #[test]
 fn hampered_route_steps_are_scaled_and_sum_to_total() {
-    let grid = grid_with(&[]); 
+    let grid = grid_with(&[]);
     let tuning = tuning();
     let Some(links) = links_graph(&[]) else {
         return;

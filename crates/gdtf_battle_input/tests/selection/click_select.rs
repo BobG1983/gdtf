@@ -8,7 +8,6 @@ use gdtf_test_utils::press_left;
 
 use super::harness::*;
 
-
 #[test]
 fn plugin_init_resources_the_selection_substrate() {
     let mut app = App::new();
@@ -27,7 +26,6 @@ fn plugin_init_resources_the_selection_substrate() {
         "PendingActIntent must be init_resource-d and start empty",
     );
 }
-
 
 #[test]
 fn left_click_on_occupied_cell_selects_the_occupant() {

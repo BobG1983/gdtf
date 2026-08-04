@@ -27,15 +27,14 @@ pub(crate) const fn column_cell() -> Cell {
 
 pub(crate) const SEED: u64 = 0x0523_FA11_DEAD_BEEF;
 
-
 #[derive(Resource, Default)]
 pub(crate) struct FallLog {
-        falls: Vec<FallOccurred>,
+    falls: Vec<FallOccurred>,
 }
 
 #[derive(Resource, Default)]
 pub(crate) struct InjuryLog {
-        pub(crate) targets: Vec<Entity>,
+    pub(crate) targets: Vec<Entity>,
 }
 
 pub(crate) fn record_falls(mut reader: MessageReader<FallOccurred>, mut log: ResMut<FallLog>) {

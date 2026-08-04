@@ -43,7 +43,6 @@ fn door_state(app: &App, door: Entity) -> Option<OpenState> {
     app.world().get::<OpenState>(door).copied()
 }
 
-
 #[test]
 fn adjacent_closed_door_offers_open_door() {
     let mut app = battle_running_app();

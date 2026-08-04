@@ -6,7 +6,7 @@ use gdtf_qa_protocol::command::{CommandArgsJson, CommandName};
 
 /// One admitted call waiting to be claimed by its command system.
 pub struct AdmittedCall {
-    name: CommandName,
+    name:      CommandName,
     arguments: CommandArgsJson,
     responder: Responder,
 }

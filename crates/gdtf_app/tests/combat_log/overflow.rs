@@ -8,7 +8,6 @@ const DEFAULT_MAX_VISIBLE: usize = 6;
 
 const DEFAULT_MAX_VISIBLE_I32: i32 = 6;
 
-
 #[test]
 fn overflow_fifo_despawns_the_oldest_lines() {
     let mut app = battle_running_app();

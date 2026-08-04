@@ -11,7 +11,7 @@ use crate::acts::{FireRequested, movement::ReactionShotFired};
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InterruptDeclared {
     /// Who fired the reaction.
-    pub reactor: Entity,
+    pub reactor:     Entity,
     /// Who was interrupted.
     pub interrupted: Entity,
 }
@@ -30,7 +30,7 @@ impl InterruptDeclared {
 /// Writers used when an interrupt succeeds.
 #[derive(SystemParam)]
 pub struct InterruptSignals<'w> {
-    pub(super) fire: MessageWriter<'w, FireRequested>,
-    pub(super) halt: MessageWriter<'w, ReactionShotFired>,
+    pub(super) fire:     MessageWriter<'w, FireRequested>,
+    pub(super) halt:     MessageWriter<'w, ReactionShotFired>,
     pub(super) declared: MessageWriter<'w, InterruptDeclared>,
 }

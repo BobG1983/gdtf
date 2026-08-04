@@ -13,7 +13,6 @@ const SAMPLE_LEN: usize = 4096;
 
 const SEED: u64 = 0x0506_C0DE_FACE_B00C;
 
-
 #[test]
 fn opposed_fight_is_deterministic_replayable_under_same_seed() {
     let tuning = MeleeTuning::default();
@@ -35,7 +34,6 @@ fn opposed_fight_is_deterministic_replayable_under_same_seed() {
         "same seed + same inputs must yield an identical FightOutcome sequence",
     );
 }
-
 
 fn connect_rate_and_mean_margin(attacker: f32, defender: f32) -> (usize, f32) {
     let tuning = MeleeTuning::default();
@@ -80,7 +78,6 @@ fn higher_attacker_fight_raises_connect_rate_and_mean_margin() {
     );
 }
 
-
 #[test]
 fn doubling_both_fights_leaves_margin_distribution_unchanged() {
     let tuning = MeleeTuning::default();
@@ -105,7 +102,6 @@ fn doubling_both_fights_leaves_margin_distribution_unchanged() {
         );
     }
 }
-
 
 #[test]
 fn melee_damage_mult_is_clamped_monotone_and_glancing_reachable() {
@@ -150,7 +146,6 @@ fn melee_damage_mult_is_clamped_monotone_and_glancing_reachable() {
     );
 }
 
-
 #[test]
 fn degenerate_zero_defender_fight_is_defined_and_finite() {
     let tuning = MeleeTuning::default();
@@ -180,7 +175,6 @@ fn degenerate_zero_defender_fight_is_defined_and_finite() {
         );
     }
 }
-
 
 #[test]
 fn apply_melee_multiplier_scales_damage_by_the_factor() {
@@ -212,7 +206,6 @@ fn apply_melee_multiplier_scales_damage_by_the_factor() {
     );
     assert_eq!(*glancing.wear, 2, "a 0.5x mult must halve integrity wear");
 }
-
 
 const STREAM_LEN: usize = 64;
 

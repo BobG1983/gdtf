@@ -6,7 +6,7 @@ use bevy::prelude::{Entity, Message};
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnterEmplacementRequested {
     /// Actor.
-    pub actor: Entity,
+    pub actor:       Entity,
     /// Emplacement entity.
     pub emplacement: Entity,
 }
@@ -23,7 +23,7 @@ impl EnterEmplacementRequested {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ExitEmplacementRequested {
     /// Actor.
-    pub actor: Entity,
+    pub actor:       Entity,
     /// Emplacement entity.
     pub emplacement: Entity,
 }

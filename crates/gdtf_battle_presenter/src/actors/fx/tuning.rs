@@ -143,15 +143,15 @@ pub struct FxTuning {
     /// Projectile sprite scale.
     pub projectile_draw_scale: ProjectileDrawScale,
     /// Projectile flight speed.
-    pub projectile_velocity: ProjectileVelocity,
+    pub projectile_velocity:   ProjectileVelocity,
     /// Inter-shot stagger (legacy).
-    pub inter_shot_seconds: InterShotSeconds,
+    pub inter_shot_seconds:    InterShotSeconds,
     /// Impact frame hold.
-    pub impact_frame_seconds: ImpactFrameSeconds,
+    pub impact_frame_seconds:  ImpactFrameSeconds,
     /// Floating text lifetime.
-    pub fct_ttl_seconds: FctTtlSeconds,
+    pub fct_ttl_seconds:       FctTtlSeconds,
     /// Floating text rise rate.
-    pub fct_rise_rate: FctRiseRate,
+    pub fct_rise_rate:         FctRiseRate,
 }
 
 const FX_TUNING_RON_PATH: &str = "core_tuning/fx.tuning.ron";

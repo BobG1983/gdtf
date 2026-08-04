@@ -36,7 +36,6 @@ pub(crate) const ENEMY_FACTION: Faction = Faction::new(1);
 
 pub(crate) const TARGET_SIZE: Vec2 = Vec2::new(1280.0, 720.0);
 
-
 pub(crate) const fn test_keybinds() -> Keybinds {
     Keybinds {
         select_clear:     BoundKey::KeyEscape,
@@ -181,7 +180,6 @@ pub(crate) fn select_ganger(app: &mut App, ganger: Entity) -> CellLevel {
     clear_mouse(app);
     shooter_cell
 }
-
 
 pub(crate) fn add_probes(app: &mut App) {
     app.add_plugins((

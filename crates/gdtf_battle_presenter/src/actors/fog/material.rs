@@ -52,17 +52,17 @@ pub struct TerrainFogMaterial {
     /// Sheet or file image.
     #[texture(1)]
     #[sampler(2)]
-    pub image: Handle<Image>,
+    pub image:        Handle<Image>,
     /// Optional atlas layout for sheet tiles.
     pub atlas_layout: Option<TextureAtlasLayout>,
     /// Atlas tile index when using a layout.
-    pub atlas_index: usize,
+    pub atlas_index:  usize,
     /// Drawn size in world units.
-    pub custom_size: Option<Vec2>,
+    pub custom_size:  Option<Vec2>,
     /// Color saturation (1 = full, 0 = grey explored).
-    pub saturation: f32,
+    pub saturation:   f32,
     /// Brightness scale after saturation.
-    pub brightness: Brightness,
+    pub brightness:   Brightness,
 }
 
 /// GPU uniform matching the terrain fog shader.
@@ -73,9 +73,9 @@ pub struct TerrainFogUniform {
     /// Vertex scale in world units.
     pub vertex_scale: Vec2,
     /// Saturation knob.
-    pub saturation: f32,
+    pub saturation:   f32,
     /// Brightness knob.
-    pub brightness: f32,
+    pub brightness:   f32,
 }
 
 impl AsBindGroupShaderType<TerrainFogUniform> for TerrainFogMaterial {

@@ -55,7 +55,7 @@ fn the_running_editor_captures_the_offscreen_image_its_egui_camera_renders_into(
         aimed.is_some() && aimed == named,
         "the editor's egui camera must render into the very render target the capture source \
          names — handle AND scale factor, since Bevy keys a view's output attachment by both \
-         (GTW-922); camera aims at {aimed:?}, source names {named:?}",
+         ; camera aims at {aimed:?}, source names {named:?}",
     );
     let scale = match target {
         Some(RenderTarget::Image(image)) => Some(image.scale_factor),

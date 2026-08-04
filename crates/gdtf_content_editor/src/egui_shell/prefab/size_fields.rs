@@ -12,7 +12,7 @@ const LEVELS_RANGE: core::ops::RangeInclusive<u8> = 1..=gdtf_battle_sim::metric:
 /// Editable width, height, and level spans for the prefab grid.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct SizeFieldSpans {
-    width: GridSpanInput,
+    width:  GridSpanInput,
     height: GridSpanInput,
     levels: GridSpanInput,
 }

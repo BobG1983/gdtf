@@ -6,15 +6,15 @@ use crate::states::running::game::battlescape::combat_log::tuning::{
 
 #[derive(Component, Debug, Clone)]
 pub(crate) struct LogLineFade {
-        ttl:        Timer,
-            life:       f32,
-        fade_in:    f32,
-            fade_out:   f32,
-            base_alpha: f32,
+    ttl:        Timer,
+    life:       f32,
+    fade_in:    f32,
+    fade_out:   f32,
+    base_alpha: f32,
 }
 
 impl LogLineFade {
-                                #[must_use]
+    #[must_use]
     pub(crate) fn new(
         ttl: LineTtlSeconds,
         fade_in: FadeInSeconds,
@@ -39,11 +39,11 @@ impl LogLineFade {
         }
     }
 
-            pub(crate) fn advance(&mut self, delta: std::time::Duration) -> bool {
+    pub(crate) fn advance(&mut self, delta: std::time::Duration) -> bool {
         self.ttl.tick(delta).is_finished()
     }
 
-                #[must_use]
+    #[must_use]
     pub(crate) fn alpha(&self) -> f32 {
         let elapsed = self.ttl.elapsed_secs();
         if elapsed < self.fade_in && self.fade_in > f32::EPSILON {

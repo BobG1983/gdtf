@@ -10,7 +10,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn destroyed_cover_with_leave_field_spawns_the_field_at_that_cell() {
     let (mut app, seed) = battle_app(0x5547_0B0B, true);
@@ -49,7 +48,6 @@ fn field_present(app: &App, at: CellLevel) -> bool {
         .get_resource::<FieldRegistry>()
         .is_some_and(|r| r.field_at(&at).is_some())
 }
-
 
 #[test]
 fn a_barrel_smashed_in_melee_leaves_its_on_death_field() {

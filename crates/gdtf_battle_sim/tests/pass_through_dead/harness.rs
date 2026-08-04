@@ -144,7 +144,7 @@ pub(crate) fn fire_volley(
     occupancy: &OccupancyGrid,
     seed: u64,
 ) -> Volley {
-                type FireQueries<'w, 's> = (
+    type FireQueries<'w, 's> = (
         ShooterQuery<'w, 's>,
         gdtf_battle_sim::fire::TargetQuery<'w, 's>,
         WearsQuery<'w, 's>,

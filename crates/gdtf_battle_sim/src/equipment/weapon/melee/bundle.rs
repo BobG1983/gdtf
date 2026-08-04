@@ -11,38 +11,38 @@ use crate::weapon::{
 #[derive(Bundle, Debug, Clone, PartialEq)]
 pub struct MeleeWeaponBundle {
     /// Marker.
-    pub marker: MeleeWeapon,
+    pub marker:      MeleeWeapon,
     /// Name.
-    pub name: WeaponName,
+    pub name:        WeaponName,
     /// Damage.
-    pub damage: WeaponDamage,
+    pub damage:      WeaponDamage,
     /// Punch.
-    pub punch: WeaponPunch,
+    pub punch:       WeaponPunch,
     /// Shred.
-    pub shred: WeaponShred,
+    pub shred:       WeaponShred,
     /// Damage type.
     pub damage_type: DamageType,
     /// Fatal bias.
-    pub fatal_bias: FatalBias,
+    pub fatal_bias:  FatalBias,
     /// Handedness.
-    pub handedness: Handedness,
+    pub handedness:  Handedness,
     /// Reach.
-    pub reach: Reach,
+    pub reach:       Reach,
     /// Fight modes.
-    pub fight_mode: FightMode,
+    pub fight_mode:  FightMode,
     /// Shove.
-    pub shove: Shove,
+    pub shove:       Shove,
 }
 
 /// Damage numbers group for melee.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MeleeDamageProfile {
     /// Damage.
-    pub damage: WeaponDamage,
+    pub damage:      WeaponDamage,
     /// Punch.
-    pub punch: WeaponPunch,
+    pub punch:       WeaponPunch,
     /// Shred.
-    pub shred: WeaponShred,
+    pub shred:       WeaponShred,
     /// Damage type.
     pub damage_type: DamageType,
 }

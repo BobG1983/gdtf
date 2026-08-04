@@ -11,7 +11,6 @@ use gdtf_test_utils::{MessageProbe, advance_until, drain_message_probe, press_ui
 
 use super::{actors::*, harness::*};
 
-
 fn spawn_emplacement_actor(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
     let actor = app
         .world_mut()

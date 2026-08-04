@@ -22,7 +22,7 @@ pub struct SetAimingRequested {
     /// Actor.
     pub actor: Entity,
     /// Aim on/off.
-    pub aim: AimRequest,
+    pub aim:   AimRequest,
 }
 
 impl SetAimingRequested {
@@ -37,7 +37,7 @@ impl SetAimingRequested {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SetStanceRequested {
     /// Actor.
-    pub actor: Entity,
+    pub actor:  Entity,
     /// Target stance.
     pub stance: StanceKind,
 }
@@ -54,7 +54,7 @@ impl SetStanceRequested {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SetFacingRequested {
     /// Actor.
-    pub actor: Entity,
+    pub actor:  Entity,
     /// Target direction.
     pub facing: Direction,
 }

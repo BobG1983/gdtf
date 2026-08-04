@@ -1,3 +1,4 @@
+//! Reachable overlay draw: sprites match the reachable set and hide when cleared.
 use std::path::PathBuf;
 
 use bevy::{
@@ -122,8 +123,8 @@ fn reachable_overlay_renders_on_upper_storey_after_level_switch() {
     let l1 = Level::new(1);
     let on0_a = CellLevel::new(Cell::new(5, 5), l0);
     let on0_b = CellLevel::new(Cell::new(6, 5), l0);
-    let on1_a = CellLevel::new(Cell::new(20, 20), l1); 
-    let on1_b = CellLevel::new(Cell::new(21, 20), l1); 
+    let on1_a = CellLevel::new(Cell::new(20, 20), l1);
+    let on1_b = CellLevel::new(Cell::new(21, 20), l1);
 
     set_reachable(
         &mut app,

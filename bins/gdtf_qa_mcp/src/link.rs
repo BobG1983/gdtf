@@ -70,7 +70,7 @@ pub trait QaLink {
 }
 
 struct Connection {
-    stream: TcpStream,
+    stream:  TcpStream,
     decoder: FrameDecoder,
 }
 
@@ -103,9 +103,9 @@ impl Connection {
 
 /// Default TCP implementation of [`QaLink`].
 pub struct QaClient {
-    port: QaPort,
+    port:    QaPort,
     timeout: LinkTimeout,
-    conn: Option<Connection>,
+    conn:    Option<Connection>,
 }
 
 impl QaClient {

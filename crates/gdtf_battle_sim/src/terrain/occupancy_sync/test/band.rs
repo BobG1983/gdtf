@@ -38,7 +38,7 @@ fn occupant_band_tracks_stance() {
     assert_eq!(
         grid_band(&app, at),
         Some(HeightBand::Low),
-        "re-posing prone re-publishes the LOW band at the unchanged slot (GTW-304)",
+        "re-posing prone re-publishes the LOW band at the unchanged slot ",
     );
 }
 
@@ -75,6 +75,6 @@ fn dead_ganger_clears_its_band() {
     assert_eq!(
         grid_band(&app, at),
         None,
-        "a dead ganger's band must be cleared too (GTW-304)",
+        "a dead ganger's band must be cleared too ",
     );
 }

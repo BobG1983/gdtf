@@ -185,8 +185,8 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
         let _volley = gdtf_battle_sim::fire::fire(
             shooter,
             FireOrder {
-                mode: &mode,
-                target_cell: Cell::new(enemy_cell().x, enemy_cell().y),
+                mode:         &mode,
+                target_cell:  Cell::new(enemy_cell().x, enemy_cell().y),
                 target_level: Level::new(0),
             },
             &mut shooters,
@@ -198,10 +198,10 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
             &melee,
             &mounted,
             BattleGrids {
-                occupancy: &occupancy,
-                surface: &surface,
-                cover: &mut cover,
-                slab: &mut slab,
+                occupancy:   &occupancy,
+                surface:     &surface,
+                cover:       &mut cover,
+                slab:        &mut slab,
                 brace_cells: &BraceStairCells::empty(),
             },
             &tuning,
@@ -246,7 +246,7 @@ fn real_path_ganger_shot_lands_on_at_least_one_seed() {
         .and_then(|g| g.occupant_band(&enemy_cell()));
     assert!(
         enemy_band.is_some(),
-        "the production sync must publish the enemy's occupant band (GTW-304); got {enemy_band:?}",
+        "the production sync must publish the enemy's occupant band; got {enemy_band:?}",
     );
 
     let seeds: [u64; 8] = [
@@ -270,7 +270,7 @@ fn real_path_ganger_shot_lands_on_at_least_one_seed() {
         lands > 0,
         "at least one of {} seeds must LAND a shot on the enemy (Hp drop / wound) — got {lands} \
          hits. 0 hits means the occupant band is never published and the round passes straight \
-         through the ganger (GTW-304).",
+         through the ganger.",
         seeds.len(),
     );
 }

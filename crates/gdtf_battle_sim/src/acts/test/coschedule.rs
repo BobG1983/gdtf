@@ -100,8 +100,8 @@ fn dispatch_and_occupancy_co_schedule_and_a_kill_frees_the_slot() {
         Cell::new(8, 5),
         Level::new(0),
     ));
-    app.update(); 
-    app.update(); 
+    app.update();
+    app.update();
 
     let life_after = app.world().get::<LifeState>(target).copied();
     let slot_after = app

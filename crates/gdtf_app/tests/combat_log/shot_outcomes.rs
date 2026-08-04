@@ -45,7 +45,6 @@ fn outcome_line_count(app: &mut App, hp_text: &str) -> usize {
         .count()
 }
 
-
 #[test]
 fn a_shot_impact_resolved_appends_the_outcome_line() {
     let mut app = battle_running_app();

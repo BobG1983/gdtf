@@ -24,21 +24,21 @@ use crate::{
 };
 
 pub(in crate::lifecycle::procgen) struct FillCursor {
-        placement:   Placement,
-        packer:      MaxRectsPacker,
-        covered:     CellCount,
-        board_cells: CellCount,
-        fill:        Vec<PlacedPrefab>,
-        large:       Vec<Prefab>,
-        small:       Vec<Prefab>,
-        floor:       MinDensityFloor,
-            cap:         MaxCoverageCap,
-        scatter_k:   ScatterCount,
-        pass:        FillPass,
+    placement:   Placement,
+    packer:      MaxRectsPacker,
+    covered:     CellCount,
+    board_cells: CellCount,
+    fill:        Vec<PlacedPrefab>,
+    large:       Vec<Prefab>,
+    small:       Vec<Prefab>,
+    floor:       MinDensityFloor,
+    cap:         MaxCoverageCap,
+    scatter_k:   ScatterCount,
+    pass:        FillPass,
 }
 
 impl FillCursor {
-                                                pub(in crate::lifecycle::procgen) fn new(
+    pub(in crate::lifecycle::procgen) fn new(
         placement: Placement,
         registry: &PrefabRegistry,
         theme: ThemeUuid,
@@ -79,17 +79,17 @@ impl FillCursor {
         })
     }
 
-        #[must_use]
+    #[must_use]
     pub(in crate::lifecycle::procgen) const fn placement(&self) -> &Placement {
         &self.placement
     }
 
-        #[must_use]
+    #[must_use]
     pub(in crate::lifecycle::procgen) fn fill(&self) -> &[PlacedPrefab] {
         &self.fill
     }
 
-                            pub(in crate::lifecycle::procgen) fn step(&mut self, rng: &mut ProcgenRng) -> FillStep {
+    pub(in crate::lifecycle::procgen) fn step(&mut self, rng: &mut ProcgenRng) -> FillStep {
         loop {
             match mem::replace(&mut self.pass, FillPass::Exhausted) {
                 FillPass::Large => match self.bucket_step(BucketKind::Large, rng) {
@@ -121,7 +121,7 @@ impl FillCursor {
         }
     }
 
-                        fn bucket_step(&mut self, kind: BucketKind, rng: &mut ProcgenRng) -> SubPassStep {
+    fn bucket_step(&mut self, kind: BucketKind, rng: &mut ProcgenRng) -> SubPassStep {
         let Self {
             large,
             small,
@@ -163,7 +163,7 @@ impl FillCursor {
         }
     }
 
-                    fn begin_scatter(&self) -> FillPass {
+    fn begin_scatter(&self) -> FillPass {
         if self.small.is_empty() || *self.scatter_k == 0 {
             return FillPass::Exhausted;
         }
@@ -179,7 +179,7 @@ impl FillCursor {
         })
     }
 
-                    fn scatter_step(&mut self, scatter: &mut ScatterState, rng: &mut ProcgenRng) -> SubPassStep {
+    fn scatter_step(&mut self, scatter: &mut ScatterState, rng: &mut ProcgenRng) -> SubPassStep {
         if *scatter.slots_remaining == 0 {
             return SubPassStep::Done;
         }
@@ -211,7 +211,7 @@ impl FillCursor {
         }
     }
 
-                pub(in crate::lifecycle::procgen) fn into_filled(self) -> FilledPlacement {
+    pub(in crate::lifecycle::procgen) fn into_filled(self) -> FilledPlacement {
         let dead_space: Vec<RegionRect> = self
             .packer
             .free_rects()

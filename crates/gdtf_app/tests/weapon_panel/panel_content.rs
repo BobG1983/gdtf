@@ -8,7 +8,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn weapon_panel_shows_name_and_magazine_for_the_selected_ganger() {
     let mut app = battle_running_app();
@@ -132,6 +131,6 @@ fn empty_state_hides_content_with_display_none() {
     assert_eq!(
         visibility::<WeaponContent>(&mut app),
         Some(Visibility::Hidden),
-        "the content is also Visibility::Hidden (GTW-275 contract preserved)",
+        "the content is also Visibility::Hidden (contract preserved)",
     );
 }

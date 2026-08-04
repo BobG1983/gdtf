@@ -1,5 +1,5 @@
 //! Relocated tests for the `WeaponSpec` authoring struct + the `WeaponRegistry`
-//! (GTW-201; moved VERBATIM — was the `=== GTW-257 ===` block of the flat module).
+//! (moved VERBATIM — was the `=== ===` block of the flat module).
 
 use super::support::*;
 

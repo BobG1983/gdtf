@@ -3,7 +3,7 @@ use crate::{
     metric::Cell,
 };
 
-// --- GTW-168 AC #1: Direction::forward_step() — each of the 8 variants maps to
+// --- AC #1: Direction::forward_step() — each of the 8 variants maps to
 
 const STEP_TOL: f32 = 1.0e-6;
 
@@ -87,7 +87,6 @@ const RING: [Direction; 8] = [
     Direction::NorthWest,
 ];
 
-
 #[test]
 fn steps_to_is_the_short_way_45deg_count_for_every_pair() {
     for (ia, &a) in RING.iter().enumerate() {
@@ -116,19 +115,18 @@ fn steps_to_is_the_short_way_45deg_count_for_every_pair() {
     }
 }
 
-
 #[test]
 fn from_cells_points_the_8_way_compass_toward_the_target() {
     let origin = Cell::new(5, 5);
     let cases = [
-        (Cell::new(8, 5), Direction::East),      
-        (Cell::new(5, 2), Direction::North),     
-        (Cell::new(8, 2), Direction::NorthEast), 
-        (Cell::new(2, 8), Direction::SouthWest), 
-        (Cell::new(2, 5), Direction::West),      
-        (Cell::new(5, 8), Direction::South),     
-        (Cell::new(8, 8), Direction::SouthEast), 
-        (Cell::new(2, 2), Direction::NorthWest), 
+        (Cell::new(8, 5), Direction::East),
+        (Cell::new(5, 2), Direction::North),
+        (Cell::new(8, 2), Direction::NorthEast),
+        (Cell::new(2, 8), Direction::SouthWest),
+        (Cell::new(2, 5), Direction::West),
+        (Cell::new(5, 8), Direction::South),
+        (Cell::new(8, 8), Direction::SouthEast),
+        (Cell::new(2, 2), Direction::NorthWest),
     ];
     for (to, expected) in cases {
         assert_eq!(
@@ -149,7 +147,6 @@ fn from_cells_points_the_8_way_compass_toward_the_target() {
         "from_cells reads only the per-axis sign, not the magnitude",
     );
 }
-
 
 #[test]
 fn rotated_toward_advances_the_short_way_clamped_with_clockwise_tie() {

@@ -20,8 +20,8 @@ use crate::{
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SetEmplacement {
     emplacement: Entity,
-    ganger: Entity,
-    state: EmplacementState,
+    ganger:      Entity,
+    state:       EmplacementState,
 }
 
 impl SetEmplacement {

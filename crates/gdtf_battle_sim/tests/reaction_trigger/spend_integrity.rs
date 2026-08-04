@@ -15,7 +15,6 @@ fn spend_totals(app: &bevy::app::App, reactors: [Entity; 4]) -> (u32, usize) {
     (used, shots)
 }
 
-
 #[test]
 fn two_movers_one_tick_spend_only_what_actually_fires() {
     let mut app = battle_app(forced_reaction_tuning(2));
@@ -64,12 +63,11 @@ fn two_movers_one_tick_spend_only_what_actually_fires() {
     assert_eq!(
         used_of(&app, watcher_entity),
         u32::try_from(shots).ok(),
-        "GTW-646: ReactionsUsed increments 1:1 with actually-dispatched reaction shots \
+        "ReactionsUsed increments 1:1 with actually-dispatched reaction shots \
          (a second same-tick interrupt offered on a stale TU snapshot must not consume \
          the cap when the dispatcher rejects it)",
     );
 }
-
 
 #[test]
 fn mixed_ineligible_reactors_leave_the_counter_and_tu_untouched() {
@@ -176,7 +174,7 @@ fn mixed_ineligible_reactors_leave_the_counter_and_tu_untouched() {
     assert_eq!(
         u32::try_from(total_shots).ok(),
         Some(total_used),
-        "GTW-646 C3: ReactionsUsed increments correspond 1:1 with dispatched reaction \
+        "ReactionsUsed increments correspond 1:1 with dispatched reaction \
          shots across the mixed tick",
     );
 }

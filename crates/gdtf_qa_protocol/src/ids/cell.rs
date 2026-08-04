@@ -68,7 +68,7 @@ impl CellNet {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CellLevelNet {
     /// Floor cell.
-    pub cell: CellNet,
+    pub cell:  CellNet,
     /// Storey index.
     pub level: LevelNet,
 }

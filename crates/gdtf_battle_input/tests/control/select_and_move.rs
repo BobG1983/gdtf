@@ -47,7 +47,6 @@ fn left_click_selects_only_a_player_ganger() {
     }
 }
 
-
 #[test]
 fn two_click_empty_with_selection_targets_then_moves() {
     let mut app = control_app();

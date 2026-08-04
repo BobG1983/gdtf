@@ -29,7 +29,7 @@ pub enum ReloadOutcome {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReloadResult {
     /// Actor who tried to reload.
-    pub actor: Entity,
+    pub actor:   Entity,
     /// Outcome.
     pub outcome: ReloadOutcome,
 }

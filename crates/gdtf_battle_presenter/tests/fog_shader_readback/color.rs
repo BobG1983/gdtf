@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 #[derive(Resource, Default, Clone, Copy)]
 pub(crate) struct CapturedPixel {
-        pub(crate) captured: bool,
-        pub(crate) rgba:     [u8; 4],
+    pub(crate) captured: bool,
+    pub(crate) rgba:     [u8; 4],
 }
 
 pub(crate) fn srgb_encode(linear: f32) -> u8 {

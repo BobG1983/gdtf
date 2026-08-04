@@ -22,7 +22,7 @@ pub fn bad_arguments<C: QaCommand>(fault: &serde_json::Error) -> QaResponse {
 /// Claim inbox rows for `C`, deserialize args, or reply with a schema error.
 pub fn claim_calls<C: QaCommand>(
     mut inbox: ResMut<CommandInbox>,
-    mut queue: ResMut<PendingQueue<CommandCall<C>>>
+    mut queue: ResMut<PendingQueue<CommandCall<C>>>,
 ) {
     if inbox.is_empty() {
         return;

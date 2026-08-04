@@ -1,3 +1,4 @@
+//! Main menu actions: button press and focus activation request the mapped state.
 use bevy::{
     ecs::entity::Entity,
     state::state::{NextState, State},

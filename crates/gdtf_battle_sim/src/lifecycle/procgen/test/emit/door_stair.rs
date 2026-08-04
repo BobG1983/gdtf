@@ -148,7 +148,7 @@ fn door_and_stair_tiles_emit_through_the_loader_classified_by_kind() {
         };
         assert!(
             matches!(def.sim_kind, TerrainSimKind::Slab { .. }),
-            "a stair must be sim_kind = Slab (a walkable surface; vertical traversal is GTW-388)",
+            "a stair must be sim_kind = Slab (a walkable surface; vertical traversal is)",
         );
     }
 

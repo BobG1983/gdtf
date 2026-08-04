@@ -59,8 +59,8 @@ pub(super) fn stance_aiming_tint(
 
 #[must_use]
 fn suppressed_tint(tint: Color) -> Color {
-            const SUPPRESSED_DESATURATION: f32 = 0.6;
-            const SUPPRESSED_DARKEN: f32 = 0.75;
+    const SUPPRESSED_DESATURATION: f32 = 0.6;
+    const SUPPRESSED_DARKEN: f32 = 0.75;
 
     let linear = tint.to_linear();
     let grey = (linear.red + linear.green + linear.blue) / 3.0;

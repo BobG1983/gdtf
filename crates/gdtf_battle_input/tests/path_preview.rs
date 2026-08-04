@@ -132,7 +132,7 @@ fn populates_route_cells_and_cost_matching_find_path() {
     assert_eq!(
         preview.cost(),
         expected_cost,
-        "the previewed cost must EXACTLY equal Path::total() (the §48 cost GTW-355 charges)",
+        "the previewed cost must EXACTLY equal Path::total() (the §48 cost charges)",
     );
 }
 

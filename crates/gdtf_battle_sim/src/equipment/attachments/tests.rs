@@ -10,7 +10,6 @@ use crate::{
     weapon::{Accuracy, DamageType, MagazineSize, PendingAttachments, Silenced, WeaponName},
 };
 
-
 #[test]
 fn attachment_spec_parses_with_effect_list() {
     let ron = "(display_name: \"Whisper Bore\", slot: Muzzle, effects: [Silence, Aim(0.2)])";
@@ -82,7 +81,6 @@ fn registry_keys_and_looks_up_by_name() {
     );
 }
 
-
 fn spawn_weapon(world: &mut World) -> Entity {
     world
         .spawn((
@@ -135,7 +133,6 @@ fn absent_target_component_is_a_noop() {
         "Aim on a weapon with no Accuracy is a fail-safe no-op (no panic, no insert)"
     );
 }
-
 
 fn app_with_pending(effects: Vec<AttachmentEffect>) -> (App, Entity) {
     let mut app = App::new();

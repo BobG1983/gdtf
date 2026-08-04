@@ -8,18 +8,18 @@ use super::{
 };
 
 pub(crate) struct RailThumb {
-        pub(super) signature: StoreySignature,
-            pub(super) count:     PaintedCount,
-                pub(super) texture:   egui::TextureHandle,
+    pub(super) signature: StoreySignature,
+    pub(super) count:     PaintedCount,
+    pub(super) texture:   egui::TextureHandle,
 }
 
 #[derive(Default)]
 pub(crate) struct RailThumbCache {
-        thumbs: HashMap<Level, RailThumb>,
+    thumbs: HashMap<Level, RailThumb>,
 }
 
 impl RailThumbCache {
-                                pub(crate) fn refresh(
+    pub(crate) fn refresh(
         &mut self,
         ctx: &egui::Context,
         storey: Level,
@@ -56,12 +56,12 @@ impl RailThumbCache {
         self.thumbs.get(&storey)
     }
 
-                pub(super) fn prune(&mut self, size: GridSize) {
+    pub(super) fn prune(&mut self, size: GridSize) {
         let levels = i32::from(*size.levels());
         self.thumbs.retain(|storey, _| i32::from(**storey) < levels);
     }
 
-            #[cfg(test)]
+    #[cfg(test)]
     pub(super) fn len(&self) -> usize {
         self.thumbs.len()
     }
@@ -69,6 +69,6 @@ impl RailThumbCache {
 
 #[derive(Default)]
 pub(crate) struct RailUiState {
-        pub(super) thumbs: RailThumbCache,
-        pub(super) scrub:  ScrubAccumulator,
+    pub(super) thumbs: RailThumbCache,
+    pub(super) scrub:  ScrubAccumulator,
 }

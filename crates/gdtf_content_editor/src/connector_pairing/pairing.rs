@@ -27,7 +27,7 @@ pub enum PairingOutcome {
         /// Down connector tile key.
         down: TerrainUuid,
         /// Slot where the down connector was placed.
-        at: CellLevel,
+        at:   CellLevel,
     },
 }
 

@@ -17,10 +17,9 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[derive(Resource, Default)]
 struct AppliedLog {
-        count: usize,
+    count: usize,
 }
 
 fn record_applied(
@@ -97,7 +96,6 @@ const fn single_shot_mode() -> FireModeSpec {
     )
 }
 
-
 fn man_mount(world: &mut World, ganger: Entity, silenced: bool) {
     if silenced {
         world.spawn((WieldedBy::new(ganger), MountedWeapon, Silenced::new(true)));
@@ -145,7 +143,6 @@ fn mounted_shooter_with_silenced_mount_but_loud_carried_gun_is_silenced() {
     );
 }
 
-
 #[test]
 fn shooter_weapon_silenced_reads_the_wielded_ranged_weapon_tag() {
     let (mut silenced_app, silenced_shooter) =
@@ -182,7 +179,6 @@ fn silenced_probe(
 
 #[test]
 fn shooter_weapon_silenced_reads_the_firing_weapon_mount_over_the_carried_gun() {
-
     let (mut loud_mount, loud_shooter) = suppression_probe_app(vec![AttachmentEffect::Silence]);
     man_mount(loud_mount.world_mut(), loud_shooter, false);
     let reads_silenced = loud_mount

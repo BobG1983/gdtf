@@ -10,7 +10,7 @@ pub struct SetupBattleRequested {
     /// Situation to spawn.
     pub situation: Situation,
     /// RNG seed for this battle.
-    pub seed: BattleSeed,
+    pub seed:      BattleSeed,
 }
 
 impl SetupBattleRequested {

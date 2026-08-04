@@ -157,7 +157,7 @@ fn saved_injury_and_weighting_round_trip_through_the_real_injuries_loader() {
         reloaded,
         Some(&def),
         "the reloaded injury must equal the saved def (every field incl. both effect \
-         rows) — the GTW-437 stem-key round-trip through the REAL loader",
+         rows) — the stem-key round-trip through the REAL loader",
     );
 
     let tables = world.get_resource::<InjuryTables>();

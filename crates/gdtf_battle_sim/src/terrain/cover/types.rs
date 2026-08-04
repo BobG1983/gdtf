@@ -54,17 +54,17 @@ impl Destroyed {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CoverEntry {
     /// Current HP.
-    pub current_hp: CoverHp,
+    pub current_hp:       CoverHp,
     /// Starting HP.
-    pub max_hp: CoverHp,
+    pub max_hp:           CoverHp,
     /// Height band of this cover.
-    pub height_band: HeightBand,
+    pub height_band:      HeightBand,
     /// Armor protection value.
     pub armor_protection: ArmorProtection,
     /// Armor hardness value.
-    pub armor_hardness: ArmorHardness,
+    pub armor_hardness:   ArmorHardness,
     /// Destroyed flag.
-    pub destroyed: Destroyed,
+    pub destroyed:        Destroyed,
 }
 
 impl CoverEntry {

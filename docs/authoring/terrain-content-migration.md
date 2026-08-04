@@ -1,10 +1,10 @@
-# Terrain / theme / prefab content migration — reconciliation ruling (GTW-490)
+# Terrain / theme / prefab content migration — reconciliation ruling
 
-> **SUPERSEDED — historical record.** This note describes the GTW-490
+> **SUPERSEDED — historical record.** This note describes the
 > migration as it stood WHEN IT LANDED; it is retained as history, and its
 > claims about what is "live" or "in place" no longer hold. The old flat
 > `*.terrain.ron` / `*.theme.ron` files and their loaders are GONE (loaders
-> retired GTW-494, types deleted GTW-496, dead files removed GTW-562 / GTW-578),
+> retired, types deleted, dead files removed /),
 > and the game runs on the UUID-keyed model this migration produced. For the
 > current, authoritative terrain model and authoring workflow, see
 > [terrain-authoring.md](terrain-authoring.md).
@@ -18,11 +18,11 @@ recursively-loaded asset folders — a stray non-asset file there fails the
 
 The migrated content is shipped under:
 
-- `assets/content/terrain/<theme>/<tile>.terrain_def.ron` — the GTW-487 UUID-keyed
+- `assets/content/terrain/<theme>/<tile>.terrain_def.ron` — the UUID-keyed
   `TerrainDef` files.
-- `assets/content/terrain/<theme>/<theme>.terrain_theme.ron` — the GTW-487 `UuidThemeDef`
+- `assets/content/terrain/<theme>/<theme>.terrain_theme.ron` — the `UuidThemeDef`
   files.
-- `assets/content/maps/<theme>/<size>/<name>.prefab.ron` — the GTW-489
+- `assets/content/maps/<theme>/<size>/<name>.prefab.ron` — the
   `PrefabSpec` files.
 
 ## The dual-catalog conflict (industrial_hive)
@@ -32,7 +32,7 @@ terrain:
 
 - The **flat `TerrainRegistry`** (flat `*.terrain.ron` files under
   `assets/content/terrain/`, keyed by file stem; the dead flat files were
-  removed in GTW-562) — the catalog the LIVE battle path, the prefabs, and `skirmish.ron`
+  removed in) — the catalog the LIVE battle path, the prefabs, and `skirmish.ron`
   actually reference. **8 pieces:** `barricade`, `bulkhead_wall`, `debris_pile`,
   `deck_floor`, `deck_slab`, `gantry_slab`, `heavy_bulkhead`, `supply_crate`.
 - The **parallel `ThemeTileCatalog`** (the since-deleted `themes/industrial_hive.theme.ron`,
@@ -56,7 +56,7 @@ terrain:
    `CatalogTile.atlas_index` does not survive the migration. The presenter (at
    migration time) resolved the atlas index via `TileRoles` keyed by the def's
    `presenter_kind.graphic_name` (the old flat file's `graphic` `TileRoles` key),
-   NEVER a per-def atlas index. (GTW-665 has since retired the `TileRoles`
+   NEVER a per-def atlas index. (has since retired the `TileRoles`
    table itself — the same `graphic_name` now resolves through the sprite-def
    registry, see [sprite-defs.md](sprite-defs.md).)
 
@@ -70,7 +70,7 @@ The new `TerrainSimKind` is `Wall` / `Cover` / `Slab` ONLY (no `Floor`, no
   consumer slice) ride that referenced terrain. Because there is no `MoveCost`
   field on `TerrainDef` yet, the migrated floor defs (`deck_floor`,
   `rockcrete_floor`, `sludge_floor`) are authored as a `Slab` sim_kind — the
-  GTW-487 `deck.terrain_def.ron` walkable-default-floor fixture precedent. The
+   `deck.terrain_def.ron` walkable-default-floor fixture precedent. The
   flat / catalog floor authored ONLY a move cost (no HP/armor), so each migrated
   floor-as-slab's structural toughness is COPIED from a sibling structural slab in
   the SAME theme (industrial_hive `deck_floor` <- `deck_slab` 120/4/2; underhive
@@ -85,7 +85,7 @@ The new `TerrainSimKind` is `Wall` / `Cover` / `Slab` ONLY (no `Floor`, no
   files (behavior-preserving — no re-tune).
 - **Sim-owned tags.** Solid walls (`bulkhead_wall`, `heavy_bulkhead`,
   `tunnel_wall`, `corroded_bulkhead`) are tagged `[BlocksVision,
-  BlocksPathfinding]` sim-side (consumption is GTW-482); tags are NEVER on
+  BlocksPathfinding]` sim-side (consumption is); tags are NEVER on
   `presenter_kind`.
 
 ## The other two themes (underhive, sump_waste)
@@ -100,7 +100,7 @@ UUIDs. Their `default_floor` is the migrated floor def of that theme.
 
 - **`role` omitted (serde-default `Fill`).** The migrated v2 prefabs
   (`content/maps/industrial_hive/{3x3,12x12}/*.prefab.ron`) OMIT the `role` field, so it
-  deserializes as `SpawnRole::Fill` (the GTW-490 recipe step 3 + C3 "role defaults
+  deserializes as `SpawnRole::Fill` (the recipe step 3 + C3 "role defaults
   applied"). The legacy `Player` / `Enemy` role intent is not yet meaningful — the
   v2 assembler (T07b) does not consume these prefabs and will re-key role then.
 - **`default_floor` + `edge_openings` dropped.** The legacy per-prefab
@@ -152,8 +152,8 @@ prefab / skirmish MUST match the theme file's key.
 ## Scope boundary
 
 *(Historical — see the banner at the top. None of the "stays live" claims
-below still hold: the old files and loaders were retired in GTW-494/496 and
-the dead data deleted in GTW-562/578; consumers switched in GTW-491/492+.)*
+below still hold: the old files and loaders were retired in /496 and
+the dead data deleted in /578; consumers switched in /492+.)*
 
 ADDITIVE only. The OLD flat `content/terrain/*.terrain.ron`, the OLD
 `content/themes/*.theme.ron`, the OLD `content/maps/**/*.prefab.ron`, and their

@@ -131,7 +131,7 @@ fn edited_gang_round_trips_through_the_loader_schema() {
     assert_eq!(
         reloaded, edited,
         "the reloaded gang must equal the edited draft (name + members + attributes + \
-         weapon/armor/melee keys) — the GTW-415 round-trip",
+         weapon/armor/melee keys) — the round-trip",
     );
 }
 

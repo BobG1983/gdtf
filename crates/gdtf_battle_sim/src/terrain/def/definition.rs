@@ -35,23 +35,23 @@ impl BlocksPathingOverride {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, TypePath)]
 pub struct TerrainDef {
     /// Content key.
-    pub key: TerrainUuid,
+    pub key:            TerrainUuid,
     /// Display name.
-    pub display_name: TerrainDisplayName,
+    pub display_name:   TerrainDisplayName,
     /// Simulation behaviour.
-    pub sim_kind: TerrainSimKind,
+    pub sim_kind:       TerrainSimKind,
     /// Presenter behaviour.
     pub presenter_kind: TerrainPresenterKind,
     /// Optional tags.
     #[serde(default)]
-    pub tags: Vec<TerrainTag>,
+    pub tags:           Vec<TerrainTag>,
     /// Optional on-death effect.
     #[serde(default)]
-    pub on_death: Option<crate::effects::on_death::OnDeathEffect>,
+    pub on_death:       Option<crate::effects::on_death::OnDeathEffect>,
     /// Optional path-blocking override.
     #[serde(default)]
     pub blocks_pathing: Option<BlocksPathingOverride>,
     /// Optional LOS-blocking override.
     #[serde(default)]
-    pub blocks_los: Option<LosBlocking>,
+    pub blocks_los:     Option<LosBlocking>,
 }

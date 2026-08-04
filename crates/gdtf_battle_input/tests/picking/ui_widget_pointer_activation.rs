@@ -18,7 +18,7 @@ const BUTTON_ORIGIN: Vec2 = Vec2::new(100.0, 100.0);
 
 #[derive(Resource, Default, Debug)]
 struct Activations {
-        count: usize,
+    count: usize,
 }
 
 fn record_activation(_activate: On<Activate>, mut activations: ResMut<Activations>) {

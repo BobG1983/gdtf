@@ -72,7 +72,7 @@ fn toughness_injury_shifts_the_next_severity_roll() {
         Severity::Major,
         vec![InjuryEffect::Modify {
             stat:   StatTarget::Toughness,
-            amount: StatDelta::new(i8::MIN), 
+            amount: StatDelta::new(i8::MIN),
         }],
         InspectText::new("battered".to_owned()),
     ));

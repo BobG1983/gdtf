@@ -1,11 +1,11 @@
-// GTW-206 (E10.4) failure-path fixture: deliberately MALFORMED combat-tuning RON.
+// (E10.4) failure-path fixture: deliberately MALFORMED combat-tuning RON.
 //
 // This file exists only so the real-asset Load harness can point its asset
 // source root here and have `core_tuning/combat.tuning.ron` reach LoadState::Failed (a RON
-// deserialize error in the GTW-136 RonAssetLoader). It must NOT be a valid
+// deserialize error in the RonAssetLoader). It must NOT be a valid
 // CombatTuning. The poll/resolve system then warns naming the path and inserts
 // the const-fallback CombatTuning::default() — proving the app neither hangs nor
-// leaves Load tuning-less on a bad asset (GTW-206 AC6).
+// leaves Load tuning-less on a bad asset.
 //
 // The sibling `core_tuning/ui_theme.tuning.ron` in this fixture is VALID (a copy of the
 // shipped theme) so ONLY the tuning branch fails — the theme branch resolves

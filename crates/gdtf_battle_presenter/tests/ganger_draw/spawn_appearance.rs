@@ -18,20 +18,20 @@ use super::{harness::*, probes::*};
 const EXTRA_FRAMES: u32 = 8;
 
 struct FrameTint {
-        frame: u32,
-        color: Option<Color>,
+    frame: u32,
+    color: Option<Color>,
 }
 
 struct CaseOutcome {
-        trace:          Vec<FrameTint>,
-        settled:        Option<Color>,
-                    plain:          Option<Color>,
-        atlas:          Option<usize>,
-        expected_atlas: usize,
+    trace:          Vec<FrameTint>,
+    settled:        Option<Color>,
+    plain:          Option<Color>,
+    atlas:          Option<usize>,
+    expected_atlas: usize,
 }
 
 impl CaseOutcome {
-                fn assert_never_plain(&self, label: &str) {
+    fn assert_never_plain(&self, label: &str) {
         for reading in &self.trace {
             assert!(
                 !same_color(reading.color, self.plain),

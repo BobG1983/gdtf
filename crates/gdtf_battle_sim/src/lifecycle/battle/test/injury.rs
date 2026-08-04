@@ -98,7 +98,7 @@ pub(super) fn penetrating_weapon_registry() -> crate::weapon::WeaponRegistry {
         base_spread: BaseSpread::new(0.05),
         accuracy: Accuracy::new(2.0),
         kickback: Kickback::new(0.1),
-        fatal_bias: FatalBias::new(0.0), 
+        fatal_bias: FatalBias::new(0.0),
         punch: WeaponPunch::new(20),
         shred: WeaponShred::new(10),
         fire_mode: FireMode::new(vec![single_mode(0.2, 1)]),

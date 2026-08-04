@@ -87,9 +87,7 @@ pub fn resolve_on_death(
             wields
                 .get(death.entity)
                 .ok()
-                .and_then(|w| {
-                    w.firing_weapon(|e| mounted.get(e).is_ok(), |e| melee.get(e).is_ok())
-                })
+                .and_then(|w| w.firing_weapon(|e| mounted.get(e).is_ok(), |e| melee.get(e).is_ok()))
                 .and_then(|weapon_entity| on_deaths.get(weapon_entity).ok())
                 .map(|on_death| on_death.effect().clone())
         };
@@ -98,11 +96,11 @@ pub fn resolve_on_death(
         };
 
         let mut fan_out = DeathFanOut {
-            grid: &grid,
-            victims: &mut victims,
-            fields: &mut fields,
+            grid:       &grid,
+            victims:    &mut victims,
+            fields:     &mut fields,
             field_defs: field_defs.as_deref(),
-            cascade: &mut queue,
+            cascade:    &mut queue,
         };
         effect.fan_at(death.at, &mut fan_out);
     }

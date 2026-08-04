@@ -44,20 +44,20 @@ pub fn wield(world: &mut World, ganger: Entity, weapon: impl Bundle) -> Entity {
 /// Fluent builder for a ganger entity in a test world.
 #[derive(Debug, Clone, Default)]
 pub struct GangerEntityBuilder {
-    at: Option<CellLevel>,
-    faction: Option<Faction>,
-    stance: Option<StanceKind>,
-    facing: Option<Direction>,
-    aiming: Option<bool>,
-    life_state: Option<LifeState>,
-    tu: Option<u8>,
-    tu_max: Option<u8>,
-    hp: Option<u16>,
-    wounds: Option<u8>,
+    at:               Option<CellLevel>,
+    faction:          Option<Faction>,
+    stance:           Option<StanceKind>,
+    facing:           Option<Direction>,
+    aiming:           Option<bool>,
+    life_state:       Option<LifeState>,
+    tu:               Option<u8>,
+    tu_max:           Option<u8>,
+    hp:               Option<u16>,
+    wounds:           Option<u8>,
     inflicted_wounds: bool,
-    toughness: Option<f32>,
-    luck: Option<f32>,
-    shooting: Option<f32>,
+    toughness:        Option<f32>,
+    luck:             Option<f32>,
+    shooting:         Option<f32>,
 }
 
 impl GangerEntityBuilder {
@@ -65,20 +65,20 @@ impl GangerEntityBuilder {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            at: None,
-            faction: None,
-            stance: None,
-            facing: None,
-            aiming: None,
-            life_state: None,
-            tu: None,
-            tu_max: None,
-            hp: None,
-            wounds: None,
+            at:               None,
+            faction:          None,
+            stance:           None,
+            facing:           None,
+            aiming:           None,
+            life_state:       None,
+            tu:               None,
+            tu_max:           None,
+            hp:               None,
+            wounds:           None,
             inflicted_wounds: false,
-            toughness: None,
-            luck: None,
-            shooting: None,
+            toughness:        None,
+            luck:             None,
+            shooting:         None,
         }
     }
 

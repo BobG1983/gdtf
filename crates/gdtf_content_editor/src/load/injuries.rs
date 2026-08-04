@@ -17,12 +17,12 @@ pub(crate) struct InjuriesFolderHandle(Handle<LoadedFolder>);
 /// Injury asset handles and optional salvage state for load/redrive.
 #[derive(SystemParam)]
 pub(crate) struct InjuryAssets<'w> {
-        server:            Res<'w, AssetServer>,
-        folders:           Res<'w, Assets<LoadedFolder>>,
-        defs:              Res<'w, Assets<RonAsset<InjuryDef>>>,
-        weightings:        Res<'w, Assets<RonAsset<InjuryWeighting>>>,
-            def_salvage:       Option<Res<'w, RonFolderSalvage<InjuryDef>>>,
-        weighting_salvage: Option<Res<'w, RonFolderSalvage<InjuryWeighting>>>,
+    server:            Res<'w, AssetServer>,
+    folders:           Res<'w, Assets<LoadedFolder>>,
+    defs:              Res<'w, Assets<RonAsset<InjuryDef>>>,
+    weightings:        Res<'w, Assets<RonAsset<InjuryWeighting>>>,
+    def_salvage:       Option<Res<'w, RonFolderSalvage<InjuryDef>>>,
+    weighting_salvage: Option<Res<'w, RonFolderSalvage<InjuryWeighting>>>,
 }
 
 pub(crate) fn register_injuries(app: &mut App) {

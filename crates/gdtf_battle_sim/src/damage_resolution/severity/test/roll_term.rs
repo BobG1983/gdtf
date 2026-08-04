@@ -61,7 +61,7 @@ fn degenerate_roll_term_keeps_the_stream_aligned() {
     assert_eq!(
         through_degenerate.next_u64(),
         reference.next_u64(),
-        "GTW-644: a degenerate roll_term must consume exactly one draw — the same seed \
+        "a degenerate roll_term must consume exactly one draw — the same seed \
          diverges downstream when the degenerate range skips its draw",
     );
 }

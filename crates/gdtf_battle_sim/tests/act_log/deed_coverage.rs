@@ -4,8 +4,8 @@ use super::harness::deed_name;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Disposition {
-            Replayed,
-            DrawnOnly,
+    Replayed,
+    DrawnOnly,
 }
 
 const fn disposition(deed: &ActDeed) -> Disposition {

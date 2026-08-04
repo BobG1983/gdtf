@@ -78,11 +78,11 @@ mod tests {
             unreachable!("a plain Query SystemParam always validates");
         };
         let mut fan_out = DeathFanOut {
-            grid: &grid,
-            victims: &mut victims,
-            fields: &mut fields,
+            grid:       &grid,
+            victims:    &mut victims,
+            fields:     &mut fields,
             field_defs: defs,
-            cascade: &mut cascade,
+            cascade:    &mut cascade,
         };
         ApplyLeaveField::new(key).fan_at(at, &mut fan_out);
         fields

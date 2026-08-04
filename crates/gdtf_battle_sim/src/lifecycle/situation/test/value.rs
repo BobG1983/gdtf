@@ -16,10 +16,7 @@ fn authored_cells_unions_walls_scatter_slabs_only() {
     let situation = SituationBuilder::new()
         .with_ganger(ganger_at(ganger, 0))
         .wall_at(wall)
-        .with_scatter(CoverSpawn::new(
-            prop,
-            test_pieces::COVER,
-        ))
+        .with_scatter(CoverSpawn::new(prop, test_pieces::COVER))
         .slab_at(slab)
         .build();
 

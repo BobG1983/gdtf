@@ -19,16 +19,16 @@ const CLEAR_TEXEL: [u8; 4] = [0, 0, 0, 0];
 
 #[derive(Resource, Debug, Clone)]
 pub(crate) struct PreviewOverlayImages {
-        stipple:   Handle<Image>,
-        void_grid: Handle<Image>,
+    stipple:   Handle<Image>,
+    void_grid: Handle<Image>,
 }
 
 impl PreviewOverlayImages {
-        pub(crate) fn stipple(&self) -> Handle<Image> {
+    pub(crate) fn stipple(&self) -> Handle<Image> {
         self.stipple.clone()
     }
 
-        pub(crate) fn void_grid(&self) -> Handle<Image> {
+    pub(crate) fn void_grid(&self) -> Handle<Image> {
         self.void_grid.clone()
     }
 }

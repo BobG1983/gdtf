@@ -100,7 +100,7 @@ impl CellLevel {
 /// Serde shape for [`CellLevel`].
 #[derive(Deserialize, Serialize)]
 pub struct CellLevelDef {
-    cell: Cell,
+    cell:  Cell,
     level: Level,
 }
 

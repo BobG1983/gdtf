@@ -65,7 +65,7 @@ fn clamp_camera_keeps_viewport_inside_and_centres_when_smaller() {
         "a translation already inside the bounds is left unchanged",
     );
 
-    let big_half = Vec2::new(80.0, 80.0); 
+    let big_half = Vec2::new(80.0, 80.0);
     let centred = clamp_camera(Vec2::new(1000.0, -1000.0), big_half, world_min, world_max);
     let midpoint = (world_min + world_max) * 0.5;
     assert_eq!(

@@ -14,11 +14,11 @@ pub struct SourceArmor {
 /// Serde shape with named fields.
 #[derive(Deserialize)]
 pub struct SourceArmorDef {
-    head: ArmorPiece,
-    torso: ArmorPiece,
-    left_arm: ArmorPiece,
+    head:      ArmorPiece,
+    torso:     ArmorPiece,
+    left_arm:  ArmorPiece,
     right_arm: ArmorPiece,
-    left_leg: ArmorPiece,
+    left_leg:  ArmorPiece,
     right_leg: ArmorPiece,
 }
 

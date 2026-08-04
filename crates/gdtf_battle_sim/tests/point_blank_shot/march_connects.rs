@@ -21,7 +21,6 @@ const fn stance_band(stance: StanceKind) -> HeightBand {
     }
 }
 
-
 fn point_blank_march_hits(
     facing: Direction,
     enemy_cell: CellLevel,

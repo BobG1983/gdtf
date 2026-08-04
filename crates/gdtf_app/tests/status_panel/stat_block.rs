@@ -45,7 +45,6 @@ fn visible_pip_count<M: Component>(app: &mut App) -> usize {
         .count()
 }
 
-
 #[test]
 fn status_panel_renders_the_selected_ganger_stat_block() {
     let mut app = battle_running_app();

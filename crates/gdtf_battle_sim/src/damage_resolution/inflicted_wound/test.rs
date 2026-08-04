@@ -94,7 +94,7 @@ fn fresh_inflicted_wounds_is_empty() {
     let fresh = InflictedWounds::default();
     assert!(
         fresh.is_empty(),
-        "a freshly spawned ganger must carry an empty InflictedWounds (GTW-279 AC2)",
+        "a freshly spawned ganger must carry an empty InflictedWounds ",
     );
     assert_eq!(fresh.len(), 0, "an empty record has length 0");
 }

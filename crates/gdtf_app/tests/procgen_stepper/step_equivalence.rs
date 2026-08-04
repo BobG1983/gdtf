@@ -74,7 +74,7 @@ fn stepper_engaged_path_deploys_the_same_roster() {
     let actual = deployed_ganger_count(&mut app);
     assert_eq!(
         actual, expected,
-        "the stepper-engaged finish must DEPLOY the same roster the normal path does (GTW-765): \
+        "the stepper-engaged finish must DEPLOY the same roster the normal path does: \
          the pre-fix terrain-only finish left {actual} deployed gangers, expected {expected}",
     );
 }

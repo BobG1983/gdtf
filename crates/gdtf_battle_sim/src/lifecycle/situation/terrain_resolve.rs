@@ -1,5 +1,5 @@
 //! [`setup_battle`](super::setup_battle) calls to turn each authored terrain DEFINITION
-//! GTW-491 migration (child T07a of the GTW-476 data-model refactor): each authored
+//! migration (child T07a of the data-model refactor): each authored
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
@@ -19,27 +19,27 @@ use crate::{
 };
 
 pub(super) struct ResolvedCoverPiece {
-        pub(super) max_hp:           CoverHp,
-        pub(super) height_band:      HeightBand,
-        pub(super) armor_protection: ArmorProtection,
-        pub(super) armor_hardness:   ArmorHardness,
-                        pub(super) piece_kind:       TerrainPieceKind,
-                pub(super) graphic:          TerrainGraphicKey,
-                        pub(super) blocks_path:      PathBlocked,
-                                        pub(super) occludes_vision:  Option<HeightBand>,
-                                                    pub(super) openable:         Option<HeightBand>,
-                                            pub(super) emplacement:      Option<WeaponName>,
+    pub(super) max_hp:           CoverHp,
+    pub(super) height_band:      HeightBand,
+    pub(super) armor_protection: ArmorProtection,
+    pub(super) armor_hardness:   ArmorHardness,
+    pub(super) piece_kind:       TerrainPieceKind,
+    pub(super) graphic:          TerrainGraphicKey,
+    pub(super) blocks_path:      PathBlocked,
+    pub(super) occludes_vision:  Option<HeightBand>,
+    pub(super) openable:         Option<HeightBand>,
+    pub(super) emplacement:      Option<WeaponName>,
 }
 
 pub(super) struct ResolvedSlabPiece {
-        pub(super) max_hp:           SlabHp,
-        pub(super) armor_protection: ArmorProtection,
-        pub(super) armor_hardness:   ArmorHardness,
-        pub(super) graphic:          TerrainGraphicKey,
-            pub(super) footfall:         Option<FootfallSound>,
-                        pub(super) blocks_path:      PathBlocked,
-                            pub(super) occludes_vision:  Option<HeightBand>,
-                                        pub(super) openable:         Option<HeightBand>,
+    pub(super) max_hp:           SlabHp,
+    pub(super) armor_protection: ArmorProtection,
+    pub(super) armor_hardness:   ArmorHardness,
+    pub(super) graphic:          TerrainGraphicKey,
+    pub(super) footfall:         Option<FootfallSound>,
+    pub(super) blocks_path:      PathBlocked,
+    pub(super) occludes_vision:  Option<HeightBand>,
+    pub(super) openable:         Option<HeightBand>,
 }
 
 pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<ResolvedCoverPiece> {

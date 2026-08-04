@@ -11,7 +11,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn a_killed_ganger_with_explode_on_death_damages_an_adjacent_ganger() {
     let (mut app, seed) = battle_app(0x5547_0A0A, false);
@@ -49,7 +48,6 @@ fn a_killed_ganger_with_explode_on_death_damages_an_adjacent_ganger() {
         vitals(&app, neighbour),
     );
 }
-
 
 #[test]
 fn a_ganger_killed_in_melee_fans_its_on_death_explode() {
@@ -90,7 +88,6 @@ fn a_ganger_killed_in_melee_fans_its_on_death_explode() {
         vitals(&app, neighbour),
     );
 }
-
 
 const fn blast_mode() -> FireModeSpec {
     FireModeSpec::with_hit_type(

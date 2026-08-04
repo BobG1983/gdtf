@@ -17,33 +17,33 @@ use crate::{
 /// Mutable view of a living combatant that a hit can change.
 pub struct TargetGanger<'a> {
     /// Hit points.
-    pub hp: &'a mut Hp,
+    pub hp:        &'a mut Hp,
     /// Wound capacity.
-    pub wounds: &'a mut Wounds,
+    pub wounds:    &'a mut Wounds,
     /// Life state.
-    pub life: &'a mut LifeState,
+    pub life:      &'a mut LifeState,
     /// Armor piece at the hit location, if any.
-    pub piece: Option<StruckPiece<'a>>,
+    pub piece:     Option<StruckPiece<'a>>,
     /// Wound history.
     pub inflicted: &'a mut InflictedWounds,
     /// Toughness used by severity.
     pub toughness: Toughness,
     /// Luck used by severity.
-    pub luck: Luck,
+    pub luck:      Luck,
 }
 
 /// Mutable armor piece that was struck.
 pub struct StruckPiece<'a> {
     /// Armor floor.
-    pub floor: ArmorFloor,
+    pub floor:      ArmorFloor,
     /// Protection value.
     pub protection: ArmorProtection,
     /// Hardness value.
-    pub hardness: ArmorHardness,
+    pub hardness:   ArmorHardness,
     /// Armor type for matchup.
     pub armor_type: ArmorType,
     /// Remaining integrity.
-    pub integrity: &'a mut ArmorIntegrity,
+    pub integrity:  &'a mut ArmorIntegrity,
 }
 
 /// Whether the struck piece still has integrity left.
@@ -77,7 +77,7 @@ pub struct StruckSurfaces<'a> {
     /// Cover ledger.
     pub cover: &'a mut CoverLedger,
     /// Slab ledger.
-    pub slab: &'a mut SlabLedger,
+    pub slab:  &'a mut SlabLedger,
 }
 
 /// What the hit actually did.
@@ -110,7 +110,7 @@ impl HitVerdict {
 #[derive(Debug, Clone, PartialEq)]
 pub struct HitReport {
     /// Original shot kind.
-    pub kind: ShotKind,
+    pub kind:    ShotKind,
     /// What happened.
     pub verdict: HitVerdict,
 }

@@ -19,10 +19,9 @@ pub(crate) fn shipped_tuning() -> CombatTuning {
     ron::from_str::<CombatTuning>(SHIPPED).unwrap_or_default()
 }
 
-
 #[derive(Resource, Default)]
 pub(crate) struct FallLog {
-        pub(crate) falls: Vec<FallOccurred>,
+    pub(crate) falls: Vec<FallOccurred>,
 }
 
 pub(crate) fn record_falls(mut reader: MessageReader<FallOccurred>, mut log: ResMut<FallLog>) {

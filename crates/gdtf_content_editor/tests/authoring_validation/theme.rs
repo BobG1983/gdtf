@@ -1,4 +1,4 @@
-//! GTW-630 A2: the theme→terrain edge's authoring-time pins — a dangling
+//! A2: the theme→terrain edge's authoring-time pins — a dangling
 use bevy::asset::{AssetEvent, AssetServer, Assets, uuid::Uuid};
 use gdtf_assets::{ContentFamily, ContentFolderHandle, ContentIntegrityReport, RonAsset};
 use gdtf_battle_sim::{level::UuidThemeDef, terrain::def::TerrainUuid};
@@ -68,7 +68,7 @@ fn theme_hot_edit_rearms_validation_and_republishes_current_findings() {
         app.world()
             .get_resource::<ContentFolderHandle<ThemeDefsFamily>>()
             .is_some(),
-        "the loader's persistent theme-defs ContentFolderHandle must survive past Load (GTW-533)",
+        "the loader's persistent theme-defs ContentFolderHandle must survive past Load ",
     );
     app.world_mut()
         .write_message(AssetEvent::Modified { id: handle.id() });

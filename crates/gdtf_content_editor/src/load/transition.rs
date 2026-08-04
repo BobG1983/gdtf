@@ -21,20 +21,20 @@ pub(crate) fn transition_to_editing(gate: GateResources, mut next: ResMut<NextSt
 /// `#[derive(SystemParam)]` (the shell's `PrefabParams` pattern) so the gate system's
 #[derive(bevy::ecs::system::SystemParam)]
 pub(crate) struct GateResources<'w> {
-        weapons:       Option<Res<'w, WeaponRegistry>>,
-        armor:         Option<Res<'w, ArmorRegistry>>,
-        terrain_defs:  Option<Res<'w, TerrainDefRegistry>>,
-        theme_defs:    Option<Res<'w, UuidThemeRegistry>>,
-        gangs:         Option<Res<'w, GangRegistry>>,
-        melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
-        injuries:      Option<Res<'w, InjuryRegistry>>,
-            injury_tables: Option<Res<'w, InjuryTables>>,
-            sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
-        attachments:   Option<Res<'w, AttachmentRegistry>>,
+    weapons:       Option<Res<'w, WeaponRegistry>>,
+    armor:         Option<Res<'w, ArmorRegistry>>,
+    terrain_defs:  Option<Res<'w, TerrainDefRegistry>>,
+    theme_defs:    Option<Res<'w, UuidThemeRegistry>>,
+    gangs:         Option<Res<'w, GangRegistry>>,
+    melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
+    injuries:      Option<Res<'w, InjuryRegistry>>,
+    injury_tables: Option<Res<'w, InjuryTables>>,
+    sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
+    attachments:   Option<Res<'w, AttachmentRegistry>>,
 }
 
 impl GateResources<'_> {
-        const fn all_present(&self) -> bool {
+    const fn all_present(&self) -> bool {
         self.weapons.is_some()
             && self.armor.is_some()
             && self.terrain_defs.is_some()

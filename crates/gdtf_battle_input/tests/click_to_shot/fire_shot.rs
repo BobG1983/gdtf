@@ -51,7 +51,7 @@ fn click_on_enemy_produces_a_shot_endtoend() {
         shot_ran,
         "clicking an enemy in a legitimate firing situation must run fire() (the shooter's \
          TU must drop by the mode charge) — tu {tu_before:?} -> {tu_after:?}. If TU is \
-         UNCHANGED the fire path is silent end-to-end (GTW-289).",
+         UNCHANGED the fire path is silent end-to-end.",
     );
 
     assert_eq!(
@@ -111,7 +111,7 @@ fn click_on_enemy_fires_the_ranged_weapon_even_with_a_melee_weapon_related_first
         "with a melee weapon related FIRST, the input fire chain must STILL fire the ranged \
          weapon (the shooter's TU must drop) — tu {tu_before:?} -> {tu_after:?}. If TU is \
          UNCHANGED the input `can_fire` resolved the magazine-less melee weapon (the \
-         order-dependent `Wields::weapon()` regression GTW-505 C5 guards).",
+         order-dependent `Wields::weapon()` regression C5 guards).",
     );
 
     let rounds_after = ranged_magazine_rounds(&app, shooter);

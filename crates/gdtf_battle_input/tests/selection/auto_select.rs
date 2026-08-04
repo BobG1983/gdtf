@@ -10,7 +10,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 fn placed_ganger(app: &mut App, faction: Faction, cell: CellLevel) -> Entity {
     GangerEntityBuilder::new()
         .faction(faction)

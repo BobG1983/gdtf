@@ -5,11 +5,11 @@ use gdtf_battle_sim::{cover::CoverLedger, prelude::OccupancyGrid};
 pub(crate) struct ShownOccupancyGrid(OccupancyGrid);
 
 impl ShownOccupancyGrid {
-            pub(crate) fn promote(&mut self, live: &OccupancyGrid) {
+    pub(crate) fn promote(&mut self, live: &OccupancyGrid) {
         self.0 = live.clone();
     }
 
-            #[must_use]
+    #[must_use]
     pub(crate) const fn grid(&self) -> &OccupancyGrid {
         &self.0
     }
@@ -19,11 +19,11 @@ impl ShownOccupancyGrid {
 pub(crate) struct ShownCoverLedger(CoverLedger);
 
 impl ShownCoverLedger {
-            pub(crate) fn promote(&mut self, live: &CoverLedger) {
+    pub(crate) fn promote(&mut self, live: &CoverLedger) {
         self.0 = live.clone();
     }
 
-            #[must_use]
+    #[must_use]
     pub(crate) const fn ledger(&self) -> &CoverLedger {
         &self.0
     }

@@ -11,19 +11,19 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct PlacedGanger {
     /// Gang key.
-    pub gang: GangName,
+    pub gang:       GangName,
     /// Member key within the gang.
-    pub member: GangerName,
+    pub member:     GangerName,
     /// Spawn cell.
-    pub at: CellLevel,
+    pub at:         CellLevel,
     /// Faction index.
-    pub faction: Faction,
+    pub faction:    Faction,
     /// Facing.
-    pub facing: Facing,
+    pub facing:     Facing,
     /// Stance.
-    pub stance: Stance,
+    pub stance:     Stance,
     /// Aiming state.
-    pub aiming: Aiming,
+    pub aiming:     Aiming,
     /// Life state.
     pub life_state: LifeState,
 }
@@ -49,15 +49,15 @@ impl PlacedGanger {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Placement {
     /// Spawn cell.
-    pub at: CellLevel,
+    pub at:         CellLevel,
     /// Faction index.
-    pub faction: Faction,
+    pub faction:    Faction,
     /// Facing.
-    pub facing: Facing,
+    pub facing:     Facing,
     /// Stance.
-    pub stance: Stance,
+    pub stance:     Stance,
     /// Aiming state.
-    pub aiming: Aiming,
+    pub aiming:     Aiming,
     /// Life state.
     pub life_state: LifeState,
 }

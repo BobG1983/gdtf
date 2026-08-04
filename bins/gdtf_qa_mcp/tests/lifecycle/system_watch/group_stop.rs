@@ -14,8 +14,8 @@ use super::{
 };
 
 struct Launcher {
-        leader:  Child,
-        spawned: u32,
+    leader:  Child,
+    spawned: u32,
 }
 
 #[test]

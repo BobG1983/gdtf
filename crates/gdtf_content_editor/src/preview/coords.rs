@@ -51,7 +51,7 @@ mod tests {
 
     use super::{CELL_WORLD, cell_center_world, uv_to_cell, uv_to_world};
 
-            #[test]
+    #[test]
     fn cell_center_flips_y_and_scales() {
         let w = cell_center_world(Cell::new(2, 3));
         let expected_x = 2.0 * CELL_WORLD;
@@ -66,7 +66,7 @@ mod tests {
         );
     }
 
-        #[test]
+    #[test]
     fn center_uv_at_origin_maps_to_cell_origin() {
         let cell = uv_to_cell(Vec2::new(0.5, 0.5), 1.0, Vec2::ZERO);
         assert_eq!(
@@ -76,7 +76,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn uv_round_trips_a_cell_center() {
         let scale = 1.0;
         let pan = Vec2::new(48.0, -32.0);
@@ -100,7 +100,7 @@ mod tests {
         }
     }
 
-            #[test]
+    #[test]
     fn uv_to_world_agrees_with_uv_to_cell() {
         let scale = 2.0;
         let pan = Vec2::new(-16.0, 8.0);

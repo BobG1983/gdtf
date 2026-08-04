@@ -25,7 +25,7 @@ mod tests {
     use super::autoload_first_weapon;
     use crate::weapon_form::WeaponDraft;
 
-            #[test]
+    #[test]
     fn seeds_first_sorted_weapon_exactly_once() {
         let seed = WeaponDraft::new_weapon();
         let registry = WeaponRegistry::new([

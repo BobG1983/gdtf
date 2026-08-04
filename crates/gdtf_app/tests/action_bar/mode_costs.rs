@@ -10,7 +10,6 @@ use gdtf_battle_sim::{
 
 use super::{harness::*, probes::*};
 
-
 #[test]
 fn mode_cost_lines_show_hip_fire_cost_per_mode() {
     let single = spec(ModeKind::Single, 0.2, 1);

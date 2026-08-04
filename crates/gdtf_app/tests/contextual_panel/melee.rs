@@ -36,7 +36,6 @@ fn melees(app: &App) -> Vec<MeleeRequested> {
     probed::<MeleeRequested>(app)
 }
 
-
 #[test]
 fn adjacent_alive_enemy_in_los_offers_melee() {
     let mut app = battle_running_app();

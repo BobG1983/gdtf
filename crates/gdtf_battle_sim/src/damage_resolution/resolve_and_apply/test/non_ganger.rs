@@ -65,7 +65,7 @@ fn non_ganger_outcomes_are_inert() {
         );
         assert!(
             inflicted.is_empty(),
-            "{kind:?} (non-ganger) must record NO InflictedWound (GTW-279)",
+            "{kind:?} (non-ganger) must record NO InflictedWound ",
         );
 
         let mut rng_fresh = rng();

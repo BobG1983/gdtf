@@ -27,7 +27,7 @@ impl StatDelta {
 
 /// Applies a stat delta on gain and reverses it on heal.
 pub struct ApplyModify {
-    stat: StatTarget,
+    stat:   StatTarget,
     amount: StatDelta,
 }
 
@@ -64,8 +64,8 @@ mod tests {
         let mut bleed = BleedAfflicted::default();
         let mut movement = MovementCostFactor::IDENTITY;
         let mut acc = LedgerAccumulators {
-            deltas: &mut deltas,
-            bleed: &mut bleed,
+            deltas:   &mut deltas,
+            bleed:    &mut bleed,
             movement: &mut movement,
         };
         ApplyModify::new(StatTarget::Aim, StatDelta::new(-3)).fold_on_gain(&mut acc);
@@ -87,8 +87,8 @@ mod tests {
         let mut bleed = BleedAfflicted::default();
         let mut movement = MovementCostFactor::IDENTITY;
         let mut acc = LedgerAccumulators {
-            deltas: &mut deltas,
-            bleed: &mut bleed,
+            deltas:   &mut deltas,
+            bleed:    &mut bleed,
             movement: &mut movement,
         };
         let effect = ApplyModify::new(StatTarget::Toughness, StatDelta::new(-4));

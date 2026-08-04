@@ -18,14 +18,14 @@ use crate::{ActiveLevel, TerrainSprite};
 /// Bundled sim queries used to derive cross-level signals.
 #[derive(SystemParam)]
 pub struct CrossLevelSimFacts<'w, 's> {
-    active: Res<'w, ActiveLevel>,
-    squad: Option<Res<'w, SquadVisibility>>,
-    player: Option<Res<'w, PlayerFaction>>,
-    gangers: Query<'w, 's, (&'static Position, &'static Faction, &'static LifeState)>,
-    surface: Option<Res<'w, SurfaceGrid>>,
+    active:    Res<'w, ActiveLevel>,
+    squad:     Option<Res<'w, SquadVisibility>>,
+    player:    Option<Res<'w, PlayerFaction>>,
+    gangers:   Query<'w, 's, (&'static Position, &'static Faction, &'static LifeState)>,
+    surface:   Option<Res<'w, SurfaceGrid>>,
     occupancy: Option<Res<'w, OccupancyGrid>>,
-    graph: Option<Res<'w, VerticalLinkGraph>>,
-    terrain: Query<'w, 's, &'static TerrainSprite>,
+    graph:     Option<Res<'w, VerticalLinkGraph>>,
+    terrain:   Query<'w, 's, &'static TerrainSprite>,
 }
 
 /// Rebuild [`CrossLevelSignals`] from threats, drop depths, and connectors.

@@ -26,12 +26,12 @@ const POLL_STEP: Duration = Duration::from_millis(10);
 const MAX_UPDATES: u32 = 400;
 
 pub(crate) struct Client {
-        stream:  TcpStream,
-        decoder: FrameDecoder,
+    stream:  TcpStream,
+    decoder: FrameDecoder,
 }
 
 impl Client {
-                        pub(crate) fn connect(port: NetQaPort) -> Result<Self, TestError> {
+    pub(crate) fn connect(port: NetQaPort) -> Result<Self, TestError> {
         let stream = TcpStream::connect((Ipv4Addr::LOCALHOST, *port))?;
         stream.set_read_timeout(Some(READ_TIMEOUT))?;
         Ok(Self {
@@ -40,7 +40,7 @@ impl Client {
         })
     }
 
-                        pub(crate) fn read(&mut self) -> Result<QaResponse, TestError> {
+    pub(crate) fn read(&mut self) -> Result<QaResponse, TestError> {
         let mut buf = [0u8; 512];
         loop {
             if let Some(frame) = self.decoder.next_frame()? {
@@ -54,7 +54,7 @@ impl Client {
         }
     }
 
-                        pub(crate) fn exchange(&mut self, request: &QaRequest) -> Result<QaResponse, TestError> {
+    pub(crate) fn exchange(&mut self, request: &QaRequest) -> Result<QaResponse, TestError> {
         self.stream.write_all(&encode(request)?)?;
         self.read()
     }

@@ -28,7 +28,7 @@ const fn column_cell() -> Cell {
 
 #[derive(Resource, Default)]
 struct DeathLog {
-        deaths: Vec<OnDeathOccurred>,
+    deaths: Vec<OnDeathOccurred>,
 }
 
 fn record_deaths(mut reader: MessageReader<OnDeathOccurred>, mut log: ResMut<DeathLog>) {

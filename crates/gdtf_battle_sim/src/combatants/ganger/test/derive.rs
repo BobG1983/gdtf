@@ -4,10 +4,9 @@ use bevy::{
 };
 
 use crate::{
-    ganger::derive_stats::weighted_sum,
     ganger::{
         Aim, Cool, GangerAttributes, Grit, Hp, HpMax, Luck, Reflexes, Shooting, Speed, Strength,
-        Toughness, derive_stats, rederive_stats_on_tuning_change,
+        Toughness, derive_stats, derive_stats::weighted_sum, rederive_stats_on_tuning_change,
     },
     tuning::{
         BottlePerMorale, FightWeights, GangerStatTuning, HpWeights, MoraleWeights,

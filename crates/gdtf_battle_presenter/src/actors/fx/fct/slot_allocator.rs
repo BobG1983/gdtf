@@ -50,8 +50,7 @@ mod test {
     };
     use gdtf_battle_sim::prelude::{Cell, CellLevel, Level};
 
-    use super::super::text::spawn_floating_text;
-    use super::FctSlotAllocator;
+    use super::{super::text::spawn_floating_text, FctSlotAllocator};
     use crate::{
         CombatText, FctEmphasis, FctRiseRate, FctStackIndex, FctTtlSeconds, FloatingCombatText,
         animate_floating_text,
@@ -63,8 +62,8 @@ mod test {
 
     #[derive(Resource, Default)]
     struct AllocProbe {
-        target: Option<CellLevel>,
-        ttl: FctTtlSeconds,
+        target:   Option<CellLevel>,
+        ttl:      FctTtlSeconds,
         recorded: Vec<FctStackIndex>,
     }
 

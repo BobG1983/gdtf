@@ -22,7 +22,7 @@ use crate::{
     clippy::too_many_arguments,
     reason = "the march reads four independent, deliberately-separate grids (occupancy / \
               surface / cover / tuning) plus the muzzle, direction, shooter-cell exception, \
-              and the GTW-317 dead-occupant predicate — each a distinct input the DDA must \
+              and the dead-occupant predicate — each a distinct input the DDA must \
               see; bundling them into a struct would only obscure that they are read-only \
               and orthogonal"
 )]
@@ -47,9 +47,9 @@ pub fn march_vector(
 
     if *dir == Vec3::ZERO || !*xy_in_grid(state.vx, state.vy) || !*z_in_grid(state.vz) {
         return MarchResult {
-            kind: MarchKind::Miss,
-            at: key_of_clamped(state.vx, state.vy, state.vz),
-            band: round_band_for_cell(muzzle, tuning),
+            kind:   MarchKind::Miss,
+            at:     key_of_clamped(state.vx, state.vy, state.vz),
+            band:   round_band_for_cell(muzzle, tuning),
             impact: muzzle,
         };
     }
@@ -74,9 +74,9 @@ pub fn march_vector(
 
     let here_point = point_at(muzzle, dir, state.entry_t);
     MarchResult {
-        kind: MarchKind::Miss,
-        at: key_of_clamped(state.vx, state.vy, state.vz),
-        band: round_band_for_cell(here_point, tuning),
+        kind:   MarchKind::Miss,
+        at:     key_of_clamped(state.vx, state.vy, state.vz),
+        band:   round_band_for_cell(here_point, tuning),
         impact: here_point,
     }
 }

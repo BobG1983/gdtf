@@ -87,8 +87,8 @@ const MISSING_TEXEL: [u8; 4] = [200, 60, 200, 255];
 pub fn setup_missing_tile_texture(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     let image = Image::new_fill(
         Extent3d {
-            width: 1,
-            height: 1,
+            width:                 1,
+            height:                1,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,

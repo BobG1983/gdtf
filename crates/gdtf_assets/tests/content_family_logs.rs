@@ -35,7 +35,7 @@ fn install_global_capture() {
 struct CaptureLayer;
 
 struct MessageVisitor {
-        message: Option<String>,
+    message: Option<String>,
 }
 
 impl Visit for MessageVisitor {
@@ -76,7 +76,7 @@ fn capture_logs(body: impl FnOnce()) -> Vec<String> {
 
 #[derive(Deserialize, TypePath, Debug, Clone)]
 struct Swatch {
-        #[allow(dead_code, reason = "the log line, not the payload, is under test")]
+    #[allow(dead_code, reason = "the log line, not the payload, is under test")]
     tone: u32,
 }
 
@@ -100,8 +100,8 @@ impl ContentFamily for SwatchFamily {
 
 #[derive(Deserialize, TypePath, Debug, Clone)]
 struct Badge {
-        key:   String,
-        #[allow(dead_code, reason = "the log line, not the payload, is under test")]
+    key:   String,
+    #[allow(dead_code, reason = "the log line, not the payload, is under test")]
     glyph: String,
 }
 
@@ -124,7 +124,7 @@ impl ContentFamily for BadgeFamily {
 
 #[derive(Deserialize, TypePath, Debug, Clone)]
 struct Relic {
-        #[allow(
+    #[allow(
         dead_code,
         reason = "no member file exists; the field anchors the schema"
     )]

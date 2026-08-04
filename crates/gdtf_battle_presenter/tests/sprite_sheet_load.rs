@@ -1,4 +1,4 @@
-//! Sprite sheets: all SheetRole PNGs load from the sprites folder under a real AssetServer.
+//! Sprite sheets: all `SheetRole` PNGs load from the sprites folder under a real `AssetServer`.
 use std::{
     path::PathBuf,
     sync::{Mutex, MutexGuard},
@@ -105,7 +105,6 @@ fn all_sheet_role_pngs_load_from_sprites_folder() {
     let characters = load_sheet(&app, SheetRole::Characters);
     let effects = load_sheet(&app, SheetRole::Effects);
     let portraits = load_sheet(&app, SheetRole::Portraits);
-
 
     advance_until_load_state(&mut app, terrain.id(), |s| s.is_loaded(), LOAD_SAFETY_NET);
     assert_loaded(

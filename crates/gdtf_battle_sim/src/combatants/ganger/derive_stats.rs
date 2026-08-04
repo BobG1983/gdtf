@@ -34,27 +34,27 @@ impl PoolValue {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DerivedStats {
     /// Shooting skill.
-    pub shooting: Shooting,
+    pub shooting:   Shooting,
     /// Fight skill.
-    pub fight: Fight,
+    pub fight:      Fight,
     /// Reactions skill.
-    pub reactions: Reactions,
+    pub reactions:  Reactions,
     /// Morale.
-    pub morale: Morale,
+    pub morale:     Morale,
     /// Starting TU.
-    pub tu: Tu,
+    pub tu:         Tu,
     /// Max TU.
-    pub tu_max: TuMax,
+    pub tu_max:     TuMax,
     /// Starting HP.
-    pub hp: Hp,
+    pub hp:         Hp,
     /// Max HP.
-    pub hp_max: HpMax,
+    pub hp_max:     HpMax,
     /// Starting wounds.
-    pub wounds: Wounds,
+    pub wounds:     Wounds,
     /// Max wounds.
     pub wounds_max: WoundsMax,
     /// Bottle threshold.
-    pub bottle: Bottle,
+    pub bottle:     Bottle,
 }
 
 const fn round_to_u16(value: StatMagnitude) -> Hp {

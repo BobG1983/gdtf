@@ -1,7 +1,6 @@
 use super::super::*;
 use crate::occupancy::TerrainKind;
 
-
 #[test]
 fn shipped_reaction_leaves_parse_and_satisfy_ordering_invariant() {
     const SHIPPED_TUNING_RON: &str = include_str!(concat!(

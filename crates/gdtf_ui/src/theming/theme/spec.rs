@@ -31,25 +31,25 @@ impl BackgroundThemeSpec {
 #[derive(Deserialize, Clone, Copy, PartialEq, Debug)]
 pub struct PanelThemeSpec {
     /// Fill color.
-    pub color: Srgba4,
+    pub color:         Srgba4,
     /// Border color.
-    pub border_color: Srgba4,
+    pub border_color:  Srgba4,
     /// Border width (vw).
-    pub border_width: f32,
+    pub border_width:  f32,
     /// Corner radius (vw).
     pub corner_radius: f32,
     /// Content margin.
-    pub margin: MarginSpec,
+    pub margin:        MarginSpec,
 }
 
 impl PanelThemeSpec {
     pub(super) const fn resolve(self) -> PanelTheme {
         PanelTheme {
-            color: PanelColor::new(self.color.into_color()),
-            border_color: BorderColor::new(self.border_color.into_color()),
-            border_width: BorderWidthVw::new(self.border_width),
+            color:         PanelColor::new(self.color.into_color()),
+            border_color:  BorderColor::new(self.border_color.into_color()),
+            border_width:  BorderWidthVw::new(self.border_width),
             corner_radius: CornerRadiusVw::new(self.corner_radius),
-            margin: self.margin.resolve(),
+            margin:        self.margin.resolve(),
         }
     }
 }
@@ -60,30 +60,30 @@ impl PanelThemeSpec {
 #[derive(Deserialize, Clone, PartialEq, Debug)]
 pub struct ButtonThemeSpec {
     /// Default fill.
-    pub color: Srgba4,
+    pub color:         Srgba4,
     /// Disabled fill.
-    pub disabled: Srgba4,
+    pub disabled:      Srgba4,
     /// Active fill.
-    pub active: Srgba4,
+    pub active:        Srgba4,
     /// Hover fill.
-    pub hover: Srgba4,
+    pub hover:         Srgba4,
     /// Pressed fill.
-    pub pressed: Srgba4,
+    pub pressed:       Srgba4,
     /// Caption color.
-    pub text_color: Srgba4,
+    pub text_color:    Srgba4,
     /// Caption size (pt).
-    pub font_size_pt: f32,
+    pub font_size_pt:  f32,
     /// Border color.
-    pub border_color: Srgba4,
+    pub border_color:  Srgba4,
     /// Border width (vw).
-    pub border_width: f32,
+    pub border_width:  f32,
     /// Corner radius (vw).
     pub corner_radius: f32,
     /// Content margin.
-    pub margin: MarginSpec,
+    pub margin:        MarginSpec,
     /// Optional font asset key.
     #[serde(default)]
-    pub font: Option<String>,
+    pub font:          Option<String>,
 }
 
 impl ButtonThemeSpec {
@@ -111,12 +111,12 @@ impl ButtonThemeSpec {
 #[derive(Deserialize, Clone, PartialEq, Debug)]
 pub struct TitleThemeSpec {
     /// Title color.
-    pub text_color: Srgba4,
+    pub text_color:   Srgba4,
     /// Title size (pt).
     pub font_size_pt: f32,
     /// Optional font asset key.
     #[serde(default)]
-    pub font: Option<String>,
+    pub font:         Option<String>,
 }
 
 impl TitleThemeSpec {
@@ -135,12 +135,12 @@ impl TitleThemeSpec {
 #[derive(Deserialize, Clone, PartialEq, Debug)]
 pub struct TextThemeSpec {
     /// Body color.
-    pub text_color: Srgba4,
+    pub text_color:   Srgba4,
     /// Body size (pt).
     pub font_size_pt: f32,
     /// Optional font asset key.
     #[serde(default)]
-    pub font: Option<String>,
+    pub font:         Option<String>,
 }
 
 impl TextThemeSpec {
@@ -159,15 +159,15 @@ pub struct GdtfThemeSpec {
     /// Default font asset key.
     pub default_font: String,
     /// Background section.
-    pub background: BackgroundThemeSpec,
+    pub background:   BackgroundThemeSpec,
     /// Panel section.
-    pub panel: PanelThemeSpec,
+    pub panel:        PanelThemeSpec,
     /// Button section.
-    pub button: ButtonThemeSpec,
+    pub button:       ButtonThemeSpec,
     /// Title section.
-    pub title: TitleThemeSpec,
+    pub title:        TitleThemeSpec,
     /// Body text section.
-    pub text: TextThemeSpec,
+    pub text:         TextThemeSpec,
 }
 
 impl GdtfThemeSpec {
@@ -180,11 +180,11 @@ impl GdtfThemeSpec {
 
         GdtfTheme {
             default_font: FontKey::new(self.default_font),
-            background: self.background.resolve(),
-            panel: self.panel.resolve(),
-            button: self.button.resolve(button_font),
-            title: self.title.resolve(title_font),
-            text: self.text.resolve(text_font),
+            background:   self.background.resolve(),
+            panel:        self.panel.resolve(),
+            button:       self.button.resolve(button_font),
+            title:        self.title.resolve(title_font),
+            text:         self.text.resolve(text_font),
         }
     }
 }

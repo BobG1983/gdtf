@@ -6,7 +6,7 @@ use super::Responder;
 
 /// Incoming QA request with a channel to send the response.
 pub struct IncomingRequest {
-    request: QaRequest,
+    request:   QaRequest,
     responder: Responder,
 }
 

@@ -9,7 +9,7 @@ use super::cursor::PlaybackCursor;
 #[derive(SystemParam)]
 pub struct PlaybackGate<'w> {
     cursor: Option<Res<'w, PlaybackCursor>>,
-    log: Option<Res<'w, ActLog>>,
+    log:    Option<Res<'w, ActLog>>,
 }
 
 impl PlaybackGate<'_> {

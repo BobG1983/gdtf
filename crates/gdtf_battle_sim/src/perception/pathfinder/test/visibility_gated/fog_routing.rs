@@ -96,7 +96,7 @@ fn route_through_explored_is_allowed() {
 
 #[test]
 fn reachable_within_excludes_unseen_cells() {
-    let grid = grid_with(&[]); 
+    let grid = grid_with(&[]);
     let links = no_links();
     let tuning = tuning();
     let occupant = spawn_entity();

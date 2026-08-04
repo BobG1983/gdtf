@@ -23,15 +23,15 @@ impl BodyPartWeight {
 #[serde(try_from = "BodyPartWeightsDef")]
 pub struct BodyPartWeights {
     /// Head.
-    pub head: BodyPartWeight,
+    pub head:      BodyPartWeight,
     /// Torso.
-    pub torso: BodyPartWeight,
+    pub torso:     BodyPartWeight,
     /// Left arm.
-    pub left_arm: BodyPartWeight,
+    pub left_arm:  BodyPartWeight,
     /// Right arm.
     pub right_arm: BodyPartWeight,
     /// Left leg.
-    pub left_leg: BodyPartWeight,
+    pub left_leg:  BodyPartWeight,
     /// Right leg.
     pub right_leg: BodyPartWeight,
 }
@@ -39,11 +39,11 @@ pub struct BodyPartWeights {
 impl Default for BodyPartWeights {
     fn default() -> Self {
         Self {
-            head: BodyPartWeight(6),
-            torso: BodyPartWeight(40),
-            left_arm: BodyPartWeight(12),
+            head:      BodyPartWeight(6),
+            torso:     BodyPartWeight(40),
+            left_arm:  BodyPartWeight(12),
             right_arm: BodyPartWeight(12),
-            left_leg: BodyPartWeight(15),
+            left_leg:  BodyPartWeight(15),
             right_leg: BodyPartWeight(15),
         }
     }
@@ -66,11 +66,11 @@ impl std::error::Error for AllZeroBodyPartWeights {}
 
 #[derive(Deserialize)]
 struct BodyPartWeightsDef {
-    head: BodyPartWeight,
-    torso: BodyPartWeight,
-    left_arm: BodyPartWeight,
+    head:      BodyPartWeight,
+    torso:     BodyPartWeight,
+    left_arm:  BodyPartWeight,
     right_arm: BodyPartWeight,
-    left_leg: BodyPartWeight,
+    left_leg:  BodyPartWeight,
     right_leg: BodyPartWeight,
 }
 
@@ -88,11 +88,11 @@ impl TryFrom<BodyPartWeightsDef> for BodyPartWeights {
             return Err(AllZeroBodyPartWeights);
         }
         Ok(Self {
-            head: def.head,
-            torso: def.torso,
-            left_arm: def.left_arm,
+            head:      def.head,
+            torso:     def.torso,
+            left_arm:  def.left_arm,
             right_arm: def.right_arm,
-            left_leg: def.left_leg,
+            left_leg:  def.left_leg,
             right_leg: def.right_leg,
         })
     }

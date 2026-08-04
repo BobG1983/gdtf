@@ -11,7 +11,7 @@ pub struct TerrainPlacementEntry {
     /// Terrain definition to spawn.
     pub piece: TerrainUuid,
     /// Cell where the piece is placed.
-    pub at: CellLevel,
+    pub at:    CellLevel,
 }
 
 impl TerrainPlacementEntry {

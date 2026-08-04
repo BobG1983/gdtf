@@ -20,9 +20,9 @@ impl HandDisabling {
 /// Mutable ledger handles used while folding injury effects.
 pub struct LedgerAccumulators<'a> {
     /// Stat delta ledger.
-    pub deltas: &'a mut StatDeltaLedger,
+    pub deltas:   &'a mut StatDeltaLedger,
     /// Bleed accrual.
-    pub bleed: &'a mut BleedAfflicted,
+    pub bleed:    &'a mut BleedAfflicted,
     /// Movement cost factor.
     pub movement: &'a mut MovementCostFactor,
 }

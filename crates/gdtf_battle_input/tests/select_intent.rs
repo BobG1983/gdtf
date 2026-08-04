@@ -1,3 +1,4 @@
+//! Select intent: player gangers select; enemies and downed units refuse.
 use bevy::{input::ButtonInput, prelude::*};
 use gdtf_battle_input::{ActIntent, GdtfBattleInputPlugin, PendingActIntent, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
