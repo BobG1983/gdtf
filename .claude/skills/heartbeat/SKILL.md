@@ -22,13 +22,12 @@ responsible for **both** entries, not just its own:
 | Name | Schedule | Prompt |
 |------|----------|--------|
 | heartbeat | every two hours | `/heartbeat` |
-| dream | daily, just after local midnight | `/dream` |
 
 **Local machine timezone.** Avoid exact hour and half-hour marks — pick an off-minute
 so ticks do not pile onto the same instant as everyone else's. Record both ids in
 run-state.
 
-Both jobs also expire after 7 days on their own, even in a session that never restarts.
+Jobs also expire after 7 days on their own, even in a session that never restarts.
 The check is presence, not age: recreate what `CronList` does not show, leave the rest.
 
 `/dream` cannot restore its own cron: it only runs when something invokes it, and if
