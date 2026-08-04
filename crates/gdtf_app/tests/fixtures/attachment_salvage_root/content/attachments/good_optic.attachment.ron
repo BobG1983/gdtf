@@ -1,11 +1,8 @@
-// GTW-619 fixture attachment — a WELL-FORMED sibling of `broken.attachment.ron`.
-// The per-file salvage (GTW-582 C4, through the generic content-family seam) must
-// still fold THIS member into the AttachmentRegistry when the folder walk fails on
-// the malformed sibling (NOT shipped content — magnitudes are arbitrary).
+// Well-formed salvage fixture — healthy sibling of the broken file.
 (
-    display_name: "Good Optic",  // picker/HUD label, not the key (the key is the file stem)
-    slot: Sight,                 // occupies the sight dovetail (GTW-554 fit gate)
+    display_name: "Good Optic",
+    slot: Sight,
     effects: [
-        Aim(0.4),  // arbitrary fixture magnitude — never asserted by value
+        Aim(0.4),
     ],
 )
