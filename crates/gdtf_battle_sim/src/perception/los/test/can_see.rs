@@ -14,10 +14,6 @@ fn clear_pair_chebyshev() -> u16 {
     let (from_pos, _, _, to_pos, _) = clear_pair();
     let dx = (from_pos.x - to_pos.x).unsigned_abs();
     let dy = (from_pos.y - to_pos.y).unsigned_abs();
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "the test fixture deltas are tiny; this conversion is exact"
-    )]
     let max = dx.max(dy) as u16;
     max
 }

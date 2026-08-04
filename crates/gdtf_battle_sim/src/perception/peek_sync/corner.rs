@@ -21,10 +21,6 @@ pub(super) fn corner_lean(cell: CellLevel, grid: &OccupancyGrid) -> PeekOffset {
         let minus_open = !*grid.is_blocked(&offset_in_plane(wall, Cell::new(-px, -py)));
         if plus_open != minus_open {
             let (lx, ly) = if plus_open { (px, py) } else { (-px, -py) };
-            #[expect(
-                clippy::cast_precision_loss,
-                reason = "lx/ly are a unit step in {-1, 0, 1}; the f32 conversion is exact"
-            )]
             return PeekOffset::new(Vec2::new(lx as f32, ly as f32) * PEEK_LEAN);
         }
     }

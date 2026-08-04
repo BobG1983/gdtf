@@ -33,10 +33,6 @@ pub(crate) fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "the test caps are tiny (1 or 8), so the u32 -> f32 conversion is exact"
-)]
 pub(crate) const fn forced_reaction_tuning(cap: u32) -> ReactionTuning {
     ReactionTuning {
         cap_base:            ReactionCapBase::new(cap as f32),

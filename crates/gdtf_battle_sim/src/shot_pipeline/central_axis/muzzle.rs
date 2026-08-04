@@ -38,15 +38,7 @@ pub fn muzzle_position(
 
     let raw_x = offset.mul_add(step.x, center.x);
     let raw_y = offset.mul_add(step.y, center.y);
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "grid coords are tiny (0..60); the f32 conversion of the integer corner is exact for this range"
-    )]
     let muzzle_x = *clamp_within_cell(SimUnit::new(raw_x), SimUnit::new(cell.x as f32));
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "grid coords are tiny (0..60); the f32 conversion of the integer corner is exact for this range"
-    )]
     let muzzle_y = *clamp_within_cell(SimUnit::new(raw_y), SimUnit::new(cell.y as f32));
 
     let muzzle_z = f32::from(*level) + *muzzle_height(*stance, tuning);

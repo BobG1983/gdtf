@@ -59,12 +59,6 @@ pub struct DerivedStats {
 
 const fn round_to_u16(value: StatMagnitude) -> Hp {
     let rounded = value.0.round();
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "clamped to the u16 range below, so the cast cannot wrap or go negative; \
-                  the fractional part is gone after round"
-    )]
     let clamped = rounded.clamp(0.0, u16::MAX as f32) as u16;
     Hp::new(clamped)
 }
@@ -78,12 +72,6 @@ pub(crate) fn weighted_sum(terms: &[(f32, f32)]) -> StatMagnitude {
 
 const fn round_to_u8(value: StatMagnitude) -> PoolValue {
     let rounded = value.0.round();
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "clamped to the u8 range below, so the cast cannot wrap or go negative; \
-                  the fractional part is gone after round"
-    )]
     let clamped = rounded.clamp(0.0, u8::MAX as f32) as u8;
     PoolValue::new(clamped)
 }

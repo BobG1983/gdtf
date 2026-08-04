@@ -24,10 +24,6 @@ pub fn target_in_arc(
     target_cell: Cell,
     arc: &FiringArc,
 ) -> TargetInArc {
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "grid coords are tiny (0..60); the f32 conversion of the integer cell delta is exact for this range"
-    )]
     let delta = Vec2::new(
         (target_cell.x - actor_cell.x) as f32,
         (target_cell.y - actor_cell.y) as f32,

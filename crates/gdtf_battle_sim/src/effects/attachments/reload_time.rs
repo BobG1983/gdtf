@@ -38,13 +38,6 @@ impl ApplyAttachmentEffect for ApplyReloadTime {
             return;
         };
         let scaled = (f32::from(*magazine.reload_tu()) * *self.scale).max(0.0);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "the scaled reload cost is clamped non-negative above and a reload TU is a \
-                      small u8 count, so the f32 -> u8 floor cannot truncate meaningfully or \
-                      sign-flip (the scale_reload precedent this isolates)"
-        )]
         let tu = scaled as u8;
         let rebuilt = Magazine::new(
             LoadedRounds::new(*magazine.rounds()),

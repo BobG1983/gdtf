@@ -18,11 +18,6 @@ pub(crate) fn thumb_image(
     if dims.x == 0 || dims.y == 0 {
         return None;
     }
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "source-image pixel coordinates are small (a sheet is hundreds of pixels); the \
-                  f32 casts are exact within f32's 24-bit integer range"
-    )]
     let uv = rect.map_or(
         egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
         |rect| {

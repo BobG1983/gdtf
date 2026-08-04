@@ -56,7 +56,7 @@ impl ContentFamily for BadgeFamily {
 
 #[derive(Deserialize, TypePath, Debug, Clone)]
 struct Relic {
-    #[allow(
+    #[expect(
         dead_code,
         reason = "no member file exists; the field anchors the schema"
     )]

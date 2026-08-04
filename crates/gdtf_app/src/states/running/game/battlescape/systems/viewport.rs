@@ -4,12 +4,6 @@ use gdtf_battle_presenter::WorldCamera;
 use crate::states::running::game::battlescape::BottomBarRoot;
 
 /// non-negative integer well within `u32`; the localized `#[expect]` (the framing.rs
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "ComputedNode sizes are small non-negative physical px; rounding to u32 is total \
-              and in-range (a negative/NaN saturates to 0, never panics)"
-)]
 const fn physical_px(value: f32) -> u32 {
     value.round() as u32
 }

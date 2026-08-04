@@ -31,7 +31,7 @@ pub(in crate::states::running::game::battlescape) struct ModeCostInputs<'w, 's> 
     added_controls: Query<'w, 's, (), Added<ModeControl>>,
 }
 
-#[allow(
+#[expect(
     clippy::type_complexity,
     reason = "param tuple aliased where possible; the set_segment_sub_line call signature \
     fixes the controls / segments / sub-texts query shapes"

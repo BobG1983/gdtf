@@ -96,6 +96,7 @@ use_self                      = "deny"
 
 # Restriction lints — explicit opt-in
 dbg_macro                       = "deny"
+allow_attributes                 = "deny"  # no #[allow]; use #[expect] only
 allow_attributes_without_reason = "deny"
 undocumented_unsafe_blocks      = "deny"
 unwrap_used                     = "deny"

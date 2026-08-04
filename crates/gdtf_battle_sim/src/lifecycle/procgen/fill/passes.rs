@@ -124,11 +124,6 @@ pub(super) fn coverage_fraction(covered: CellCount, board_cells: CellCount) -> C
     if *board_cells <= 0 {
         return CoverageFraction::new(1.0);
     }
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "board cell counts are tiny (<= 60*60 = 3600); the f32 conversion is exact for \
-                  this range, so the coverage fraction is exact"
-    )]
     let fraction = *covered as f32 / *board_cells as f32;
     CoverageFraction::new(fraction)
 }
