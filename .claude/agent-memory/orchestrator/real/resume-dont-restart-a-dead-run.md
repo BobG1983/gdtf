@@ -21,9 +21,9 @@ succeeded, which is the expensive half of the run.
   *different* scriptPath is fine: the agent cache is keyed by prompt and options, not by file
   location, so a script can be moved mid-run and completed phases still replay.
 - **A workflow cannot resume another workflow.** Resume from the main session. `/heartbeat`
-  follows this, and `.claude/agent-memory/run-state.md` carries the in-flight branch and run id
+  follows this, and `.claude/run-state.md` carries the in-flight branch and run id
   for exactly that recovery.
-- **Read the marker file first in any fresh session.** `.claude/agent-memory/run-state.md` is what
+- **Read the marker file first in any fresh session.** `.claude/run-state.md` is what
   stops a double-start and two concurrent cargo builds.
 - **Compaction does not kill a run; a process restart does.** A compact makes you forget the task
   id — wait for the notification. A model change or crash kills it, and the task lookup then
