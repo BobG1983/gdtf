@@ -1,3 +1,4 @@
+//! Prefab registry load from real assets; gate waits for it before leaving Load.
 use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::level::{
     GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid,
