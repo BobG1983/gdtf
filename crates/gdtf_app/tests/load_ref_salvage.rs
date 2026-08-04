@@ -48,8 +48,7 @@ fn malformed_sibling_is_salvaged_around_reported_and_load_still_exits() {
         );
         assert!(
             !weapons.is_empty(),
-            "one malformed file may no longer EMPTY its family registry (the pre-GTW-582 \
-             behavior this test pins against)",
+            "one malformed file may no longer EMPTY its family registry",
         );
     }
 
