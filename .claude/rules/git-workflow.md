@@ -46,12 +46,24 @@ Branch model: **`main`** = releases, **`develop`** = integration. Plain git only
 7. When a workflow spawns a sub-agent to run git plumbing, the same rules
    apply to it — explicit staging, gate-gated commits, ticket-tagged subjects.
 
-## Optional: two epics at once via local-target worktrees
+## No worktrees — one ticket at a time in the main repo
 
-To work two INDEPENDENT epics in parallel, use git worktrees — one per epic:
-`git worktree add ../gdtf-<epic> <branch>`. Each worktree builds into its OWN
-local `target/`, which dies with `git worktree remove` — the cold-build cost of
-the worktree's first build is accepted. Only the MAIN tree keeps a persistent
-`./target`, cleaned when it exceeds 100G, checked at land windows. `.cargo/config.toml`'s
-`[unstable] checksum-freshness = true` STAYS. One ticket per worktree still holds
-(Rule 2, per-worktree).
+All work happens **on a feature branch in the main repo**. No `git worktree`, and
+no second ticket in flight while one is building.
+
+"In the main repo" does not mean "on develop". Rule 1 still holds in full: branch
+per ticket, `feature/gtw-N-slug`, off develop. The only thing that changed is
+*where* that branch is checked out — the main tree instead of a worktree.
+
+Two reasons, and the second is the one that bites:
+
+- The user can see what is going on. A build inside `.claude/worktrees/` is
+  invisible in their checkout.
+- **The QA MCP host builds from the session's working directory.** Work in a
+  worktree is work that host cannot see, so no live MCP evidence is possible for
+  it — the running game is always built from the main tree. Every clause needing
+  a screenshot or a driven command depends on the branch being checked out there.
+
+A stopped or blocked ticket's branch stays put; it does not need a worktree to
+survive. If two things genuinely must proceed at once, that is a scheduling
+problem to raise, not a reason to fan out into worktrees.

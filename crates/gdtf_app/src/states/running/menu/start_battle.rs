@@ -12,7 +12,8 @@ crate::support_item! {
 
 impl StartBattleRequested {
     crate::support_item! {
-                #[must_use]
+        /// Request a battle, optionally pinning the seed.
+        #[must_use]
         const fn new(seed: Option<BattleSeed>) -> Self {
             Self { seed }
         }

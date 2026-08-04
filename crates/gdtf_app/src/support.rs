@@ -6,10 +6,6 @@
 macro_rules! support_item {
     ($(#[$meta:meta])* enum $($rest:tt)*) => {
         $(#[$meta])*
-        #[expect(
-            missing_docs,
-            reason = "test-support re-exports UI/state markers; docs live on the real public API"
-        )]
         pub enum $($rest)*
     };
     ($(#[$meta:meta])* struct $($rest:tt)*) => {
@@ -22,10 +18,6 @@ macro_rules! support_item {
     };
     ($(#[$meta:meta])* const fn $($rest:tt)*) => {
         $(#[$meta])*
-        #[expect(
-            missing_docs,
-            reason = "test-support re-exports UI/state markers; docs live on the real public API"
-        )]
         pub const fn $($rest)*
     };
     ($(#[$meta:meta])* const $($rest:tt)*) => {

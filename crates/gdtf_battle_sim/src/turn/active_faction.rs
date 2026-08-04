@@ -17,7 +17,7 @@ impl ActiveFaction {
         Self(faction)
     }
 
-    /// Advance to the next team (wraps at [`TEAM_COUNT`]).
+    /// Advance to the next team, wrapping at the team count.
     pub fn advance(&mut self) {
         let next = (*self.0).wrapping_add(1) % TEAM_COUNT;
         self.0 = Faction::new(next);

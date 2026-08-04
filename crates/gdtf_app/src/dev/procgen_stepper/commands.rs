@@ -22,12 +22,14 @@ crate::support_item! {
 
 impl PendingStepCommand {
     crate::support_item! {
+        /// Queue a command for the stepper to pick up.
         const fn request(&mut self, command: StepCommand) {
             self.0 = Some(command);
         }
     }
 
     crate::support_item! {
+        /// Take the queued command, leaving none behind.
         const fn take(&mut self) -> Option<StepCommand> {
             self.0.take()
         }
@@ -41,12 +43,14 @@ crate::support_item! {
 
 impl AutoRunning {
     crate::support_item! {
+        /// Set whether the stepper runs.
         const fn set(&mut self, running: bool) {
             self.0 = running;
         }
     }
 
     crate::support_item! {
+        /// Whether the stepper is running.
         #[must_use]
         const fn is_running(&self) -> bool {
             self.0
@@ -65,6 +69,7 @@ impl AutoStepDelay {
     }
 
     crate::support_item! {
+        /// The dwell between stepper steps.
         #[must_use]
         const fn duration(self) -> Duration {
             self.0

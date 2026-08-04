@@ -20,13 +20,13 @@ default to `#[expect]`.
 3. **Mirror existing house bundles** before inventing new shapes:
    - `gdtf_battle_sim` act_log `record/sources` (`SystemParam` per act family)
    - presenter playback / `static_map` / FX probes
-4. **`#[expect(clippy::too_many_arguments)]` is last resort only** when:
-   - the parameter list *is* the documented public access contract, and
-   - bundling would hide independent borrows a reader must see, and
-   - a short `reason = "…"` names that contract (not “Bevy needs many args”).
-   Prefer a human-approved exception in review over agent-added expects.
-5. **Do not** workspace-`allow` `too_many_arguments` to “fix” noise. Keep the
-   lint; remove expects by structuring systems.
+4. **There is no last resort.** `#[expect]` is not available — not for
+   `too_many_arguments`, not for `type_complexity`, not for any lint. The target
+   is zero `#[expect]` in the repo. If §1–3 and the guide below do not solve a
+   system, the access set is wrong and needs redesigning; say so and stop rather
+   than silencing it.
+5. **Do not** workspace-`allow` or workspace-`expect` a lint to “fix” noise.
+   Keep the lint; remove expects by structuring systems.
 
 ---
 
@@ -118,12 +118,10 @@ state; match arms that each need different queries; function already named
 | **`Option<Res<T>>`** | Resource may be absent; system no-ops or branches. Do not `expect` the resource. |
 | **Extract helper free fn** | Pure logic on already-fetched data (no world access). Keeps systems thin; does not replace bundling. |
 
-### 6. `#[expect(too_many_arguments)]` — last resort only
+### 6. Nothing — there is no sixth option
 
-**Use when** §4 in “The rule” is truly true (access list *is* the contract).
-
-**Do not use when** any of §1–4 above still apply. Agents: never add this
-expect as the first response to clippy.
+`#[expect]` is not a tool. If §1–5 do not solve the system, the access set
+itself is wrong. Report that and stop; do not silence the lint.
 
 ---
 
@@ -136,7 +134,7 @@ Many Res/Query/Writer top-level    → SystemParam (job-named)
 Same param bag on sibling systems  → shared SystemParam
 Two jobs / two message families    → split systems
 Conflicting queries, one system    → ParamSet (only if must be one system)
-Still > arity limit, contract-real → rare #[expect] + reason
+Still over the limit                → the access set is wrong; redesign
 ```
 
 **Order of attack when clippy fires on a system:**
@@ -145,7 +143,7 @@ Still > arity limit, contract-real → rare #[expect] + reason
 2. Is it query **filter** width? → `QueryFilter`
 3. Is it **system param** count? → `SystemParam` (cohesive groups only)
 4. Is it **multiple jobs**? → split
-5. Still stuck? → human-facing reason + `#[expect]`, or redesign access
+5. Still stuck? → the access set is wrong. Redesign it, or report and stop.
 
 ---
 
@@ -153,10 +151,11 @@ Still > arity limit, contract-real → rare #[expect] + reason
 
 - Non-system helpers with many true domain args — still prefer newtypes and
   structs; this file is about **ECS systems and their param lists**.
-- Other `#[expect]` uses (casts already workspace-allowed, rare restriction
-  lints) — see lint policy in root `Cargo.toml`; still need `reason =`.
-- `#[allow]` is forbidden project-wide (`clippy::allow_attributes = deny`);
-  use `#[expect]` only when an expect is justified under last-resort rules.
+- Other `#[expect]` uses (casts, restriction lints) are out of *this file's*
+  scope but not permitted — the repo target is zero `#[expect]` of any lint.
+  Fix the type or the code, not the attribute.
+- `#[allow]` is forbidden project-wide (`clippy::allow_attributes = deny`), and
+  `#[expect]` is not the way around that.
 
 ## Agent checklist
 
@@ -165,5 +164,5 @@ When clippy reports `too_many_arguments` or `type_complexity` on a system:
 1. List every borrow (queries vs resources vs messages vs commands).
 2. Apply the cheat sheet — `QueryData` / `QueryFilter` / `SystemParam` / split.
 3. Reuse a house bundle if one already matches the job.
-4. Only if last-resort rules apply, add `#[expect]` with a concrete reason —
-   never as the first move.
+4. Never add `#[expect]`. If nothing above fits, the access set is wrong —
+   report it rather than silencing the lint.

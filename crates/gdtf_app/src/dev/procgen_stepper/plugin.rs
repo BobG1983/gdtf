@@ -22,6 +22,7 @@ crate::support_item! {
 
 impl ProcgenStepperPlugin {
     crate::support_item! {
+        /// Build the plugin with the stepper on or off.
         #[must_use]
         const fn with_enabled(enabled: bool) -> Self {
             Self { enabled }

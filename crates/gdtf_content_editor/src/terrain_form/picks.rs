@@ -28,7 +28,7 @@ impl TerrainKindChoice {
         Self::SEGMENT_ORDER.get(index).copied()
     }
 
-    /// Index of this kind in [`SEGMENT_ORDER`].
+    /// Index of this kind in [`Self::SEGMENT_ORDER`].
     #[must_use]
     pub fn segment_index(self) -> usize {
         Self::SEGMENT_ORDER
