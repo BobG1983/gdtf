@@ -1,3 +1,4 @@
+//! Per-file salvage: malformed siblings reported; good members still load; Load still exits.
 use std::path::PathBuf;
 
 use gdtf_app::test_support::{AppState, app_state};

@@ -1,4 +1,4 @@
-//! Stability bar: mirrors stability_for; empty with no selection; tracks stance.
+//! Stability bar: mirrors `stability_for`; empty with no selection; tracks stance.
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State, ui::Val};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState, StabilityBar};
 use gdtf_battle_input::SelectedShooter;
