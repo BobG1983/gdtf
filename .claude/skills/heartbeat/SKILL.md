@@ -1,7 +1,7 @@
 ---
 name: heartbeat
 description: >-
-  Two-hourly autonomous-build tick: read run-state, ensure cron, inspect worktrees,
+  Two-hourly autonomous-build tick: read run-state, ensure both crons, inspect worktrees,
   resume a dead run or start exactly one new build after clause audit. Append one log line.
 argument-hint: ""
 ---
@@ -12,14 +12,31 @@ Run-state: [`.claude/agent-memory/run-state.md`](../../agent-memory/run-state.md
 Build workflow: [`.claude/workflows/build-ticket.js`](../../workflows/build-ticket.js).
 Clause audit: phase 0 of that workflow (GTW-962).
 
-## Cron
+## Crons — this tick owns BOTH of them
 
-One-line cron prompt: invoke `/heartbeat`. Schedule: every two hours, **local machine timezone**. Store cron id in run-state next to the dream cron.
+Cron jobs are session-only. They die when the session exits, so nothing survives a
+restart on its own. This tick is the only thing that puts them back, and it is
+responsible for **both** entries, not just its own:
+
+| Name | Schedule | Prompt |
+|------|----------|--------|
+| heartbeat | every two hours | `/heartbeat` |
+| dream | daily, just after local midnight | `/dream` |
+
+**Local machine timezone.** Avoid exact hour and half-hour marks — pick an off-minute
+so ticks do not pile onto the same instant as everyone else's. Record both ids in
+run-state.
+
+`/dream` cannot restore its own cron: it only runs when something invokes it, and if
+its cron is gone nothing does. If this tick does not recreate it, memory hygiene stops
+silently and nobody finds out.
 
 ## Tick order
 
 1. **Read run-state** (in-flight ticket, worktree, workflow run id, last log lines).
-2. **Check/recreate cron** if the heartbeat entry is missing (record id when created).
+2. **Check BOTH crons; recreate either that is missing** (record each id in run-state).
+   List them and compare against the table above — an empty list after a restart means
+   recreate both, not just the heartbeat.
 3. **`git worktree list`**. Ignore paths whose name contains `dream` (dream skill worktrees).
 4. **Liveness** — if a run is claimed in-flight, judge from the **last records in the run transcript** (or workflow status), **not** file mtime.
 5. **Act:**
@@ -37,3 +54,7 @@ Kill a run deliberately, let a tick fire, confirm the log line shows resume + ru
 - Start multiple builds in one tick.
 - Treat `dream-*` worktrees as ticket builds.
 - Trust mtime alone for liveness.
+- Recreate only your own cron and leave dream's missing.
+- Launch a build with `Workflow({name: 'build-ticket'})`. A named workflow resolves once
+  per session and replays that frozen copy, so edits to the file are ignored for the rest
+  of the session. Use `{scriptPath: '.claude/workflows/build-ticket.js'}`.
