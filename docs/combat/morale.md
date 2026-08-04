@@ -2,7 +2,7 @@
 
 Psychological combat track. Parent ticket: **GTW-40**.
 
-**Status: Proposed** — defaults below are for sign-off. Do not implement until Accepted on GTW-40.
+**Status: Accepted** (2026-08-04, GTW-40). Implementation may proceed against this doc; split build tickets from §8.
 
 Inspired by UFO / Xenonauts *feel* (named break states, fire and casualties rattle people, suppression ≠ panic). **Not** a copy of their tables, psi, or officer math.
 
@@ -109,9 +109,9 @@ Data-driven, same shape as injuries:
 - Defs: `assets/content/nerve/<key>.nerve.ron`
 - Weighting: by **severity band** (Light / Hard) and **trigger kind** (UnderFire / SelfWound / AllyDown / AllyDead / Isolated)
 
-### Proposed defaults (sign-off)
+### Accepted rules
 
-| # | Decision | Default |
+| # | Decision | Rule |
 | --- | --- | --- |
 | 1 | Stacking | **One active nerve effect** per ganger. New roll replaces only if new severity ≥ old; else keep current. |
 | 2 | Duration | Soft effects: **until Morale recovers above 50% of max**, or **2 of the ganger’s turns**, whichever first. Hard effects: **rest of battle** unless replaced. Bottled: battle end. |
@@ -169,7 +169,7 @@ Cool can shift severity band down one step (tunable), not delete the roll.
 
 ---
 
-## 8. Implementation order (after Accept)
+## 8. Implementation order
 
 1. Morale/Bottle current+max, damage API, re-derive clamp  
 2. `LifeState::Bottled` (or marker) + act gates  
@@ -182,17 +182,19 @@ Cool can shift severity band down one step (tunable), not delete the roll.
 
 All core logic in `gdtf_battle_sim`, headless tests, seeded RNG.
 
+File single-responsibility build tickets from this list under GTW-17 (battlescape) / GTW-40 as parent as appropriate.
+
 ---
 
-## 9. Sign-off checklist (GTW-40)
+## 9. Acceptance record
 
-Reply Accept or amend:
+**Accepted 2026-08-04** on GTW-40 as written, including §5 defaults:
 
-1. Suppression stays separate; may deal Morale damage — OK?  
-2. Morale + Bottle pools as psych HP / Wounds — OK?  
-3. One nerve effect at a time; soft vs hard duration defaults — OK?  
-4. v0 effect list (table above) — drop/add any?  
-5. Reckless without friendly fire — OK?  
-6. No gang-wide bottle in v0 — OK?  
-7. Mid-battle Morale recover from kill / stabilize / quiet cover — OK?  
-8. Player Flee button remains voluntary mission abort — OK?  
+1. Suppression stays separate; may deal Morale damage  
+2. Morale + Bottle as psych HP / Wounds  
+3. One nerve effect at a time; soft vs hard duration as table  
+4. v0 effect list as table  
+5. Reckless without friendly fire  
+6. No gang-wide bottle in v0  
+7. Mid-battle Morale recover from kill / stabilize / quiet cover  
+8. Player Flee button remains voluntary mission abort  
