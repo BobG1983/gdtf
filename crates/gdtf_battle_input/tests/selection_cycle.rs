@@ -1,3 +1,4 @@
+//! Selection cycle: next/prev by cell order, skip enemies and downed.
 use bevy::{input::ButtonInput, prelude::*};
 use gdtf_battle_input::{
     ActIntent, BoundKey, GdtfBattleInputPlugin, Keybinds, PendingActIntent, SelectedShooter,
@@ -121,9 +122,9 @@ fn select_prev_advances_and_wraps_in_cell_order() {
 #[test]
 fn cycle_steps_cell_order_not_spawn_or_entity_id_order() {
     let mut app = cycle_app();
-    let mid = placed_ganger(&mut app, PLAYER_FACTION, 1, 1); 
-    let lo = placed_ganger(&mut app, PLAYER_FACTION, 0, 0); 
-    let hi = placed_ganger(&mut app, PLAYER_FACTION, 9, 9); 
+    let mid = placed_ganger(&mut app, PLAYER_FACTION, 1, 1);
+    let lo = placed_ganger(&mut app, PLAYER_FACTION, 0, 0);
+    let hi = placed_ganger(&mut app, PLAYER_FACTION, 9, 9);
     app.world_mut().insert_resource(SelectedShooter::new(lo));
 
     push(&mut app, ActIntent::SelectNext);
@@ -209,7 +210,6 @@ fn cycle_skips_downed_gangers() {
         "Next WRAPS p_b -> p_a, still skipping the Downed ganger",
     );
 }
-
 
 #[test]
 fn empty_player_gang_cycle_is_noop() {

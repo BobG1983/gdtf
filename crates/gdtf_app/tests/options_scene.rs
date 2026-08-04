@@ -1,3 +1,4 @@
+//! Options scene: root, title, sound toggle, continue back to menu.
 use bevy::{
     ecs::{entity::Entity, system::RunSystemOnce},
     prelude::{Commands, Text},
