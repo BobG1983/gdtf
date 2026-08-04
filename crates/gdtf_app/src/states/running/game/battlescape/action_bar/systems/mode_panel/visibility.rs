@@ -11,7 +11,6 @@ use crate::states::running::game::battlescape::action_bar::components::{
 type ModeControlChildren = (Entity, &'static Children);
 
 #[expect(
-    clippy::type_complexity,
     clippy::too_many_arguments,
     reason = "Wields and melee probe resolve offered modes off the ranged weapon entity"
 )]

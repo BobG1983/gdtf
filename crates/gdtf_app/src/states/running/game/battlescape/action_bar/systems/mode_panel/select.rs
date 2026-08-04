@@ -6,10 +6,6 @@ use gdtf_ui::{ActiveSegment, SegmentSelected, SegmentedControl};
 use super::order::{mode_for_index, mode_index};
 use crate::states::running::game::battlescape::action_bar::components::ModeControl;
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "melee probe plus Wields and weapon queries so the ranged mode resolves cleanly"
-)]
 pub(in crate::states::running::game::battlescape) fn mode_segment_write(
     mut chosen: MessageReader<SegmentSelected>,
     mut fire_mode: ResMut<SelectedFireMode>,

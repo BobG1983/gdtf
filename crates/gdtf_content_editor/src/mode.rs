@@ -49,7 +49,7 @@ impl EditorMode {
         Self::TAB_ORDER.get(index).copied()
     }
 
-    /// Index of this mode in [`TAB_ORDER`].
+    /// Index of this mode in [`Self::TAB_ORDER`].
     #[must_use]
     pub fn tab_index(self) -> usize {
         Self::TAB_ORDER

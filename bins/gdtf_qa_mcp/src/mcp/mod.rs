@@ -8,7 +8,7 @@ pub mod control;
 pub(crate) mod courier;
 /// `initialize` result.
 pub mod initialize;
-/// Parse launch tool arguments into a [`LaunchSpec`].
+/// Parse launch tool arguments into a [`crate::lifecycle::launch::LaunchSpec`].
 pub mod launch_args;
 /// Tool names and list schema.
 pub mod tools;
