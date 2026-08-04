@@ -29,7 +29,6 @@ if (!TICKET || !SLUG) throw new Error(`args must supply { ticket, slug }; got ${
 // Repo root: workflow cwd, not a hard-coded home path (GTW-954).
 const REPO = (typeof process !== 'undefined' && process.cwd && process.cwd()) || '.'
 const BRANCH = `feature/${SLUG}`
-const WT = `${REPO}/.claude/worktrees/${SLUG}`
 
 const HOUSE_RULES = `
 ## Standing rules — these override convenience and they are not negotiable
@@ -63,7 +62,7 @@ cargo doc-full
 \`\`\`
 
 Run SEQUENTIALLY, one command per tool call. PIN THE DIRECTORY on every cargo call
-(\`cd ${WT} && ...\`). The Bash tool cwd resets between calls.
+(\`cd ${REPO} && ...\`). The Bash tool cwd resets between calls.
 `
 
 // --- Phase 0: clause audit (GTW-962) — BEFORE In Progress ---
@@ -155,19 +154,31 @@ if (!ticketText) throw new Error(`could not open ${TICKET}`)
 
 phase('Build')
 
-const built = await agent(`Implement ${TICKET} in a git worktree.
+const built = await agent(`Implement ${TICKET} in the MAIN repo at ${REPO}.
 
 ## Set up — RESUMABLE
 
-FIRST check whether the worktree already exists:
+NO WORKTREES. All work happens directly in ${REPO}, so the user can watch it and
+so the QA MCP host — which builds from that directory — can see your branch.
+
+This does NOT mean working on develop. Branch per ticket still holds: everything
+below happens on ${BRANCH}. Never commit on develop; the pre-commit hook blocks it.
+
+FIRST check what is already checked out:
 \`\`\`
-git -C ${REPO} worktree list
+git -C ${REPO} branch --show-current
+git -C ${REPO} status --short
 \`\`\`
 
-- If ${WT} is NOT listed: git -C ${REPO} worktree add -b ${BRANCH} ${WT} develop
-- If ${WT} IS listed: adopt it. Never delete or reset finished unlanded work.
+- If ${BRANCH} is already checked out: adopt it. Never reset or discard unlanded work.
+- If it exists but is not checked out: \`git -C ${REPO} checkout ${BRANCH}\`
+- Otherwise, from a clean tree on develop:
+  \`git -C ${REPO} checkout develop && git -C ${REPO} checkout -b ${BRANCH}\`
 
-Work ONLY in ${WT}. Plain git — never git flow.
+If the tree is dirty with work that is not this ticket's, STOP and report — do not
+stash it and do not build on top of it.
+
+Plain git — never git flow. One ticket at a time in this repo.
 
 ## THE CONTRACT — build exactly this
 
@@ -202,7 +213,7 @@ if (fresh && fresh !== ticketText) {
 }
 
 async function verify(attempt) {
-  return agent(`Independently verify ${TICKET} in ${WT}. Trust NOTHING the implementer reported.
+  return agent(`Independently verify ${TICKET} in ${REPO}. Trust NOTHING the implementer reported.
 
 <ticket id="${TICKET}">
 ${contract}
@@ -237,7 +248,7 @@ const LENSES = [
 
 async function gate(attempt) {
   const verdicts = await parallel(LENSES.map(l => () =>
-    agent(`Adversarial read-only review of ${TICKET} in ${WT}.
+    agent(`Adversarial read-only review of ${TICKET} in ${REPO}.
 
 <ticket id="${TICKET}">
 ${contract}
@@ -285,7 +296,7 @@ while (!allPass() && attempt < 5) {
 
   log(`${TICKET}: round ${attempt} — repairing`)
 
-  const fixed = await agent(`Repair ${TICKET} in ${WT}.
+  const fixed = await agent(`Repair ${TICKET} in ${REPO}.
 
 <ticket id="${TICKET}">
 ${contract}
@@ -315,7 +326,7 @@ if (!allPass()) {
 
 phase('Docs-sync')
 
-await agent(`Docs-sync posture for ${TICKET} in ${WT}.
+await agent(`Docs-sync posture for ${TICKET} in ${REPO}.
 
 If the change touched behavior described in docs/, verify claims against the code and fix drift.
 Code is authority for what exists; docs/ remain authority for design intent.
@@ -327,9 +338,8 @@ phase('Land')
 
 const landed = await agent(`Land ${TICKET} following the /land skill (plain git — no git flow).
 
-Worktree: ${WT}
+Repo: ${REPO} — no worktree; the work is on ${BRANCH} in the main tree
 Branch: ${BRANCH}
-Main repo: ${REPO}
 
 ## VERIFICATION EVIDENCE
 <verify-report>
@@ -345,7 +355,11 @@ Steps (see .claude/skills/land/SKILL.md):
 3. Stage explicit files by name. Never git add -A.
 4. Commit: Area: summary (${TICKET}). Confirm subject names the ticket.
 5. From ${REPO}: checkout develop, pull, merge --no-ff ${BRANCH}, push origin develop, delete local feature branch.
-6. Clean up worktree if used.
+6. Leave ${REPO} on develop with a clean tree.
+
+If the merge conflicts, resolve it, stage the resolved files, and finish with
+\`git merge --continue\` — never the commit subcommand. The pre-commit hook blocks
+every commit on develop, including the one that concludes a conflicted merge.
 
 Never --no-verify. Report what git said. Do not claim landing is proven —
 a separate confirm step will check origin/develop.`,
