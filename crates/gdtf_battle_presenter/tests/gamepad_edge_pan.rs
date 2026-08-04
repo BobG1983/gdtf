@@ -1,3 +1,4 @@
+//! Gamepad edge pan: no viewport means no pan; no message means no pan.
 use core::time::Duration;
 
 use bevy::{

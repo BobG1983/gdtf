@@ -1,3 +1,4 @@
+//! Content-family log lines: fail-closed resolve warns; redrive logs info.
 use std::{cell::RefCell, collections::HashMap, sync::OnceLock};
 
 use bevy::{

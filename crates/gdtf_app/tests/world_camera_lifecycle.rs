@@ -1,3 +1,4 @@
+//! World camera: one in BattleScape, despawns on exit, stays across sub-states.
 use bevy::{
     camera::{Camera, visibility::RenderLayers},
     ecs::{entity::Entity, prelude::With},
