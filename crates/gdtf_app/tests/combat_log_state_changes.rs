@@ -1,3 +1,4 @@
+//! Combat log: each Played fact appends the right line once.
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{AppState, BattleScapeState, CombatLogLine, RunningState};
 use gdtf_battle_presenter::Played;
