@@ -29,6 +29,15 @@ result landing and never reaching the user.
    whose answer you want most. A synchronous agent blocks the session for as
    long as it runs, which is the same idling this rule exists to stop. Spawn it,
    carry on with something else, and relay the result when it lands.
+
+   **The one exception: an agent that needs the `LSP`.** A backgrounded
+   sub-agent never receives it — Claude Code strips it whatever the agent's
+   definition says, and `ToolSearch` cannot fetch what was never granted. Both
+   were measured: the same `engineer` definition got `findReferences` working in
+   the foreground and no `LSP` at all in the background. So a sub-agent that must
+   answer a symbol question runs in the foreground, or the session takes the
+   reference list itself and hands it over as text. Workflow agents are not
+   background sub-agents and keep the `LSP` normally.
 4. **Relay every sub-agent report.** The agent reports to the session; the
    session reports to the user. A result that lands and gets folded silently
    into other work has not been relayed.

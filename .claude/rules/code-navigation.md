@@ -23,7 +23,11 @@ Those numbers reached a builder as the size of their work.
 4. **`grep` is for text that is not a symbol:** a phrase in a doc, a `reason =` string, a
    filename, a lint name, a config key. Reach for it on purpose, not by reflex.
 
-`LSP` is loaded deferred — load it once with `ToolSearch` before the first call.
+`LSP` is loaded deferred — load it once with `ToolSearch` at the START of a run, not when you
+first need it. rust-analyzer starts on that first call and takes a few minutes to index this
+workspace, so ask early and it is warm when it matters. If an early call says indexing has
+not finished, that means cold, not broken — retry. (`cargo build` does not help; rust-analyzer
+keeps its own index.)
 
 ## Which operation
 

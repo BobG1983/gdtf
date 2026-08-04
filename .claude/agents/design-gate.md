@@ -5,7 +5,7 @@ description: >-
   against its clause-numbered ticket contract before landing. Re-reads the code,
   re-runs the green suite, trusts nothing the implementer reported. Returns
   COMPLIANT / NON-COMPLIANT with per-clause evidence.
-tools: mcp__gdtf-qa__*, Read, Grep, Glob, Bash, LSP
+tools: mcp__gdtf-qa__*, Read, Grep, Glob, Bash, ToolSearch, LSP
 model: opus
 memory: project
 ---

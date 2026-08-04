@@ -7,3 +7,6 @@ agent-memory/*/ephemeral/
 
 # Per-developer overrides (personal model / effortLevel).
 settings.local.json
+
+# Ephemeral run state for the orchestrator
+run-state.md

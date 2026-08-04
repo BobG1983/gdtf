@@ -206,7 +206,7 @@ ${GREEN}
 Run the suite yourself before reporting. Do NOT commit.
 
 Report: files changed, suite result, clause-by-clause evidence.`,
-  { model: 'opus', label: `build:${TICKET}`, phase: 'Build' })
+  { model: 'opus', label: `build:${TICKET}`, phase: 'Build', agentType: 'engineer' })
 
 if (!built) throw new Error(`build agent died on ${TICKET}`)
 
