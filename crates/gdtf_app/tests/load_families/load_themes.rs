@@ -1,7 +1,6 @@
 //! Load themes into [`ThemeDefsFamily`].
 //! Value-agnostic: registry presence and structural properties only.
-mod load_suite;
-
+use super::load_suite;
 use gdtf_app::test_support::AppState;
 use gdtf_battle_sim::level::UuidThemeRegistry;
 use gdtf_content_families::ThemeDefsFamily;

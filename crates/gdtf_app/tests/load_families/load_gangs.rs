@@ -1,7 +1,6 @@
 //! Load gangs into [`GangsFamily`] by authored gang stems.
 //! Value-agnostic: presence and roster shape only; spawn cells come from deploy.
-mod load_suite;
-
+use super::load_suite;
 use gdtf_app::test_support::AppState;
 use gdtf_battle_sim::ganger::GangRegistry;
 use gdtf_content_families::GangsFamily;

@@ -1,7 +1,6 @@
 //! Load attachments into the attachments family by authored member keys.
 //! Value-agnostic: registry presence and stems only.
-mod load_suite;
-
+use super::load_suite;
 #[path = "load_suite/behaviors.rs"]
 mod behaviors;
 
