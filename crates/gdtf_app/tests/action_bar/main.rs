@@ -1,3 +1,4 @@
+//! Action bar: mode visibility, scaffold, end-turn/flee, stance panel.
 mod armed_mode_visibility;
 mod bar_scaffold;
 mod end_turn_flee;

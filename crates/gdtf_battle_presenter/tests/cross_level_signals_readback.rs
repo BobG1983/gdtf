@@ -1,3 +1,4 @@
+//! Cross-level signals readback: threat badge renders red-dominant; absent slot stays dark.
 use std::{
     path::PathBuf,
     sync::{Mutex, MutexGuard},
