@@ -1,16 +1,16 @@
-// GTW-440 per-CATEGORY weighting for the HEAD pool. GTW-452: this is the RANGED
+// Per-CATEGORY weighting for the HEAD pool. This is the RANGED
 // per-source table — one weighting file per (category, context). Every `injury:` is an
 // InjuryName KEY (the `.injury.ron` file stem under head/); an unknown key WARNs + is
 // skipped at table-build. Authored order does NOT affect determinism (entries are
 // canonically sorted at build). Head injuries key to the Aim / Cool stat map
 // (resolution.md injury tables).
 //
-// GTW-452 WORKED EXAMPLE (ranged half): a `broken_nose` from a RANGED shot is near-zero
+// WORKED EXAMPLE (ranged half): a `broken_nose` from a RANGED shot is near-zero
 // (weight 1) — a bullet to the face is a graze or a lost eye, not a broken nose — whereas
 // the SAME shared `broken_nose` def is weighted high in the melee table (head.melee).
 (
     category: Head,                                        // the Head category this file weights
-    context:  Ranged,                                      // GTW-452: the ranged per-source table
+    context:  Ranged,                                      // the ranged per-source table
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "scalp_graze", weight: 10),               // -1 Cool
         (injury: "broken_nose", weight: 1),                // -1 Aim (near-zero for a ranged hit)
