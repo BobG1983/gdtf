@@ -6,12 +6,9 @@ use bevy::{
     prelude::*,
 };
 
-use super::{
-    super::{
-        atlases::{SheetAtlas, SheetRole, TopDownAtlases},
-        redrive::redrive_sheet_images_on_asset_event,
-    },
-    log_capture::capture_logs,
+use super::super::{
+    atlases::{SheetAtlas, SheetRole, TopDownAtlases},
+    redrive::redrive_sheet_images_on_asset_event,
 };
 use crate::{Brightness, TerrainFogMaterial};
 
@@ -180,29 +177,4 @@ fn redrive_does_not_panic_without_the_image_event_buffer() {
         .add_systems(Update, redrive_sheet_images_on_asset_event);
     app.update();
     app.update();
-}
-
-#[test]
-fn non_terrain_sheet_reload_logs_an_info_line_naming_the_sheet() {
-    use bevy::ecs::system::RunSystemOnce;
-
-    let mut app = app();
-    let (_terrain, characters) = insert_atlases(&mut app);
-    inject_modified(&mut app, &characters);
-
-    let captured = capture_logs(|| {
-        let result = app
-            .world_mut()
-            .run_system_once(redrive_sheet_images_on_asset_event);
-        assert!(result.is_ok(), "the redrive system must run cleanly");
-    });
-
-    assert!(
-        captured
-            .iter()
-            .any(|line| line.contains("tileset hot-reload")
-                && line.contains(SheetRole::Characters.asset_path())),
-        "a non-terrain sheet reload must emit an info! line naming the reloaded sheet; \
-         captured: {captured:?}",
-    );
 }

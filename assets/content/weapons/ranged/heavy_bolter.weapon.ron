@@ -2,14 +2,14 @@
 // TerrainDef references this file's stem `heavy_bolter` as its mounted_weapon key). A deliberately
 // INACCURATE, heavy-hitting piece: high damage + high punch/shred, a wide base spread and LOW base
 // accuracy — untenable to fire from the hip. The EMPLACEMENT steadies it: while a ganger mans the
-// mount, the EmplacementStability seam feeds a large stability term that damps the recoil cone,
-// turning the flailing spray into a controlled, punishing stream (Phase 2 engages that seam).
+// mount, EmplacementStability feeds a large stability term that damps the recoil cone,
+// turning the flailing spray into a controlled, punishing stream (Phase 2 engages that path).
 //
 // This is an ordinary ranged WeaponSpec (same schema as every other content/weapons/ranged/
 // *.weapon.ron), so it loads into the WeaponRegistry through the normal ranged-folder load. The
 // enter act resolves this stem (`heavy_bolter`) against the WeaponRegistry and spawns it on the
 // occupant via WieldedBy + a MountedWeapon marker; the ranged-firing read prefers the MountedWeapon
-// entity while occupied, and the EmplacementStability seam steadies its deliberately-wide cone.
+// entity while occupied, and EmplacementStability steadies its deliberately-wide cone.
 //
 // Lives under `ranged/` because the single WeaponRegistry is built ONLY from that folder;
 // a separate `mounted/` path would never load and the mount would fail-closed in live play.

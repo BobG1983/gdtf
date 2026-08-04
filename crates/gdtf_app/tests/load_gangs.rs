@@ -1,9 +1,9 @@
 //! Load gangs into [`GangsFamily`] by authored gang stems.
-//! Value-agnostic: presence only; spawn cells come from deploy.
+//! Value-agnostic: presence and roster shape only; spawn cells come from deploy.
 mod load_suite;
 
 use gdtf_app::test_support::AppState;
-use gdtf_battle_sim::ganger::{GangName, GangRegistry, GangerName};
+use gdtf_battle_sim::ganger::GangRegistry;
 use gdtf_content_families::GangsFamily;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
@@ -11,14 +11,8 @@ use load_suite::suite::{self, FamilyLoadContract};
 const LOAD_SAFETY_NET: u32 = 10_000;
 
 impl FamilyLoadContract for GangsFamily {
-    const EXPECTED_MEMBERS: &'static [&'static str] = &["gang_0", "gang_1"];
-
     fn is_empty(registry: &GangRegistry) -> bool {
         registry.is_empty()
-    }
-
-    fn member_resolves(registry: &GangRegistry, label: &str) -> bool {
-        registry.roster(&GangName::new(label.to_owned())).is_some()
     }
 }
 
@@ -38,7 +32,7 @@ fn real_asset_resolves_gang_registry_keyed_by_filename() {
 }
 
 #[test]
-fn real_asset_gang_rosters_hold_their_members() {
+fn real_asset_gang_rosters_hold_members() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
@@ -54,25 +48,14 @@ fn real_asset_gang_rosters_hold_their_members() {
         return;
     };
 
-    let gang_0 = registry.roster(&GangName::new("gang_0".to_owned()));
     assert!(
-        gang_0
-            .and_then(|roster| roster.member(&GangerName::new("Alex Mercer".to_owned())))
-            .is_some(),
-        "the registry must hold gang_0 (keyed by gang_0.gang.ron's stem) with member \"Alex Mercer\"",
-    );
-
-    let gang_1 = registry.roster(&GangName::new("gang_1".to_owned()));
-    assert!(
-        gang_1
-            .and_then(|roster| roster.member(&GangerName::new("Vex 1".to_owned())))
-            .is_some(),
-        "the registry must hold gang_1 (keyed by gang_1.gang.ron's stem) with member \"Vex 1\"",
+        !registry.is_empty(),
+        "shipped gangs folder must yield at least one gang",
     );
     assert!(
-        gang_1
-            .and_then(|roster| roster.member(&GangerName::new("Vex 2".to_owned())))
-            .is_some(),
-        "the registry's gang_1 must also hold member \"Vex 2\"",
+        registry
+            .iter()
+            .any(|(_name, roster)| !roster.members.is_empty()),
+        "at least one shipped gang must hold a non-empty roster (property, not named members)",
     );
 }

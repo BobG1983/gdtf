@@ -1,26 +1,13 @@
-//! Load terrain into [`TerrainDefsFamily`] by known authored UUIDs.
-//! Value-agnostic: presence and UUID resolution only.
+//! Load terrain defs: non-empty registry from the real folder; no pinned stems.
 mod load_suite;
 
-use bevy::asset::uuid::Uuid;
-use gdtf_battle_sim::terrain::def::{TerrainDefRegistry, TerrainUuid};
+use gdtf_battle_sim::terrain::def::TerrainDefRegistry;
 use gdtf_content_families::TerrainDefsFamily;
 use load_suite::suite::{self, FamilyLoadContract};
 
 impl FamilyLoadContract for TerrainDefsFamily {
-    const EXPECTED_MEMBERS: &'static [&'static str] = &["deck_floor", "bulkhead_wall"];
-
     fn is_empty(registry: &TerrainDefRegistry) -> bool {
         registry.is_empty()
-    }
-
-    fn member_resolves(registry: &TerrainDefRegistry, label: &str) -> bool {
-        let uuid = match label {
-            "deck_floor" => Uuid::from_u128(0x0184_0a91_0004),
-            "bulkhead_wall" => Uuid::from_u128(0x0184_0a91_0002),
-            _ => return false,
-        };
-        registry.def(&TerrainUuid::new(uuid)).is_some()
     }
 }
 

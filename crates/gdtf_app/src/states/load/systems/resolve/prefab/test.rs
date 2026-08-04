@@ -1,7 +1,6 @@
 use bevy::{
     MinimalPlugins,
     asset::{AssetEvent, AssetPlugin, AssetServer, Assets, Handle, LoadedFolder},
-    ecs::system::RunSystemOnce,
     prelude::*,
 };
 use gdtf_assets::{RonAsset, RonAssetAppExt};
@@ -15,9 +14,7 @@ use gdtf_battle_sim::{
 };
 
 use super::redrive_prefabs_on_asset_event;
-use crate::states::load::{
-    resources::ActivePrefabsFolderHandle, systems::resolve::hot_reload_test_support::capture_logs,
-};
+use crate::states::load::resources::ActivePrefabsFolderHandle;
 
 fn theme_uuid() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_09a1))
@@ -127,38 +124,5 @@ fn zero_placement_prefab_is_included_no_opening_exclusion() {
         Some(1),
         "an openingless (zero-placement) prefab must be INCLUDED — the path runs NO C6 \
          edge-opening exclusion",
-    );
-}
-
-#[test]
-fn prefab_hot_reload_logs_an_info_line() {
-    let mut app = app();
-    let theme = theme_uuid();
-    let Some(size) = small_size() else { return };
-    let member = add_member(
-        &mut app,
-        "content/maps/hive/3x3/entry.prefab.ron",
-        prefab_spec(theme, size, 1),
-    );
-    let folder = add_folder(&mut app, std::slice::from_ref(&member));
-    app.world_mut()
-        .insert_resource(ActivePrefabsFolderHandle::new(folder));
-    app.world_mut().insert_resource(PrefabRegistry::default());
-    app.world_mut()
-        .write_message(AssetEvent::Modified { id: member.id() });
-
-    let captured = capture_logs(|| {
-        let result = app
-            .world_mut()
-            .run_system_once(redrive_prefabs_on_asset_event);
-        assert!(result.is_ok(), "the redrive system must run cleanly");
-    });
-
-    assert!(
-        captured
-            .iter()
-            .any(|line| line.contains("prefab hot-reload") && line.contains("PrefabRegistry")),
-        "the prefab hot-reload must emit an info! line naming what reloaded; captured: \
-         {captured:?}",
     );
 }

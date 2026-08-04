@@ -32,7 +32,7 @@
     // The coarse GRID dimensions — width × height × storey-count, each validated
     // to the sim's coarse-grid maxima (60 / 60 / 8). This is the BOARD procgen packs the
     // theme's prefab fragments into (a 30×30×4 board comfortably holds the IndustrialHive
-    // player + enemy deployment prefabs at opposite corners with the inter-prefab seam).
+    // player + enemy deployment prefabs at opposite corners with the inter-prefab gap).
     grid_size: (width: 30, height: 30, levels: 4),  // coarse grid extent (w × h × storeys) — the procgen board
     // The ROSTER — each member REFERENCES a gang + member by name and its side
     // (faction); NO cell / facing / stance. The roster (attributes / weapon / armor) is resolved

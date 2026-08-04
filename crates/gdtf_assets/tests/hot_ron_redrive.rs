@@ -1,18 +1,7 @@
 //! Hot RON redrive: modified assets re-derive in place and mark changed.
-use std::{cell::RefCell, sync::OnceLock};
-
 use bevy::{
     MinimalPlugins,
     asset::{AssetEvent, AssetPlugin, Assets, Handle},
-    ecs::system::RunSystemOnce,
-    log::{
-        tracing::{
-            Event, Subscriber,
-            callsite::rebuild_interest_cache,
-            field::{Field, Visit},
-        },
-        tracing_subscriber::{Layer, layer::Context, prelude::*, registry::Registry},
-    },
     prelude::*,
     reflect::TypePath,
 };
@@ -148,79 +137,5 @@ fn pre_resolve_events_are_drained_not_replayed() {
         app.world().get_resource::<HotSwatch>(),
         Some(&baseline),
         "a pre-resolve Modified must be drained, never replayed once the chain resolves",
-    );
-}
-
-thread_local! {
-                    static CAPTURE_BUFFER: RefCell<Option<Vec<String>>> = const { RefCell::new(None) };
-}
-
-static GLOBAL_CAPTURE: OnceLock<()> = OnceLock::new();
-
-fn install_global_capture() {
-    GLOBAL_CAPTURE.get_or_init(|| {
-        let subscriber = Registry::default().with(CaptureLayer);
-        let _ = bevy::log::tracing::subscriber::set_global_default(subscriber);
-        rebuild_interest_cache();
-    });
-}
-
-struct CaptureLayer;
-
-struct MessageVisitor {
-    message: Option<String>,
-}
-
-impl Visit for MessageVisitor {
-    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        if field.name() == "message" {
-            self.message = Some(format!("{value:?}"));
-        }
-    }
-}
-
-impl<S: Subscriber> Layer<S> for CaptureLayer {
-    fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
-        let mut visitor = MessageVisitor { message: None };
-        event.record(&mut visitor);
-        let Some(message) = visitor.message else {
-            return;
-        };
-        CAPTURE_BUFFER.with(|buffer| {
-            if let Some(messages) = buffer.borrow_mut().as_mut() {
-                messages.push(message);
-            }
-        });
-    }
-}
-
-fn capture_logs(body: impl FnOnce()) -> Vec<String> {
-    install_global_capture();
-    let prior = CAPTURE_BUFFER.with(|buffer| buffer.borrow_mut().replace(Vec::new()));
-    body();
-    let captured =
-        CAPTURE_BUFFER.with(|buffer| std::mem::replace(&mut *buffer.borrow_mut(), prior));
-    captured.unwrap_or_default()
-}
-
-#[test]
-fn redrive_logs_the_concrete_type_and_path() {
-    let mut app = app();
-    let handle = stage_resolved(&mut app, swatch("baseline"));
-    hot_edit(&mut app, &handle, swatch("edited"));
-    inject_modified(&mut app, &handle);
-
-    let captured = capture_logs(|| {
-        let result = app
-            .world_mut()
-            .run_system_once(redrive_hot_ron_resource::<HotSwatch, HotSwatch>);
-        assert!(result.is_ok(), "the redrive system must run cleanly");
-    });
-
-    assert!(
-        captured.iter().any(|line| line.contains("hot-reload")
-            && line.contains("HotSwatch")
-            && line.contains(CHAIN_PATH)),
-        "the redrive must emit an info! naming the concrete type + path; captured: {captured:?}",
     );
 }

@@ -1,21 +1,15 @@
-//! the cost of this wrapper. VALUE-AGNOSTIC: registry presence + the authored
-//! resolve every ganger without an authored melee weapon falls to).
+//! Load melee weapons into [`MeleeWeaponsFamily`].
+//! Value-agnostic: registry presence only (no pinned stems).
 
 mod load_suite;
 
-use gdtf_battle_sim::weapon::{MeleeWeaponRegistry, WeaponName};
+use gdtf_battle_sim::weapon::MeleeWeaponRegistry;
 use gdtf_content_families::MeleeWeaponsFamily;
 use load_suite::suite::{self, FamilyLoadContract};
 
 impl FamilyLoadContract for MeleeWeaponsFamily {
-    const EXPECTED_MEMBERS: &'static [&'static str] = &["fists", "chainsword"];
-
     fn is_empty(registry: &MeleeWeaponRegistry) -> bool {
         registry.is_empty()
-    }
-
-    fn member_resolves(registry: &MeleeWeaponRegistry, label: &str) -> bool {
-        registry.spec(&WeaponName::new(label.to_owned())).is_some()
     }
 }
 

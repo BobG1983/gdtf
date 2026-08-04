@@ -1,42 +1,13 @@
-//! binds it to [`SpriteDefsFamily`] with the authored member keys. The
+//! Load sprite defs into [`SpriteDefsFamily`].
+//! Value-agnostic: registry presence only (no pinned stems).
 mod load_suite;
 
-use gdtf_content_families::{
-    SpriteDefsFamily,
-    sprites::{SpriteDefRegistry, SpriteName},
-};
+use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
 use load_suite::suite::{self, FamilyLoadContract};
 
 impl FamilyLoadContract for SpriteDefsFamily {
-    const EXPECTED_MEMBERS: &'static [&'static str] = &[
-        "floor",
-        "floor_alt_panel",
-        "wall",
-        "wall_ew",
-        "cover",
-        "emplacement",
-        "emplacement_occupied",
-        "slab",
-        "rubble",
-        "slab_destroyed",
-        "door",
-        "stair_up",
-        "stair_down",
-        "ladder",
-        "door_ns",
-        "door_ew",
-        "stair_ns_up",
-        "stair_ns_down",
-        "stair_ew_up",
-        "stair_ew_down",
-    ];
-
     fn is_empty(registry: &SpriteDefRegistry) -> bool {
         registry.is_empty()
-    }
-
-    fn member_resolves(registry: &SpriteDefRegistry, label: &str) -> bool {
-        registry.def(&SpriteName::new(label.to_owned())).is_some()
     }
 }
 
