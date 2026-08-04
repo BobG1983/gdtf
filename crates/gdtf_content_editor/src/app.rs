@@ -22,7 +22,7 @@ impl MapEditorApp {
         app.add_plugins(MapEditorPlugin);
         app.add_plugins(EditorCapturePlugin::from_env());
         add_dev_keybind(&mut app);
-        #[cfg(all(debug_assertions, feature = "net_qa"))]
+        #[cfg(debug_assertions)]
         app.add_plugins(crate::net_qa::NetQaEditorPlugin::from_env());
         Self(app)
     }

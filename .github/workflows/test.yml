@@ -13,7 +13,7 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   RUSTFLAGS: -D warnings
-  CARGO_PROFILE_DEV_DEBUG: "0" # Disable debug symbols in dev builds to speed up compilation and reduce cache size.
+  CARGO_PROFILE_DEV_DEBUG: "0"
 
 jobs:
   green:
@@ -44,23 +44,7 @@ jobs:
         with:
           cache-on-failure: true
 
-      # Both `net_qa` features are named. A package-qualified feature turns on only
-      # that package's feature: `grimdark_turfwar/net_qa` reaches the GAME's
-      # `gdtf_app::dev::net_qa`, `gdtf_content_editor/net_qa` reaches the EDITOR's own
-      # `gdtf_content_editor::net_qa`. Without both, the editor's `src/net_qa/` module and its
-      # two `#![cfg(all(debug_assertions, feature = "net_qa"))]` test binaries
-      # (`tests/net_qa_hello/`, `tests/net_qa_editor_query/`) compiled and ran nowhere in CI
-      # and reported "0 tests". No `dynamic_linking` and no `dev_tools` — CI green stays static.
+      # No feature flags for net_qa/schema — QA modules are debug_assertions-gated and
+      # schema is always on. No dynamic_linking / dev_tools in CI (static green).
       - name: Run tests
-        run: cargo test --workspace --features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa
-
-      # the `gdtf_qa_protocol` `schema` feature, tested WITH the feature on. Its
-      # `schemars` dependency is optional, so the `#[cfg_attr(feature = "schema", derive(...))]`
-      # derives across `src/ids/` and the whole `src/ids/test/schema.rs` module compile nowhere
-      # in the step above — deleting them would leave this workflow green.
-      #
-      # PACKAGE-SCOPED (`-p gdtf_qa_protocol`), never added to the `--workspace` step: cargo
-      # builds one `gdtf_qa_protocol` library unit per invocation, so naming the feature there
-      # would unify schemars into `bins/gdtf_qa_mcp`, which must never link a schema library.
-      - name: Run the schema-feature tests
-        run: cargo test -p gdtf_qa_protocol --features schema
+        run: cargo test --workspace

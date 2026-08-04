@@ -1,6 +1,7 @@
 //! Editor net QA identity and hello facts.
 
 use gdtf_net_qa_transport::NetQaPort;
+use gdtf_qa_protocol::ports::EDITOR_QA_PORT;
 use gdtf_qa_protocol::message::{HelloFacts, ProtocolVersion, ServerNameNet};
 
 pub(super) const EDITOR_QA_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::CURRENT;
@@ -8,7 +9,7 @@ pub(super) const EDITOR_QA_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::
 /// Server name advertised on the editor QA hello.
 pub const EDITOR_QA_SERVER_NAME: &str = "gdtf-editor-net-qa";
 
-pub(super) const DEFAULT_EDITOR_PORT: NetQaPort = NetQaPort::new(7617);
+pub(super) const DEFAULT_EDITOR_PORT: NetQaPort = NetQaPort::new(EDITOR_QA_PORT);
 
 #[must_use]
 pub(super) fn editor_hello_facts() -> HelloFacts {

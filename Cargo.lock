@@ -2881,7 +2881,6 @@ name = "gdtf_battle_sim"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "gdtf_battle_sim",
  "rand",
  "rand_chacha",
  "ron",
@@ -2952,7 +2951,6 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "gdtf_net_qa_transport",
- "gdtf_qa_command",
  "gdtf_qa_protocol",
  "schemars",
  "serde",

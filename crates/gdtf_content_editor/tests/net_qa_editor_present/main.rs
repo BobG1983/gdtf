@@ -1,5 +1,5 @@
 //! Editor present-command net-QA integration (debug + `net_qa`).
-#![cfg(all(debug_assertions, feature = "net_qa"))]
+#![cfg(debug_assertions)]
 
 mod harness;
 mod support;

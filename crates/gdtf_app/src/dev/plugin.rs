@@ -4,7 +4,7 @@ pub(crate) struct DevAffordancesPlugin;
 
 impl Plugin for DevAffordancesPlugin {
     fn build(&self, app: &mut App) {
-        #[cfg(all(feature = "dev_tools", not(feature = "test-support")))]
+        #[cfg(all(feature = "dev_tools", not(feature = "headless_test")))]
         {
             use bevy::render::RenderPlugin;
             use bevy_egui::{EguiGlobalSettings, EguiPlugin};
@@ -22,11 +22,11 @@ impl Plugin for DevAffordancesPlugin {
         app.add_plugins(super::procgen_stepper::ProcgenStepperPlugin::with_enabled(
             false,
         ));
-        #[cfg(all(debug_assertions, feature = "net_qa"))]
+        #[cfg(debug_assertions)]
         app.add_plugins(super::net_qa::NetQaPlugin::from_env());
-        #[cfg(all(debug_assertions, feature = "net_qa"))]
+        #[cfg(debug_assertions)]
         app.add_plugins(gdtf_screenshot::KeyboardCapturePlugin::new("game"));
-        #[cfg(not(any(feature = "dev_tools", all(debug_assertions, feature = "net_qa"))))]
+        #[cfg(not(any(feature = "dev_tools", debug_assertions)))]
         let _ = app;
     }
 }

@@ -10,7 +10,6 @@ gdtf_app = { path = "../../crates/gdtf_app" }
 dynamic_linking = ["gdtf_app/dynamic_linking"]
 file_watcher = ["gdtf_app/file_watcher"]
 dev_tools = ["gdtf_app/dev_tools"]
-net_qa = ["gdtf_app/net_qa"]
 
 [lints]
 workspace = true

@@ -1,38 +1,25 @@
 [alias]
 # Dynamic linking for fast iteration. Never use in release builds.
 #
-# Game aliases also enable `dev_tools` (procgen stepper) and `net_qa`.
-# Stepper stays off until the Options toggle is on.
-# Net QA stays off until `GDTF_NET_QA` is set; wiring is debug-only.
-#
-# Workspace aliases also enable `gdtf_content_editor/net_qa` so the
-# editor QA module and its tests get compiled and linted.
-# Editor net QA stays off until `GDTF_EDITOR_NET_QA` is set (port via
-# `GDTF_EDITOR_NET_QA_PORT`, default 7617).
+# Game aliases enable `dev_tools` (procgen stepper). Stepper stays off until
+# the Options toggle is on. Net QA modules compile under debug_assertions only
+# (no feature flag, no env arming).
 
 # Game with dynamic linking.
-drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools,net_qa"
-dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools,net_qa"
+drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools"
+dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools"
 
-# Content editor (no net_qa / dev_tools — use edqarun for QA port).
+# Content editor.
 edrun = "run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher"
 edbuild = "build -p gdtf_content_editor_bin --features dynamic_linking,file_watcher"
 
-# Content editor with net_qa compiled in (still needs env to open the port).
-edqarun = "run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher,net_qa"
-edqabuild = "build -p gdtf_content_editor_bin --features dynamic_linking,file_watcher,net_qa"
-
 # Workspace checks with the same feature set.
-dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa"
-dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa"
-dtest = "test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa"
+dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
+dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
+dtest = "test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
 
 # Doc check with optional-feature modules enabled (run alongside plain cargo doc).
-doc-full = "doc --workspace --no-deps --features grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa"
-
-# Protocol schema feature, package-scoped so the QA MCP binary never links schemars.
-clippy-schema = "clippy -p gdtf_qa_protocol --all-targets --features schema"
-test-schema = "test -p gdtf_qa_protocol --features schema"
+doc-full = "doc --workspace --no-deps --features grimdark_turfwar/dev_tools"
 
 [unstable]
 checksum-freshness = true
@@ -47,7 +34,6 @@ rustflags = ["-Zshare-generics=y", "-Zthreads=0"]
 rustflags = ["-Zshare-generics=y", "-Zthreads=0"]
 
 [target.x86_64-pc-windows-msvc]
-# LLD linker (may need: cargo install -f cargo-binutils && rustup component add llvm-tools)
 linker = "rust-lld.exe"
 rustdocflags = ["-Clinker=rust-lld.exe"]
 rustflags = ["-Zthreads=0"]

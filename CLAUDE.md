@@ -50,8 +50,6 @@ cargo dtest
 cargo dbuild
 cargo doc --workspace --no-deps
 cargo doc-full
-cargo clippy-schema -- -D warnings
-cargo test-schema
 ```
 
 Aliases and feature sets are defined in `.cargo/config.toml`. Do not expand them by hand.
