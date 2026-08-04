@@ -1,3 +1,4 @@
+//! Ref integrity: each dangling edge class is reported; shipped graph is clean.
 use std::path::PathBuf;
 
 use gdtf_app::test_support::{AppState, app_state};

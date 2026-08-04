@@ -1,3 +1,4 @@
+//! RON loader: well-formed resolves; malformed fails without inserting.
 use bevy::{
     asset::{AssetServer, Assets, Handle},
     reflect::TypePath,
