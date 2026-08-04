@@ -1,3 +1,4 @@
+//! Missing sprite def: warns and draws the magenta marker, never invisible.
 use std::{
     path::PathBuf,
     sync::{Mutex, OnceLock},
@@ -40,7 +41,7 @@ use gdtf_test_utils::advance_until_resource_exists;
 
 const LOAD_SAFETY_NET: u32 = 10_000;
 
-const MISSING_NAME: &str = "gtw665_no_such_sprite";
+const MISSING_NAME: &str = "no_such_sprite_fixture";
 
 static CAPTURED: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
