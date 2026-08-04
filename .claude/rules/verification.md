@@ -39,12 +39,6 @@ QA modules compile under `debug_assertions` (no `net_qa` feature). Protocol sche
 
 CI does not use `dynamic_linking` or `dev_tools`. See `.github/workflows/`.
 
-```bash
-cargo fmt
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-```
-
 Release binary builds are packaging-time only (not a CI gate).
 
 ### Pre-commit subset
