@@ -1,19 +1,16 @@
-// GTW-470 NS-orientation STAIR you DESCEND — the down-direction companion of stair_ns_up. A DISTINCT
-// AUTHORED sprite (up vs down is not a pure rotation — the two are different existing stair tiles).
-// VISUAL TILE DEFINITION ONLY: sim_kind = Slab (a walkable surface); vertical traversal is GTW-388.
-// The EW companion (stair_ew_down) is this sprite rotated 90deg.
+// NS descending stair. Walkable surface (sim_kind = Slab). Vertical traversal is separate.
 (
-    // Stable authored key — the industrial_hive NS descending-stair TerrainUuid.
+    // Stable authored key — industrial_hive NS descending-stair TerrainUuid.
     key: "00000000-0000-0000-0000-01840a91000e",
     display_name: "Deck Stair Down (NS)",
     sim_kind: Slab(
-        hp:               120,   // structural HP (matches deck_slab)
-        armor_protection: 4,     // damage soak (matches deck_slab)
+        hp:               120,   // structural HP
+        armor_protection: 4,     // damage soak
         armor_hardness:   2,     // punch ignored
     ),
     presenter_kind: Slab(
-        graphic_name: "stair_ns_down", // the NS descending-stair sprite (TileRoles index 343)
-        footfall:     None,            // no authored footfall (the slab footfall seam is optional)
+        graphic_name: "stair_ns_down",
+        footfall:     None,
     ),
     tags: [],
 )
