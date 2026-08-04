@@ -4,7 +4,7 @@ use super::support::*;
 fn plugin_registers_every_message_buffer() {
     use bevy::prelude::{MessageReader, ResMut, Resource};
 
-                #[derive(Resource, Default)]
+    #[derive(Resource, Default)]
     struct Probed(u8);
 
     let mut app = headless_app();

@@ -10,7 +10,6 @@ use gdtf_test_utils::probed;
 
 use super::harness::*;
 
-
 #[test]
 fn enter_emplacement_intent_emits_request_for_selection_over_carried_emplacement() {
     let mut app = acts_app();

@@ -10,7 +10,6 @@ use gdtf_test_utils::{press_key, press_left, probed};
 
 use super::harness::*;
 
-
 #[test]
 fn end_turn_intent_emits_one_end_turn_requested_without_selection() {
     let mut app = acts_app();
@@ -33,7 +32,6 @@ fn end_turn_intent_emits_one_end_turn_requested_without_selection() {
         "the drained message is the fieldless EndTurnRequested unit value",
     );
 }
-
 
 #[test]
 fn no_selection_makes_every_act_a_no_op() {

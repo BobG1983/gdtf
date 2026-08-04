@@ -39,7 +39,7 @@ impl PreviewPan {
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub(crate) struct ZoomOutcome {
     zoom: CanvasZoom,
-    pan: PreviewPan,
+    pan:  PreviewPan,
 }
 
 impl ZoomOutcome {
@@ -73,7 +73,7 @@ pub(crate) fn cursor_anchored_zoom(
     let new_offset = cursor_world - (cursor_world - current_pan.offset()) * ratio;
     ZoomOutcome {
         zoom: new_zoom,
-        pan: PreviewPan::with_offset(new_offset),
+        pan:  PreviewPan::with_offset(new_offset),
     }
 }
 

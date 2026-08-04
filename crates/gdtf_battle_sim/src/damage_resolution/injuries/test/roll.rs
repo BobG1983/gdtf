@@ -57,7 +57,7 @@ fn roll_injury_draws_exactly_one_and_resolves_a_tabled_severity() {
     );
 
     let mut fresh = injury_rng();
-    let _ = fresh.next_u64(); 
+    let _ = fresh.next_u64();
     assert_eq!(
         rng.next_u64(),
         fresh.next_u64(),

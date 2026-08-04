@@ -78,7 +78,7 @@ fn every_presenter_kind_projects_to_its_piece_kind() {
 
 #[test]
 fn piece_kind_inventory_is_complete_and_distinct() {
-            const fn ordinal(kind: TerrainPieceKind) -> usize {
+    const fn ordinal(kind: TerrainPieceKind) -> usize {
         match kind {
             TerrainPieceKind::Wall => 0,
             TerrainPieceKind::Cover => 1,

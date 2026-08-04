@@ -97,7 +97,7 @@ fn fold_live_ganger(
             hp: &mut hp,
             wounds: &mut wounds,
             life: &mut life,
-            piece: None, 
+            piece: None,
             inflicted: &mut inflicted,
             toughness,
             luck: Luck::new(0.0),
@@ -186,7 +186,7 @@ fn corpse_skip_takes_neither_draw() {
 
     let mut hp = Hp::new(15);
     let mut wounds = Wounds::new(3);
-    let mut life = LifeState::Dead; 
+    let mut life = LifeState::Dead;
     let mut inflicted = InflictedWounds::default();
 
     let mut sev = rng();

@@ -37,7 +37,7 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
     let mut hp2 = Hp::new(50);
     let mut wounds2 = Wounds::new(9);
     let mut life2 = LifeState::Alive;
-    let mut integrity2 = worn_piece_integrity(1); 
+    let mut integrity2 = worn_piece_integrity(1);
     let mut inflicted2 = InflictedWounds::default();
     let outcome = {
         let target = GangerHitTarget {
@@ -65,7 +65,7 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
 fn apply_hit_armor_broken_flows_through_a_message_buffer() {
     use bevy::prelude::{IntoScheduleConfigs, MessageReader, MessageWriter, ResMut, Resource};
 
-            #[derive(Resource, Default)]
+    #[derive(Resource, Default)]
     struct Captured(Vec<ArmorBroken>);
 
     let ganger = a_ganger();

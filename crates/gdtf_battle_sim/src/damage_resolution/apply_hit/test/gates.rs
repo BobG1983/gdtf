@@ -2,7 +2,7 @@ use super::support::*;
 
 #[test]
 fn wounds_to_zero_is_dead() {
-    let mut hp = Hp::new(50); 
+    let mut hp = Hp::new(50);
     let mut wounds = Wounds::new(3);
     let mut life = LifeState::Alive;
     let mut integrity = worn_piece_integrity(100);
@@ -36,7 +36,7 @@ fn wounds_to_zero_is_dead() {
 #[test]
 fn hp_to_zero_with_wounds_left_is_downed() {
     let mut hp = Hp::new(8);
-    let mut wounds = Wounds::new(5); 
+    let mut wounds = Wounds::new(5);
     let mut life = LifeState::Alive;
     let mut integrity = worn_piece_integrity(100);
     let mut inflicted = InflictedWounds::default();
@@ -108,8 +108,8 @@ fn both_pools_depleted_is_dead_not_downed() {
 fn corpse_skip_changes_nothing() {
     let mut hp = Hp::new(12);
     let mut wounds = Wounds::new(4);
-    let mut life = LifeState::Dead; 
-    let mut integrity = worn_piece_integrity(1); 
+    let mut life = LifeState::Dead;
+    let mut integrity = worn_piece_integrity(1);
     let mut inflicted = InflictedWounds::default();
     let tuning = CombatTuning::default();
 

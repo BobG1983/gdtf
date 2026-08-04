@@ -16,28 +16,28 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypePath)]
 pub struct MeleeWeaponSpec {
     /// Damage.
-    pub damage: WeaponDamage,
+    pub damage:      WeaponDamage,
     /// Punch.
-    pub punch: WeaponPunch,
+    pub punch:       WeaponPunch,
     /// Shred.
-    pub shred: WeaponShred,
+    pub shred:       WeaponShred,
     /// Damage type.
     pub damage_type: DamageType,
     /// Fatal bias.
-    pub fatal_bias: FatalBias,
+    pub fatal_bias:  FatalBias,
     /// Handedness.
-    pub handedness: Handedness,
+    pub handedness:  Handedness,
     /// Reach (defaults to 1).
     #[serde(default)]
-    pub reach: Reach,
+    pub reach:       Reach,
     /// Fight modes.
-    pub fight_mode: FightMode,
+    pub fight_mode:  FightMode,
     /// Shove on hit.
     #[serde(default)]
-    pub shove: Shove,
+    pub shove:       Shove,
     /// Attachment slots.
     #[serde(default)]
-    pub slots: WeaponSlots,
+    pub slots:       WeaponSlots,
     /// Pre-fitted attachments.
     #[serde(default)]
     pub attachments: Vec<AttachmentName>,

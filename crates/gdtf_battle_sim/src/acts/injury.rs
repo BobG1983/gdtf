@@ -14,19 +14,19 @@ use crate::{
 #[derive(Message, Debug, Clone, PartialEq)]
 pub struct InjuryInflicted {
     /// Target entity.
-    pub target: Entity,
+    pub target:       Entity,
     /// Injury to record.
-    pub gained: GainedInjury,
+    pub gained:       GainedInjury,
     /// Display name.
-    pub name: InjuryName,
+    pub name:         InjuryName,
     /// Body part.
-    pub part: BodyPart,
+    pub part:         BodyPart,
     /// Severity.
-    pub severity: Severity,
+    pub severity:     Severity,
     /// Popup text.
-    pub popup_text: PopupText,
+    pub popup_text:   PopupText,
     /// Log text.
-    pub log_text: LogText,
+    pub log_text:     LogText,
     /// Inspect text.
     pub inspect_text: InspectText,
 }

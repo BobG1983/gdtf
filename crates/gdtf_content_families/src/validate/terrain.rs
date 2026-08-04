@@ -24,18 +24,18 @@ pub fn check_theme_terrain_refs(
         if terrain.def(&def.default_floor).is_none() {
             report.record(ContentFinding::DanglingRef {
                 referrer: referrer("default_floor"),
-                target: FindingTarget::new(def.default_floor.to_string()),
-                family: FindingFamily::new("TerrainDefRegistry".to_owned()),
-                scheme: ReferenceKeyScheme::Uuid,
+                target:   FindingTarget::new(def.default_floor.to_string()),
+                family:   FindingFamily::new("TerrainDefRegistry".to_owned()),
+                scheme:   ReferenceKeyScheme::Uuid,
             });
         }
         for piece in &def.terrain {
             if terrain.def(piece).is_none() {
                 report.record(ContentFinding::DanglingRef {
                     referrer: referrer("terrain palette"),
-                    target: FindingTarget::new(piece.to_string()),
-                    family: FindingFamily::new("TerrainDefRegistry".to_owned()),
-                    scheme: ReferenceKeyScheme::Uuid,
+                    target:   FindingTarget::new(piece.to_string()),
+                    family:   FindingFamily::new("TerrainDefRegistry".to_owned()),
+                    scheme:   ReferenceKeyScheme::Uuid,
                 });
             }
         }
@@ -57,9 +57,9 @@ pub fn check_emplacement_weapon_refs(
                     "terrain def `{}` emplacement mounted_weapon",
                     **key,
                 )),
-                target: FindingTarget::new((**mounted_weapon).clone()),
-                family: FindingFamily::new("WeaponRegistry".to_owned()),
-                scheme: ReferenceKeyScheme::FileStem,
+                target:   FindingTarget::new((**mounted_weapon).clone()),
+                family:   FindingFamily::new("WeaponRegistry".to_owned()),
+                scheme:   ReferenceKeyScheme::FileStem,
             });
         }
     }

@@ -25,7 +25,7 @@ fn a_ganger_downed_by_the_injury_bleed_keeps_its_wounds_that_round() {
         .entity_mut(ganger)
         .insert((Hp::new(ACCRUAL), BleedAfflicted::new(ACCRUAL)));
 
-    end_turn(&mut app); 
+    end_turn(&mut app);
 
     assert_eq!(
         life_of(&app, ganger),
@@ -118,7 +118,7 @@ fn weapon_and_injury_downs_share_the_first_downed_tick_wound_behavior() {
          condition (no hand-insert)",
     );
 
-    end_turn(&mut app); 
+    end_turn(&mut app);
     assert_eq!(
         wounds_of(&app, by_weapon),
         start - rate,
@@ -135,7 +135,7 @@ fn weapon_and_injury_downs_share_the_first_downed_tick_wound_behavior() {
         "round 1: the injury-downed ganger was downed BY the tick — it drains nothing",
     );
 
-    end_turn(&mut app); 
+    end_turn(&mut app);
     assert_eq!(
         wounds_of(&app, by_weapon),
         start - rate * 2,

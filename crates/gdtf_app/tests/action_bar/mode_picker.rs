@@ -8,7 +8,6 @@ use gdtf_test_utils::press_ui_button;
 
 use super::{harness::*, probes::*};
 
-
 #[test]
 fn mode_panel_spawns_only_offered_modes_and_marks_active() {
     let single = spec(ModeKind::Single, 0.2, 1);

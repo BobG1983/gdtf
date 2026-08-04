@@ -4,11 +4,11 @@ use bevy::prelude::*;
 pub(in crate::states::running::options) struct SoundEnabled(bool);
 
 impl SoundEnabled {
-        pub(in crate::states::running::options) const fn new(on: bool) -> Self {
+    pub(in crate::states::running::options) const fn new(on: bool) -> Self {
         Self(on)
     }
 
-        pub(in crate::states::running::options) const fn is_on(self) -> bool {
+    pub(in crate::states::running::options) const fn is_on(self) -> bool {
         self.0
     }
 }
@@ -17,7 +17,7 @@ impl SoundEnabled {
 pub(in crate::states::running::options) struct SoundSettingChanged(SoundEnabled);
 
 impl SoundSettingChanged {
-        pub(in crate::states::running::options) const fn new(value: SoundEnabled) -> Self {
+    pub(in crate::states::running::options) const fn new(value: SoundEnabled) -> Self {
         Self(value)
     }
 }

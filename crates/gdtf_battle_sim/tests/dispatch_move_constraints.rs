@@ -105,7 +105,6 @@ fn clear_signals(app: &mut App) {
     let _rejects: usize = drain_rejects(app).len();
 }
 
-
 #[test]
 fn unreachable_teleport_is_rejected_with_no_move() {
     let mut app = battle_app();
@@ -140,7 +139,6 @@ fn unreachable_teleport_is_rejected_with_no_move() {
         "an unreachable teleport leaves the mover exactly where it was (no teleport)",
     );
 }
-
 
 #[test]
 fn reachable_route_is_accepted_with_move_and_log() {
@@ -180,7 +178,6 @@ fn reachable_route_is_accepted_with_move_and_log() {
         "a reachable affordable move must step the mover to the destination",
     );
 }
-
 
 #[test]
 fn unaffordable_route_is_rejected_with_no_partial_move() {

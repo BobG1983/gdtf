@@ -7,17 +7,17 @@ use crate::{armor::BodyPart, severity::Severity};
 #[derive(Debug, Clone, PartialEq)]
 pub struct RolledInjury {
     /// Injury name key.
-    pub name: InjuryName,
+    pub name:         InjuryName,
     /// Body part that was hit.
-    pub part: BodyPart,
+    pub part:         BodyPart,
     /// Severity tier.
-    pub severity: Severity,
+    pub severity:     Severity,
     /// Effects to apply.
-    pub effects: Vec<InjuryEffect>,
+    pub effects:      Vec<InjuryEffect>,
     /// Popup text.
-    pub popup_text: PopupText,
+    pub popup_text:   PopupText,
     /// Log text.
-    pub log_text: LogText,
+    pub log_text:     LogText,
     /// Inspect text.
     pub inspect_text: InspectText,
 }
@@ -62,13 +62,13 @@ impl RolledInjury {
 #[derive(Debug, Clone, PartialEq)]
 pub struct GainedInjury {
     /// Injury name key.
-    pub name: InjuryName,
+    pub name:         InjuryName,
     /// Body part.
-    pub part: BodyPart,
+    pub part:         BodyPart,
     /// Severity.
-    pub severity: Severity,
+    pub severity:     Severity,
     /// Active effects.
-    pub effects: Vec<InjuryEffect>,
+    pub effects:      Vec<InjuryEffect>,
     /// Inspect text.
     pub inspect_text: InspectText,
 }

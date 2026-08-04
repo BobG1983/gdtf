@@ -6,7 +6,6 @@ use gdtf_test_utils::press_ui_button;
 
 use super::{harness::*, probes::*};
 
-
 #[test]
 fn stance_panel_marks_current_stance_active() {
     let mut app = battle_running_app();
@@ -150,7 +149,7 @@ enum StanceSegment {
 }
 
 impl StanceSegment {
-        fn entity(&self, app: &mut App) -> Option<Entity> {
+    fn entity(&self, app: &mut App) -> Option<Entity> {
         match self {
             Self::Standing => single_with::<StanceStandingButton>(app),
             Self::Kneeling => single_with::<StanceKneelingButton>(app),

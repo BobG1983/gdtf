@@ -40,11 +40,11 @@ pub struct FireDeclaration {
     /// Shooter.
     pub shooter: Entity,
     /// Optional primary target entity.
-    pub target: Option<Entity>,
+    pub target:  Option<Entity>,
     /// Mode used.
-    pub mode: ModeKind,
+    pub mode:    ModeKind,
     /// Rounds fired.
-    pub rounds: RoundCount,
+    pub rounds:  RoundCount,
 }
 
 impl FireDeclaration {
@@ -68,16 +68,16 @@ impl FireDeclaration {
 /// Bundle of message writers used while resolving fire.
 #[derive(SystemParam)]
 pub struct FireSignals<'w, 's> {
-    pub(super) shots: MessageWriter<'w, ShotFired>,
-    pub(super) declarations: MessageWriter<'w, FireDeclaration>,
-    pub(super) cover_destroyed: MessageWriter<'w, CoverDestroyed>,
-    pub(super) slab_destroyed: MessageWriter<'w, SlabDestroyed>,
-    pub(super) ground_accrued: MessageWriter<'w, GroundAccrued>,
-    pub(super) injuries: MessageWriter<'w, InjuryInflicted>,
-    pub(super) dots: MessageWriter<'w, crate::effects::dot::DotApplied>,
-    pub(super) shoves: MessageWriter<'w, crate::acts::request::ShoveRequested>,
-    pub(super) shove_tags: Query<'w, 's, &'static crate::weapon::Shove>,
-    pub(super) armor_breaks: MessageWriter<'w, crate::armor_wear::ArmorBroken>,
-    pub(super) deaths: MessageWriter<'w, crate::effects::on_death::OnDeathOccurred>,
+    pub(super) shots:            MessageWriter<'w, ShotFired>,
+    pub(super) declarations:     MessageWriter<'w, FireDeclaration>,
+    pub(super) cover_destroyed:  MessageWriter<'w, CoverDestroyed>,
+    pub(super) slab_destroyed:   MessageWriter<'w, SlabDestroyed>,
+    pub(super) ground_accrued:   MessageWriter<'w, GroundAccrued>,
+    pub(super) injuries:         MessageWriter<'w, InjuryInflicted>,
+    pub(super) dots:             MessageWriter<'w, crate::effects::dot::DotApplied>,
+    pub(super) shoves:           MessageWriter<'w, crate::acts::request::ShoveRequested>,
+    pub(super) shove_tags:       Query<'w, 's, &'static crate::weapon::Shove>,
+    pub(super) armor_breaks:     MessageWriter<'w, crate::armor_wear::ArmorBroken>,
+    pub(super) deaths:           MessageWriter<'w, crate::effects::on_death::OnDeathOccurred>,
     pub(super) ganger_positions: Query<'w, 's, &'static Position>,
 }

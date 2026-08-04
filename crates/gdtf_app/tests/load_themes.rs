@@ -22,7 +22,7 @@ const fn industrial_hive_default_floor() -> TerrainUuid {
 }
 
 impl FamilyLoadContract for ThemeDefsFamily {
-        const EXPECTED_MEMBERS: &'static [&'static str] = &["industrial_hive"];
+    const EXPECTED_MEMBERS: &'static [&'static str] = &["industrial_hive"];
 
     fn is_empty(registry: &UuidThemeRegistry) -> bool {
         registry.is_empty()

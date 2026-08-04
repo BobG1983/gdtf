@@ -9,8 +9,8 @@ pub(in crate::states::running::menu) use start_battle::apply_start_battle;
 mod components;
 #[cfg(feature = "test-support")]
 pub(crate) mod test_support {
-    pub use super::components::{
-        BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton,
+    pub use super::{
+        components::{BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton},
+        start_battle::StartBattleRequested,
     };
-    pub use super::start_battle::StartBattleRequested;
 }

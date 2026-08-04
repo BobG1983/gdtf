@@ -104,7 +104,7 @@ fn level_at_max_levels_is_out_of_range() {
 #[test]
 fn dangling_endpoint_cell_is_rejected() {
     let present = key(4, 4, 0);
-    let missing = key(4, 4, 1); 
+    let missing = key(4, 4, 1);
     let link = VerticalLink::new(present, missing, LinkKind::stair());
     let situation = situation_with(&[present], vec![link]);
 
@@ -119,7 +119,7 @@ fn dangling_endpoint_cell_is_rejected() {
 #[test]
 fn same_level_link_is_rejected() {
     let a = key(7, 7, 2);
-    let b = key(8, 8, 2); 
+    let b = key(8, 8, 2);
     let link = VerticalLink::new(a, b, LinkKind::stair());
     let situation = situation_with(&[a, b], vec![link]);
 

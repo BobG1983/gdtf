@@ -26,7 +26,7 @@ impl Deref for ChildReportedPath<'_> {
 pub(super) struct ChildFilePath(PathBuf);
 
 impl ChildFilePath {
-        #[must_use]
+    #[must_use]
     const fn new(path: PathBuf) -> Self {
         Self(path)
     }

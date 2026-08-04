@@ -31,11 +31,11 @@ impl Default for SlabDefaultHp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct SlabDefaults {
     /// Default HP.
-    pub default_hp: SlabDefaultHp,
+    pub default_hp:               SlabDefaultHp,
     /// Default protection.
     pub default_armor_protection: ArmorProtection,
     /// Default hardness.
-    pub default_armor_hardness: ArmorHardness,
+    pub default_armor_hardness:   ArmorHardness,
 }
 
 impl SlabDefaults {
@@ -61,9 +61,9 @@ impl SlabDefaults {
 impl SlabDefaults {
     /// Built-in defaults used when content omits slab stats.
     pub const FALLBACK: Self = Self {
-        default_hp: SlabDefaultHp::new(120),
+        default_hp:               SlabDefaultHp::new(120),
         default_armor_protection: ArmorProtection::new(4),
-        default_armor_hardness: ArmorHardness::new(2),
+        default_armor_hardness:   ArmorHardness::new(2),
     };
 }
 

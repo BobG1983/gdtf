@@ -113,27 +113,27 @@ dwell_seconds!(
 #[serde(default)]
 pub struct PlaybackTuning {
     /// Dwell after each landed volley round.
-    pub round_seconds: RoundSeconds,
+    pub round_seconds:         RoundSeconds,
     /// Dwell on reaction-fire declarations.
     pub reaction_beat_seconds: ReactionBeatSeconds,
     /// Dwell on ordinary fire declarations.
-    pub fire_beat_seconds: FireBeatSeconds,
+    pub fire_beat_seconds:     FireBeatSeconds,
     /// Dwell on each walk step.
-    pub step_seconds: StepSeconds,
+    pub step_seconds:          StepSeconds,
     /// Dwell on posture changes.
-    pub posture_seconds: PostureSeconds,
+    pub posture_seconds:       PostureSeconds,
     /// Dwell on reloads.
-    pub reload_seconds: ReloadSeconds,
+    pub reload_seconds:        ReloadSeconds,
     /// Dwell on injury/fall/armor consequences.
-    pub consequence_seconds: ConsequenceSeconds,
+    pub consequence_seconds:   ConsequenceSeconds,
     /// Dwell on life-state changes.
-    pub life_change_seconds: LifeChangeSeconds,
+    pub life_change_seconds:   LifeChangeSeconds,
     /// Dwell on turn boundaries.
-    pub turn_beat_seconds: TurnBeatSeconds,
+    pub turn_beat_seconds:     TurnBeatSeconds,
     /// Dwell on minor ordered facts.
-    pub minor_seconds: MinorSeconds,
+    pub minor_seconds:         MinorSeconds,
     /// Hard cap waiting for projectile impact.
-    pub impact_cap_seconds: ImpactCapSeconds,
+    pub impact_cap_seconds:    ImpactCapSeconds,
 }
 
 const PLAYBACK_TUNING_RON_PATH: &str = "core_tuning/playback.tuning.ron";

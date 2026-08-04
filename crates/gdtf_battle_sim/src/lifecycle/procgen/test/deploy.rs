@@ -161,7 +161,7 @@ fn deploy_fails_closed_when_a_zone_cannot_fit_its_roster() {
             RegionRect::new(Cell::new(50, 50), Footprint::new(4, 4)),
         ),
     );
-    let terrain = Situation::new(); 
+    let terrain = Situation::new();
     let rosters = vec![
         RosterMember::new(
             GangName::new("gang_0".to_owned()),

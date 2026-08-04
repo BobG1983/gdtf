@@ -4,7 +4,7 @@ use crate::{central_axis::target_aim_point, los::probe::aim_anchor};
 #[test]
 fn aim_z_matches_occupant_band_not_bare_stance() {
     let tuning = CombatTuning::default();
-    let cover = CoverLedger::new(); 
+    let cover = CoverLedger::new();
 
     let target_cell = key(8, 5, 0);
     let occupant = spawn_entity();

@@ -6,7 +6,7 @@ use crate::pathfinder::PlanningView;
 
 #[test]
 fn route_traverses_vertical_link_and_accumulates_link_tu() {
-    let grid = grid_with(&[]); 
+    let grid = grid_with(&[]);
     let tuning = tuning();
 
     let foot = cell(5, 5, 0);
@@ -64,7 +64,7 @@ fn route_traverses_vertical_link_and_accumulates_link_tu() {
 fn upper_storey_unreachable_without_a_link() {
     let grid = grid_with(&[]);
     let tuning = tuning();
-    let links = super::support::no_links(); 
+    let links = super::support::no_links();
 
     let start = cell(3, 5, 0);
     let goal = cell(7, 5, 1);

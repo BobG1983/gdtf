@@ -143,15 +143,15 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         else {
             return Volley {
                 reports: Vec::new(),
-                shots: Vec::new(),
-                splash: Vec::new(),
+                shots:   Vec::new(),
+                splash:  Vec::new(),
             };
         };
         gdtf_battle_sim::fire::fire(
             shooter,
             FireOrder {
-                mode: &mode,
-                target_cell: Cell::new(enemy_at().x, enemy_at().y),
+                mode:         &mode,
+                target_cell:  Cell::new(enemy_at().x, enemy_at().y),
                 target_level: Level::new(0),
             },
             &mut shooters,
@@ -163,10 +163,10 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
             &melee_q,
             &mounted_q,
             BattleGrids {
-                occupancy: &occupancy,
-                surface: &surface,
-                cover: &mut cover,
-                slab: &mut slab,
+                occupancy:   &occupancy,
+                surface:     &surface,
+                cover:       &mut cover,
+                slab:        &mut slab,
                 brace_cells: &BraceStairCells::empty(),
             },
             &tuning,

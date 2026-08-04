@@ -13,23 +13,23 @@ const LOAD_SAFETY_NET: u32 = 10_000;
 const HOLDBACK_UPDATES: u32 = 4;
 
 pub(crate) trait FamilyBehaviorContract: ContentFamily {
-                const SALVAGE_FIXTURE_ROOT: &'static str;
+    const SALVAGE_FIXTURE_ROOT: &'static str;
 
-            const SALVAGE_GOOD_MEMBERS: &'static [&'static str];
+    const SALVAGE_GOOD_MEMBERS: &'static [&'static str];
 
-            const SALVAGE_BROKEN_FILE: &'static str;
+    const SALVAGE_BROKEN_FILE: &'static str;
 
-                const MISSING_FOLDER_FIXTURE_ROOT: &'static str;
+    const MISSING_FOLDER_FIXTURE_ROOT: &'static str;
 
-                    const PROBE_MEMBER: &'static str;
+    const PROBE_MEMBER: &'static str;
 
-        fn is_empty(registry: &Self::Registry) -> bool;
+    fn is_empty(registry: &Self::Registry) -> bool;
 
-        fn member_resolves(registry: &Self::Registry, label: &str) -> bool;
+    fn member_resolves(registry: &Self::Registry, label: &str) -> bool;
 
-            fn mutate_spec(spec: &mut Self::Spec);
+    fn mutate_spec(spec: &mut Self::Spec);
 
-            fn mutation_visible(registry: &Self::Registry, label: &str) -> bool;
+    fn mutation_visible(registry: &Self::Registry, label: &str) -> bool;
 }
 
 pub(crate) fn salvage_parity<F: FamilyBehaviorContract>() {

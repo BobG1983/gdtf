@@ -52,6 +52,6 @@ pub enum SpriteSource {
         /// Sheet image path.
         sheet: SpriteImagePath,
         /// Region inside the sheet.
-        rect: SpriteRect,
+        rect:  SpriteRect,
     },
 }

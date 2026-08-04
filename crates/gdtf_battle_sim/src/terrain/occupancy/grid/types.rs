@@ -20,7 +20,7 @@ pub const GRID_HEIGHT: usize = 60;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct OccupancySlot {
     /// Terrain kind.
-    pub terrain: TerrainKind,
+    pub terrain:  TerrainKind,
     /// Optional living occupant.
     pub occupant: Option<Entity>,
 }

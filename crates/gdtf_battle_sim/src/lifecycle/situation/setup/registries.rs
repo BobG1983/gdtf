@@ -44,21 +44,21 @@ impl BattleSetup {
 #[derive(Clone, Copy)]
 pub struct BattleRegistries<'a> {
     /// Gang rosters.
-    pub gangs: &'a GangRegistry,
+    pub gangs:         &'a GangRegistry,
     /// Ranged weapons.
-    pub weapons: &'a WeaponRegistry,
+    pub weapons:       &'a WeaponRegistry,
     /// Melee weapons.
     pub melee_weapons: &'a MeleeWeaponRegistry,
     /// Armor pieces.
-    pub armor: &'a ArmorRegistry,
+    pub armor:         &'a ArmorRegistry,
     /// Ganger stat defaults.
-    pub stat_tuning: &'a GangerStatTuning,
+    pub stat_tuning:   &'a GangerStatTuning,
     /// Terrain piece catalog.
-    pub terrain: Option<&'a TerrainDefRegistry>,
+    pub terrain:       Option<&'a TerrainDefRegistry>,
     /// Area-damage field catalog.
-    pub fields: Option<&'a FieldDefRegistry>,
+    pub fields:        Option<&'a FieldDefRegistry>,
     /// Attachment catalog.
-    pub attachments: Option<&'a AttachmentRegistry>,
+    pub attachments:   Option<&'a AttachmentRegistry>,
 }
 
 impl<'a> BattleRegistries<'a> {

@@ -118,10 +118,10 @@ pub(crate) fn tough_mover(at: CellLevel, faction: u8, facing: Direction) -> Gang
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct LoggedFact {
-        pub(crate) seq:        ActSeq,
-        pub(crate) actor:      Entity,
-        pub(crate) provenance: ActProvenance,
-            pub(crate) deed:       &'static str,
+    pub(crate) seq:        ActSeq,
+    pub(crate) actor:      Entity,
+    pub(crate) provenance: ActProvenance,
+    pub(crate) deed:       &'static str,
 }
 
 pub(crate) const fn deed_name(deed: &ActDeed) -> &'static str {

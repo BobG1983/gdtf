@@ -8,7 +8,7 @@ use gdtf_content_families::MeleeWeaponsFamily;
 use load_suite::suite::{self, FamilyLoadContract};
 
 impl FamilyLoadContract for MeleeWeaponsFamily {
-            const EXPECTED_MEMBERS: &'static [&'static str] = &["fists", "chainsword"];
+    const EXPECTED_MEMBERS: &'static [&'static str] = &["fists", "chainsword"];
 
     fn is_empty(registry: &MeleeWeaponRegistry) -> bool {
         registry.is_empty()

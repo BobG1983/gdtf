@@ -80,7 +80,6 @@ fn observer_situation(
     add_terrain(builder).build_with_gangs()
 }
 
-
 #[test]
 fn tagged_slab_occludes_but_untagged_slab_does_not() {
     let mut tagged = battle_app();
@@ -115,7 +114,6 @@ fn tagged_slab_occludes_but_untagged_slab_does_not() {
     );
 }
 
-
 #[test]
 fn existing_wall_still_occludes() {
     let mut app = battle_app();
@@ -133,7 +131,6 @@ fn existing_wall_still_occludes() {
          is NOT in the FOV) — the tag-derived occluder reproduces the wall's existing behaviour",
     );
 }
-
 
 #[test]
 fn path_only_slab_does_not_occlude_vision() {
@@ -190,10 +187,8 @@ fn vision_and_path_surfaces_are_independent_on_the_grid() {
     );
 }
 
-
 #[test]
 fn occluder_band_gates_the_sightline() {
-
     let mut low_app = battle_app();
     drive_setup(
         &mut low_app,
@@ -227,7 +222,6 @@ fn occluder_band_gates_the_sightline() {
          visible) — the band gate flips the verdict with only the occluder band changed",
     );
 }
-
 
 #[test]
 fn adding_and_removing_occluder_flips_visibility() {

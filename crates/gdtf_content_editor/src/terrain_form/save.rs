@@ -40,27 +40,27 @@ pub fn draft_to_terrain_def(
     let (sim_kind, presenter_kind) = match draft.kind() {
         TerrainKindChoice::Wall => (
             TerrainSimKind::Wall {
-                hp: draft.cover_hp(),
+                hp:               draft.cover_hp(),
                 armor_protection: draft.armor_protection(),
-                armor_hardness: draft.armor_hardness(),
-                height_band: draft.height_band(),
+                armor_hardness:   draft.armor_hardness(),
+                height_band:      draft.height_band(),
             },
             TerrainPresenterKind::Wall { graphic_name },
         ),
         TerrainKindChoice::Cover => (
             TerrainSimKind::Cover {
-                hp: draft.cover_hp(),
+                hp:               draft.cover_hp(),
                 armor_protection: draft.armor_protection(),
-                armor_hardness: draft.armor_hardness(),
-                height_band: draft.height_band(),
+                armor_hardness:   draft.armor_hardness(),
+                height_band:      draft.height_band(),
             },
             TerrainPresenterKind::Cover { graphic_name },
         ),
         TerrainKindChoice::Slab => (
             TerrainSimKind::Slab {
-                hp: draft.slab_hp(),
+                hp:               draft.slab_hp(),
                 armor_protection: draft.armor_protection(),
-                armor_hardness: draft.armor_hardness(),
+                armor_hardness:   draft.armor_hardness(),
             },
             TerrainPresenterKind::Slab {
                 graphic_name,

@@ -17,9 +17,9 @@ const SKILL_DECIMALS: usize = 1;
 const MELEE_DEFAULT_LABEL: &str = "(default: fists)";
 
 struct LoadoutOptions {
-        weapons: Vec<String>,
-        melee:   Vec<String>,
-        armor:   Vec<String>,
+    weapons: Vec<String>,
+    melee:   Vec<String>,
+    armor:   Vec<String>,
 }
 
 pub(crate) fn members_panel(
@@ -150,8 +150,8 @@ fn key_combo(
 }
 
 enum MeleeChoice {
-        Default,
-        Key(String),
+    Default,
+    Key(String),
 }
 
 fn melee_combo(

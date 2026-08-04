@@ -15,7 +15,7 @@ use crate::{
 /// Staged level generation state held as a Bevy resource.
 #[derive(Resource)]
 pub struct StagedProcgen {
-    rng: ProcgenRng,
+    rng:    ProcgenRng,
     cursor: ProcgenCursor,
 }
 
@@ -24,7 +24,7 @@ impl StagedProcgen {
     #[must_use]
     pub fn new(seed: BattleSeed, theme: ThemeUuid, grid_size: GridSize) -> Self {
         Self {
-            rng: ProcgenRng::from_root(seed),
+            rng:    ProcgenRng::from_root(seed),
             cursor: ProcgenCursor::new(theme, grid_size),
         }
     }

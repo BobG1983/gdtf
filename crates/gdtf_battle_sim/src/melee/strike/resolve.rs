@@ -100,10 +100,10 @@ pub fn resolve_melee_strike(
     };
 
     MeleeStrike {
-        connect: Connected::new(true),
-        severity: synthesis.severity,
+        connect:   Connected::new(true),
+        severity:  synthesis.severity,
         hp_damage: synthesis.hit.hp_damage,
-        wear: synthesis.wear,
-        injury: synthesis.injury,
+        wear:      synthesis.wear,
+        injury:    synthesis.injury,
     }
 }

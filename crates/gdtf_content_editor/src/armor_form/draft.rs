@@ -23,8 +23,8 @@ enum AutoloadState {
 /// In-progress armor being authored.
 #[derive(Resource, Clone, PartialEq, Eq, Debug)]
 pub struct ArmorDraft {
-    name: String,
-    spec: ArmorSpec,
+    name:     String,
+    spec:     ArmorSpec,
     autoload: AutoloadState,
 }
 
@@ -33,8 +33,8 @@ impl ArmorDraft {
     #[must_use]
     pub const fn new_armor() -> Self {
         Self {
-            name: String::new(),
-            spec: ArmorSpec::uniform(SEED_PIECE),
+            name:     String::new(),
+            spec:     ArmorSpec::uniform(SEED_PIECE),
             autoload: AutoloadState::Done,
         }
     }
@@ -91,8 +91,8 @@ impl ArmorDraft {
 impl Default for ArmorDraft {
     fn default() -> Self {
         Self {
-            name: String::new(),
-            spec: ArmorSpec::uniform(SEED_PIECE),
+            name:     String::new(),
+            spec:     ArmorSpec::uniform(SEED_PIECE),
             autoload: AutoloadState::Pending,
         }
     }

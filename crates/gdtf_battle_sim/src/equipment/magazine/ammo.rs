@@ -43,12 +43,12 @@ pub struct MagazineFull(bool);
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct Magazine {
     /// Capacity.
-    pub size: MagazineSize,
+    pub size:        MagazineSize,
     /// Reload TU cost.
-    pub reload_tu: ReloadTu,
+    pub reload_tu:   ReloadTu,
     /// Current rounds (not serialized to content).
     #[serde(default, skip_serializing)]
-    pub rounds: LoadedRounds,
+    pub rounds:      LoadedRounds,
     /// Loaded ammo type (not serialized to content).
     #[serde(default, skip_serializing)]
     pub loaded_ammo: AmmoType,

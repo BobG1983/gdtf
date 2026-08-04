@@ -14,7 +14,6 @@ use gdtf_test_utils::{advance_until, press_ui_button};
 
 use super::{harness::*, probes::*};
 
-
 #[test]
 fn action_bar_spawns_in_battle_and_despawns_outside() {
     let mut app = battle_running_app();
@@ -60,7 +59,6 @@ fn action_bar_spawns_in_battle_and_despawns_outside() {
         "the action bar must be despawned once the battle leaves BattleRunning",
     );
 }
-
 
 #[test]
 fn aim_button_toggles_and_matches_direct_intent() {
@@ -108,7 +106,6 @@ fn aim_button_toggles_and_matches_direct_intent() {
     );
 }
 
-
 #[test]
 fn no_selection_makes_act_buttons_a_no_op() {
     let mut app = battle_running_app();
@@ -136,7 +133,6 @@ fn no_selection_makes_act_buttons_a_no_op() {
         "no SetAimingRequested without a selection"
     );
 }
-
 
 #[test]
 fn buttons_are_ui_nodes_not_world_render_layer_sprites() {
@@ -169,7 +165,6 @@ fn buttons_are_ui_nodes_not_world_render_layer_sprites() {
         );
     }
 }
-
 
 #[test]
 fn action_bar_root_fits_contents_and_is_top_centered() {

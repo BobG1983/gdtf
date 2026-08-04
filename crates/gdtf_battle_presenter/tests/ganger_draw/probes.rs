@@ -19,11 +19,11 @@ pub(crate) fn character_roles(app: &App) -> Option<CharacterRoles> {
 }
 
 pub(crate) struct DrawnGanger {
-        pub(crate) sprite_entity: Entity,
-        pub(crate) sim_entity:    Entity,
-        pub(crate) atlas_index:   Option<usize>,
-        pub(crate) custom_size:   Option<Vec2>,
-        pub(crate) translation:   bevy::math::Vec3,
+    pub(crate) sprite_entity: Entity,
+    pub(crate) sim_entity:    Entity,
+    pub(crate) atlas_index:   Option<usize>,
+    pub(crate) custom_size:   Option<Vec2>,
+    pub(crate) translation:   bevy::math::Vec3,
 }
 
 pub(crate) fn drawn_gangers(app: &mut App) -> Vec<DrawnGanger> {

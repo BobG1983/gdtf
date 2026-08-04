@@ -14,8 +14,8 @@ fn segmented_control_active_change_repaints_all_one_update() {
 
     let segs = segments_of(&mut app, control);
     assert_eq!(segs.len(), 3, "must have 3 segments");
-    let seg_a = segs[0].0; 
-    let seg_b = segs[1].0; 
+    let seg_a = segs[0].0;
+    let seg_b = segs[1].0;
 
     let (a_bg0, a_w0, _) = segment_look(&mut app, seg_a);
     assert_eq!(a_bg0, SEG_COLORS.active_bg, "precondition: A starts active");
@@ -92,7 +92,7 @@ fn segmented_control_repress_active_is_noop() {
     app.update();
 
     let segs = segments_of(&mut app, control);
-    let seg_a = segs[0].0; 
+    let seg_a = segs[0].0;
     if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(seg_a) {
         *interaction = Interaction::Pressed;
     }
@@ -159,7 +159,7 @@ fn segment_active_highlight_survives_theme_interaction() {
 
     let segs = segments_of(&mut app, control);
     assert_eq!(segs.len(), 3, "must have 3 segments");
-    let seg_active = segs[0].0; 
+    let seg_active = segs[0].0;
 
     let (bg0, ..) = segment_look(&mut app, seg_active);
     assert_eq!(

@@ -8,7 +8,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn editing_the_attachment_registry_changes_the_next_spawn() {
     let (small_app, small_weapon) =

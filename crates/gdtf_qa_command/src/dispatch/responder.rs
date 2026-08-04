@@ -13,7 +13,7 @@ use crate::command::QaCommand;
 
 /// Responder that serializes `C::Reply` into a protocol outcome.
 pub struct CommandResponder<C: QaCommand> {
-    inner: Responder,
+    inner:   Responder,
     command: PhantomData<fn() -> C>,
 }
 

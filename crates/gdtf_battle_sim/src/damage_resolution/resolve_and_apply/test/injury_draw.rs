@@ -22,7 +22,7 @@ fn corpse_hit_takes_no_injury_draw() {
 
     let mut hp = Hp::new(15);
     let mut wounds = Wounds::new(3);
-    let mut life = LifeState::Dead; 
+    let mut life = LifeState::Dead;
     let mut integrity = piece_integrity(1);
     let mut inflicted = InflictedWounds::default();
 

@@ -8,9 +8,9 @@ use crate::ganger::{Faction, GangName, GangerName};
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct RosterMember {
     /// Gang key.
-    pub gang: GangName,
+    pub gang:    GangName,
     /// Member key within the gang.
-    pub member: GangerName,
+    pub member:  GangerName,
     /// Faction / side index.
     pub faction: Faction,
 }

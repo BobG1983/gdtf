@@ -12,9 +12,9 @@ use crate::{
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct ProbeArgs {
-        actor: CellNet,
-        at:    CellLevelNet,
-        name:  Option<ShotName>,
+    actor: CellNet,
+    at:    CellLevelNet,
+    name:  Option<ShotName>,
 }
 
 fn schema_text<T: JsonSchema>() -> String {

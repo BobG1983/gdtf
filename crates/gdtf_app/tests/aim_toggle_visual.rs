@@ -14,7 +14,6 @@ use gdtf_ui::{SwitchState, theme::default_theme};
 
 const BUDGET: u32 = 96;
 
-
 fn battlescape_state(app: &App) -> Option<BattleScapeState> {
     app.world()
         .get_resource::<State<BattleScapeState>>()
@@ -113,7 +112,6 @@ fn spawn_and_select(app: &mut App, faction: Faction, aiming: bool) -> Entity {
         .insert_resource(SelectedShooter::new(ganger));
     ganger
 }
-
 
 #[test]
 fn aim_button_active_follows_selected_ganger_aiming() {

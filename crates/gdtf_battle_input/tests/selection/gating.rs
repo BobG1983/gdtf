@@ -6,7 +6,6 @@ use gdtf_test_utils::press_left;
 
 use super::{harness::*, intent_seam::active_level};
 
-
 #[test]
 fn inert_without_battle_in_progress() {
     let level = Level::new(2);

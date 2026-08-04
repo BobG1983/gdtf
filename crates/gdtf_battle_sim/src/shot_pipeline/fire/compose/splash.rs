@@ -66,12 +66,12 @@ pub(super) fn apply_aoe_splash(
         let part = crate::hit_location::roll_body_part(&tuning.body_part_weights, shot_rng.rng());
         let (splash_cell, splash_level) = (cell.cell(), outcome.level);
         let splash_outcome = crate::resolve_coarse::ShotOutcome {
-            kind: ShotKind::Ganger(occupant),
-            cell: splash_cell,
-            level: splash_level,
-            body_part: Some(part),
-            band: outcome.band,
-            muzzle: outcome.muzzle,
+            kind:       ShotKind::Ganger(occupant),
+            cell:       splash_cell,
+            level:      splash_level,
+            body_part:  Some(part),
+            band:       outcome.band,
+            muzzle:     outcome.muzzle,
             trajectory: outcome.trajectory,
         };
         let report = fold_ganger_round(

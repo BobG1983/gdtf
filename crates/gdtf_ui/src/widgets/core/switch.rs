@@ -42,9 +42,9 @@ impl SwitchState {
 #[derive(Component, Clone, Copy, PartialEq, Debug, Default)]
 pub struct SwitchColors {
     /// Track when off.
-    pub off: Color,
+    pub off:  Color,
     /// Track when on.
-    pub on: Color,
+    pub on:   Color,
     /// Knob color.
     pub knob: Color,
 }
@@ -78,7 +78,7 @@ pub struct ToggleFlipped {
     /// Switch entity.
     pub switch: Entity,
     /// New state after the flip.
-    pub state: SwitchState,
+    pub state:  SwitchState,
 }
 
 /// Spawn a switch with the given state, colors, and orientation.
@@ -163,7 +163,7 @@ pub fn drive_switches(
         }
         flipped.write(ToggleFlipped {
             switch: entity,
-            state: next,
+            state:  next,
         });
     }
 }

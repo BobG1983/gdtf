@@ -48,7 +48,7 @@ fn ganger_aim_z_is_per_stance_silhouette_top_times_aim_height_frac() {
 #[test]
 fn ganger_aim_z_reads_each_stance_its_own_silhouette_top() {
     let tuning = tuning_with_silhouette_tops(0.1, 0.5, 0.9);
-    let level = 0u8; 
+    let level = 0u8;
     let pos = position(3, 4, level);
 
     let z_prone = target_aim_point(pos, Stance::new(StanceKind::Prone), None, &tuning).z;
@@ -64,7 +64,7 @@ fn ganger_aim_z_reads_each_stance_its_own_silhouette_top() {
 fn ganger_aim_z_doubles_when_a_stances_silhouette_top_doubles() {
     let single = tuning_with_silhouette_tops(0.3, 0.6, 0.4);
     let doubled = tuning_with_silhouette_tops(0.6, 0.6, 0.4);
-    let pos = position(0, 0, 0); 
+    let pos = position(0, 0, 0);
     let stance = Stance::new(StanceKind::Prone);
 
     let z_single = target_aim_point(pos, stance, None, &single).z;

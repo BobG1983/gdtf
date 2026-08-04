@@ -9,33 +9,33 @@ use crate::{
 #[derive(Debug, Clone, PartialEq)]
 pub struct MeleeStrike {
     /// Whether the attack connected.
-    pub connect: Connected,
+    pub connect:   Connected,
     /// Wound severity.
-    pub severity: Severity,
+    pub severity:  Severity,
     /// HP damage applied.
     pub hp_damage: HpDamage,
     /// Armor wear outcome.
-    pub wear: ArmorWearOutcome,
+    pub wear:      ArmorWearOutcome,
     /// Optional rolled injury.
-    pub injury: Option<RolledInjury>,
+    pub injury:    Option<RolledInjury>,
 }
 
 impl MeleeStrike {
     /// Miss: no connect, no damage.
     pub(super) const MISS: Self = Self {
-        connect: Connected::new(false),
-        severity: Severity::None,
+        connect:   Connected::new(false),
+        severity:  Severity::None,
         hp_damage: HpDamage::new(0),
-        wear: ArmorWearOutcome::Unaffected,
-        injury: None,
+        wear:      ArmorWearOutcome::Unaffected,
+        injury:    None,
     };
 
     /// Target already dead / no synthesis.
     pub(super) const CORPSE: Self = Self {
-        connect: Connected::new(true),
-        severity: Severity::None,
+        connect:   Connected::new(true),
+        severity:  Severity::None,
         hp_damage: HpDamage::new(0),
-        wear: ArmorWearOutcome::Unaffected,
-        injury: None,
+        wear:      ArmorWearOutcome::Unaffected,
+        injury:    None,
     };
 }

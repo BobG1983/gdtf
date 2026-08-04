@@ -9,10 +9,9 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[derive(Resource, Default)]
 struct AppliedLog {
-        count: usize,
+    count: usize,
 }
 
 fn record_applied(mut msgs: MessageReader<SuppressionApplied>, mut log: ResMut<AppliedLog>) {

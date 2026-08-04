@@ -51,14 +51,14 @@ mod tests {
 
     use crate::canvas::{CurrentEditLevel, LevelStep};
 
-            fn size() -> GridSize {
+    fn size() -> GridSize {
         GridSize::new(GridWidth::new(4), GridHeight::new(4), GridLevels::new(3))
             .unwrap_or_else(|_| GridSize::default())
     }
 
-                #[test]
+    #[test]
     fn level_nav_clamps_to_the_storey_range() {
-        let size = size(); 
+        let size = size();
         let ground = CurrentEditLevel::ground();
         assert_eq!(*ground.level(), 0, "the editor opens on the ground storey");
 
@@ -84,7 +84,7 @@ mod tests {
         );
     }
 
-                #[test]
+    #[test]
     fn shrinking_the_grid_reclamps_the_level() {
         let three = size();
         let on_top = CurrentEditLevel::ground()

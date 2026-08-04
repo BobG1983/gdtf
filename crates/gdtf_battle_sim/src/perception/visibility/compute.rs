@@ -17,13 +17,13 @@ use crate::{
 #[derive(Debug, Clone, Copy)]
 pub struct FovObserver<'a> {
     /// Observer position.
-    pub position: &'a Position,
+    pub position:         &'a Position,
     /// Observer stance.
-    pub stance: &'a Stance,
+    pub stance:           &'a Stance,
     /// Observer facing.
-    pub facing: &'a Facing,
+    pub facing:           &'a Facing,
     /// Life state (dead observers contribute nothing).
-    pub life: LifeState,
+    pub life:             LifeState,
     /// Stair eye height offset.
     pub stair_eye_offset: StairEyeOffset,
 }
@@ -47,11 +47,11 @@ pub fn union_fov(
             continue;
         }
         let observer = Observer {
-            position: fov.position,
-            stance: fov.stance,
-            facing: fov.facing,
+            position:         fov.position,
+            stance:           fov.stance,
+            facing:           fov.facing,
             stair_eye_offset: fov.stair_eye_offset,
-            peek_offset: PeekOffset::default(),
+            peek_offset:      PeekOffset::default(),
         };
         for (level, cell) in disc_cells(fov.position, tuning.view_range, authored) {
             let candidate = CellLevel::new(cell, level);
@@ -59,7 +59,7 @@ pub fn union_fov(
             let stance = Stance::new(StanceKind::Standing);
             let target = Target {
                 position: &position,
-                stance: &stance,
+                stance:   &stance,
             };
             if *can_see(
                 &observer,

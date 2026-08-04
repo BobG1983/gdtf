@@ -11,11 +11,11 @@ use crate::{
 #[derive(Message, Debug, Clone, PartialEq)]
 pub struct FireRequested {
     /// Shooter entity.
-    pub shooter: Entity,
+    pub shooter:      Entity,
     /// Fire mode to use.
-    pub mode: FireModeSpec,
+    pub mode:         FireModeSpec,
     /// Target cell.
-    pub target_cell: Cell,
+    pub target_cell:  Cell,
     /// Target level.
     pub target_level: Level,
 }

@@ -14,7 +14,7 @@ pub enum InjuryEffect {
     /// Change a named stat.
     Modify {
         /// Which stat.
-        stat: StatTarget,
+        stat:   StatTarget,
         /// Delta amount.
         amount: StatDelta,
     },

@@ -17,7 +17,7 @@ use crate::playback::{DrawnLife, DrawnPose};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct GangerAppearance {
     pub(super) atlas_index: usize,
-    pub(super) tint: Color,
+    pub(super) tint:        Color,
 }
 
 #[must_use]
@@ -32,7 +32,7 @@ pub(super) fn ganger_sprite_appearance(
 ) -> GangerAppearance {
     GangerAppearance {
         atlas_index: atlas_index(roles, faction, facing),
-        tint: stance_aiming_tint(faction, life, stance, aiming, suppressed),
+        tint:        stance_aiming_tint(faction, life, stance, aiming, suppressed),
     }
 }
 

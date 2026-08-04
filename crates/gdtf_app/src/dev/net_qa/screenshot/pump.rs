@@ -25,7 +25,7 @@ crate::support_item! {
 }
 
 impl ShotPollBudget {
-        const DEFAULT: Self = Self(240);
+    const DEFAULT: Self = Self(240);
 
     crate::support_item! {
                                                 #[cfg(any(test, feature = "test-support"))]
@@ -36,7 +36,7 @@ impl ShotPollBudget {
 }
 
 impl Default for ShotPollBudget {
-        fn default() -> Self {
+    fn default() -> Self {
         Self::DEFAULT
     }
 }
@@ -45,16 +45,16 @@ impl Default for ShotPollBudget {
 struct PollFramesLeft(u32);
 
 enum PollTick {
-        Live,
-        Expired,
+    Live,
+    Expired,
 }
 
 impl PollFramesLeft {
-        const fn new(frames: u32) -> Self {
+    const fn new(frames: u32) -> Self {
         Self(frames)
     }
 
-        const fn tick(&mut self) -> PollTick {
+    const fn tick(&mut self) -> PollTick {
         if self.0 == 0 {
             return PollTick::Expired;
         }
@@ -64,9 +64,9 @@ impl PollFramesLeft {
 }
 
 struct InFlightShot {
-        path:      CapturePath,
-        responder: Responder,
-        remaining: PollFramesLeft,
+    path:      CapturePath,
+    responder: Responder,
+    remaining: PollFramesLeft,
 }
 
 #[derive(Resource, Default)]
@@ -119,12 +119,12 @@ fn claim_requests(
 }
 
 struct CaptureSink<'a, 'w, 's> {
-        in_flight: &'a mut InFlightShots,
-        budget:    ShotPollBudget,
-        dir:       &'a QaShotDir,
-        sequence:  &'a mut ShotSequence,
-            target:    Option<&'a QaCaptureTarget>,
-        commands:  &'a mut Commands<'w, 's>,
+    in_flight: &'a mut InFlightShots,
+    budget:    ShotPollBudget,
+    dir:       &'a QaShotDir,
+    sequence:  &'a mut ShotSequence,
+    target:    Option<&'a QaCaptureTarget>,
+    commands:  &'a mut Commands<'w, 's>,
 }
 
 fn spawn_capture(name: Option<&ShotName>, responder: Responder, sink: CaptureSink<'_, '_, '_>) {

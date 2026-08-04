@@ -14,7 +14,6 @@ use gdtf_ui::{ProgressBarFill, theme::default_theme};
 
 pub(crate) const BUDGET: u32 = 96;
 
-
 pub(crate) fn battlescape_state(app: &App) -> Option<BattleScapeState> {
     app.world()
         .get_resource::<State<BattleScapeState>>()

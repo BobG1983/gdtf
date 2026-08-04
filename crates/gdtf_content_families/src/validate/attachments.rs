@@ -28,9 +28,9 @@ pub fn check_weapon_attachment_refs(
             if attachments.spec(key).is_none() {
                 report.record(ContentFinding::DanglingRef {
                     referrer: FindingReferrer::new(format!("{kind} `{}` attachments", **name)),
-                    target: FindingTarget::new((**key).clone()),
-                    family: FindingFamily::new("AttachmentRegistry".to_owned()),
-                    scheme: ReferenceKeyScheme::FileStem,
+                    target:   FindingTarget::new((**key).clone()),
+                    family:   FindingFamily::new("AttachmentRegistry".to_owned()),
+                    scheme:   ReferenceKeyScheme::FileStem,
                 });
             }
         }

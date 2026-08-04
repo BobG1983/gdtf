@@ -28,9 +28,9 @@ pub fn check_terrain_graphic_refs(
                     "terrain def `{}` ({}) graphic_name",
                     *def.display_name, **key,
                 )),
-                target: FindingTarget::new((**graphic_name).clone()),
-                family: FindingFamily::new("SpriteDefRegistry".to_owned()),
-                scheme: ReferenceKeyScheme::FileStem,
+                target:   FindingTarget::new((**graphic_name).clone()),
+                family:   FindingFamily::new("SpriteDefRegistry".to_owned()),
+                scheme:   ReferenceKeyScheme::FileStem,
             });
         }
     }

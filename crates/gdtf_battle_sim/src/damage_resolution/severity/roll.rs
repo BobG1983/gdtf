@@ -26,15 +26,15 @@ impl RollTerm {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SeverityInputs {
     /// Damage that got through armor.
-    pub pen_damage: PenetratingDamage,
+    pub pen_damage:    PenetratingDamage,
     /// Defender toughness.
-    pub toughness: Toughness,
+    pub toughness:     Toughness,
     /// Body-part bias.
-    pub part_mod: PartSeverityMod,
+    pub part_mod:      PartSeverityMod,
     /// Weapon fatal bias.
-    pub fatal_bias: FatalBias,
+    pub fatal_bias:    FatalBias,
     /// Shooter luck.
-    pub luck_shooter: Luck,
+    pub luck_shooter:  Luck,
     /// Defender luck.
     pub luck_defender: Luck,
 }

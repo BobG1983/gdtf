@@ -66,7 +66,7 @@ pub(crate) fn spawn_preview_target(
 
     let mut projection = OrthographicProjection::default_2d();
     projection.scaling_mode = ScalingMode::Fixed {
-        width: PREVIEW_VIEW_SPAN,
+        width:  PREVIEW_VIEW_SPAN,
         height: PREVIEW_VIEW_SPAN,
     };
 

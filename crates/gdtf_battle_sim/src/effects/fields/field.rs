@@ -14,13 +14,13 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
 pub struct FieldDef {
     /// Damage per tick.
-    pub damage: FieldDamage,
+    pub damage:             FieldDamage,
     /// Damage channel.
-    pub damage_type: DamageType,
+    pub damage_type:        DamageType,
     /// Armor types immune to this field.
     pub immune_armor_types: ImmuneArmorTypes,
     /// How long the field lasts.
-    pub duration: FieldDuration,
+    pub duration:           FieldDuration,
 }
 
 impl FieldDef {

@@ -8,7 +8,7 @@ use crate::{
 
 #[test]
 fn click_jump_routes_through_the_kept_clamp() {
-    let size = size(); 
+    let size = size();
     let jumped = CurrentEditLevel::jumped(Level::new(1), size);
     assert_eq!(*jumped.level(), 1, "an in-range click lands on its storey");
     let clamped = CurrentEditLevel::jumped(Level::new(7), size);

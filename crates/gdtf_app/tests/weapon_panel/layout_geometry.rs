@@ -64,7 +64,7 @@ impl PixelRect {
         }
     }
 
-            fn overlaps(&self, other: &Self) -> bool {
+    fn overlaps(&self, other: &Self) -> bool {
         self.min.x < other.max.x
             && other.min.x < self.max.x
             && self.min.y < other.max.y

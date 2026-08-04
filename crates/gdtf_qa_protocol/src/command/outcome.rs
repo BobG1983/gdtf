@@ -13,7 +13,7 @@ pub enum CommandOutcome {
     /// Command ran successfully.
     Ran {
         /// Reply body as JSON.
-        reply: CommandReplyJson,
+        reply:       CommandReplyJson,
         /// Optional file attachments (e.g. PNG).
         attachments: Vec<ReplyAttachment>,
     },

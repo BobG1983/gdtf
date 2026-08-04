@@ -6,7 +6,6 @@ use crate::{
     test_support::{SituationBuilder, ganger_at},
 };
 
-
 #[test]
 fn test5_terrain_index_and_slab_ledger_removed_on_teardown() {
     let mut app = headless_app();

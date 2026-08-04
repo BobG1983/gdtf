@@ -12,7 +12,7 @@ use super::{
 
 #[test]
 fn the_real_stop_reaches_a_process_that_is_not_a_group_leader() {
-    let mut child = spawn(sleeper_command()); 
+    let mut child = spawn(sleeper_command());
     let pid = child.id();
     assert_ne!(
         group_of(pid),

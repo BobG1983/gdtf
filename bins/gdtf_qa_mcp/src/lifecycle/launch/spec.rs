@@ -16,11 +16,11 @@ const EDITOR_FEATURES: [&str; 2] = ["dynamic_linking", "net_qa"];
 /// Package, features, cwd, env, and channel for one launch.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchSpec {
-    package: CargoPackage,
-    features: FeatureList,
+    package:     CargoPackage,
+    features:    FeatureList,
     working_dir: Option<WorkingDir>,
-    env: EnvOverrides,
-    channel: QaChannel,
+    env:         EnvOverrides,
+    channel:     QaChannel,
 }
 
 impl LaunchSpec {

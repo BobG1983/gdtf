@@ -37,7 +37,6 @@ fn deviation(axis: Vec3, dir: Vec3) -> f32 {
     axis.dot(dir).clamp(-1.0, 1.0).acos()
 }
 
-
 #[test]
 fn sampled_vector_is_unit_length_across_many_seeded_draws() {
     let aim = aim_dir_from(SimPos::new(0.0, 0.0, 1.0), SimPos::new(10.0, 3.0, 1.5));
@@ -53,7 +52,6 @@ fn sampled_vector_is_unit_length_across_many_seeded_draws() {
         );
     }
 }
-
 
 #[test]
 fn deviation_never_exceeds_the_cone_angle() {
@@ -72,7 +70,6 @@ fn deviation_never_exceeds_the_cone_angle() {
     }
 }
 
-
 #[test]
 fn zero_cone_returns_the_axis_exactly() {
     let aim = aim_dir_from(SimPos::new(2.0, 2.0, 1.0), SimPos::new(7.0, 5.0, 1.2));
@@ -88,7 +85,6 @@ fn zero_cone_returns_the_axis_exactly() {
         );
     }
 }
-
 
 #[test]
 fn same_seed_yields_the_same_sample_stream() {
@@ -135,7 +131,6 @@ fn scatter_is_genuinely_three_dimensional() {
         "scatter must be genuinely 3D — both lateral ({saw_lateral}) and vertical ({saw_vertical}) deviation must appear",
     );
 }
-
 
 #[test]
 fn concentration_p_rises_with_accuracy() {
@@ -186,7 +181,7 @@ fn larger_p_clusters_samples_nearer_the_axis() {
 #[test]
 fn high_p_concentrates_near_center_even_in_a_wide_cone() {
     let aim = aim_dir_from(SimPos::new(0.0, 0.0, 1.0), SimPos::new(10.0, 0.0, 1.0));
-    let wide = ConeAngle::new(1.0); 
+    let wide = ConeAngle::new(1.0);
     let high_p = ConcentrationP::new(8.0);
     let mean = mean_deviation(aim, wide, high_p, 0xBEEF);
     assert!(
@@ -195,7 +190,6 @@ fn high_p_concentrates_near_center_even_in_a_wide_cone() {
         *wide,
     );
 }
-
 
 #[test]
 fn shot_dir_derefs_to_inner() {

@@ -139,9 +139,9 @@ pub(crate) const EDITOR_PORT: u16 = 7617;
 pub(crate) const EDITOR_PID: u32 = 5150;
 
 struct CannedLifecycle {
-        port: u16,
-        pid:  u32,
-        log:  &'static str,
+    port: u16,
+    pid:  u32,
+    log:  &'static str,
 }
 
 impl HostLifecycle for CannedLifecycle {

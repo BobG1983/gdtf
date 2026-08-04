@@ -19,7 +19,7 @@ pub enum MoveRejection {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MoveRejected {
     /// Actor.
-    pub actor: Entity,
+    pub actor:  Entity,
     /// Reason.
     pub reason: MoveRejection,
 }
@@ -38,9 +38,9 @@ pub struct MovementOccurred {
     /// Actor.
     pub actor: Entity,
     /// Previous cell.
-    pub from: Cell,
+    pub from:  Cell,
     /// New cell.
-    pub to: Cell,
+    pub to:    Cell,
 }
 
 impl MovementOccurred {

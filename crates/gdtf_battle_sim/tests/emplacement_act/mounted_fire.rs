@@ -19,7 +19,7 @@ use super::harness::*;
 
 #[derive(Resource, Default)]
 struct ShotLog {
-        shots: Vec<ShotFired>,
+    shots: Vec<ShotFired>,
 }
 
 fn record_shots(
@@ -41,7 +41,6 @@ fn first_shot_damage_type(app: &App) -> Option<DamageType> {
         .get_resource::<ShotLog>()
         .and_then(|log| log.shots.first().map(|s| s.damage))
 }
-
 
 fn enemy_at(at: CellLevel, facing: Direction) -> GangerSpawn {
     GangerSpawnBuilder::new()

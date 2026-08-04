@@ -8,7 +8,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn enter_mans_and_spawns_mount_exit_reverts_and_despawns_mount() {
     let (mut app, seed) = battle_app(0x5543_0A0A);

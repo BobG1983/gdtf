@@ -16,24 +16,24 @@ use gdtf_battle_sim::{
 fn seed_spec() -> WeaponSpec {
     WeaponSpec {
         base_spread: BaseSpread::new(0.0),
-        accuracy: Accuracy::new(0.0),
-        kickback: Kickback::new(0.0),
-        fatal_bias: FatalBias::new(0.0),
-        damage: WeaponDamage::new(0),
-        punch: WeaponPunch::new(0),
-        shred: WeaponShred::new(0),
+        accuracy:    Accuracy::new(0.0),
+        kickback:    Kickback::new(0.0),
+        fatal_bias:  FatalBias::new(0.0),
+        damage:      WeaponDamage::new(0),
+        punch:       WeaponPunch::new(0),
+        shred:       WeaponShred::new(0),
         damage_type: DamageType::Kinetic,
-        accepts: AmmoType::Slug,
-        magazine: Magazine::default(),
-        fire_mode: FireMode::new(vec![structural_single_mode()]),
-        stable: Stable::new(false),
-        shove: Shove::new(false),
-        handedness: Handedness::OneHanded,
-        trajectory: TrajectoryStyle::Straight,
-        slots: WeaponSlots::default(),
+        accepts:     AmmoType::Slug,
+        magazine:    Magazine::default(),
+        fire_mode:   FireMode::new(vec![structural_single_mode()]),
+        stable:      Stable::new(false),
+        shove:       Shove::new(false),
+        handedness:  Handedness::OneHanded,
+        trajectory:  TrajectoryStyle::Straight,
+        slots:       WeaponSlots::default(),
         attachments: Vec::new(),
-        dot: None,
-        on_death: None,
+        dot:         None,
+        on_death:    None,
     }
 }
 
@@ -63,8 +63,8 @@ enum AutoloadState {
 /// In-progress ranged weapon being authored.
 #[derive(Resource, Clone, PartialEq, Debug)]
 pub struct WeaponDraft {
-    name: String,
-    spec: WeaponSpec,
+    name:     String,
+    spec:     WeaponSpec,
     autoload: AutoloadState,
 }
 
@@ -73,8 +73,8 @@ impl WeaponDraft {
     #[must_use]
     pub fn new_weapon() -> Self {
         Self {
-            name: String::new(),
-            spec: seed_spec(),
+            name:     String::new(),
+            spec:     seed_spec(),
             autoload: AutoloadState::Done,
         }
     }
@@ -123,8 +123,8 @@ impl WeaponDraft {
 impl Default for WeaponDraft {
     fn default() -> Self {
         Self {
-            name: String::new(),
-            spec: seed_spec(),
+            name:     String::new(),
+            spec:     seed_spec(),
             autoload: AutoloadState::Pending,
         }
     }

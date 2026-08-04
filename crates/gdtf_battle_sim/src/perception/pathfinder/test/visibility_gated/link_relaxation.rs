@@ -11,7 +11,7 @@ use crate::{
 
 #[test]
 fn routing_onto_known_link_far_endpoint_is_allowed_when_unseen() {
-    let grid = grid_with(&[]); 
+    let grid = grid_with(&[]);
     let tuning = tuning();
     let occupant = spawn_entity();
 
@@ -72,7 +72,7 @@ fn routing_onto_known_link_far_endpoint_is_allowed_when_unseen() {
 fn unseen_non_link_cell_is_still_non_routable() {
     use crate::occupancy::TerrainKind;
 
-    let links = no_links(); 
+    let links = no_links();
     let tuning = tuning();
     let occupant = spawn_entity();
 

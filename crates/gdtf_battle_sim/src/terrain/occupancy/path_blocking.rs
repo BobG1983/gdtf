@@ -37,7 +37,7 @@ impl PathBlocking {
 /// System param for added/removed path-blocking entities.
 #[derive(SystemParam)]
 pub struct PathBlockingChanges<'w, 's> {
-    added: Query<'w, 's, (Entity, &'static TerrainCell), Added<BlocksPathfinding>>,
+    added:   Query<'w, 's, (Entity, &'static TerrainCell), Added<BlocksPathfinding>>,
     removed: RemovedComponents<'w, 's, BlocksPathfinding>,
 }
 

@@ -31,7 +31,7 @@ fn module_layout_conformance() {
     }
     for path in &files {
         let Ok(bytes) = fs::read(root.join(path)) else {
-            continue; 
+            continue;
         };
         let lines = raw_line_count(&bytes);
         let file_band = band(path);

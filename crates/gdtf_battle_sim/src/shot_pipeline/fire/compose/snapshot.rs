@@ -29,25 +29,25 @@ impl MountedShot {
 
 /// Frozen shooter and weapon fields used for the whole volley.
 pub(in crate::shot_pipeline::fire) struct ShooterSnapshot {
-    pub(super) position: Position,
-    pub(super) facing: Facing,
-    pub(super) stance: Stance,
-    pub(super) aiming: Aiming,
-    pub(super) shooting: Shooting,
-    pub(super) luck: Luck,
+    pub(super) position:    Position,
+    pub(super) facing:      Facing,
+    pub(super) stance:      Stance,
+    pub(super) aiming:      Aiming,
+    pub(super) shooting:    Shooting,
+    pub(super) luck:        Luck,
     pub(super) base_spread: BaseSpread,
-    pub(super) accuracy: Accuracy,
-    pub(super) kickback: Kickback,
-    pub(super) fatal_bias: FatalBias,
-    pub(super) damage: WeaponDamage,
-    pub(super) punch: WeaponPunch,
-    pub(super) shred: WeaponShred,
+    pub(super) accuracy:    Accuracy,
+    pub(super) kickback:    Kickback,
+    pub(super) fatal_bias:  FatalBias,
+    pub(super) damage:      WeaponDamage,
+    pub(super) punch:       WeaponPunch,
+    pub(super) shred:       WeaponShred,
     pub(super) damage_type: DamageType,
-    pub(super) stable: Stable,
+    pub(super) stable:      Stable,
     pub(super) brace_bonus: Option<WeaponBraceBonus>,
-    pub(super) suppressed: Option<Suppressed>,
-    pub(super) mounted: MountedShot,
-    pub(super) dot: Option<crate::weapon::DotProfile>,
+    pub(super) suppressed:  Option<Suppressed>,
+    pub(super) mounted:     MountedShot,
+    pub(super) dot:         Option<crate::weapon::DotProfile>,
 }
 
 impl ShooterSnapshot {
@@ -55,26 +55,26 @@ impl ShooterSnapshot {
     pub(super) const fn weapon_stats(&self) -> WeaponStats<'_> {
         WeaponStats {
             base_spread: &self.base_spread,
-            accuracy: &self.accuracy,
-            kickback: &self.kickback,
-            fatal_bias: &self.fatal_bias,
-            damage: &self.damage,
-            punch: &self.punch,
-            shred: &self.shred,
+            accuracy:    &self.accuracy,
+            kickback:    &self.kickback,
+            fatal_bias:  &self.fatal_bias,
+            damage:      &self.damage,
+            punch:       &self.punch,
+            shred:       &self.shred,
             damage_type: &self.damage_type,
-            stable: &self.stable,
+            stable:      &self.stable,
             brace_bonus: self.brace_bonus.as_ref(),
-            dot: self.dot.as_ref(),
+            dot:         self.dot.as_ref(),
         }
     }
 
     /// Shooter view for aim composition.
     pub(super) const fn shooter_view(&self) -> Shooter<'_> {
         Shooter {
-            stance: &self.stance,
-            aiming: &self.aiming,
-            position: &self.position,
-            facing: &self.facing,
+            stance:     &self.stance,
+            aiming:     &self.aiming,
+            position:   &self.position,
+            facing:     &self.facing,
             suppressed: self.suppressed.as_ref(),
         }
     }
@@ -92,19 +92,19 @@ impl ShooterSnapshot {
 /// Everything needed from the shooter after a successful read.
 pub(in crate::shot_pipeline::fire) struct ShooterReads {
     /// Frozen snapshot.
-    pub(in crate::shot_pipeline::fire) snapshot: ShooterSnapshot,
+    pub(in crate::shot_pipeline::fire) snapshot:        ShooterSnapshot,
     /// Weapon entity being fired.
-    pub(in crate::shot_pipeline::fire) weapon: Entity,
+    pub(in crate::shot_pipeline::fire) weapon:          Entity,
     /// Current TU.
-    pub(in crate::shot_pipeline::fire) tu: Tu,
+    pub(in crate::shot_pipeline::fire) tu:              Tu,
     /// Max TU.
-    pub(in crate::shot_pipeline::fire) tu_max: TuMax,
+    pub(in crate::shot_pipeline::fire) tu_max:          TuMax,
     /// Aiming state.
-    pub(in crate::shot_pipeline::fire) aiming: Aiming,
+    pub(in crate::shot_pipeline::fire) aiming:          Aiming,
     /// Magazine state.
-    pub(in crate::shot_pipeline::fire) magazine: Magazine,
+    pub(in crate::shot_pipeline::fire) magazine:        Magazine,
     /// Weapon handedness.
-    pub(in crate::shot_pipeline::fire) handedness: Handedness,
+    pub(in crate::shot_pipeline::fire) handedness:      Handedness,
     /// Hands still usable after injuries.
     pub(in crate::shot_pipeline::fire) hands_available: HandsAvailable,
 }
@@ -148,25 +148,25 @@ pub(in crate::shot_pipeline::fire) fn read_shooter(
         dot,
     ) = weapons.get(weapon).ok()?;
     let snapshot = ShooterSnapshot {
-        position: *position,
-        facing: *facing,
-        stance: *stance,
-        aiming: *aiming,
-        shooting: *shooting,
-        luck: effective_shooter_luck,
+        position:    *position,
+        facing:      *facing,
+        stance:      *stance,
+        aiming:      *aiming,
+        shooting:    *shooting,
+        luck:        effective_shooter_luck,
         base_spread: *base_spread,
-        accuracy: *accuracy,
-        kickback: *kickback,
-        fatal_bias: *fatal_bias,
-        damage: *damage,
-        punch: *punch,
-        shred: *shred,
+        accuracy:    *accuracy,
+        kickback:    *kickback,
+        fatal_bias:  *fatal_bias,
+        damage:      *damage,
+        punch:       *punch,
+        shred:       *shred,
         damage_type: *damage_type,
-        stable: *stable,
+        stable:      *stable,
         brace_bonus: brace_bonus.copied(),
-        suppressed: suppressed.copied(),
-        mounted: MountedShot::new(is_mounted),
-        dot: dot.copied(),
+        suppressed:  suppressed.copied(),
+        mounted:     MountedShot::new(is_mounted),
+        dot:         dot.copied(),
     };
     Some(ShooterReads {
         snapshot,

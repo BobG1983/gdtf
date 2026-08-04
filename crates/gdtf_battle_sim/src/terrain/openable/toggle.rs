@@ -15,7 +15,7 @@ use crate::{
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SetOpenable {
     entity: Entity,
-    state: OpenState,
+    state:  OpenState,
 }
 
 impl SetOpenable {

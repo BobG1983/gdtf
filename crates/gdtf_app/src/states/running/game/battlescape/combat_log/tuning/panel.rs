@@ -6,7 +6,7 @@ use serde::Deserialize;
 pub(crate) struct HeightLerpRate(f32);
 
 impl HeightLerpRate {
-        pub(crate) const DEFAULT: f32 = 10.0;
+    pub(crate) const DEFAULT: f32 = 10.0;
 }
 
 impl Default for HeightLerpRate {
@@ -20,7 +20,7 @@ impl Default for HeightLerpRate {
 pub(crate) struct BottomClearanceLines(f32);
 
 impl BottomClearanceLines {
-        pub(crate) const DEFAULT: f32 = 0.5;
+    pub(crate) const DEFAULT: f32 = 0.5;
 }
 
 impl Default for BottomClearanceLines {
@@ -34,7 +34,7 @@ impl Default for BottomClearanceLines {
 pub(crate) struct PanelWidthVw(f32);
 
 impl PanelWidthVw {
-        pub(crate) const DEFAULT: f32 = 28.0;
+    pub(crate) const DEFAULT: f32 = 28.0;
 }
 
 impl Default for PanelWidthVw {

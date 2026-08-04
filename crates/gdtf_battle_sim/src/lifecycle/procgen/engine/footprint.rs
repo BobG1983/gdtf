@@ -16,7 +16,7 @@ pub enum PlacementRole {
 /// One placed region with its role.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PlacedFootprint {
-    role: PlacementRole,
+    role:   PlacementRole,
     region: RegionRect,
 }
 

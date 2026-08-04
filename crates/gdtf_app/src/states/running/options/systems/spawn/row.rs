@@ -15,7 +15,7 @@ use crate::states::{RunningState, running::options::systems::theming::ToggleValu
 pub(super) struct SettingCaption(&'static str);
 
 impl SettingCaption {
-        pub(super) const fn new(caption: &'static str) -> Self {
+    pub(super) const fn new(caption: &'static str) -> Self {
         Self(caption)
     }
 }
@@ -24,24 +24,24 @@ impl SettingCaption {
 pub(super) struct SettingValueText(&'static str);
 
 impl SettingValueText {
-        pub(super) const fn new(text: &'static str) -> Self {
+    pub(super) const fn new(text: &'static str) -> Self {
         Self(text)
     }
 }
 
 pub(super) struct SettingRowSpec<V, M, K, L> {
-        pub(super) caption:       SettingCaption,
-        pub(super) value:         V,
-        pub(super) value_text:    SettingValueText,
-        pub(super) toggle_marker: M,
-        pub(super) knob_marker:   K,
-        pub(super) value_marker:  L,
+    pub(super) caption:       SettingCaption,
+    pub(super) value:         V,
+    pub(super) value_text:    SettingValueText,
+    pub(super) toggle_marker: M,
+    pub(super) knob_marker:   K,
+    pub(super) value_marker:  L,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(super) struct SettingRow {
-        pub(super) row:    Entity,
-        pub(super) toggle: Entity,
+    pub(super) row:    Entity,
+    pub(super) toggle: Entity,
 }
 
 pub(super) fn spawn_setting_row<V: ToggleValue, M: Bundle, K: Bundle, L: Bundle>(

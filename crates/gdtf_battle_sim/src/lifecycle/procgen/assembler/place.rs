@@ -56,7 +56,7 @@ impl PlacedPrefab {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Placement {
     player: PlacedPrefab,
-    enemy: PlacedPrefab,
+    enemy:  PlacedPrefab,
 }
 
 impl Placement {
@@ -107,9 +107,9 @@ pub(in crate::lifecycle::procgen) fn place_player(
     let player_region = board.place_at_anchor(player_anchor, player_footprint);
     if !*packer.place(player_region) {
         return Err(PackingError::FootprintDoesNotFit {
-            anchor: player_anchor,
+            anchor:    player_anchor,
             footprint: player_footprint,
-            region: board,
+            region:    board,
         });
     }
 
@@ -139,9 +139,9 @@ pub(in crate::lifecycle::procgen) fn place_enemy(
     let enemy_region = board.place_at_anchor(enemy_anchor, enemy_footprint);
     if !*packer.place(enemy_region) {
         return Err(PackingError::FootprintDoesNotFit {
-            anchor: enemy_anchor,
+            anchor:    enemy_anchor,
             footprint: enemy_footprint,
-            region: board,
+            region:    board,
         });
     }
     Ok(PlacedPrefab::new(enemy_prefab, enemy_anchor, enemy_region))

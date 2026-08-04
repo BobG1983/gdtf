@@ -15,11 +15,11 @@ use crate::{
 /// Mutable view of the combatant fields that a hit can change.
 pub struct GangerHitTarget<'a> {
     /// Current hit points.
-    pub hp: &'a mut Hp,
+    pub hp:        &'a mut Hp,
     /// Remaining wound capacity.
-    pub wounds: &'a mut Wounds,
+    pub wounds:    &'a mut Wounds,
     /// Alive / downed / dead.
-    pub life: &'a mut LifeState,
+    pub life:      &'a mut LifeState,
     /// Armor integrity for the hit location, if any.
     pub integrity: Option<&'a mut ArmorIntegrity>,
     /// Wound history.

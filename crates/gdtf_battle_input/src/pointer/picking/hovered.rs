@@ -22,7 +22,7 @@ pub enum InspectMode {
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct InspectTarget {
     hovered: Option<CellLevel>,
-    pinned: Option<CellLevel>,
+    pinned:  Option<CellLevel>,
 }
 
 impl InspectTarget {
@@ -74,8 +74,8 @@ impl InspectTarget {
 
 #[derive(bevy::ecs::query::QueryData)]
 pub struct UiNodeHit {
-    node: &'static ComputedNode,
-    transform: &'static UiGlobalTransform,
+    node:       &'static ComputedNode,
+    transform:  &'static UiGlobalTransform,
     visibility: &'static InheritedVisibility,
 }
 

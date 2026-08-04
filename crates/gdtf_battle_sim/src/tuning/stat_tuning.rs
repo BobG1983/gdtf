@@ -105,54 +105,54 @@ impl Default for TuPerSpeed {
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Default)]
 pub struct ShootingWeights {
     /// Aim contribution.
-    pub aim: StatWeight,
+    pub aim:      StatWeight,
     /// Reflexes contribution.
     pub reflexes: StatWeight,
     /// Cool contribution.
-    pub cool: StatWeight,
+    pub cool:     StatWeight,
 }
 
 /// Weights for the fight derived stat.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Default)]
 pub struct FightWeights {
     /// Speed contribution.
-    pub speed: StatWeight,
+    pub speed:    StatWeight,
     /// Strength contribution.
     pub strength: StatWeight,
     /// Grit contribution.
-    pub grit: StatWeight,
+    pub grit:     StatWeight,
     /// Cool contribution.
-    pub cool: StatWeight,
+    pub cool:     StatWeight,
 }
 
 /// Weights for the reactions derived stat.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Default)]
 pub struct ReactionsWeights {
     /// Speed contribution.
-    pub speed: StatWeight,
+    pub speed:    StatWeight,
     /// Reflexes contribution.
     pub reflexes: StatWeight,
     /// Cool contribution.
-    pub cool: StatWeight,
+    pub cool:     StatWeight,
 }
 
 /// Weights for HP (cool defaults to 0.5).
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct HpWeights {
     /// Grit contribution.
-    pub grit: StatWeight,
+    pub grit:      StatWeight,
     /// Toughness contribution.
     pub toughness: StatWeight,
     /// Cool contribution.
-    pub cool: StatWeight,
+    pub cool:      StatWeight,
 }
 
 impl Default for HpWeights {
     fn default() -> Self {
         Self {
-            grit: StatWeight::default(),
+            grit:      StatWeight::default(),
             toughness: StatWeight::default(),
-            cool: StatWeight::new(0.5),
+            cool:      StatWeight::new(0.5),
         }
     }
 }
@@ -170,21 +170,21 @@ pub struct MoraleWeights {
 #[derive(Debug, Clone, PartialEq, Default, Resource, Deserialize, TypePath)]
 pub struct GangerStatTuning {
     /// Shooting weights.
-    pub shooting: ShootingWeights,
+    pub shooting:          ShootingWeights,
     /// Fight weights.
-    pub fight: FightWeights,
+    pub fight:             FightWeights,
     /// Reactions weights.
-    pub reactions: ReactionsWeights,
+    pub reactions:         ReactionsWeights,
     /// HP weights.
-    pub hp: HpWeights,
+    pub hp:                HpWeights,
     /// Morale weights.
-    pub morale: MoraleWeights,
+    pub morale:            MoraleWeights,
     /// Wounds per HP.
-    pub wounds_per_hp: WoundsPerHp,
+    pub wounds_per_hp:     WoundsPerHp,
     /// Bottle per morale.
     pub bottle_per_morale: BottlePerMorale,
     /// TU base.
-    pub tu_base: TuBase,
+    pub tu_base:           TuBase,
     /// TU per speed.
-    pub tu_per_speed: TuPerSpeed,
+    pub tu_per_speed:      TuPerSpeed,
 }

@@ -14,10 +14,10 @@ use crate::{
 };
 
 struct DownInjuryRun {
-        downed:            bool,
-        ledger_has_injury: bool,
-        injured_index:     Option<usize>,
-        downed_index:      Option<usize>,
+    downed:            bool,
+    ledger_has_injury: bool,
+    injured_index:     Option<usize>,
+    downed_index:      Option<usize>,
 }
 
 fn run_down_injury(seed: u64) -> DownInjuryRun {

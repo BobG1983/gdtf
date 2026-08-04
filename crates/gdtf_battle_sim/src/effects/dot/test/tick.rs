@@ -59,7 +59,6 @@ fn tick_dot_drains_hp_each_round_and_removes_after_the_profile_turn_count() {
     );
 }
 
-
 #[test]
 fn the_expiring_tick_removes_the_dot_not_an_inert_component() {
     let mut app = tick_app();
@@ -91,7 +90,6 @@ fn the_expiring_tick_removes_the_dot_not_an_inert_component() {
     );
 }
 
-
 #[test]
 fn a_dot_tick_that_empties_hp_flips_the_ganger_to_dead() {
     let mut app = tick_app();
@@ -122,7 +120,6 @@ fn a_dot_tick_that_empties_hp_flips_the_ganger_to_dead() {
         "the DOT is removed on the killing tick",
     );
 }
-
 
 #[test]
 fn an_already_dead_hosts_dot_is_skipped_untouched() {

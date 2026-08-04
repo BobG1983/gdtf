@@ -19,7 +19,7 @@ impl QaShotDir {
 }
 
 impl Default for QaShotDir {
-        fn default() -> Self {
+    fn default() -> Self {
         Self(PathBuf::from("target/qa_screenshots"))
     }
 }
@@ -28,7 +28,7 @@ impl Default for QaShotDir {
 pub(in crate::dev::net_qa) struct ShotSequence(u64);
 
 impl ShotSequence {
-            const fn advance(&mut self) -> Self {
+    const fn advance(&mut self) -> Self {
         let current = *self;
         self.0 += 1;
         current

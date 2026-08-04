@@ -50,7 +50,7 @@ static INSTALL: OnceLock<()> = OnceLock::new();
 struct CaptureLayer;
 
 struct MessageVisitor {
-        message: Option<String>,
+    message: Option<String>,
 }
 
 impl Visit for MessageVisitor {

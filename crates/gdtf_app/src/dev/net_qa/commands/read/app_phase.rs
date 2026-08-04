@@ -19,7 +19,7 @@ pub(crate) struct AppPhaseArgs {}
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub(crate) struct AppPhaseReply {
-        phase: AppPhaseNet,
+    phase: AppPhaseNet,
 }
 
 pub(crate) struct AppPhase;
@@ -38,7 +38,7 @@ impl QaCommand for AppPhase {
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
-                            fn availability(_facts: &GameFacts) -> CommandAvailability {
+    fn availability(_facts: &GameFacts) -> CommandAvailability {
         CommandAvailability::Available
     }
 

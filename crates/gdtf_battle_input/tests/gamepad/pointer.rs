@@ -20,7 +20,6 @@ use gdtf_test_utils::{MessageProbe, MessageProbePlugin, probed};
 
 use super::harness::*;
 
-
 fn synthetic_camera() -> Camera {
     let mut projection = Projection::Orthographic(OrthographicProjection::default_2d());
     projection.update(TARGET_SIZE.x, TARGET_SIZE.y);
@@ -170,7 +169,6 @@ fn highlight_follows_the_gamepad_cursor() {
         let _ = cell_to_world(cell.cell(), LEVEL);
     }
 }
-
 
 #[test]
 fn mouse_reclaims_the_pointer() {

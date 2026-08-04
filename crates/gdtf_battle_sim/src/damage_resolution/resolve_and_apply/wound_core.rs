@@ -21,61 +21,61 @@ use crate::{
 /// Weapon-side inputs for one wound.
 pub(crate) struct WoundBlow {
     /// Body part hit.
-    pub part: BodyPart,
+    pub part:         BodyPart,
     /// Weapon damage.
-    pub damage: WeaponDamage,
+    pub damage:       WeaponDamage,
     /// Weapon punch.
-    pub punch: WeaponPunch,
+    pub punch:        WeaponPunch,
     /// Weapon shred.
-    pub shred: WeaponShred,
+    pub shred:        WeaponShred,
     /// Armor piece at the location (or bare flesh).
-    pub piece: ArmorPiece,
+    pub piece:        ArmorPiece,
     /// Damage-type vs armor matchup.
-    pub matchup: Matchup,
+    pub matchup:      Matchup,
     /// Weapon fatal bias.
-    pub fatal_bias: FatalBias,
+    pub fatal_bias:   FatalBias,
     /// Shooter luck.
     pub shooter_luck: Luck,
     /// How the damage was caused.
-    pub context: DamageContext,
+    pub context:      DamageContext,
     /// Optional melee damage multiplier.
-    pub damage_mult: Option<MeleeDamageMult>,
+    pub damage_mult:  Option<MeleeDamageMult>,
 }
 
 /// Full inputs for synthesizing one wound.
 pub(crate) struct WoundCoreInputs<'a> {
     /// Weapon-side blow data.
-    pub blow: WoundBlow,
+    pub blow:          WoundBlow,
     /// Target combatant view.
-    pub target: TargetGanger<'a>,
+    pub target:        TargetGanger<'a>,
     /// Target entity id.
     pub target_entity: Entity,
     /// Combat tuning.
-    pub tuning: &'a CombatTuning,
+    pub tuning:        &'a CombatTuning,
     /// Severity RNG.
-    pub severity_rng: &'a mut SeverityRng,
+    pub severity_rng:  &'a mut SeverityRng,
     /// Injury tables.
-    pub tables: &'a InjuryTables,
+    pub tables:        &'a InjuryTables,
     /// Injury registry.
-    pub registry: &'a InjuryRegistry,
+    pub registry:      &'a InjuryRegistry,
     /// Injury RNG.
-    pub injury_rng: &'a mut InjuryRng,
+    pub injury_rng:    &'a mut InjuryRng,
 }
 
 /// Result of synthesizing one wound.
 pub(crate) struct WoundSynthesis {
     /// Matchup used.
-    pub matchup: Matchup,
+    pub matchup:    Matchup,
     /// Hit resolution result.
-    pub hit: HitResult,
+    pub hit:        HitResult,
     /// Rolled severity.
-    pub severity: Severity,
+    pub severity:   Severity,
     /// Armor wear outcome.
-    pub wear: ArmorWearOutcome,
+    pub wear:       ArmorWearOutcome,
     /// Life state after apply.
     pub life_after: LifeState,
     /// Injury rolled, if any.
-    pub injury: Option<RolledInjury>,
+    pub injury:     Option<RolledInjury>,
 }
 
 /// Resolve hit, roll severity, apply damage, and optionally roll an injury.
@@ -127,9 +127,9 @@ pub(crate) fn synthesize_wound(inputs: WoundCoreInputs<'_>) -> Option<WoundSynth
 
     let wear = apply_hit(
         GangerHitTarget {
-            hp: target.hp,
-            wounds: target.wounds,
-            life: target.life,
+            hp:        target.hp,
+            wounds:    target.wounds,
+            life:      target.life,
             integrity: target.piece.map(|p| p.integrity),
             inflicted: target.inflicted,
         },

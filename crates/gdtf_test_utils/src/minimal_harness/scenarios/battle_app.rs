@@ -25,7 +25,7 @@ const DRIVE_BUDGET: u32 = 96;
 #[derive(Debug, Clone)]
 pub struct BattleAppBuilder {
     situation: Situation,
-    seed: Option<BattleSeed>,
+    seed:      Option<BattleSeed>,
 }
 
 impl BattleAppBuilder {
@@ -34,7 +34,7 @@ impl BattleAppBuilder {
     pub fn new() -> Self {
         Self {
             situation: fixtures::two_ganger(),
-            seed: None,
+            seed:      None,
         }
     }
 

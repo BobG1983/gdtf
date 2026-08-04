@@ -14,11 +14,11 @@ use crate::{
 const THUMB_WIDTH: f32 = 72.0;
 
 pub(crate) struct RailCtx<'a> {
-        pub(crate) map:        &'a EditorMap,
-        pub(crate) session:    &'a MapEditorSession,
-        pub(crate) edit_level: &'a mut CurrentEditLevel,
-            pub(crate) registry:   Option<&'a TerrainDefRegistry>,
-        pub(crate) state:      &'a mut RailUiState,
+    pub(crate) map:        &'a EditorMap,
+    pub(crate) session:    &'a MapEditorSession,
+    pub(crate) edit_level: &'a mut CurrentEditLevel,
+    pub(crate) registry:   Option<&'a TerrainDefRegistry>,
+    pub(crate) state:      &'a mut RailUiState,
 }
 
 pub(super) fn rail_rows_top_first(levels: u8) -> impl DoubleEndedIterator<Item = Level> {

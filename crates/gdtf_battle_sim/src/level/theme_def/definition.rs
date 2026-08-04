@@ -23,11 +23,11 @@ impl ThemeDisplayName {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 pub struct UuidThemeDef {
     /// Theme identity.
-    pub key: ThemeUuid,
+    pub key:           ThemeUuid,
     /// Display label.
-    pub display_name: ThemeDisplayName,
+    pub display_name:  ThemeDisplayName,
     /// Default floor terrain for empty cells.
     pub default_floor: TerrainUuid,
     /// Terrain pieces available in this theme.
-    pub terrain: Vec<TerrainUuid>,
+    pub terrain:       Vec<TerrainUuid>,
 }

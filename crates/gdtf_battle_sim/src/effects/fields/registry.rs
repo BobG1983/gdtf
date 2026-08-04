@@ -64,7 +64,7 @@ impl FieldDefRegistry {
 /// A field currently on the map, with remaining lifetime.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlacedField {
-    def: FieldDef,
+    def:       FieldDef,
     remaining: Option<FieldTurns>,
 }
 

@@ -89,7 +89,6 @@ fn move_ganger(app: &mut App, entity: bevy::prelude::Entity, to: CellLevel) {
     }
 }
 
-
 #[test]
 fn populates_corner_peek_and_enables_around_corner_los() {
     let mut app = populator_app(corner_grid(TerrainKind::Wall));
@@ -145,7 +144,7 @@ fn populates_corner_peek_and_enables_around_corner_los() {
     let peeked_sighted = has_los_peeking(
         &centred,
         &target,
-        peek, 
+        peek,
         &occupancy,
         &surface,
         &cover,
@@ -161,7 +160,6 @@ fn populates_corner_peek_and_enables_around_corner_los() {
         "the populated peek must CHANGE the verdict (the producer→consumer bridge)",
     );
 }
-
 
 #[test]
 fn moving_away_clears_the_peek() {
@@ -184,7 +182,6 @@ fn moving_away_clears_the_peek() {
     );
 }
 
-
 #[test]
 fn open_ground_gets_no_peek() {
     let mut app = populator_app(corner_grid(TerrainKind::Wall));
@@ -197,7 +194,6 @@ fn open_ground_gets_no_peek() {
         "a ganger on open ground hugs no corner → PeekOffset stays default",
     );
 }
-
 
 #[test]
 fn cover_destroyed_clears_a_stationary_peek() {

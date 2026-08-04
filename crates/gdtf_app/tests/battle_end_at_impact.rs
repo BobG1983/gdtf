@@ -103,7 +103,7 @@ fn lethal_ganger_hit(struck: Entity) -> HitReport {
 fn write_deciding_shot(app: &mut App) {
     let cell = Cell::new(55, 5);
     let level = Level::new(0);
-    let muzzle = SimPos::new(4.0, 5.0, 0.0); 
+    let muzzle = SimPos::new(4.0, 5.0, 0.0);
     let struck = app.world_mut().spawn_empty().id();
     let shooter = app.world_mut().spawn_empty().id();
     let shot = ShotFired {

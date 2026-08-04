@@ -5,7 +5,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn deliberate_shove_spends_tu_and_deals_no_wound() {
     let mut app = shove_app();
@@ -76,14 +75,13 @@ fn deliberate_shove_gates_adjacency_and_faction() {
     );
 }
 
-
 #[test]
 fn shove_outcomes_are_deterministic_under_same_seed() {
     let run = || -> (Option<CellLevel>, u16) {
         let mut app = shove_app();
         let mut surface = SurfaceGrid::new();
         surface.set_slab(upper(6, 5, 3), SlabState::Present);
-        surface.set_slab(upper(7, 5, 1), SlabState::Present); 
+        surface.set_slab(upper(7, 5, 1), SlabState::Present);
         app.insert_resource(surface);
         app.insert_resource(OccupancyGrid::new());
         let shover = shove_ganger(app.world_mut(), upper(5, 5, 3), 0);

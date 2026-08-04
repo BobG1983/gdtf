@@ -15,16 +15,16 @@ use gdtf_battle_sim::{
 pub(in crate::states::running::game::battlescape::generation::battle_sim) struct ProcgenRegistries<
     'a,
 > {
-            pub prefabs: Option<&'a PrefabRegistry>,
-        pub themes:  Option<&'a UuidThemeRegistry>,
-        pub terrain: Option<&'a TerrainDefRegistry>,
-                    pub tuning:  Option<&'a ProcgenTuning>,
+    pub prefabs: Option<&'a PrefabRegistry>,
+    pub themes:  Option<&'a UuidThemeRegistry>,
+    pub terrain: Option<&'a TerrainDefRegistry>,
+    pub tuning:  Option<&'a ProcgenTuning>,
 }
 
 pub(crate) struct ProcgenOutcome {
-            pub situation:        Situation,
-            pub findings:         Vec<ContentFinding>,
-                        pub deployment_error: Option<PackingError>,
+    pub situation:        Situation,
+    pub findings:         Vec<ContentFinding>,
+    pub deployment_error: Option<PackingError>,
 }
 
 #[must_use]

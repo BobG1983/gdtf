@@ -25,7 +25,7 @@ mod tests {
     use super::autoload_first_gang;
     use crate::gang_form::GangDraft;
 
-            #[test]
+    #[test]
     fn seeds_first_sorted_gang_exactly_once() {
         let registry = GangRegistry::new([
             (GangName::new("zeta".to_owned()), GangRoster::default()),

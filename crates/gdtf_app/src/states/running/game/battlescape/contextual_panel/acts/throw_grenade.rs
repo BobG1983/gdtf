@@ -28,14 +28,14 @@ impl ContextualPanelAct for ThrowGrenadeAct {
 
 #[derive(SystemParam)]
 pub(in crate::states::running::game::battlescape) struct ThrowReads<'w, 's> {
-            inspect: Option<Res<'w, InspectTarget>>,
-            wields:  Query<'w, 's, &'static Wields>,
-                melee:   Query<'w, 's, (), With<MeleeWeapon>>,
-            styles:  Query<'w, 's, &'static TrajectoryStyle>,
+    inspect: Option<Res<'w, InspectTarget>>,
+    wields:  Query<'w, 's, &'static Wields>,
+    melee:   Query<'w, 's, (), With<MeleeWeapon>>,
+    styles:  Query<'w, 's, &'static TrajectoryStyle>,
 }
 
 impl ThrowReads<'_, '_> {
-                                            fn throw_target(&self, actor: Entity) -> Option<CellLevel> {
+    fn throw_target(&self, actor: Entity) -> Option<CellLevel> {
         let hovered = self.inspect.as_ref()?.hovered()?;
         let wields = self.wields.get(actor).ok()?;
         let weapon = wields.ranged_weapon(|entity| self.melee.get(entity).is_ok())?;

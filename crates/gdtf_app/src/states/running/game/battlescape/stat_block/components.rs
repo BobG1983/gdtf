@@ -2,17 +2,17 @@ use bevy::prelude::*;
 
 #[derive(Component, Clone, Copy, Debug)]
 pub(in crate::states::running::game::battlescape) struct StatBlockRefs {
-            pub portrait:    Entity,
-        pub name:        Entity,
-        pub faction:     Entity,
-        pub stance:      Entity,
-        pub tu_bar:      Entity,
-        pub tu_label:    Entity,
-        pub hp_bar:      Entity,
-        pub hp_label:    Entity,
-        pub wounds:      Entity,
-        pub wound_list:  Entity,
-                    pub injury_list: Entity,
+    pub portrait:    Entity,
+    pub name:        Entity,
+    pub faction:     Entity,
+    pub stance:      Entity,
+    pub tu_bar:      Entity,
+    pub tu_label:    Entity,
+    pub hp_bar:      Entity,
+    pub hp_label:    Entity,
+    pub wounds:      Entity,
+    pub wound_list:  Entity,
+    pub injury_list: Entity,
 }
 
 crate::support_item! {

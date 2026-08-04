@@ -12,7 +12,7 @@ pub enum WireError {
         /// Length claimed in the prefix.
         declared: FrameLen,
         /// Configured maximum.
-        max: MaxFrameLen,
+        max:      MaxFrameLen,
     },
     /// Payload bytes were not valid compact RON (or not UTF-8).
     Malformed,

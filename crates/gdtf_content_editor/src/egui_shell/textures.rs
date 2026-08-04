@@ -12,19 +12,19 @@ use crate::mode::EditorMode;
 
 #[derive(Default)]
 pub(super) struct SpriteTextures {
-        map: HashMap<SpriteImagePath, (egui::TextureId, UVec2)>,
+    map: HashMap<SpriteImagePath, (egui::TextureId, UVec2)>,
 }
 
 impl SpriteTextures {
-            pub(super) fn get(&self, path: &SpriteImagePath) -> Option<(egui::TextureId, UVec2)> {
+    pub(super) fn get(&self, path: &SpriteImagePath) -> Option<(egui::TextureId, UVec2)> {
         self.map.get(path).copied()
     }
 }
 
 pub(super) struct ResolvedTextures {
-            pub(super) sprites:        SpriteTextures,
-        pub(super) preview_id:     Option<egui::TextureId>,
-            pub(super) sprite_preview: Option<PreviewTexture>,
+    pub(super) sprites:        SpriteTextures,
+    pub(super) preview_id:     Option<egui::TextureId>,
+    pub(super) sprite_preview: Option<PreviewTexture>,
 }
 
 pub(super) fn resolve_panel_textures(

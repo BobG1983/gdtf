@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub(super) struct GangerFogFacts<'a> {
-    squad: &'a SquadVisibility,
+    squad:  &'a SquadVisibility,
     player: Option<PlayerFaction>,
 }
 
@@ -64,11 +64,11 @@ pub(super) fn classify_ganger_visibility(
 /// Bundled storey and fog facts for classifying ganger visibility.
 #[derive(SystemParam)]
 pub struct GangerVisibilityFacts<'w> {
-    active: Res<'w, ActiveLevel>,
-    view: Res<'w, ViewMode>,
+    active:  Res<'w, ActiveLevel>,
+    view:    Res<'w, ViewMode>,
     isolate: Res<'w, IsolateView>,
-    squad: Option<Res<'w, SquadVisibility>>,
-    player: Option<Res<'w, PlayerFaction>>,
+    squad:   Option<Res<'w, SquadVisibility>>,
+    player:  Option<Res<'w, PlayerFaction>>,
 }
 
 impl GangerVisibilityFacts<'_> {

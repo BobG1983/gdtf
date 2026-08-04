@@ -30,7 +30,7 @@ fn aim_switch_colors(theme: &GdtfTheme) -> SwitchColors {
 }
 
 fn off_track_color(button: Color) -> Color {
-        const LIGHTEN: f32 = 0.5;
+    const LIGHTEN: f32 = 0.5;
     let srgba = button.to_srgba();
     Color::srgb(
         (1.0 - srgba.red).mul_add(LIGHTEN, srgba.red),

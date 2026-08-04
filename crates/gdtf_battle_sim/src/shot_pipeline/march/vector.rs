@@ -47,9 +47,9 @@ pub fn march_vector(
 
     if *dir == Vec3::ZERO || !*xy_in_grid(state.vx, state.vy) || !*z_in_grid(state.vz) {
         return MarchResult {
-            kind: MarchKind::Miss,
-            at: key_of_clamped(state.vx, state.vy, state.vz),
-            band: round_band_for_cell(muzzle, tuning),
+            kind:   MarchKind::Miss,
+            at:     key_of_clamped(state.vx, state.vy, state.vz),
+            band:   round_band_for_cell(muzzle, tuning),
             impact: muzzle,
         };
     }
@@ -74,9 +74,9 @@ pub fn march_vector(
 
     let here_point = point_at(muzzle, dir, state.entry_t);
     MarchResult {
-        kind: MarchKind::Miss,
-        at: key_of_clamped(state.vx, state.vy, state.vz),
-        band: round_band_for_cell(here_point, tuning),
+        kind:   MarchKind::Miss,
+        at:     key_of_clamped(state.vx, state.vy, state.vz),
+        band:   round_band_for_cell(here_point, tuning),
         impact: here_point,
     }
 }

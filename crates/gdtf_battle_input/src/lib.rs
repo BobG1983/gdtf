@@ -8,45 +8,44 @@ pub mod pointer;
 
 mod plugin;
 
-pub use act_bus::contextual;
-pub use act_bus::cycle;
-pub use act_bus::cycle::{FACING_CYCLE, STANCE_CYCLE, next_facing, next_stance};
-pub use act_bus::focus_bridge;
-pub use act_bus::intent;
-pub use act_bus::keybinds;
-pub use act_bus::keyboard;
-pub use act_bus::sets;
 pub use act_bus::{
+    contextual,
     contextual::{
         ContextualAct, ContextualActAppExt, ContextualActSystems, EnterEmplacementAct, ExecuteAct,
         ExitEmplacementAct, MeleeAct, OpenDoorAct, PendingContextualIntents, ShoveAct, SlotRank,
         StabilizeAct, ThrowGrenadeAct, drain_contextual_intents,
     },
+    cycle,
+    cycle::{FACING_CYCLE, STANCE_CYCLE, next_facing, next_stance},
+    focus_bridge,
     focus_bridge::{PanelNavOrder, focused_panel_button},
+    intent,
     intent::{
         ActIntent, ActWriters, LevelStep, PendingActIntent, SelectionCycleReads,
         dispatch_act_intents, step_level,
     },
+    keybinds,
     keybinds::{BoundKey, Keybinds},
+    keyboard,
     keyboard::{cycle_selection_keys, full_view_key, level_keys, posture_keys, select_clear_key},
+    sets,
     sets::InputSystems,
 };
 pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin};
-pub use pointer::fire_mode;
-pub use pointer::fire_surface;
-pub use pointer::gamepad;
-pub use pointer::picking;
-pub use pointer::selection;
 pub use pointer::{
+    fire_mode,
     fire_mode::{SelectedFireMode, sync_fire_mode_on_select},
+    fire_surface, gamepad,
     gamepad::{
         ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, CursorSpeed, CursorStickDeadzone,
         GamepadCursor, emit_gamepad_cursor_move, gamepad_click_act, gamepad_turn,
         mouse_reclaims_pointer, move_cursor, move_gamepad_cursor,
     },
+    picking,
     picking::{
         InspectMode, InspectTarget, emit_highlight_request, pick_hovered_cell, world_to_cell,
     },
+    selection,
     selection::{
         CellOrderKey, CycleDirection, FireTargetReads, LeftClickOutcome, LeftClickReads,
         PathPreviewTarget, PinOutcome, PreviewGrids, SelectedShooter, SelectionHighlight,

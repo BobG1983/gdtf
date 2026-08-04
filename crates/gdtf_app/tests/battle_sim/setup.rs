@@ -17,10 +17,10 @@ use super::harness::*;
 
 fn dangling_link_situation() -> Situation {
     let present = key(4, 4, 0);
-    let missing = key(4, 4, 1); 
+    let missing = key(4, 4, 1);
     SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
-        .slab_at(present) 
+        .slab_at(present)
         .vertical_link(VerticalLink::new(present, missing, LinkKind::stair()))
         .build()
 }

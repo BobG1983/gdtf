@@ -15,7 +15,7 @@ fn walk_bump_stop_halts_on_a_tag_only_path_block_added_mid_walk() {
     app.update();
     app.world_mut()
         .write_message(MoveRequested::new(mover, dest));
-    app.update(); 
+    app.update();
 
     let kind_blocks_before = app
         .world()

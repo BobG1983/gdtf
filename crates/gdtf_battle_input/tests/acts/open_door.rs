@@ -10,7 +10,6 @@ use gdtf_test_utils::probed;
 
 use super::harness::*;
 
-
 #[test]
 fn open_door_intent_emits_request_for_selection_over_carried_door() {
     let mut app = acts_app();

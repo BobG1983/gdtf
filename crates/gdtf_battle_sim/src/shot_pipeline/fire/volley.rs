@@ -26,9 +26,9 @@ pub struct Volley {
     /// Hit reports for each primary round.
     pub reports: Vec<HitReport>,
     /// Coarse shot outcomes for each round.
-    pub shots: Vec<ShotOutcome>,
+    pub shots:   Vec<ShotOutcome>,
     /// AOE splash reports nested per primary round.
-    pub splash: Vec<Vec<HitReport>>,
+    pub splash:  Vec<Vec<HitReport>>,
 }
 
 impl Volley {
@@ -36,8 +36,8 @@ impl Volley {
     pub(crate) const fn empty() -> Self {
         Self {
             reports: Vec::new(),
-            shots: Vec::new(),
-            splash: Vec::new(),
+            shots:   Vec::new(),
+            splash:  Vec::new(),
         }
     }
 }
@@ -88,12 +88,12 @@ pub fn fire(
     let shooter_life = *shooter_life;
 
     let actor = FireActor {
-        life: &shooter_life,
-        tu: &shooter_tu,
-        tu_max: &shooter_tu_max,
-        aiming: &shooter_aiming,
-        magazine: &magazine_now,
-        handedness: shooter_handedness,
+        life:            &shooter_life,
+        tu:              &shooter_tu,
+        tu_max:          &shooter_tu_max,
+        aiming:          &shooter_aiming,
+        magazine:        &magazine_now,
+        handedness:      shooter_handedness,
         hands_available: shooter_hands,
     };
     if !*can_fire(

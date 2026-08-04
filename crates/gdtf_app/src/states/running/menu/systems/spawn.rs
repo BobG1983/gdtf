@@ -26,7 +26,7 @@ const MAIN_MENU_ID: &str = "MainMenu";
 struct ColumnGapVh(f32);
 
 impl ColumnGapVh {
-            const MENU: Self = Self(1.38889);
+    const MENU: Self = Self(1.38889);
 }
 
 pub(in crate::states::running::menu) fn spawn_menu(

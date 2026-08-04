@@ -15,7 +15,6 @@ fn spend_totals(app: &bevy::app::App, reactors: [Entity; 4]) -> (u32, usize) {
     (used, shots)
 }
 
-
 #[test]
 fn two_movers_one_tick_spend_only_what_actually_fires() {
     let mut app = battle_app(forced_reaction_tuning(2));
@@ -69,7 +68,6 @@ fn two_movers_one_tick_spend_only_what_actually_fires() {
          the cap when the dispatcher rejects it)",
     );
 }
-
 
 #[test]
 fn mixed_ineligible_reactors_leave_the_counter_and_tu_untouched() {

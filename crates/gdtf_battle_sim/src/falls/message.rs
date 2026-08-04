@@ -8,13 +8,13 @@ use crate::metric::Level;
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FallOccurred {
     /// Who fell.
-    pub ganger: Entity,
+    pub ganger:     Entity,
     /// Level before the fall.
     pub from_level: Level,
     /// Level after the fall.
-    pub to_level: Level,
+    pub to_level:   Level,
     /// How many storeys were dropped.
-    pub storeys: StoreysFallen,
+    pub storeys:    StoreysFallen,
 }
 
 impl FallOccurred {

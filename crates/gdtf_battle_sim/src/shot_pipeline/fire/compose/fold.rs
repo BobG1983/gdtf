@@ -68,7 +68,7 @@ pub(super) fn resolve_primary_report(
             Entity::PLACEHOLDER,
             StruckSurfaces {
                 cover: grids.cover,
-                slab: grids.slab,
+                slab:  grids.slab,
             },
             tuning,
             severity_rng,
@@ -103,11 +103,11 @@ pub(super) fn fold_ganger_round(
         .and_then(|part| struck_piece_entity(struck, part, wears, pieces))
         .and_then(|piece_entity| {
             pieces.get_mut(piece_entity).ok().map(|piece| StruckPiece {
-                floor: *piece.floor,
+                floor:      *piece.floor,
                 protection: *piece.protection,
-                hardness: *piece.hardness,
+                hardness:   *piece.hardness,
                 armor_type: *piece.armor_type,
-                integrity: piece.integrity.into_inner(),
+                integrity:  piece.integrity.into_inner(),
             })
         });
 
@@ -125,18 +125,18 @@ pub(super) fn fold_ganger_round(
                 snapshot.weapon_stats(),
                 snapshot.luck,
                 Some(TargetGanger {
-                    hp: &mut hp,
-                    wounds: &mut wounds,
-                    life: &mut life,
-                    piece: struck_piece_view,
+                    hp:        &mut hp,
+                    wounds:    &mut wounds,
+                    life:      &mut life,
+                    piece:     struck_piece_view,
                     inflicted: &mut inflicted,
                     toughness: effective_toughness,
-                    luck: effective_luck,
+                    luck:      effective_luck,
                 }),
                 struck,
                 StruckSurfaces {
                     cover: grids.cover,
-                    slab: grids.slab,
+                    slab:  grids.slab,
                 },
                 tuning,
                 severity_rng,

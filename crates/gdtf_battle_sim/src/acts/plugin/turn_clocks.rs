@@ -63,7 +63,7 @@ pub(super) fn wire_turn_clocks(app: &mut App) {
             .after(apply_falls)
             .in_set(SimSystems::Simulate),
     );
-    wire_clocks(app); 
+    wire_clocks(app);
 }
 
 fn wire_clocks(app: &mut App) {

@@ -114,7 +114,7 @@ fn segment_with_sub_line_has_both_texts_smaller_and_dimmer() {
     app.update();
 
     let segments = segments_of(&mut app, control);
-    let burst = segments[1].0; 
+    let burst = segments[1].0;
 
     assert!(
         drive_set_segment_sub_line(&mut app, control, 1, Some(SegmentSubLabel::new("3 TU")),),

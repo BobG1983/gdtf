@@ -149,7 +149,6 @@ fn pan_velocity_scales_and_diagonal_is_not_faster() {
     );
 }
 
-
 const VIEWPORT: Rect = Rect {
     min: Vec2::new(100.0, 50.0),
     max: Vec2::new(700.0, 450.0),

@@ -40,15 +40,15 @@ impl SlabDestroyedFlag {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SlabEntry {
     /// Current HP.
-    pub current_hp: SlabHp,
+    pub current_hp:       SlabHp,
     /// Starting HP.
-    pub max_hp: SlabHp,
+    pub max_hp:           SlabHp,
     /// Armor protection value.
     pub armor_protection: ArmorProtection,
     /// Armor hardness value.
-    pub armor_hardness: ArmorHardness,
+    pub armor_hardness:   ArmorHardness,
     /// Destroyed flag.
-    pub destroyed: SlabDestroyedFlag,
+    pub destroyed:        SlabDestroyedFlag,
 }
 
 impl SlabEntry {

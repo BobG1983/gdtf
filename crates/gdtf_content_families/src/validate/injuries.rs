@@ -32,9 +32,9 @@ pub fn check_injury_weighting_refs(
                             "injury weighting `{:?}` ({:?} {severity:?} bucket)",
                             weighting.category, weighting.context,
                         )),
-                        target: FindingTarget::new((*row.injury).clone()),
-                        family: FindingFamily::new("InjuryRegistry".to_owned()),
-                        scheme: ReferenceKeyScheme::FileStem,
+                        target:   FindingTarget::new((*row.injury).clone()),
+                        family:   FindingFamily::new("InjuryRegistry".to_owned()),
+                        scheme:   ReferenceKeyScheme::FileStem,
                     });
                 }
             }

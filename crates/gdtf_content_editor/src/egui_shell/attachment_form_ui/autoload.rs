@@ -33,7 +33,7 @@ mod tests {
     use super::autoload_first_attachment;
     use crate::attachment_form::AttachmentDraft;
 
-        fn spec(display: &str) -> AttachmentSpec {
+    fn spec(display: &str) -> AttachmentSpec {
         AttachmentSpec {
             display_name: WeaponName::new(display.to_owned()),
             slot:         AttachmentSlot::Sight,
@@ -41,7 +41,7 @@ mod tests {
         }
     }
 
-            #[test]
+    #[test]
     fn seeds_first_sorted_attachment_exactly_once() {
         let registry = AttachmentRegistry::new([
             (

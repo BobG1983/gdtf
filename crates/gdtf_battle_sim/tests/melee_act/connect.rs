@@ -15,7 +15,7 @@ use super::harness::*;
 
 #[derive(Resource, Default)]
 pub(crate) struct StruckLog {
-        facts: Vec<gdtf_battle_sim::acts::MeleeStruck>,
+    facts: Vec<gdtf_battle_sim::acts::MeleeStruck>,
 }
 
 pub(crate) fn record_struck(
@@ -35,7 +35,7 @@ fn struck_facts(app: &App) -> Vec<gdtf_battle_sim::acts::MeleeStruck> {
 
 #[derive(Resource, Default)]
 pub(crate) struct BrokenLog {
-        facts: Vec<ArmorBroken>,
+    facts: Vec<ArmorBroken>,
 }
 
 pub(crate) fn record_broken(
@@ -66,7 +66,6 @@ fn wear_pieces_near_broken(app: &mut App, ganger: Entity) -> usize {
     }
     pieces.len()
 }
-
 
 #[test]
 fn connect_applies_damage_and_emits_resolved() {

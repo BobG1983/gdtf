@@ -6,7 +6,7 @@ use crate::{ganger::Tu, metric::CellLevel, terrain::floor::FloorCostGrid, tuning
 
 #[test]
 fn open_interior_cell_has_all_eight_planar_neighbours() {
-    let grid = OccupancyGrid::new(); 
+    let grid = OccupancyGrid::new();
     let floor_costs = default_floor_costs();
     let origin = key(5, 5, 0);
 
@@ -45,7 +45,7 @@ fn open_interior_cell_has_all_eight_planar_neighbours() {
 
 #[test]
 fn blocked_neighbour_excluded_open_included() {
-    let blocked = key(6, 5, 0); 
+    let blocked = key(6, 5, 0);
     let grid = grid_with(&[(blocked, TerrainKind::Wall)]);
     let floor_costs = default_floor_costs();
     let origin = key(5, 5, 0);
@@ -142,11 +142,11 @@ fn step_cost_orthogonal_is_terrain_diagonal_is_octile() {
 
     let open_cost = 7u8;
     let floor_costs = FloorCostGrid::new(MoveCost::new(open_cost), []);
-    let grid = OccupancyGrid::new(); 
+    let grid = OccupancyGrid::new();
     let origin = key(5, 5, 0);
 
-    let orthogonal = key(6, 5, 0); 
-    let diagonal = key(6, 6, 0); 
+    let orthogonal = key(6, 5, 0);
+    let diagonal = key(6, 6, 0);
 
     let edges = neighbours_of(origin, &grid, &floor_costs);
     let ortho_cost = edges

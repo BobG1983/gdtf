@@ -21,10 +21,10 @@ use crate::{Brightness, CELL_PX, TerrainFogMaterial};
 /// A `#[derive(SystemParam)]` borrow-bundle (the system-analogue of a cohesive ctor
 #[derive(SystemParam)]
 pub struct StaticMap<'w, 's> {
-        occupancy: Res<'w, OccupancyGrid>,
-        cover:     Res<'w, CoverLedger>,
-        surface:   Res<'w, SurfaceGrid>,
-                        terrain: Query<
+    occupancy: Res<'w, OccupancyGrid>,
+    cover:     Res<'w, CoverLedger>,
+    surface:   Res<'w, SurfaceGrid>,
+    terrain: Query<
         'w,
         's,
         (
@@ -36,7 +36,7 @@ pub struct StaticMap<'w, 's> {
 }
 
 impl StaticMap<'_, '_> {
-                                                                                pub(super) fn role_at(&self, key: &CellLevel) -> TileRole {
+    pub(super) fn role_at(&self, key: &CellLevel) -> TileRole {
         if matches!(self.surface.slab_state(key), SlabState::Present) {
             return TileRole::Slab;
         }
@@ -50,7 +50,7 @@ impl StaticMap<'_, '_> {
         }
     }
 
-                                        pub(super) fn graphic_facts(
+    pub(super) fn graphic_facts(
         &self,
     ) -> HashMap<CellLevel, (&TerrainGraphicKey, Option<&FootfallSound>)> {
         self.terrain
@@ -74,18 +74,18 @@ pub(super) fn graphic_name_at<'a>(
 /// A `#[derive(SystemParam)]` bundle (the [`StaticMap`] shape) so the draw + the three
 #[derive(SystemParam)]
 pub struct SpriteResolveCtx<'w> {
-        defs:         Res<'w, SpriteDefRegistry>,
-        asset_server: Res<'w, AssetServer>,
-        images:       Res<'w, Assets<Image>>,
-        missing:      Res<'w, MissingTileTexture>,
+    defs:         Res<'w, SpriteDefRegistry>,
+    asset_server: Res<'w, AssetServer>,
+    images:       Res<'w, Assets<Image>>,
+    missing:      Res<'w, MissingTileTexture>,
 }
 
 impl SpriteResolveCtx<'_> {
-                    pub(super) fn defs_changed(&self) -> bool {
+    pub(super) fn defs_changed(&self) -> bool {
         self.defs.is_changed()
     }
 
-                                                                            pub(super) fn resolved(&self, name: &str, at: &CellLevel) -> (TerrainFogMaterial, Vec2) {
+    pub(super) fn resolved(&self, name: &str, at: &CellLevel) -> (TerrainFogMaterial, Vec2) {
         let (image, region, offset) = self.resolved_parts(name, at);
         let material = TerrainFogMaterial {
             image,
@@ -98,7 +98,7 @@ impl SpriteResolveCtx<'_> {
         (material, offset)
     }
 
-                            pub(super) fn resolved_sprite(&self, name: &str, at: &CellLevel) -> (Sprite, Vec2) {
+    pub(super) fn resolved_sprite(&self, name: &str, at: &CellLevel) -> (Sprite, Vec2) {
         let (image, region, offset) = self.resolved_parts(name, at);
         let mut sprite = Sprite::from_image(image);
         sprite.rect = region.map(|region| region.as_rect());
@@ -106,7 +106,7 @@ impl SpriteResolveCtx<'_> {
         (sprite, offset)
     }
 
-                fn resolved_parts(&self, name: &str, at: &CellLevel) -> (Handle<Image>, Option<URect>, Vec2) {
+    fn resolved_parts(&self, name: &str, at: &CellLevel) -> (Handle<Image>, Option<URect>, Vec2) {
         let Some(def) = resolve_sprite(&self.defs, name) else {
             warn!(
                 "terrain draw: no sprite def named `{name}` at {at:?} — drawing the magenta \

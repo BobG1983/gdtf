@@ -30,7 +30,7 @@ pub struct FakeCellArgs {
 #[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct FakeCellReply {
     /// Echoed cell.
-    pub cell: CellNet,
+    pub cell:  CellNet,
     /// Host level at the time of the call.
     pub level: FakeLevel,
 }
@@ -70,7 +70,7 @@ fn handle_fake_cell(facts: Res<FakeFacts>, mut queue: ResMut<PendingQueue<Comman
     }
     for (args, responder) in take_calls::<FakeCell>(&mut queue) {
         responder.answer(&FakeCellReply {
-            cell: args.cell,
+            cell:  args.cell,
             level: facts.level(),
         });
     }

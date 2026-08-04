@@ -3,7 +3,6 @@ use super::support::{
     ResMut, Resource, Update, apply_app, apply_dot, dot, dot_of,
 };
 
-
 #[test]
 fn apply_dot_refreshes_not_stacks() {
     let mut app = apply_app();
@@ -37,7 +36,6 @@ fn apply_dot_refreshes_not_stacks() {
         );
     }
 }
-
 
 #[derive(Resource, Default, bevy::prelude::Deref, bevy::prelude::DerefMut)]
 struct CapturedAfflicted(Vec<DotAfflicted>);

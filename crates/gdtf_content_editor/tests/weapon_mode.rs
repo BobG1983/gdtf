@@ -95,7 +95,7 @@ fn maximal_draft() -> WeaponDraft {
     spec.punch = WeaponPunch::new(4);
     spec.shred = WeaponShred::new(2);
     spec.damage_type = DamageType::Plasma;
-    spec.accepts = AmmoType::Cell; 
+    spec.accepts = AmmoType::Cell;
     spec.magazine.size = MagazineSize::new(18);
     spec.magazine.reload_tu = gdtf_battle_sim::magazine::ReloadTu::new(9);
     spec.fire_mode = FireMode::new(vec![

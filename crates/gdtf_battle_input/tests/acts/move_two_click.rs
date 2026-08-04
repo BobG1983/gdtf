@@ -20,7 +20,6 @@ fn move_target(app: &App) -> Option<CellLevel> {
         .and_then(|t| **t)
 }
 
-
 fn click_left(app: &mut App) {
     press_left(app);
     app.update();
@@ -94,8 +93,8 @@ fn two_click_default_targets_active_level() {
         "with no switch the hovered cell resolves at the DEFAULT active storey",
     );
 
-    click_left(&mut app); 
-    click_left(&mut app); 
+    click_left(&mut app);
+    click_left(&mut app);
     let emitted = moves(&app);
     assert_eq!(
         emitted.len(),
@@ -132,8 +131,8 @@ fn two_click_after_level_switch_targets_switched_storey() {
         "the hovered cell resolves at the switched active storey",
     );
 
-    click_left(&mut app); 
-    click_left(&mut app); 
+    click_left(&mut app);
+    click_left(&mut app);
     let emitted = moves(&app);
     assert_eq!(
         emitted.len(),

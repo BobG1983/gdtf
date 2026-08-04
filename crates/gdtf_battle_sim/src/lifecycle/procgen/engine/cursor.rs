@@ -36,13 +36,13 @@ pub enum ProcgenStage {
 #[derive(Clone, Copy)]
 pub struct StagedProcgenRegistries<'a> {
     /// Prefab catalog.
-    pub prefabs: &'a PrefabRegistry,
+    pub prefabs:      &'a PrefabRegistry,
     /// Theme catalog.
-    pub themes: &'a UuidThemeRegistry,
+    pub themes:       &'a UuidThemeRegistry,
     /// Terrain piece catalog.
     pub terrain_defs: &'a TerrainDefRegistry,
     /// Density and scatter knobs.
-    pub tuning: &'a ProcgenTuning,
+    pub tuning:       &'a ProcgenTuning,
 }
 
 enum Phase {
@@ -55,17 +55,17 @@ enum Phase {
     Filled(FilledPlacement),
     Emitted {
         filled: FilledPlacement,
-        level: EmittedLevel,
+        level:  EmittedLevel,
     },
     Failed(PackingError),
 }
 
 pub(in crate::lifecycle::procgen) struct ProcgenCursor {
-    theme: ThemeUuid,
-    grid_size: GridSize,
-    split: SplitMode,
+    theme:           ThemeUuid,
+    grid_size:       GridSize,
+    split:           SplitMode,
     min_player_side: MinPlayerSide,
-    phase: Phase,
+    phase:           Phase,
 }
 
 impl ProcgenCursor {

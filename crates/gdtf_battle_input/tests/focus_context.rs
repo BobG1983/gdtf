@@ -18,15 +18,15 @@ const LEVEL: Level = Level::new(0);
 
 const fn test_keybinds() -> Keybinds {
     Keybinds {
-        select_clear: BoundKey::KeyEscape,
-        level_up: BoundKey::KeyPageUp,
-        level_down: BoundKey::KeyPageDown,
+        select_clear:     BoundKey::KeyEscape,
+        level_up:         BoundKey::KeyPageUp,
+        level_down:       BoundKey::KeyPageDown,
         toggle_full_view: BoundKey::KeyV,
-        stance_cycle: BoundKey::KeyC,
-        aim_toggle: BoundKey::KeyF,
-        facing_cycle: BoundKey::KeyR,
-        select_next: BoundKey::KeyTab,
-        select_prev: BoundKey::KeyTab,
+        stance_cycle:     BoundKey::KeyC,
+        aim_toggle:       BoundKey::KeyF,
+        facing_cycle:     BoundKey::KeyR,
+        select_next:      BoundKey::KeyTab,
+        select_prev:      BoundKey::KeyTab,
     }
 }
 

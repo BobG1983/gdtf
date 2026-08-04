@@ -10,8 +10,8 @@ use super::support::{StubSpawner, fast_config, free_port, spawn_fake_game};
 type StopLog = Arc<Mutex<Vec<QaPort>>>;
 
 struct WatchProbeRecordStop {
-        answer:  OrphanStop,
-        stopped: StopLog,
+    answer:  OrphanStop,
+    stopped: StopLog,
 }
 
 impl OrphanWatch for WatchProbeRecordStop {
@@ -28,8 +28,8 @@ impl OrphanWatch for WatchProbeRecordStop {
 }
 
 struct WatchFixedHold {
-        hold:    PortHold,
-        stopped: StopLog,
+    hold:    PortHold,
+    stopped: StopLog,
 }
 
 impl OrphanWatch for WatchFixedHold {

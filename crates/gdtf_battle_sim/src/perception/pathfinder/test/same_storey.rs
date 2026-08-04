@@ -3,7 +3,7 @@ use crate::occupancy::TerrainKind;
 
 #[test]
 fn open_grid_route_runs_start_to_goal_in_order() {
-    let grid = grid_with(&[]); 
+    let grid = grid_with(&[]);
     let links = no_links();
     let tuning = tuning();
 

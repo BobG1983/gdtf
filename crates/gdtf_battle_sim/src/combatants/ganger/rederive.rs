@@ -71,14 +71,14 @@ fn rederive_one(
 const fn attributes_of(read: &AttributeRead) -> GangerAttributes {
     let (speed, aim, strength, toughness, reflexes, cool, grit, luck) = *read;
     GangerAttributes {
-        speed: *speed,
-        aim: *aim,
-        strength: *strength,
+        speed:     *speed,
+        aim:       *aim,
+        strength:  *strength,
         toughness: *toughness,
-        reflexes: *reflexes,
-        cool: *cool,
-        grit: *grit,
-        luck: *luck,
+        reflexes:  *reflexes,
+        cool:      *cool,
+        grit:      *grit,
+        luck:      *luck,
     }
 }
 

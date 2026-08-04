@@ -32,15 +32,15 @@ impl PeekOffset {
 #[derive(Debug, Clone, Copy)]
 pub struct Observer<'a> {
     /// Observer position.
-    pub position: &'a Position,
+    pub position:         &'a Position,
     /// Observer stance.
-    pub stance: &'a Stance,
+    pub stance:           &'a Stance,
     /// Observer facing.
-    pub facing: &'a Facing,
+    pub facing:           &'a Facing,
     /// Extra eye height when standing on stairs.
     pub stair_eye_offset: StairEyeOffset,
     /// Optional peek displacement.
-    pub peek_offset: PeekOffset,
+    pub peek_offset:      PeekOffset,
 }
 
 /// Target view for an LOS probe.
@@ -49,7 +49,7 @@ pub struct Target<'a> {
     /// Target position.
     pub position: &'a Position,
     /// Target stance.
-    pub stance: &'a Stance,
+    pub stance:   &'a Stance,
 }
 
 /// Whether the probe found a clear line of sight.

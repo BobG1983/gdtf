@@ -41,9 +41,9 @@ pub enum SplitMode {
 /// Free-space packer over a board rect.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MaxRectsPacker {
-    board: RegionRect,
-    free: Vec<RegionRect>,
-    split: SplitMode,
+    board:  RegionRect,
+    free:   Vec<RegionRect>,
+    split:  SplitMode,
     margin: Margin,
 }
 

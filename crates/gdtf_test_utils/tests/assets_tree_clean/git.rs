@@ -11,8 +11,8 @@ pub(crate) fn repo_root() -> PathBuf {
 }
 
 pub(crate) enum GitRead {
-            Lines(Vec<String>),
-                Unavailable(String),
+    Lines(Vec<String>),
+    Unavailable(String),
 }
 
 pub(crate) fn git_lines(root: &Path, args: &[&str]) -> GitRead {

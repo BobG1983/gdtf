@@ -49,32 +49,32 @@ pub enum CombatLogEvent {
     /// Someone declared fire.
     FireDeclaration {
         /// Shooter name.
-        actor: LogName,
+        actor:  LogName,
         /// Optional target name.
         target: Option<LogName>,
         /// Fire mode used.
-        mode: ModeKind,
+        mode:   ModeKind,
     },
     /// Someone walked between cells.
     MovementOccurred {
         /// Walker name.
         actor: LogName,
         /// Start cell.
-        from: Cell,
+        from:  Cell,
         /// End cell.
-        to: Cell,
+        to:    Cell,
     },
     /// A round resolved with an optional hit report.
     ShotOutcome {
         /// Shooter name.
-        actor: LogName,
+        actor:  LogName,
         /// Hit report if any.
         report: Option<Box<HitReport>>,
     },
     /// Reload finished.
     ReloadResult {
         /// Reloader name.
-        actor: LogName,
+        actor:   LogName,
         /// Reload outcome.
         outcome: ReloadOutcome,
     },
@@ -83,19 +83,19 @@ pub enum CombatLogEvent {
         /// Faction now active.
         now_active: Faction,
         /// Player faction.
-        player: PlayerFaction,
+        player:     PlayerFaction,
     },
     /// Move was refused.
     MoveRejected {
         /// Actor name.
-        actor: LogName,
+        actor:  LogName,
         /// Refusal reason.
         reason: MoveRejection,
     },
     /// Injury inflicted.
     InjuryInflicted {
         /// Victim name.
-        actor: LogName,
+        actor:    LogName,
         /// Injury log text.
         log_text: InjuryLogText,
         /// Injury severity.
@@ -104,7 +104,7 @@ pub enum CombatLogEvent {
     /// Fall occurred.
     FallOccurred {
         /// Fallen ganger name.
-        actor: LogName,
+        actor:   LogName,
         /// Storeys fallen.
         storeys: StoreysFallen,
     },
@@ -113,9 +113,9 @@ pub enum CombatLogEvent {
         /// Attacker name.
         attacker: LogName,
         /// Target name.
-        target: LogName,
+        target:   LogName,
         /// HP damage.
-        amount: HpDamage,
+        amount:   HpDamage,
     },
     /// On-death trigger fired.
     OnDeathOccurred {
@@ -135,7 +135,7 @@ pub enum CombatLogEvent {
     /// Dot affliction started.
     DotAfflicted {
         /// Victim name.
-        actor: LogName,
+        actor:    LogName,
         /// Damage per turn.
         per_turn: DotDamage,
     },

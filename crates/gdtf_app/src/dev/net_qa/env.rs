@@ -31,7 +31,7 @@ pub(super) fn port_from_env() -> NetQaPort {
 mod test {
     use super::{DEFAULT_PORT, recognised_truthy};
 
-            #[test]
+    #[test]
     fn recognised_truthy_matches_the_four_affirmatives() {
         for yes in ["1", "true", "TRUE", " yes ", "On"] {
             assert!(recognised_truthy(yes), "{yes:?} should be truthy");
@@ -41,7 +41,7 @@ mod test {
         }
     }
 
-            #[test]
+    #[test]
     fn default_port_is_a_real_high_port() {
         assert!(*DEFAULT_PORT >= 1024);
     }

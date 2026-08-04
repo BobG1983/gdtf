@@ -6,7 +6,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn faller_on_destroyed_slab_level_falls_roof_occupant_does_not() {
     let mut app = falls_app(SEED, PerStoreyDamage::new(10));
@@ -40,7 +39,6 @@ fn faller_on_destroyed_slab_level_falls_roof_occupant_does_not() {
     assert_eq!(*signal.storeys, 2, "start 2 → land 0 is a 2-storey fall");
 }
 
-
 #[test]
 fn multi_storey_drop_through_absent_lands_on_first_present() {
     let mut app = falls_app(SEED, PerStoreyDamage::new(6));
@@ -68,7 +66,6 @@ fn multi_storey_drop_through_absent_lands_on_first_present() {
     );
 }
 
-
 #[test]
 fn ganger_on_different_level_does_not_fall() {
     let mut app = falls_app(SEED, PerStoreyDamage::new(10));
@@ -93,7 +90,6 @@ fn ganger_on_different_level_does_not_fall() {
         "no fall fires for a ganger off the destroyed level"
     );
 }
-
 
 #[test]
 fn stair_lower_endpoint_occupant_is_braced() {

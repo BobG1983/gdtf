@@ -38,17 +38,17 @@ pub enum ShotKind {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ShotOutcome {
     /// Impact kind.
-    pub kind: ShotKind,
+    pub kind:       ShotKind,
     /// Impact cell.
-    pub cell: Cell,
+    pub cell:       Cell,
     /// Impact level.
-    pub level: Level,
+    pub level:      Level,
     /// Rolled body part when hitting a ganger.
-    pub body_part: Option<BodyPart>,
+    pub body_part:  Option<BodyPart>,
     /// Height band at impact.
-    pub band: HeightBand,
+    pub band:       HeightBand,
     /// Muzzle position.
-    pub muzzle: SimPos,
+    pub muzzle:     SimPos,
     /// Sampled trajectory.
     pub trajectory: ShotDir,
 }
@@ -59,25 +59,25 @@ pub struct ShotInputs {
     /// Shooter position.
     pub shooter_position: Position,
     /// Shooter facing.
-    pub shooter_facing: Facing,
+    pub shooter_facing:   Facing,
     /// Shooter stance.
-    pub shooter_stance: Stance,
+    pub shooter_stance:   Stance,
     /// Target position.
-    pub target_position: Position,
+    pub target_position:  Position,
     /// Target stance.
-    pub target_stance: Stance,
+    pub target_stance:    Stance,
     /// Optional cover band at target.
-    pub cover_band: Option<HeightBand>,
+    pub cover_band:       Option<HeightBand>,
     /// Cone angle.
-    pub cone: ConeAngle,
+    pub cone:             ConeAngle,
     /// Concentration probability.
-    pub p: ConcentrationP,
+    pub p:                ConcentrationP,
     /// Shots already fired in this burst.
-    pub prior_shots: PriorShots,
+    pub prior_shots:      PriorShots,
     /// Recoil climb tuning.
-    pub recoil_climb: RecoilClimb,
+    pub recoil_climb:     RecoilClimb,
     /// Recoil growth state.
-    pub recoil_growth: RecoilGrowth,
+    pub recoil_growth:    RecoilGrowth,
 }
 
 /// Aim, sample the cone, march the ray, classify the impact.

@@ -41,7 +41,7 @@ pub struct FightOutcome {
     /// Whether the attacker connected.
     pub connect: Connected,
     /// Margin used for damage scaling.
-    pub margin: FightMargin,
+    pub margin:  FightMargin,
 }
 
 /// Whether the melee attack connected.
@@ -77,13 +77,13 @@ pub fn opposed_fight(
     if def <= 0.0 {
         return FightOutcome {
             connect: Connected::new(true),
-            margin: FightMargin::new(DEGENERATE_MARGIN),
+            margin:  FightMargin::new(DEGENERATE_MARGIN),
         };
     }
 
     FightOutcome {
         connect: Connected::new(atk > def),
-        margin: FightMargin::new(atk / def - 1.0),
+        margin:  FightMargin::new(atk / def - 1.0),
     }
 }
 
@@ -120,7 +120,7 @@ pub fn apply_melee_multiplier(hit: HitResult, mult: MeleeDamageMult) -> HitResul
             DamageMagnitude::new(*hit.penetrating),
             mult,
         )),
-        hp_damage: HpDamage::new(*scale_damage(DamageMagnitude::new(*hit.hp_damage), mult)),
-        wear: IntegrityWear::new(*scale_damage(DamageMagnitude::new(*hit.wear), mult)),
+        hp_damage:   HpDamage::new(*scale_damage(DamageMagnitude::new(*hit.hp_damage), mult)),
+        wear:        IntegrityWear::new(*scale_damage(DamageMagnitude::new(*hit.wear), mult)),
     }
 }

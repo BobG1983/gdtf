@@ -48,7 +48,7 @@ fn answer(request: &QaRequest) -> QaResponse {
 }
 
 struct StubConn<'stream> {
-    stream: &'stream mut TcpStream,
+    stream:  &'stream mut TcpStream,
     decoder: FrameDecoder,
 }
 

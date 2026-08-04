@@ -14,7 +14,6 @@ fn player_faction_constructs_and_derefs_to_its_inner_faction() {
     );
 }
 
-
 #[test]
 fn authored_player_faction_overrides_the_default_seed() {
     let mut app = headless_app();

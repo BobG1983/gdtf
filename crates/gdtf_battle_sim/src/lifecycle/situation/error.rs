@@ -24,7 +24,7 @@ pub enum BattleSetupError {
     /// Member missing from gang roster.
     GangMemberNotFound {
         /// Gang that was found.
-        gang: GangName,
+        gang:   GangName,
         /// Member that was not.
         member: GangerName,
     },
@@ -51,9 +51,9 @@ pub enum BattleSetupError {
     /// Floor move cost below the minimum.
     FloorCostBelowMinimum {
         /// Floor piece.
-        piece: TerrainUuid,
+        piece:   TerrainUuid,
         /// Authored cost.
-        cost: MoveCost,
+        cost:    MoveCost,
         /// Required minimum.
         minimum: MoveCost,
     },

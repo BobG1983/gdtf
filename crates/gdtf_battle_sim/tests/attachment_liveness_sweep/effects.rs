@@ -18,7 +18,6 @@ const fn granted_burst_mode() -> FireModeSpec {
     )
 }
 
-
 #[test]
 fn gain_fire_mode_effect_adds_a_fire_mode() {
     let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());
@@ -51,7 +50,6 @@ fn gain_fire_mode_effect_adds_a_fire_mode() {
     );
 }
 
-
 #[test]
 fn aim_effect_raises_accuracy() {
     let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());
@@ -68,7 +66,6 @@ fn aim_effect_raises_accuracy() {
          sight boosts AIM, not stability",
     );
 }
-
 
 #[test]
 fn extra_ammo_effect_grows_the_magazine() {
@@ -91,7 +88,6 @@ fn extra_ammo_effect_grows_the_magazine() {
         "an ExtraAmmo attachment grows the magazine capacity (drum {drum} > baseline {base})",
     );
 }
-
 
 #[test]
 fn empty_attachments_spawn_with_no_effects() {

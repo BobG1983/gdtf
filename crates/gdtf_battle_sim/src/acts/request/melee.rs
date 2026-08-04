@@ -19,7 +19,7 @@ pub struct MeleeRequested {
     /// Attacker.
     pub attacker: Entity,
     /// Target.
-    pub target: MeleeTarget,
+    pub target:   MeleeTarget,
 }
 
 impl MeleeRequested {
@@ -46,7 +46,7 @@ impl MeleeRequested {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MeleeResolved {
     /// Cell struck.
-    pub at: CellLevel,
+    pub at:     CellLevel,
     /// Damage type used.
     pub damage: DamageType,
 }
@@ -63,9 +63,9 @@ impl MeleeResolved {
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MeleeStruck {
     /// Attacker.
-    pub attacker: Entity,
+    pub attacker:  Entity,
     /// Target.
-    pub target: Entity,
+    pub target:    Entity,
     /// HP damage dealt.
     pub hp_damage: HpDamage,
 }

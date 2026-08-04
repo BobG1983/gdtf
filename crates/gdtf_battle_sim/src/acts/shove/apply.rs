@@ -18,22 +18,22 @@ use crate::{
 
 /// Mutable combat surfaces for the shove target.
 pub(crate) struct ShoveTargetSurfaces<'a> {
-    pub position: &'a mut Position,
-    pub hp: &'a mut Hp,
-    pub wounds: &'a mut Wounds,
-    pub life: &'a mut LifeState,
+    pub position:  &'a mut Position,
+    pub hp:        &'a mut Hp,
+    pub wounds:    &'a mut Wounds,
+    pub life:      &'a mut LifeState,
     pub inflicted: &'a mut InflictedWounds,
     pub toughness: Toughness,
-    pub luck: Luck,
+    pub luck:      Luck,
 }
 
 /// Tuning and RNGs used when a shove causes a fall.
 pub(crate) struct ShoveFallEnv<'a> {
-    pub tuning: &'a CombatTuning,
-    pub tables: &'a InjuryTables,
-    pub registry: &'a InjuryRegistry,
+    pub tuning:       &'a CombatTuning,
+    pub tables:       &'a InjuryTables,
+    pub registry:     &'a InjuryRegistry,
     pub severity_rng: &'a mut SeverityRng,
-    pub injury_rng: &'a mut InjuryRng,
+    pub injury_rng:   &'a mut InjuryRng,
 }
 
 #[expect(
@@ -85,11 +85,11 @@ pub(crate) fn apply_shove(
                 .and_then(|worn| worn.pieces().next())
                 .and_then(|piece_entity| {
                     pieces.get_mut(piece_entity).ok().map(|piece| StruckPiece {
-                        floor: *piece.floor,
+                        floor:      *piece.floor,
                         protection: *piece.protection,
-                        hardness: *piece.hardness,
+                        hardness:   *piece.hardness,
                         armor_type: *piece.armor_type,
-                        integrity: piece.integrity.into_inner(),
+                        integrity:  piece.integrity.into_inner(),
                     })
                 });
 
@@ -110,11 +110,11 @@ pub(crate) fn apply_shove(
                     target_entity,
                 },
                 FallWoundEnv {
-                    tuning: env.tuning,
-                    tables: env.tables,
-                    registry: env.registry,
+                    tuning:       env.tuning,
+                    tables:       env.tables,
+                    registry:     env.registry,
                     severity_rng: env.severity_rng,
-                    injury_rng: env.injury_rng,
+                    injury_rng:   env.injury_rng,
                 },
             );
 

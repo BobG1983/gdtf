@@ -50,54 +50,54 @@ type ThrowWeaponQuery<'world, 'state> = Query<
 /// Thrower query plus optional injury content resources.
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct ThrowActor<'w, 's> {
-    pub thrower: Query<'w, 's, (&'static Position, &'static Luck, &'static mut Tu)>,
-    pub tuning: Option<Res<'w, CombatTuning>>,
-    pub tables: Option<Res<'w, InjuryTables>>,
+    pub thrower:  Query<'w, 's, (&'static Position, &'static Luck, &'static mut Tu)>,
+    pub tuning:   Option<Res<'w, CombatTuning>>,
+    pub tables:   Option<Res<'w, InjuryTables>>,
     pub registry: Option<Res<'w, InjuryRegistry>>,
 }
 
 /// Grids and RNGs used while resolving a throw.
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct ThrowWorld<'w> {
-    pub occupancy: Res<'w, crate::occupancy::OccupancyGrid>,
-    pub surface: Res<'w, SurfaceGrid>,
-    pub cover: ResMut<'w, crate::cover::CoverLedger>,
-    pub slab: ResMut<'w, SlabLedger>,
-    pub brace_cells: Res<'w, BraceStairCells>,
-    pub shot_rng: ResMut<'w, ShotRng>,
+    pub occupancy:    Res<'w, crate::occupancy::OccupancyGrid>,
+    pub surface:      Res<'w, SurfaceGrid>,
+    pub cover:        ResMut<'w, crate::cover::CoverLedger>,
+    pub slab:         ResMut<'w, SlabLedger>,
+    pub brace_cells:  Res<'w, BraceStairCells>,
+    pub shot_rng:     ResMut<'w, ShotRng>,
     pub severity_rng: ResMut<'w, SeverityRng>,
-    pub injury_rng: ResMut<'w, InjuryRng>,
+    pub injury_rng:   ResMut<'w, InjuryRng>,
 }
 
 struct GrenadeStats {
     base_spread: BaseSpread,
-    accuracy: Accuracy,
-    kickback: Kickback,
-    fatal_bias: FatalBias,
-    damage: WeaponDamage,
-    punch: WeaponPunch,
-    shred: WeaponShred,
+    accuracy:    Accuracy,
+    kickback:    Kickback,
+    fatal_bias:  FatalBias,
+    damage:      WeaponDamage,
+    punch:       WeaponPunch,
+    shred:       WeaponShred,
     damage_type: DamageType,
-    stable: Stable,
+    stable:      Stable,
     brace_bonus: Option<WeaponBraceBonus>,
-    dot: Option<DotProfile>,
-    hit_type: HitType,
+    dot:         Option<DotProfile>,
+    hit_type:    HitType,
 }
 
 impl GrenadeStats {
     const fn stats(&self) -> WeaponStats<'_> {
         WeaponStats {
             base_spread: &self.base_spread,
-            accuracy: &self.accuracy,
-            kickback: &self.kickback,
-            fatal_bias: &self.fatal_bias,
-            damage: &self.damage,
-            punch: &self.punch,
-            shred: &self.shred,
+            accuracy:    &self.accuracy,
+            kickback:    &self.kickback,
+            fatal_bias:  &self.fatal_bias,
+            damage:      &self.damage,
+            punch:       &self.punch,
+            shred:       &self.shred,
             damage_type: &self.damage_type,
-            stable: &self.stable,
+            stable:      &self.stable,
             brace_bonus: self.brace_bonus.as_ref(),
-            dot: self.dot.as_ref(),
+            dot:         self.dot.as_ref(),
         }
     }
 }
@@ -178,17 +178,17 @@ pub fn dispatch_throw_grenade(
 
         let grenade = GrenadeStats {
             base_spread: *base_spread,
-            accuracy: *accuracy,
-            kickback: *kickback,
-            fatal_bias: *fatal_bias,
-            damage: *damage,
-            punch: *punch,
-            shred: *shred,
+            accuracy:    *accuracy,
+            kickback:    *kickback,
+            fatal_bias:  *fatal_bias,
+            damage:      *damage,
+            punch:       *punch,
+            shred:       *shred,
             damage_type: *damage_type,
-            stable: *stable,
+            stable:      *stable,
             brace_bonus: brace_bonus.copied(),
-            dot: dot.copied(),
-            hit_type: fire_mode.single().hit_type,
+            dot:         dot.copied(),
+            hit_type:    fire_mode.single().hit_type,
         };
 
         spend_tu(&mut thrower_tu, cost);
@@ -197,10 +197,10 @@ pub fn dispatch_throw_grenade(
         let MarchResult { at: landing, .. } =
             march_arc(thrower_cell, request.target, &world.surface, tuning);
         let mut grids = BattleGrids {
-            occupancy: &world.occupancy,
-            surface: &world.surface,
-            cover: &mut world.cover,
-            slab: &mut world.slab,
+            occupancy:   &world.occupancy,
+            surface:     &world.surface,
+            cover:       &mut world.cover,
+            slab:        &mut world.slab,
             brace_cells: &world.brace_cells,
         };
         resolve_blast(

@@ -30,17 +30,17 @@ type WeaponStabilityRead<'a> = (&'a Stable, Option<&'a WeaponBraceBonus>);
 
 #[derive(SystemParam)]
 pub(in crate::states::running::game::battlescape::status_panel) struct ShooterReadQueries<'w, 's> {
-        shooters: Query<'w, 's, ShooterView<'static>>,
-        wields:   Query<'w, 's, &'static Wields>,
-                    weapons:  Query<'w, 's, WeaponStabilityRead<'static>, With<Weapon>>,
-            melee:    Query<'w, 's, (), With<MeleeWeapon>>,
+    shooters: Query<'w, 's, ShooterView<'static>>,
+    wields:   Query<'w, 's, &'static Wields>,
+    weapons:  Query<'w, 's, WeaponStabilityRead<'static>, With<Weapon>>,
+    melee:    Query<'w, 's, (), With<MeleeWeapon>>,
 }
 
 #[derive(SystemParam)]
 pub(in crate::states::running::game::battlescape::status_panel) struct StabilityBarWriter<'w, 's> {
-        bars:     Query<'w, 's, Entity, With<StabilityBar>>,
-        children: Query<'w, 's, &'static Children>,
-        fills:    Query<'w, 's, &'static mut Node, With<ProgressBarFill>>,
+    bars:     Query<'w, 's, Entity, With<StabilityBar>>,
+    children: Query<'w, 's, &'static Children>,
+    fills:    Query<'w, 's, &'static mut Node, With<ProgressBarFill>>,
 }
 
 pub(in crate::states::running::game::battlescape::status_panel) fn update_stability_readout(

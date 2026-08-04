@@ -6,7 +6,6 @@ use crate::{
     test_support::{SituationBuilder, ganger_at},
 };
 
-
 #[test]
 fn test3_queryable_by_cell() {
     let wall_cell = cl(2, 2, 0);
@@ -75,7 +74,6 @@ fn test3_queryable_by_cell() {
     );
 }
 
-
 #[test]
 fn test6_bridge_max_hp_on_entity_live_hp_in_ledger() {
     let wall_cell = cl(2, 2, 0);
@@ -130,7 +128,6 @@ fn test6_bridge_max_hp_on_entity_live_hp_in_ledger() {
         "Test 6 (bridge): live HP from CoverLedger must equal max at setup (no hits yet)",
     );
 }
-
 
 #[test]
 fn test7_typed_key_no_collision_at_shared_cell() {

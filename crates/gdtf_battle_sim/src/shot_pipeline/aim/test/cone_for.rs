@@ -92,7 +92,7 @@ fn each_prior_shot_widens_cone_for_monotonically() {
     let tuning = CombatTuning::default();
     let state = ShooterState::new(5, 5, 0, StanceKind::Standing, false, Direction::East);
     let shooter = state.as_shooter();
-    let wpn = weapon(0.2, 0.15); 
+    let wpn = weapon(0.2, 0.15);
     let mode = wpn.fire_mode.single();
     let ledger = CoverLedger::new();
 

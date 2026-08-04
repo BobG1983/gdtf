@@ -21,7 +21,6 @@ fn place_cover(app: &mut App, cell: CellLevel) {
         .insert_resource(SquadVisibility::new(visible.clone(), visible));
 }
 
-
 #[test]
 fn left_click_enemy_with_fire_mode_fires_and_is_mutually_exclusive() {
     let mut app = control_app();
@@ -59,7 +58,6 @@ fn left_click_enemy_with_fire_mode_fires_and_is_mutually_exclusive() {
         "the fire target = the hovered cell",
     );
 }
-
 
 #[test]
 fn left_click_cover_with_fire_mode_fires_at_the_cover_cell() {
@@ -103,7 +101,6 @@ fn left_click_cover_with_fire_mode_fires_at_the_cover_cell() {
         "the FireRequested carries the cover cell's storey",
     );
 }
-
 
 #[test]
 fn empty_with_fire_mode_falls_through_to_two_click_move() {

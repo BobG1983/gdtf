@@ -18,7 +18,6 @@ use gdtf_ui::theme::default_theme;
 
 use super::harness::*;
 
-
 const PLAYER_WEAPON_KEY: &str = "test-weapon";
 
 const PLAYER_ARMOR_KEY: &str = "test-armor";
@@ -106,7 +105,6 @@ fn mode_panel_visibility(app: &mut App) -> Option<Visibility> {
     single_with::<ModePanelRoot>(app)
         .and_then(|panel| app.world().get::<Visibility>(panel).copied())
 }
-
 
 #[test]
 fn mode_panel_hidden_when_nothing_armed_selected() {

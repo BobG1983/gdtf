@@ -49,7 +49,6 @@ fn run_degenerate_variance_strike() -> (Option<u16>, Option<u8>, Option<u8>, usi
     )
 }
 
-
 #[test]
 fn variance_zero_melee_strike_resolves_without_panic() {
     let mut app = battle_app_with_tuning(degenerate_variance_tuning());
@@ -87,7 +86,6 @@ fn variance_zero_melee_strike_resolves_without_panic() {
         "the variance-0.0 connecting strike applies damage ({hp_after} < {hp_before})",
     );
 }
-
 
 #[test]
 fn degenerate_variance_battle_replays_identically_under_same_seed() {

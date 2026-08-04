@@ -22,28 +22,28 @@ pub(in crate::states::running::game::battlescape) const MAX_WOUND_PIPS: usize = 
 
 #[derive(QueryData)]
 pub(in crate::states::running::game::battlescape) struct StatBlockData {
-        pub name:       Option<&'static GangerName>,
-        pub faction:    &'static Faction,
-        pub stance:     &'static Stance,
-        pub tu:         &'static Tu,
-        pub tu_max:     &'static TuMax,
-        pub hp:         &'static Hp,
-        pub hp_max:     Option<&'static HpMax>,
-        pub wounds:     &'static Wounds,
-        pub wounds_max: Option<&'static WoundsMax>,
-        pub inflicted:  Option<&'static InflictedWounds>,
-                pub injuries:   Option<&'static InflictedInjuries>,
-                                        pub drawn:      Option<&'static DrawnVitals>,
+    pub name:       Option<&'static GangerName>,
+    pub faction:    &'static Faction,
+    pub stance:     &'static Stance,
+    pub tu:         &'static Tu,
+    pub tu_max:     &'static TuMax,
+    pub hp:         &'static Hp,
+    pub hp_max:     Option<&'static HpMax>,
+    pub wounds:     &'static Wounds,
+    pub wounds_max: Option<&'static WoundsMax>,
+    pub inflicted:  Option<&'static InflictedWounds>,
+    pub injuries:   Option<&'static InflictedInjuries>,
+    pub drawn:      Option<&'static DrawnVitals>,
 }
 
 #[derive(SystemParam)]
 pub(in crate::states::running::game::battlescape) struct StatBlockWidgets<'w, 's> {
-        pub texts:      Query<'w, 's, &'static mut Text>,
-        pub visibility: Query<'w, 's, &'static mut Visibility>,
-        pub images:     Query<'w, 's, &'static mut ImageNode>,
-        pub children:   Query<'w, 's, &'static Children>,
-        pub fills:      Query<'w, 's, &'static mut Node, With<ProgressBarFill>>,
-        pub pips:       Query<'w, 's, &'static mut BackgroundColor, With<Pip>>,
+    pub texts:      Query<'w, 's, &'static mut Text>,
+    pub visibility: Query<'w, 's, &'static mut Visibility>,
+    pub images:     Query<'w, 's, &'static mut ImageNode>,
+    pub children:   Query<'w, 's, &'static Children>,
+    pub fills:      Query<'w, 's, &'static mut Node, With<ProgressBarFill>>,
+    pub pips:       Query<'w, 's, &'static mut BackgroundColor, With<Pip>>,
 }
 
 pub(in crate::states::running::game::battlescape) fn update_stat_block(

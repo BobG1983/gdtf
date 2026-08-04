@@ -47,10 +47,10 @@ type MeleeCandidates = (
 
 #[derive(SystemParam)]
 pub(in crate::states::running::game::battlescape) struct LosGrids<'w> {
-            occupancy: Option<Res<'w, OccupancyGrid>>,
-        surface:   Option<Res<'w, SurfaceGrid>>,
-            cover:     Option<Res<'w, CoverLedger>>,
-        tuning:    Option<Res<'w, CombatTuning>>,
+    occupancy: Option<Res<'w, OccupancyGrid>>,
+    surface:   Option<Res<'w, SurfaceGrid>>,
+    cover:     Option<Res<'w, CoverLedger>>,
+    tuning:    Option<Res<'w, CombatTuning>>,
 }
 
 pub(in crate::states::running::game::battlescape) fn offer_melee(
@@ -138,7 +138,7 @@ fn scan_melee_structure(actor_pos: Position, grids: &LosGrids) -> Option<CellLev
     for dy in -1..=1 {
         for dx in -1..=1 {
             if dx == 0 && dy == 0 {
-                continue; 
+                continue;
             }
             let at = CellLevel::new(Cell::new(key.x + dx, key.y + dy), level);
             if let Some(entry) = cover.peek(&at)

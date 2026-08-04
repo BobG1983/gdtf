@@ -146,7 +146,7 @@ fn prone_stair_occupant_has_no_upper_presence() {
 fn top_storey_stair_occupant_lower_only() {
     use crate::metric::MAX_LEVELS;
     let mut app = headless_app();
-    let top = key(2, 2, MAX_LEVELS - 1); 
+    let top = key(2, 2, MAX_LEVELS - 1);
 
     mark_stair(&mut app, top);
 

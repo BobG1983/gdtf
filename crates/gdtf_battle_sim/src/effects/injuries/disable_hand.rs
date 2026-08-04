@@ -31,8 +31,8 @@ mod tests {
         let mut bleed = BleedAfflicted::default();
         let mut movement = MovementCostFactor::IDENTITY;
         let mut acc = LedgerAccumulators {
-            deltas: &mut deltas,
-            bleed: &mut bleed,
+            deltas:   &mut deltas,
+            bleed:    &mut bleed,
             movement: &mut movement,
         };
         ApplyDisableHand.fold_on_gain(&mut acc);

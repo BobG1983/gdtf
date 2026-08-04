@@ -22,11 +22,11 @@ impl MoveCost {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct MoveCosts {
     /// Open ground.
-    pub open: MoveCost,
+    pub open:  MoveCost,
     /// Cover tile.
     pub cover: MoveCost,
     /// Wall / emplacement (often impassable for standing).
-    pub wall: MoveCost,
+    pub wall:  MoveCost,
 }
 
 impl MoveCosts {
@@ -44,9 +44,9 @@ impl MoveCosts {
 impl Default for MoveCosts {
     fn default() -> Self {
         Self {
-            open: MoveCost(4),
+            open:  MoveCost(4),
             cover: MoveCost(6),
-            wall: MoveCost(8),
+            wall:  MoveCost(8),
         }
     }
 }

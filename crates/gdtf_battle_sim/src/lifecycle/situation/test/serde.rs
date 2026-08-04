@@ -111,7 +111,6 @@ fn shipped_situation_ron_deserializes_with_required_structure() {
     );
 }
 
-
 /// struct-level `#[serde(default)]` supplies [`Faction::default`] = `Faction(0)`
 #[test]
 fn shipped_situation_player_faction_defaults_to_gang_zero() {

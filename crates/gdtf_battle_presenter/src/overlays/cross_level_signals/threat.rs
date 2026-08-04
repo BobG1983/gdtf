@@ -15,19 +15,19 @@ pub(super) fn gather_threats<'a>(
     let mut out = Vec::new();
     for (pos, faction, life) in gangers {
         if !*life.is_active() {
-            continue; 
+            continue;
         }
         let is_player = player.is_some_and(|p| *p == *faction);
         if is_player {
-            continue; 
+            continue;
         }
         let key = **pos;
         let (cell, level) = key.split();
         if level == active_level {
-            continue; 
+            continue;
         }
         if !*is_ganger_visible(squad, &key, FactionRelation::Other) {
-            continue; 
+            continue;
         }
         out.push((cell, LevelDelta::new(signed_delta(level, active_level))));
     }

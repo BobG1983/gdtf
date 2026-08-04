@@ -6,10 +6,10 @@ use gdtf_battle_sim::{level::ThemeUuid, terrain::def::TerrainUuid};
 /// In-progress theme being authored.
 #[derive(Resource, Clone, Debug, PartialEq, Eq)]
 pub struct ThemeDraft {
-    display_name: String,
-    terrain: Vec<TerrainUuid>,
+    display_name:  String,
+    terrain:       Vec<TerrainUuid>,
     default_floor: Option<TerrainUuid>,
-    key: ThemeUuid,
+    key:           ThemeUuid,
 }
 
 impl ThemeDraft {
@@ -17,10 +17,10 @@ impl ThemeDraft {
     #[must_use]
     pub fn new_theme() -> Self {
         Self {
-            display_name: String::new(),
-            terrain: Vec::new(),
+            display_name:  String::new(),
+            terrain:       Vec::new(),
             default_floor: None,
-            key: ThemeUuid::generate(),
+            key:           ThemeUuid::generate(),
         }
     }
 

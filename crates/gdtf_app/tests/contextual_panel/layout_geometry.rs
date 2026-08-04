@@ -54,7 +54,7 @@ impl PixelRect {
         }
     }
 
-        fn contained_in(&self, other: &Self) -> bool {
+    fn contained_in(&self, other: &Self) -> bool {
         self.min.x >= other.min.x - EPSILON_PX
             && self.min.y >= other.min.y - EPSILON_PX
             && self.max.x <= other.max.x + EPSILON_PX

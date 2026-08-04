@@ -39,14 +39,14 @@ const VIEW_ENV_VAR: &str = "GDTF_EDITOR_VIEW";
 
 /// Plugin that runs a one-shot capture when `GDTF_EDITOR_SHOT` is set.
 pub struct EditorCapturePlugin {
-    path: Option<CapturePath>,
-    forced_mode: Option<ForcedMode>,
-    forced_kind: Option<ForcedTerrainKind>,
+    path:              Option<CapturePath>,
+    forced_mode:       Option<ForcedMode>,
+    forced_kind:       Option<ForcedTerrainKind>,
     forced_attachment: Option<ForcedAttachment>,
-    forced_weapon: Option<ForcedWeapon>,
-    forced_melee: Option<ForcedMeleeWeapon>,
-    forced_zoom: Option<ForcedZoom>,
-    forced_view: Option<ForcedView>,
+    forced_weapon:     Option<ForcedWeapon>,
+    forced_melee:      Option<ForcedMeleeWeapon>,
+    forced_zoom:       Option<ForcedZoom>,
+    forced_view:       Option<ForcedView>,
 }
 
 impl EditorCapturePlugin {
@@ -54,12 +54,12 @@ impl EditorCapturePlugin {
     #[must_use]
     pub fn from_env() -> Self {
         Self {
-            path: parse_shot_path(env::var(SHOT_ENV_VAR).ok().as_deref()),
-            forced_mode: env::var(MODE_ENV_VAR)
+            path:              parse_shot_path(env::var(SHOT_ENV_VAR).ok().as_deref()),
+            forced_mode:       env::var(MODE_ENV_VAR)
                 .ok()
                 .as_deref()
                 .and_then(ForcedMode::from_env_value),
-            forced_kind: env::var(TERRAIN_KIND_ENV_VAR)
+            forced_kind:       env::var(TERRAIN_KIND_ENV_VAR)
                 .ok()
                 .as_deref()
                 .and_then(ForcedTerrainKind::from_env_value),
@@ -67,19 +67,19 @@ impl EditorCapturePlugin {
                 .ok()
                 .as_deref()
                 .and_then(ForcedAttachment::from_env_value),
-            forced_weapon: env::var(WEAPON_ENV_VAR)
+            forced_weapon:     env::var(WEAPON_ENV_VAR)
                 .ok()
                 .as_deref()
                 .and_then(ForcedWeapon::from_env_value),
-            forced_melee: env::var(MELEE_WEAPON_ENV_VAR)
+            forced_melee:      env::var(MELEE_WEAPON_ENV_VAR)
                 .ok()
                 .as_deref()
                 .and_then(ForcedMeleeWeapon::from_env_value),
-            forced_zoom: env::var(ZOOM_ENV_VAR)
+            forced_zoom:       env::var(ZOOM_ENV_VAR)
                 .ok()
                 .as_deref()
                 .and_then(ForcedZoom::from_env_value),
-            forced_view: env::var(VIEW_ENV_VAR)
+            forced_view:       env::var(VIEW_ENV_VAR)
                 .ok()
                 .as_deref()
                 .and_then(ForcedView::from_env_value),

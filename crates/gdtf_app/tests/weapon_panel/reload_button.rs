@@ -10,7 +10,6 @@ use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed
 
 use super::harness::*;
 
-
 #[test]
 fn reload_button_visible_with_a_magazine_hidden_without_a_weapon() {
     let mut app = battle_running_app();
@@ -47,7 +46,6 @@ fn reload_button_visible_with_a_magazine_hidden_without_a_weapon() {
         "no weapon → the Reload button is hidden",
     );
 }
-
 
 #[test]
 fn pressing_reload_emits_a_reload_requested_for_the_selection() {
@@ -97,7 +95,6 @@ fn pressing_reload_emits_a_reload_requested_for_the_selection() {
         "the ReloadRequested actor is the SelectedShooter",
     );
 }
-
 
 #[test]
 fn weapon_panel_exists_and_is_the_only_reload_button() {

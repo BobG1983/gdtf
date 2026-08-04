@@ -34,7 +34,6 @@ fn level_buttons_step_active_level_like_the_intent() {
     );
 }
 
-
 #[test]
 fn level_down_disabled_at_floor() {
     let mut app = battle_running_app();

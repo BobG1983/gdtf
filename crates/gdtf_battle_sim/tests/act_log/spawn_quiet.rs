@@ -97,7 +97,7 @@ fn frail_mover(
 
 #[derive(bevy::prelude::Resource, Default)]
 struct Outcomes {
-        decided: bool,
+    decided: bool,
 }
 
 fn record_outcomes(

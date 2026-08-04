@@ -18,15 +18,15 @@ use gdtf_content_families::sprites::SpriteDefRegistry;
 /// Watched content registries for change detection.
 #[derive(SystemParam)]
 pub(super) struct WatchedRegistries<'w> {
-    weapons: Option<Res<'w, WeaponRegistry>>,
+    weapons:       Option<Res<'w, WeaponRegistry>>,
     melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
-    armor: Option<Res<'w, ArmorRegistry>>,
-    gangs: Option<Res<'w, GangRegistry>>,
-    terrain: Option<Res<'w, TerrainDefRegistry>>,
-    themes: Option<Res<'w, UuidThemeRegistry>>,
-    injuries: Option<Res<'w, InjuryRegistry>>,
-    sprite_defs: Option<Res<'w, SpriteDefRegistry>>,
-    attachments: Option<Res<'w, AttachmentRegistry>>,
+    armor:         Option<Res<'w, ArmorRegistry>>,
+    gangs:         Option<Res<'w, GangRegistry>>,
+    terrain:       Option<Res<'w, TerrainDefRegistry>>,
+    themes:        Option<Res<'w, UuidThemeRegistry>>,
+    injuries:      Option<Res<'w, InjuryRegistry>>,
+    sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
+    attachments:   Option<Res<'w, AttachmentRegistry>>,
 }
 
 impl WatchedRegistries<'_> {

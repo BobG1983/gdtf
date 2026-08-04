@@ -10,7 +10,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn unaffordable_enter_is_rejected_no_charge() {
     let (mut app, seed) = battle_app(0x5543_0B0B);

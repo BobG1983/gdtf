@@ -39,11 +39,11 @@ pub enum OrphanStop {
 /// Parameters for stopping a known orphan pid on a port.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OrphanTarget {
-    port: QaPort,
-    pid: ChildPid,
+    port:  QaPort,
+    pid:   ChildPid,
     grace: KillGrace,
     probe: ProbeTimeout,
-    poll: PollInterval,
+    poll:  PollInterval,
 }
 
 impl OrphanTarget {

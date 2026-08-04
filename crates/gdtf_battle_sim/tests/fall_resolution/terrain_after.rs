@@ -10,7 +10,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-
 #[test]
 fn destroyed_slab_stays_non_pathable_and_los_flies_through() {
     let mut app = falls_app(SEED, PerStoreyDamage::new(10));

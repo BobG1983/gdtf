@@ -17,7 +17,7 @@ use crate::{Brightness, TerrainFogMaterial};
 
 #[derive(Resource, Default)]
 struct MaterialModifiedWitness {
-        ids: Vec<AssetId<TerrainFogMaterial>>,
+    ids: Vec<AssetId<TerrainFogMaterial>>,
 }
 
 fn witness_material_modified(

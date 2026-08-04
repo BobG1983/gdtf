@@ -6,13 +6,13 @@ use crate::ganger::{Aiming, Facing, Position, Stance, Suppressed};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Shooter<'a> {
     /// Current stance.
-    pub stance: &'a Stance,
+    pub stance:     &'a Stance,
     /// Whether the shooter is carefully aiming.
-    pub aiming: &'a Aiming,
+    pub aiming:     &'a Aiming,
     /// World position.
-    pub position: &'a Position,
+    pub position:   &'a Position,
     /// Facing direction.
-    pub facing: &'a Facing,
+    pub facing:     &'a Facing,
     /// Present when the shooter is suppressed.
     pub suppressed: Option<&'a Suppressed>,
 }

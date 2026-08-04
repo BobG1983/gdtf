@@ -135,7 +135,7 @@ fn fire_into_empty_space_is_a_clean_miss() {
             aiming: true,
         },
     );
-    let occupancy = OccupancyGrid::new(); 
+    let occupancy = OccupancyGrid::new();
     let surface = SurfaceGrid::new();
     let mut cover = CoverLedger::new();
     let mut slab = SlabLedger::new();

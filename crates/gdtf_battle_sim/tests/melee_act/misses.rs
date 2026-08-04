@@ -39,7 +39,6 @@ fn weak_attacker(
         .build()
 }
 
-
 #[test]
 fn miss_applies_no_damage_but_spends_tu() {
     let mut app = battle_app();
@@ -89,7 +88,6 @@ fn miss_applies_no_damage_but_spends_tu() {
         "C6(b): the attacker's TU is spent even on a miss (a swing costs TU regardless)",
     );
 }
-
 
 #[test]
 fn the_strike_outcome_is_deterministic_across_identical_runs() {

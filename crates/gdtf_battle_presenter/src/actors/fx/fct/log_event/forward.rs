@@ -71,7 +71,7 @@ pub fn forward_turn_started(
         };
         events.write(CombatLogEvent::TurnStarted {
             now_active: turn.now_active,
-            player: *player,
+            player:     *player,
         });
     }
 }
