@@ -58,7 +58,7 @@ pub(crate) fn salvage_parity<F: FamilyBehaviorContract>() {
         }
         assert!(
             !F::is_empty(registry),
-            "one malformed file may not EMPTY the {} (the pre-GTW-582 behavior)",
+            "one malformed file may not EMPTY the {}",
             registry_name::<F>(),
         );
         let broken_stem = F::SALVAGE_BROKEN_FILE
