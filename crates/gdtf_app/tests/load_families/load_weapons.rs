@@ -1,7 +1,6 @@
 //! Load weapons into [`WeaponsFamily`] by authored member keys.
 //! Value-agnostic: registry presence and hit-type / ammo properties only.
-mod load_suite;
-
+use super::load_suite;
 use bevy::app::Startup;
 use gdtf_app::test_support::{AppState, app_state, load_released, seed_load_fallbacks};
 use gdtf_battle_sim::weapon::{HitType, WeaponRegistry};

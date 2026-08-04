@@ -1,6 +1,6 @@
 //! set through the authoritative live path.
 /// file caps). `#[path]` because a test-crate ROOT resolves a bare `mod` beside itself in
-#[path = "load_gangs_spawn/expected.rs"]
+#[path = "load_gangs_spawn_expected.rs"]
 mod expected;
 
 use std::collections::HashMap;
