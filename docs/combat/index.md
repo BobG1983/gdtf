@@ -13,5 +13,6 @@ presenter (`gdtf_battle_presenter`) mirrors this; it never owns the rules.
 - [two-paradox-tournament.md](two-paradox-tournament.md) — the underlying two-paradox / Paley math and how it maps to game systems.
 - [weapons-and-armor.md](weapons-and-armor.md) — weapon & armor stats, the per-hit damage/penetration formula, and how the matchup wheel hooks in.
 - [wounds-and-roster.md](wounds-and-roster.md) — the wound table and roster persistence (the heart of the generator).
+- [morale.md](morale.md) — Morale / Bottle pools, nerve effects, Bottled (GTW-40, accepted).
 
 See also: [../pillars/index.md](../pillars/index.md) · [../glossary.md](../glossary.md) · [../litmus-tests.md](../litmus-tests.md) · [../decisions/0001-rust-bevy-rewrite.md](../decisions/0001-rust-bevy-rewrite.md) (the model/view split) · [../authoring/injury-authoring.md](../authoring/injury-authoring.md) (injury content guide) · [../authoring/weapon-authoring.md](../authoring/weapon-authoring.md) (weapon content guide) · [../authoring/armor-authoring.md](../authoring/armor-authoring.md) (armor content guide) · [../authoring/terrain-authoring.md](../authoring/terrain-authoring.md) (terrain content guide).
