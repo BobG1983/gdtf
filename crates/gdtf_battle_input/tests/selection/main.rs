@@ -1,3 +1,4 @@
+//! Selection: auto, click, gating, highlight, intent seam, real flow.
 mod auto_select;
 mod click_select;
 mod gating;
