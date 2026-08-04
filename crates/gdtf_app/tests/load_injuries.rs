@@ -1,3 +1,4 @@
+//! Injury load: registry + tables resolve; gate holds without them.
 #[path = "load_suite/gate.rs"]
 mod gate;
 

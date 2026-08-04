@@ -1,3 +1,4 @@
+//! Stability bar: mirrors stability_for; empty with no selection; tracks stance.
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State, ui::Val};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState, StabilityBar};
 use gdtf_battle_input::SelectedShooter;
@@ -198,7 +199,6 @@ fn seed_faced_cover(app: &mut App, cell: Cell, facing: Direction) {
     app.world_mut().insert_resource(ledger);
 }
 
-
 #[test]
 fn stability_readout_shows_the_stability_for_value() {
     let mut app = battle_running_app();
@@ -249,7 +249,6 @@ fn stability_readout_shows_the_stability_for_value() {
     );
 }
 
-
 #[test]
 fn stability_readout_empty_with_no_selection() {
     let mut app = battle_running_app();
@@ -262,7 +261,6 @@ fn stability_readout_empty_with_no_selection() {
         "with no selection the stability bar must show the empty (zero) state, got {fill}%",
     );
 }
-
 
 #[test]
 fn stability_readout_tracks_stance_change() {

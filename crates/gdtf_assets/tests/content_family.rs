@@ -1,3 +1,4 @@
+//! Content family: mixed folder, fail-closed empty, no partial publish, live rebuild.
 use std::collections::HashMap;
 
 use bevy::{asset::Assets, prelude::*, reflect::TypePath};
