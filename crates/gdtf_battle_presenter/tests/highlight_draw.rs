@@ -1,3 +1,4 @@
+//! Highlight draw: request spawn, move, hide, recolour by visibility verdict.
 use bevy::{camera::visibility::RenderLayers, math::Vec3, prelude::*};
 use gdtf_battle_presenter::{
     CELL_PX, CellVisibility, HighlightRequest, HoverHighlight, TopDownRendererPlugin,
