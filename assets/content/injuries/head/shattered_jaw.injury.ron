@@ -1,4 +1,4 @@
-// GTW-440 HEAD-pool standin injury. A Major head wound — a wrecked jaw, blinding pain
+// HEAD-pool standin injury. A Major head wound — a wrecked jaw, blinding pain
 // that dulls both wits and aim. Head injuries key to the Aim / Cool stat map
 // (resolution.md injury tables); a Major is a -1/broken-level debuff (here -2 across two
 // stats). KEY = file stem minus `.injury` => `shattered_jaw`.
@@ -13,5 +13,5 @@
         Modify(stat: Cool, amount: -2),                  // head -> Cool; Major-level debuff (blinding pain)
         Modify(stat: Aim,  amount: -1),                  // head -> Aim; an injury MAY carry more than one effect
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )

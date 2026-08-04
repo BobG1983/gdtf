@@ -1,4 +1,4 @@
-// GTW-440 ARM-pool standin injury. A Minor arm wound — a deep bruise that weakens the
+// ARM-pool standin injury. A Minor arm wound — a deep bruise that weakens the
 // grip. Arm injuries key to the Strength / Aim / DisableHand stat map (resolution.md
 // injury tables); a Minor is a LIGHT debuff. Side-agnostic (both arms share the Arm
 // pool); the rolled struck part records which arm. KEY = stem => `bruised_forearm`.
@@ -12,5 +12,5 @@
     effects: [
         Modify(stat: Strength, amount: -1),       // arm -> Strength; light Minor debuff (weakened grip)
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )
