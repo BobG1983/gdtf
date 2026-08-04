@@ -59,6 +59,8 @@ Every injury has an **acute** part (temporary, heals over downtime) and a **resi
 
 Recovery follows the severity tiers: **Minor** self-clears (the ganger stays available); **Major** and **Critical** require **downtime** — benched until the acute part heals, then carrying the permanent residual. Downtime length scales with tier (**TBD (tuning)**) and forces roster-depth decisions. The optional Critical complication is the only route to *post-battle* death.
 
+**Post-action for MVP:** there is **no second injury-table roll** after the fight. Named injuries already landed in battle; aftermath **carries the ledger** onto the roster. See [post-action.md](../mvp/post-action.md) (proposed).
+
 ## Downed → death / capture / recover (the state machine)
 
 Two pools, two outcomes: **HP ≤ 0 → Downed**; **Wounds ≤ 0 → Dead**. Both terminal gates are part of the authoritative sim's apply-hit path, with Dead trumping Downed when both trip in one hit.
@@ -86,6 +88,7 @@ The psychological track mirrors the physical one (see [stats.md](stats.md)): **M
 
 - **Stats improve via use** (Xenonauts model); **XP is a separate track** buying **skills / abilities** — see [stats.md](stats.md).
 - Advancement and injury are the two opposing forces shaping a ganger over a campaign (gains vs scars).
+- MVP magnitudes and apply timing: [post-action.md](../mvp/post-action.md) (proposed).
 
 ## Grudges (logged now, surfaced later)
 

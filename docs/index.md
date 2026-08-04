@@ -9,6 +9,7 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 ## MVP
 
 - [mvp/mvp.md](mvp/mvp.md) — v0 scope, the defer list, and the bar that decides whether the game is real.
+- [mvp/post-action.md](mvp/post-action.md) — post-battle injury carry + XP / use-based advancement (proposed; GTW-678 / GTW-679).
 - [mvp/campaign.md](mvp/campaign.md) — the deferred post-MVP strategic layer (hex geoscape, grudges, turf, economy).
 
 ## Combat
@@ -38,5 +39,3 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 
 - [tooling/agent-qa.md](tooling/agent-qa.md) — the agent QA control channel: how the MCP host launches the game, the `net_qa` feature + `GDTF_NET_QA` env double gate, the five MCP tools an agent calls, and the JSON-RPC-stdio / framed-RON wire shape.
 - [tooling/qa-commands.md](tooling/qa-commands.md) — how to add a QA command: the file, the one line in a host's list, and the test — written from `app.phase`, the command that exists. See [ADR 0008](decisions/0008-qa-command-courier.md) for why the shape is what it is.
-- [tooling/test-pack.md](tooling/test-pack.md) — dir-form integration test packing (GTW-797): inventory, rename map, no-flat rule.
-
