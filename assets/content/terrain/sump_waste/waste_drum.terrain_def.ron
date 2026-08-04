@@ -1,25 +1,17 @@
-// GTW-490 migration of the `waste_drum` tile from assets/content/themes/sump_waste.theme.ron
-// to the NEW UUID-keyed per-theme TerrainDef model (GTW-484/487). Magnitudes COPIED verbatim
-// from the catalog tile. The old atlas_index (248) is DROPPED and mapped to its matching
-// TileRoles key `cover`.
+// Waste drum. On death leaves a toxic waste field.
 (
-    // Stable authored key — the sump_waste `waste_drum` TerrainUuid.
     key: "00000000-0000-0000-0000-01840a930004",
     display_name: "Waste Drum",
     sim_kind: Cover(
-        hp:               22,    // drum HP (copied)
-        armor_protection: 2,     // damage-reduction (copied)
-        armor_hardness:   1,     // penetration shrugged off (copied)
-        height_band:      Low,   // LOW cover; a MID/HIGH round clears it
+        hp:               22,
+        armor_protection: 2,
+        armor_hardness:   1,
+        height_band:      Low,
     ),
     presenter_kind: Cover(
-        graphic_name: "cover",   // old atlas_index 248 -> matching TileRoles key
+        graphic_name: "cover",
     ),
     tags: [],
-    // GTW-547 (on-death effects, child GTW-41g): the drum is full of toxic sludge — SMASHING it
-    // (a shot / melee strike that depletes its HP to zero) leaves a persistent toxic-waste field
-    // (the shipped `toxic_waste_pool` GTW-545 field) at its cell, so the barrel's contents pool
-    // out into a hazard the survivors must route around. `on_death` defaults to `None` when
-    // omitted, so every other terrain def reads as having no death effect.
+    // Full of toxic sludge — destroying it leaves a persistent toxic-waste field.
     on_death: Some(LeaveField(field: "toxic_waste_pool")),
 )
