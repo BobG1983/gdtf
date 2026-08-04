@@ -32,6 +32,7 @@ Layout: [`.claude/agent-memory/`](../../agent-memory/index.md) (see GTW-952).
 2. Merge only after re-checking the merged claim. Drop false claims with a one-line reason.
 3. Refresh `index.md` so it links every real file and nothing under ephemeral.
 4. Delete any ephemeral files that are now redundant, and report what was dropped and why.
+5. Merge any `real/` candidates, rename the merged file to something descriptive, and report what was merged and why.
 
 ## Report (required)
 
