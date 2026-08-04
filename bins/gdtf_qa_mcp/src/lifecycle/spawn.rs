@@ -181,7 +181,7 @@ mod tests {
                 "-p".to_owned(),
                 "gdtf_content_editor_bin".to_owned(),
                 "--features".to_owned(),
-                "dynamic_linking,net_qa".to_owned(),
+                "dynamic_linking,file_watcher,net_qa".to_owned(),
             ]
         );
         assert_eq!(env_of(&command, "GDTF_EDITOR_NET_QA"), Some("1".to_owned()));

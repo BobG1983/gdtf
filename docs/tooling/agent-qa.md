@@ -100,7 +100,7 @@ is missing, that is a defect to file, not a reason to bypass the host.
 A bare `launch(host="editor")` runs:
 
 ```bash
-cargo run -p gdtf_content_editor_bin --features dynamic_linking,net_qa
+cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher,net_qa
 ```
 
 in the MCP host's own directory, with `GDTF_EDITOR_NET_QA=1` and
@@ -139,13 +139,13 @@ launchable editor could open a port at all.
 
 ```bash
 GDTF_EDITOR_NET_QA=1 GDTF_EDITOR_NET_QA_PORT=7617 \
-  cargo run -p gdtf_content_editor_bin --features dynamic_linking,net_qa
+  cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher,net_qa
 ```
 
 `cargo edqarun` (`.cargo/config.toml`) is the same command as an alias, and
 `cargo edqabuild` builds without running. The plain `edrun` / `edbuild` aliases
-deliberately leave `net_qa` off — a normal dev editor should not pay the
-feature's compile cost.
+include `file_watcher` (hot-reload RON) and deliberately leave `net_qa` off — a
+normal dev editor should not pay the QA feature's compile cost.
 
 - `GDTF_EDITOR_NET_QA=1` — opts the build into the editor's QA control channel.
   Truthy is `1` / `true` / `yes` / `on`, trimmed and case-insensitive

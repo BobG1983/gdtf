@@ -21,7 +21,7 @@
 #   exit 0 : allow the tool call.
 #   exit 2 : BLOCK the tool call; stderr is shown to the model.
 #
-# TEST SEAM: set PRE_COMMIT_GATE_SUITE_CMD to override the suite command
+# TEST OVERRIDE: set PRE_COMMIT_GATE_SUITE_CMD to replace the suite command
 # (e.g. =true for a guaranteed-green run, =false for guaranteed-red) so the
 # gate's logic can be exercised without running cargo.
 
@@ -130,20 +130,18 @@ if [ -z "$PASS_BRANCH" ] || [ -z "$PASS_HEAD" ] || [ -z "$CUR_HEAD" ] \
   exit 2
 fi
 
-# --- (3) Suite gate: the workspace green suite is the ONE definition of green. ---
-# Green (CLAUDE.md): fmt --check, clippy -D warnings, then cargo test --workspace.
-# All three must pass; run from the repo root. Zero Rust tests passing is NOT
-# red (cargo test exits 0), so there is no empty-suite-is-red check here.
-# GTW-877: use the `.cargo/config.toml` ALIASES rather than hand-typed long-form flags. The
-# hand-typed form here had drifted to `dynamic_linking` alone, so this guard checked NONE of
-# the feature-gated modules the aliases carry (`dev_tools`, the game's `grimdark_turfwar/net_qa`,
-# the editor's `gdtf_content_editor/net_qa`). The aliases cannot drift from themselves.
+# --- (3) Suite gate: pre-commit always runs the fast FULL subset. ---
+# Docs-only skip is an agent decision in /gate and /land (skill prose), not
+# automated here. This hook stays fail-closed: always cargo.
+# Full green is the eight aliases in verification.md via /gate.
+# Pre-commit subset: fmt, dclippy, dtest, dbuild (four alias steps).
+# Use `.cargo/config.toml` aliases — never hand-typed feature lists.
 SUITE_CMD="${PRE_COMMIT_GATE_SUITE_CMD:-cargo fmt --check && cargo dclippy -- -D warnings && cargo dtest && cargo dbuild}"
 SUITE_OUTPUT="$(cd "$REPO_DIR" && bash -c "$SUITE_CMD" 2>&1)"
 SUITE_STATUS=$?
 if [ "$SUITE_STATUS" -ne 0 ]; then
   printf '%s\n' "$SUITE_OUTPUT" | tail -n 40 >&2
-  echo "commit blocked: green suite red (fmt/clippy/test)" >&2
+  echo "commit blocked: green suite red (fmt/clippy/test/build)" >&2
   exit 2
 fi
 

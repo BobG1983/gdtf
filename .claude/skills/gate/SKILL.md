@@ -12,11 +12,36 @@ argument-hint: "[GTW-N ...]"
 
 Binding background: `.claude/rules/design-fidelity.md`, `.claude/rules/verification.md`, and `docs/`.
 
+## Suite scope (docs-only skip)
+
+Decide scope from **changed paths** (staged, committed on the branch vs `develop`, and untracked). Not from the ticket title. Record `SCOPE=FULL` or `SCOPE=DOCS` in the gate report and in `.claude/.gate-pass`.
+
+**Default is FULL.** When unsure, FULL.
+
+**DOCS** only if every changed path is a `*.md` file under one of:
+
+- `docs/`
+- `.claude/`
+- the repo root (e.g. `CLAUDE.md`, `README.md`)
+
+**Always FULL** (even if markdown) when the set includes:
+
+- `docs/tooling/qa-commands.md`
+- `.claude/rules/verification.md`
+
+**Always FULL** for mixed diffs, renames that touch a non-markdown path, empty path sets, or anything you cannot classify.
+
+**DOCS means:** do not run cargo. State that scope was DOCS and which paths you used.
+
+**FULL means:** run the full suite from [`.claude/rules/verification.md`](../../rules/verification.md). All eight must exit 0. Use the aliases. Red → fail immediately.
+
+Pre-commit does not implement this skip — it always runs its cargo subset. Scope is agent judgment in this skill and in `/land`.
+
 ## Steps
 
 1. **Resolve the ticket(s).** Argument or branch name (`feature/gtw-N-slug`). Pull full ticket(s) via Linear MCP (project GDTF). Never gate from memory.
 
-2. **Run the suite.** The one definition of green from [`.claude/rules/verification.md`](../../rules/verification.md). All eight must exit 0. Use the aliases. Red → fail immediately.
+2. **Scope, then suite.** Apply **Suite scope** above. Run cargo only when FULL.
 
 3. **Restate the contract as clause-numbered** (C1, C2, …). One clause per requirement. Faithful to the ticket and any `docs/` it invokes. Multi-ticket: combine and attribute. Contract is then read-only.
 
@@ -40,4 +65,4 @@ Binding background: `.claude/rules/design-fidelity.md`, `.claude/rules/verificat
 
 8. **On violations, repair the code** (not the contract). Max 2 repair rounds, then stop and report.
 
-9. **On full PASS, write `.claude/.gate-pass`** (TICKET, BRANCH, HEAD, FINGERPRINT). Move ticket(s) to In Review via Linear MCP. Point at `/docs-sync` then `/land`.
+9. **On full PASS, write `.claude/.gate-pass`** (TICKET, BRANCH, HEAD, FINGERPRINT, **SCOPE**). Move ticket(s) to In Review via Linear MCP. Point at `/docs-sync` then `/land`.
