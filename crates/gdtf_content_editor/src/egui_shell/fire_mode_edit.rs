@@ -1,5 +1,4 @@
-//! ATTACHMENT mode's `GainFireMode` effect row edits exactly one authored fire mode, and
-//! consume THIS widget, so the fire-mode authoring surface has one definition (the
+//! Shared fire-mode editor widget for weapon and attachment forms.
 use bevy_egui::egui;
 use gdtf_battle_sim::weapon::{
     AoeRange, BlastRadius, ConeHalfAngle, FireModeSpec, HitType, ModeConeMult, ModeKind, ModeShots,

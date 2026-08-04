@@ -43,7 +43,6 @@ impl Volley {
 }
 
 /// Fire a volley: spend TU, clamp burst to magazine, resolve each round.
-///
 /// Returns an empty volley when the shooter cannot fire.
 #[expect(
     clippy::too_many_arguments,

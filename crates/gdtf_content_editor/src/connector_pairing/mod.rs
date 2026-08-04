@@ -1,6 +1,5 @@
-//! at `(x, y, N)` ALSO places its paired DOWN connector at `(x, y, N+1)`, so authoring a
-//! endpoint on storey `N+1`. The author should draw one endpoint and get both. This module is that
-//! two independent placed terrains, exactly as if the author had painted both by hand).
+//! Place a paired DOWN connector when an UP connector is painted.
+//! Pair lands as independent terrain, as if both were drawn by hand.
 mod pairing;
 mod resolve;
 

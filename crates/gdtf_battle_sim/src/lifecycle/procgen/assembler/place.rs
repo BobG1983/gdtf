@@ -151,8 +151,7 @@ pub(in crate::lifecycle::procgen) fn place_enemy(
 ///
 /// # Errors
 ///
-/// Returns [`PackingError`] when no fitting prefab exists for a role, a footprint
-/// does not fit its anchor region, or the player footprint is below the minimum side.
+/// Returns [`PackingError`] when no fitting prefab exists for a role, a footprint does not fit its anchor region, or the player footprint is below the minimum side.
 pub fn assemble_placement(
     registry: &PrefabRegistry,
     theme: ThemeUuid,

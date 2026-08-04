@@ -1,4 +1,4 @@
-//! the spawn CELLS are no longer authored (the deploy step derives them from the
+//! Expected spawn outcomes after deploy derives cells from the gang layout.
 use std::collections::HashMap;
 
 use bevy::prelude::{Entity, World};

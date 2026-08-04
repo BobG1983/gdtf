@@ -29,7 +29,6 @@ pub struct FovObserver<'a> {
 }
 
 /// Union of all cells visible to any active observer within view range.
-///
 /// Bounded to a disc of radius `view_range` (not full shadowcasting).
 #[must_use]
 pub fn union_fov(

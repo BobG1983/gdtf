@@ -122,9 +122,7 @@ impl GridSize {
     ///
     /// # Errors
     ///
-    /// Returns [`GridSizeError::Empty`] if any axis is zero,
-    /// [`GridSizeError::WidthOverMax`] / [`HeightOverMax`] if width or height exceeds [`MAX_GRID_SPAN`],
-    /// or [`GridSizeError::LevelsOverMax`] if levels exceed [`MAX_LEVELS`].
+    /// Returns [`GridSizeError::Empty`] if any axis is zero, [`GridSizeError::WidthOverMax`] / [`HeightOverMax`] if width or height exceeds [`MAX_GRID_SPAN`], or [`GridSizeError::LevelsOverMax`] if levels exceed [`MAX_LEVELS`].
     pub fn new(
         width: GridWidth,
         height: GridHeight,

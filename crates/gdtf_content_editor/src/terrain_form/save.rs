@@ -30,8 +30,7 @@ pub(crate) fn sanitize_stem(raw: &str) -> FileStem {
 ///
 /// # Errors
 ///
-/// Returns [`SaveTerrainError::MissingMountedWeapon`] when the kind is emplacement
-/// and no weapon is set.
+/// Returns [`SaveTerrainError::MissingMountedWeapon`] when the kind is emplacement and no weapon is set.
 pub fn draft_to_terrain_def(
     draft: &TerrainDraft,
     uuid: TerrainUuid,

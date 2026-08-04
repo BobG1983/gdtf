@@ -1,4 +1,4 @@
-//! Three unmistakable per-cell classes at any zoom: AUTHORED-HERE (active
+//! Per-cell preview sprite classes for authored, foreign, and empty tiles.
 use bevy::prelude::*;
 use gdtf_battle_presenter::{StoreyTreatment, anchor_world_offset, source_parts, source_px_size};
 use gdtf_battle_sim::{

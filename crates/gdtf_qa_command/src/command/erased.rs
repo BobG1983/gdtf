@@ -8,10 +8,7 @@ use gdtf_qa_protocol::command::{
 use super::{QaCommand, schema::schema_text};
 
 /// Object-safe view of a command for catalogues and host registration.
-///
-/// Concrete types implement this automatically via [`QaCommand`].
-/// Args should derive `Debug`, `serde::Deserialize`, and `schemars::JsonSchema`.
-/// Replies should derive `serde::Serialize` and `schemars::JsonSchema`.
+/// Concrete types implement this automatically via [`QaCommand`]. Args should derive `Debug`, `serde::Deserialize`, and `schemars::JsonSchema`. Replies should derive `serde::Serialize` and `schemars::JsonSchema`.
 pub trait ErasedCommand<F>: Send + Sync {
     /// Stable command name.
     fn name(&self) -> CommandName;

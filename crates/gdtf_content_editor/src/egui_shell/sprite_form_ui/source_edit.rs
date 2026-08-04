@@ -1,4 +1,4 @@
-//! every place a [`SpriteSource`] is authored (the base source, a facing override, an
+//! Sprite source editor for base and facing overrides.
 use bevy_egui::egui;
 use gdtf_battle_presenter::SheetRole;
 use gdtf_content_families::sprites::{SpriteImagePath, SpritePx, SpriteRect, SpriteSource};

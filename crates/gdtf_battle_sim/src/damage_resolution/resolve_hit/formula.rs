@@ -31,9 +31,7 @@ pub(super) fn scale_by_matchup(stat: DamageMagnitude, mult: MatchupMultiplier) -
 }
 
 /// Resolve a weapon hit against one armor piece.
-///
-/// Applies matchup scaling to punch and shred, then computes penetrating damage,
-/// HP damage (respecting armor floor), and integrity wear.
+/// Applies matchup scaling to punch and shred, then computes penetrating damage, HP damage (respecting armor floor), and integrity wear.
 #[must_use]
 pub fn resolve_hit(
     weapon_damage: WeaponDamage,

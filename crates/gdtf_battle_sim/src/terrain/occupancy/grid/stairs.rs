@@ -55,7 +55,6 @@ impl OccupancyGrid {
     }
 
     /// Place a ganger on a stair: occupies lower and (if free) upper cell.
-    ///
     /// Returns the upper cell when dual-cell presence was registered.
     pub fn register_stair_presence(
         &mut self,

@@ -1,4 +1,5 @@
-//! only binds it to [`ThemeDefsFamily`] with the KNOWN authored [`ThemeUuid`].
+//! Load themes into [`ThemeDefsFamily`] by known authored [`ThemeUuid`].
+//! Value-agnostic: presence and UUID resolution only.
 mod load_suite;
 
 use bevy::asset::uuid::Uuid;

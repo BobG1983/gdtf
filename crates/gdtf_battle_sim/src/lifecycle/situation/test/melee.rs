@@ -1,4 +1,4 @@
-//! `Wields` ALONGSIDE its ranged weapon, and a ganger authoring NO melee key resolves to
+//! Melee key resolution on gangers with and without a melee weapon.
 use super::support::*;
 use crate::weapon::{
     DamageType, FightMode, MeleeWeapon, Reach, Weapon, WeaponDamage, WeaponName, Wields,

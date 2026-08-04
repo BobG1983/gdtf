@@ -55,7 +55,6 @@ impl PanelThemeSpec {
 }
 
 /// Button section as stored in RON.
-///
 /// `font` is optional (`#[serde(default)]`); absent means use the theme's `default_font`.
 #[derive(Deserialize, Clone, PartialEq, Debug)]
 pub struct ButtonThemeSpec {
@@ -106,7 +105,6 @@ impl ButtonThemeSpec {
 }
 
 /// Title section as stored in RON.
-///
 /// `font` is optional; absent means use the theme's `default_font`.
 #[derive(Deserialize, Clone, PartialEq, Debug)]
 pub struct TitleThemeSpec {
@@ -130,7 +128,6 @@ impl TitleThemeSpec {
 }
 
 /// Body text section as stored in RON.
-///
 /// `font` is optional; absent means use the theme's `default_font`.
 #[derive(Deserialize, Clone, PartialEq, Debug)]
 pub struct TextThemeSpec {

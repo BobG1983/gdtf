@@ -1,4 +1,4 @@
-//! the inline `#[cfg(test)] mod tests` moved VERBATIM into per-concern files, with the
+//! Act unit tests split by concern.
 mod support;
 
 mod armor_break;

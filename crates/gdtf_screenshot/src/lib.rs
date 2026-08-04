@@ -1,7 +1,4 @@
 //! Dev/debug screenshot helpers for Bevy apps.
-//!
-//! No product gate of its own — the consuming crate decides when this is linked.
-//! Supports keyboard capture (F10) and env/path-driven settle-then-exit capture.
 
 pub mod keybind;
 pub mod path;

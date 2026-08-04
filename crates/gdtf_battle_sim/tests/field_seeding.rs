@@ -1,6 +1,4 @@
-//! authored `fields:` list is resolved against the [`FieldDefRegistry`] catalog and seeded into
-//! the live [`FieldRegistry`] resource by the REAL `setup_battle` (the authoritative pour), and
-//! - **fields seedable from situation RON**: an authored `fields:` list parses into
+//! Field seeding from situation setup and on-death leave-field effects.
 use bevy::{
     app::App,
     asset::AssetPlugin,

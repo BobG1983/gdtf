@@ -1,6 +1,6 @@
-//! Act intent bus: contextual acts, keybinds, keyboard, and intent drain.
+//! Contextual act bus and per-act markers.
 
-/// Contextual act seam and per-act markers.
+/// Contextual act boundary and per-act markers.
 pub mod contextual;
 /// Facing and stance cycle orders.
 pub mod cycle;

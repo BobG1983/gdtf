@@ -4,7 +4,6 @@ use bevy::{asset::uuid::Uuid, prelude::Deref, reflect::TypePath};
 use serde::{Deserialize, Serialize};
 
 /// Stable theme identity.
-///
 /// `#[serde(transparent)]` round-trips it as the bare `Uuid` wire form.
 #[derive(
     Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize, TypePath,

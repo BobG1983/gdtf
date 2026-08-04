@@ -1,6 +1,5 @@
-//! `BattleSimPlugin` drives the render-free authoritative sim: battle RNG streams,
-//! builds the battle from the authored `Situation` via `setup_battle`, and gates
-//! Generation's state advance on real setup completing.
+//! `BattleSimPlugin` drives the render-free authoritative sim.
+//! Builds the battle from the authored `Situation` and gates generation on setup.
 mod generation_gate;
 mod harness;
 mod seed_logging;

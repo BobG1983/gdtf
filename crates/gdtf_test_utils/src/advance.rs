@@ -7,7 +7,6 @@ use bevy::{
 };
 
 /// Run `app.update()` until `predicate` is true or `max_updates` is exhausted.
-///
 /// Returns whether the predicate became true.
 pub fn advance_until(app: &mut App, predicate: impl Fn(&App) -> bool, max_updates: u32) -> bool {
     for _ in 0..max_updates {

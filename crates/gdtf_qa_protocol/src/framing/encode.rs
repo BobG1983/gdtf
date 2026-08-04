@@ -28,8 +28,7 @@ pub fn encode_frame(payload: &[u8]) -> Result<Vec<u8>, WireError> {
 ///
 /// # Errors
 ///
-/// Returns [`WireError::Encode`] if RON serialization fails, or
-/// [`WireError::Oversize`] if the serialized bytes exceed the frame cap.
+/// Returns [`WireError::Encode`] if RON serialization fails, or [`WireError::Oversize`] if the serialized bytes exceed the frame cap.
 pub fn encode<T: Serialize>(message: &T) -> Result<Vec<u8>, WireError> {
     let Ok(payload) = ron::ser::to_string(message) else {
         return Err(WireError::Encode);

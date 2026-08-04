@@ -1,4 +1,4 @@
-//! Value-agnostic on the tunable magnitudes (the authored numbers are DATA, not pinned by
+//! Melee weapon tests; magnitudes are data, not pinned literals.
 use super::support::*;
 use crate::weapon::{
     FISTS_KEY, FightModeKind, MeleeWeapon, MeleeWeaponRegistry, MeleeWeaponSpec, Reach,
