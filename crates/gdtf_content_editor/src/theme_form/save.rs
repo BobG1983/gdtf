@@ -52,8 +52,7 @@ pub fn serialize_theme_def(def: &UuidThemeDef) -> Result<String, SaveThemeError>
 ///
 /// # Errors
 ///
-/// Returns [`SaveThemeError`] when the name is empty, terrain is empty, or the
-/// default floor is not in the terrain list.
+/// Returns [`SaveThemeError`] when the name is empty, terrain is empty, or the default floor is not in the terrain list.
 pub fn validate_for_save(draft: &ThemeDraft) -> Result<(), SaveThemeError> {
     if draft.display_name().trim().is_empty() {
         return Err(SaveThemeError::EmptyName);

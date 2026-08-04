@@ -16,9 +16,7 @@ use crate::{
     weapon::WeaponStats,
 };
 
-/// Resolve a shot outcome and apply the results.
-///
-/// Routes to the ganger, cover, slab, or ground path based on the shot kind.
+/// Resolve a shot outcome and apply the results. Routes to the ganger, cover, slab, or ground path based on the shot kind.
 /// Misses produce a no-effect report.
 #[must_use]
 #[expect(

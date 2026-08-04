@@ -1,4 +1,3 @@
-//!   include it standalone via `#[path = "load_suite/gate.rs"] mod gate;`.
-//!   `#[path = "load_suite/behaviors.rs"] mod behaviors;` (the `gate.rs`
+//! Shared load-suite helpers for family load contracts and behaviors.
 pub(crate) mod gate;
 pub(crate) mod suite;

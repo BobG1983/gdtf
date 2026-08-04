@@ -4,7 +4,6 @@ use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
 /// Wire protocol version. Bump on breaking message shape changes.
-///
 /// A [`Hello`](crate::message::QaRequest::Hello) carries the client's version.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]

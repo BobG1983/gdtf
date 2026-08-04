@@ -29,8 +29,7 @@ impl Standable {
 ///
 /// # Errors
 ///
-/// Returns [`PackingError::DeploymentZoneTooSmall`] when a zone has fewer standable
-/// cells than roster members for that side.
+/// Returns [`PackingError::DeploymentZoneTooSmall`] when a zone has fewer standable cells than roster members for that side.
 pub fn deploy_rosters(
     zones: &DeploymentZones,
     terrain: &Situation,

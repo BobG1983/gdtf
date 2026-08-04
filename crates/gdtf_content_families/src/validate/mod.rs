@@ -1,6 +1,5 @@
-//! SAME check over the same family glue, and a dangling key authored in the
-//! editor surfaces at authoring time, not on the next game launch).
-//! of the authored content graph and appends a typed
+//! Authoring-time reference checks over content families.
+//! Dangling keys fail in the editor, not on the next game launch.
 mod attachments;
 mod gangs;
 mod injuries;

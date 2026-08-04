@@ -1,4 +1,4 @@
-//! C4/A2: the SPRITE mode's REAL round-trip — author a sprite def (anchor +
+//! Sprite mode: author a sprite def and round-trip through save and reload.
 use std::path::Path;
 
 use bevy::{

@@ -1,7 +1,5 @@
-//! only binds it to [`WeaponsFamily`] with the authored member keys. The
-//! assertions stay VALUE-AGNOSTIC (registry presence + authored filename-stem
-//! keys) — the authored weapon magnitudes are tuning DATA, never pinned (the
-//! brittle-test rule). The field-to-bundle conversion MECHANISM is covered by
+//! Load weapons into [`WeaponsFamily`] by authored member keys.
+//! Value-agnostic: registry presence and stems only; magnitudes are tuning data.
 mod load_suite;
 
 use bevy::app::Startup;

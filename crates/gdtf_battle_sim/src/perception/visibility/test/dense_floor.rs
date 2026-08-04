@@ -1,4 +1,4 @@
-//! This FAILS on the previous code (the sparse `authored_or_occupied_cells` candidate
+//! Dense-floor visibility vs sparse authored-or-occupied candidates.
 use super::support::*;
 
 #[test]

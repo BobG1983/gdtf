@@ -1,4 +1,4 @@
-//! A `#[cfg(debug_assertions)]` "Save prefab" button + name field → [`write_prefab`] (reused). In a
+//! Prefab name field and debug-only save button.
 use bevy_egui::egui;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_battle_sim::level::UuidThemeRegistry;

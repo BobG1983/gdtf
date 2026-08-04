@@ -1,7 +1,5 @@
-//! dependency direction: this overlay reads the AUTHORITATIVE sim
-//! Unlike the DEBUG-only `reachable` overlay (which compiles only under
-//! `#[cfg(debug_assertions)]`), the field overlay is a SHIPPING VIEW (the playability rule: a
-//! damage zone MUST be visible), so it is NOT `#[cfg(debug_assertions)]`-gated. The overlay
+//! Field damage overlay over authoritative sim cells.
+//! Shipping view (not debug-gated): active damage zones stay visible.
 mod overlay;
 
 pub use overlay::{FieldCellSprite, draw_field_overlay};

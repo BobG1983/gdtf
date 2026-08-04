@@ -1,4 +1,4 @@
-//! the MELEE mode's REAL round-trips — author a MAXIMAL spec (multi fight
+//! Melee weapon mode: maximal-spec authoring round-trips through save and reload.
 use gdtf_battle_sim::{
     equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity, WeaponSlots},
     weapon::{

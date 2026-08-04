@@ -1,4 +1,4 @@
-//! line (see `docs/authoring/contextual-act-recipe.md`). The modules are visible to the
+//! Contextual act panel modules; see `docs/authoring/contextual-act-recipe.md`.
 pub(in crate::states::running::game::battlescape) mod enter_emplacement;
 pub(in crate::states::running::game::battlescape) mod execute;
 pub(in crate::states::running::game::battlescape) mod exit_emplacement;

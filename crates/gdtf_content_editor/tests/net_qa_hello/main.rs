@@ -1,5 +1,4 @@
-//! Hello/version negotiation over the EDITOR's REAL net-QA listener, on BOTH sides of
-//! The `#![cfg(all(debug_assertions, feature = "net_qa"))]` gate (below, after this crate doc
+//! Hello/version negotiation over the editor net-QA listener.
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod assertions;

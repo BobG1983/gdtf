@@ -1,4 +1,4 @@
-//! Contextual act families and the shared drain seam.
+//! Contextual act families and shared drain into sim requests.
 
 mod seam;
 

@@ -1,4 +1,4 @@
-//! HARNESS NOTE (deviation from the ticket's "use `GdtfTestAppBuilder`", as in): the
+//! Reaction-trigger integration tests for the battle sim.
 mod cap;
 mod harness;
 mod mounted_reactor;

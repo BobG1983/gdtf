@@ -1,5 +1,5 @@
-//! only binds it to [`FieldsFamily`] with the authored member key. The
-//! assertions stay VALUE-AGNOSTIC (catalog presence + the authored
+//! Load fields into [`FieldsFamily`] by authored member key.
+//! Value-agnostic: catalog presence only.
 mod load_suite;
 
 use gdtf_battle_sim::effects::fields::{FieldDefRegistry, FieldKey};
