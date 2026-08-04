@@ -1,4 +1,4 @@
-//! Packed integration suite (GTW-797). Flat files merged; tests unchanged.
+//! Presenter systems: atlas load, fire target, edge pan, highlights, overlays.
 
 mod atlas_load;
 mod fire_target;

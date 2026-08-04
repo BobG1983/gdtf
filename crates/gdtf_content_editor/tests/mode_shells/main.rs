@@ -1,4 +1,4 @@
-//! Packed integration suite (GTW-797). Flat files merged; tests unchanged.
+//! Editor mode shells: armor, attachment, gang, injury, sprite, terrain, theme, weapon.
 
 mod armor_mode;
 mod attachment_mode;

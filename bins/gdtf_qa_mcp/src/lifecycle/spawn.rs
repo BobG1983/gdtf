@@ -47,7 +47,7 @@ pub fn build_command(port: QaPort, spec: &LaunchSpec) -> Command {
     for var in spec.env().iter() {
         command.env(var.name().as_str(), var.value().as_str());
     }
-    // Hosts listen on shared protocol ports in debug builds; no env arming (GTW-969).
+    // Hosts listen on shared protocol ports in debug builds; nothing to pass through.
     let _ = (port, spec.channel());
     command.stdin(Stdio::null());
     command

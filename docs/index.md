@@ -9,7 +9,7 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 ## MVP
 
 - [mvp/mvp.md](mvp/mvp.md) — v0 scope, the defer list, and the bar that decides whether the game is real.
-- [mvp/post-action.md](mvp/post-action.md) — post-battle injury carry + XP / use-based advancement (proposed; GTW-678 / GTW-679).
+- [mvp/post-action.md](mvp/post-action.md) — post-battle injury carry (accepted) + XP / use-based advancement (proposed).
 - [mvp/campaign.md](mvp/campaign.md) — the deferred post-MVP strategic layer (hex geoscape, grudges, turf, economy).
 
 ## Combat
@@ -23,7 +23,7 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 - [combat/two-paradox-tournament.md](combat/two-paradox-tournament.md) — the underlying two-paradox / Paley math and how it maps to game systems.
 - [combat/weapons-and-armor.md](combat/weapons-and-armor.md) — weapon & armor stats, the per-hit damage/penetration formula, and how the matchup wheel hooks in.
 - [combat/wounds-and-roster.md](combat/wounds-and-roster.md) — the wound table and roster persistence (the heart of the generator).
-- [combat/morale.md](combat/morale.md) — Morale / Bottle, nerve effects (GTW-40, accepted).
+- [combat/morale.md](combat/morale.md) — Morale / Bottle, nerve effects (accepted).
 
 ## Authoring
 

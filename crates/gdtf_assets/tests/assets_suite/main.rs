@@ -1,4 +1,4 @@
-//! Packed integration suite (GTW-797). Flat files merged; tests unchanged.
+//! Asset loading: RON loader, content families, hot-reload chains.
 
 mod content_family;
 mod hot_ron_chain;

@@ -1,10 +1,11 @@
 //! Load melee weapons into [`MeleeWeaponsFamily`].
 //! Value-agnostic: registry presence only (no pinned stems).
 
-use super::load_suite;
 use gdtf_battle_sim::weapon::MeleeWeaponRegistry;
 use gdtf_content_families::MeleeWeaponsFamily;
 use load_suite::suite::{self, FamilyLoadContract};
+
+use super::load_suite;
 
 impl FamilyLoadContract for MeleeWeaponsFamily {
     fn is_empty(registry: &MeleeWeaponRegistry) -> bool {

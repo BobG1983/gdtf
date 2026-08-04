@@ -1,4 +1,4 @@
-//! CI workflows stay on the static green subset (no dynamic_linking / dev_tools).
+//! CI workflows stay on the static green subset: no `dynamic_linking`, no `dev_tools`.
 
 use std::{collections::BTreeSet, fs};
 
@@ -56,7 +56,10 @@ fn every_ci_workspace_command_is_static() {
                     "STALE {file} — `{command}` still names net_qa/schema features"
                 ));
             }
-            reached.insert((file.clone(), command.split_whitespace().collect::<Vec<_>>().join(" ")));
+            reached.insert((
+                file.clone(),
+                command.split_whitespace().collect::<Vec<_>>().join(" "),
+            ));
         }
     }
     for (file, command) in REQUIRED_COMMANDS {
@@ -65,9 +68,7 @@ fn every_ci_workspace_command_is_static() {
             command.split_whitespace().collect::<Vec<_>>().join(" "),
         );
         if !reached.contains(&pair) {
-            violations.insert(format!(
-                "UNREACHED {file} — never saw `{command}`"
-            ));
+            violations.insert(format!("UNREACHED {file} — never saw `{command}`"));
         }
     }
     assert!(

@@ -396,5 +396,4 @@ The two hosts are independent: a game child on `7616` and an editor child on
 `bins/gdtf_qa_mcp/src/hosts/set.rs`. Each call reaches the child its `host`
 argument names, and a `stop` aimed at the editor never touches the game.
 
-
-> **GTW-965 / GTW-969:** `net_qa` is no longer a cargo feature; QA modules compile under `debug_assertions` and always listen on the shared ports in `gdtf_qa_protocol::ports`. Env arming (`GDTF_NET_QA` / `GDTF_EDITOR_NET_QA` and port vars) is removed.
+> **Note:** `net_qa` is no longer a cargo feature; QA modules compile under `debug_assertions` and always listen on the shared ports in `gdtf_qa_protocol::ports`. Env arming (`GDTF_NET_QA` / `GDTF_EDITOR_NET_QA` and port vars) is removed.

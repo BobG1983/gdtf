@@ -81,7 +81,7 @@ The family lives in one home, palette + mechanics
 - **Mechanics** — `field.rs` (the authored `FieldDef`), `registry.rs` (the
   `FieldDefRegistry` catalog + the live per-cell `FieldRegistry`), `tick.rs`
   (the round clock + the `FieldTicked` message).
-- **Consequence palette ** — one self-contained file per consequence
+- **Consequence palette** — one self-contained file per consequence
   (`drain.rs` / `immunity.rs` / `duration.rs`), each implementing the
   `ApplyFieldEffect` trait; the closed `FieldEffect` vocabulary (`effect.rs`)
   delegates mechanically. The authored surface stays the flat `FieldDef`

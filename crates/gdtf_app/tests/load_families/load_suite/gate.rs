@@ -1,4 +1,4 @@
-//! `#[path = "load_suite/gate.rs"] mod gate;`.
+//! Seeds the load gate for family load tests.
 
 use bevy::{
     app::App,
