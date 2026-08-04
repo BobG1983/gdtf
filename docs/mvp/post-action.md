@@ -5,7 +5,7 @@ Design for the fight → consequences → next fight loop. Parent: post-action e
 **Status:**
 
 - **GTW-678 injury carry — Accepted** (in-battle injury table already defined; no second post-action roll).
-- **GTW-679 advancement — proposed** (stress / crit / survive / MVP training). Do not implement until Accepted.
+- **GTW-679 advancement — proposed** (combined stress + feat training). Do not implement until Accepted.
 
 Related built systems:
 
@@ -63,7 +63,7 @@ Data first (no UI): BattleResults + kill log + roster fold. Then screen copy. He
 
 Two tracks:
 
-1. **Use-based attributes** — exercising a capability trains the attribute behind it (Xenonauts-style). Growth comes from **using**, **stressing**, and **surviving** that capability — not from a kill scoreboard.
+1. **Use-based attributes** — train by using, stressing/failing, landing feats, and surviving bad fights (Xenonauts-style).
 2. **XP** — a separate bank that **buys skills**, never raw attribute points.
 
 ### Accrual events (per player ganger, once at outcome latch)
@@ -78,23 +78,25 @@ No XP for taking damage or for enemy deaths you did not cause. Magnitudes live i
 
 Enemy gangers: no XP track for MVP.
 
-### Use-based attributes — three layers
+### Use-based attributes — combined layers
 
-At outcome latch, for each living player ganger, sum layers per attribute, then clamp.
+At outcome latch, for each living player ganger, sum every grant that fired, **per attribute**, then clamp.
 
-**Hard ceiling: +3 per attribute per battle** from all layers combined.
+**Hard ceiling: +3 per attribute per battle.**
 
 ```
-bump = min(3, default_use + stress + crit_success + survive_bad + mvp_share)
+bump = min(3, default_use + stress + feats + survive + mvp)
 ```
 
-Each named grant fires **at most once per attribute per battle** (unless the row says otherwise). Dead gangers get nothing.
+Each named grant fires **at most once per ganger per battle** (even if the act happened many times). Dead gangers get nothing.
+
+Kill **XP** still stacks per kill. Attribute grants below are once-per-row.
 
 ---
 
 #### Layer A — Default use (+1)
 
-Ordinary fight work. Signal met → **+1** to that attribute. Harder use does not stack more default.
+Ordinary fight work. Signal met → **+1**. Harder use does not stack more default.
 
 | Signal | Attribute |
 | --- | --- |
@@ -107,77 +109,75 @@ Ordinary fight work. Signal met → **+1** to that attribute. Harder use does no
 
 #### Layer B — Stress / failure (+1)
 
-**Train by failing or loading the stat.** These fire when the ganger was *tested*, not when they looked good on the scoreboard.
+Train when the stat was **tested or failed**.
 
 | Special | When | Extra | Attribute |
 | --- | --- | --- | --- |
-| **Missed shot** | ≥1 ranged attack resolved that did **not** connect (no hit on any combatant / intended silhouette fail — exact predicate = same “miss” the combat log already records) | +1 | Aim |
+| **Missed shot** | ≥1 ranged attack that did not connect (same miss the combat log records) | +1 | Aim |
 | **Missed melee** | ≥1 melee attack that failed to connect | +1 | Strength |
 | **Got hurt** | Took ≥1 non-graze wound (any severity) | +1 | Toughness |
-| **Morale stress** | Lost any Morale this battle (when Morale is live; until then: took a suppression / Bottle hit if those signals exist, else defer this row) | +1 | Cool |
-| **Overloaded** | Spent any turn over carrying capacity / Strength shortfall (encumbrance — when built; until then defer) | +1 | Strength |
-| **Pushed empty** | Ended ≥1 of own turns at 0 TU after having spent TU that turn (fought to the last unit) | +1 | Grit |
-
-Stress does **not** require a kill. A lousy fight that you survive still trains.
+| **Morale stress** | Lost any Morale this battle (when Morale is live; until then: suppression / Bottle hit if those signals exist, else defer) | +1 | Cool |
+| **Overloaded** | Spent any turn over carrying capacity / Strength shortfall (when encumbrance exists; else defer) | +1 | Strength |
+| **Pushed empty** | Ended ≥1 of own turns at 0 TU after spending TU that turn | +1 | Grit |
 
 ---
 
-#### Layer C — Critical success (+1)
+#### Layer C — Feats / critical success (+1, unless noted)
 
-**One clean win under that stat** — the upside twin of stress. Same once-per-battle rule.
+Clean wins and named battle feats. Combined from both earlier lists.
 
 | Special | When | Extra | Attribute |
 | --- | --- | --- | --- |
 | **Ranged kill** | ≥1 attributed kill with a ranged weapon | +1 | Aim |
 | **Melee kill** | ≥1 attributed kill with melee / unarmed | +1 | Strength |
-| **Critical wounder** | Inflicted ≥1 Critical or Fatal wound on an enemy (injury/wound log) | +1 | Aim if ranged source, Strength if melee (both kinds → one grant each) |
+| **Multi-kill** | ≥2 attributed kills (any weapon) | +1 | Cool |
+| **Critical wounder** | Inflicted ≥1 Critical or Fatal wound on an enemy | +1 | Aim if ranged source, Strength if melee (both kinds → one grant each) |
 | **Clutch stabilize** | Successfully stabilized a Downed ally | +1 | Cool |
 | **Clean execute** | Successfully executed a Downed enemy | +1 | Cool |
-
-Kill XP still tracks kills separately. Crit-success is the attribute bump, not a second XP table.
+| **Shove finish** | Shoved an enemy who then died from the fall / shove outcome this battle | +1 | Strength |
+| **Last of the squad** | Only living player ganger at outcome (others dead or never deployed) **and** battle was won | +2 | Cool |
 
 ---
 
-#### Layer D — Survive a bad wound (+1)
+#### Layer D — Survive a bad wound (+1 / +2)
 
 | Special | When | Extra | Attribute |
 | --- | --- | --- | --- |
-| **Walked it off** | Ended the battle alive after taking a **Major** or **Critical** injury this battle (ledger gained that tier) | +1 | Grit |
-| **Back from the brink** | Was **Downed** at least once and still alive at outcome | +1 | Grit |
+| **Walked it off** | Alive at outcome after taking a **Major** or **Critical** injury this battle | +1 | Grit |
+| **Back from the brink** | Was **Downed** at least once and still alive at outcome | +2 | Grit |
 
-These stack with each other and with default Grit / stress, then hit the +3 cap.
+These stack with default Grit / stress, then hit the +3 cap (e.g. default + brink alone already **Grit +3**).
 
 ---
 
 #### Layer E — MVP (+1)
 
-**One player ganger per battle** may earn MVP.
+**One player ganger per battle** may earn MVP (on top of everything above).
 
 | Rule | Detail |
 | --- | --- |
-| Who | Highest attributed kill count among living player gangers at outcome. Tie → most non-graze wounds inflicted. Still tied → lowest entity/id (deterministic). |
-| Reward | **+1** to one attribute: the attribute that received the largest pre-MVP bump this battle; if none, **Cool**. |
+| Who | Highest attributed kill count among living player gangers at outcome. Tie → most non-graze wounds inflicted. Still tied → lowest stable id (deterministic). |
+| Reward | **+1** to the attribute that received the largest pre-MVP bump this battle; if none, **Cool**. |
 | None | If no player ganger got a kill and no wounds inflicted, **no MVP**. |
-
-MVP is a single +1, not a free +3.
 
 ---
 
 ### Worked examples
 
-| Fight | Layers that fire | Result (before cap) |
+| Fight | What fires | Capped result |
 | --- | --- | --- |
-| Shot a lot, missed often, no kills | Aim use +1, Missed shot +1 | **Aim +2** |
-| Shot, one kill, also missed | Aim use +1, miss +1, ranged kill +1 | **Aim +3** (cap) |
-| Took a Major arm injury, lived | Grit use (if HP lost) +1, Got hurt → Toughness +1, Walked it off → Grit +1 | **Toughness +1, Grit +2** |
-| Downed, stabilized ally, recovered | Brink +1 Grit, Stabilize +1 Cool, … | Grit/Cool as listed |
-| Squad ace with 3 kills | Use + kills + MVP | Aim (or Cool) up to **+3** |
+| Shot a lot, missed, no kills | Aim use +1, Missed shot +1 | **Aim +2** |
+| Shot, missed, one ranged kill | use + miss + ranged kill | **Aim +3** |
+| Two kills, multi-kill | Aim/Strength kill rows + Cool multi-kill +1 | as mapped |
+| Major injury, Downed, recovered | Got hurt Toughness +1; Walked it off +1 Grit; Brink +2 Grit; use Grit if HP lost | **Toughness +1**, **Grit +3** (cap) |
+| Solo survivor win | Last of the squad Cool +2 (+ other Cool if any) | **Cool** up to +3 |
+| Squad ace | kills + feats + MVP +1 | best attr up to **+3** |
 
 ---
 
 ### Explicitly not training (v0)
 
-Reload, stance change, open door, enter emplacement, empty grenade throw, panicking enemies by presence alone, raw damage totals without miss/hit/wound events.
+Reload, stance change, open door, enter emplacement, empty grenade throw, panicking enemies by presence alone, raw damage totals without miss/hit/wound/kill events.
 
 ---
 
@@ -193,12 +193,12 @@ All of the above runs **once** when the battle outcome latches (same moment as B
 
 ### Build order after Accept
 
-1. UsageTally + miss/hit/wound/kill/Downed signals from act messages (shared log).
-2. Advancement apply (pure sim, seeded tests) — five layers + +3 clamp + deterministic MVP.
+1. UsageTally + miss/hit/wound/kill/Downed/shove signals from act messages (shared log).
+2. Advancement apply (pure sim, seeded tests) — all layers + +3 clamp + deterministic MVP.
 3. Wire into BattleResults / roster fold.
-4. Post-action UI: bumps + which specials fired (short names).
+4. Post-action UI: bumps + which specials fired (short names) + MVP badge.
 
-Dependencies that gate individual rows: Morale stress needs Morale live; Overloaded needs encumbrance. Ship the rest first; those two rows stay coded but inactive until their systems exist.
+Dependencies that gate individual rows: Morale stress needs Morale live; Overloaded needs encumbrance. Ship the rest first; those two rows stay defined but inactive until their systems exist.
 
 ---
 
@@ -222,9 +222,5 @@ Remaining (679):
 
 1. **Downed:** Recover with ledger only for MVP (no capture)?
 2. **XP mix:** Participation + kill + survival at 2 / 3 / 1 OK?
-3. **Five-layer training** (use / stress / crit success / survive bad / MVP) + hard max +3 OK?
-4. **Stress rows:** miss shot, miss melee, got hurt, morale stress, overloaded, pushed empty — drop/add any?
-5. **Crit rows:** ranged/melee kill, critical wounder, stabilize, execute — OK?
-6. **Survive:** Major/Critical lived +1 Grit; was Downed and lived +1 Grit — OK?
-7. **MVP:** auto by kills (tie wounds, then id); +1 to strongest trained attr else Cool — OK?
-8. **Skills:** XP bank visible, no purchase UI in v0 OK?
+3. **Combined training table** (use + stress + feats + survive + MVP) + hard max +3 OK?
+4. **Skills:** XP bank visible, no purchase UI in v0 OK?
