@@ -1,3 +1,4 @@
+//! Load redrive: edited content-family members rebuild registries in place.
 use bevy::{
     asset::{AssetEvent, AssetServer, Assets},
     prelude::*,

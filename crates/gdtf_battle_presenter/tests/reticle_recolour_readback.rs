@@ -1,3 +1,4 @@
+//! Reticle recolour: visible vs non-visible cells render distinct GPU pixels.
 use std::sync::{Mutex, MutexGuard};
 
 use bevy::{
