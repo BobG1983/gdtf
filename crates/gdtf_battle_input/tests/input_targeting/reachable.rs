@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
     floor::FloorCostGrid,
     metric::MAX_LEVELS,
     occupancy::{GRID_HEIGHT, GRID_WIDTH},
-    pathfinder::{PlanningView, reachable_within},
+    pathfinder::{MoveGrids, PlanningView, reachable_within},
     prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid, Position, Tu},
     test_support::{SituationBuilder, key},
     tuning::CombatTuning,
@@ -153,10 +153,12 @@ fn populates_reachable_cells_matching_reachable_within_including_l1() {
         reachable_within(
             foot,
             BUDGET,
-            &grid,
-            &links,
-            &tuning,
-            &floor_costs,
+            MoveGrids {
+                occupancy:   &grid,
+                links:       &links,
+                floor_costs: &floor_costs,
+                tuning:      &tuning,
+            },
             gdtf_battle_sim::injuries::MovementCostFactor::IDENTITY,
             &planning,
         )

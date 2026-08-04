@@ -7,10 +7,7 @@ use gdtf_battle_sim::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart, WornBy,
     },
     cover::{CoverLedger, HeightBand},
-    fire::{
-        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, Volley,
-        WeaponQuery, WearsQuery, WieldsQuery,
-    },
+    fire::{BattleGrids, FireOrder, ShooterQuery, StruckBodies, Volley, WieldedWeapons},
     ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
     injuries::{InjuryRegistry, InjuryTables},
@@ -19,6 +16,7 @@ use gdtf_battle_sim::{
         Cell, CellLevel, Direction, Level, LifeState, OccupancyGrid, Position, Stance, StanceKind,
         Tu,
     },
+    resolve_and_apply::WoundRoll,
     resolve_coarse::ShotKind,
     slab::BraceStairCells,
     surface::SurfaceGrid,
@@ -146,13 +144,8 @@ pub(crate) fn fire_volley(
 ) -> Volley {
     type FireQueries<'w, 's> = (
         ShooterQuery<'w, 's>,
-        gdtf_battle_sim::fire::TargetQuery<'w, 's>,
-        WearsQuery<'w, 's>,
-        PieceQuery<'w, 's>,
-        WieldsQuery<'w, 's>,
-        WeaponQuery<'w, 's>,
-        MeleeQuery<'w, 's>,
-        MountedQuery<'w, 's>,
+        WieldedWeapons<'w, 's>,
+        StruckBodies<'w, 's>,
     );
     let tuning = CombatTuning::default();
     let mut rng = shot_rng(seed);
@@ -166,37 +159,32 @@ pub(crate) fn fire_volley(
     let access = state.get_mut(world);
     assert!(access.is_ok(), "shooter/target queries must validate");
     let volley = match access {
-        Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) => {
-            gdtf_battle_sim::fire::fire(
+        Ok((mut shooters, mut arms, mut bodies)) => gdtf_battle_sim::fire::fire(
+            FireOrder {
                 shooter,
-                FireOrder {
-                    mode:         &mode,
-                    target_cell:  Cell::new(front_cell().x, front_cell().y),
-                    target_level: Level::new(0),
-                },
-                &mut shooters,
-                &mut targets,
-                &wears,
-                &mut pieces,
-                &wields,
-                &mut weapons,
-                &melee,
-                &mounted,
-                BattleGrids {
-                    occupancy,
-                    surface: &surface,
-                    cover: &mut cover,
-                    slab: &mut slab,
-                    brace_cells: &BraceStairCells::empty(),
-                },
-                &tuning,
-                &mut rng,
-                &mut sev_rng,
-                &InjuryTables::default(),
-                &InjuryRegistry::default(),
-                &mut injury_rng,
-            )
-        }
+                mode: &mode,
+                target_cell: Cell::new(front_cell().x, front_cell().y),
+                target_level: Level::new(0),
+            },
+            &mut shooters,
+            &mut arms,
+            &mut bodies,
+            BattleGrids {
+                occupancy,
+                surface: &surface,
+                cover: &mut cover,
+                slab: &mut slab,
+                brace_cells: &BraceStairCells::empty(),
+            },
+            &mut rng,
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut sev_rng,
+                tables:       &InjuryTables::default(),
+                registry:     &InjuryRegistry::default(),
+                injury_rng:   &mut injury_rng,
+            },
+        ),
         Err(_) => Volley {
             reports: Vec::new(),
             shots:   Vec::new(),

@@ -8,32 +8,17 @@ use super::{
 };
 use crate::{
     metric::CellLevel,
-    occupancy::OccupancyGrid,
-    pathfinder::{PlanningView, reachable_within},
-    terrain::floor::FloorCostGrid,
-    tuning::CombatTuning,
-    vertical::VerticalLinkGraph,
+    pathfinder::{MoveGrids, PlanningView, reachable_within},
     visibility::{FactionRelation, SquadVisibility},
 };
 
 /// Best reachable cell that advances toward the goal, or None if none improves distance.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the plan borrows the brain's own reads (the enemy + snapshot rows, the \
-              advance goal, the omniscient move fog, and the grid / link / tuning / \
-              floor-cost planning inputs reachable_within takes); each is a distinct \
-              borrow mirroring enemy_ai_turn's own argument-count carve-out — bundling \
-              would only hide the reads"
-)]
 pub(super) fn plan_reposition(
     enemy: &GangerRow,
     goal: &AiTarget,
     rows: &[GangerRow],
     omniscient: &SquadVisibility,
-    occupancy: &OccupancyGrid,
-    links: &VerticalLinkGraph,
-    tuning: &CombatTuning,
-    floor_costs: &FloorCostGrid,
+    terrain: MoveGrids<'_>,
 ) -> Option<CellLevel> {
     let enemy_cell_level = row_cell_level(&enemy.position);
     let relation_of = |occupant: Entity| {
@@ -48,15 +33,6 @@ pub(super) fn plan_reposition(
             })
     };
     let planning = PlanningView::new(omniscient, relation_of);
-    let reachable = reachable_within(
-        enemy_cell_level,
-        enemy.tu,
-        occupancy,
-        links,
-        tuning,
-        floor_costs,
-        enemy.factor,
-        &planning,
-    );
+    let reachable = reachable_within(enemy_cell_level, enemy.tu, terrain, enemy.factor, &planning);
     plan_advance(enemy_cell_level, goal.cell, &reachable)
 }

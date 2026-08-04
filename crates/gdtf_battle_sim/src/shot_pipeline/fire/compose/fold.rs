@@ -3,16 +3,16 @@
 use bevy::prelude::Entity;
 
 use super::{
-    super::query::{BattleGrids, PieceQuery, TargetQuery, WearsQuery},
+    super::query::{BattleGrids, PieceQuery, StruckBodies, WearsQuery},
     snapshot::ShooterSnapshot,
 };
 use crate::{
     armor::BodyPart,
-    injuries::{InjuryRegistry, InjuryTables},
-    resolve_and_apply::{HitReport, StruckPiece, StruckSurfaces, TargetGanger, resolve_and_apply},
+    resolve_and_apply::{
+        HitReport, ShotSource, StruckPiece, StruckSurfaces, TargetGanger, WoundRoll,
+        resolve_and_apply,
+    },
     resolve_coarse::ShotKind,
-    rng::{InjuryRng, SeverityRng},
-    tuning::CombatTuning,
 };
 
 fn struck_piece_entity(
@@ -27,91 +27,60 @@ fn struck_piece_entity(
 }
 
 /// Resolve the primary impact of a round into a `HitReport`.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "wears/pieces stay disjoint; severity and injury RNGs stay separate"
-)]
 pub(super) fn resolve_primary_report(
     outcome: &crate::resolve_coarse::ShotOutcome,
     snapshot: &ShooterSnapshot,
     grids: &mut BattleGrids,
-    targets: &mut TargetQuery,
-    wears: &WearsQuery,
-    pieces: &mut PieceQuery,
-    tuning: &CombatTuning,
-    severity_rng: &mut SeverityRng,
-    tables: &InjuryTables,
-    registry: &InjuryRegistry,
-    injury_rng: &mut InjuryRng,
+    bodies: &mut StruckBodies,
+    roll: &mut WoundRoll<'_>,
 ) -> HitReport {
     if let ShotKind::Ganger(struck) = outcome.kind {
-        fold_ganger_round(
-            outcome,
-            struck,
-            snapshot,
-            grids,
-            targets,
-            wears,
-            pieces,
-            tuning,
-            severity_rng,
-            tables,
-            registry,
-            injury_rng,
-        )
+        fold_ganger_round(outcome, struck, snapshot, grids, bodies, roll)
     } else {
         resolve_and_apply(
             outcome,
-            snapshot.weapon_stats(),
-            snapshot.luck,
+            ShotSource {
+                weapon: snapshot.weapon_stats(),
+                luck:   snapshot.luck,
+            },
             None,
             Entity::PLACEHOLDER,
             StruckSurfaces {
                 cover: grids.cover,
                 slab:  grids.slab,
             },
-            tuning,
-            severity_rng,
-            tables,
-            registry,
-            injury_rng,
+            roll,
         )
     }
 }
 
 /// Apply damage to a living combatant hit by this round.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "wears/pieces stay disjoint; severity and injury RNGs stay separate"
-)]
 pub(super) fn fold_ganger_round(
     outcome: &crate::resolve_coarse::ShotOutcome,
     struck: Entity,
     snapshot: &ShooterSnapshot,
     grids: &mut BattleGrids,
-    targets: &mut TargetQuery,
-    wears: &WearsQuery,
-    pieces: &mut PieceQuery,
-    tuning: &CombatTuning,
-    severity_rng: &mut SeverityRng,
-    tables: &InjuryTables,
-    registry: &InjuryRegistry,
-    injury_rng: &mut InjuryRng,
+    bodies: &mut StruckBodies,
+    roll: &mut WoundRoll<'_>,
 ) -> HitReport {
-    let struck_piece_view = outcome
+    let struck_part = outcome
         .body_part
-        .and_then(|part| struck_piece_entity(struck, part, wears, pieces))
-        .and_then(|piece_entity| {
-            pieces.get_mut(piece_entity).ok().map(|piece| StruckPiece {
+        .and_then(|part| struck_piece_entity(struck, part, &bodies.wears, &bodies.pieces));
+    let struck_piece_view = struck_part.and_then(|piece_entity| {
+        bodies
+            .pieces
+            .get_mut(piece_entity)
+            .ok()
+            .map(|piece| StruckPiece {
                 floor:      *piece.floor,
                 protection: *piece.protection,
                 hardness:   *piece.hardness,
                 armor_type: *piece.armor_type,
                 integrity:  piece.integrity.into_inner(),
             })
-        });
+    });
 
-    match targets.get_mut(struck) {
+    match bodies.targets.get_mut(struck) {
         Ok((mut hp, mut wounds, mut life, mut inflicted, toughness, target_luck, injuries)) => {
             let (effective_toughness, effective_luck) = match injuries {
                 Some(ledger) => (
@@ -122,8 +91,10 @@ pub(super) fn fold_ganger_round(
             };
             resolve_and_apply(
                 outcome,
-                snapshot.weapon_stats(),
-                snapshot.luck,
+                ShotSource {
+                    weapon: snapshot.weapon_stats(),
+                    luck:   snapshot.luck,
+                },
                 Some(TargetGanger {
                     hp:        &mut hp,
                     wounds:    &mut wounds,
@@ -138,11 +109,7 @@ pub(super) fn fold_ganger_round(
                     cover: grids.cover,
                     slab:  grids.slab,
                 },
-                tuning,
-                severity_rng,
-                tables,
-                registry,
-                injury_rng,
+                roll,
             )
         }
         Err(_) => HitReport::no_effect(outcome.kind),

@@ -3,6 +3,7 @@
 mod arc;
 mod dda;
 mod geom;
+mod grids;
 mod result;
 mod vector;
 
@@ -11,5 +12,6 @@ mod test;
 
 pub use arc::march_arc;
 pub use geom::{InGrid, MarchDir};
+pub use grids::MarchGrids;
 pub use result::{MarchKind, MarchResult};
 pub use vector::march_vector;

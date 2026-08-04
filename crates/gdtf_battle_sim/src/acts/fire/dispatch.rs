@@ -8,19 +8,17 @@ use bevy::{
 use super::{
     arc::{FireArcDecision, decide_fire_arc},
     emit::emit_round_signals,
-    params::{BattleGridsParam, TurnQuery, WeaponProbes},
+    params::{BattleGridsParam, TurnQuery},
     signals::{FireDeclaration, FireSignals, RoundCount},
 };
 use crate::{
     acts::request::FireRequested,
-    fire::{
-        FireOrder, PieceQuery, ShooterQuery, TargetQuery, WeaponQuery, WearsQuery, WieldsQuery,
-        fire,
-    },
+    fire::{FireOrder, ShooterQuery, StruckBodies, WieldedWeapons, fire},
     ganger::{Aiming, Direction, Facing, Tu, TuMax},
     injuries::{InjuryRegistry, InjuryTables},
     magazine::mode_tu_cost,
     metric::CellLevel,
+    resolve_and_apply::WoundRoll,
     rng::{InjuryRng, SeverityRng, ShotRng},
     tu::spend_tu,
     tuning::CombatTuning,
@@ -35,12 +33,8 @@ use crate::{
 pub fn dispatch_fire(
     mut requests: MessageReader<FireRequested>,
     mut shooter_set: ParamSet<(ShooterQuery, TurnQuery)>,
-    mut targets: TargetQuery,
-    wears: WearsQuery,
-    mut pieces: PieceQuery,
-    wields: WieldsQuery,
-    mut weapons: WeaponQuery,
-    probes: WeaponProbes,
+    mut bodies: StruckBodies,
+    mut arms: WieldedWeapons,
     mut grids: BattleGridsParam,
     tuning: Res<CombatTuning>,
     mut shot_rng: ResMut<ShotRng>,
@@ -67,15 +61,15 @@ pub fn dispatch_fire(
         let tu_max: TuMax = *tu_max;
         let aiming: Aiming = *aiming;
 
-        let Some(weapon_entity) = wields.get(request.shooter).ok().and_then(|w| {
+        let Some(weapon_entity) = arms.wields.get(request.shooter).ok().and_then(|w| {
             w.firing_weapon(
-                |entity| probes.mounted.get(entity).is_ok(),
-                |entity| probes.melee.get(entity).is_ok(),
+                |entity| arms.mounted.get(entity).is_ok(),
+                |entity| arms.melee.get(entity).is_ok(),
             )
         }) else {
             continue;
         };
-        let Ok((_, _, _, _, _, _, _, damage_type, ..)) = weapons.get(weapon_entity) else {
+        let Ok((_, _, _, _, _, _, _, damage_type, ..)) = arms.weapons.get(weapon_entity) else {
             continue;
         };
         let damage: DamageType = *damage_type;
@@ -109,29 +103,26 @@ pub fn dispatch_fire(
         let target = grids.occupant_at(aim_cell_level);
 
         let order = FireOrder {
+            shooter:      request.shooter,
             mode:         &request.mode,
             target_cell:  request.target_cell,
             target_level: request.target_level,
         };
         let mut shooters = shooter_set.p0();
         let volley = fire(
-            request.shooter,
             order,
             &mut shooters,
-            &mut targets,
-            &wears,
-            &mut pieces,
-            &wields,
-            &mut weapons,
-            &probes.melee,
-            &probes.mounted,
+            &mut arms,
+            &mut bodies,
             grids.grids(),
-            &tuning,
             &mut shot_rng,
-            &mut severity_rng,
-            tables,
-            registry,
-            &mut injury_rng,
+            &mut WoundRoll {
+                tuning: &tuning,
+                severity_rng: &mut severity_rng,
+                tables,
+                registry,
+                injury_rng: &mut injury_rng,
+            },
         );
 
         emit_round_signals(request.shooter, damage, &volley, &mut signals);

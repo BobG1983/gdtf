@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn ray_leaving_the_top_is_a_sky_miss() {
@@ -12,9 +13,11 @@ fn ray_leaving_the_top_is_a_sky_miss() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -38,9 +41,11 @@ fn ray_leaving_the_bottom_strikes_ground() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -69,9 +74,11 @@ fn ray_leaving_laterally_is_a_miss() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -104,9 +111,11 @@ fn no_target_stop_round_continues_to_the_blocker_behind() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),

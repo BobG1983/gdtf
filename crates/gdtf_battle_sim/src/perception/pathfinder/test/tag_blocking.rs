@@ -5,7 +5,7 @@ use super::support::{
 use crate::{
     injuries::MovementCostFactor,
     occupancy::{OccupancyGrid, TerrainKind},
-    pathfinder::{PathBlocked, PlanningView, find_path},
+    pathfinder::{MoveGrids, PathBlocked, PlanningView, find_path},
 };
 
 fn corridor_reaches_goal(grid: &OccupancyGrid) -> bool {
@@ -17,10 +17,12 @@ fn corridor_reaches_goal(grid: &OccupancyGrid) -> bool {
     find_path(
         cell(0, 0, 0),
         cell(0, 2, 0),
-        grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         MovementCostFactor::IDENTITY,
         &planning,
     )
@@ -53,10 +55,12 @@ fn explicitly_path_blocked_cell_blocks_the_route() {
     let result = find_path(
         cell(0, 0, 0),
         cell(0, 2, 0),
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         MovementCostFactor::IDENTITY,
         &planning,
     );

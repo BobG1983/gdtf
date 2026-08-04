@@ -11,7 +11,7 @@ use gdtf_battle_sim::{
     ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
     magazine::{LoadedRounds, Magazine, ReloadTu},
-    march::{MarchDir, MarchKind, march_vector},
+    march::{MarchDir, MarchGrids, MarchKind, march_vector},
     occupancy::TerrainKind,
     occupancy_sync::OccupancyMaintenancePlugin,
     prelude::{
@@ -115,9 +115,11 @@ fn probe_stops_on_cover(
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        occupancy,
-        surface,
-        cover,
+        MarchGrids {
+            occupancy,
+            surface,
+            cover,
+        },
         tuning,
         shooter_cell(),
         |_| false,

@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn flat_axis_aligned_ray_walks_expected_cell_sequence() {
@@ -15,9 +16,11 @@ fn flat_axis_aligned_ray_walks_expected_cell_sequence() {
         let result = march_vector(
             muzzle,
             MarchDir::new(dir),
-            &grid,
-            &surface,
-            &cover,
+            MarchGrids {
+                occupancy: &grid,
+                surface:   &surface,
+                cover:     &cover,
+            },
             &tuning,
             far_shooter(),
             no_dead(),
@@ -63,9 +66,11 @@ fn diagonal_climbing_ray_walks_expected_staircase() {
         let result = march_vector(
             muzzle,
             MarchDir::new(dir),
-            &grid,
-            &surface,
-            &cover,
+            MarchGrids {
+                occupancy: &grid,
+                surface:   &surface,
+                cover:     &cover,
+            },
             &tuning,
             far_shooter(),
             no_dead(),

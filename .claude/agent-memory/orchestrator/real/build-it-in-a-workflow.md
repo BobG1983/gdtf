@@ -32,9 +32,8 @@ self-correcting and leaves only genuine design ambiguity to escalate.
 - **Engineers never commit.** Build, fix and docs-sync agents are all told not to commit; the land
   agent owns staging, the commit and the merge, and re-runs the suite if develop moved. Landing is
   proven by a separate confirm agent reading `origin/develop`, not by the land agent's claim.
-- **One worktree per ticket, plain git.** `git worktree add -b feature/<slug>
-  .claude/worktrees/<slug> develop`, adopt it if it already exists, never reset finished unlanded
-  work. No `git flow` — `.claude/rules/git-workflow.md` is the authority.
+- **One ticket at a time on a feature branch in the main repo — no worktrees.** Never reset
+  finished unlanded work. `.claude/rules/git-workflow.md` is the authority.
 - **One cargo build at a time.** A stale dylib against fresh rlibs fails at land after a green
   verify. Gate lenses run no cargo, so they still fan out; a docs-only run can sit beside a build.
 - **All agents opus.** Judge by turns-to-correct, not per-token price — sonnet needed more

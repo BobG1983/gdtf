@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::resolve_and_apply::WoundRoll;
 
 #[test]
 fn ganger_wielding_both_a_ranged_and_a_melee_weapon_still_fires_the_ranged_weapon() {
@@ -31,26 +32,19 @@ fn ganger_wielding_both_a_ranged_and_a_melee_weapon_still_fires_the_ranged_weapo
 
     let report_count = {
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
-            state.get_mut(&mut world)
-        else {
+        let Ok((mut shooters, mut arms, mut bodies)) = state.get_mut(&mut world) else {
             return;
         };
         let volley = fire(
-            shooter,
             FireOrder {
-                mode:         &mode,
-                target_cell:  Cell::new(40, 5),
+                shooter,
+                mode: &mode,
+                target_cell: Cell::new(40, 5),
                 target_level: Level::new(0),
             },
             &mut shooters,
-            &mut targets,
-            &wears,
-            &mut pieces,
-            &wields,
-            &mut weapons,
-            &melee,
-            &mounted,
+            &mut arms,
+            &mut bodies,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,
@@ -58,12 +52,14 @@ fn ganger_wielding_both_a_ranged_and_a_melee_weapon_still_fires_the_ranged_weapo
                 slab:        &mut slab,
                 brace_cells: &BraceStairCells::empty(),
             },
-            &tuning,
             &mut shot_r,
-            &mut sev_r,
-            &injury_tables(),
-            &injury_registry(),
-            &mut injury_rng(),
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut sev_r,
+                tables:       &injury_tables(),
+                registry:     &injury_registry(),
+                injury_rng:   &mut injury_rng(),
+            },
         );
         volley.reports.len()
     };

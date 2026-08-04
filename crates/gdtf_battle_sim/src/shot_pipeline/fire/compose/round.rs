@@ -3,25 +3,23 @@
 use bevy::prelude::Entity;
 
 use super::{
-    super::query::{BattleGrids, PieceQuery, TargetQuery, WearsQuery},
+    super::query::{BattleGrids, StruckBodies},
     fold::resolve_primary_report,
     snapshot::ShooterSnapshot,
-    splash::apply_aoe_splash,
+    splash::{PrimaryImpact, apply_aoe_splash},
 };
 use crate::{
     aim::{cone_for, stability_for},
     cover::CoverLedger,
     effects::attachments::WeaponBraceBonus,
     ganger::{LifeState, Position, Stance, StanceKind},
-    injuries::{InjuryRegistry, InjuryTables},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
-    resolve_and_apply::HitReport,
+    resolve_and_apply::{HitReport, WoundRoll},
     resolve_coarse::{ShotInputs, resolve_coarse},
-    rng::{InjuryRng, SeverityRng, ShotRng},
+    rng::ShotRng,
     sample_cone::concentration_p,
     stability::{StabilityTerms, terrain_brace::terrain_braces},
-    tuning::CombatTuning,
     weapon::FireModeSpec,
 };
 
@@ -63,28 +61,19 @@ pub(in crate::shot_pipeline::fire) struct RoundSetup<'a> {
 }
 
 /// Resolve one round: build cone, march, fold primary hit, apply AOE splash.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "wears/pieces stay disjoint; injury tables and InjuryRng are separate streams"
-)]
 pub(in crate::shot_pipeline::fire) fn resolve_round(
     setup: RoundSetup,
     prior_shots: crate::cone::PriorShots,
     grids: &mut BattleGrids,
-    targets: &mut TargetQuery,
-    wears: &WearsQuery,
-    pieces: &mut PieceQuery,
-    tuning: &CombatTuning,
+    bodies: &mut StruckBodies,
     shot_rng: &mut ShotRng,
-    severity_rng: &mut SeverityRng,
-    tables: &InjuryTables,
-    registry: &InjuryRegistry,
-    injury_rng: &mut InjuryRng,
+    roll: &mut WoundRoll<'_>,
 ) -> (
     HitReport,
     Vec<HitReport>,
     crate::resolve_coarse::ShotOutcome,
 ) {
+    let tuning = roll.tuning;
     let snapshot = setup.snapshot;
     let geometry = setup.geometry;
     let shooter_view = snapshot.shooter_view();
@@ -131,6 +120,7 @@ pub(in crate::shot_pipeline::fire) fn resolve_round(
         recoil_growth,
     };
 
+    let targets = &bodies.targets;
     let is_dead = |e: Entity| {
         targets
             .get(e)
@@ -146,36 +136,19 @@ pub(in crate::shot_pipeline::fire) fn resolve_round(
         is_dead,
     );
 
-    let report = resolve_primary_report(
-        &outcome,
-        snapshot,
-        grids,
-        targets,
-        wears,
-        pieces,
-        tuning,
-        severity_rng,
-        tables,
-        registry,
-        injury_rng,
-    );
+    let report = resolve_primary_report(&outcome, snapshot, grids, bodies, roll);
 
     let splash = apply_aoe_splash(
-        &outcome,
-        setup.mode.hit_type,
-        snapshot.position,
-        &report,
+        PrimaryImpact {
+            outcome:  &outcome,
+            hit_type: setup.mode.hit_type,
+            report:   &report,
+        },
         snapshot,
         grids,
-        targets,
-        wears,
-        pieces,
-        tuning,
+        bodies,
         shot_rng,
-        severity_rng,
-        tables,
-        registry,
-        injury_rng,
+        roll,
     );
 
     (report, splash, outcome)

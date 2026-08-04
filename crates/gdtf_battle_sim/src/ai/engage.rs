@@ -11,13 +11,11 @@ use super::{
 };
 use crate::{
     acts::can_engage,
-    cover::CoverLedger,
     fire::{MeleeQuery, MountedQuery, WieldsQuery},
     ganger::Tu,
     los::{Observer, PeekOffset, Target, can_see},
     magazine::{FireActor, Magazine, can_fire},
-    occupancy::OccupancyGrid,
-    surface::SurfaceGrid,
+    march::MarchGrids,
     tuning::CombatTuning,
     weapon::{FireMode, FireModeSpec, Handedness},
 };
@@ -43,22 +41,12 @@ impl WeaponLookup<'_, '_> {
 }
 
 /// Targets the enemy can see, afford to fire at, and engage right now.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the gate borrows the brain's own reads (the enemy + target snapshot rows, \
-              the resolved weapon triple + its fire cost, the four read grids + tuning the \
-              can_see/can_fire/can_engage gates need, and the is_dead corpse predicate); \
-              each is a distinct borrow mirroring enemy_ai_turn's own argument-count \
-              carve-out — bundling would only hide the reads"
-)]
 pub(super) fn engageable_targets(
     enemy: &GangerRow,
     targets: &[GangerRow],
     weapon: (Magazine, FireModeSpec, Handedness),
     fire_cost: Tu,
-    occupancy: &OccupancyGrid,
-    surface: &SurfaceGrid,
-    cover: &CoverLedger,
+    grids: MarchGrids<'_>,
     tuning: &CombatTuning,
     is_dead: &impl Fn(Entity) -> bool,
 ) -> Vec<AiTarget> {
@@ -69,7 +57,7 @@ pub(super) fn engageable_targets(
         position:         &enemy.position,
         stance:           &enemy.stance,
         facing:           &enemy.facing,
-        stair_eye_offset: occupancy.stair_eye_offset_at(&enemy_cell_level),
+        stair_eye_offset: grids.occupancy.stair_eye_offset_at(&enemy_cell_level),
         peek_offset:      PeekOffset::default(),
     };
     let mut engageable: Vec<AiTarget> = Vec::new();
@@ -85,9 +73,7 @@ pub(super) fn engageable_targets(
             &target,
             enemy.life,
             tuning.view_range,
-            occupancy,
-            surface,
-            cover,
+            grids,
             tuning,
             is_dead,
         ) {

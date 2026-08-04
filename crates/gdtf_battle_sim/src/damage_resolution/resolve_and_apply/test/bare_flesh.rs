@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::resolve_and_apply::ShotSource;
 
 #[test]
 fn bare_flesh_uses_no_protection_or_hardness() {
@@ -19,8 +20,10 @@ fn bare_flesh_uses_no_protection_or_hardness() {
 
     let report = resolve_and_apply(
         &ganger_outcome(entity, part),
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
@@ -32,11 +35,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut rng(),
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundFixtures::new().roll(&tuning),
     );
 
     assert!(
@@ -72,8 +71,10 @@ fn bare_flesh_uses_no_protection_or_hardness() {
     );
     let report2 = resolve_and_apply(
         &ganger_outcome(entity, part),
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         Some(TargetGanger {
             hp:        &mut hp2,
             wounds:    &mut wounds2,
@@ -85,11 +86,7 @@ fn bare_flesh_uses_no_protection_or_hardness() {
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut rng(),
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundFixtures::new().roll(&tuning),
     );
     assert!(
         applied_of(&report2).is_some(),

@@ -10,10 +10,7 @@ use gdtf_battle_sim::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart, WornBy,
     },
     cover::CoverLedger,
-    fire::{
-        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
-        WeaponQuery, WearsQuery, WieldsQuery,
-    },
+    fire::{BattleGrids, FireOrder, ShooterQuery, StruckBodies, WieldedWeapons},
     ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
     injuries::{InjuryRegistry, InjuryTables},
@@ -23,6 +20,7 @@ use gdtf_battle_sim::{
         Cell, CellLevel, Direction, Level, LifeState, OccupancyGrid, Position, Stance, StanceKind,
         Tu,
     },
+    resolve_and_apply::WoundRoll,
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
     test_support::{injury_rng, severity_rng, shot_rng, single_mode},
@@ -133,13 +131,8 @@ fn spawn_enemy(app: &mut App) -> Entity {
 fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) -> bool {
     type FireQueries<'w, 's> = (
         ShooterQuery<'w, 's>,
-        TargetQuery<'w, 's>,
-        WearsQuery<'w, 's>,
-        PieceQuery<'w, 's>,
-        WieldsQuery<'w, 's>,
-        WeaponQuery<'w, 's>,
-        MeleeQuery<'w, 's>,
-        MountedQuery<'w, 's>,
+        WieldedWeapons<'w, 's>,
+        StruckBodies<'w, 's>,
     );
     let hp_before = app.world().get::<Hp>(enemy).map_or(0, |h| **h);
     let wounds_before = app
@@ -177,26 +170,19 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
     let mut state: SystemState<FireQueries> = SystemState::new(app.world_mut());
     {
         let world = app.world_mut();
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
-            state.get_mut(world)
-        else {
+        let Ok((mut shooters, mut arms, mut bodies)) = state.get_mut(world) else {
             return false;
         };
         let _volley = gdtf_battle_sim::fire::fire(
-            shooter,
             FireOrder {
-                mode:         &mode,
-                target_cell:  Cell::new(enemy_cell().x, enemy_cell().y),
+                shooter,
+                mode: &mode,
+                target_cell: Cell::new(enemy_cell().x, enemy_cell().y),
                 target_level: Level::new(0),
             },
             &mut shooters,
-            &mut targets,
-            &wears,
-            &mut pieces,
-            &wields,
-            &mut weapons,
-            &melee,
-            &mounted,
+            &mut arms,
+            &mut bodies,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,
@@ -204,12 +190,14 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
                 slab:        &mut slab,
                 brace_cells: &BraceStairCells::empty(),
             },
-            &tuning,
             &mut shot_rng,
-            &mut sev_rng,
-            &InjuryTables::default(),
-            &InjuryRegistry::default(),
-            &mut injury_rng,
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut sev_rng,
+                tables:       &InjuryTables::default(),
+                registry:     &InjuryRegistry::default(),
+                injury_rng:   &mut injury_rng,
+            },
         );
     }
     state.apply(app.world_mut());

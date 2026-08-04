@@ -8,11 +8,12 @@ use bevy::{
 use crate::{
     acts::request::{ThrowGrenadeRequested, ThrowResolved},
     effects::attachments::WeaponBraceBonus,
-    fire::{BattleGrids, MeleeQuery, PieceQuery, TargetQuery, WearsQuery, resolve_blast},
+    fire::{BattleGrids, BlastFootprint, MeleeQuery, StruckBodies, resolve_blast},
     ganger::{Luck, Position, Tu},
     injuries::{InjuryRegistry, InjuryTables},
     magazine::Magazine,
     march::{MarchResult, march_arc},
+    resolve_and_apply::{ShotSource, WoundRoll},
     rng::{InjuryRng, SeverityRng, ShotRng},
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
@@ -117,9 +118,7 @@ pub fn dispatch_throw_grenade(
     mut weapons: ThrowWeaponQuery,
     wields: Query<&Wields>,
     melee: MeleeQuery,
-    mut targets: TargetQuery,
-    wears: WearsQuery,
-    mut pieces: PieceQuery,
+    mut bodies: StruckBodies,
     mut world: ThrowWorld,
     mut resolved: MessageWriter<ThrowResolved>,
 ) {
@@ -204,21 +203,25 @@ pub fn dispatch_throw_grenade(
             brace_cells: &world.brace_cells,
         };
         resolve_blast(
-            landing,
-            thrower_cell,
-            grenade.stats(),
-            grenade.hit_type,
-            thrower_luck,
+            BlastFootprint {
+                landing,
+                thrower: thrower_cell,
+                hit: grenade.hit_type,
+            },
+            ShotSource {
+                weapon: grenade.stats(),
+                luck:   thrower_luck,
+            },
             &mut grids,
-            &mut targets,
-            &wears,
-            &mut pieces,
-            tuning,
+            &mut bodies,
             &mut world.shot_rng,
-            &mut world.severity_rng,
-            tables,
-            registry,
-            &mut world.injury_rng,
+            &mut WoundRoll {
+                tuning,
+                severity_rng: &mut world.severity_rng,
+                tables,
+                registry,
+                injury_rng: &mut world.injury_rng,
+            },
         );
 
         resolved.write(ThrowResolved::new(landing, grenade.damage_type));

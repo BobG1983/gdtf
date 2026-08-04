@@ -7,12 +7,39 @@ use crate::{
     cover::CoverLedger,
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
+    injuries::{InjuryRegistry, InjuryTables},
     resolve_and_apply::kinds::{
         cover::CoverVerdict, ganger::GangerVerdict, ground::GroundAccrual, slab::SlabVerdict,
     },
     resolve_coarse::ShotKind,
+    rng::{InjuryRng, SeverityRng},
     slab::SlabLedger,
+    tuning::CombatTuning,
+    weapon::WeaponStats,
 };
+
+/// The attacking side of one hit: the weapon that fired and the shooter's luck.
+#[derive(Debug, Clone, Copy)]
+pub struct ShotSource<'a> {
+    /// Weapon stats behind the shot.
+    pub weapon: WeaponStats<'a>,
+    /// Shooter luck applied to severity.
+    pub luck:   Luck,
+}
+
+/// Tuning, injury tables, and the RNG streams one wound roll draws from.
+pub struct WoundRoll<'a> {
+    /// Combat tuning.
+    pub tuning:       &'a CombatTuning,
+    /// Severity RNG stream.
+    pub severity_rng: &'a mut SeverityRng,
+    /// Injury tables.
+    pub tables:       &'a InjuryTables,
+    /// Injury registry.
+    pub registry:     &'a InjuryRegistry,
+    /// Injury RNG stream.
+    pub injury_rng:   &'a mut InjuryRng,
+}
 
 /// Mutable view of a living combatant that a hit can change.
 pub struct TargetGanger<'a> {

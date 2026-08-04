@@ -17,6 +17,7 @@ use crate::{
     injuries::HandsAvailable,
     los::{Observer, PeekOffset, Target, can_see},
     magazine::{FireActor, Magazine, can_fire, clamp_burst, mode_tu_cost},
+    march::MarchGrids,
     occupancy::OccupancyGrid,
     rng::ReactionRng,
     surface::SurfaceGrid,
@@ -96,9 +97,11 @@ pub(super) fn try_reaction(
         &target,
         reactor.life,
         tuning.view_range,
-        occupancy,
-        surface,
-        cover,
+        MarchGrids {
+            occupancy,
+            surface,
+            cover,
+        },
         tuning,
         is_dead,
     ) {

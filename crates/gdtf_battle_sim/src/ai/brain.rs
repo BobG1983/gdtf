@@ -15,7 +15,9 @@ use crate::{
     ganger::LifeState,
     injuries::{HandsAvailable, InflictedInjuries, MovementCostFactor},
     magazine::{Magazine, mode_tu_cost},
+    march::MarchGrids,
     occupancy::OccupancyGrid,
+    pathfinder::MoveGrids,
     surface::SurfaceGrid,
     terrain::floor::FloorCostGrid,
     tuning::CombatTuning,
@@ -148,9 +150,11 @@ pub fn enemy_ai_turn(
                 &targets,
                 (magazine, mode, handedness),
                 fire_cost,
-                &occupancy,
-                &surface,
-                &cover,
+                MarchGrids {
+                    occupancy: &occupancy,
+                    surface:   &surface,
+                    cover:     &cover,
+                },
                 &tuning,
                 is_dead,
             );
@@ -174,10 +178,12 @@ pub fn enemy_ai_turn(
             &goal,
             &rows,
             omniscient,
-            &occupancy,
-            &links,
-            &tuning,
-            &floor_costs,
+            MoveGrids {
+                occupancy:   &occupancy,
+                links:       &links,
+                floor_costs: &floor_costs,
+                tuning:      &tuning,
+            },
         ) {
             move_writer.write(MoveRequested::new(enemy.entity, dest));
             acted = true;

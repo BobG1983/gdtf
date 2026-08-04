@@ -14,7 +14,7 @@ Done means the suite was observed green in **this** session, after the final edi
 Run from the repo root. Green = all six exit 0. Use the `.cargo/config.toml` **aliases** — never hand-type the expanded feature lists.
 
 ```bash
-cargo fmt --check
+cargo fmt
 cargo dclippy -- -D warnings
 cargo dtest
 cargo dbuild
@@ -24,7 +24,7 @@ cargo doc-full
 
 | Alias | Purpose |
 |-------|---------|
-| `fmt --check` | Formatting is part of done. |
+| `fmt` | Formatting is part of done. |
 | `dclippy` | Workspace clippy + unwrap/expect/panic/todo + missing_docs. Features: dynamic_linking, dev_tools. |
 | `dtest` | Same feature set. Zero tests in a target is still exit 0. |
 | `dbuild` | Links the real `grimdark_turfwar` binary (check/clippy never link it). |
@@ -38,12 +38,6 @@ QA modules compile under `debug_assertions` (no `net_qa` feature). Protocol sche
 ### CI green (static)
 
 CI does not use `dynamic_linking` or `dev_tools`. See `.github/workflows/`.
-
-```bash
-cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-```
 
 Release binary builds are packaging-time only (not a CI gate).
 

@@ -9,7 +9,7 @@ use crate::{
     cover::{CoverEntry, CoverLedger, HeightBand},
     ganger::{Facing, Position, Stance},
     hit_location::roll_body_part,
-    march::{MarchDir, MarchKind, MarchResult, march_vector},
+    march::{MarchDir, MarchGrids, MarchKind, MarchResult, march_vector},
     metric::{Cell, CellLevel, Level, SimPos},
     occupancy::OccupancyGrid,
     rng::ShotRng,
@@ -118,9 +118,11 @@ pub fn resolve_coarse(
     let march = march_vector(
         muzzle,
         MarchDir::new(trajectory.vec()),
-        occupancy,
-        surface,
-        cover,
+        MarchGrids {
+            occupancy,
+            surface,
+            cover,
+        },
         tuning,
         shooter_cell,
         is_dead,

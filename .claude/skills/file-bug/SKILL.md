@@ -31,7 +31,7 @@ Via project-manager, create in project GDTF with four sections:
 
 ## 3. THEN branch
 
-Clean tree on `develop`. `git checkout -b feature/gtw-N-slug` off develop (plain git). Move to In Progress.
+Clean tree on `develop`. `git checkout -b feature/gtw-N-slug` off develop. Move to In Progress.
 
 ## 4. Implement
 

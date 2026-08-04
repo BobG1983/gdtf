@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::resolve_and_apply::WoundRoll;
 
 #[test]
 fn same_seed_reproduces_byte_equal_volley() {
@@ -32,30 +33,16 @@ fn same_seed_reproduces_byte_equal_volley() {
         let mut sev_r = severity_rng();
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         match state.get_mut(&mut world) {
-            Ok((
-                mut shooters,
-                mut targets,
-                wears,
-                mut pieces,
-                wields,
-                mut weapons,
-                melee,
-                mounted,
-            )) => fire(
-                shooter,
+            Ok((mut shooters, mut arms, mut bodies)) => fire(
                 FireOrder {
-                    mode:         &mode,
-                    target_cell:  Cell::new(8, 5),
+                    shooter,
+                    mode: &mode,
+                    target_cell: Cell::new(8, 5),
                     target_level: Level::new(0),
                 },
                 &mut shooters,
-                &mut targets,
-                &wears,
-                &mut pieces,
-                &wields,
-                &mut weapons,
-                &melee,
-                &mounted,
+                &mut arms,
+                &mut bodies,
                 BattleGrids {
                     occupancy:   &occupancy,
                     surface:     &surface,
@@ -63,12 +50,14 @@ fn same_seed_reproduces_byte_equal_volley() {
                     slab:        &mut slab,
                     brace_cells: &BraceStairCells::empty(),
                 },
-                &tuning,
                 &mut shot_r,
-                &mut sev_r,
-                &injury_tables(),
-                &injury_registry(),
-                &mut injury_rng(),
+                &mut WoundRoll {
+                    tuning:       &tuning,
+                    severity_rng: &mut sev_r,
+                    tables:       &injury_tables(),
+                    registry:     &injury_registry(),
+                    injury_rng:   &mut injury_rng(),
+                },
             ),
             Err(_) => Volley::empty(),
         }

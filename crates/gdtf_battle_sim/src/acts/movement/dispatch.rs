@@ -14,7 +14,7 @@ use crate::{
     injuries::{InflictedInjuries, MovementCostFactor},
     metric::CellLevel,
     occupancy::OccupancyGrid,
-    pathfinder::{PlanningView, find_path},
+    pathfinder::{MoveGrids, PlanningView, find_path},
     terrain::floor::FloorCostGrid,
     tu::can_spend_tu,
     tuning::CombatTuning,
@@ -86,10 +86,12 @@ pub fn dispatch_move(
         let Ok(path) = find_path(
             start,
             request.dest,
-            &grid,
-            &links,
-            &tuning,
-            &floor_costs,
+            MoveGrids {
+                occupancy:   &grid,
+                links:       &links,
+                floor_costs: &floor_costs,
+                tuning:      &tuning,
+            },
             factor,
             &planning,
         ) else {
