@@ -13,7 +13,7 @@ use gdtf_battle_sim::{
     floor::FloorCostGrid,
     metric::MAX_LEVELS,
     occupancy::{GRID_HEIGHT, GRID_WIDTH, TerrainKind},
-    pathfinder::{PlanningView, find_path},
+    pathfinder::{MoveGrids, PlanningView, find_path},
     prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid, Position, Tu},
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
@@ -89,10 +89,12 @@ fn expected_route(app: &App, start: CellLevel, goal: CellLevel) -> Option<(Vec<C
     find_path(
         start,
         goal,
-        grid,
-        links,
-        tuning,
-        floor_costs,
+        MoveGrids {
+            occupancy: grid,
+            links,
+            floor_costs,
+            tuning,
+        },
         gdtf_battle_sim::injuries::MovementCostFactor::IDENTITY,
         &planning,
     )
@@ -193,10 +195,12 @@ fn unreachable_target_yields_empty_preview() {
         find_path(
             start,
             goal,
-            grid,
-            links,
-            tuning,
-            floor_costs,
+            MoveGrids {
+                occupancy: grid,
+                links,
+                floor_costs,
+                tuning,
+            },
             gdtf_battle_sim::injuries::MovementCostFactor::IDENTITY,
             &planning
         )

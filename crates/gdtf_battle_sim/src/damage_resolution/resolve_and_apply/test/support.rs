@@ -17,7 +17,7 @@ pub(super) use crate::{
     metric::{Cell, CellLevel, Level, SimPos},
     resolve_and_apply::{
         AppliedDamage, CoverVerdict, GangerVerdict, GroundAccrual, HitReport, HitVerdict,
-        SlabVerdict, StruckPiece, StruckSurfaces, TargetGanger, resolve_and_apply,
+        SlabVerdict, StruckPiece, StruckSurfaces, TargetGanger, WoundRoll, resolve_and_apply,
     },
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::{HitResult, resolve_hit},
@@ -249,5 +249,33 @@ pub(super) fn ground_outcome() -> ShotOutcome {
         band: HeightBand::Low,
         muzzle: SimPos::new(0.5, 0.5, 0.5),
         trajectory: a_trajectory(),
+    }
+}
+
+pub(super) struct WoundFixtures {
+    severity: SeverityRng,
+    tables:   InjuryTables,
+    registry: InjuryRegistry,
+    injury:   InjuryRng,
+}
+
+impl WoundFixtures {
+    pub(super) fn new() -> Self {
+        Self {
+            severity: rng(),
+            tables:   injury_tables(),
+            registry: injury_registry(),
+            injury:   injury_rng(),
+        }
+    }
+
+    pub(super) fn roll<'a>(&'a mut self, tuning: &'a CombatTuning) -> WoundRoll<'a> {
+        WoundRoll {
+            tuning,
+            severity_rng: &mut self.severity,
+            tables: &self.tables,
+            registry: &self.registry,
+            injury_rng: &mut self.injury,
+        }
     }
 }

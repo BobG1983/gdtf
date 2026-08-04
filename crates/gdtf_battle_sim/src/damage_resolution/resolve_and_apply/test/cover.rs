@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::resolve_and_apply::{ShotSource, WoundRoll};
 
 #[test]
 fn sufficient_hit_destroys_cover_and_records_the_cell() {
@@ -13,16 +14,20 @@ fn sufficient_hit_destroys_cover_and_records_the_cell() {
     let mut rng_used = rng();
     let report = resolve_and_apply(
         &cover_outcome(entry),
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         None,
         an_entity(),
         surfaces(&mut cover, &mut slab_ledger()),
-        &tuning,
-        &mut rng_used,
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng_used,
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut injury_rng(),
+        },
     );
 
     assert_eq!(
@@ -70,16 +75,20 @@ fn insufficient_hit_reduces_hp_without_destroying() {
     let mut rng_used = rng();
     let report = resolve_and_apply(
         &cover_outcome(entry),
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         None,
         an_entity(),
         surfaces(&mut cover, &mut slab_ledger()),
-        &tuning,
-        &mut rng_used,
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng_used,
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut injury_rng(),
+        },
     );
 
     assert_eq!(
@@ -127,16 +136,20 @@ fn cover_hit_is_deterministic_under_seeded_rng() {
         let mut r = rng();
         let report = resolve_and_apply(
             &cover_outcome(entry),
-            weapon.stats(),
-            Luck::new(0.0),
+            ShotSource {
+                weapon: weapon.stats(),
+                luck:   Luck::new(0.0),
+            },
             None,
             an_entity(),
             surfaces(&mut cover, &mut slab_ledger()),
-            &tuning,
-            &mut r,
-            &injury_tables(),
-            &injury_registry(),
-            &mut injury_rng(),
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut r,
+                tables:       &injury_tables(),
+                registry:     &injury_registry(),
+                injury_rng:   &mut injury_rng(),
+            },
         );
         (report, cover.peek(&at).copied())
     };

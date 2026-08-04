@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn present_slab_stops_climbing_ray_destroyed_crosses() {
@@ -15,9 +16,11 @@ fn present_slab_stops_climbing_ray_destroyed_crosses() {
     let r_present = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &present,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &present,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -34,9 +37,11 @@ fn present_slab_stops_climbing_ray_destroyed_crosses() {
     let r_destroyed = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &destroyed,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &destroyed,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -51,9 +56,11 @@ fn present_slab_stops_climbing_ray_destroyed_crosses() {
     let r_absent = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &absent,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &absent,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),

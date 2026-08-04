@@ -7,18 +7,16 @@ use crate::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,
     },
     armor_wear::ArmorWearOutcome,
-    ganger::{LifeState, Luck},
-    injuries::{DamageContext, InjuryRegistry, InjuryTables, RolledInjury},
+    ganger::LifeState,
+    injuries::{DamageContext, RolledInjury},
     matchup::{Matchup, matchup},
     resolve_and_apply::{
-        report::{HitVerdict, StruckPiece, TargetGanger},
+        report::{HitVerdict, ShotSource, StruckPiece, TargetGanger, WoundRoll},
         wound_core::{WoundBlow, WoundCoreInputs, synthesize_wound},
     },
     resolve_coarse::ShotOutcome,
     resolve_hit::HitResult,
-    rng::{InjuryRng, SeverityRng},
     severity::Severity,
-    tuning::CombatTuning,
     weapon::{Dot, WeaponStats},
 };
 
@@ -78,22 +76,14 @@ fn struck_piece(piece: Option<&StruckPiece<'_>>, weapon: WeaponStats<'_>) -> (Ar
 }
 
 /// Resolve and apply a ganger hit, or return `NoEffect` when the target is missing/dead.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "TargetGanger already groups the target; injury tables and InjuryRng are separate streams"
-)]
 pub(in crate::damage_resolution::resolve_and_apply) fn fold(
     outcome: &ShotOutcome,
-    weapon: WeaponStats<'_>,
-    shooter_luck: Luck,
+    source: ShotSource<'_>,
     target: Option<TargetGanger<'_>>,
     target_entity: Entity,
-    tuning: &CombatTuning,
-    rng: &mut SeverityRng,
-    tables: &InjuryTables,
-    registry: &InjuryRegistry,
-    injury_rng: &mut InjuryRng,
+    roll: &mut WoundRoll<'_>,
 ) -> HitVerdict {
+    let weapon = source.weapon;
     let Some(target) = target else {
         return HitVerdict::NoEffect;
     };
@@ -113,17 +103,17 @@ pub(in crate::damage_resolution::resolve_and_apply) fn fold(
             piece,
             matchup: resolved_matchup,
             fatal_bias: *weapon.fatal_bias,
-            shooter_luck,
+            shooter_luck: source.luck,
             context: DamageContext::Ranged,
             damage_mult: None,
         },
         target,
         target_entity,
-        tuning,
-        severity_rng: rng,
-        tables,
-        registry,
-        injury_rng,
+        tuning: roll.tuning,
+        severity_rng: &mut *roll.severity_rng,
+        tables: roll.tables,
+        registry: roll.registry,
+        injury_rng: &mut *roll.injury_rng,
     }) else {
         return HitVerdict::NoEffect;
     };

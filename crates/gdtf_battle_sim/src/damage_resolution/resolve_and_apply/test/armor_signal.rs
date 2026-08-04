@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::resolve_and_apply::{ShotSource, WoundRoll};
 
 #[test]
 fn wearing_hit_surfaces_armor_damaged_with_the_delta_and_no_break() {
@@ -19,8 +20,10 @@ fn wearing_hit_surfaces_armor_damaged_with_the_delta_and_no_break() {
 
     let report = resolve_and_apply(
         &ganger_outcome(entity, part),
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
@@ -32,11 +35,13 @@ fn wearing_hit_surfaces_armor_damaged_with_the_delta_and_no_break() {
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut rng(),
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng(),
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut injury_rng(),
+        },
     );
 
     assert!(
@@ -80,8 +85,10 @@ fn breaking_hit_surfaces_armor_broken_and_not_armor_damaged() {
 
     let report = resolve_and_apply(
         &ganger_outcome(entity, part),
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
@@ -93,11 +100,13 @@ fn breaking_hit_surfaces_armor_broken_and_not_armor_damaged() {
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut rng(),
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng(),
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut injury_rng(),
+        },
     );
 
     assert!(
@@ -137,8 +146,10 @@ fn bare_flesh_hit_surfaces_neither_armor_signal() {
 
     let report = resolve_and_apply(
         &ganger_outcome(entity, part),
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
@@ -150,11 +161,13 @@ fn bare_flesh_hit_surfaces_neither_armor_signal() {
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut rng(),
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng(),
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut injury_rng(),
+        },
     );
 
     assert!(

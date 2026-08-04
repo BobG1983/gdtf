@@ -16,5 +16,8 @@ pub use kinds::{
     ground::GroundAccrual,
     slab::SlabVerdict,
 };
-pub use report::{HitReport, HitVerdict, Protecting, StruckPiece, StruckSurfaces, TargetGanger};
+pub use report::{
+    HitReport, HitVerdict, Protecting, ShotSource, StruckPiece, StruckSurfaces, TargetGanger,
+    WoundRoll,
+};
 pub(crate) use wound_core::{WoundBlow, WoundCoreInputs, synthesize_wound};

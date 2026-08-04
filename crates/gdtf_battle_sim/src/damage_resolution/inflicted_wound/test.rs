@@ -10,7 +10,9 @@ use crate::{
     injuries::{InjuryRegistry, InjuryTables},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, Level, SimPos},
-    resolve_and_apply::{HitVerdict, StruckSurfaces, TargetGanger, resolve_and_apply},
+    resolve_and_apply::{
+        HitVerdict, ShotSource, StruckSurfaces, TargetGanger, WoundRoll, resolve_and_apply,
+    },
     resolve_coarse::{ShotKind, ShotOutcome},
     rng::{BattleSeed, InjuryRng, SeverityRng},
     sample_cone::{ConcentrationP, ShotDir, sample_cone_vector},
@@ -126,8 +128,10 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
 
         let report = resolve_and_apply(
             &ganger_outcome(entity, part),
-            weapon.stats(),
-            Luck::new(0.0),
+            ShotSource {
+                weapon: weapon.stats(),
+                luck:   Luck::new(0.0),
+            },
             Some(TargetGanger {
                 hp:        &mut hp,
                 wounds:    &mut wounds,
@@ -142,11 +146,13 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
                 cover: &mut cover,
                 slab:  &mut slab,
             },
-            &tuning,
-            &mut r,
-            &InjuryTables::default(),
-            &InjuryRegistry::default(),
-            &mut InjuryRng::from_root(BattleSeed::new(SEED)),
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut r,
+                tables:       &InjuryTables::default(),
+                registry:     &InjuryRegistry::default(),
+                injury_rng:   &mut InjuryRng::from_root(BattleSeed::new(SEED)),
+            },
         );
 
         let HitVerdict::Ganger(verdict) = &report.verdict else {

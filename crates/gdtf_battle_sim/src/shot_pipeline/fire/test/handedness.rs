@@ -1,5 +1,5 @@
 use super::support::*;
-use crate::weapon::Wields;
+use crate::{resolve_and_apply::WoundRoll, weapon::Wields};
 
 fn spawn_unarmed(world: &mut World) -> Entity {
     let ganger = world
@@ -35,26 +35,19 @@ fn run_fire(world: &mut World, shooter: Entity, mode: &FireModeSpec) -> Volley {
     let mut sev_r = severity_rng();
 
     let mut state: SystemState<FireQueries> = SystemState::new(world);
-    let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
-        state.get_mut(world)
-    else {
+    let Ok((mut shooters, mut arms, mut bodies)) = state.get_mut(world) else {
         return Volley::empty();
     };
     fire(
-        shooter,
         FireOrder {
+            shooter,
             mode,
             target_cell: Cell::new(8, 5),
             target_level: Level::new(0),
         },
         &mut shooters,
-        &mut targets,
-        &wears,
-        &mut pieces,
-        &wields,
-        &mut weapons,
-        &melee,
-        &mounted,
+        &mut arms,
+        &mut bodies,
         BattleGrids {
             occupancy:   &occupancy,
             surface:     &surface,
@@ -62,12 +55,14 @@ fn run_fire(world: &mut World, shooter: Entity, mode: &FireModeSpec) -> Volley {
             slab:        &mut slab,
             brace_cells: &BraceStairCells::empty(),
         },
-        &tuning,
         &mut shot_r,
-        &mut sev_r,
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut sev_r,
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut injury_rng(),
+        },
     )
 }
 

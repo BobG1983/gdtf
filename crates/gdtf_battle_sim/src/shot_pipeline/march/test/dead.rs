@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn first_occupant_dead_round_strikes_second_live_occupant() {
@@ -22,9 +23,11 @@ fn first_occupant_dead_round_strikes_second_live_occupant() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         is_dead,
@@ -61,9 +64,11 @@ fn no_occupant_dead_round_strikes_first_as_before() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -100,9 +105,11 @@ fn first_occupant_dead_wall_behind_returns_wall() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         is_dead,
@@ -136,9 +143,11 @@ fn first_occupant_dead_nothing_behind_misses() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         is_dead,
@@ -173,9 +182,11 @@ fn single_dead_occupant_is_not_struck() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         is_dead,

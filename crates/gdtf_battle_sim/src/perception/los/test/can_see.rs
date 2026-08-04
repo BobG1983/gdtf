@@ -1,5 +1,4 @@
 use super::support::*;
-
 fn clear_pair() -> (Position, Stance, Facing, Position, Stance) {
     (
         position(2, 5, 0),
@@ -43,9 +42,7 @@ fn at_range_edge_with_clear_los_is_true() {
         &target,
         LifeState::Alive,
         view_range,
-        &occupancy,
-        &surface,
-        &cover,
+        grids(&occupancy, &surface, &cover),
         &tuning,
         no_dead(),
     );
@@ -81,9 +78,7 @@ fn beyond_range_edge_is_false() {
         &target,
         LifeState::Alive,
         view_range,
-        &occupancy,
-        &surface,
-        &cover,
+        grids(&occupancy, &surface, &cover),
         &tuning,
         no_dead(),
     );
@@ -119,9 +114,7 @@ fn downed_observer_sees_nothing() {
         &target,
         LifeState::Downed,
         view_range,
-        &occupancy,
-        &surface,
-        &cover,
+        grids(&occupancy, &surface, &cover),
         &tuning,
         no_dead(),
     );
@@ -157,9 +150,7 @@ fn dead_observer_sees_nothing() {
         &target,
         LifeState::Dead,
         view_range,
-        &occupancy,
-        &surface,
-        &cover,
+        grids(&occupancy, &surface, &cover),
         &tuning,
         no_dead(),
     );
@@ -195,9 +186,7 @@ fn alive_observer_in_range_with_clear_los_is_true() {
         &target,
         LifeState::Alive,
         view_range,
-        &occupancy,
-        &surface,
-        &cover,
+        grids(&occupancy, &surface, &cover),
         &tuning,
         no_dead(),
     );
@@ -234,9 +223,7 @@ fn blocked_los_inside_range_is_false() {
         &target,
         LifeState::Alive,
         view_range,
-        &occupancy,
-        &surface,
-        &cover,
+        grids(&occupancy, &surface, &cover),
         &tuning,
         no_dead(),
     );
@@ -277,9 +264,7 @@ fn chebyshev_ignores_level_axis() {
         &target,
         LifeState::Alive,
         view_range,
-        &occupancy,
-        &surface,
-        &cover,
+        grids(&occupancy, &surface, &cover),
         &tuning,
         no_dead(),
     );

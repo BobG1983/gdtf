@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn corpse_passes_through_living_blocks() {
@@ -37,9 +38,11 @@ fn corpse_passes_through_living_blocks() {
     let living = has_los(
         &observer,
         &target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );
@@ -52,9 +55,11 @@ fn corpse_passes_through_living_blocks() {
     let through = has_los(
         &observer,
         &target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         corpse_predicate,
     );

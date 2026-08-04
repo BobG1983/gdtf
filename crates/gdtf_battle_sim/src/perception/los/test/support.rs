@@ -5,6 +5,7 @@ pub(super) use crate::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Direction, Facing, LifeState, Position, Stance, StanceKind},
     los::{Observer, PeekOffset, Target, can_see, has_los, has_los_peeking},
+    march::MarchGrids,
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, StairEyeOffset},
     surface::{SlabState, SurfaceGrid},
@@ -58,4 +59,16 @@ pub(super) fn place_occupant(
 ) {
     grid.set_occupant(at, Some(entity));
     grid.set_occupant_band(at, Some(band));
+}
+
+pub(super) fn grids<'a>(
+    occupancy: &'a OccupancyGrid,
+    surface: &'a SurfaceGrid,
+    cover: &'a CoverLedger,
+) -> MarchGrids<'a> {
+    MarchGrids {
+        occupancy,
+        surface,
+        cover,
+    }
 }

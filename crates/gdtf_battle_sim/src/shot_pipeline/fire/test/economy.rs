@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::resolve_and_apply::WoundRoll;
 
 #[test]
 fn charge_is_taken_once_and_reflects_aiming() {
@@ -35,34 +36,19 @@ fn charge_is_taken_once_and_reflects_aiming() {
 
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
         {
-            let Ok((
-                mut shooters,
-                mut targets,
-                wears,
-                mut pieces,
-                wields,
-                mut weapons,
-                melee,
-                mounted,
-            )) = state.get_mut(&mut world)
-            else {
+            let Ok((mut shooters, mut arms, mut bodies)) = state.get_mut(&mut world) else {
                 return;
             };
             let volley = fire(
-                shooter,
                 FireOrder {
-                    mode:         &mode,
-                    target_cell:  Cell::new(40, 5),
+                    shooter,
+                    mode: &mode,
+                    target_cell: Cell::new(40, 5),
                     target_level: Level::new(0),
                 },
                 &mut shooters,
-                &mut targets,
-                &wears,
-                &mut pieces,
-                &wields,
-                &mut weapons,
-                &melee,
-                &mounted,
+                &mut arms,
+                &mut bodies,
                 BattleGrids {
                     occupancy:   &occupancy,
                     surface:     &surface,
@@ -70,12 +56,14 @@ fn charge_is_taken_once_and_reflects_aiming() {
                     slab:        &mut slab,
                     brace_cells: &BraceStairCells::empty(),
                 },
-                &tuning,
                 &mut shot_r,
-                &mut sev_r,
-                &injury_tables(),
-                &injury_registry(),
-                &mut injury_rng(),
+                &mut WoundRoll {
+                    tuning:       &tuning,
+                    severity_rng: &mut sev_r,
+                    tables:       &injury_tables(),
+                    registry:     &injury_registry(),
+                    injury_rng:   &mut injury_rng(),
+                },
             );
             assert_eq!(volley.reports.len(), 5, "the full 5-round burst fired");
             assert_eq!(
@@ -121,26 +109,19 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
 
     let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
     let volley = {
-        let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
-            state.get_mut(&mut world)
-        else {
+        let Ok((mut shooters, mut arms, mut bodies)) = state.get_mut(&mut world) else {
             return;
         };
         fire(
-            shooter,
             FireOrder {
-                mode:         &mode,
-                target_cell:  Cell::new(40, 5),
+                shooter,
+                mode: &mode,
+                target_cell: Cell::new(40, 5),
                 target_level: Level::new(0),
             },
             &mut shooters,
-            &mut targets,
-            &wears,
-            &mut pieces,
-            &wields,
-            &mut weapons,
-            &melee,
-            &mounted,
+            &mut arms,
+            &mut bodies,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,
@@ -148,12 +129,14 @@ fn ammo_clamps_the_burst_and_drains_the_magazine() {
                 slab:        &mut slab,
                 brace_cells: &BraceStairCells::empty(),
             },
-            &tuning,
             &mut shot_r,
-            &mut sev_r,
-            &injury_tables(),
-            &injury_registry(),
-            &mut injury_rng(),
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut sev_r,
+                tables:       &injury_tables(),
+                registry:     &injury_registry(),
+                injury_rng:   &mut injury_rng(),
+            },
         )
     };
 

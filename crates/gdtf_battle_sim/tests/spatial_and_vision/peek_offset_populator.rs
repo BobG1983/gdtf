@@ -9,6 +9,7 @@ use gdtf_battle_sim::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::Facing,
     los::{Observer, PeekOffset, Target, has_los, has_los_peeking},
+    march::MarchGrids,
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, StairEyeOffset, TerrainKind},
     occupancy_sync::{CoverDestroyed, sync_destroyed_cover},
@@ -130,9 +131,11 @@ fn populates_corner_peek_and_enables_around_corner_los() {
     let centred_sighted = has_los(
         &centred,
         &target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         |_| false,
     );
@@ -145,9 +148,11 @@ fn populates_corner_peek_and_enables_around_corner_los() {
         &centred,
         &target,
         peek,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         |_| false,
     );
