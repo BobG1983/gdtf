@@ -75,8 +75,8 @@ Full authoring guide: [authoring/injury-authoring.md](../authoring/injury-author
 
 ## Improvement & the campaign layer
 
-All of this is campaign layer — **designed, not yet built**.
+Campaign layer — **training + XP design proposed, not yet built**. Full MVP rules: [post-action.md](../mvp/post-action.md).
 
-- **Stats improve via use** (Xenonauts model) — using a capability trains its attribute.
-- **XP is a separate track** that buys **skills / abilities**, not raw stat increases.
+- **Training improves attributes** — using, stressing/failing, feats, surviving damage / morale loss / Downed (layers sum; hard max +3 per attribute per battle for v0). Training never grants skills. MVP and mere survival are not training.
+- **XP buys skills only** — never raw attribute points. v0 accrues a skill XP bank (participation + kills + survival + MVP) and shows it; skill purchase UI is separate.
 - **TBD (future / maybe):** a computed *injury-load* track (too many accumulated injuries → the ganger dies) and a *morale-load* track (too much accumulated morale damage → the ganger leaves the gang). Noted, not scheduled.
