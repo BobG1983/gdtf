@@ -21,7 +21,7 @@
 #   exit 0 : allow the tool call.
 #   exit 2 : BLOCK the tool call; stderr is shown to the model.
 #
-# TEST SEAM: set PRE_COMMIT_GATE_SUITE_CMD to override the suite command
+# TEST OVERRIDE: set PRE_COMMIT_GATE_SUITE_CMD to replace the suite command
 # (e.g. =true for a guaranteed-green run, =false for guaranteed-red) so the
 # gate's logic can be exercised without running cargo.
 
@@ -130,20 +130,34 @@ if [ -z "$PASS_BRANCH" ] || [ -z "$PASS_HEAD" ] || [ -z "$CUR_HEAD" ] \
   exit 2
 fi
 
-# --- (3) Suite gate: the workspace green suite is the ONE definition of green. ---
-# Green (CLAUDE.md): fmt --check, clippy -D warnings, then cargo test --workspace.
-# All three must pass; run from the repo root. Zero Rust tests passing is NOT
-# red (cargo test exits 0), so there is no empty-suite-is-red check here.
-# GTW-877: use the `.cargo/config.toml` ALIASES rather than hand-typed long-form flags. The
-# hand-typed form here had drifted to `dynamic_linking` alone, so this guard checked NONE of
-# the feature-gated modules the aliases carry (`dev_tools`, the game's `grimdark_turfwar/net_qa`,
-# the editor's `gdtf_content_editor/net_qa`). The aliases cannot drift from themselves.
+# --- (2b) Scope: DOCS gate-pass cannot cover a wider (FULL) tree. ---
+SCOPE_SCRIPT="$REPO_DIR/.claude/hooks/suite-scope.sh"
+PASS_SCOPE="$(sed -n 's/^SCOPE=//p' "$GATE_PASS" | head -n1)"
+[ -n "$PASS_SCOPE" ] || PASS_SCOPE="FULL"
+CURRENT_SCOPE="FULL"
+if [ -x "$SCOPE_SCRIPT" ]; then
+  CURRENT_SCOPE="$("$SCOPE_SCRIPT" --staged --from "$PASS_HEAD" 2>/dev/null || echo FULL)"
+  case "$CURRENT_SCOPE" in FULL|DOCS) ;; *) CURRENT_SCOPE="FULL" ;; esac
+fi
+if [ "$PASS_SCOPE" = "DOCS" ] && [ "$CURRENT_SCOPE" = "FULL" ]; then
+  echo "commit blocked: gate-pass SCOPE=DOCS but staged/since-gate changes need FULL — re-run /gate" >&2
+  exit 2
+fi
+
+# --- (3) Suite gate: pre-commit runs a fast FULL subset; DOCS skips cargo. ---
+# Full green is the eight aliases in verification.md via /gate.
+# Pre-commit FULL subset: fmt, dclippy, dtest, dbuild (four alias steps).
+# Use `.cargo/config.toml` aliases — never hand-typed feature lists.
+if [ "$CURRENT_SCOPE" = "DOCS" ] && [ "$PASS_SCOPE" = "DOCS" ]; then
+  exit 0
+fi
+
 SUITE_CMD="${PRE_COMMIT_GATE_SUITE_CMD:-cargo fmt --check && cargo dclippy -- -D warnings && cargo dtest && cargo dbuild}"
 SUITE_OUTPUT="$(cd "$REPO_DIR" && bash -c "$SUITE_CMD" 2>&1)"
 SUITE_STATUS=$?
 if [ "$SUITE_STATUS" -ne 0 ]; then
   printf '%s\n' "$SUITE_OUTPUT" | tail -n 40 >&2
-  echo "commit blocked: green suite red (fmt/clippy/test)" >&2
+  echo "commit blocked: green suite red (fmt/clippy/test/build)" >&2
   exit 2
 fi
 

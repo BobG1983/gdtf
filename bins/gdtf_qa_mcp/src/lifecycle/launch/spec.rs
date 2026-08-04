@@ -11,7 +11,7 @@ const GAME_FEATURES: [&str; 2] = ["dynamic_linking", "net_qa"];
 
 const EDITOR_PACKAGE: &str = "gdtf_content_editor_bin";
 
-const EDITOR_FEATURES: [&str; 2] = ["dynamic_linking", "net_qa"];
+const EDITOR_FEATURES: [&str; 3] = ["dynamic_linking", "file_watcher", "net_qa"];
 
 /// Package, features, cwd, env, and channel for one launch.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -105,7 +105,7 @@ fn render_launch_timeout_names_the_build_and_carries_the_tail() {
         "names the build as the cause: {text}"
     );
     assert!(
-        text.contains("cargo build -p gdtf_content_editor_bin --features dynamic_linking,net_qa"),
+        text.contains("cargo build -p gdtf_content_editor_bin --features dynamic_linking,file_watcher,net_qa"),
         "gives the warm-up command: {text}"
     );
     assert!(text.contains("600s"), "says how long it waited: {text}");

@@ -104,7 +104,7 @@ fn editor_default_is_the_editor_binary_over_the_editor_channel() {
     assert_eq!(spec.package().as_str(), "gdtf_content_editor_bin");
     assert_eq!(
         spec.features().render(),
-        Some("dynamic_linking,net_qa".to_owned())
+        Some("dynamic_linking,file_watcher,net_qa".to_owned())
     );
     assert_eq!(spec.channel().enable().as_str(), "GDTF_EDITOR_NET_QA");
     assert_eq!(spec.channel().port().as_str(), "GDTF_EDITOR_NET_QA_PORT");

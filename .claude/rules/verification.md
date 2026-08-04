@@ -55,6 +55,10 @@ Release binary builds are packaging-time only (not a CI gate).
 
 `.claude/hooks/pre-commit-gate.sh` runs a **fast subset** (`fmt`, `dclippy`, `dtest`, `dbuild`) as a deterministic backstop. Full green is still the eight commands above via `/gate`.
 
+### Suite scope (docs-only skip)
+
+Scope comes from **changed paths**, not from the ticket title. Default is **FULL** (run cargo). `.claude/hooks/suite-scope.sh` prints `FULL` or `DOCS`: only allowlisted `*.md` under `docs/`, `.claude/`, and the repo root may be `DOCS`. `docs/tooling/qa-commands.md` and `.claude/rules/verification.md` always force `FULL`. Empty or mixed diffs fail closed to `FULL`. `/gate` writes `SCOPE=` into `.claude/.gate-pass`; pre-commit re-derives scope and refuses if the tree is wider than the recorded scope. This does not change the eight-command list above.
+
 ## Rules
 
 1. **Done = full green observed after the final edit.** Anything less is in progress.

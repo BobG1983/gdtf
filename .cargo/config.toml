@@ -15,12 +15,12 @@ drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tool
 dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools,net_qa"
 
 # Content editor (no net_qa / dev_tools — use edqarun for QA port).
-edrun = "run -p gdtf_content_editor_bin --features dynamic_linking"
-edbuild = "build -p gdtf_content_editor_bin --features dynamic_linking"
+edrun = "run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher"
+edbuild = "build -p gdtf_content_editor_bin --features dynamic_linking,file_watcher"
 
 # Content editor with net_qa compiled in (still needs env to open the port).
-edqarun = "run -p gdtf_content_editor_bin --features dynamic_linking,net_qa"
-edqabuild = "build -p gdtf_content_editor_bin --features dynamic_linking,net_qa"
+edqarun = "run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher,net_qa"
+edqabuild = "build -p gdtf_content_editor_bin --features dynamic_linking,file_watcher,net_qa"
 
 # Workspace checks with the same feature set.
 dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa"
