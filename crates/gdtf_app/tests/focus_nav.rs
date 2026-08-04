@@ -1,3 +1,4 @@
+//! Focus nav: set initial focus, directional walk, FocusCancelled registration.
 use bevy::{
     ecs::{
         message::{MessageReader, Messages},

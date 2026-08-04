@@ -1,4 +1,4 @@
-//! Terrain model load: real assets resolve TerrainDefRegistry and UuidThemeRegistry by UUID.
+//! Terrain model load: real assets resolve `TerrainDefRegistry` and `UuidThemeRegistry` by UUID.
 use std::path::PathBuf;
 
 use gdtf_app::test_support::{AppState, app_state, load_released};
