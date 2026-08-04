@@ -19,7 +19,7 @@ Resolve `GTW-N` from argument or branch. Must match the `TICKET=` set in `.claud
 
 2. **Docs-sync done (or confirmed clean).** `/docs-sync` has been run after the gate (or explicitly confirmed no drift). Do not land with drifted docs.
 
-3. **Suite green now.** Run the full suite from [`.claude/rules/verification.md`](../../rules/verification.md). Any non-zero → refuse.
+3. **Suite green now.** Re-run `.claude/hooks/suite-scope.sh`. If `SCOPE=DOCS` (and the gate-pass recorded DOCS), cargo is not required. Otherwise run the full suite from [`.claude/rules/verification.md`](../../rules/verification.md). Any non-zero → refuse. If scope is now FULL but gate-pass said DOCS, refuse and re-run `/gate`.
 
 4. **On a `feature/*` branch** for this ticket. Not `develop` / `main`.
 

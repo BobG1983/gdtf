@@ -16,7 +16,9 @@ Binding background: `.claude/rules/design-fidelity.md`, `.claude/rules/verificat
 
 1. **Resolve the ticket(s).** Argument or branch name (`feature/gtw-N-slug`). Pull full ticket(s) via Linear MCP (project GDTF). Never gate from memory.
 
-2. **Run the suite.** The one definition of green from [`.claude/rules/verification.md`](../../rules/verification.md). All eight must exit 0. Use the aliases. Red → fail immediately.
+2. **Scope, then suite.** Run `.claude/hooks/suite-scope.sh --from develop` (plus untracked via path list if needed). Print `SCOPE=FULL` or `SCOPE=DOCS`.
+   - **DOCS:** skip cargo. Note scope in the report.
+   - **FULL:** run the one definition of green from [`.claude/rules/verification.md`](../../rules/verification.md). All eight must exit 0. Use the aliases. Red → fail immediately.
 
 3. **Restate the contract as clause-numbered** (C1, C2, …). One clause per requirement. Faithful to the ticket and any `docs/` it invokes. Multi-ticket: combine and attribute. Contract is then read-only.
 
@@ -40,4 +42,4 @@ Binding background: `.claude/rules/design-fidelity.md`, `.claude/rules/verificat
 
 8. **On violations, repair the code** (not the contract). Max 2 repair rounds, then stop and report.
 
-9. **On full PASS, write `.claude/.gate-pass`** (TICKET, BRANCH, HEAD, FINGERPRINT). Move ticket(s) to In Review via Linear MCP. Point at `/docs-sync` then `/land`.
+9. **On full PASS, write `.claude/.gate-pass`** (TICKET, BRANCH, HEAD, FINGERPRINT, **SCOPE**). Move ticket(s) to In Review via Linear MCP. Point at `/docs-sync` then `/land`.
