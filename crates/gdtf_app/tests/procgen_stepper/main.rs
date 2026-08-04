@@ -1,3 +1,4 @@
+//! Procgen stepper (dev_tools): commands, regression, setting, step equivalence.
 #![cfg(feature = "dev_tools")]
 
 mod commands;

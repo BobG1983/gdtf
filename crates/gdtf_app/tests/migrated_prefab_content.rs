@@ -1,3 +1,4 @@
+//! Migrated prefabs: shipped content resolves with placements and role defaults.
 use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::level::{
     GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid,

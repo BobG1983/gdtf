@@ -1,3 +1,4 @@
+//! Editor load seam: all ten registries resolve through real families; empty root falls back.
 use std::path::Path;
 
 use bevy::{
