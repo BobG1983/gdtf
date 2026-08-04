@@ -2,6 +2,9 @@
 
 Writing exists to communicate, not to sound sophisticated.
 
+This file owns wording and length in every artifact (code comments, docs,
+tickets, commit messages, chat). Reply structure in chat is `reply-shape.md`.
+
 ## Rules
 
 - Prefer plain English over technical-sounding language.

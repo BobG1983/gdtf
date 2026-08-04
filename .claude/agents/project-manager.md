@@ -146,16 +146,29 @@ that text is what the caller sees; they do not see your tool calls.
 
 ## Common Tags
 
-The following issue labels are commonly used in the backlog to indicate the type or nature of a task. Use them as appropriate when creating or updating issues:
+Team-scoped GDTF labels only. Authority for meaning, who applies, and what
+removes each label: `.claude/rules/linear-discipline.md` (Labels section).
 
-- Bug — something is broken, not working as intended, or regressed.
-- Enhancement — an improvement to existing functionality, not a new feature.
-- Feature — a new piece of functionality that adds to the project.
-- Mythos — a whole feature AREA; the umbrella tier of the work hierarchy. Never built directly; it is broken into Epics.
-- Epic — a splittable chunk of a Mythos, still too big to build and verify in one sitting. Never built directly; broken into Tasks.
-- MVP — the minimum slice that proves the loop end-to-end; tags the Tasks/Tickets on the critical path to a first playable cut (prioritise these unless the user says otherwise).
-- Art — non-code work, e.g. design, writing, or asset creation.
-- Refactor — restructuring existing code without changing its behavior, often to improve readability or maintainability.
-- Chore — routine tasks that don't fit into the above categories, e.g. updating dependencies, improving documentation, or setting up CI.
-- Easy — a task that is straightforward and can be completed quickly, often used to indicate good "first issues" for new contributors.
-- Needs Splitting — the decomposition flag. RIDES ON a Mythos or Epic (and any over-large Task) until it is broken into children. Those children are blocking sub-issues of the parent in Linear; the parent stays open until all children are Done. The Mythos/Epic tiers are the size flags; `Needs Splitting` is the "not yet decomposed" flag on top of them. (Every tier is itself a GTW- ticket; the smallest landable child is the "Ticket" tier of the hierarchy above — not a label.)
+When calling `list_issue_labels`, pass `team: GDTF`. Without it, team labels
+are omitted and agents invent names.
+
+| Label | One-line use |
+| --- | --- |
+| Bug | Broken / wrong / regressed |
+| Feature | New product behaviour |
+| Improvement | Better existing behaviour |
+| Hygiene | Internal quality only |
+| Tech Debt | Known debt |
+| Documentation | Docs-only |
+| AI Workflow | Agent loop / skills / process |
+| MCP | QA MCP / net_qa / protocol |
+| Editor | Content editor |
+| Art | Hand-authored art |
+| MVP | Critical path to first playable |
+| Mythos | Top pillar — never build directly |
+| Epic | Multi-piece — never build directly |
+| Needs Splitting | Too big; children not filed yet |
+| Needs User Input | Blocked on a user decision (comment the question; remove after answer) |
+
+Do not invent labels (no Enhancement / Chore / Easy / Refactor for GDTF).
+New label → add in Linear and document in `linear-discipline.md` same change.
