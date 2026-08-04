@@ -5,7 +5,7 @@ Design for the fight → consequences → next fight loop. Parent: post-action e
 **Status:**
 
 - **GTW-678 injury carry — Accepted** (in-battle injury table already defined; no second post-action roll).
-- **GTW-679 advancement — proposed** (use-bump cap amended below). Do not implement until Accepted.
+- **GTW-679 advancement — proposed** (use-bump cap + special list below). Do not implement until Accepted.
 
 Related built systems:
 
@@ -95,19 +95,40 @@ At outcome latch, **once per battle**, sum all sources into a per-attribute bump
 
 Default from use is **+1** for that attribute when the signal fires. Meeting the bar harder does **not** by itself stack more default bumps (one default grant per attribute per battle).
 
-#### Special extras
+#### Special extras (closed list for MVP)
 
-Other sources may add **extra +1** (or more, if that source says so) on top of the default:
+Specials are **extra** points on top of default use. Each special fires **at most once per ganger per battle** (even if the act happened many times). Values are **+1 or +2** only. Content/skills may add more rows later with the same rules.
 
-- Content / skills / injuries / mission rewards that explicitly grant an attribute train bonus
-- Future “feat” or objective tags (e.g. first blood, last stand) when those systems exist
+| Special | When it fires (player ganger, living at outcome) | Extra | Attribute |
+| --- | --- | --- | --- |
+| **Ranged kill** | ≥1 attributed kill with a ranged weapon | +1 | Aim |
+| **Melee kill** | ≥1 attributed kill with a melee weapon / unarmed strike | +1 | Strength |
+| **Multi-kill** | ≥2 attributed kills (any weapon) | +1 | Cool |
+| **Critical wounder** | Inflicted ≥1 Critical or Fatal named wound on an enemy (from the injury/wound log), whether or not they died | +1 | Aim if the hit was ranged, Strength if melee; if both kinds, one +1 to each (still two specials) |
+| **Execute** | Successfully executed a Downed enemy | +1 | Cool |
+| **Stabilize** | Successfully stabilized a Downed ally | +1 | Cool |
+| **Shove finish** | Shoved an enemy who then died from the fall / shove outcome this battle | +1 | Strength |
+| **Back from the brink** | Was Downed at least once this battle and is still alive at outcome | +2 | Grit |
+| **Last of the squad** | Only living player ganger at outcome (others dead or never deployed) and battle was won | +2 | Cool |
 
-Each special is data-authored; the apply step just sums them.
+Notes:
+
+- **Kill specials ≠ XP kills.** Kill XP still accrues per kill; attribute specials fire once per row when the threshold is met.
+- **Default use still applies** when you only shot and never killed (Aim +1 from use, no Ranged kill special).
+- **No special for:** reloading, changing stance, opening doors, entering emplacements, throwing without a kill, panicking enemies, or raw damage totals. Those are ordinary use or not training.
+- **Skills / mission rewards** later: same shape (named special, +1 or +2, one attribute). They count toward the cap.
 
 #### Cap
 
 **Hard ceiling: +3 to any one attribute from all sources in one battle.**  
-Sum(default use + specials), then `min(sum, 3)`. Unused headroom is fine (many fights stay at +1).
+Sum(default use + specials for that attribute), then `min(sum, 3)`.
+
+Examples:
+
+- Shot a lot, one ranged kill → Aim default +1 + Ranged kill +1 = **Aim +2**
+- Shot a lot, multi-kill, critical ranged wound → Aim +1 default +1 kill +1 crit = **Aim +3** (cap)
+- Downed and recovered, also took HP while up → Grit default +1 + brink +2 = **Grit +3**
+- Only multi-kill Cool specials without Cool default use → Cool +1 (or +2 if last-of-squad), no default Cool yet
 
 Rules:
 
@@ -115,7 +136,7 @@ Rules:
 - Bumps write to **base attributes** on the campaign roster, then re-derive combat stats for the next fight.
 - No mid-battle permanent attribute growth.
 
-Other attributes (Toughness, Reflexes, Cool, Luck) stay flat until a later use map expands. Specials may still target them once content exists; same +3 cap.
+Attributes without a default-use row in v0 (Toughness, Reflexes, Cool, Luck) can still gain from specials only (Cool is specials-heavy on purpose). Same +3 cap.
 
 ### XP bank vs skills
 
@@ -130,10 +151,10 @@ All of the above runs **once** when the battle outcome latches (same moment as B
 ### Build order after Accept
 
 1. UsageTally from act messages.
-2. Kill log (for kill XP and grudges later).
-3. Advancement apply function (pure sim, seeded tests) — including special bonus hooks + +3 clamp.
+2. Kill / wound attribution log (feeds XP + specials).
+3. Advancement apply function (pure sim, seeded tests) — default use + special table + +3 clamp.
 4. Wire into BattleResults / roster fold.
-5. Post-action UI readout.
+5. Post-action UI readout (list which specials fired).
 
 ---
 
@@ -142,7 +163,7 @@ All of the above runs **once** when the battle outcome latches (same moment as B
 Post-action UI shows, for the player roster:
 
 - Outcome (win / lose).
-- Per ganger: alive/dead, carried injuries (short text), XP gained this battle, use bumps this battle, running skill XP.
+- Per ganger: alive/dead, carried injuries (short text), XP gained this battle, use bumps this battle (with special names that fired), running skill XP.
 - Continue → roster write-back → next battle or menu (mission chaining is a separate ticket).
 
 Placeholder outcome + Continue stays until this data exists.
@@ -158,6 +179,6 @@ Remaining (679 / shared):
 1. **Downed:** Recover with ledger only for MVP (no capture)?
 2. **XP mix:** Participation + kill + survival OK?
 3. **Default XP magnitudes:** 2 / 3 / 1 OK as tuning starting points?
-4. **Use map:** Aim / Strength / Speed / Grit as the default-use set for v0 OK?
-5. **Use cap:** default +1 from use, specials can add, hard max **+3** per attribute per battle OK?
+4. **Default use map:** Aim / Strength / Speed / Grit OK?
+5. **Special table + cap:** the closed list above (+1/+2 extras, hard max +3) OK? Any row to drop/add?
 6. **Skills:** XP bank visible but no purchase UI in v0 OK?
