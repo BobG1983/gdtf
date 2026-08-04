@@ -6,7 +6,7 @@ use super::values::{BootTimeout, KillGrace, PollInterval, ProbeTimeout};
 
 const GAME_BOOT_TIMEOUT: BootTimeout = BootTimeout::new(Duration::from_secs(180));
 
-const EDITOR_BOOT_TIMEOUT: BootTimeout = BootTimeout::new(Duration::from_secs(600));
+const EDITOR_BOOT_TIMEOUT: BootTimeout = BootTimeout::new(Duration::from_secs(180));
 
 const DEFAULT_POLL_INTERVAL: PollInterval = PollInterval::new(Duration::from_millis(250));
 
@@ -98,9 +98,10 @@ mod test {
     use super::LifecycleConfig;
 
     #[test]
-    fn the_editor_waits_longer_for_readiness_than_the_game() {
-        assert!(
-            *LifecycleConfig::editor().boot_timeout() > *LifecycleConfig::game().boot_timeout()
+    fn editor_and_game_share_the_same_boot_timeout() {
+        assert_eq!(
+            LifecycleConfig::editor().boot_timeout(),
+            LifecycleConfig::game().boot_timeout()
         );
         assert_eq!(LifecycleConfig::default(), LifecycleConfig::game());
     }

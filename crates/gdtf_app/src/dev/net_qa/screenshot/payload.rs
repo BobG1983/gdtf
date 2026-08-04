@@ -6,7 +6,7 @@ crate::support_item! {
 
 impl ScreenshotPayload {
     crate::support_item! {
-                                                #[cfg(any(test, feature = "test-support"))]
+                                                #[cfg(any(test, feature = "headless_test"))]
         const fn new(name: Option<ShotName>) -> Self {
             Self(name)
         }

@@ -2,7 +2,7 @@
 
 /// Expands to `pub` under `test-support`, otherwise `pub(crate)`.
 /// Marker UI/state items are not individually documented.
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 macro_rules! support_item {
     ($(#[$meta:meta])* enum $($rest:tt)*) => {
         $(#[$meta])*
@@ -46,7 +46,7 @@ macro_rules! support_item {
     };
 }
 
-#[cfg(not(feature = "test-support"))]
+#[cfg(not(feature = "headless_test"))]
 macro_rules! support_item {
     ($(#[$meta:meta])* enum $($rest:tt)*) => { $(#[$meta])* pub(crate) enum $($rest)* };
     ($(#[$meta:meta])* struct $($rest:tt)*) => { $(#[$meta])* pub(crate) struct $($rest)* };
@@ -55,12 +55,12 @@ macro_rules! support_item {
     ($(#[$meta:meta])* fn $($rest:tt)*) => { $(#[$meta])* pub(crate) fn $($rest)* };
 }
 
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 macro_rules! support_use {
     ($($rest:tt)*) => { pub use $($rest)* };
 }
 
-#[cfg(not(feature = "test-support"))]
+#[cfg(not(feature = "headless_test"))]
 macro_rules! support_use {
     ($($rest:tt)*) => { pub(crate) use $($rest)* };
 }

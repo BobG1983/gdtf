@@ -9,12 +9,12 @@ pub use app::GdtfApp;
 
 mod dev;
 
-#[cfg(all(debug_assertions, feature = "net_qa"))]
+#[cfg(debug_assertions)]
 /// Net QA wire types for external clients.
 pub use dev::net_qa::wire as qa_wire;
 
 mod states;
 
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 /// Test helpers and re-exports of scene markers.
 pub mod test_support;

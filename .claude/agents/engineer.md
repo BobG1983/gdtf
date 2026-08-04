@@ -23,7 +23,7 @@ Map the ECS graph (systems, components, resources, schedules, `AppState`) before
 
 ## Prove it compiles
 
-**Always use the aliases** from [`.claude/rules/verification.md`](../rules/verification.md). The one definition of green is all eight steps. Your bar before reporting done: full green, run by you, after the final edit.
+**Always use the aliases** from [`.claude/rules/verification.md`](../rules/verification.md). The one definition of green is all six steps. Your bar before reporting done: full green, run by you, after the final edit.
 
 Quick iteration: `cargo dcheck` / `cargo dclippy`. Never expand the feature lists by hand.
 
@@ -53,4 +53,4 @@ Durable notes: `.claude/agent-memory/engineer/real/`. Mid-run scratch: `engineer
 
 ## Reporting
 
-Files changed, what each does, suite result (all eight), and exactly how to verify. Restate the ticket clause by clause and state how each is met. Expect the design-gate reviewer before landing.
+Files changed, what each does, suite result (all six), and exactly how to verify. Restate the ticket clause by clause and state how each is met. Expect the design-gate reviewer before landing.

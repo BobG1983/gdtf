@@ -5,8 +5,8 @@ edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
-gdtf_app = { path = "../gdtf_app", features = ["test-support"] }
-gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
+gdtf_app = { path = "../gdtf_app", features = ["headless_test"] }
+gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 gdtf_ui = { path = "../gdtf_ui" }
 wgpu = "=29.0.3"
 

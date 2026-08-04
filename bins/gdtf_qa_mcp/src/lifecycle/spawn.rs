@@ -47,10 +47,9 @@ pub fn build_command(port: QaPort, spec: &LaunchSpec) -> Command {
     for var in spec.env().iter() {
         command.env(var.name().as_str(), var.value().as_str());
     }
-    command
-        .env(spec.channel().enable().as_str(), "1")
-        .env(spec.channel().port().as_str(), format!("{}", *port))
-        .stdin(Stdio::null());
+    // Hosts listen on shared protocol ports in debug builds; no env arming (GTW-969).
+    let _ = (port, spec.channel());
+    command.stdin(Stdio::null());
     command
 }
 
@@ -86,7 +85,7 @@ mod tests {
     }
 
     #[test]
-    fn default_recipe_matches_the_previous_hardcoded_launch() {
+    fn default_recipe_matches_plain_git_launch() {
         let command = build_command(QaPort::new(7616), &LaunchSpec::game_default());
         assert_eq!(
             args_of(&command),
@@ -95,14 +94,11 @@ mod tests {
                 "-p".to_owned(),
                 "grimdark_turfwar".to_owned(),
                 "--features".to_owned(),
-                "dynamic_linking,net_qa".to_owned(),
+                "dynamic_linking,dev_tools".to_owned(),
             ]
         );
-        assert_eq!(env_of(&command, "GDTF_NET_QA"), Some("1".to_owned()));
-        assert_eq!(
-            env_of(&command, "GDTF_NET_QA_PORT"),
-            Some("7616".to_owned())
-        );
+        assert_eq!(env_of(&command, "GDTF_NET_QA"), None);
+        assert_eq!(env_of(&command, "GDTF_NET_QA_PORT"), None);
         assert!(command.get_current_dir().is_none());
     }
 
@@ -112,7 +108,6 @@ mod tests {
             crate::lifecycle::launch::CargoPackage::new("gdtf_content_editor".to_owned()),
             FeatureList::new(vec![
                 FeatureName::new("dynamic_linking".to_owned()),
-                FeatureName::new("net_qa".to_owned()),
                 FeatureName::new("dev_tools".to_owned()),
             ]),
             Some(WorkingDir::new(PathBuf::from("/tmp/a-worktree"))),
@@ -130,7 +125,7 @@ mod tests {
                 "-p".to_owned(),
                 "gdtf_content_editor".to_owned(),
                 "--features".to_owned(),
-                "dynamic_linking,net_qa,dev_tools".to_owned(),
+                "dynamic_linking,dev_tools".to_owned(),
             ]
         );
         assert_eq!(
@@ -138,41 +133,10 @@ mod tests {
             Some("/tmp/a-worktree")
         );
         assert_eq!(env_of(&command, "GDTF_BATTLE_SEED"), Some("42".to_owned()));
-        assert_eq!(
-            env_of(&command, "GDTF_NET_QA_PORT"),
-            Some("4321".to_owned())
-        );
     }
 
     #[test]
-    fn qa_environment_wins_over_an_override_of_the_same_name() {
-        let spec = LaunchSpec::new(
-            LaunchSpec::game_default().package().clone(),
-            FeatureList::default(),
-            None,
-            EnvOverrides::new(vec![EnvVar::new(
-                EnvVarName::new("GDTF_NET_QA_PORT".to_owned()),
-                EnvVarValue::new("1".to_owned()),
-            )]),
-            QaChannel::game(),
-        );
-        let command = build_command(QaPort::new(9001), &spec);
-        assert_eq!(
-            env_of(&command, "GDTF_NET_QA_PORT"),
-            Some("9001".to_owned())
-        );
-        assert_eq!(
-            args_of(&command),
-            vec![
-                "run".to_owned(),
-                "-p".to_owned(),
-                "grimdark_turfwar".to_owned()
-            ]
-        );
-    }
-
-    #[test]
-    fn editor_recipe_runs_the_editor_binary_with_the_editor_channel() {
+    fn editor_recipe_runs_the_editor_binary() {
         let command = build_command(QaPort::new(7617), &LaunchSpec::editor_default());
         assert_eq!(
             args_of(&command),
@@ -181,15 +145,10 @@ mod tests {
                 "-p".to_owned(),
                 "gdtf_content_editor_bin".to_owned(),
                 "--features".to_owned(),
-                "dynamic_linking,file_watcher,net_qa".to_owned(),
+                "dynamic_linking,file_watcher".to_owned(),
             ]
         );
-        assert_eq!(env_of(&command, "GDTF_EDITOR_NET_QA"), Some("1".to_owned()));
-        assert_eq!(
-            env_of(&command, "GDTF_EDITOR_NET_QA_PORT"),
-            Some("7617".to_owned())
-        );
+        assert_eq!(env_of(&command, "GDTF_EDITOR_NET_QA"), None);
         assert_eq!(env_of(&command, "GDTF_NET_QA"), None);
-        assert_eq!(env_of(&command, "GDTF_NET_QA_PORT"), None);
     }
 }

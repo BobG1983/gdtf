@@ -1,5 +1,5 @@
 //! Hello/version negotiation over the editor net-QA listener.
-#![cfg(all(debug_assertions, feature = "net_qa"))]
+#![cfg(debug_assertions)]
 
 mod assertions;
 mod client;

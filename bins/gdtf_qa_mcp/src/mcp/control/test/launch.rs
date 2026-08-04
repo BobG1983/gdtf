@@ -54,7 +54,7 @@ fn handle_launch_passes_the_recipe_through_and_reports_it() {
     });
     let mut link = RecordingLink { retargeted: None };
     let args = json!({
-        "features": ["dynamic_linking", "net_qa", "dev_tools"],
+        "features": ["dynamic_linking", "dev_tools"],
         "working_dir": dir.to_string_lossy(),
         "env": { "GDTF_BATTLE_SEED": "42" },
     });
@@ -68,7 +68,7 @@ fn handle_launch_passes_the_recipe_through_and_reports_it() {
     };
     assert_eq!(
         spec.features().render(),
-        Some("dynamic_linking,net_qa,dev_tools".to_owned())
+        Some("dynamic_linking,dev_tools".to_owned())
     );
     assert_eq!(
         spec.working_dir().map(|path| path.to_path_buf()),

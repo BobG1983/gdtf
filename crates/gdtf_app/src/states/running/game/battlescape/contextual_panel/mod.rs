@@ -7,7 +7,7 @@ mod systems;
 
 pub(in crate::states::running::game::battlescape) use plugin::ContextualPanelPlugin;
 
-#[cfg(feature = "test-support")]
+#[cfg(feature = "headless_test")]
 pub(crate) mod test_support {
     pub use super::{
         acts::{

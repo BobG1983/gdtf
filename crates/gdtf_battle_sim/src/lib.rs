@@ -20,7 +20,6 @@ pub mod terrain;
 pub mod turn;
 
 pub mod prelude;
-#[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
 pub mod tuning;
 
