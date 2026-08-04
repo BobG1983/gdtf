@@ -1,22 +1,19 @@
-// GTW-470 NS-orientation DOOR — a distinct AUTHORED visual tile the author places explicitly in a
-// prefab (orientation is never presenter-inferred). VISUAL TILE DEFINITION ONLY: a closed door
-// blocks LOS + pathfinding exactly like a wall, so sim_kind = Wall; the sim-owned `Openable` tag
-// marks it as a door that CAN be opened later. Functional open/close is GTW-315 (NOT modelled here);
-// no traversal logic is added by this ticket. The EW companion (door_ew) is this sprite rotated 90deg.
+// NS-orientation door — distinct authored visual tile. Closed door blocks LOS + pathfinding
+// like a wall (sim_kind = Wall); Openable tag marks it as openable later.
+// Orientation is never inferred — author places the correct orientation in a prefab.
 (
-    // Stable authored key — the industrial_hive NS `door` TerrainUuid.
+    // Stable authored key — industrial_hive NS door TerrainUuid.
     key: "00000000-0000-0000-0000-01840a91000b",
     display_name: "Bulkhead Door (NS)",
     sim_kind: Wall(
-        hp:               40,    // structural HP — a door is as sturdy as a bulkhead wall
-        armor_protection: 6,     // damage soak (matches the bulkhead_wall material)
+        hp:               40,    // structural HP — as sturdy as a bulkhead wall
+        armor_protection: 6,     // damage soak
         armor_hardness:   3,     // punch ignored
-        height_band:      High,  // a closed door fills the cell; nothing flies over it within a storey
+        height_band:      High,  // closed door fills the cell
     ),
     presenter_kind: Wall(
-        graphic_name: "door_ns", // the NS-running door sprite (TileRoles index 340)
+        graphic_name: "door_ns", // NS-running door sprite
     ),
-    // SIM-OWNED tags: `Openable` marks this as a door (a closed door blocks like a wall; opening is
-    // GTW-315). It blocks vision + pathfinding while closed, matching the wall convention.
+    // Openable marks this as a door. Blocks vision + pathfinding while closed.
     tags: [Openable, BlocksVision, BlocksPathfinding],
 )
