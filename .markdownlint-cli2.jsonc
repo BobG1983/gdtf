@@ -4,8 +4,6 @@
   "globs": ["**/*.md"],
   "ignores": [
     "target/**",
-    "node_modules/**",
-    // Auto-generated, gitignored agent memory — not part of the committed docs.
-    ".claude/agent-memory/**"
+    "node_modules/**"
   ]
 }

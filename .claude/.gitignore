@@ -1,10 +1,6 @@
 # Gate bookkeeping — never commit.
 .gate-pass
 
-# Ephemeral agent memory is written mid-run and must not dirty the tree.
-# Real memory under agent-memory/*/real/ is checked in; only /dream writes it.
-agent-memory/*/ephemeral/
-
 # Per-developer overrides (personal model / effortLevel).
 settings.local.json
 
