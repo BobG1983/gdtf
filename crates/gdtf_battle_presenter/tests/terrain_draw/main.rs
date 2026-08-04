@@ -1,3 +1,4 @@
+//! Terrain draw: restamp, destruction swap, doors/stairs, emplacement, storey fog, view mode.
 mod anchor;
 mod def_restamp;
 mod def_restamp_quiet;
