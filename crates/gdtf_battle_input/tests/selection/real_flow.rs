@@ -176,7 +176,7 @@ fn selection_highlight_tracks_selected_ganger_not_empty_cells() {
     assert_eq!(
         selected(&app),
         Some(selected_entity),
-        "a bare-floor click must not change the selection (GTW-238 MOVE, not re-select)",
+        "a bare-floor click must not change the selection (MOVE, not re-select)",
     );
     let world_at_empty = cell_to_world(Cell::new(20, 20), level);
     let highlight = highlight_state(&mut app);

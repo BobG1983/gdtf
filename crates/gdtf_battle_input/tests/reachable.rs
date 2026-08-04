@@ -176,8 +176,8 @@ fn populates_reachable_cells_matching_reachable_within_including_l1() {
 
     assert!(
         populated.iter().any(|(c, _)| *c == head),
-        "the reachable set must include the L1 stair head ({head:?}) — the GTW-387 B \
-         link-endpoint relaxation opens it even when UNSEEN; got {populated:?}",
+        "the reachable set must include the L1 stair head ({head:?}) — the link-endpoint \
+         relaxation opens it even when UNSEEN; got {populated:?}",
     );
 
     let populated_cells: Vec<CellLevel> = populated.iter().map(|(c, _)| *c).collect();

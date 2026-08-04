@@ -139,8 +139,8 @@ fn clicking_an_enemy_is_a_no_op_on_the_player_selection() {
     assert_eq!(
         selected(&app),
         Some(player_ganger),
-        "clicking an enemy you can't fire on must NOT clear the player's selection (GTW-287 \
-         NoOp) — the enemy is inspected via the hover panel, never selected/cleared",
+        "clicking an enemy you can't fire on must NOT clear the player's selection \
+         (NoOp) — the enemy is inspected via the hover panel, never selected/cleared",
     );
     assert_ne!(
         selected(&app),
@@ -202,7 +202,7 @@ fn clicking_with_no_hovered_cell_is_a_no_op_on_the_player_selection() {
         selected(&app),
         Some(player_ganger),
         "a left-click with NO hovered cell (over UI / margin / off map) must NOT clear the \
-         player's selection (GTW-288 NoOp) — reverting it to Clear wipes the selection",
+         player's selection (NoOp) — reverting it to Clear wipes the selection",
     );
     assert_ne!(
         selected(&app),
