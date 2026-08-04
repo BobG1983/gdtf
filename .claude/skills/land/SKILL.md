@@ -47,6 +47,6 @@ Resolve `GTW-N` from argument or branch. Must match the `TICKET=` set in `.claud
    git branch -d feature/gtw-N-slug
    ```
 
-   Stop on conflicts. No `git flow`.
+   Stop on conflicts.
 5. Move ticket(s) to **Done** via Linear MCP with evidence: merge SHA, suite result, pushed range.
 6. Report `git log --oneline OLD..develop`, then delete `.claude/.gate-pass`.

@@ -59,25 +59,26 @@ this rule exists to stop.
   [`no-bare-types.md`](./no-bare-types.md) bans bare domain types, and a parameter named
   `hp` tells you nothing about whether it is an `Hp` or a `u32`.
 
-## The tool reads. It does not edit
+## Two tools, both encouraged, different jobs
 
-Those eight plus `prepareCallHierarchy` are the whole set — nine operations, none of which
-edit. No rename, no code action, no quick-fix, no diagnostics.
+Those eight plus `prepareCallHierarchy` are the whole `LSP` tool — nine operations, all
+read-only. No rename, no code action, no quick-fix, no diagnostics.
 
-**For navigation and investigation, ALWAYS use the `LSP` tool, never the `rust-analyzer`
-binary.** 
+**Navigation and investigation → the `LSP` tool.** Who calls this, what type is this, what
+does this file define. Do not shell out to the binary to answer a question the tool answers.
 
-For editting, use the `rust-analyzer` binary. The binary is for the things the tool cannot do, for example:
+**Bulk edits → the `rust-analyzer` binary, through `Bash`. Use it freely — it is the
+preferred way to make the same change at many call sites.**
 
 ```bash
 rust-analyzer ssr '$a.foo($b) ==>> bar($a, $b)'   # structural search and replace
 rust-analyzer search '$a.foo($b)'                 # the same matching, no rewrite
 ```
 
-`ssr` is type- and syntax-aware across the workspace — the right tool for "change this call
-shape everywhere", and far better than fifty hand edits or a `sed` that cannot tell a call
-from a comment. It rewrites files in place, so run it on a branch, keep the suite green
-either side, and read the diff.
+`ssr` is type- and syntax-aware across the whole workspace. It knows a call from a comment,
+a doc example, or a string literal — which is exactly what every text-based approach gets
+wrong. It rewrites in place, so work on a branch, keep the suite green either side, and read
+the diff.
 
 Also there: `diagnostics`, `unresolved-references`, `analysis-stats`, `lsif`/`scip` index
 dumps, and likely more.
@@ -85,6 +86,32 @@ dumps, and likely more.
 **Check the binary's `--help` rather than trusting memory or this file.** rust-analyzer's
 own help says its subcommands "do not provide any stability guarantees and may be removed
 or changed without notice".
+
+## Do not write a script to edit source
+
+Why this rule exists: an engineer migrating call sites across ~90 files wrote a Python
+rewriter in the scratchpad, then spent most of the run patching what it did — including one
+pass that walked every `.rs` file in the repo injecting `use` lines, and three more passes
+removing the ones it got wrong.
+
+**Banned: ad-hoc Python, `sed`, `awk` or `perl` that edits Rust source.** Two reasons, and
+the second is the one that decides it:
+
+- Regex cannot tell a call from a comment, a doc example, or a string literal.
+- The script has to be written, run, debugged and rewritten. That costs more than the edits
+  it was meant to save — measured, not assumed.
+
+The order to reach for:
+
+1. **`rust-analyzer ssr`** — the same change at many sites. This is the tool for the job.
+2. **`Edit`** — anything ssr cannot match. Yes, one at a time. It is faster than it looks,
+   and every change is visible in the diff.
+3. **Say so** — if a change fits neither, that is a signal the ticket needs splitting, not
+   that it needs a script.
+
+Scripts that *read* are fine: counting, listing, searching for a `reason` string. The ban is
+on generating source edits. If a rewrite genuinely cannot be expressed in ssr, report that
+and say why — a real finding, not a licence to write the script anyway.
 
 ## How it is enforced
 

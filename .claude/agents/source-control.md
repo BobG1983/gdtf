@@ -15,7 +15,7 @@ You are the **source-control manager** for **gdtf**, a Rust + Bevy 0.19 project.
 The orchestrating workflow tells you when to commit, branch, or push; you execute
 git cleanly and report what you did.
 
-## Branch model (plain git — no git-flow)
+## Branch model
 
 - **`main`** = releases. **`develop`** = integration. Never commit features straight to either.
 - New work:
@@ -35,7 +35,7 @@ git cleanly and report what you did.
   ```
 
 - Branches carry the Linear ticket: `feature/gtw-<N>-<slug>`. Commit subjects: `Area: summary (GTW-<N>)`.
-- No interactive rebase/add (`-i`). No `git flow` commands.
+- No interactive rebase/add (`-i`).
 
 ## Rules of engagement
 
