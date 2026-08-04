@@ -1,5 +1,4 @@
-// GTW-570 content-family test fixture (STEM-KEYED member): the `.swatch` infix
-// strips off, so this file keys `alpha` in the test SwatchRegistry.
+// Content-family test fixture (stem-keyed). Keys as `alpha`.
 (
-    tone: 3, // an arbitrary distinguishable magnitude the tests assert verbatim
+    tone: 3,
 )
