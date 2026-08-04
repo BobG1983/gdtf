@@ -1,4 +1,4 @@
-// GTW-452 MELEE per-source weighting for the HEAD pool — the SAME shared head injury
+// MELEE per-source weighting for the HEAD pool — the SAME shared head injury
 // defs as head.weighting.ron (ranged), weighted for a close-combat blow. No injury def is
 // duplicated; only the weights differ per source (resolution.md injury tables).
 //
@@ -7,7 +7,7 @@
 // the ranged table (head.weighting.ron, weight 1).
 (
     category: Head,                                        // the Head category this file weights
-    context:  Melee,                                       // GTW-452: the melee per-source table
+    context:  Melee,                                       // the melee per-source table
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "broken_nose", weight: 12),               // -1 Aim (a face-first melee blow)
         (injury: "concussion",  weight: 8),                // -1 Cool
