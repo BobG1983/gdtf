@@ -178,7 +178,7 @@ git -C ${REPO} status --short
 If the tree is dirty with work that is not this ticket's, STOP and report — do not
 stash it and do not build on top of it.
 
-Plain git — never git flow. One ticket at a time in this repo.
+Plain git. One ticket at a time in this repo.
 
 ## THE CONTRACT — build exactly this
 
@@ -336,7 +336,7 @@ Do NOT commit — /land owns the commit.`,
 
 phase('Land')
 
-const landed = await agent(`Land ${TICKET} following the /land skill (plain git — no git flow).
+const landed = await agent(`Land ${TICKET} following the /land skill (plain git).
 
 Repo: ${REPO} — no worktree; the work is on ${BRANCH} in the main tree
 Branch: ${BRANCH}
