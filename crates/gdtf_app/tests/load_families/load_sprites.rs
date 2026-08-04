@@ -1,7 +1,6 @@
 //! Load sprite defs into [`SpriteDefsFamily`].
 //! Value-agnostic: registry presence only (no pinned stems).
-mod load_suite;
-
+use super::load_suite;
 use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
 use load_suite::suite::{self, FamilyLoadContract};
 

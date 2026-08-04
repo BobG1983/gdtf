@@ -1,7 +1,6 @@
 //! Load fields into [`FieldsFamily`] by authored member key.
 //! Value-agnostic: catalog presence only.
-mod load_suite;
-
+use super::load_suite;
 use gdtf_battle_sim::effects::fields::FieldDefRegistry;
 use gdtf_content_families::FieldsFamily;
 use load_suite::suite::{self, FamilyLoadContract};

@@ -1,7 +1,6 @@
 //! Load armor into [`ArmorFamily`] by authored member keys.
 //! Value-agnostic: registry presence only; magnitudes are tuning data.
-mod load_suite;
-
+use super::load_suite;
 use bevy::app::Startup;
 use gdtf_app::test_support::{AppState, app_state, load_released, seed_load_fallbacks};
 use gdtf_battle_sim::armor::ArmorRegistry;
