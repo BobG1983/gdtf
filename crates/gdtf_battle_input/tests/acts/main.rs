@@ -1,3 +1,4 @@
+//! Act intents: fire, move, posture, emplacement, gating, view toggle.
 mod downed;
 mod emplacement;
 mod fire;
