@@ -1,3 +1,4 @@
+//! Click cover to fire: shot depletes and frees the cell.
 use bevy::{input::ButtonInput, platform::collections::HashSet, prelude::*, scene::ScenePlugin};
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight, ViewMode};
