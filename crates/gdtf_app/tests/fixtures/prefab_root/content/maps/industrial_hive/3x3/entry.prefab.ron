@@ -1,8 +1,4 @@
-// GTW-489 C1 test fixture — a UUID-keyed PrefabSpec level-fragment under the
-// `maps/<theme>/<size>/` root. The dedicated `prefab.ron` compound extension dispatches it to
-// the RonAsset<PrefabSpec> loader. NOT shipped game content; exists only to exercise the prefab
-// folder loader (the migration of real content is T06). One placement so C1 can assert the
-// prefab carries placements. `role` is OMITTED to exercise the serde-default Fill (GTW-486).
+// Prefab loader test fixture. Role defaults to Fill.
 (
     theme: "00000000-0000-0000-0000-01840a3e0901",
     size: (width: 3, height: 3, levels: 1),
