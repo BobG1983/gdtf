@@ -10,6 +10,7 @@ argument-hint: "[summary]"
 # /file-bug — root cause first, ticket second, fix third
 
 Hard rules:
+
 - **Never fix-then-file.** Ticket exists before the first line of fix code.
 - **Never fold a bug fix into an unrelated branch.** One bug = one ticket = one branch.
 
@@ -22,6 +23,7 @@ Reproduce (failing assert or `cargo drun`). Cite **file:line**. Find the shipped
 ## 2. File the Linear bug
 
 Via project-manager, create in project GDTF with four sections:
+
 - **Shipped claim vs actual**
 - **Root cause** (file:line)
 - **Fix contract** (clause-numbered C1, C2, …)

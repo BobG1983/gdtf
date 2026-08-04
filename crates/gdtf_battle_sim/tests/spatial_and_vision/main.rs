@@ -1,4 +1,4 @@
-//! Packed integration suite (GTW-797). Flat files merged; tests unchanged.
+//! Sim spatial and vision: stance bands, move constraints, fog, occluders.
 
 mod aim_at_stance_band;
 mod dispatch_move_constraints;

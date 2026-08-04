@@ -1,4 +1,4 @@
-//! Packed integration suite (GTW-797). Flat files merged; tests unchanged.
+//! Battle scene shell: presenter, HUD panels, camera, focus nav, battle end.
 
 mod aim_toggle_visual;
 mod battle_end_at_impact;

@@ -1,6 +1,6 @@
-//! Packed integration suite (GTW-797). Flat files merged; tests unchanged.
+//! Sim entities and slots: armor, attachment fit, field seeding, damage over time.
 
 mod armor_entities;
 mod attachment_slot_fit;
-mod field_seeding;
 mod dot_attach;
+mod field_seeding;

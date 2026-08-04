@@ -88,7 +88,7 @@ fn spawn_armed_thrower(app: &mut App, at: CellLevel) -> Entity {
         .spawn((Position::new(at), Luck::new(10.0), Tu::new(250)))
         .id();
     let (bundle, _siblings) =
-        grenade_spec().into_bundle(WeaponName::new("gtw559-test-grenade".to_owned()));
+        grenade_spec().into_bundle(WeaponName::new("blast-test-grenade".to_owned()));
     app.world_mut().spawn((bundle, WieldedBy::new(thrower)));
     thrower
 }

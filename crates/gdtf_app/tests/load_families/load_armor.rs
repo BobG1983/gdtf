@@ -1,12 +1,13 @@
 //! Load armor into [`ArmorFamily`] by authored member keys.
 //! Value-agnostic: registry presence only; magnitudes are tuning data.
-use super::load_suite;
 use bevy::app::Startup;
 use gdtf_app::test_support::{AppState, app_state, load_released, seed_load_fallbacks};
 use gdtf_battle_sim::armor::ArmorRegistry;
 use gdtf_content_families::ArmorFamily;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
+
+use super::load_suite;
 
 const LOAD_SAFETY_NET: u32 = 10_000;
 

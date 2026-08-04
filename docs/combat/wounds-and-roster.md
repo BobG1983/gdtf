@@ -78,7 +78,7 @@ Two pools, two outcomes: **HP ≤ 0 → Downed**; **Wounds ≤ 0 → Dead**. Bot
 
 The psychological track mirrors the physical one (see [stats.md](stats.md)): **Morale** is psychological HP, **Bottle** is psychological Wounds. Losing the psychological fight produces named **nerve effects** and ultimately **Bottled** — out of the fight on the mind track. Suppression stays a separate tactical pin.
 
-Full design: [morale.md](morale.md) (GTW-40, accepted). Lasting campaign nerve scars: later (GTW-407).
+Full design: [morale.md](morale.md) (accepted). Lasting campaign nerve scars: later.
 
 ## Roster persistence
 
@@ -101,6 +101,6 @@ The grudge system — gangs/gangers that *remember* who crippled whom — is the
 - ~~The wound-chance formula~~ — **designed** (`roll_severity`): every hit rolls one bucket — severity = `j·pen_dmg + part_mod + fatal_bias − k·Toughness + I·Luck_shooter + roll(−L·Luck_defender .. R)` → tier via `severity_edges` (the defender's Luck extends the roll's floor downward — a shrug-off chance — while the ceiling stays `R`; below the first edge = no wound). Location-**dependent**: the struck part nudges the score (a per-body-part `severity_mod`). Remaining = tuning magnitudes (the tuning-config severity group, per-weapon Fatal-bias).
 - The **Wounds-budget cost** per tier (1/2/3 vs 1/3/5, …) — tuning values.
 - ~~The **down → death / capture / recover** state machine~~ — **designed** ([resolution.md](resolution.md) §9 + the state machine above): Downed → a stacking *Bleeding Out* condition drains Wounds; stabilize / execute / recover / capture. The two terminal gates plus the full in-battle arm (bleed-out + execute; stabilize) are part of the authoritative sim's hit/tick path; recover / capture at battle-end remain campaign scope.
-- ~~The **psychological-effects / nerve** table~~ — **accepted** in [morale.md](morale.md); lasting campaign nerve still TBD (GTW-407).
+- ~~The **psychological-effects / nerve** table~~ — **accepted** in [morale.md](morale.md); lasting campaign nerve still TBD.
 - The Critical infection / **lethal-risk** system + difficulty dial.
 - Downtime lengths per tier; capture & rescue rules (with the campaign layer).

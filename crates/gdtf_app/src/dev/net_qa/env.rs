@@ -2,7 +2,7 @@ use gdtf_net_qa_transport::NetQaPort;
 
 use super::config::DEFAULT_PORT;
 
-/// Debug builds always listen. No env arming (GTW-969).
+/// Debug builds always listen; there is no env arming.
 #[must_use]
 pub(super) const fn net_qa_enabled() -> bool {
     true

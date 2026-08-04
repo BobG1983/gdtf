@@ -1,4 +1,4 @@
-//! Packed integration suite (GTW-797). Flat files merged; tests unchanged.
+//! Sim acts: open door, landed hit.
 
-mod open_door_act;
 mod landed_hit;
+mod open_door_act;

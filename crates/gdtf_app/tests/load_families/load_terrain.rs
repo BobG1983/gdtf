@@ -1,8 +1,9 @@
 //! Load terrain defs: non-empty registry from the real folder; no pinned stems.
-use super::load_suite;
 use gdtf_battle_sim::terrain::def::TerrainDefRegistry;
 use gdtf_content_families::TerrainDefsFamily;
 use load_suite::suite::{self, FamilyLoadContract};
+
+use super::load_suite;
 
 impl FamilyLoadContract for TerrainDefsFamily {
     fn is_empty(registry: &TerrainDefRegistry) -> bool {

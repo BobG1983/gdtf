@@ -1,7 +1,10 @@
-//! What stays here is THIS host's policy: the protocol version this server speaks, its
+//! Game net QA identity and hello facts.
+
 use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::ports::GAME_QA_PORT;
-use gdtf_qa_protocol::message::{HelloFacts, ProtocolVersion, ServerNameNet};
+use gdtf_qa_protocol::{
+    message::{HelloFacts, ProtocolVersion, ServerNameNet},
+    ports::GAME_QA_PORT,
+};
 
 crate::support_item! {
                                                 const NET_QA_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::CURRENT;

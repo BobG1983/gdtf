@@ -4,8 +4,9 @@ use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
 /// Logical name for a QA shot.
-#[derive(schemars::JsonSchema)]
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    schemars::JsonSchema, Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
 #[serde(transparent)]
 pub struct ShotName(String);
 

@@ -16,13 +16,13 @@ use gdtf_qa_protocol::{
 };
 use serde_json::{Value, json};
 
-const ATTACHED_SHOT: &str = "target/qa_screenshots/gtw942_attached.png";
+const ATTACHED_SHOT: &str = "target/qa_screenshots/attach_attached.png";
 
-const SECOND_SHOT: &str = "target/qa_screenshots/gtw942_second.png";
+const SECOND_SHOT: &str = "target/qa_screenshots/attach_second.png";
 
-const ATTACHED_BYTES: &[u8] = b"gtw942-attached-png-bytes";
+const ATTACHED_BYTES: &[u8] = b"attach-attached-png-bytes";
 
-const SECOND_BYTES: &[u8] = b"gtw942-second-png-bytes";
+const SECOND_BYTES: &[u8] = b"attach-second-png-bytes";
 
 const ATTACHING_REPLY: &str = r#"{"phase":{"app":"Running"}}"#;
 
@@ -74,7 +74,7 @@ fn a_child_tree_holding_the_captures() -> PathBuf {
         .elapsed()
         .map_or(0, |since| since.as_nanos());
     let serial = TREE_SERIAL.fetch_add(1, Ordering::Relaxed);
-    let root = std::env::temp_dir().join(format!("gtw942-{}-{nanos}-{serial}", process::id()));
+    let root = std::env::temp_dir().join(format!("attach-{}-{nanos}-{serial}", process::id()));
     for (relative, bytes) in [(ATTACHED_SHOT, ATTACHED_BYTES), (SECOND_SHOT, SECOND_BYTES)] {
         let file = root.join(relative);
         let Some(parent) = file.parent() else {

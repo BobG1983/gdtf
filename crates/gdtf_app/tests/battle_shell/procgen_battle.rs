@@ -28,7 +28,7 @@ fn battlescape_state(app: &App) -> Option<BattleScapeState> {
 
 #[test]
 fn skirmish_ron_authors_no_terrain() {
-    let ron = include_str!("../../../assets/content/situations/skirmish.ron");
+    let ron = include_str!("../../../../assets/content/situations/skirmish.ron");
     let parsed = ron::from_str::<Situation>(ron);
     assert!(
         parsed.is_ok(),

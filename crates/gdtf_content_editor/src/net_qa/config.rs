@@ -1,8 +1,10 @@
 //! Editor net QA identity and hello facts.
 
 use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::ports::EDITOR_QA_PORT;
-use gdtf_qa_protocol::message::{HelloFacts, ProtocolVersion, ServerNameNet};
+use gdtf_qa_protocol::{
+    message::{HelloFacts, ProtocolVersion, ServerNameNet},
+    ports::EDITOR_QA_PORT,
+};
 
 pub(super) const EDITOR_QA_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::CURRENT;
 

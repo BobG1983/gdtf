@@ -44,9 +44,9 @@ pub struct NetQaEditorPlugin {
 }
 
 impl NetQaEditorPlugin {
-    /// Build from environment: enabled only when the `net_qa` flag is set.
+    /// Build the default wiring: debug builds listen on the shared editor QA port.
     #[must_use]
-    pub fn from_env() -> Self {
+    pub const fn from_env() -> Self {
         let wiring = if editor_net_qa_enabled() {
             Wiring::Listener {
                 port:       editor_port_from_env(),

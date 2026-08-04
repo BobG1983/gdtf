@@ -15,10 +15,12 @@ Branch model: **`main`** = releases, **`develop`** = integration. Plain git only
 ## Rules
 
 1. Branch per ticket off develop:
+
    ```bash
    git checkout develop && git pull origin develop
    git checkout -b feature/gtw-N-slug
    ```
+
    Never code directly on `develop` or `main`.
 2. Never build a multi-ticket tree. One ticket's changes per working tree;
    finish (or stash and file a ticket) before starting the next.
@@ -32,12 +34,14 @@ Branch model: **`main`** = releases, **`develop`** = integration. Plain git only
 5. Commit style: `Area: summary (GTW-N)` subject plus a wrapped body saying
    what changed and why. Match the voice of `git log --oneline -15`.
 6. Land via `/land` with plain git (from the main repo if using a worktree):
+
    ```bash
    git checkout develop && git pull origin develop
    git merge --no-ff feature/gtw-N-slug
    git push origin develop
    git branch -d feature/gtw-N-slug
    ```
+
    Landing is the only way work reaches `develop`.
 7. When a workflow spawns a sub-agent to run git plumbing, the same rules
    apply to it — explicit staging, gate-gated commits, ticket-tagged subjects.

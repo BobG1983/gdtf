@@ -1,7 +1,4 @@
 //! Injury load: registry + tables resolve; gate holds without them.
-#[path = "load_suite/gate.rs"]
-mod gate;
-
 use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::{
     armor::BodyPart,
@@ -11,6 +8,8 @@ use gdtf_battle_sim::{
 use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
 };
+
+use crate::load_suite::gate;
 
 const TRANSITION_BUDGET: u32 = 32;
 
