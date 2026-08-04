@@ -27,10 +27,11 @@ Short files under `.claude/rules/` — read and follow them:
 - [`design-fidelity.md`](.claude/rules/design-fidelity.md) — build exactly the ticket + `docs/`; deviations approved before building.
 - [`verification.md`](.claude/rules/verification.md) — **the one definition of green**.
 - [`git-workflow.md`](.claude/rules/git-workflow.md) — branch per ticket, gate-pass commits, explicit staging, land = finish + push.
-- [`linear-discipline.md`](.claude/rules/linear-discipline.md) — every change has a GTW-* ticket; statuses move with the work.
+- [`linear-discipline.md`](.claude/rules/linear-discipline.md) — every change has a GTW-* ticket; statuses move with the work; labels defined there.
 - [`no-bare-types.md`](.claude/rules/no-bare-types.md) — no bare Rust/std type for a domain value; named newtype that `Deref`s.
 - [`module-layout.md`](.claude/rules/module-layout.md) — module is a directory; mod.rs is wiring-only; size limits.
-- [`plain-language.md`](.claude/rules/plain-language.md) — banned words; name the real mechanism.
+- [`plain-language.md`](.claude/rules/plain-language.md) — wording and length; banned words; name the real mechanism.
+- [`reply-shape.md`](.claude/rules/reply-shape.md) — chat reply structure: answer first, no process narration.
 - [`comment-hygiene.md`](.claude/rules/comment-hygiene.md) — short docs; no ticket ids in comments.
 
 Bevy ECS gotchas (system ordering, change detection, schedules, state transitions, query conflicts) live in the `bevy-expert` agent and supporting notes — treat them as binding when writing systems.

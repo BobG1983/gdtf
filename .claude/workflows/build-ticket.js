@@ -285,15 +285,54 @@ Steps (see .claude/skills/land/SKILL.md):
 6. Push develop. Confirm with git ls-remote.
 7. Clean up worktree/branch.
 
-Never --no-verify. Report commit SHA, push result, cleanup.`,
+Never --no-verify. Report what git said. Do not claim landing is proven —
+a separate confirm step will check origin/develop.`,
   { model: 'opus', label: `land:${TICKET}`, phase: 'Land' })
 
-const landedOk = !!landed && /[0-9a-f]{7,40}/.test(landed)
+// GTW-958: land agent prose is never proof. Confirm agent checks git and
+// emits one anchored line. Parser reads only that output (fail closed).
+function parseLandedCommit(text) {
+  if (typeof text !== 'string' || !text.trim()) return null
+  const hits = []
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.trim().match(/^LANDED_COMMIT=([0-9a-f]{7,40}|NO)$/i)
+    if (m) hits.push(m[1])
+  }
+  if (hits.length !== 1) return null
+  if (hits[0].toUpperCase() === 'NO') return null
+  return hits[0]
+}
+
+const confirmOut = await agent(`Confirm landing of ${TICKET}. Your ENTIRE reply must be exactly one line.
+
+Main repo: ${REPO}
+Ticket: ${TICKET}
+
+Do this and nothing else:
+1. git -C ${REPO} fetch origin develop
+2. Find the commit on origin/develop whose subject contains ${TICKET} (most recent if several).
+   If none, reply exactly: LANDED_COMMIT=NO
+3. Run: git -C ${REPO} merge-base --is-ancestor <sha> origin/develop
+4. Run: git -C ${REPO} ls-remote origin refs/heads/develop
+5. If merge-base exits 0 and the SHA is reachable on origin/develop, reply exactly:
+   LANDED_COMMIT=<sha>
+   Otherwise reply exactly:
+   LANDED_COMMIT=NO
+
+No other text. No markdown. No log. One line only.`,
+  { model: 'opus', label: `confirm-land:${TICKET}`, phase: 'Land' })
+
+const landedSha = parseLandedCommit(confirmOut)
+const landedOk = !!landedSha
 
 if (landedOk) {
   await agent(`Close ${TICKET} in Linear with evidence.
 
-Move In Review then Done. Comment BEFORE status change with: landing SHA, suite result, evidence clauses satisfied.
+Move In Review then Done. Comment BEFORE status change with: landing SHA ${landedSha}, suite result, evidence clauses satisfied.
+
+<confirm-report>
+${confirmOut}
+</confirm-report>
 
 <land-report>
 ${landed}
@@ -305,4 +344,4 @@ ${verifyOut}
     { model: 'opus', label: `close:${TICKET}`, phase: 'Land', agentType: 'project-manager' })
 }
 
-return { ticket: TICKET, landed: landedOk, rounds: attempt, land: landed, verify: verifyOut }
+return { ticket: TICKET, landed: landedOk, landedSha: landedSha || null, rounds: attempt, land: landed, confirm: confirmOut, verify: verifyOut }
