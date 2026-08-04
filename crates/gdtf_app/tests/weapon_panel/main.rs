@@ -1,3 +1,4 @@
+//! Weapon panel: aim/stance layout, bottom bar, reload button, structure.
 mod aim_stance_layout;
 mod bottom_bar;
 mod harness;
