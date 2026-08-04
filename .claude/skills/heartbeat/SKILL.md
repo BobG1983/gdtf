@@ -1,8 +1,8 @@
 ---
 name: heartbeat
 description: >-
-  Two-hourly autonomous-build tick: read run-state, ensure both crons, inspect worktrees,
-  resume a dead run or start exactly one new build after clause audit. Append one log line.
+  Two-hourly autonomous-build tick: read run-state, ensure both crons, check the tree,
+  resume a dead run or start exactly one new build. Append one log line.
 argument-hint: ""
 ---
 
