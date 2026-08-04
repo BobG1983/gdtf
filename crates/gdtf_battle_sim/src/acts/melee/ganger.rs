@@ -15,6 +15,7 @@ use crate::{
     ganger::{LifeState, Luck, Toughness, Tu, effective_luck, effective_toughness},
     injuries::{InjuryRegistry, InjuryTables},
     los::{Observer, PeekOffset, Target, has_los},
+    march::MarchGrids,
     melee::{Combatants, MeleeStrike, MeleeStrikeEnv, MeleeWeaponHit, resolve_melee_strike},
     metric::CellLevel,
     resolve_and_apply::{StruckPiece, TargetGanger},
@@ -89,9 +90,11 @@ pub(super) fn resolve_ganger_melee(
     let sighted = has_los(
         &observer,
         &los_target,
-        &world.occupancy,
-        &world.surface,
-        &world.cover,
+        MarchGrids {
+            occupancy: &world.occupancy,
+            surface:   &world.surface,
+            cover:     &world.cover,
+        },
         &world.tuning,
         is_dead,
     );

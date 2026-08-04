@@ -4,7 +4,7 @@ use gdtf_battle_sim::{
     cone::PriorShots,
     cover::{CoverLedger, HeightBand},
     ganger::Facing,
-    march::{MarchDir, MarchKind, march_vector},
+    march::{MarchDir, MarchGrids, MarchKind, march_vector},
     prelude::{Cell, CellLevel, Direction, Level, OccupancyGrid, Position, Stance, StanceKind},
     stability::RecoilGrowth,
     surface::SurfaceGrid,
@@ -62,9 +62,11 @@ fn point_blank_march_hits(
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         *shooter_pos,
         |_| false,

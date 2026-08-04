@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn direction_leaving_grid_immediately_is_a_graceful_miss() {
@@ -12,9 +13,11 @@ fn direction_leaving_grid_immediately_is_a_graceful_miss() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -37,9 +40,11 @@ fn zero_direction_is_a_graceful_miss() {
     let result = march_vector(
         muzzle,
         MarchDir::new(Vec3::ZERO),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -67,9 +72,11 @@ fn out_of_grid_muzzle_is_a_graceful_miss() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -96,9 +103,11 @@ fn impact_point_lies_on_the_ray() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -136,9 +145,11 @@ fn band_edges_come_from_tuning() {
     let r_default = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &default,
         far_shooter(),
         no_dead(),
@@ -153,9 +164,11 @@ fn band_edges_come_from_tuning() {
     let r_raised = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &raised,
         far_shooter(),
         no_dead(),
@@ -191,9 +204,11 @@ fn marches_over_real_built_grids() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),
@@ -218,9 +233,11 @@ fn long_diagonal_completes_within_step_cap() {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        &grid,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &grid,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         far_shooter(),
         no_dead(),

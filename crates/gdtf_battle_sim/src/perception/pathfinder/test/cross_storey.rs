@@ -2,7 +2,7 @@ use super::support::{
     all_other, cell, default_floor_costs, full_vision, grid_with, link_step, links_graph, ok_path,
     stair, summed_step_cost, tuning,
 };
-use crate::pathfinder::PlanningView;
+use crate::pathfinder::{MoveGrids, PlanningView};
 
 #[test]
 fn route_traverses_vertical_link_and_accumulates_link_tu() {
@@ -75,10 +75,12 @@ fn upper_storey_unreachable_without_a_link() {
     let result = crate::pathfinder::find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );

@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     occupancy::TerrainKind,
-    pathfinder::{PlanningView, find_path},
+    pathfinder::{MoveGrids, PlanningView, find_path},
     visibility::FactionRelation,
 };
 
@@ -25,10 +25,12 @@ fn visible_enemy_blocks_the_route() {
     let result = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
@@ -41,10 +43,12 @@ fn visible_enemy_blocks_the_route() {
     let open = find_path(
         start,
         goal,
-        &clear_grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &clear_grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
@@ -71,10 +75,12 @@ fn invisible_enemy_does_not_block() {
     let result = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
@@ -105,10 +111,12 @@ fn own_squad_ganger_always_blocks() {
     let result = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
@@ -141,10 +149,12 @@ fn explored_scatter_blocks_the_route() {
     let result = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );
@@ -158,10 +168,12 @@ fn explored_scatter_blocks_the_route() {
     let open = find_path(
         start,
         goal,
-        &open_grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &open_grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &planning,
     );

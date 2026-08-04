@@ -9,8 +9,8 @@ pub(super) use crate::{
     },
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     fire::{
-        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
-        Volley, WeaponQuery, WearsQuery, WieldsQuery, fire,
+        BattleGrids, FireOrder, ShooterQuery, StruckBodies, TargetQuery, Volley, WieldedWeapons,
+        fire,
     },
     ganger::{
         Aiming, Direction, Facing, Hp, LifeState, Luck, Position, Shooting, Stance, StanceKind,
@@ -39,13 +39,8 @@ pub(super) use crate::{
 
 pub(super) type FireQueries = (
     ShooterQuery<'static, 'static>,
-    TargetQuery<'static, 'static>,
-    WearsQuery<'static, 'static>,
-    PieceQuery<'static, 'static>,
-    WieldsQuery<'static, 'static>,
-    WeaponQuery<'static, 'static>,
-    MeleeQuery<'static, 'static>,
-    MountedQuery<'static, 'static>,
+    WieldedWeapons<'static, 'static>,
+    StruckBodies<'static, 'static>,
 );
 
 pub(super) const SEED: u64 = 0xF12E_5EED;

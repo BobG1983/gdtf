@@ -1,7 +1,7 @@
 use bevy::{app::App, math::Vec3};
 use gdtf_battle_sim::{
     cover::CoverLedger,
-    march::{MarchDir, MarchKind, march_vector},
+    march::{MarchDir, MarchGrids, MarchKind, march_vector},
     prelude::{CellLevel, Level, OccupancyGrid, SimPos},
     surface::{SlabState, SurfaceGrid},
     tuning::{CombatTuning, PerStoreyDamage},
@@ -51,9 +51,11 @@ fn probe_stops_on_slab(app: &App) -> bool {
     let result = march_vector(
         muzzle,
         MarchDir::new(dir),
-        occupancy,
-        surface,
-        cover,
+        MarchGrids {
+            occupancy,
+            surface,
+            cover,
+        },
         tuning,
         CellLevel::new(column_cell(), Level::new(0)),
         |_| false,

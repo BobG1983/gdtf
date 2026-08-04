@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::resolve_and_apply::{ShotSource, WoundRoll};
 
 #[test]
 fn ground_hit_accrues_weapon_damage_on_the_correct_cell() {
@@ -14,16 +15,20 @@ fn ground_hit_accrues_weapon_damage_on_the_correct_cell() {
     let mut rng_used = rng();
     let report = resolve_and_apply(
         &ground_outcome(),
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         None,
         an_entity(),
         surfaces(&mut cover, &mut slab),
-        &tuning,
-        &mut rng_used,
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng_used,
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut injury_rng(),
+        },
     );
 
     assert_eq!(
@@ -52,16 +57,20 @@ fn ground_hit_touches_no_ganger_cover_or_slab_state() {
     let mut rng_used = rng();
     let report = resolve_and_apply(
         &ground_outcome(),
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         None,
         an_entity(),
         surfaces(&mut cover, &mut slab),
-        &tuning,
-        &mut rng_used,
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng_used,
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut injury_rng(),
+        },
     );
 
     assert!(
@@ -92,16 +101,20 @@ fn ground_hit_takes_no_rng_draw_and_is_deterministic() {
         let mut r = rng();
         let report = resolve_and_apply(
             &ground_outcome(),
-            weapon.stats(),
-            Luck::new(0.0),
+            ShotSource {
+                weapon: weapon.stats(),
+                luck:   Luck::new(0.0),
+            },
             None,
             an_entity(),
             surfaces(&mut cover, &mut slab),
-            &tuning,
-            &mut r,
-            &injury_tables(),
-            &injury_registry(),
-            &mut injury_rng(),
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut r,
+                tables:       &injury_tables(),
+                registry:     &injury_registry(),
+                injury_rng:   &mut injury_rng(),
+            },
         );
         report.verdict
     };
@@ -119,16 +132,20 @@ fn ground_hit_takes_no_rng_draw_and_is_deterministic() {
     let mut rng_used = rng();
     let _report = resolve_and_apply(
         &ground_outcome(),
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         None,
         an_entity(),
         surfaces(&mut cover, &mut slab),
-        &tuning,
-        &mut rng_used,
-        &injury_tables(),
-        &injury_registry(),
-        &mut injury_rng(),
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng_used,
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut injury_rng(),
+        },
     );
     let mut rng_fresh = rng();
     assert_eq!(

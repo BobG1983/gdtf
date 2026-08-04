@@ -4,17 +4,12 @@ use bevy::prelude::Entity;
 
 use super::{
     core::{SearchGrids, StopRule, relax},
+    grids::MoveGrids,
     path::{Path, PathBlocked, PathCost},
     planning::PlanningView,
 };
 use crate::{
-    ganger::Tu,
-    injuries::MovementCostFactor,
-    metric::CellLevel,
-    occupancy::OccupancyGrid,
-    terrain::floor::FloorCostGrid,
-    tuning::{CombatTuning, MoveCost},
-    vertical::VerticalLinkGraph,
+    ganger::Tu, injuries::MovementCostFactor, metric::CellLevel, tuning::MoveCost,
     visibility::FactionRelation,
 };
 
@@ -33,17 +28,10 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
 /// # Errors
 ///
 /// Returns [`PathBlocked`] when no route reaches `goal` under the mover's costs and planning rules.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "grids, endpoints, and MovementCostFactor are separate inputs; SearchGrids is internal only"
-)]
 pub fn find_path<R>(
     start: CellLevel,
     goal: CellLevel,
-    grid: &OccupancyGrid,
-    links: &VerticalLinkGraph,
-    tuning: &CombatTuning,
-    floor_costs: &FloorCostGrid,
+    terrain: MoveGrids<'_>,
     factor: MovementCostFactor,
     planning: &PlanningView<'_, R>,
 ) -> Result<Path, PathBlocked>
@@ -51,10 +39,10 @@ where
     R: Fn(Entity) -> FactionRelation,
 {
     let grids = SearchGrids {
-        grid,
-        links,
-        tuning,
-        floor_costs,
+        grid: terrain.occupancy,
+        links: terrain.links,
+        tuning: terrain.tuning,
+        floor_costs: terrain.floor_costs,
         factor,
         planning,
     };
@@ -81,17 +69,10 @@ where
 
 /// All cells reachable from `start` within the TU budget.
 #[must_use]
-#[expect(
-    clippy::too_many_arguments,
-    reason = "grids, start, budget, and MovementCostFactor are separate inputs"
-)]
 pub fn reachable_within<R>(
     start: CellLevel,
     budget: Tu,
-    grid: &OccupancyGrid,
-    links: &VerticalLinkGraph,
-    tuning: &CombatTuning,
-    floor_costs: &FloorCostGrid,
+    terrain: MoveGrids<'_>,
     factor: MovementCostFactor,
     planning: &PlanningView<'_, R>,
 ) -> Vec<(CellLevel, Tu)>
@@ -99,10 +80,10 @@ where
     R: Fn(Entity) -> FactionRelation,
 {
     let grids = SearchGrids {
-        grid,
-        links,
-        tuning,
-        floor_costs,
+        grid: terrain.occupancy,
+        links: terrain.links,
+        tuning: terrain.tuning,
+        floor_costs: terrain.floor_costs,
         factor,
         planning,
     };

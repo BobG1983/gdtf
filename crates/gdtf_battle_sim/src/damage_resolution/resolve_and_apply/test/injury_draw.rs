@@ -1,5 +1,8 @@
 use super::support::*;
-use crate::rng::{BattleSeed, InjuryRng};
+use crate::{
+    resolve_and_apply::{ShotSource, WoundRoll},
+    rng::{BattleSeed, InjuryRng},
+};
 
 fn fresh_injury_rng() -> InjuryRng {
     InjuryRng::from_root(BattleSeed::new(SEED))
@@ -29,8 +32,10 @@ fn corpse_hit_takes_no_injury_draw() {
     let mut inj = fresh_injury_rng();
     let _report = resolve_and_apply(
         &outcome,
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
@@ -42,11 +47,13 @@ fn corpse_hit_takes_no_injury_draw() {
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut rng(),
-        &injury_tables(),
-        &injury_registry(),
-        &mut inj,
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng(),
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut inj,
+        },
     );
     assert_no_injury_draw(inj, "a corpse-hit");
 }
@@ -63,16 +70,20 @@ fn cover_hit_takes_no_injury_draw() {
     let mut inj = fresh_injury_rng();
     let _report = resolve_and_apply(
         &outcome,
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         None,
         an_entity(),
         surfaces(&mut cover, &mut slab),
-        &tuning,
-        &mut rng(),
-        &injury_tables(),
-        &injury_registry(),
-        &mut inj,
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng(),
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut inj,
+        },
     );
     assert_no_injury_draw(inj, "a cover-hit");
 }
@@ -88,16 +99,20 @@ fn slab_hit_takes_no_injury_draw() {
     let mut inj = fresh_injury_rng();
     let _report = resolve_and_apply(
         &outcome,
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         None,
         an_entity(),
         surfaces(&mut cover, &mut slab),
-        &tuning,
-        &mut rng(),
-        &injury_tables(),
-        &injury_registry(),
-        &mut inj,
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng(),
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut inj,
+        },
     );
     assert_no_injury_draw(inj, "a slab-hit");
 }
@@ -113,16 +128,20 @@ fn ground_hit_takes_no_injury_draw() {
     let mut inj = fresh_injury_rng();
     let _report = resolve_and_apply(
         &outcome,
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         None,
         an_entity(),
         surfaces(&mut cover, &mut slab),
-        &tuning,
-        &mut rng(),
-        &injury_tables(),
-        &injury_registry(),
-        &mut inj,
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng(),
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut inj,
+        },
     );
     assert_no_injury_draw(inj, "a ground-hit");
 }
@@ -142,8 +161,10 @@ fn ganger_wound_takes_one_injury_draw() {
     let mut inj = fresh_injury_rng();
     let report = resolve_and_apply(
         &outcome,
-        weapon.stats(),
-        Luck::new(0.0),
+        ShotSource {
+            weapon: weapon.stats(),
+            luck:   Luck::new(0.0),
+        },
         Some(TargetGanger {
             hp:        &mut hp,
             wounds:    &mut wounds,
@@ -155,11 +176,13 @@ fn ganger_wound_takes_one_injury_draw() {
         }),
         entity,
         surfaces(&mut ledger(), &mut slab_ledger()),
-        &tuning,
-        &mut rng(),
-        &injury_tables(),
-        &injury_registry(),
-        &mut inj,
+        &mut WoundRoll {
+            tuning:       &tuning,
+            severity_rng: &mut rng(),
+            tables:       &injury_tables(),
+            registry:     &injury_registry(),
+            injury_rng:   &mut inj,
+        },
     );
 
     let severity = applied_of(&report).map(|a| a.severity);

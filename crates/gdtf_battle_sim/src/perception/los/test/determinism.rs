@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn repeat_calls_are_identical() {
@@ -26,18 +27,22 @@ fn repeat_calls_are_identical() {
     let clear_a = has_los(
         &observer,
         &target,
-        &open,
-        &surface,
-        &open_cover,
+        MarchGrids {
+            occupancy: &open,
+            surface:   &surface,
+            cover:     &open_cover,
+        },
         &tuning,
         no_dead(),
     );
     let clear_b = has_los(
         &observer,
         &target,
-        &open,
-        &surface,
-        &open_cover,
+        MarchGrids {
+            occupancy: &open,
+            surface:   &surface,
+            cover:     &open_cover,
+        },
         &tuning,
         no_dead(),
     );
@@ -52,18 +57,22 @@ fn repeat_calls_are_identical() {
     let blocked_a = has_los(
         &observer,
         &target,
-        &open,
-        &surface,
-        &blocked_cover,
+        MarchGrids {
+            occupancy: &open,
+            surface:   &surface,
+            cover:     &blocked_cover,
+        },
         &tuning,
         no_dead(),
     );
     let blocked_b = has_los(
         &observer,
         &target,
-        &open,
-        &surface,
-        &blocked_cover,
+        MarchGrids {
+            occupancy: &open,
+            surface:   &surface,
+            cover:     &blocked_cover,
+        },
         &tuning,
         no_dead(),
     );

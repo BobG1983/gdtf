@@ -4,10 +4,8 @@ use bevy::prelude::{Deref, Entity};
 
 use super::probe::{Observer, Sighted, Target, has_los};
 use crate::{
-    cover::CoverLedger,
     ganger::{LifeState, Position},
-    occupancy::OccupancyGrid,
-    surface::SurfaceGrid,
+    march::MarchGrids,
     tuning::{CombatTuning, ViewRange},
 };
 
@@ -25,21 +23,12 @@ impl CanSee {
 
 /// True when the observer is alive, the target is within view range, and LOS is clear.
 #[must_use]
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the engagement gate composes every input its three checks need — the \
-              observer/target borrow-views, the observer's life state, the view-range \
-              tunable, the three grids + tuning has_los marches, and the corpse \
-              predicate; bundling them into a struct would only hide the same arity"
-)]
 pub fn can_see(
     observer: &Observer,
     target: &Target,
     observer_life: LifeState,
     view_range: ViewRange,
-    occupancy: &OccupancyGrid,
-    surface: &SurfaceGrid,
-    cover: &CoverLedger,
+    grids: MarchGrids<'_>,
     tuning: &CombatTuning,
     is_dead: impl Fn(Entity) -> bool,
 ) -> CanSee {
@@ -51,7 +40,7 @@ pub fn can_see(
         return CanSee::new(false);
     }
 
-    let sighted: Sighted = has_los(observer, target, occupancy, surface, cover, tuning, is_dead);
+    let sighted: Sighted = has_los(observer, target, grids, tuning, is_dead);
     CanSee::new(*sighted)
 }
 

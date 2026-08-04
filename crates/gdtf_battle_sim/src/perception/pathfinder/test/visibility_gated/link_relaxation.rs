@@ -5,7 +5,7 @@ use super::{
     support::*,
 };
 use crate::{
-    pathfinder::{PlanningView, find_path},
+    pathfinder::{MoveGrids, PlanningView, find_path},
     visibility::FactionRelation,
 };
 
@@ -29,10 +29,12 @@ fn routing_onto_known_link_far_endpoint_is_allowed_when_unseen() {
     let result_gated = find_path(
         foot,
         head,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &gated,
     );
@@ -55,10 +57,12 @@ fn routing_onto_known_link_far_endpoint_is_allowed_when_unseen() {
     let result_open = find_path(
         foot,
         head,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &open,
     );
@@ -99,10 +103,12 @@ fn unseen_non_link_cell_is_still_non_routable() {
     let result_gated = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &gated,
     );
@@ -117,10 +123,12 @@ fn unseen_non_link_cell_is_still_non_routable() {
     let result_open = find_path(
         start,
         goal,
-        &grid,
-        &links,
-        &tuning,
-        &floor_costs,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
         crate::injuries::MovementCostFactor::IDENTITY,
         &open,
     );

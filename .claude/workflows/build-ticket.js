@@ -9,7 +9,7 @@ export const meta = {
     { title: 'Gate', detail: '3 read-only lenses, any-non-compliant blocks (/gate skill)' },
     { title: 'Fix', detail: 'bounded repair loop on a red verdict' },
     { title: 'Docs-sync', detail: 're-align docs/ if the change drifted design claims (/docs-sync skill)' },
-    { title: 'Land', detail: 'commit, plain-git merge to develop, push, close with evidence (/land skill)' },
+    { title: 'Land', detail: 'commit, merge to develop, push, close with evidence (/land skill)' },
   ],
 }
 
@@ -43,26 +43,35 @@ const HOUSE_RULES = `
 4. **No unwrap/expect/panic/todo/unimplemented.** Doc every pub item. Typed domain values (no-bare-types.md).
    Files: warn >300 / block >400. mod.rs is wiring only.
 
-5. **Plain language.** See plain-language.md — short plain wording; quoted failures stay whole.
+5. **Comments.** See comment-hygiene.md — short docs, no ticket ids, no design rationale in comments.
 
-6. **Report failures verbatim.** Never summarise a failure away.
+6. **Symbols and bulk edits.** See code-navigation.md — the LSP tool answers every symbol
+   question, \`rust-analyzer ssr\` makes the same change at many sites, and no script
+   (Python, sed, awk, perl) ever edits Rust source.
+
+7. **Plain language.** See plain-language.md — short plain wording; quoted failures stay whole.
+
+8. **Report failures verbatim.** Never summarise a failure away.
 `
 
 const GREEN = `
-The one definition of green — authority: .claude/rules/verification.md.
-Use the aliases. Never hand-type expanded feature lists.
+## Green
 
-\`\`\`
-cargo fmt --check
-cargo dclippy -- -D warnings
-cargo dtest
-cargo dbuild
-cargo doc --workspace --no-deps
-cargo doc-full
-\`\`\`
+READ \`${REPO}/.claude/rules/verification.md\` AND RUN THE SUITE IT LISTS. That file is the
+only authority — this workflow does not restate the commands, because a copy here goes stale
+the moment the rule changes. Do not run a suite from memory.
 
-Run SEQUENTIALLY, one command per tool call. PIN THE DIRECTORY on every cargo call
-(\`cd ${REPO} && ...\`). The Bash tool cwd resets between calls.
+Use the \`.cargo/config.toml\` aliases exactly as written there. Never hand-type an expanded
+feature list.
+
+Run them SEQUENTIALLY, one command per tool call, and read each exit code on its own. PIN THE
+DIRECTORY on every cargo call (\`cd ${REPO} && ...\`) — the Bash tool cwd resets between calls.
+
+NEVER pipe a cargo command into \`tail\`/\`head\`/\`grep\` inside an \`&&\` chain. The pipeline's
+exit code is the filter's, which always succeeds, so a failing step reports green. That exact
+mistake produced a false all-green while \`cargo doc\` was exiting 101.
+
+Green means every command in that file exited 0, after your final edit.
 `
 
 // --- Phase 0: clause audit (GTW-962) — BEFORE In Progress ---
@@ -158,11 +167,8 @@ const built = await agent(`Implement ${TICKET} in the MAIN repo at ${REPO}.
 
 ## Set up — RESUMABLE
 
-NO WORKTREES. All work happens directly in ${REPO}, so the user can watch it and
-so the QA MCP host — which builds from that directory — can see your branch.
-
-This does NOT mean working on develop. Branch per ticket still holds: everything
-below happens on ${BRANCH}. Never commit on develop; the pre-commit hook blocks it.
+All work happens directly in ${REPO}, on ${BRANCH}. Never commit on develop; the
+pre-commit hook blocks it.
 
 FIRST check what is already checked out:
 \`\`\`
@@ -178,7 +184,7 @@ git -C ${REPO} status --short
 If the tree is dirty with work that is not this ticket's, STOP and report — do not
 stash it and do not build on top of it.
 
-Plain git — never git flow. One ticket at a time in this repo.
+One ticket at a time in this repo.
 
 ## THE CONTRACT — build exactly this
 
@@ -336,7 +342,7 @@ Do NOT commit — /land owns the commit.`,
 
 phase('Land')
 
-const landed = await agent(`Land ${TICKET} following the /land skill (plain git — no git flow).
+const landed = await agent(`Land ${TICKET} following the /land skill.
 
 Repo: ${REPO} — no worktree; the work is on ${BRANCH} in the main tree
 Branch: ${BRANCH}

@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn mid_cover_sails_for_high_line_blocks_low_line() {
@@ -27,9 +28,11 @@ fn mid_cover_sails_for_high_line_blocks_low_line() {
     let sails = has_los(
         &high_observer,
         &high_target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );
@@ -53,9 +56,11 @@ fn mid_cover_sails_for_high_line_blocks_low_line() {
     let blocked = has_los(
         &low_observer,
         &low_target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );

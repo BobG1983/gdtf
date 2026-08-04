@@ -5,10 +5,10 @@ mod compose;
 mod query;
 mod volley;
 
-pub use blast::resolve_blast;
+pub use blast::{BlastFootprint, resolve_blast};
 pub use query::{
-    BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
-    WeaponQuery, WearsQuery, WieldsQuery,
+    BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, StruckBodies,
+    TargetQuery, WeaponQuery, WearsQuery, WieldedWeapons, WieldsQuery,
 };
 pub use volley::{Volley, fire};
 

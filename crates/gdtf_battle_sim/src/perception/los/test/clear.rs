@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::march::MarchGrids;
 
 #[test]
 fn open_line_is_clear() {
@@ -28,9 +29,11 @@ fn open_line_is_clear() {
     let sighted = has_los(
         &observer,
         &target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );
@@ -66,9 +69,11 @@ fn high_wall_between_blocks() {
     let sighted = has_los(
         &observer,
         &target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );
@@ -102,9 +107,11 @@ fn slab_between_levels_blocks() {
     let open = has_los(
         &observer,
         &target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );
@@ -119,9 +126,11 @@ fn slab_between_levels_blocks() {
     let blocked = has_los(
         &observer,
         &target,
-        &occupancy,
-        &surface,
-        &cover,
+        MarchGrids {
+            occupancy: &occupancy,
+            surface:   &surface,
+            cover:     &cover,
+        },
         &tuning,
         no_dead(),
     );

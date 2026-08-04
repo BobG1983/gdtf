@@ -2,18 +2,19 @@
 
 use bevy::prelude::Entity;
 
-use super::query::{BattleGrids, PieceQuery, TargetQuery, WearsQuery};
+use super::query::{BattleGrids, PieceQuery, StruckBodies, WearsQuery};
 use crate::{
     aoe::aoe_affected,
-    ganger::{LifeState, Luck},
-    injuries::{InjuryRegistry, InjuryTables},
+    ganger::LifeState,
     metric::{Cell, CellLevel, Level},
-    resolve_and_apply::{HitReport, StruckPiece, StruckSurfaces, TargetGanger, resolve_and_apply},
+    resolve_and_apply::{
+        HitReport, ShotSource, StruckPiece, StruckSurfaces, TargetGanger, WoundRoll,
+        resolve_and_apply,
+    },
     resolve_coarse::{ShotKind, ShotOutcome},
-    rng::{InjuryRng, SeverityRng, ShotRng},
+    rng::ShotRng,
     sample_cone::ShotDir,
-    tuning::CombatTuning,
-    weapon::{HitType, WeaponStats},
+    weapon::HitType,
 };
 
 fn struck_piece_entity(
@@ -27,46 +28,42 @@ fn struck_piece_entity(
         .find(|&piece| pieces.get(piece).is_ok_and(|p| *p.part == part))
 }
 
+/// Where a blast lands, who threw it, and the pattern it throws.
+#[derive(Debug, Clone, Copy)]
+pub struct BlastFootprint {
+    /// Cell and level the blast lands on.
+    pub landing: CellLevel,
+    /// Cell and level the throw came from.
+    pub thrower: CellLevel,
+    /// Blast pattern the weapon throws.
+    pub hit:     HitType,
+}
+
 /// Apply blast damage to every living occupant in the AOE footprint.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the blast fan needs the landing / thrower cells + the weapon stats + hit type + \
-              shooter luck + the disjoint target/wears/pieces queries + grids + tuning + the \
-              three distinct RNG streams (shot / severity / injury) + the injury tables & \
-              registry — the same irreducible set the fire path's apply_aoe_splash documents, \
-              minus the primary report (a throw has no direct-impact target to skip)"
-)]
 pub fn resolve_blast(
-    landing: CellLevel,
-    thrower_cell: CellLevel,
-    weapon: WeaponStats<'_>,
-    hit: HitType,
-    shooter_luck: Luck,
+    footprint: BlastFootprint,
+    source: ShotSource<'_>,
     grids: &mut BattleGrids,
-    targets: &mut TargetQuery,
-    wears: &WearsQuery,
-    pieces: &mut PieceQuery,
-    tuning: &CombatTuning,
+    bodies: &mut StruckBodies,
     shot_rng: &mut ShotRng,
-    severity_rng: &mut SeverityRng,
-    tables: &InjuryTables,
-    registry: &InjuryRegistry,
-    injury_rng: &mut InjuryRng,
+    roll: &mut WoundRoll<'_>,
 ) -> Vec<HitReport> {
-    let level = landing.level();
-    let affected = aoe_affected(landing, hit, thrower_cell);
+    let level = footprint.landing.level();
+    let affected = aoe_affected(footprint.landing, footprint.hit, footprint.thrower);
     let mut reports = Vec::new();
     for cell in affected {
         let Some(occupant) = grids.occupancy.occupant(&cell) else {
             continue;
         };
-        if targets
+        if bodies
+            .targets
             .get(occupant)
             .is_ok_and(|(_, _, life, ..)| *life == LifeState::Dead)
         {
             continue;
         }
-        let part = crate::hit_location::roll_body_part(&tuning.body_part_weights, shot_rng.rng());
+        let part =
+            crate::hit_location::roll_body_part(&roll.tuning.body_part_weights, shot_rng.rng());
         let struck_cell = cell.cell();
         let outcome = ShotOutcome {
             kind: ShotKind::Ganger(occupant),
@@ -77,21 +74,7 @@ pub fn resolve_blast(
             muzzle: landing_point(struck_cell, level),
             trajectory: ShotDir::from_direction(bevy::math::Vec3::ZERO),
         };
-        let report = fold_blast_ganger(
-            &outcome,
-            occupant,
-            weapon,
-            shooter_luck,
-            grids,
-            targets,
-            wears,
-            pieces,
-            tuning,
-            severity_rng,
-            tables,
-            registry,
-            injury_rng,
-        );
+        let report = fold_blast_ganger(&outcome, occupant, source, grids, bodies, roll);
         reports.push(report);
     }
     reports
@@ -105,42 +88,32 @@ fn landing_point(cell: Cell, level: Level) -> crate::metric::SimPos {
     crate::metric::cell_center(cell, level)
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the ganger fold needs the outcome / struck entity / weapon / shooter luck + the \
-              disjoint wears/pieces queries + grids + tuning + severity-rng + the injury tables \
-              & registry & injury-rng — the exact irreducible set the fire path's \
-              fold_ganger_round documents"
-)]
 fn fold_blast_ganger(
     outcome: &ShotOutcome,
     struck: Entity,
-    weapon: WeaponStats<'_>,
-    shooter_luck: Luck,
+    source: ShotSource<'_>,
     grids: &mut BattleGrids,
-    targets: &mut TargetQuery,
-    wears: &WearsQuery,
-    pieces: &mut PieceQuery,
-    tuning: &CombatTuning,
-    severity_rng: &mut SeverityRng,
-    tables: &InjuryTables,
-    registry: &InjuryRegistry,
-    injury_rng: &mut InjuryRng,
+    bodies: &mut StruckBodies,
+    roll: &mut WoundRoll<'_>,
 ) -> HitReport {
-    let struck_piece_view = outcome
+    let struck_part = outcome
         .body_part
-        .and_then(|part| struck_piece_entity(struck, part, wears, pieces))
-        .and_then(|piece_entity| {
-            pieces.get_mut(piece_entity).ok().map(|piece| StruckPiece {
+        .and_then(|part| struck_piece_entity(struck, part, &bodies.wears, &bodies.pieces));
+    let struck_piece_view = struck_part.and_then(|piece_entity| {
+        bodies
+            .pieces
+            .get_mut(piece_entity)
+            .ok()
+            .map(|piece| StruckPiece {
                 floor:      *piece.floor,
                 protection: *piece.protection,
                 hardness:   *piece.hardness,
                 armor_type: *piece.armor_type,
                 integrity:  piece.integrity.into_inner(),
             })
-        });
+    });
 
-    match targets.get_mut(struck) {
+    match bodies.targets.get_mut(struck) {
         Ok((mut hp, mut wounds, mut life, mut inflicted, toughness, target_luck, injuries)) => {
             let (effective_toughness, effective_luck) = match injuries {
                 Some(ledger) => (
@@ -151,8 +124,7 @@ fn fold_blast_ganger(
             };
             resolve_and_apply(
                 outcome,
-                weapon,
-                shooter_luck,
+                source,
                 Some(TargetGanger {
                     hp:        &mut hp,
                     wounds:    &mut wounds,
@@ -167,11 +139,7 @@ fn fold_blast_ganger(
                     cover: grids.cover,
                     slab:  grids.slab,
                 },
-                tuning,
-                severity_rng,
-                tables,
-                registry,
-                injury_rng,
+                roll,
             )
         }
         Err(_) => HitReport::no_effect(outcome.kind),

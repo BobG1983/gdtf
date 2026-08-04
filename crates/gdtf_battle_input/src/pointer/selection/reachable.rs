@@ -5,7 +5,7 @@ use gdtf_battle_presenter::ReachableCells;
 use gdtf_battle_sim::{
     floor::FloorCostGrid,
     injuries::{InflictedInjuries, MovementCostFactor},
-    pathfinder::{PlanningView, reachable_within},
+    pathfinder::{MoveGrids, PlanningView, reachable_within},
     prelude::{CellLevel, Faction, OccupancyGrid, Position, Tu},
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
@@ -60,10 +60,12 @@ fn reachable_for(
     let raw = reachable_within(
         start,
         budget,
-        &grids.grid,
-        &grids.links,
-        &grids.tuning,
-        &grids.floor_costs,
+        MoveGrids {
+            occupancy:   &grids.grid,
+            links:       &grids.links,
+            floor_costs: &grids.floor_costs,
+            tuning:      &grids.tuning,
+        },
         factor,
         &planning,
     );

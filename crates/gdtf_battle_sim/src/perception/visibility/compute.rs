@@ -6,6 +6,7 @@ use crate::{
     cover::CoverLedger,
     ganger::{Facing, LifeState, Position, Stance, StanceKind},
     los::{Observer, PeekOffset, Target, can_see},
+    march::MarchGrids,
     metric::{Cell, CellLevel, CellUnit, Level},
     occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
@@ -65,9 +66,11 @@ pub fn union_fov(
                 &target,
                 fov.life,
                 tuning.view_range,
-                occupancy,
-                surface,
-                cover,
+                MarchGrids {
+                    occupancy,
+                    surface,
+                    cover,
+                },
                 tuning,
                 &is_dead,
             ) {

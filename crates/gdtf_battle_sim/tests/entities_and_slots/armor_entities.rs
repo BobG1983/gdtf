@@ -10,13 +10,11 @@ use bevy::{
 use gdtf_battle_sim::{
     armor::{ArmorIntegrity, Wears},
     cover::CoverLedger,
-    fire::{
-        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
-        Volley, WeaponQuery, WearsQuery, WieldsQuery,
-    },
+    fire::{BattleGrids, FireOrder, ShooterQuery, StruckBodies, Volley, WieldedWeapons},
     ganger::{Aim, Aiming, Facing},
     injuries::{InjuryRegistry, InjuryTables},
     prelude::{Cell, Direction, Faction, Level, OccupancyGrid, Stance, StanceKind},
+    resolve_and_apply::WoundRoll,
     resolve_coarse::ShotKind,
     situation::{BattleRegistries, BattleSetup, setup_battle},
     slab::{BraceStairCells, SlabLedger},
@@ -93,13 +91,8 @@ fn battle_app() -> Option<(App, BattleSetup)> {
 fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
     type FireQueries<'w, 's> = (
         ShooterQuery<'w, 's>,
-        TargetQuery<'w, 's>,
-        WearsQuery<'w, 's>,
-        PieceQuery<'w, 's>,
-        WieldsQuery<'w, 's>,
-        WeaponQuery<'w, 's>,
-        MeleeQuery<'w, 's>,
-        MountedQuery<'w, 's>,
+        WieldedWeapons<'w, 's>,
+        StruckBodies<'w, 's>,
     );
     let tuning = CombatTuning::default();
     let mut rng = shot_rng(seed);
@@ -130,17 +123,7 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
     let mut state: SystemState<FireQueries> = SystemState::new(app.world_mut());
     let volley = {
         let world = app.world_mut();
-        let Ok((
-            mut shooters,
-            mut targets,
-            wears,
-            mut pieces,
-            wields,
-            mut weapons,
-            melee_q,
-            mounted_q,
-        )) = state.get_mut(world)
-        else {
+        let Ok((mut shooters, mut arms, mut bodies)) = state.get_mut(world) else {
             return Volley {
                 reports: Vec::new(),
                 shots:   Vec::new(),
@@ -148,20 +131,15 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
             };
         };
         gdtf_battle_sim::fire::fire(
-            shooter,
             FireOrder {
-                mode:         &mode,
-                target_cell:  Cell::new(enemy_at().x, enemy_at().y),
+                shooter,
+                mode: &mode,
+                target_cell: Cell::new(enemy_at().x, enemy_at().y),
                 target_level: Level::new(0),
             },
             &mut shooters,
-            &mut targets,
-            &wears,
-            &mut pieces,
-            &wields,
-            &mut weapons,
-            &melee_q,
-            &mounted_q,
+            &mut arms,
+            &mut bodies,
             BattleGrids {
                 occupancy:   &occupancy,
                 surface:     &surface,
@@ -169,12 +147,14 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
                 slab:        &mut slab,
                 brace_cells: &BraceStairCells::empty(),
             },
-            &tuning,
             &mut rng,
-            &mut sev_rng,
-            &InjuryTables::default(),
-            &InjuryRegistry::default(),
-            &mut injury_rng,
+            &mut WoundRoll {
+                tuning:       &tuning,
+                severity_rng: &mut sev_rng,
+                tables:       &InjuryTables::default(),
+                registry:     &InjuryRegistry::default(),
+                injury_rng:   &mut injury_rng,
+            },
         )
     };
     state.apply(app.world_mut());

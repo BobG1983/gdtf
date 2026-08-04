@@ -1,4 +1,5 @@
 use super::support::*;
+use crate::resolve_and_apply::{ShotSource, WoundRoll};
 
 #[test]
 fn same_seed_reproduces_the_report_sequence() {
@@ -32,8 +33,10 @@ fn same_seed_reproduces_the_report_sequence() {
                     .map(|integ| struck_piece(1, 6, 2, ArmorType::Flak, integ));
                 resolve_and_apply(
                     &ganger_outcome(entity, part),
-                    weapon.stats(),
-                    Luck::new(1.0),
+                    ShotSource {
+                        weapon: weapon.stats(),
+                        luck:   Luck::new(1.0),
+                    },
                     Some(TargetGanger {
                         hp: &mut hp,
                         wounds: &mut wounds,
@@ -45,11 +48,13 @@ fn same_seed_reproduces_the_report_sequence() {
                     }),
                     entity,
                     surfaces(&mut ledger(), &mut slab_ledger()),
-                    &tuning,
-                    &mut r,
-                    &injury_tables(),
-                    &injury_registry(),
-                    &mut injury_rng(),
+                    &mut WoundRoll {
+                        tuning:       &tuning,
+                        severity_rng: &mut r,
+                        tables:       &injury_tables(),
+                        registry:     &injury_registry(),
+                        injury_rng:   &mut injury_rng(),
+                    },
                 )
             })
             .collect::<Vec<_>>()
