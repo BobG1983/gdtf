@@ -1,4 +1,4 @@
-//! Build a [`CommandCatalogue`] from erased commands and host facts.
+//! Build a [`gdtf_qa_protocol::command::CommandCatalogue`] from erased commands and host facts.
 
 use gdtf_qa_protocol::{
     command::{CommandCatalogue, CommandEntry},

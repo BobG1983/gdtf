@@ -8,7 +8,6 @@ impl ScrubAccumulator {
         self.0 += points / POINTS_PER_STOREY;
         let steps = self.0.trunc().clamp(-64.0, 64.0);
         self.0 -= steps;
-        let whole = steps as i32;
-        whole
+        steps as i32
     }
 }

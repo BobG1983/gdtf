@@ -31,6 +31,5 @@ fn grid_extent_i32(extent: usize) -> i32 {
 const fn floor_to_cell_coord(scaled: f32) -> i32 {
     let floored = scaled.floor();
     let clamped = floored.clamp(i32::MIN as f32, i32::MAX as f32);
-    let coord = clamped as i32;
-    coord
+    clamped as i32
 }

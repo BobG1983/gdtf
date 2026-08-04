@@ -45,7 +45,8 @@ crate::support_item! {
 
 impl LoadedSituation {
     crate::support_item! {
-                const fn new(situation: Situation) -> Self {
+        /// Wrap the situation the load step resolved.
+        const fn new(situation: Situation) -> Self {
             Self(situation)
         }
     }
