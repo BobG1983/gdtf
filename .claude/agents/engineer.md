@@ -62,6 +62,7 @@ Quick iteration: `cargo dcheck` / `cargo dclippy`. Never expand the feature list
 - Bevy idioms: systems over components/resources; register in the owning scene-plugin under the correct schedule.
 - Keep the sim render-free and deterministic (injected seeded RNG).
 - Match surrounding idiom and module layout.
+- Do not avoid lints using [expect]
 
 ## Tests
 
