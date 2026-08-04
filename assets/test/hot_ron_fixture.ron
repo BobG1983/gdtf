@@ -1,8 +1,5 @@
-// Test-only fixture for the gdtf_assets HOT-RON seam tests (GTW-564) — the
-// well-formed file the `HotSwatch` chain loads. Not shipped game content.
+// Well-formed HOT-RON test fixture.
 (
-    // A string field, to prove non-numeric fields resolve through the chain.
     label: "molten",
-    // A numeric field the mapped-variant test derives from (doubled).
     count: 3,
 )

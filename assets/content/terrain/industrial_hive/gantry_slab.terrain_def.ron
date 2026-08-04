@@ -1,19 +1,16 @@
-// GTW-490 migration of assets/content/terrain/gantry_slab.terrain.ron to the NEW UUID-keyed
-// per-theme TerrainDef model (GTW-484/487). Magnitudes COPIED verbatim from the flat file. A
-// slab carries NO height band. presenter_kind.graphic_name = the flat file's `graphic`
-// TileRoles key ("slab"); the old atlas index is INTENTIONALLY DROPPED.
+// Gantry slab. No height band.
 (
-    // Stable authored key — the industrial_hive `gantry_slab` TerrainUuid.
+    // Stable authored key — industrial_hive gantry_slab TerrainUuid.
     key: "00000000-0000-0000-0000-01840a910006",
     display_name: "Gantry Slab",
     sim_kind: Slab(
-        hp:               30,    // structural HP (copied; flat used the SlabHp pool)
-        armor_protection: 5,     // damage soak (copied)
-        armor_hardness:   2,     // punch ignored (copied)
+        hp:               30,    // structural HP
+        armor_protection: 5,     // damage soak
+        armor_hardness:   2,     // punch ignored
     ),
     presenter_kind: Slab(
-        graphic_name: "slab",    // flat file's `graphic` TileRoles key
-        footfall:     Some("footfall_metal"),  // flat file's footfall key
+        graphic_name: "slab",
+        footfall:     Some("footfall_metal"),
     ),
     tags: [],
 )

@@ -1,10 +1,3 @@
-// GTW-143 failure-path fixture: deliberately MALFORMED theme RON.
-//
-// This file exists only so the real-asset Load harness can point its asset
-// source root here and have `core_tuning/ui_theme.tuning.ron` reach LoadState::Failed (a
-// RON deserialize error in the GTW-136 RonAssetLoader). It must NOT be a valid
-// GdtfThemeSpec. The poll/resolve system then records LoadFailed, warns, and
-// inserts the const-fallback GdtfTheme — proving the app neither hangs nor
-// leaves Load themeless on a bad asset.
+// Deliberately malformed theme RON for failure-path tests.
 (
     this_is_not = a valid GdtfThemeSpec at all <<< >>>

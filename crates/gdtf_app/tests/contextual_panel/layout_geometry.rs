@@ -104,7 +104,7 @@ fn contextual_panel_is_contained_inside_the_bottom_bar() {
     assert_eq!(
         parent_of(&app, root),
         Some(bar_entity),
-        "the contextual panel root must be a CHILD of the bottom bar (GTW-726)",
+        "the contextual panel root must be a CHILD of the bottom bar",
     );
 
     assert_eq!(
@@ -125,7 +125,7 @@ fn contextual_panel_is_contained_inside_the_bottom_bar() {
     assert!(
         panel_rect.contained_in(&bar_rect),
         "the contextual panel root ({:?}..{:?}) must be CONTAINED inside the bottom bar \
-         ({:?}..{:?}) — GTW-726: the context window is part of the bottom HUD, never a \
+         ({:?}..{:?}) — the context window is part of the bottom HUD, never a \
          free-floating box over the map. Its top edge (min.y={}) must not sit above the bar's top \
          edge (min.y={}).",
         panel_rect.min,

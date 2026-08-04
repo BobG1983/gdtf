@@ -27,8 +27,7 @@ pub(crate) fn loader_no_ops_without_asset_server<F: FamilyLoadContract>() {
 
     assert!(
         app.world().get_resource::<F::Registry>().is_some(),
-        "with no AssetServer, `register_content_family` must seed the default {} (the \
-         GTW-629 headless-fallback rider)",
+        "with no AssetServer, `register_content_family` must seed the default {}",
         registry_name::<F>(),
     );
 

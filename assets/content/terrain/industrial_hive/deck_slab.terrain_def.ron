@@ -1,21 +1,16 @@
-// GTW-490 migration of assets/content/terrain/deck_slab.terrain.ron to the NEW UUID-keyed
-// per-theme TerrainDef model (GTW-484/487). Magnitudes COPIED verbatim from the flat file. A
-// slab carries NO height band (it spans the z-boundary; resolution.md §2). The flat file's
-// footfall was "none" -> the new Slab footfall is None (omitted). presenter_kind.graphic_name
-// = the flat file's `graphic` TileRoles key ("slab"); the old atlas index is INTENTIONALLY
-// DROPPED.
+// Deck slab. No height band (spans the z-boundary).
 (
-    // Stable authored key — the industrial_hive `deck_slab` TerrainUuid.
+    // Stable authored key — industrial_hive deck_slab TerrainUuid.
     key: "00000000-0000-0000-0000-01840a910005",
     display_name: "Deck Slab",
     sim_kind: Slab(
-        hp:               120,   // structural HP — a sturdy floor (copied)
-        armor_protection: 4,     // damage soak (copied)
-        armor_hardness:   2,     // punch ignored (copied)
+        hp:               120,   // structural HP — sturdy floor
+        armor_protection: 4,     // damage soak
+        armor_hardness:   2,     // punch ignored
     ),
     presenter_kind: Slab(
-        graphic_name: "slab",    // flat file's `graphic` TileRoles key
-        footfall:     None,      // flat file's footfall was "none" -> no authored footfall
+        graphic_name: "slab",
+        footfall:     None,
     ),
     tags: [],
 )

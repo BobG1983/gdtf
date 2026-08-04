@@ -1,21 +1,16 @@
-// GTW-490 migration of assets/content/terrain/bulkhead_wall.terrain.ron to the NEW
-// UUID-keyed per-theme TerrainDef model (GTW-484/487). Magnitudes COPIED verbatim from the
-// flat file. presenter_kind.graphic_name = the flat file's `graphic` TileRoles key ("wall");
-// the old atlas index is INTENTIONALLY DROPPED. A wall blocks vision + pathfinding — authored
-// sim-side via the BlocksVision / BlocksPathfinding tags (consumption is GTW-482).
+// Bulkhead wall. Solid wall blocks vision + pathfinding via BlocksVision / BlocksPathfinding tags.
 (
-    // Stable authored key — the industrial_hive `bulkhead_wall` TerrainUuid.
+    // Stable authored key — industrial_hive bulkhead_wall TerrainUuid.
     key: "00000000-0000-0000-0000-01840a910002",
     display_name: "Bulkhead Wall",
     sim_kind: Wall(
-        hp:               40,    // structural HP (copied)
-        armor_protection: 6,     // damage soak (copied)
-        armor_hardness:   3,     // punch ignored (copied)
-        height_band:      High,  // a wall fills the cell; nothing flies over it within a storey
+        hp:               40,    // structural HP
+        armor_protection: 6,     // damage soak
+        armor_hardness:   3,     // punch ignored
+        height_band:      High,  // fills the cell
     ),
     presenter_kind: Wall(
-        graphic_name: "wall",    // flat file's `graphic` TileRoles key
+        graphic_name: "wall",
     ),
-    // SIM-OWNED tags: a solid wall blocks both line-of-sight and pathfinding.
     tags: [BlocksVision, BlocksPathfinding],
 )

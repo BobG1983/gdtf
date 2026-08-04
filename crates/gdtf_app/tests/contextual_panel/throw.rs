@@ -57,7 +57,7 @@ fn arc_weapon_and_hovered_cell_offers_throw() {
 
     assert!(
         throw_visible(&mut app),
-        "an Arc weapon + a hovered target cell must reveal the Throw button (GTW-546)",
+        "an Arc weapon + a hovered target cell must reveal the Throw button",
     );
     assert!(
         root_visible(&mut app),
