@@ -47,6 +47,10 @@ Your bar is green suite + a precise how-to-verify spec. Hand that to the orchest
 
 Feature work on `feature/gtw-N-slug` off `develop`. Commit subjects: `Area: summary (GTW-N)`. Do not commit unless the orchestrator asks.
 
+## Memory
+
+Durable notes: `.claude/agent-memory/engineer/real/`. Mid-run scratch: `engineer/ephemeral/` (gitignored). Only `/dream` promotes ephemeral → real.
+
 ## Reporting
 
 Files changed, what each does, suite result (all eight), and exactly how to verify. Restate the ticket clause by clause and state how each is met. Expect the design-gate reviewer before landing.

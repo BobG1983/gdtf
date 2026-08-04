@@ -29,7 +29,7 @@ Via project-manager, create in project GDTF with four sections:
 
 ## 3. THEN branch
 
-Clean tree on `develop`. `git flow feature start gtw-N-slug` using the **new** bug ticket. Move to In Progress.
+Clean tree on `develop`. `git checkout -b feature/gtw-N-slug` off develop (plain git). Move to In Progress.
 
 ## 4. Implement
 

@@ -1,20 +1,20 @@
 export const meta = {
   name: 'build-ticket',
-  description: 'Build one GTW ticket end to end: open, build, verify, 3-lens gate, docs-sync, land, close. Uses the skills and the single green definition in .claude/rules/verification.md.',
+  description: 'Build one GTW ticket end to end: clause-audit, open, build, verify, 3-lens gate, docs-sync, land, close. Uses the skills and the single green definition in .claude/rules/verification.md.',
   phases: [
-    { title: 'Open', detail: 'fetch the ticket verbatim and mark it In Progress' },
+    { title: 'Clause-audit', detail: 'phase 0: audit live ticket text before In Progress (GTW-962)' },
+    { title: 'Open', detail: 'mark ticket In Progress after a clean audit' },
     { title: 'Build', detail: 'implement against the quoted contract' },
     { title: 'Verify', detail: 'full green suite (verification.md) plus the ticket evidence clauses' },
     { title: 'Gate', detail: '3 read-only lenses, any-non-compliant blocks (/gate skill)' },
     { title: 'Fix', detail: 'bounded repair loop on a red verdict' },
     { title: 'Docs-sync', detail: 're-align docs/ if the change drifted design claims (/docs-sync skill)' },
-    { title: 'Land', detail: 'commit, finish, push, close with evidence (/land skill)' },
+    { title: 'Land', detail: 'commit, plain-git merge to develop, push, close with evidence (/land skill)' },
   ],
 }
 
-// Green suite: ALWAYS the eight aliases from .claude/rules/verification.md.
-// Skills /gate, /docs-sync, /land are the source of truth for process; this workflow
-// orchestrates agents that follow those skills.
+// Green suite: ALWAYS the aliases from .claude/rules/verification.md.
+// Skills /gate, /docs-sync, /land are the source of truth for process.
 
 // args: { ticket: "GTW-123", slug: "editor-net-qa-passthrough" }
 // Accept either a real object or a JSON-encoded string — the harness may deliver either.
@@ -26,16 +26,8 @@ const TICKET = A?.ticket
 const SLUG = A?.slug
 if (!TICKET || !SLUG) throw new Error(`args must supply { ticket, slug }; got ${JSON.stringify(args)}`)
 
-const NOTES = typeof A?.notes === 'string' && A.notes.trim() ? `
-## ORCHESTRATOR NOTES — from the clause audit already run on this ticket
-
-These are readings of clauses the audit found easy to get wrong. They do not add scope. If one
-appears to contradict the ticket text above, the TICKET wins — and say so in your report.
-
-${A.notes.trim()}
-` : ''
-
-const REPO = '/Users/bgardner/dev/gdtf'
+// Repo root: workflow cwd, not a hard-coded home path (GTW-954).
+const REPO = (typeof process !== 'undefined' && process.cwd && process.cwd()) || '.'
 const BRANCH = `feature/${SLUG}`
 const WT = `${REPO}/.claude/worktrees/${SLUG}`
 
@@ -52,14 +44,14 @@ const HOUSE_RULES = `
 4. **No unwrap/expect/panic/todo/unimplemented.** Doc every pub item. Typed domain values (no-bare-types.md).
    Files: warn >300 / block >400. mod.rs is wiring only.
 
-5. **Plain language.** Banned: "seam", "sanctioned", "byte identical". Name the real mechanism.
+5. **Plain language.** See plain-language.md — short plain wording; quoted failures stay whole.
 
 6. **Report failures verbatim.** Never summarise a failure away.
 `
 
 const GREEN = `
 The one definition of green — authority: .claude/rules/verification.md.
-ALL EIGHT must exit 0. Use the aliases. Never hand-type expanded feature lists.
+Use the aliases. Never hand-type expanded feature lists.
 
 \`\`\`
 cargo fmt --check
@@ -76,18 +68,92 @@ Run SEQUENTIALLY, one command per tool call. PIN THE DIRECTORY on every cargo ca
 (\`cd ${WT} && ...\`). The Bash tool cwd resets between calls.
 `
 
+// --- Phase 0: clause audit (GTW-962) — BEFORE In Progress ---
+// Never audit a summary argument. Only live Linear description + comments.
+// Findings: orchestrator log only — no Linear comments.
+// Example of a catch (GTW-882): report claimed verbatim acceptance while tree
+// had a different reworded sentence; file list understated. Contradictory
+// clauses in one ticket must be reported as a set, not reconciled silently.
+phase('Clause-audit')
+
+const liveTicket = await agent(`Read-only Linear fetch for ${TICKET} in project GDTF.
+
+1. Fetch FULL description AND complete comment thread, verbatim.
+2. Do NOT change status.
+3. Report description and every comment verbatim.
+
+Also report: labels, parent, blocking relationships.`,
+  { model: 'opus', label: `fetch:${TICKET}`, phase: 'Clause-audit', agentType: 'project-manager' })
+
+if (!liveTicket) throw new Error(`could not fetch ${TICKET} for clause audit`)
+
+log(`${TICKET}: clause-audit input (live ticket text):\n${liveTicket}`)
+
+const auditOut = await agent(`Clause audit for ${TICKET}. READ-ONLY. Do not touch Linear status or post comments.
+
+You are given the LIVE ticket text (description + comments). Do not invent clauses from memory or from any summary string.
+
+<live-ticket id="${TICKET}">
+${liveTicket}
+</live-ticket>
+
+Check the acceptance clauses as a SET:
+
+1. Every clause names evidence this run can actually produce (suite, git, MCP, file:line).
+2. No two clauses contradict each other.
+3. Every clause asserts something checkable (not pure aspiration).
+
+Start with AUDIT_OK or AUDIT_BLOCK on its own line.
+Then list findings. If zero checkers reported (you produce no real audit), that is failure — say AUDIT_BLOCK.
+
+Historical shape of a catch (GTW-882): implementer prose disagreed with the tree; contradictory acceptance wording. Flag that class.
+
+Do NOT post to Linear.`,
+  { model: 'opus', label: `clause-audit:${TICKET}`, phase: 'Clause-audit' })
+
+if (!auditOut) throw new Error(`${TICKET}: clause audit produced no report (empty reviewer) — abort`)
+
+log(`${TICKET}: clause-audit findings:\n${auditOut}`)
+
+const auditOk = (() => {
+  const m = /\b(AUDIT_OK|AUDIT_BLOCK)\b/i.exec(auditOut)
+  return !!m && m[1].toUpperCase() === 'AUDIT_OK'
+})()
+
+if (!auditOk) {
+  return {
+    ticket: TICKET,
+    landed: false,
+    reason: 'clause audit blocked before In Progress',
+    audit: auditOut,
+  }
+}
+
+const NOTES = typeof A?.notes === 'string' && A.notes.trim() ? `
+## ORCHESTRATOR NOTES — from a prior clause audit
+
+These are readings of clauses the audit found easy to get wrong. They do not add scope. If one
+appears to contradict the ticket text above, the TICKET wins — and say so in your report.
+
+${A.notes.trim()}
+` : `
+## CLAUSE AUDIT (this run)
+
+${auditOut}
+`
+
 phase('Open')
 
-const ticketText = await agent(`Read-only Linear work, then ONE status change.
+const ticketText = await agent(`Linear status only for ${TICKET}.
 
-1. Fetch ${TICKET} from the GDTF project: FULL description AND complete comment thread, verbatim.
-2. Move ${TICKET} to **In Progress** NOW.
+1. Move ${TICKET} to **In Progress** NOW.
+2. Re-fetch FULL description and complete comment thread, verbatim (status change may race with board edits).
 3. Report description and every comment verbatim.
 
 Also report: labels, parent, blocking relationships.`,
   { model: 'opus', label: `open:${TICKET}`, phase: 'Open', agentType: 'project-manager' })
 
-if (!ticketText) throw new Error(`could not fetch ${TICKET}`)
+if (!ticketText) throw new Error(`could not open ${TICKET}`)
 
 phase('Build')
 
@@ -103,7 +169,7 @@ git -C ${REPO} worktree list
 - If ${WT} is NOT listed: git -C ${REPO} worktree add -b ${BRANCH} ${WT} develop
 - If ${WT} IS listed: adopt it. Never delete or reset finished unlanded work.
 
-Work ONLY in ${WT}.
+Work ONLY in ${WT}. Plain git — never git flow.
 
 ## THE CONTRACT — build exactly this
 
@@ -251,7 +317,6 @@ if (!allPass()) {
 
 phase('Docs-sync')
 
-// After gate passes, run docs-sync posture before land (skill: /docs-sync).
 await agent(`Docs-sync posture for ${TICKET} in ${WT}.
 
 If the change touched behavior described in docs/, verify claims against the code and fix drift.
@@ -262,7 +327,7 @@ Do NOT commit — /land owns the commit.`,
 
 phase('Land')
 
-const landed = await agent(`Land ${TICKET} following the /land skill.
+const landed = await agent(`Land ${TICKET} following the /land skill (plain git — no git flow).
 
 Worktree: ${WT}
 Branch: ${BRANCH}
@@ -281,16 +346,13 @@ Steps (see .claude/skills/land/SKILL.md):
 2. Write .claude/.gate-pass (TICKET/BRANCH/HEAD/FINGERPRINT).
 3. Stage explicit files by name. Never git add -A.
 4. Commit: Area: summary (${TICKET}). Confirm subject names the ticket.
-5. git flow feature finish from ${REPO}.
-6. Push develop. Confirm with git ls-remote.
-7. Clean up worktree/branch.
+5. From ${REPO}: checkout develop, pull, merge --no-ff ${BRANCH}, push origin develop, delete local feature branch.
+6. Clean up worktree if used.
 
 Never --no-verify. Report what git said. Do not claim landing is proven —
 a separate confirm step will check origin/develop.`,
   { model: 'opus', label: `land:${TICKET}`, phase: 'Land' })
 
-// GTW-958: land agent prose is never proof. Confirm agent checks git and
-// emits one anchored line. Parser reads only that output (fail closed).
 function parseLandedCommit(text) {
   if (typeof text !== 'string' || !text.trim()) return null
   const hits = []
