@@ -1,3 +1,4 @@
+//! Main menu: buttons, theme roles, focus, nav chain, despawn on exit.
 use bevy::{
     ecs::entity::Entity,
     input_focus::{InputFocus, directional_navigation::DirectionalNavigationMap},
