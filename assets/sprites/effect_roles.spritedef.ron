@@ -1,13 +1,13 @@
-// GDTF transient-FX tile-role table — DATA-DRIVEN atlas indices for the GTW-48
-// top-down FX draw (S6 / GTW-220), reshaped to the PER-DAMAGE-TYPE projectile +
-// 3-frame impact model in GTW-306. Maps each FX role to a TileIndex into
+// GDTF transient-FX tile-role table — DATA-DRIVEN atlas indices for the
+// top-down FX draw, reshaped to the PER-DAMAGE-TYPE projectile +
+// 3-frame impact model. Maps each FX role to a TileIndex into
 // assets/sprites/alt_tileset_effects.png (the role-separated 16x8 = 128-tile effects
 // sheet; index = row*16 + col, 0-based row-major). Edit freely — every field is a
 // tunable index, hot-swappable through the same RonAsset<T> loader the theme /
 // situation / tuning / tile-roles use; nothing about the index choices is hardcoded
 // in Rust.
 //
-// SHEET LAYOUT (read precisely off alt_tileset_effects.png, GTW-306):
+// SHEET LAYOUT (read precisely off alt_tileset_effects.png):
 //   Rows 0..4 = the FOUR damage-type COLOR variants (row 0 orange, 1 blue, 2 green,
 //   3 purple). EACH such row holds, by column:
 //     cols 0..8  = the 8-way DIRECTIONAL projectile rose, in compass column order
@@ -20,12 +20,12 @@
 //
 // So a row R's directional col C = index R*16 + C; its impact frame F = R*16 + 8 + F.
 (
-    // --- Legacy consequence-flash tiles (sheet rows 5..8) — unchanged from S6/GTW-220 ---
+    // --- Legacy consequence-flash tiles (sheet rows 5..8) ---
     bleed:           0,    // Bleeding -> a blood/hit drop — the §9 bleed-out flash
     armor_break:     3,    // ArmorBroken -> a spark/break burst — the worn-piece-shattered flash
     cover_destroyed: 112,  // CoverDestroyed -> a debris/rubble burst (row 7 col 0) — the §3 cover-smashed flash
-    melee_strike:    113,  // MeleeResolved -> a close-combat strike glyph (row 7 col 1, GTW-507) — the §7 connecting-hit flash
-    fall_impact:     114,  // FallOccurred  -> a fall-impact burst (row 7 col 2, GTW-524) — the landing-storey impact flash
+    melee_strike:    113,  // MeleeResolved -> a close-combat strike glyph (row 7 col 1) — the §7 connecting-hit flash
+    fall_impact:     114,  // FallOccurred  -> a fall-impact burst (row 7 col 2) — the landing-storey impact flash
     // --- Per-damage-type projectile rose + 3-frame impact (sheet rows 0..4) ---
     // NOTE: `directions` is a fixed [TileIndex; 8] and `impact` a [TileIndex; 3]; RON
     // deserializes fixed arrays as TUPLES, so each is parenthesised `( .. )`, NOT `[ .. ]`.

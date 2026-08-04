@@ -2,7 +2,7 @@
 // spraying shrapnel across the surrounding cells. The blast does not care whose side you
 // are on: everyone in the radius is torn (true friendly fire — resolution.md §2).
 //
-// GTW-541 (AoE CORE of GTW-41): the `Direct` mode is an ordinary single-target shot; the
+// The `Direct` mode is an ordinary single-target shot; the
 // `Frag` mode carries a `hit_type: Blast(radius: 1)` AoE template — on impact it strikes
 // EVERY occupant within one cell (Chebyshev, same storey) of the impact cell. `hit_type`
 // defaults to `Single` when omitted, so the direct mode reads it as a normal shot.
@@ -15,7 +15,7 @@
     punch:         2,
     shred:         1,
     damage_type:   Blast, // the matchup-wheel node (a DAMAGE flavour) — NOT the hit shape below
-    accepts:       Grenade, // GTW-775: fires self-contained fragmentation charges (the munition)
+    accepts:       Grenade, // fires self-contained fragmentation charges (the munition)
     magazine: (
         size:      6,
         reload_tu: 16,
@@ -27,8 +27,8 @@
         (kind: Single, cone_mult: 1.0, tu_percent: 0.40, shots: 1, hit_type: Blast(radius: 1)),
     ],
     stable: false,
-    handedness:    TwoHanded, // GTW-443: a two-handed launcher — refused below two working hands
-    // GTW-554: a launcher tube has no muzzle thread (nothing to suppress on a launched charge).
+    handedness:    TwoHanded, // a two-handed launcher — refused below two working hands
+    // A launcher tube has no muzzle thread (nothing to suppress on a launched charge).
     slots: [
         (Sight, 1),  // one sight dovetail (a lobbing optic)
         (Rail,  1),  // one utility rail mod

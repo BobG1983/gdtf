@@ -1,13 +1,13 @@
-// GDTF authored area-damage FIELD type — "toxic waste pool" (GTW-545, child GTW-41f of
-// GTW-41). This is AUTHORED CONTENT (a field-type catalog entry), not balance tuning. It
+// GDTF authored area-damage FIELD type — "toxic waste pool".
+// This is AUTHORED CONTENT (a field-type catalog entry), not balance tuning. It
 // loads as a loose `.ron` through the RonAsset<FieldDef> loader (folder-loaded +
 // hot-reloadable), keyed by its filename stem `toxic_waste_pool` — the FieldKey a situation's
-// authored `fields:` placement (and the GTW-547 on-death spawn effect) references.
+// authored `fields:` placement (and the on-death spawn effect) references.
 //
 // A persistent per-tile damage zone: any ganger standing on a fielded cell loses `damage` HP
 // per turn (a FLAT drain — no armor matchup, no injury roll, no RNG), UNLESS ANY worn armor
 // piece's ArmorType is in `immune_armor_types` (whole-source immunity — the sealed suit
-// protects you). This is the ticket's "toxic waste pool as initial terrain" example.
+// protects you). This is the "toxic waste pool as initial terrain" example.
 //
 // CATALOG PROPOSAL (REVIEW-FLAG — the field-type <-> immune-armor pairing is a design
 // vocabulary choice; these are defensible interim defaults, surfaced for user review):

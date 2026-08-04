@@ -1,61 +1,58 @@
 // GDTF authored situation — "skirmish": a small, valid battlefield the setup pours
-// into the battle ECS (GTW-205 / E10.3). This is AUTHORED CONTENT (a generated /
+// into the battle ECS. This is AUTHORED CONTENT (a generated /
 // hand-built battlefield), not balance tuning. It loads as a loose `.ron` through the
 // RonAsset<Situation> loader, exactly like the theme. Render-free, pixel-free:
 // positions are (cell, level) keys (x/y cells, a storey index), never pixels.
 //
-// GTW-384 (the two-layer stat model): each gang ROSTER member authors the EIGHT DIRECT
+// Two-layer stat model: each gang ROSTER member authors the EIGHT DIRECT
 // ATTRIBUTES (the raw potential) — NOT the computed stats. Those, plus identity + weapon
 // + armor, now live in the gang roster files (assets/content/gangs/*.gang.ron), NOT here.
 //
-// GTW-414 (schema v2): each placed ganger is a REFERENCE — it names its `gang` (a gang
+// Schema v2: each placed ganger is a REFERENCE — it names its `gang` (a gang
 // roster file stem) and the `member` within it (by name), then carries only the PLACEMENT
 // (cell / facing / stance / aiming / life_state) and the `faction` the situation assigns
 // for THIS battle. The roster (identity + 8 attributes + weapon + armor) is resolved at
 // setup against the GangRegistry built from the gangs folder.
 //
-// GTW-433 (theme+size procgen migration) + GTW-744 (procgen deployment): this situation
-// authors ONLY the THEME + the coarse GRID SIZE + the ROSTER (gang + member refs). It authors
-// NO inline terrain (walls / scatter / slabs / default_floor / floors / vertical_links) AND NO
-// placement cells. Both are DERIVED at BattleScapeState::Generation from `theme` + `grid_size`:
-// the sim's `generate_level` (GTW-431) packs the theme's prefab fragments into the board, and
-// `deploy_rosters` (GTW-744) places each roster member into its side's deployment zone
-// DETERMINISTICALLY by the battle's seed (facing derived from the zone's orientation, Standing /
-// Alive). The Situation schema's terrain fields AND `gangers` are `#[serde(default)]`, so
-// omitting them parses to empty — procgen fills them in. (A test/fixture may still author exact
-// `gangers` cells for back-compat; shipped content authors `rosters`.)
+// Theme+size procgen + deployment: this situation authors ONLY the THEME + the coarse
+// GRID SIZE + the ROSTER (gang + member refs). It authors NO inline terrain (walls / scatter /
+// slabs / default_floor / floors / vertical_links) AND NO placement cells. Both are DERIVED at
+// BattleScapeState::Generation from `theme` + `grid_size`: the sim's `generate_level` packs the
+// theme's prefab fragments into the board, and `deploy_rosters` places each roster member into
+// its side's deployment zone DETERMINISTICALLY by the battle's seed (facing derived from the
+// zone's orientation, Standing / Alive). The Situation schema's terrain fields AND `gangers` are
+// `#[serde(default)]`, so omitting them parses to empty — procgen fills them in. (A test/fixture
+// may still author exact `gangers` cells for back-compat; shipped content authors `rosters`.)
 (
-    // The level THEME (GTW-491) — now the UUID-keyed reference to the migrated IndustrialHive
-    // UuidThemeDef (assets/content/terrain/industrial_hive/industrial_hive.terrain_theme.ron), resolvable
-    // in the UuidThemeRegistry. GTW-491 reconciled the GTW-490 additive `theme_uuid` field into
-    // this canonical `theme` (the sim theme is now this one ThemeUuid; the legacy LevelTheme enum
-    // is no longer authored here). IndustrialHive = the manufactorum decking / bulkheads of the
-    // hive proper — the visual + content family this battlefield draws from.
+    // The level THEME — UUID-keyed reference to the migrated IndustrialHive
+    // UuidThemeDef (assets/content/terrain/industrial_hive/industrial_hive.terrain_theme.ron),
+    // resolvable in the UuidThemeRegistry. IndustrialHive = the manufactorum decking / bulkheads
+    // of the hive proper — the visual + content family this battlefield draws from.
     theme: "00000000-0000-0000-0000-01840a900001",  // migrated IndustrialHive ThemeUuid — resolves in UuidThemeRegistry
-    // The coarse GRID dimensions (GTW-414) — width × height × storey-count, each validated
+    // The coarse GRID dimensions — width × height × storey-count, each validated
     // to the sim's coarse-grid maxima (60 / 60 / 8). This is the BOARD procgen packs the
     // theme's prefab fragments into (a 30×30×4 board comfortably holds the IndustrialHive
     // player + enemy deployment prefabs at opposite corners with the inter-prefab seam).
     grid_size: (width: 30, height: 30, levels: 4),  // coarse grid extent (w × h × storeys) — the procgen board
-    // The ROSTER (GTW-744) — each member REFERENCES a gang + member by name and its side
+    // The ROSTER — each member REFERENCES a gang + member by name and its side
     // (faction); NO cell / facing / stance. The roster (attributes / weapon / armor) is resolved
     // against the gangs folder at setup; the SPAWN cell / facing / stance are DERIVED by
     // `deploy_rosters` from the generated map's deployment zones (faction 0 in the player zone,
     // faction 1 in the enemy zone — opposite corners). Two gangs (faction 0 and faction 1) face off.
     rosters: [
         // --- Gang 0 (player side): the rifleman + the grenadier (the grenade_launcher's ARC Throw
-        // act is LIVE in the shipped playable skirmish, GTW-546). Both deploy into the player zone. ---
+        // act is LIVE in the shipped playable skirmish). Both deploy into the player zone. ---
         (gang: "gang_0", member: "Alex Mercer", faction: 0),  // gang_0 roster ref — identity + 8 attributes + weapon + armor
         (gang: "gang_0", member: "Kira Vann",   faction: 0),  // the grenadier — wields grenade_launcher (TrajectoryStyle::Arc)
         // --- Gang 1 (enemy side): two defenders. Both deploy into the enemy zone (opposite corner). ---
         (gang: "gang_1", member: "Vex 1",       faction: 1),  // gang_1 roster ref
         (gang: "gang_1", member: "Vex 2",       faction: 1),  // the SAME gang_1 roster as Vex 1
     ],
-    // NOTE (GTW-433): NO terrain fields are authored here. walls / scatter / slabs /
+    // NOTE: NO terrain fields are authored here. walls / scatter / slabs /
     // default_floor / floors / vertical_links are GENERATED by procgen at Generation from
     // the theme + grid_size above; the Situation schema defaults them to empty when omitted.
     //
-    // GTW-545 (area-damage fields): one authored toxic-waste pool between the two deployment
+    // Area-damage fields: one authored toxic-waste pool between the two deployment
     // corners, so a persistent damage zone is LIVE in the shipped playable battle — any ganger
     // that traverses this cell loses HP each turn unless its worn armor grants whole-source
     // immunity (Flak / Hazard for a Chem pool). The `fields:` list is situation-owned placement

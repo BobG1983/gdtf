@@ -2,7 +2,7 @@
 // layer with no weak seam and no standout stat: even coverage, steady endurance
 // that runs a notch above baseline, the honest all-rounder that holds together
 // while flashier suits give out.
-// GTW-374 re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
+// Re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
 (
     head:      (floor: 0, protection: 3, integrity: 60, hardness: 1, armor_type: Reinforced),
     torso:     (floor: 0, protection: 4, integrity: 70, hardness: 1, armor_type: Reinforced),  // most hits land here

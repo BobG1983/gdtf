@@ -6,11 +6,11 @@
     accuracy:      1.0,
     kickback:      0.05,
     fatal_bias:    0.0,
-    damage:        6,   // GTW-374: halved from 12 (combat re-balance, slower lethality)
-    punch:         2,   // GTW-374: halved from 5 (floor of 5/2)
-    shred:         1,   // GTW-374: halved from 2
+    damage:        6,   // halved from 12 (combat re-balance, slower lethality)
+    punch:         2,   // halved from 5 (floor of 5/2)
+    shred:         1,   // halved from 2
     damage_type:   Kinetic,
-    accepts:       Slug,  // GTW-775: feeds on solid ballistic cartridges (the munition it accepts)
+    accepts:       Slug,  // feeds on solid ballistic cartridges (the munition it accepts)
     magazine: (
         size:      12,
         reload_tu: 12,
@@ -21,21 +21,21 @@
         (kind: Full,   cone_mult: 1.7, tu_percent: 0.60, shots: 6),
     ],
     stable: false,
-    handedness:    OneHanded,  // GTW-443: a one-handed sidearm - usable with a single working hand
-    // GTW-554: the attachment SLOTS this pistol offers — an item fits only a declared slot
+    handedness:    OneHanded,  // a one-handed sidearm - usable with a single working hand
+    // Attachment SLOTS this pistol offers — an item fits only a declared slot
     // with free capacity (melee Counterweight/Pommel fittings find no slot here).
     slots: [
         (Muzzle, 1),  // one muzzle thread (the fitted suppressor occupies it)
         (Sight,  1),  // one sight dovetail (an optic)
         (Rail,   1),  // a short pistol rail — one utility mod
-        // GTW-584: a magazine-fed slug-thrower — the fiction is explicit ("let the whole
+        // Magazine-fed slug-thrower — the fiction is explicit ("let the whole
         // magazine go full-auto"), and it accepts solid Slug cartridges. One box magazine
         // well (a gun holds one magazine at a time, so capacity 1 is the deliberate value).
         (Magazine, 1),
     ],
-    // GTW-549: a threaded suppressor — references the `suppressor` attachment ITEM BY KEY. Its
+    // Threaded suppressor — references the `suppressor` attachment ITEM BY KEY. Its
     // effect (fit the Silenced tag so the shot propagates no suppression / reaction-reveal) is
-    // applied to the spawned weapon post-spawn (GTW-554: it occupies the Muzzle slot declared
+    // applied to the spawned weapon post-spawn (it occupies the Muzzle slot declared
     // above). Authored once in assets/content/attachments/suppressor.attachment.ron.
     attachments:   ["suppressor"],
 )

@@ -1,4 +1,4 @@
-// GTW-543 MOUNTED heavy bolter — the gun bolted to a weapon emplacement (a heavy_bolter_emplacement
+// MOUNTED heavy bolter — the gun bolted to a weapon emplacement (a heavy_bolter_emplacement
 // TerrainDef references this file's stem `heavy_bolter` as its mounted_weapon key). A deliberately
 // INACCURATE, heavy-hitting piece: high damage + high punch/shred, a wide base spread and LOW base
 // accuracy — untenable to fire from the hip. The EMPLACEMENT steadies it: while a ganger mans the
@@ -11,17 +11,8 @@
 // occupant via WieldedBy + a MountedWeapon marker; the ranged-firing read prefers the MountedWeapon
 // entity while occupied, and the EmplacementStability seam steadies its deliberately-wide cone.
 //
-// FORK-DEFAULT #2 DEVIATION — SURFACED, PENDING SIGN-OFF (per design-fidelity rule 2 / the
-// descoping protocol). GTW-543 fork-default #2 logged this file's location as
-// `assets/content/weapons/mounted/`. That default is UNBUILDABLE-AS-STATED: the single
-// WeaponRegistry the MountedWeaponKey resolves against is built ONLY from `content/weapons/ranged`
-// (the sole loader, kick_off.rs `WEAPONS_DIR`); there is NO loader for a `mounted/` folder, in the
-// editor or the game. Under the logged default the `heavy_bolter` key would never load, so the
-// mount would fail-closed (silently not spawn) in live play — the feature's trigger would be dead.
-// A mounted weapon is schema-identical to any other ranged WeaponSpec, so `ranged/` is the only
-// location that keeps the feature alive with zero loader ripple. This file sits in `ranged/` so the
-// feature works; the deviation is NOT self-authorized — it is flagged for the orchestrator to route
-// through sign-off and to reconcile fork-default #2 (update it to `ranged/`, or approve here).
+// Lives under `ranged/` because the single WeaponRegistry is built ONLY from that folder;
+// a separate `mounted/` path would never load and the mount would fail-closed in live play.
 (
     base_spread:   0.35,  // deliberately WIDE — a hip-fired heavy bolter flails; the mount tames it
     accuracy:      0.6,   // LOW base accuracy — the mount (EmplacementStability, Phase 2) steadies it
@@ -31,7 +22,7 @@
     punch:         5,     // shreds cover / armor — the mount's role is area denial
     shred:         3,     // chews armor durability
     damage_type:   Kinetic, // mass-reactive bolt rounds — the Kinetic matchup node
-    accepts:       Slug, // GTW-775: belt-fed solid bolt cartridges (a ballistic-cartridge munition)
+    accepts:       Slug, // belt-fed solid bolt cartridges (a ballistic-cartridge munition)
     magazine: (
         size:      30,    // a belt-fed drum — sustained fire before a long reload
         reload_tu: 24,    // slow to re-belt
@@ -44,16 +35,16 @@
     ],
     stable:        false,     // NOT intrinsically stable — the EMPLACEMENT provides the steadying (Phase 2)
     handedness:    TwoHanded, // a heavy piece — both hands on the grips
-    // GTW-554: the attachment SLOTS the mount offers — the shipped MULTI-capacity Rail example
+    // Attachment SLOTS the mount offers — multi-capacity Rail example
     // (a long receiver rail hosting THREE utility mods at once; contract form `(Rail, 3)`).
     slots: [
         (Muzzle, 1),  // one muzzle thread (a choke / bore device)
         (Sight,  1),  // one sight dovetail (an optic)
-        // GTW-584: capacity 3 UNCHANGED (the multi-cap Rail example) — but magazine drums /
-        // ammo feeds now live on the Magazine slot below, so the long rail hosts braces and
+        // Capacity 3 UNCHANGED (the multi-cap Rail example) — magazine drums /
+        // ammo feeds live on the Magazine slot below, so the long rail hosts braces and
         // jury-rigged utility mods.
         (Rail,   3),  // the long utility rail — capacity 3 (braces + utility mods together)
-        // GTW-584: a belt/drum-fed heavy bolter feeds physical bolts — one ammo feed at the
+        // Belt/drum-fed heavy bolter feeds physical bolts — one ammo feed at the
         // magazine well (capacity 1). Additive: it does NOT touch the multi-cap Rail above.
         (Magazine, 1),
     ],

@@ -1,5 +1,5 @@
-// GDTF authored area-damage FIELD type — "electrified floor" / live wire (GTW-545, child
-// GTW-41f). AUTHORED CONTENT (a field-type catalog entry), loaded as a loose `.ron` through
+// GDTF authored area-damage FIELD type — "electrified floor" / live wire.
+// AUTHORED CONTENT (a field-type catalog entry), loaded as a loose `.ron` through
 // the RonAsset<FieldDef> loader, keyed by its filename stem `electrified_floor`.
 //
 // A temporary hazard: a live-wired stretch of decking that arcs into whoever stands on it for

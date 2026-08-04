@@ -1,10 +1,10 @@
 // A precision optic — clusters the in-cone draw toward centre (raises the weapon's
-// Accuracy). GTW-549's headline fix: a sight boosts AIM, NOT stability. Referenced by a
+// Accuracy). Headline fix: a sight boosts AIM, NOT stability. Referenced by a
 // weapon BY KEY (`scoped_sight`) in its `attachments:` list; the magnitude lives HERE
 // on the item, never in global tuning. The effect is applied to the weapon post-spawn.
 (
     display_name: "Scoped Sight",
-    slot: Sight,  // GTW-554: occupies the sight dovetail — fits only a weapon declaring a Sight slot
+    slot: Sight,  // occupies the sight dovetail — fits only a weapon declaring a Sight slot
     effects: [
         Aim(0.4),  // +0.4 to the weapon's Accuracy concentration exponent (tunable)
     ],

@@ -1,11 +1,11 @@
-// Butcher's weight — a brutal counterweight: adds base damage (heavier hits). GTW-549
-// data-driven attachment ITEM (the grimdark "ButchersWeight" tag). Referenced by a weapon BY
-// KEY in its `attachments:` list; applied post-spawn. (The GTW-542 tag also slowed the
+// Butcher's weight — a brutal counterweight: adds base damage (heavier hits).
+// Data-driven attachment ITEM (the grimdark "ButchersWeight" tag). Referenced by a weapon BY
+// KEY in its `attachments:` list; applied post-spawn. (An older tag also slowed the
 // weapon's fire modes; that slower-fire coupling is a USER-REVIEW composite — the shipped
 // default is the damage bump alone.)
 (
     display_name: "Butcher's Weight",
-    // GTW-554: the MELEE counterweight example — occupies the Counterweight socket, so it fits
+    // Melee counterweight — occupies the Counterweight socket, so it fits
     // only a melee weapon declaring one (a ranged weapon declares Muzzle/Sight/Rail and REJECTS
     // it; class gating emerges from the slots, never from a class tag).
     slot: Counterweight,

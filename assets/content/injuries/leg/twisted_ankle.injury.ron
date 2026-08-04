@@ -1,4 +1,4 @@
-// GTW-440 LEG-pool standin injury. A Minor leg wound — a twisted ankle that hobbles
+// LEG-pool standin injury. A Minor leg wound — a twisted ankle that hobbles
 // the stride. Leg injuries key to the Speed / MovementCostMul stat map (resolution.md
 // injury tables); a Minor is a LIGHT debuff. Side-agnostic (both legs share the Leg
 // pool); the rolled struck part records which leg. KEY = stem => `twisted_ankle`.
@@ -10,7 +10,7 @@
     log_text:     "twists an ankle",                         // -> combat log line ("<name> twists an ankle")
     inspect_text: "Twisted Ankle -- Hampered (slower movement)", // -> inspect panel (per-ganger injury list)
     effects: [
-        MovementCostMul(1.25),                               // GTW-444: each movement step costs 1.25x TU (light Minor slow)
+        MovementCostMul(1.25),                               // each movement step costs 1.25x TU (light Minor slow)
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )

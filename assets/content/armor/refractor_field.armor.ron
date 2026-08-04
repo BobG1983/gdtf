@@ -1,7 +1,7 @@
 // refractor_field — a shimmer, not a shell. The field-thin harness bleeds off
 // glancing energy on a harder edge than any suit but ceramic, yet offers little body —
 // it shrugs the graze and tears under the rest. Lowest integrity on the wheel bar ceramic.
-// GTW-374 re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
+// Re-balance: floor / protection / hardness HALVED (floor of n/2); integrity UNCHANGED.
 (
     head:      (floor: 0, protection: 3, integrity: 45, hardness: 2, armor_type: Refractive),  // raised hardness — the field disperses the worst edge
     torso:     (floor: 0, protection: 4, integrity: 55, hardness: 2, armor_type: Refractive),
