@@ -3,8 +3,8 @@
 #
 # WHY THIS EXISTS: to make three failure modes impossible at the tool boundary,
 # before git runs:
-#   1. Branch guard — features branch off develop (plain git:
-#      git checkout -b feature/<name>); never commit directly to
+#   1. Branch guard — features branch off develop
+#      (git checkout -b feature/<name>); never commit directly to
 #      develop or main.
 #   2. Gate-pass guard — /gate records a pass in .claude/.gate-pass (TICKET /
 #      BRANCH / HEAD / FINGERPRINT lines). A commit is allowed only if that

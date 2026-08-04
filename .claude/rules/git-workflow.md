@@ -9,7 +9,7 @@ Why this rule exists: giant multi-ticket uncommitted working trees that nobody
 can review, bisect, or land are a recurring failure. One ticket = one branch =
 one reviewable change.
 
-Branch model: **`main`** = releases, **`develop`** = integration. Plain git only.
+Branch model: **`main`** = releases, **`develop`** = integration.
 
 ## Rules
 
@@ -32,7 +32,7 @@ Branch model: **`main`** = releases, **`develop`** = integration. Plain git only
    you must be able to say why every staged file is in the commit.
 5. Commit style: `Area: summary (GTW-N)` subject plus a wrapped body saying
    what changed and why. Match the voice of `git log --oneline -15`.
-6. Land via `/land` with plain git:
+6. Land via `/land`:
 
    ```bash
    git checkout develop && git pull origin develop
