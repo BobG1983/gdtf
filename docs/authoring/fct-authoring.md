@@ -1,7 +1,7 @@
 # Floating Combat Text (FCT) — the consequence-family palette
 
 How the battlescape's floating combat text works, what the color model MEANS,
-and where to go to add a new consequence family (GTW-572). FCT is pure VIEW —
+and where to go to add a new consequence family. FCT is pure VIEW —
 everything here lives in the presenter
 (`crates/gdtf_battle_presenter/src/actors/fx/fct/`); the sim only emits fact
 messages.
@@ -46,11 +46,11 @@ theme: combat valences are not UI chrome.
 
 - **Signal** — a sim fact message (e.g. `SuppressionApplied`, `FieldTicked`).
   The reader drains it wrapped as `Played<Signal>` — the fact at the moment the
-  playback cursor SHOWS it, not the moment the sim produced it (GTW-889). The
+  playback cursor SHOWS it, not the moment the sim produced it. The
   sim resolves a whole exchange in one tick, so a family that drained the raw
   buffer popped its tag ahead of the shots that caused it. Every family signal
   therefore needs an act-log deed behind it; the DOT and field per-round drains
-  gained theirs in GTW-889.
+  gained theirs in.
 - **Classify** — the family's pure signal → pop mapping (`ConsequenceFct`
   impl): text, valence/color, emphasis, position.
 - **Spawn/stack** — the generic stacked reader spawns the pop and claims its

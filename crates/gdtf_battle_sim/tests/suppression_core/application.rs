@@ -118,7 +118,7 @@ fn producer_suppresses_in_radius_opposing_ganger_only() {
     );
     assert!(
         applied_carried_ganger(&app, in_player),
-        "GTW-572: the SuppressionApplied signal must carry the freshly-pinned ganger entity",
+        "the SuppressionApplied signal must carry the freshly-pinned ganger entity",
     );
 }
 

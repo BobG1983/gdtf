@@ -1,4 +1,4 @@
-//! GTW-479 C3: the ARMOR mode's own SAVE path feeds the authoring-validation
+//! the ARMOR mode's own SAVE path feeds the authoring-validation
 use bevy::asset::AssetServer;
 use gdtf_assets::{ContentFamily, ContentIntegrityReport};
 use gdtf_battle_sim::{

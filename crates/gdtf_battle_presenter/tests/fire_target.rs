@@ -1,3 +1,4 @@
+//! Fire target tile: highlight visibility and label state for the aim cell.
 use std::path::PathBuf;
 
 use bevy::{

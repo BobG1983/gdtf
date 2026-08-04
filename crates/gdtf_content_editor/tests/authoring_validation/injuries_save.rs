@@ -1,4 +1,4 @@
-//! GTW-654 C4: the INJURY mode's weighting SAVE path feeds the authoring-validation
+//! the INJURY mode's weighting SAVE path feeds the authoring-validation
 use bevy::asset::AssetServer;
 use gdtf_assets::ContentIntegrityReport;
 use gdtf_battle_sim::{

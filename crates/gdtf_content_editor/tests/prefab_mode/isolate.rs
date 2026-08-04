@@ -78,7 +78,7 @@ fn editor_default_isolates_the_active_storey_with_one_onion_below() {
     assert_eq!(
         ground, 0,
         "the editor's DEFAULT (Isolate) view at edit storey 2 must draw NOTHING on storey 0 — \
-         the whole-stack DownToActive draw is the GTW-592 symptom (GTW-594 C2); got {ground} \
+         the whole-stack DownToActive draw is the symptom; got {ground} \
          sprite(s) on storey 0",
     );
     assert!(
@@ -89,6 +89,6 @@ fn editor_default_isolates_the_active_storey_with_one_onion_below() {
     assert!(
         onion > 0,
         "the ONE onion storey below the active (1) must draw its painted cell as the \
-         categorical below-ghost (GTW-594 C2); got {onion}",
+         categorical below-ghost; got {onion}",
     );
 }

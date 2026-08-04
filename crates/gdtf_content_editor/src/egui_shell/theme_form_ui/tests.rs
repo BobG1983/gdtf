@@ -222,7 +222,7 @@ fn load_then_save_round_trips_identical() {
     assert!(
         reloaded.is_ok(),
         "the serialized def must round-trip through the UuidThemeDef deserializer (the \
-         GTW-487 theme loader's parser): {:?}",
+          theme loader's parser): {:?}",
         reloaded.as_ref().err(),
     );
     let Ok(reloaded) = reloaded else {

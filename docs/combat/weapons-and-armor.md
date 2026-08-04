@@ -15,7 +15,7 @@ One shared wheel — armor types **Plated, Refractive, Flak, Void, Hazard, Reinf
 - **damage** — base damage of a hit.
 - **punch** — armor protection it ignores (penetration).
 - **shred** — extra **integrity** damage per hit, on top of the normal soak/penetration wear. Shred attacks armor **durability** (breaks it sooner), not hardness.
-- **handedness** — `OneHanded` or `TwoHanded` (GTW-443). A one-handed weapon (a pistol) can be fired with a single working hand; a two-handed weapon (a long-arm or heavy piece) needs **both** hands. The shared firing guard (`can_fire`) refuses a two-handed weapon once a hand-disabling injury leaves the shooter with fewer than two hands — see the **Hand count** note in [stats.md](stats.md) and the always-on 1H aim penalty in [resolution.md](resolution.md). Handedness gates **fire only** — it never touches the `Wields` relationship (a one-armed ganger keeps the long-arm slung, just can't fire it).
+- **handedness** — `OneHanded` or `TwoHanded`. A one-handed weapon (a pistol) can be fired with a single working hand; a two-handed weapon (a long-arm or heavy piece) needs **both** hands. The shared firing guard (`can_fire`) refuses a two-handed weapon once a hand-disabling injury leaves the shooter with fewer than two hands — see the **Hand count** note in [stats.md](stats.md) and the always-on 1H aim penalty in [resolution.md](resolution.md). Handedness gates **fire only** — it never touches the `Wields` relationship (a one-armed ganger keeps the long-arm slung, just can't fire it).
 
 ## Armor stats
 
@@ -49,24 +49,24 @@ The swing is **asymmetric** — the resisted penalty (−66%) is double the favo
 
 ## Weapons — identity, fire modes, and authoring
 
-A weapon is **not** one packed struct — it is an ECS **component bundle** (a `Weapon` marker plus a `WeaponName` and one stat component per number) spawned onto its own related **weapon entity** (`Wields`, ADR 0004 / GTW-200). Every weapon is **authored data**: a loose per-file `assets/content/weapons/ranged/<key>.weapon.ron` deserialised into a `WeaponSpec`. At battle setup the whole `assets/content/weapons/ranged/` folder loads into a name-keyed `WeaponRegistry`; each roster member references a weapon **by key**, and `setup_battle` resolves the key → spawns-and-relates the `WeaponBundle` via `Wields` — a missing key is a handled error, never a panic (GTW-257). The dedicated `.weapon.ron` extension keeps the folder load unambiguous among GDTF's other `.ron` asset types. Nothing about a weapon is hardcoded.
+A weapon is **not** one packed struct — it is an ECS **component bundle** (a `Weapon` marker plus a `WeaponName` and one stat component per number) spawned onto its own related **weapon entity** (`Wields`, ADR 0004). Every weapon is **authored data**: a loose per-file `assets/content/weapons/ranged/<key>.weapon.ron` deserialised into a `WeaponSpec`. At battle setup the whole `assets/content/weapons/ranged/` folder loads into a name-keyed `WeaponRegistry`; each roster member references a weapon **by key**, and `setup_battle` resolves the key → spawns-and-relates the `WeaponBundle` via `Wields` — a missing key is a handled error, never a panic. The dedicated `.weapon.ron` extension keeps the folder load unambiguous among GDTF's other `.ron` asset types. Nothing about a weapon is hardcoded.
 
-> **Ranged / melee asset split (GTW-505).** Ranged weapons live under `assets/content/weapons/ranged/` (the `.weapon.ron` extension above); melee weapons live in the sibling `assets/content/weapons/melee/` (the `.melee_weapon.ron` extension — see the **Melee weapons** section below). Each loader points at its own leaf folder, so the two never cross-contaminate.
+> **Ranged / melee asset split.** Ranged weapons live under `assets/content/weapons/ranged/` (the `.weapon.ron` extension above); melee weapons live in the sibling `assets/content/weapons/melee/` (the `.melee_weapon.ron` extension — see the **Melee weapons** section below). Each loader points at its own leaf folder, so the two never cross-contaminate.
 
 ### Weapon name
 
-Every weapon carries a **`WeaponName`** — its human-facing identity (e.g. "autogun", "lasgun"). It is **not** authored as a field; it is the `.weapon.ron` filename **stem** (so `autogun.weapon.ron` → `WeaponName("autogun")`), which is also the registry key a ganger references. The name is **not** read by the combat-math layer (§1/§6) — it is queried only for UI (the status panel and the fire-mode picker, GTW-254/256).
+Every weapon carries a **`WeaponName`** — its human-facing identity (e.g. "autogun", "lasgun"). It is **not** authored as a field; it is the `.weapon.ron` filename **stem** (so `autogun.weapon.ron` → `WeaponName("autogun")`), which is also the registry key a ganger references. The name is **not** read by the combat-math layer (§1/§6) — it is queried only for UI (the status panel and the fire-mode picker, /256).
 
 ### Fire-mode selector — an authored list, not a fixed ladder
 
 A weapon's **fire-mode selector** is a **`FireMode(Vec<FireModeSpec>)`** — the authored list of modes the weapon offers, **in authored order, Single first by convention**. It is **any subset of {Single, Burst, Full}**: this broadens the earlier "three fixed ladders" (single / single+burst / single+burst+full-auto) so a weapon can offer, say, just single+burst. Each entry is a `FireModeSpec` carrying:
 
-- **`kind: ModeKind`** — a closed enum `Single` / `Burst` / `Full`; its `Display` is the human label ("single" / "burst" / "full-auto") — there is **no** stored name string (GTW-260).
+- **`kind: ModeKind`** — a closed enum `Single` / `Burst` / `Full`; its `Display` is the human label ("single" / "burst" / "full-auto") — there is **no** stored name string.
 - **`cone_mult: ModeConeMult`** — the mode's selector cone multiplier (the §1 `firemode` term: single ≈ 1, full-auto ≥ 1).
 - **`tu_percent: ModeTuPercent`** — the fraction of the shooter's TU pool a shot in this mode costs.
 - **`shots: ModeShots`** — rounds fired per shot action.
 
-The player picks the active mode through a **click-to-select popup picker** (GTW-254) — it lists exactly the weapon's offered modes and replaced the old blind cycle; the active mode shows on the action bar and rides in the input layer's `SelectedFireMode`. The code is **defensive**: a selector with no `Single` (or none at all) falls back to the first mode, then to a structural single-shot default — it never panics.
+The player picks the active mode through a **click-to-select popup picker** — it lists exactly the weapon's offered modes and replaced the old blind cycle; the active mode shows on the action bar and rides in the input layer's `SelectedFireMode`. The code is **defensive**: a selector with no `Single` (or none at all) falls back to the first mode, then to a structural single-shot default — it never panics.
 
 Illustrative authoring (the magnitudes are **tuning data** in the `.weapon.ron`, not pinned by tests):
 
@@ -86,17 +86,17 @@ fire_mode: [
 
 ## Melee weapons
 
-A melee weapon is the **sibling** of the ranged model above (GTW-505, child GTW-37a of the GTW-37 melee epic): another ECS component bundle on its OWN related weapon entity (`Wields`, ADR 0004), but tagged with a **`MeleeWeapon`** marker instead of the ranged `Weapon` marker. It **shares the ranged damage model verbatim** and **drops** the ranged-only handling, **adding** melee-only mechanics.
+A melee weapon is the **sibling** of the ranged model above (child of the melee epic): another ECS component bundle on its OWN related weapon entity (`Wields`, ADR 0004), but tagged with a **`MeleeWeapon`** marker instead of the ranged `Weapon` marker. It **shares the ranged damage model verbatim** and **drops** the ranged-only handling, **adding** melee-only mechanics.
 
-- **Shared with ranged** (the SAME newtypes): `WeaponName`, the damage group (`damage` / `punch` / `shred` / `damage_type`), `fatal_bias`, and `handedness`. A melee strike resolves through the **same per-hit formula** above (`damage`/`punch`/`shred` vs armor) and the **same matchup wheel**. The weapon **multiplies damage only** — no Fight-roll bonus (the GTW-37 first-slice ruling).
+- **Shared with ranged** (the SAME newtypes): `WeaponName`, the damage group (`damage` / `punch` / `shred` / `damage_type`), `fatal_bias`, and `handedness`. A melee strike resolves through the **same per-hit formula** above (`damage`/`punch`/`shred` vs armor) and the **same matchup wheel**. The weapon **multiplies damage only** — no Fight-roll bonus (the first-slice ruling).
 - **Dropped** (no melee analog): `base_spread`, `accuracy`, `kickback`, the `Magazine`, and the `stable` tag — a melee strike has no dispersion cone, no ammo, no brace.
 - **Added** (melee-only):
-  - **`reach: Reach`** — how many cells away a strike can land (default `1`, the adjacent cell). The GTW-506 opposed-Fight resolution will read it; this slice carries it as data.
+  - **`reach: Reach`** — how many cells away a strike can land (default `1`, the adjacent cell). The opposed-Fight resolution will read it; this slice carries it as data.
   - **`fight_mode: FightMode(Vec<FightModeSpec>)`** — the melee mirror of the ranged `FireMode` selector, **minus the dispersion `cone_mult`**. Each `FightModeSpec` carries a closed **`kind: FightModeKind`** (`Swing` / `Thrust`, its `Display` the human label), a **flat `tu_cost: TuCost`** (a fixed TU charge, **not** a pool-fraction percent), and a **`strikes: Strikes`** count. The first slice ships **one** fight mode per weapon.
 
-**Every ganger gets a melee weapon** so any ganger can melee (the GTW-37 D3 ruling): a roster member's optional `melee_weapon` key resolves to its authored weapon, OR — when omitted — to the shipped **`fists`** default (`assets/content/weapons/melee/fists.melee_weapon.ron`). The `fists` default is modest blunt Kinetic damage at reach 1; a `chainsword` (high `shred`, Rend) is the archetypal authored melee weapon. Melee files load from `assets/content/weapons/melee/` into a name-keyed **`MeleeWeaponRegistry`** (the ranged-loader mirror — folder-loaded, hot-reloadable, fail-safe-empty); `setup_battle` resolves each ganger's melee key and spawns-and-relates the `MeleeWeaponBundle` via the SAME `Wields` relationship the ranged weapon uses. A missing key (including a missing `fists`) is a handled `MeleeWeaponNotFound` error, never a panic.
+**Every ganger gets a melee weapon** so any ganger can melee (the D3 ruling): a roster member's optional `melee_weapon` key resolves to its authored weapon, OR — when omitted — to the shipped **`fists`** default (`assets/content/weapons/melee/fists.melee_weapon.ron`). The `fists` default is modest blunt Kinetic damage at reach 1; a `chainsword` (high `shred`, Rend) is the archetypal authored melee weapon. Melee files load from `assets/content/weapons/melee/` into a name-keyed **`MeleeWeaponRegistry`** (the ranged-loader mirror — folder-loaded, hot-reloadable, fail-safe-empty); `setup_battle` resolves each ganger's melee key and spawns-and-relates the `MeleeWeaponBundle` via the SAME `Wields` relationship the ranged weapon uses. A missing key (including a missing `fists`) is a handled `MeleeWeaponNotFound` error, never a panic.
 
-The two markers keep the paths apart: the ranged-firing path (`fire()` / `can_fire` / reactions / AI) resolves the gun via `Wields::ranged_weapon` (which **excludes** `MeleeWeapon`), so relating a melee weapon never regresses ranged firing. The opposed-Fight resolution math is **GTW-506**; the melee ACT / input / presenter is **GTW-507** — GTW-505 ships only the model, the asset layout, and the spawn.
+The two markers keep the paths apart: the ranged-firing path (`fire()` / `can_fire` / reactions / AI) resolves the gun via `Wields::ranged_weapon` (which **excludes** `MeleeWeapon`), so relating a melee weapon never regresses ranged firing. The opposed-Fight resolution math is ****; the melee ACT / input / presenter is **** — ships only the model, the asset layout, and the spawn.
 
 ## TBD (tuning / design)
 

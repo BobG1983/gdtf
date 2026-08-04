@@ -49,7 +49,7 @@ fn workspace_denies_the_whole_rustdoc_lint_group() {
     let declared = section_lines(&manifest, RUSTDOC_LINTS).join("\n");
     assert!(
         declares(&manifest, RUSTDOC_LINTS, GROUP_DENY),
-        "[{RUSTDOC_LINTS}] must declare `{GROUP_DENY}` (GTW-929) — without the group deny only \
+        "[{RUSTDOC_LINTS}] must declare `{GROUP_DENY}` — without the group deny only \
          the individually-named lints can fail a doc run, and every other rustdoc warning \
          accumulates while `cargo doc --workspace --no-deps` and `cargo doc-full` keep exiting \
          0. Declared instead:\n{declared}"
@@ -92,7 +92,7 @@ fn every_workspace_member_opts_in_to_the_workspace_lints() {
     let rendered = violations.iter().cloned().collect::<Vec<_>>().join("\n");
     assert!(
         violations.is_empty(),
-        "workspace lint opt-in violations (GTW-929), across {} members:\n{rendered}",
+        "workspace lint opt-in violations, across {} members:\n{rendered}",
         manifests.len()
     );
 }
@@ -104,7 +104,7 @@ fn the_content_editor_bin_is_excluded_from_the_doc_runs() {
     let declared = section_lines(&manifest, EDITOR_BIN_SECTION).join("\n");
     assert!(
         declares(&manifest, EDITOR_BIN_SECTION, DOC_EXCLUSION),
-        "{EDITOR_BIN_MANIFEST}'s `[[bin]]` must declare `{DOC_EXCLUSION}` (GTW-929) — this bin \
+        "{EDITOR_BIN_MANIFEST}'s `[[bin]]` must declare `{DOC_EXCLUSION}` — this bin \
          target and the library crate `crates/gdtf_content_editor` share the name \
          `gdtf_content_editor`, so without the exclusion both write \
          `target/doc/gdtf_content_editor/index.html`, one replaces the other's rendered page, \

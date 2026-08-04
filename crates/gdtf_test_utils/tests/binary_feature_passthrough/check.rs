@@ -79,6 +79,6 @@ fn every_binary_passes_through_its_library_net_qa_feature() {
     let rendered = violations.iter().cloned().collect::<Vec<_>>().join("\n");
     assert!(
         violations.is_empty(),
-        "binary feature passthrough violations (GTW-878):\n{rendered}"
+        "binary feature passthrough violations:\n{rendered}"
     );
 }

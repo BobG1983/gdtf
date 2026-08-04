@@ -210,7 +210,7 @@ fn change_driven_apply_theme_does_not_clobber_hover() -> Result<(), ron::error::
     assert_eq!(
         app.world().get::<BackgroundColor>(button).map(|c| c.0),
         Some(hover_bg),
-        "steady-state apply_theme must NOT clobber HoverBg back to PanelBg (GTW-144)",
+        "steady-state apply_theme must NOT clobber HoverBg back to PanelBg ",
     );
     assert_ne!(
         app.world().get::<BackgroundColor>(button).map(|c| c.0),

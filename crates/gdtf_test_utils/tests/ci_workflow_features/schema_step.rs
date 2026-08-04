@@ -75,6 +75,6 @@ fn ci_runs_the_schema_feature_package_scoped() {
     let rendered = violations.iter().cloned().collect::<Vec<_>>().join("\n");
     assert!(
         violations.is_empty(),
-        "CI schema-feature violations (GTW-939):\n{rendered}"
+        "CI schema-feature violations:\n{rendered}"
     );
 }

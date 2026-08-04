@@ -43,14 +43,14 @@ jobs:
         with:
           cache-on-failure: true
 
-      # Both `net_qa` features are named (GTW-883) — see the same note in `test.yml`. A
+      # Both `net_qa` features are named — see the same note in `test.yml`. A
       # package-qualified feature turns on only that package's feature, so linting the GAME's
       # `gdtf_app::dev::net_qa` and the EDITOR's `gdtf_content_editor::net_qa` needs both names.
       # No `dynamic_linking` and no `dev_tools` — CI green stays static.
       - name: Run Clippy
         run: cargo clippy --workspace --all-targets --features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa -- -D warnings
 
-      # GTW-939: the same reasoning applies to linting as to testing — see the note on the
+      # the same reasoning applies to linting as to testing — see the note on the
       # matching step in `test.yml`. The feature-on code is denied the workspace lints like any
       # other code, and the step above never compiles it. PACKAGE-SCOPED for the same reason:
       # a `--workspace` run with `schema` on would put schemars in `bins/gdtf_qa_mcp`.

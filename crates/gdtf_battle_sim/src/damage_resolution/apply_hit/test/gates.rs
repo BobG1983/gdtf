@@ -148,6 +148,6 @@ fn corpse_skip_changes_nothing() {
     );
     assert!(
         inflicted.is_empty(),
-        "a corpse-skip must record NO InflictedWound (GTW-279)"
+        "a corpse-skip must record NO InflictedWound "
     );
 }

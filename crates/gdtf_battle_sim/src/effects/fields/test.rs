@@ -229,7 +229,7 @@ fn a_field_tick_that_empties_hp_flips_the_occupant_to_dead() {
     assert_eq!(
         life_of(&app, ganger),
         LifeState::Dead,
-        "a field drain that empties HP KILLS (Dead — the GTW-544 DOT-kills precedent)",
+        "a field drain that empties HP KILLS (Dead — the DOT-kills precedent)",
     );
 }
 

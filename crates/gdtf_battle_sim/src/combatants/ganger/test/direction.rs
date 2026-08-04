@@ -3,7 +3,7 @@ use crate::{
     metric::Cell,
 };
 
-// --- GTW-168 AC #1: Direction::forward_step() — each of the 8 variants maps to
+// --- AC #1: Direction::forward_step() — each of the 8 variants maps to
 
 const STEP_TOL: f32 = 1.0e-6;
 

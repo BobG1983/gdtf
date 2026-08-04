@@ -1,5 +1,5 @@
 //! [`setup_battle`](super::setup_battle) calls to turn each authored terrain DEFINITION
-//! GTW-491 migration (child T07a of the GTW-476 data-model refactor): each authored
+//! migration (child T07a of the data-model refactor): each authored
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},

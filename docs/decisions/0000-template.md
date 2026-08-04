@@ -13,7 +13,7 @@ description: One-line summary of the decision (fill in when you copy this templa
 ## Status
 
 `Proposed` — one of `Proposed` / `Accepted` / `Superseded by NNNN`.
-Date and the Linear ticket (`GTW-N`) that drove the decision, if any.
+Date and the Linear ticket that drove the decision, if any.
 
 ## Context
 

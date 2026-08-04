@@ -1,9 +1,9 @@
 # Attachment Authoring Guide
 
 How to create, extend, and maintain weapon attachments — data-driven RON ITEMS
-with a typed effect list (GTW-549, superseding the retired GTW-542 `AttachTag`
-enum + global-tuning model; palette re-homed in GTW-558; slot gating added in
-GTW-554). This guide is the primary reference for content authors adding
+with a typed effect list ( superseding the retired `AttachTag`
+enum + global-tuning model; palette re-homed in; slot gating added in
+). This guide is the primary reference for content authors adding
 attachment items and engineers adding new attachment EFFECTS.
 
 The three design facts that shape everything here:
@@ -37,7 +37,7 @@ multi-effect item):
 // Extended magazine — adds capacity AND speeds the reload.
 (
     display_name: "Extended Magazine",
-    slot: Magazine,  // GTW-584: the magazine well — fits only a magazine-fed gun declaring a Magazine slot
+    slot: Magazine, // the magazine well — fits only a magazine-fed gun declaring a Magazine slot
     effects: [
         ExtraAmmo(8),      // +8 magazine capacity — tunable
         ReloadTime(0.8),   // ×0.8 the weapon's reload_tu (< 1 = faster) — tunable
@@ -54,7 +54,7 @@ multi-effect item):
 | `slot` | `AttachmentSlot` | bare variant | The SINGLE mount point the item occupies (see 1c). REQUIRED — no default |
 | `effects` | `Vec<AttachmentEffect>` | list of variants | The typed effect list, each with its per-item magnitude (see 1d). `#[serde(default)]` — omitted = a cosmetic no-op item |
 
-### 1c. `slot:` — the closed slot vocabulary (GTW-554)
+### 1c. `slot:` — the closed slot vocabulary
 
 `AttachmentSlot` (`crates/gdtf_battle_sim/src/equipment/attachments/slot.rs`)
 is closed on purpose — a typo'd slot fails to parse:
@@ -64,7 +64,7 @@ is closed on purpose — a typo'd slot fails to parse:
 | `Muzzle` | Muzzle thread | Ranged — suppressors, chokes, bore devices |
 | `Sight` | Sight dovetail | Ranged — optics (Aim) |
 | `Rail` | Utility rail | Ranged — braces, foregrips, jury-rigged action mods (commonly multi-capacity) |
-| `Magazine` | Magazine well | Ranged — box magazines, drums, ammo feeds on a magazine-fed gun (GTW-584) |
+| `Magazine` | Magazine well | Ranged — box magazines, drums, ammo feeds on a magazine-fed gun |
 | `Counterweight` | Counterweight socket | Melee — balance weights |
 | `Pommel` | Grip-end pommel | Melee — hilt fittings |
 
@@ -73,13 +73,13 @@ EMERGES from which slots a weapon declares (a `Muzzle` item finds no slot on a
 chainblade). The weapon side authors `slots: [(Muzzle, 1), (Sight, 1),
 (Rail, 3)]` — see [weapon-authoring.md](weapon-authoring.md) §1j.
 
-**Magazine slot (GTW-584):** the `Magazine` well is live. Magazine / ammo-feed
+**Magazine slot:** the `Magazine` well is live. Magazine / ammo-feed
 items — `extended_mag`, `gore_sump_drum`, `hexgrind_rounds` — occupy it, and
 only ranged guns that actually feed from a detachable magazine declare a
 `Magazine` slot (energy- and fluid-fed weapons — power cells, plasma flasks,
 chem tanks — and melee weapons do not, so their magazine items find no slot and
 are cleanly rejected). The `Magazine` SLOT (an attachment mount point) is
-distinct from GTW-775's `accepts:` AmmoType (what a weapon loads).
+distinct from 's `accepts:` AmmoType (what a weapon loads).
 
 ### 1d. `effects:` — the closed effect vocabulary
 
@@ -93,7 +93,7 @@ examples, never "correct" values:
 | `Stability(20.0)` | `WeaponBraceBonus` | Adds graduated stability-score points (bipod/brace) |
 | `GainFireMode((kind: Burst, cone_mult: 1.3, tu_percent: 0.50, shots: 3))` | `FireModeSpec` | ADDS a firing mode to the weapon's selector |
 | `ExtraAmmo(8)` | `MagazineSize` | Adds magazine capacity |
-| `ReloadTime(0.8)` | `ReloadTimeScale` | SCALES the weapon's `reload_tu` — bidirectional (`< 1.0` faster, `> 1.0` slower). GTW-558 renamed this from the speed-up-only `FastReload` misnomer |
+| `ReloadTime(0.8)` | `ReloadTimeScale` | SCALES the weapon's `reload_tu` — bidirectional (`< 1.0` faster, `> 1.0` slower). renamed this from the speed-up-only `FastReload` misnomer |
 | `Silence` | — | Fits the `Silenced(true)` tag — shots propagate neither suppression nor reaction/reveal |
 | `Penetration(2)` | `WeaponPunch` | Adds armor penetration |
 | `DamageTypeOverride(Chem)` | `DamageType` | Overrides the emitted damage type (a matchup-wheel re-key) |
@@ -126,7 +126,7 @@ post-spawn via the `attach_to_weapon` commands extension in
 
 ## Part 2 — How to extend the attachment model (engineers)
 
-The attachment code splits across two homes (GTW-558):
+The attachment code splits across two homes:
 
 - **Mechanics** — `crates/gdtf_battle_sim/src/equipment/attachments/`: the
   authoring spec, the key/registry, the slot vocabulary, the fit gate, the

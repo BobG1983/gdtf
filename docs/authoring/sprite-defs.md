@@ -2,18 +2,18 @@
 
 How to author SPRITE DEFINITIONS — the per-file `.spritedef.ron` catalog of
 drawable sprites that terrain defs (and, later, other content) reference by
-NAME (GTW-663; the GTW-600 data-model ruling). A sprite def says *where a
+NAME (the data-model ruling). A sprite def says *where a
 sprite's pixels come from* (a standalone image, or a `{sheet, rect}` region of
 a sprite sheet), *where it touches the ground* (the anchor/pivot), and
 optionally *how it faces and animates*.
 
 **Status today:** the defs are the authoritative sprite data model AND the
-authoritative RESOLUTION: since **GTW-665** the battle renderer and the
+authoritative RESOLUTION: since **** the battle renderer and the
 content editor both resolve a terrain `graphic_name` to its sprite def
 (texture + rect + anchor) through this registry — the legacy terrain role
 table (`tile_roles.spritedef.ron` → `TileRoles`) is retired and deleted. The
-editor authoring mode is **GTW-664**; restamping shipped content is
-**GTW-666**.
+editor authoring mode is ****; restamping shipped content is
+****.
 
 ---
 
@@ -28,7 +28,7 @@ Do NOT confuse this family with the OLD role tables under `assets/sprites/`
 (`character_roles.spritedef.ron`, `effect_roles.spritedef.ron`) — same
 suffix, different format and folder. Those are single-file role→atlas-index
 tables the ACTOR/FX draws still use; the TERRAIN table
-(`tile_roles.spritedef.ron`) was retired and deleted when GTW-665 swapped
+(`tile_roles.spritedef.ron`) was retired and deleted when swapped
 terrain resolution onto this family.
 
 ## Part 2 — The `.spritedef.ron` schema — by example
@@ -89,7 +89,7 @@ extension loader, per-file salvage (a malformed def fails ALONE, as a
 fallback, and the live hot-reload redrive: edit a `.spritedef.ron` under
 `cargo drun` and the whole `SpriteDefRegistry` rebuilds in place.
 
-**Applied defs restamp (GTW-666).** A rebuilt registry does not only affect
+**Applied defs restamp.** A rebuilt registry does not only affect
 FUTURE draws — entities already stamped from a def re-resolve live, in both
 hosts. In the game, the terrain-draw family's restamp
 (`restamp_tiles_on_def_change`,
@@ -120,16 +120,16 @@ BOTH hosts: a `graphic_name` that resolves no sprite def lands a
 at the end of the game's `Load` and live at editor authoring time (the watch
 set re-arms the pass when the sprite registry rebuilds).
 
-## Part 4 — The seeded catalog (GTW-663 C2) and how it resolves (GTW-665)
+## Part 4 — The seeded catalog and how it resolves
 
-GTW-663 seeded one def per name reachable as a `graphic_name` today — the 20
+ seeded one def per name reachable as a `graphic_name` today — the 20
 `TileRole` keys — each mechanically derived from the then-live role table:
 sheet = the presenter's terrain sheet, rect = the role's atlas index unpacked
 on the sheet's 16-column/16-px grid, anchor = the implicit CENTER anchor
 `(8, 8)` (the renderer draws each tile as a unit quad centered on its cell —
 `crates/gdtf_battle_presenter/src/render/terrain/static_draw.rs`).
 
-Since GTW-665 the defs ARE what renders: the presenter's ONE resolution
+Since the defs ARE what renders: the presenter's ONE resolution
 (`resolve_sprite`,
 `crates/gdtf_battle_presenter/src/render/terrain/resolve.rs`) looks a
 `graphic_name` up in the registry by NAME; `source` picks the pixels (a
@@ -137,7 +137,7 @@ Since GTW-665 the defs ARE what renders: the presenter's ONE resolution
 authored anchor point sits ON the cell position — a center anchor reproduces
 the old centered draw exactly). The content editor's palette / preview
 thumbnails consume the SAME resolution — one resolution, two consumers. The
-GTW-663 derivation-truth pin retired with the table, per its own retirement
+ derivation-truth pin retired with the table, per its own retirement
 note: there is no second artifact left to drift from.
 
 A `graphic_name` that resolves NO def draws the LOUD magenta missing-sprite
@@ -158,7 +158,7 @@ blocking load.
   `crates/gdtf_content_editor/tests/authoring_validation/sprites.rs`).
 - **Hot-reload:** `cargo drun`, edit a `.spritedef.ron`, watch the
   "hot-reload: rebuilt … from content/sprites" info line — and the already-
-  drawn tiles using that def swap rect/anchor in place (GTW-666; pinned in
+  drawn tiles using that def swap rect/anchor in place (pinned in
   `crates/gdtf_battle_presenter/tests/terrain_draw/def_restamp.rs` and
   `crates/gdtf_content_editor/tests/prefab_mode/registry_redraw.rs`).
 - **Dangling key:** author a `graphic_name` with no matching sprite def and

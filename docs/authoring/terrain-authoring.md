@@ -3,8 +3,8 @@
 How to create, extend, and maintain the terrain roster — from a new
 `.terrain_def.ron` file to adding a new sim kind end-to-end. This guide
 documents the **current, landed state** of the UUID-keyed terrain model
-(GTW-484…496 redesign; asset roots unified in GTW-562; loader generalized in
-GTW-570) and is the primary reference for content authors and engineers
+(…496 redesign; asset roots unified in; loader generalized in
+) and is the primary reference for content authors and engineers
 extending terrain mechanics.
 
 The historical flat, filename-keyed model (`*.terrain.ron` / `TerrainRegistry`)
@@ -17,7 +17,7 @@ record.
 ## Part 0 — The unified authored-asset roots
 
 Every authored data-family `.ron` in the game lives under **one root**:
-`assets/content/` (GTW-556 consolidated maps/situations there; GTW-562 moved
+`assets/content/` (consolidated maps/situations there; moved
 terrain under it, completing the unification). Sprite art lives under
 `assets/sprites/`. There are no other authored-content roots.
 
@@ -80,9 +80,9 @@ Every `.terrain_def.ron` deserializes into `TerrainDef`
 | `sim_kind` | `TerrainSimKind` | struct variant | The SIM half — structural kind + combat stats (see 1c). |
 | `presenter_kind` | `TerrainPresenterKind` | struct variant | The PRESENTER half — graphic role key (+ optional slab footfall; see 1d). |
 | `tags` | `Vec<TerrainTag>` | list of variants | SIM-owned pathing/vision traits (see 1e). `#[serde(default)]` — omitted = `[]`. |
-| `on_death` | `Option<OnDeathEffect>` | `Some(…)` | What the piece fans when DESTROYED (GTW-547; see 1e). `#[serde(default)]` — omitted = `None`. |
-| `blocks_pathing` | `Option<bool>` | `Some(true)` \| `Some(false)` | OPTIONAL path-blocking OVERRIDE (GTW-587; see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
-| `blocks_los` | `Option<LosBlocking>` | `Some(Full)` \| `Some(UpToHeightBand)` \| `Some(None)` | OPTIONAL line-of-sight blocking OVERRIDE (GTW-587; see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
+| `on_death` | `Option<OnDeathEffect>` | `Some(…)` | What the piece fans when DESTROYED (see 1e). `#[serde(default)]` — omitted = `None`. |
+| `blocks_pathing` | `Option<bool>` | `Some(true)` \| `Some(false)` | OPTIONAL path-blocking OVERRIDE (see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
+| `blocks_los` | `Option<LosBlocking>` | `Some(Full)` \| `Some(UpToHeightBand)` \| `Some(None)` | OPTIONAL line-of-sight blocking OVERRIDE (see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
 
 Kind variants are **struct variants**, so RON uses the single-paren named-field
 form: `Slab(hp: 120, …)` — never the double-paren `Slab((…))` tuple form.
@@ -99,7 +99,7 @@ low `Cover`):
 | `Wall(…)` | Yes | Yes | Fills the cell; nothing flies over it within a storey |
 | `Cover(…)` | Yes | Yes | A round clears it by flying higher than its band |
 | `Slab(…)` | Yes | **No** | Spans a z-boundary; stood on / under, never flown over |
-| `Emplacement(…)` | Yes | Yes | A mounted-weapon position a ganger ENTERS to operate (GTW-543) |
+| `Emplacement(…)` | Yes | Yes | A mounted-weapon position a ganger ENTERS to operate |
 
 `Wall` / `Cover` / `Emplacement` fields:
 
@@ -132,14 +132,14 @@ intact slab regardless of the shot's band, `resolution.md` §2 — do not author
 and carries ONLY presentation hooks; by the one-way sim→presenter dependency
 the presenter reads this half and never the sim half. Every variant carries a
 `graphic_name:` (`TerrainGraphicKey`, a bare string) — a **FOREIGN KEY by
-name into the sprite-def registry** (GTW-663 / the GTW-600 ruling): the key
+name into the sprite-def registry** (the ruling): the key
 is the file stem of a `assets/content/sprites/<name>.spritedef.ron` member
 (see [sprite-defs.md](sprite-defs.md)), and the reference-integrity pass
 reports a `DanglingRef` finding — at the game's `Load` AND live in the editor
 — for a `graphic_name` that resolves no sprite def
 ([reference-integrity.md](reference-integrity.md)). The RENDERER resolves the
 same key through the sprite-def registry to a texture + rect + anchor
-(GTW-665 — the legacy `TileRoles` role table is retired; a key that resolves
+(— the legacy `TileRoles` role table is retired; a key that resolves
 no def draws the loud magenta missing-sprite marker); the sim never touches
 pixels either way. Only `Slab` adds an
 optional footfall:
@@ -173,12 +173,12 @@ shipped content tag `[BlocksVision, BlocksPathfinding]` explicitly.
 The kind defaults + these additive tags are the BASE blocking surface. To make
 a def's blocking VARY independently of its kind (a glass wall, a low railing)
 WITHOUT a new sim kind, author the `blocks_pathing` / `blocks_los` OVERRIDES —
-see 1h (GTW-587). A tag can only ADD blocking; an override can force it either
+see 1h. A tag can only ADD blocking; an override can force it either
 way (including OFF), and when present WINS over both the tag and the kind
 default.
 
 `on_death:` names the `OnDeathEffect` a DESTRUCTIBLE piece fans when smashed
-(GTW-547): `Explode(hit_type: …, damage: …, damage_type: …)` or
+: `Explode(hit_type: …, damage: …, damage_type: …)` or
 `LeaveField(field: "<field key>")`. Example from the shipped content
 (`assets/content/terrain/sump_waste/waste_drum.terrain_def.ron`):
 
@@ -237,7 +237,7 @@ next launch (or live, via hot-reload — Part 3). The content editor
 (`crates/gdtf_content_editor/src/terrain_form/save.rs` /
 `theme_form/save.rs`).
 
-### 1h. `blocks_pathing:` / `blocks_los:` — per-def blocking overrides (GTW-587)
+### 1h. `blocks_pathing:` / `blocks_los:` — per-def blocking overrides
 
 Blocking is normally DERIVED from the `sim_kind` (a `Wall` blocks path + sight,
 a `Cover` blocks path + occludes up to its band, a `Slab` does neither). Two
@@ -285,7 +285,7 @@ through it), authored on a `Wall` kind:
 
 **Interaction with the destructible-cover march (important).** A standing
 `Wall` / `Cover` / `Emplacement` is ALSO a destructible cover in the shot march
-(the `CoverLedger`, the "shoot-the-cover" mechanism — UNTOUCHED by GTW-587),
+(the `CoverLedger`, the "shoot-the-cover" mechanism — UNTOUCHED by),
 which occludes at the def's `height_band`. So on those kinds, `blocks_los` drives
 the def's own height-aware occluder surface (it can RAISE occlusion to `Full`, or
 band-limit it) but the cover-ledger occlusion floor at the authored band still
@@ -309,10 +309,10 @@ Add a STRUCT variant (named fields — keeps the single-paren RON form) reusing
 existing newtypes (`CoverHp`, `SlabHp`, `ArmorProtection`, `ArmorHardness`,
 `HeightBand`, …) — no bare types. Add the mirroring `TerrainPresenterKind`
 variant (graphic key only, unless the kind is walked on). The `Emplacement`
-kind (GTW-543) is the template for a stateful kind.
+kind is the template for a stateful kind.
 
 Both payload-carrying kinds project onto the CANONICAL fieldless discriminant
-`TerrainPieceKind` (GTW-574 —
+`TerrainPieceKind` (—
 `crates/gdtf_battle_sim/src/terrain/entity/components.rs`:
 `Wall` / `Cover` / `Slab` / `Emplacement`, the queryable kind tag on every
 terrain entity). Its exhaustive `kind()` projections and `TerrainPieceKind::ALL`
@@ -331,7 +331,7 @@ precedent — every shipped def stays parseable). If required, update every
 
 ### Step 3 — Thread through the sim (only for genuinely new MECHANICS)
 
-Since GTW-587 this step is **NOT needed for blocking variance** — a def that
+Since this step is **NOT needed for blocking variance** — a def that
 blocks pathing but not sight (or vice-versa), or occludes at a different band,
 is authored with the `blocks_pathing` / `blocks_los` overrides (1h), no code.
 Reach for this step only when adding a genuinely NEW mechanic a field cannot
@@ -368,7 +368,7 @@ clean.
 
 ## Part 3 — Hot-reload
 
-Terrain hot-reload rides the generic content-family loader (GTW-570): editing
+Terrain hot-reload rides the generic content-family loader: editing
 any `*.terrain_def.ron` / `*.terrain_theme.ron` under
 `assets/content/terrain/` while the game is running fires the generic
 `redrive_content_family::<TerrainDefsFamily>` (resp. `::<ThemeDefsFamily>`)
@@ -384,7 +384,7 @@ restart.
 ## Part 4 — Loader and key resolution
 
 The terrain and theme loaders are instances of the ONE generic content-family
-loader (GTW-570):
+loader:
 
 - Family markers: `TerrainDefsFamily` / `ThemeDefsFamily` in
   `crates/gdtf_content_families/src/terrain_defs.rs` / `theme_defs.rs` — each
@@ -414,7 +414,7 @@ The load flow, per family:
    `UuidThemeRegistry` (`ThemeUuid` → `UuidThemeDef`,
    `crates/gdtf_battle_sim/src/level/theme_def/registry.rs`). Both are named
    newtypes over the foundation `Registry<K, V>` map
-   (`crates/gdtf_battle_sim/src/foundation/registry/map.rs`, GTW-567).
+   (`crates/gdtf_battle_sim/src/foundation/registry/map.rs`).
 4. On a genuine folder `Failed` the loader `warn!`s and inserts an EMPTY
    registry so `Load` always exits with one present (ADR-0003 safety-net); a
    battle then fails closed on a missing UUID rather than crashing.

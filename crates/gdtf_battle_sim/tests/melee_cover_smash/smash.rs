@@ -84,7 +84,7 @@ fn repeated_smashing_destroys_cover_and_fires_the_destroyed_signal() {
 
     assert!(
         destroyed_hits(&app) >= 1,
-        "C5(b): destroying the cover fires the CoverDestroyed signal (the GTW-386 FX bridge)",
+        "C5(b): destroying the cover fires the CoverDestroyed signal (the FX bridge)",
     );
     assert!(
         melee_hits(&app) >= 1,

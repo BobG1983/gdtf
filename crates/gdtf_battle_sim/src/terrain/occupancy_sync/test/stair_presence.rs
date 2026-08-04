@@ -38,12 +38,12 @@ fn standing_stair_occupant_registers_upper_low_band() {
     assert_eq!(
         grid_occupant(&app, upper),
         Some(ganger),
-        "upper cell must also be occupied (dual-cell stair presence, GTW-391)",
+        "upper cell must also be occupied (dual-cell stair presence)",
     );
     assert_eq!(
         grid_band(&app, upper),
         Some(HeightBand::Low),
-        "upper cell carries the Low band (body protrusion into the storey above, GTW-391)",
+        "upper cell carries the Low band (body protrusion into the storey above)",
     );
 }
 
@@ -79,12 +79,12 @@ fn crouching_stair_occupant_registers_upper_low_band() {
     assert_eq!(
         grid_occupant(&app, upper),
         Some(ganger),
-        "upper cell must also be occupied for a Crouching stair occupant (non-prone, GTW-391 C2)",
+        "upper cell must also be occupied for a Crouching stair occupant (non-prone, C2)",
     );
     assert_eq!(
         grid_band(&app, upper),
         Some(HeightBand::Low),
-        "upper cell carries the Low band regardless of the non-prone stance (GTW-391 C2)",
+        "upper cell carries the Low band regardless of the non-prone stance ",
     );
 }
 
@@ -213,7 +213,7 @@ fn stair_occupant_with_occupied_upper_cell_is_lower_only() {
     assert_eq!(
         grid_occupant(&app, upper),
         Some(ganger_b),
-        "ganger B's slot must NOT be stomped by A (occupancy guard, GTW-391 Test 12)",
+        "ganger B's slot must NOT be stomped by A (occupancy guard, Test 12)",
     );
 
     let dest = key(21, 21, 1);
@@ -262,7 +262,7 @@ fn initial_placement_on_stair_registers_upper() {
     assert_eq!(
         grid.occupant(&upper),
         Some(entity),
-        "upper cell occupied at build — frame-0, no tick needed (GTW-391 Test 13)",
+        "upper cell occupied at build — frame-0, no tick needed (Test 13)",
     );
     assert_eq!(
         grid.occupant_band(&upper),

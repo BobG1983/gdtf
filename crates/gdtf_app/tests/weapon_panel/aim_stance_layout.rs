@@ -25,7 +25,7 @@ fn aim_panel_has_aim_caption_beside_the_switch() {
 
     assert!(
         single_with::<AimLabel>(&mut app).is_some(),
-        "the Aim Panel carries the restored \"Aim\" caption (GTW-277 had dropped it)",
+        "the Aim Panel carries the restored \"Aim\" caption (it was dropped)",
     );
     assert_eq!(
         line_text::<AimLabel>(&mut app).as_deref(),

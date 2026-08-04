@@ -1,3 +1,4 @@
+//! Reachable overlay: cells match `reachable_within`; clears without selection.
 use bevy::{
     asset::AssetPlugin, input::ButtonInput, platform::collections::HashSet, prelude::*,
     scene::ScenePlugin,

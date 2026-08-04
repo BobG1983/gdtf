@@ -1,3 +1,4 @@
+//! Terrain mode: save round-trips, picker wiring, emplacement fail-closed.
 #![cfg(debug_assertions)]
 
 use bevy::prelude::*;
@@ -56,7 +57,7 @@ fn terrain_save_round_trips_through_the_loader() {
     let Some(mut draft) = app.world_mut().get_resource_mut::<TerrainDraft>() else {
         unreachable!("the TerrainDraft must be inserted in Editing")
     };
-    draft.set_display_name("GTW513 Roundtrip Probe".to_owned());
+    draft.set_display_name("Roundtrip Probe".to_owned());
     draft.set_kind(TerrainKindChoice::Cover);
     draft.set_graphic(TileRole::Cover);
     draft.toggle_tag(TerrainTag::BlocksVision);
@@ -89,7 +90,7 @@ fn terrain_save_round_trips_through_the_loader() {
     let Ok(reloaded) = ron::de::from_str::<TerrainDef>(&written) else {
         unreachable!(
             "the written terrain def must round-trip through the TerrainDef deserializer (the \
-             GTW-487 loader's parser)",
+              loader's parser)",
         )
     };
     assert_eq!(
@@ -122,7 +123,7 @@ fn terrain_tab_rework_keeps_stat_picker_and_preview_wired() {
     let Some(mut draft) = app.world_mut().get_resource_mut::<TerrainDraft>() else {
         unreachable!("the TerrainDraft must be inserted in Editing")
     };
-    draft.set_display_name("GTW534 Rework Probe".to_owned());
+    draft.set_display_name("Rework Probe".to_owned());
     draft.set_kind(TerrainKindChoice::Cover);
     draft.set_graphic(TileRole::Cover);
     draft.set_cover_hp(gdtf_battle_sim::cover::CoverHp::new(77));
@@ -155,7 +156,7 @@ fn terrain_tab_rework_keeps_stat_picker_and_preview_wired() {
         unreachable!("the preview projection must serialize without error")
     };
     assert!(
-        preview.contains("GTW534 Rework Probe"),
+        preview.contains("Rework Probe"),
         "the demoted RON preview must still re-serialize the edited display name (C3):\n{preview}",
     );
     assert!(
@@ -202,7 +203,7 @@ fn emplacement_save_round_trips_with_mounted_weapon() {
     let Some(mut draft) = app.world_mut().get_resource_mut::<TerrainDraft>() else {
         unreachable!("the TerrainDraft must be inserted in Editing")
     };
-    draft.set_display_name("GTW574 Emplacement Probe".to_owned());
+    draft.set_display_name("Emplacement Probe".to_owned());
     draft.set_kind(TerrainKindChoice::Emplacement);
     draft.set_graphic(TileRole::Emplacement);
     draft.set_mounted_weapon(Some(weapon.clone()));
@@ -227,7 +228,7 @@ fn emplacement_save_round_trips_with_mounted_weapon() {
         unreachable!("the written terrain def must be readable off disk inside the TempDir")
     };
     let Ok(reloaded) = ron::de::from_str::<TerrainDef>(&written) else {
-        unreachable!("the written Emplacement def must parse through the GTW-487 loader schema")
+        unreachable!("the written Emplacement def must parse through the loader schema")
     };
     assert!(
         matches!(
@@ -266,7 +267,7 @@ fn emplacement_save_without_weapon_fails_closed_and_writes_nothing() {
     let Some(mut draft) = app.world_mut().get_resource_mut::<TerrainDraft>() else {
         unreachable!("the TerrainDraft must be inserted in Editing")
     };
-    draft.set_display_name("GTW574 Unarmed Emplacement".to_owned());
+    draft.set_display_name("Unarmed Emplacement".to_owned());
     draft.set_kind(TerrainKindChoice::Emplacement);
     let _ = draft.ensure_uuid();
 
@@ -285,7 +286,7 @@ fn emplacement_save_without_weapon_fails_closed_and_writes_nothing() {
         write_terrain_in(temp_dir.path(), &draft, uuid, &theme_display).err(),
         Some(SaveTerrainError::MissingMountedWeapon),
         "saving an Emplacement draft without a mounted weapon must return the typed \
-         MissingMountedWeapon error (GTW-574 C6)",
+         MissingMountedWeapon error ",
     );
     let Ok(mut entries) = std::fs::read_dir(temp_dir.path()) else {
         unreachable!("the TempDir root must be readable")

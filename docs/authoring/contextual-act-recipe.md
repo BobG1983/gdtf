@@ -3,14 +3,14 @@
 A **contextual act** is a target-carrying battlescape act: the panel offers a target
 while one is in reach (Execute / Stabilize / Melee / Shove / Open Door / Enter
 Emplacement / Exit Emplacement / Throw Grenade), a press — a mouse click on the button OR
-the digit key bound to its visible slot (GTW-563) — buffers that target, and the sim's
-bespoke dispatch is the authoritative gate. Since GTW-571 the whole ritual is
+the digit key bound to its visible slot — buffers that target, and the sim's
+bespoke dispatch is the authoritative gate. Since the whole ritual is
 descriptor + registrar shaped: **adding one act touches ONE new per-act module file per
 crate layer plus ONE registration line per layer** (plus that act's bespoke sim
 dispatch). There is no runtime descriptor table — registration is compile-time generic
 (`add_contextual_act::<A>()`), mirroring `add_message::<M>`.
 
-The drain invariant (GTW-571, Q5-approved wording): **per-act generic drains in one
+The drain invariant (Q5-approved wording): **per-act generic drains in one
 explicitly-ordered SystemSet, same-frame semantics preserved.** A press queued this
 update is drained to its `*Requested` this update, and the sim consumes it the same
 frame (`ContextualPanelSystems::Press` → `ContextualActSystems::Drain` →
@@ -43,11 +43,11 @@ frame (`ContextualPanelSystems::Press` → `ContextualActSystems::Drain` →
   `PendingContextualIntents<A>` queue, and the generic drain in the ONE
   `ContextualActSystems::Drain` set.
 - The descriptor carries **no per-act keybind field** — but the act is no longer
-  button-only. Since GTW-563 a keyboard DIGIT slot-key also activates it: digit N fires
+  button-only. Since a keyboard DIGIT slot-key also activates it: digit N fires
   the Nth currently-visible contextual button (the binding is per-SLOT, not per-action,
   so it needs no descriptor field — the panel ranks the visible buttons and each per-act
   digit-press router resolves its key from that rank via `Keybinds::contextual_slot_key`).
-  This reverses the GTW-571 Q8 "button-only" ruling; the keyboard slot-bindings coexist
+  This reverses the Q8 "button-only" ruling; the keyboard slot-bindings coexist
   with mouse clicks, both feeding the one `PendingContextualIntents<A>` dispatch.
 
 ### 3. App — the panel button (one file + one line)
@@ -64,18 +64,18 @@ frame (`ContextualPanelSystems::Press` → `ContextualActSystems::Drain` →
   the generic button spawn, visibility toggle, and press router over the descriptor.
 - Never add per-act `Without<>` disjointness filters, per-marker visibility bundles, or
   per-marker press queries — the generic systems hold ONE query each, so none are
-  needed (the pre-GTW-571 N-squared filter wall must not come back).
+  needed (the N-squared filter wall must not come back).
 
-### 4. AI arm, or documented why-not (named station — GTW-571 Q6, ruled)
+### 4. AI arm, or documented why-not (named station — Q6, ruled)
 
-Until GTW-71 lands, the enemy-AI act contract is **move / fire / end-turn, plus
+Until lands, the enemy-AI act contract is **move / fire / end-turn, plus
 reload-when-landed** — the brain (`crates/gdtf_battle_sim/src/ai/`) writes only `FireRequested` /
-`MoveRequested` / `EndTurnRequested` today, and GTW-560 records the reload gap. Every
+`MoveRequested` / `EndTurnRequested` today, and records the reload gap. Every
 new act must EITHER add a brain arm that can emit its `*Requested`, OR record here (and
 on the ticket) why the AI does not use it yet.
 
 Why-not record for the eight existing contextual acts: they are player-affordance
-surfaces pending the GTW-71 AI-acts expansion; none has a brain arm today.
+surfaces pending the AI-acts expansion; none has a brain arm today.
 
 ### 5. Tests + test-surface (as the act warrants)
 
@@ -86,13 +86,13 @@ surfaces pending the GTW-71 AI-acts expansion; none has a brain arm today.
   the negative offer cases.
 - To name the marker from the external test: 2 edits — add it to the panel's
   `test_support` submodule (`contextual_panel/mod.rs`) and to the crate-root ledger
-  (`src/test_support.rs`), per the GTW-569 one-hop pattern.
+  (`src/test_support.rs`), per the one-hop pattern.
 - Input-layer drain coverage is generic and already pinned
   (`act_bus/contextual/test.rs`); sim dispatch gets its own bespoke tests.
 
 ## Worked reference
 
-`Shove` (GTW-525, ported end-to-end in GTW-571) is the reference walk: sim
+`Shove` (ported end-to-end in) is the reference walk: sim
 `crates/gdtf_battle_sim/src/acts/shove/`, input `act_bus/contextual/shove.rs` +
 `.add_contextual_act::<ShoveAct>()`, app `contextual_panel/acts/shove.rs` +
 `.add_contextual_act_button::<ShoveAct, _>(acts::shove::offer_shove)`, AI why-not

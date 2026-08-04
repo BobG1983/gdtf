@@ -55,12 +55,12 @@ fn downed_ganger_retains_its_slot() {
     assert_eq!(
         grid_occupant(&app, at),
         Some(ganger),
-        "a downed ganger HOLDS its occupant slot — only Dead frees it (GTW-459 C1)",
+        "a downed ganger HOLDS its occupant slot — only Dead frees it ",
     );
     assert_eq!(
         grid_band(&app, at),
         Some(HeightBand::High),
-        "a downed ganger retains its silhouette band, still occluding fire (GTW-459 C2/C5)",
+        "a downed ganger retains its silhouette band, still occluding fire ",
     );
 }
 
@@ -83,6 +83,6 @@ fn still_alive_change_keeps_slot() {
     assert_eq!(
         grid_occupant(&app, at),
         Some(ganger),
-        "an Alive LifeState change must NOT free the slot (GTW-459 C1)",
+        "an Alive LifeState change must NOT free the slot ",
     );
 }

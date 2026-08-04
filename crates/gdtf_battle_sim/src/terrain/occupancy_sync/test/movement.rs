@@ -49,12 +49,12 @@ fn moved_ganger_clears_old_slot_and_marks_new() {
     assert_eq!(
         grid_band(&app, start),
         None,
-        "the OLD slot's band must be cleared after a move (GTW-304)",
+        "the OLD slot's band must be cleared after a move ",
     );
     assert_eq!(
         grid_band(&app, dest),
         Some(HeightBand::High),
-        "the NEW slot must carry the band after a move (GTW-304)",
+        "the NEW slot must carry the band after a move ",
     );
 }
 

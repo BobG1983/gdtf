@@ -1,3 +1,4 @@
+//! Hot RON redrive: modified assets re-derive in place and mark changed.
 use std::{cell::RefCell, sync::OnceLock};
 
 use bevy::{

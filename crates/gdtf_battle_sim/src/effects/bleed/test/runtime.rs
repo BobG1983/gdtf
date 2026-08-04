@@ -20,7 +20,7 @@ fn a_full_round_bleeds_a_live_downed_ganger() {
         wounds_of(&app, downed),
         start - rate,
         "one full round (a player End Turn) must drain exactly bleed_rate from a live \
-         Downed ganger — the bleed-out clock is wired into the turn cycle (GTW-336)",
+         Downed ganger — the bleed-out clock is wired into the turn cycle ",
     );
     assert_eq!(
         life_of(&app, downed),

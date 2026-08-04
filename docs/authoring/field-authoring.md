@@ -3,8 +3,8 @@
 How to create, extend, and maintain area-damage FIELDS — persistent per-tile
 damage zones (a toxic waste pool, an electrified floor, burning ground) that
 drain the HP of whoever stands on them, once per round, until they expire
-(GTW-545; consequence palette isolated in GTW-553; runtime merged into the
-effects family in GTW-638).
+(consequence palette isolated in; runtime merged into the
+effects family in).
 
 ---
 
@@ -39,7 +39,7 @@ From the shipped `assets/content/fields/toxic_waste_pool.field.ron`
 | `damage` | `FieldDamage` | bare integer | Flat per-turn HP drain — no armor matchup, no injury roll, no RNG |
 | `damage_type` | `DamageType` | enum variant | Wheel-node flavour, presentation only (the drain bypasses soak) |
 | `immune_armor_types` | `ImmuneArmorTypes` | list of `ArmorType` variants | WHOLE-SOURCE immunity: a ganger wearing ANY piece of a listed type takes zero |
-| `duration` | `FieldDuration` | `Permanent` \| `Turns(n)` | `Turns(n)` = exactly `n` draining rounds, then the field is removed (the same round boundary that spends the last turn removes it). `n` must be ≥ 1 — `Turns(0)` is unrepresentable (GTW-659) and FAILS the file's load (per-file salvage, `MalformedFile` finding); there is no clamp |
+| `duration` | `FieldDuration` | `Permanent` \| `Turns(n)` | `Turns(n)` = exactly `n` draining rounds, then the field is removed (the same round boundary that spends the last turn removes it). `n` must be ≥ 1 — `Turns(0)` is unrepresentable and FAILS the file's load (per-file salvage, `MalformedFile` finding); there is no clamp |
 
 ### 1c. Placing a field (three producers)
 
@@ -64,7 +64,7 @@ each fielded cell drains its occupant (unless an armor exemption applies), then
 every placement's lifetime counts down and expired placements are removed. A
 `Turns(n)` field therefore drains on exactly `n` round boundaries — the
 boundary that spends its last turn still drains, then removes the placement
-(never `n + 1`; pinned by the `test_lifetime.rs` suite, GTW-659). The
+(never `n + 1`; pinned by the `test_lifetime.rs` suite). The
 presenter draws a field overlay on fielded cells
 (`crates/gdtf_battle_presenter/src/overlays/field/`) and a hazard-orange FCT
 pop on each tick ([fct-authoring.md](fct-authoring.md)); the affliction logs
@@ -81,7 +81,7 @@ The family lives in one home, palette + mechanics
 - **Mechanics** — `field.rs` (the authored `FieldDef`), `registry.rs` (the
   `FieldDefRegistry` catalog + the live per-cell `FieldRegistry`), `tick.rs`
   (the round clock + the `FieldTicked` message).
-- **Consequence palette (GTW-553)** — one self-contained file per consequence
+- **Consequence palette ** — one self-contained file per consequence
   (`drain.rs` / `immunity.rs` / `duration.rs`), each implementing the
   `ApplyFieldEffect` trait; the closed `FieldEffect` vocabulary (`effect.rs`)
   delegates mechanically. The authored surface stays the flat `FieldDef`

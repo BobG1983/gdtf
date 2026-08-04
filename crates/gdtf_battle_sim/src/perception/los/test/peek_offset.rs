@@ -65,7 +65,7 @@ fn peek_clears_corner_wall_center_blocks() {
     assert!(
         *peek_sighted,
         "a peeking observer (eye nudged +0.4 east) must SEE the target past the \
-         HIGH cover column — peeked ray crosses cover row at x≈4.08 (GTW-393 C5)"
+         HIGH cover column — peeked ray crosses cover row at x≈4.08 "
     );
 
     assert_ne!(
@@ -165,7 +165,7 @@ fn peek_facing_invariant() {
                 reference.z.to_bits()
             ),
             "rotating facing to {dir:?} with a non-zero PeekOffset must NOT move the \
-             facing-neutral peeked eye anchor (GTW-393 facing-invariant)"
+             facing-neutral peeked eye anchor (facing-invariant)"
         );
     }
 }

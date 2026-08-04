@@ -43,13 +43,13 @@ fn walk_bump_stop_halts_on_a_tag_only_path_block_added_mid_walk() {
             here,
             Some(Position::new(block_cell)),
             "the bump-stop must HALT before the tag-blocked cell (13,10) — it must NOT step \
-             onto a cell the planner treats as impassable (GTW-501 D2)",
+             onto a cell the planner treats as impassable ",
         );
         assert_ne!(
             here,
             Some(Position::new(dest)),
             "the bump-stop must NOT let the mover walk THROUGH the tag-blocked cell to the \
-             destination (14,10) — that is the kind-based-bump-stop bug GTW-501 D2 fixes",
+             destination (14,10) — that is the kind-based-bump-stop bug D2 fixes",
         );
     }
 

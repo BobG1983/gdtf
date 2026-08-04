@@ -1,3 +1,4 @@
+//! Capture pipeline: active plugin writes a PNG; inert plugin registers nothing.
 use std::{fs, path::PathBuf};
 
 use bevy::{

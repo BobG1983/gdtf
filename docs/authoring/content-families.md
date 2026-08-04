@@ -1,9 +1,9 @@
 # Content Families — adding a folder-loaded content family
 
 How GDTF turns a folder of loose `.ron` files into a registry resource, and
-what ONE registration line buys you (GTW-570 generic loader; GTW-582 per-file
-salvage + integrity report; GTW-629 headless fallback; GTW-630 shared
-validation; GTW-621/634 one-owner path spellings). This is the guide for
+what ONE registration line buys you (generic loader; per-file
+salvage + integrity report; headless fallback; shared
+validation; /634 one-owner path spellings). This is the guide for
 engineers adding a NEW content family; each existing family's authoring guide
 covers its own schema.
 
@@ -30,12 +30,12 @@ That one line yields the WHOLE chain — encoded once, never per-family:
 | Guarantee | What it means |
 |-----------|---------------|
 | Loader + resolve | A `Startup` kick-off folder-loads recursively; the resolve gates on the folder finishing, folds every member through `insert_member`, and inserts the registry EXACTLY once |
-| Per-file salvage (GTW-582) | A malformed member fails ALONE (a `malformed file:` finding on the integrity report); every well-formed sibling still loads |
+| Per-file salvage | A malformed member fails ALONE (a `malformed file:` finding on the integrity report); every well-formed sibling still loads |
 | Fail-closed folder | A genuinely un-enumerable folder `warn!`s and publishes an EMPTY registry, so a presence-gated `Load` flow is never stranded (ADR-0003) |
 | Live redrive (hot-reload) | Editing a member under `cargo drun` rebuilds the whole registry in place via the persistent `ContentFolderHandle`, logging the reload |
 | `TypeId` member filter | A mixed folder (terrain + theme defs share one tree) never mistypes a member |
-| Headless fallback (GTW-629) | A `MinimalPlugins` app (no `AssetServer`) registers no chain and seeds `Registry::default()` instead — no panic, and a presence-gated flow still releases |
-| Validation window (GTW-630) | Reference checks registered per host (`register_reference_check`) run once every registry they read has resolved — see [reference-integrity.md](reference-integrity.md) |
+| Headless fallback | A `MinimalPlugins` app (no `AssetServer`) registers no chain and seeds `Registry::default()` instead — no panic, and a presence-gated flow still releases |
+| Validation window | Reference checks registered per host (`register_reference_check`) run once every registry they read has resolved — see [reference-integrity.md](reference-integrity.md) |
 
 The generic systems live in `crates/gdtf_assets/src/family/systems.rs`; the
 salvage in `crates/gdtf_assets/src/family/salvage.rs`; the report vocabulary in
@@ -57,16 +57,16 @@ The shipped families vary on ONE axis — where a member's key comes from:
 | Stem-keyed | `WeaponsFamily`, `MeleeWeaponsFamily`, `ArmorFamily`, `FieldsFamily`, `GangsFamily`, `AttachmentsFamily`, `SpriteDefsFamily` | File stem, infix stripped (`stub_pistol.weapon.ron` → `stub_pistol`) |
 | Payload-keyed | `TerrainDefsFamily`, `ThemeDefsFamily` | The UUID inside the def; the filename is a courtesy |
 
-One placement exception: `SpriteDefsFamily` (GTW-663) is the one family whose
+One placement exception: `SpriteDefsFamily` is the one family whose
 `Spec`/`Registry` live IN the glue crate
 (`crates/gdtf_content_families/src/sprites/`) rather than the sim — sprite
 data is presentation-side, and the render-free sim cannot own it.
 
-## Part 3 — Path spellings have ONE owner (GTW-621 / GTW-634)
+## Part 3 — Path spellings have ONE owner
 
 Folder and extension strings are declared exactly once and imported
 everywhere else — a writer's spelling can never drift from the loader's read
-(the GTW-621 bug class: a save-side extension drift made saved gangs silently
+(the bug class: a save-side extension drift made saved gangs silently
 invisible to the loader):
 
 - The workspace assets root: `gdtf_assets::WORKSPACE_ASSETS_ROOT`
@@ -91,7 +91,7 @@ folder→one-registry):
 - **Injuries** — ONE folder, TWO asset types (defs + weightings), TWO
   resources (`crates/gdtf_app/src/states/load/systems/resolve/injuries.rs`).
 
-Single FILES (not folders) load through the hot-RON chain instead (GTW-564):
+Single FILES (not folders) load through the hot-RON chain instead:
 the authored situation (`content/situations/skirmish.ron`) and the
 `assets/core_tuning/*.tuning.ron` tables — same hot-reload discipline, one
 file per chain, with a fallback so a bad file never strands `Load`.
@@ -99,7 +99,7 @@ file per chain, with a fallback so a bad file never strands `Load`.
 ## Part 5 — Verify
 
 - **Suite:** `cargo dtest`. Every family binds the ONE generic load suite
-  (`crates/gdtf_app/tests/load_suite/`, GTW-580) through a thin
+  (`crates/gdtf_app/tests/load_suite/`) through a thin
   `FamilyLoadContract` wrapper — one file per family
   (`crates/gdtf_app/tests/load_weapons.rs`, `load_melee_weapons.rs`,
   `load_armor.rs`, `load_fields.rs`, `load_gangs.rs`, `load_attachments.rs`,

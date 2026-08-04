@@ -67,7 +67,7 @@ fn upper_shooter_march_terminates_on_stair_upper_cell() {
         result.kind,
         MarchKind::Ganger(entity),
         "a shot through the upper stair cell must terminate on the entity \
-         (upper-cell Low band is hittable from an upper-level shooter, GTW-391)",
+         (upper-cell Low band is hittable from an upper-level shooter)",
     );
     assert_eq!(
         result.at, upper_cell,
@@ -106,7 +106,7 @@ fn ground_shooter_resolves_lower_band_unchanged() {
     assert_eq!(
         result.kind,
         MarchKind::Ganger(entity),
-        "a ground-level HIGH shot must hit the stair occupant's lower cell (GTW-391 Test 4)",
+        "a ground-level HIGH shot must hit the stair occupant's lower cell (Test 4)",
     );
     assert_eq!(
         result.at, lower_cell,

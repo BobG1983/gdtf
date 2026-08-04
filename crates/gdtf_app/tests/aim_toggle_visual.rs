@@ -1,3 +1,4 @@
+//! Aim toggle: button active state tracks the selected shooter's aiming mode.
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{AimToggleButton, AppState, BattleScapeState, RunningState};
 use gdtf_battle_input::SelectedShooter;

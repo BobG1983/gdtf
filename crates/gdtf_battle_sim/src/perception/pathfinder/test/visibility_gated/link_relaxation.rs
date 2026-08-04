@@ -39,7 +39,7 @@ fn routing_onto_known_link_far_endpoint_is_allowed_when_unseen() {
     assert!(
         result_gated.is_ok(),
         "planning onto a known link's far endpoint MUST succeed even when the cell is UNSEEN \
-         (GTW-387: link-endpoint gate is C2-only, C1 fog-explored is relaxed for link hops); \
+         ( link-endpoint gate is C2-only, C1 fog-explored is relaxed for link hops); \
          got {result_gated:?}",
     );
     assert_eq!(
@@ -109,7 +109,7 @@ fn unseen_non_link_cell_is_still_non_routable() {
     assert!(
         result_gated.is_err(),
         "an UNSEEN non-link cell on the only planar route MUST remain non-routable after \
-         GTW-387 (the link relaxation does NOT open a general fog hole); got {result_gated:?}",
+          (the link relaxation does NOT open a general fog hole); got {result_gated:?}",
     );
 
     let squad_open = fog(&[], &corridor_cells_l0);

@@ -1,3 +1,4 @@
+//! Skirmish load: shipped situation names a migrated theme UUID that resolves.
 use gdtf_app::test_support::{AppState, LoadedSituation, app_state, load_released};
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};

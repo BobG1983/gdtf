@@ -4,7 +4,7 @@ use crate::armor::{ArmorIntegrity, ArmorType};
 #[test]
 #[expect(
     clippy::too_many_lines,
-    reason = "GTW-322/323: asserts every component round-trips through the bsn! scenes — the \
+    reason = "asserts every component round-trips through the bsn! scenes — the \
               ganger's own set, the wielded weapon entity, the worn piece entities, plus occupancy"
 )]
 fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {

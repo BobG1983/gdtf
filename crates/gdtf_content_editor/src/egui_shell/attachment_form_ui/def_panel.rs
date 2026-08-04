@@ -1,4 +1,4 @@
-//! The ATTACHMENT tab's CENTRAL item editor (GTW-669 C2) — the authored
+//! The ATTACHMENT tab's CENTRAL item editor — the authored
 //! with add/remove — the injury effects-list authoring shape drawn over the sim's own
 use bevy_egui::egui;
 use gdtf_battle_sim::{

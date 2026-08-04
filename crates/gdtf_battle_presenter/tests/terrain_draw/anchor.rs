@@ -1,4 +1,4 @@
-//! GTW-665 C2 — the authored ANCHOR is genuinely consumed: an OFF-CENTER anchor def,
+//! C2 — the authored ANCHOR is genuinely consumed: an OFF-CENTER anchor def,
 //! authored into an isolated `TempDir` asset root and loaded through the REAL
 use std::path::Path;
 

@@ -1,3 +1,4 @@
+//! Highlight draw: hover lands a cell highlight on occupied or blocking cells.
 use bevy::{
     app::App,
     camera::{
@@ -187,7 +188,7 @@ fn highlight_only_on_occupied_or_blocking_cells() {
     assert_ne!(
         highlight_state(&mut app).map(|(_, v)| v),
         Some(Visibility::Visible),
-        "a bare-floor cell must NOT highlight (GTW-268: gangers + objects only)",
+        "a bare-floor cell must NOT highlight — gangers and objects only",
     );
     assert_eq!(
         highlight_count(&mut app),
@@ -207,7 +208,7 @@ fn highlight_only_on_occupied_or_blocking_cells() {
     assert_eq!(
         highlight_state(&mut app),
         Some((cell_to_world(cell.cell(), level), Visibility::Visible,)),
-        "a squad-VISIBLE cell holding a ganger (occupant) MUST highlight at that cell (GTW-378)",
+        "a squad-VISIBLE cell holding a ganger (occupant) MUST highlight at that cell ",
     );
 
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
@@ -219,6 +220,6 @@ fn highlight_only_on_occupied_or_blocking_cells() {
     assert_eq!(
         highlight_state(&mut app).map(|(_, v)| v),
         Some(Visibility::Visible),
-        "a blocking object / cover cell MUST highlight (GTW-268 OR-branch)",
+        "a blocking object / cover cell MUST highlight (OR-branch)",
     );
 }

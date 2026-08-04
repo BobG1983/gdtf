@@ -49,7 +49,7 @@ fn fog_hidden_enemy_occupant_does_not_light_the_reticle() {
     assert_eq!(
         requests(&app),
         vec![HighlightRequest::new(None, CellVisibility::NotSquadVisible)],
-        "a FOG-HIDDEN enemy occupant must NOT light the reticle (GTW-378 info-leak)",
+        "a FOG-HIDDEN enemy occupant must NOT light the reticle (info-leak)",
     );
 
     make_cells_visible(&mut app, &[resolved]);
@@ -63,7 +63,7 @@ fn fog_hidden_enemy_occupant_does_not_light_the_reticle() {
             Some(resolved),
             CellVisibility::SquadVisible
         )],
-        "a squad-VISIBLE enemy occupant lights the reticle (GTW-378 positive control)",
+        "a squad-VISIBLE enemy occupant lights the reticle (positive control)",
     );
 }
 
@@ -94,7 +94,7 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
     assert_eq!(
         requests(&app),
         vec![HighlightRequest::new(None, CellVisibility::NotSquadVisible)],
-        "a bare-floor in-grid cell must emit HighlightRequest(None) (GTW-268)",
+        "a bare-floor in-grid cell must emit HighlightRequest(None) ",
     );
 
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
@@ -108,7 +108,7 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
         requests(&app),
         vec![HighlightRequest::new(cell, CellVisibility::NotSquadVisible)],
         "over a blocking cell the picker must emit exactly one HighlightRequest = Some(cell) \
-         (GTW-11: NotSquadVisible — no fog seeded, fail-closed)",
+         ( NotSquadVisible — no fog seeded, fail-closed)",
     );
 
     let cursor_off = TARGET_SIZE * 0.5 - Vec2::new(64.0, 0.0);

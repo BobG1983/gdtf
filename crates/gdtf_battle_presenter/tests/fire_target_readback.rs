@@ -1,3 +1,4 @@
+//! Fire target GPU readback: highlighted cell renders red; cleared cell is dark.
 use std::{
     path::PathBuf,
     sync::{Mutex, MutexGuard},

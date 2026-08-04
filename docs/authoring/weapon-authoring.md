@@ -3,10 +3,10 @@
 How to create, extend, and maintain the weapon roster — from a new
 `.weapon.ron` file to adding a brand-new field to `WeaponSpec` end-to-end.
 This guide documents the **current, landed state** of the weapon system
-(GTW-257 / GTW-260 / GTW-374 / GTW-443, plus the optional-field additions
-GTW-525 / GTW-544 / GTW-546 / GTW-547 / GTW-549 / GTW-554) and is the primary
+(/ / /, plus the optional-field additions
+ / / / / /) and is the primary
 reference for content authors and engineers extending weapon mechanics.
-Melee weapons (GTW-505) are Part 5.
+Melee weapons are Part 5.
 
 ---
 
@@ -16,7 +16,7 @@ Melee weapons (GTW-505) are Part 5.
 
 Ranged weapons live under `assets/content/weapons/ranged/` — one file per
 weapon. The file is named `<key>.weapon.ron`, where `<key>` is the weapon's
-registry key, the string a roster member references to load it. (GTW-505 split
+registry key, the string a roster member references to load it. (split
 the weapons tree into `ranged/` + `melee/`; melee weapons — the
 `.melee_weapon.ron` sibling — are covered in Part 5 below.)
 
@@ -56,12 +56,12 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
     stable:        false,   // true = brace bonus unconditional (bipod/heavy piece); false = normal
     handedness:    OneHanded, // OneHanded (pistol) | TwoHanded (long-arm/heavy); default OneHanded
     // ---- optional fields (all #[serde(default)]; omit them for a plain gun) ----
-    // shove:       true,                          // knockback tag (GTW-525)
-    // trajectory:  Arc,                           // lobbed grenade parabola (GTW-546)
-    // slots:       [(Muzzle, 1), (Sight, 1)],     // offered attachment slots (GTW-554)
-    // attachments: ["suppressor"],                // fitted attachment item keys (GTW-549)
-    // dot:         Some((damage: 4, damage_type: Plasma, turns: 3)),          // GTW-544
-    // on_death:    Some(Explode(hit_type: Blast(radius: 1), damage: 8, damage_type: Blast)), // GTW-547
+    // shove: true, // knockback tag
+    // trajectory: Arc, // lobbed grenade parabola
+    // slots: [(Muzzle, 1), (Sight, 1)], // offered attachment slots
+    // attachments: ["suppressor"], // fitted attachment item keys
+    // dot: Some((damage: 4, damage_type: Plasma, turns: 3)), //
+    // on_death: Some(Explode(hit_type: Blast(radius: 1), damage: 8, damage_type: Blast)), //
 )
 ```
 
@@ -81,7 +81,7 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
 | `magazine` | `Magazine` | `(size: u16, reload_tu: u8)` | Capacity + reload cost (see below) |
 | `fire_mode` | `FireMode` | list of `FireModeSpec` | The offered modes in selector order (see below) |
 | `stable` | `Stable` | bare `bool` | `true` = unconditional brace bonus |
-| `shove` | `Shove` | bare `bool`, optional | GTW-525 knockback tag; omitted = `false` (see 1h) |
+| `shove` | `Shove` | bare `bool`, optional | knockback tag; omitted = `false` (see 1h) |
 | `handedness` | `Handedness` | enum variant | `OneHanded` or `TwoHanded` |
 | `trajectory` | `TrajectoryStyle` | enum variant, optional | `Straight` (default) or `Arc` (see 1i) |
 | `slots` | `WeaponSlots` | pair list, optional | Offered attachment slots + capacities; omitted = none fit (see 1j) |
@@ -104,7 +104,7 @@ the weapon FULL (`loaded == size`).
 
 Reloading is a real, per-weapon TU-costed act: `reload_tu` is the flat cost
 the reload act charges. A fitted `ReloadTime(scale)` attachment SCALES it
-per-item (bidirectional — `< 1.0` faster, `> 1.0` slower; GTW-558 renamed the
+per-item (bidirectional — `< 1.0` faster, `> 1.0` slower; renamed the
 effect from the speed-up-only `FastReload` misnomer) — see
 [attachment-authoring.md](attachment-authoring.md) §1d.
 
@@ -155,7 +155,7 @@ inherently-steady heavy piece). This engages the §1a brace bonus
 UNCONDITIONALLY, bypassing the normal stance/cover-height gate. Most weapons
 are `false`.
 
-### 1g. `handedness` — GTW-443
+### 1g. `handedness` —
 
 `handedness:` declares how many hands the weapon requires to fire:
 
@@ -167,19 +167,19 @@ are `false`.
 A ganger with a `DisableHand` injury cannot fire a `TwoHanded` weapon. Omitting
 the field is NOT supported — it must be authored explicitly.
 
-### 1h. `shove` — knockback tag (GTW-525, optional)
+### 1h. `shove` — knockback tag (optional)
 
 `shove: true` knocks the target back one cell on a connecting shot, in
 addition to the shot's damage. `#[serde(default)]` — an omitted field is a
 non-shove weapon (`false`).
 
-### 1i. `trajectory` — flat ray or lobbed arc (GTW-546, optional)
+### 1i. `trajectory` — flat ray or lobbed arc (optional)
 
 `trajectory:` is the `TrajectoryStyle` enum: `Straight` (a flat ray — the
 default when omitted) or `Arc` (a lobbed grenade parabola with no LOS gate).
 Grenades and grenade launchers author `trajectory: Arc`.
 
-### 1j. `slots` and `attachments` — the attachment fields (GTW-554 / GTW-549, optional)
+### 1j. `slots` and `attachments` — the attachment fields (optional)
 
 `slots:` declares WHICH attachment slots the weapon offers and how many
 attachments each holds, as a `(slot, capacity)` pair list, e.g.
@@ -187,7 +187,7 @@ attachments each holds, as a `(slot, capacity)` pair list, e.g.
 closed `AttachmentSlot` enum: `Muzzle` / `Sight` / `Rail` / `Magazine` (ranged)
 and `Counterweight` / `Pommel` (melee) — class gating EMERGES from the declared
 slots, never from a tag on the item. Only a magazine-fed gun declares a
-`Magazine` slot (GTW-584); energy- and fluid-fed weapons omit it. An omitted
+`Magazine` slot; energy- and fluid-fed weapons omit it. An omitted
 `slots:` field is the EMPTY
 declaration: NO attachment fits (fail-closed — a thrown charge takes no
 fittings).
@@ -200,10 +200,10 @@ capacity; a non-fitting item is cleanly skipped. Attachment ITEMS themselves
 (the `AttachmentSpec` + its typed effect list) are authored in
 `assets/content/attachments/` and their effect behaviors live in the
 attachments palette (`crates/gdtf_battle_sim/src/effects/attachments/`,
-GTW-558 — one file per effect) — the full item schema + effect vocabulary is
+ — one file per effect) — the full item schema + effect vocabulary is
 [attachment-authoring.md](attachment-authoring.md).
 
-### 1k. `dot` — damage-over-time profile (GTW-544, optional)
+### 1k. `dot` — damage-over-time profile (optional)
 
 `dot:` gives the weapon a damage-over-time profile a PENETRATING hit seeds on
 the struck ganger:
@@ -217,12 +217,12 @@ dot: Some((
 ```
 
 `turns` must be **at least 1** — a zero-turn DOT makes no sense and is
-unrepresentable (`DotTurns` wraps `NonZeroU8`, GTW-643). A file authoring
+unrepresentable (`DotTurns` wraps `NonZeroU8`). A file authoring
 `turns: 0` FAILS to load: the per-file salvage rejects it loudly as a
 `MalformedFile` finding on the `ContentIntegrityReport` and the weapon never
 enters the registry (no silent clamp-to-1).
 
-### 1l. `on_death` — wielder-death effect (GTW-547, optional)
+### 1l. `on_death` — wielder-death effect (optional)
 
 `on_death:` names the `OnDeathEffect` the WIELDING ganger's death fans (a live
 satchel charge, an unstable power cell): `Explode(hit_type: …, damage: …,
@@ -296,9 +296,9 @@ Add the new field to the field table and the RON example in this guide. Run
 
 ## Part 3 — Hot-reload
 
-The weapon system supports **live hot-reload** (GTW-374 pattern): editing any
+The weapon system supports **live hot-reload** (pattern): editing any
 `assets/content/weapons/ranged/*.weapon.ron` file while the game is running triggers
-the generic `redrive_content_family::<WeaponsFamily>` system (GTW-570) in
+the generic `redrive_content_family::<WeaponsFamily>` system in
 `crates/gdtf_assets/src/family/systems.rs`, which rebuilds the entire
 `WeaponRegistry` from the persistent generic `ContentFolderHandle<WeaponsFamily>`
 (the family marker lives in `crates/gdtf_content_families/src/weapons.rs`).
@@ -311,7 +311,7 @@ restart. An `info!` line is emitted naming the reload.
 
 ## Part 4 — Loader and key resolution
 
-Loader: the generic content-family resolve (GTW-570) in
+Loader: the generic content-family resolve in
 `crates/gdtf_assets/src/family/systems.rs`, instantiated by the `WeaponsFamily`
 marker in `crates/gdtf_content_families/src/weapons.rs` and registered with one
 `register_content_family::<WeaponsFamily>()` call in the Load plugin.
@@ -344,7 +344,7 @@ Key Rust types (all in `crates/gdtf_battle_sim/src/equipment/weapon/`):
 
 ## Part 5 — Melee weapons (`.melee_weapon.ron`)
 
-Melee weapons (GTW-505, child GTW-37a) live under
+Melee weapons (child) live under
 `assets/content/weapons/melee/` — one file per weapon, named
 `<key>.melee_weapon.ron` (the stem is the registry key; no `name:` field, the
 ranged rule). They SHARE the ranged damage model verbatim and swap the
@@ -383,7 +383,7 @@ there is deliberately no melee mirror vocabulary. The melee-only fields:
 |-------|-----------|----------|-------|
 | `reach` | `Reach` | bare integer, optional | Cells away a strike can land. `#[serde(default)]` → `1` |
 | `fight_mode` | `FightMode` | list of `FightModeSpec` | The offered fight modes: `kind` (`Swing` \| `Thrust`), `tu_cost` (flat TU), `strikes` (count) |
-| `slots` / `attachments` | `WeaponSlots` / `Vec<AttachmentName>` | as ranged §1j, optional | Melee weapons get FULL attachment support (GTW-554) — melee slots are `Counterweight` / `Pommel` |
+| `slots` / `attachments` | `WeaponSlots` / `Vec<AttachmentName>` | as ranged §1j, optional | Melee weapons get FULL attachment support — melee slots are `Counterweight` / `Pommel` |
 
 Unlike a ranged fire mode (a TU *percentage*), a fight mode charges a FLAT
 `tu_cost`. The mode label (`"swing"` / `"thrust"`) derives from

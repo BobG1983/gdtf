@@ -36,7 +36,7 @@ fn a_ganger_downed_by_the_injury_bleed_keeps_its_wounds_that_round() {
         wounds_of(&app, ganger),
         start,
         "a ganger downed BY this tick has been down ZERO rounds — its §9 bleed-out \
-         Wound pool must be UNTOUCHED that tick (GTW-641)",
+         Wound pool must be UNTOUCHED that tick ",
     );
 }
 
@@ -57,7 +57,7 @@ fn a_ganger_downed_by_the_injury_bleed_cannot_die_the_same_tick() {
         life_of(&app, ganger),
         LifeState::Downed,
         "Alive→Downed→Dead within ONE tick must be impossible — the tick that downs \
-         drains no Wound, so the terminal gate cannot fire the same tick (GTW-641)",
+         drains no Wound, so the terminal gate cannot fire the same tick ",
     );
     assert_eq!(
         wounds_of(&app, ganger),
@@ -145,6 +145,6 @@ fn weapon_and_injury_downs_share_the_first_downed_tick_wound_behavior() {
         wounds_of(&app, by_bleed),
         start - rate,
         "round 2: the injury-downed ganger's FIRST entered-Downed tick drains exactly \
-         one rate — the same first-tick behavior as the weapon path (GTW-641 A2)",
+         one rate — the same first-tick behavior as the weapon path ",
     );
 }

@@ -49,7 +49,7 @@ validation window), and the one-owner path-spelling rule.
 - [sprite-defs.md](sprite-defs.md) — `.spritedef.ron` sprite definitions
   (source file or sheet+rect, anchor, optional facings/animation): the
   catalog a terrain def's `graphic_name` foreign-keys into (renderer swap =
-  GTW-665).
+  ).
 - [reference-integrity.md](reference-integrity.md) — the unified
   dangling-reference contract: every cross-file key validated at the end of
   `Load` into one loud, never-fatal report; per-file salvage; the editor

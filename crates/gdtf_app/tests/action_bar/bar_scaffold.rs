@@ -219,6 +219,6 @@ fn action_bar_root_fits_contents_and_is_top_centered() {
     assert_eq!(
         wrapper_node.top,
         Val::Px(0.0),
-        "the centering wrapper stays anchored to the screen TOP (GTW-298 / D-C)",
+        "the centering wrapper stays anchored to the screen TOP ",
     );
 }

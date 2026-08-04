@@ -69,7 +69,7 @@ fn assert_quiet(app: &App, window: &str) {
     let probe = app.world().resource::<QuietProbe>();
     assert_eq!(
         *probe.terrain_redirtied, 0,
-        "{window}: no drawn tile's Transform may be re-dirtied (the pre-GTW-666 \
+        "{window}: no drawn tile's Transform may be re-dirtied (the previous \
          registry-change redraw respawned every tile)",
     );
     assert!(

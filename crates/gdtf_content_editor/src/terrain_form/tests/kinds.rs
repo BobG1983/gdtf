@@ -14,7 +14,7 @@ use crate::terrain_form::{
 
 fn draft_of(choice: TerrainKindChoice) -> TerrainDraft {
     let mut draft = TerrainDraft::default();
-    draft.set_display_name("GTW574 Kind Probe".to_owned());
+    draft.set_display_name("Kind Probe".to_owned());
     draft.set_kind(choice);
     if choice == TerrainKindChoice::Emplacement {
         draft.set_mounted_weapon(Some(WeaponName::new("heavy_stubber".to_owned())));
@@ -34,13 +34,13 @@ fn piece_kind_round_trips_through_choice_and_projection() {
             def.sim_kind.kind(),
             kind,
             "From<TerrainPieceKind> ∘ draft_to_terrain_def must be kind-level identity for \
-             {kind:?} (GTW-574 AC1)",
+             {kind:?} ",
         );
         assert_eq!(
             def.presenter_kind.kind(),
             kind,
             "the projected presenter kind must agree with the canonical kind for {kind:?} \
-             (GTW-574 AC1)",
+             ",
         );
     }
 }
@@ -52,13 +52,13 @@ fn segment_order_covers_every_piece_kind() {
         assert!(
             TerrainKindChoice::SEGMENT_ORDER.contains(&choice),
             "SEGMENT_ORDER must offer {kind:?} (its pick-list image {choice:?}) — the editor \
-             pick list may never silently drop a canonical kind (GTW-574 AC2)",
+             pick list may never silently drop a canonical kind ",
         );
     }
     assert_eq!(
         TerrainKindChoice::SEGMENT_ORDER.len(),
         TerrainPieceKind::ALL.len(),
-        "SEGMENT_ORDER must offer each canonical kind exactly once (GTW-574 AC2)",
+        "SEGMENT_ORDER must offer each canonical kind exactly once ",
     );
 }
 
@@ -125,7 +125,7 @@ fn emplacement_without_weapon_fails_closed() {
         draft_to_terrain_def(&draft, key()).err(),
         Some(SaveTerrainError::MissingMountedWeapon),
         "projecting an Emplacement draft without a weapon must return the typed \
-         MissingMountedWeapon error (GTW-574 C6 — fail-closed)",
+         MissingMountedWeapon error (C6 — fail-closed)",
     );
 }
 

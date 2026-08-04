@@ -1,6 +1,6 @@
 use super::super::support::*;
 
-/// GTW-457 — TWO authored gangers on the SAME `(cell, level)` make `setup_battle`
+/// — TWO authored gangers on the SAME `(cell, level)` make `setup_battle`
 #[test]
 fn setup_errors_on_stacked_gangers() {
     let shared = key(5, 5, 0);

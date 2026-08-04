@@ -1,3 +1,4 @@
+//! Pin: inspect/pin selection against fire mode and shooter state.
 use bevy::{input::ButtonInput, prelude::*};
 use gdtf_battle_input::{
     GdtfBattleInputPlugin, InspectMode, InspectTarget, SelectedFireMode, SelectedShooter,

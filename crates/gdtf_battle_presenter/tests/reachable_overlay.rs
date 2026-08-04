@@ -1,3 +1,4 @@
+//! Reachable overlay draw: sprites match the reachable set and hide when cleared.
 use std::path::PathBuf;
 
 use bevy::{

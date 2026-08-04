@@ -139,7 +139,7 @@ fn empty_mounted_gun_offer_is_skipped_without_cap_spend() {
     assert_eq!(
         used_of(&app, reactor),
         Some(0),
-        "GTW-660: a mounted reactor whose MOUNT cannot fire is skipped before the \
+        "a mounted reactor whose MOUNT cannot fire is skipped before the \
          roll — never cap-charged on its CARRIED gun's eligibility",
     );
 }
@@ -201,7 +201,7 @@ fn mixed_tick_mounted_empty_and_carried_eligible_spend_tracks_shots() {
     assert_eq!(
         used_of(&app, mounted_reactor),
         Some(0),
-        "GTW-660: the mounted-empty reactor's ReactionsUsed counter is untouched",
+        "the mounted-empty reactor's ReactionsUsed counter is untouched",
     );
 
     let total_used: u32 = [mounted_reactor, eligible]
@@ -215,7 +215,7 @@ fn mixed_tick_mounted_empty_and_carried_eligible_spend_tracks_shots() {
     assert_eq!(
         u32::try_from(total_shots).ok(),
         Some(total_used),
-        "GTW-660 / GTW-646: ReactionsUsed increments correspond 1:1 with dispatched \
+        "ReactionsUsed increments correspond 1:1 with dispatched \
          reaction shots across the mounted-empty + carried-eligible mixed tick",
     );
 }

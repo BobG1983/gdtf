@@ -2,8 +2,8 @@
 
 How to create, extend, and maintain the armor roster — from a new `.armor.ron`
 file to adding a new field to `ArmorSpec` end-to-end. This guide documents the
-**current, landed state** of the armor system (GTW-269 / GTW-322 / GTW-323 /
-GTW-374) and is the primary reference for content authors and engineers extending
+**current, landed state** of the armor system (/ / /
+) and is the primary reference for content authors and engineers extending
 armor mechanics.
 
 ---
@@ -174,7 +174,7 @@ Armor stats that change per-hit flow through:
 
 Test fixtures that build `ArmorSpec` inline will need the new field. Update
 any sim-side test support (the bespoke per-family loader test submodule was
-retired with the GTW-570 generic content-family loader).
+retired with the generic content-family loader).
 
 ### Step 6 — Update authoring docs
 
@@ -186,9 +186,9 @@ are clean.
 
 ## Part 3 — Hot-reload
 
-The armor system supports **live hot-reload** (GTW-374 pattern): editing any
+The armor system supports **live hot-reload** (pattern): editing any
 `assets/content/armor/*.armor.ron` file while the game is running triggers
-the generic `redrive_content_family::<ArmorFamily>` system (GTW-570) in
+the generic `redrive_content_family::<ArmorFamily>` system in
 `crates/gdtf_assets/src/family/systems.rs`, which rebuilds the entire
 `ArmorRegistry` from the persistent generic `ContentFolderHandle<ArmorFamily>`
 (the family marker lives in `crates/gdtf_content_families/src/armor.rs`).
@@ -201,7 +201,7 @@ restart. An `info!` line is emitted naming the reload.
 
 ## Part 4 — Loader and key resolution
 
-Loader: the generic content-family resolve (GTW-570) in
+Loader: the generic content-family resolve in
 `crates/gdtf_assets/src/family/systems.rs`, instantiated by the `ArmorFamily`
 marker in `crates/gdtf_content_families/src/armor.rs` and registered with one
 `register_content_family::<ArmorFamily>()` call in the Load plugin.

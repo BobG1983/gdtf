@@ -10,7 +10,7 @@ use crate::{
     test_support::assert_ron_round_trip,
 };
 
-const DERIVED_ARG_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"ShotName","description":"A requested capture's **file stem** — the caller-chosen name a\n[`CaptureRider`](crate::command::CaptureRider) writes under.\n\nThe host constrains the actual path under its own capture directory (GTW-694); this is\nonly the stem the client asks for. A name newtype over `String` (no-bare-types),\nserde-transparent. `Clone`-not-`Copy` (holds a `String`).","type":"string"}"#;
+const DERIVED_ARG_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"ShotName","description":"A requested capture's **file stem** — the caller-chosen name a\n[`CaptureRider`](crate::command::CaptureRider) writes under.\n\nThe host constrains the actual path under its own capture directory; this is\nonly the stem the client asks for. A name newtype over `String` (no-bare-types),\nserde-transparent. `Clone`-not-`Copy` (holds a `String`).","type":"string"}"#;
 
 const DERIVED_REPLY_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"LevelNet","description":"A 0-based **storey** index — which floor of the coarse grid, valid `0..MAX_LEVELS`\n— the wire mirror of the sim `Level`.\n\nA private-inner newtype (no-bare-types), serde-transparent so it rides the wire as\nits bare `u8`. The contract does not re-encode the `MAX_LEVELS` bound here; the game\nside validates against the live grid extent.","type":"integer","format":"uint8","maximum":255,"minimum":0}"#;
 
