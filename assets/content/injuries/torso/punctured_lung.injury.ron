@@ -1,4 +1,4 @@
-// GTW-440 TORSO-pool standin injury. A Major torso wound — a punctured lung: failing
+// TORSO-pool standin injury. A Major torso wound — a punctured lung: failing
 // wind and a steady internal bleed. Torso injuries key to the Toughness / Hp stat map
 // (resolution.md injury tables); a Major is a -1/broken-level debuff plus a bleed.
 // KEY = file stem minus `.injury` => `punctured_lung`.
@@ -13,5 +13,5 @@
         Modify(stat: Toughness, amount: -2),                 // torso -> Toughness; Major-level debuff
         Bleeding(amount: 2),                                 // torso -> Hp drain; steady internal bleed
     ],
-    // post_heal omitted -> defaults to Deferred (GTW-23 Healing owns the semantics).
+    // post_heal omitted -> defaults to Deferred (Healing owns the semantics).
 )
