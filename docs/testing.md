@@ -93,7 +93,6 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 
 It pins **behavioral contracts**: the march's exact cell walk, the strictly-higher-sails-over clearance rule, the per-hit damage formula, the severity bucket edges' *application* (not their magnitudes), event-emission discipline, the no-target-stop rule, dead-centre at cone 0, and the id-not-value boundary between sim and presenter. It does **not** pin tuning magnitudes — those live in tuning-config data and are expected to change. It does **not** assert on rendered pixels or exact `Transform` values beyond what a behavioral contract requires.
 
-
 ## Integration test packing
 
 Flat `tests/*.rs` files each become a separate binary and re-link Bevy. Prefer **dir-form** suites (`tests/suite_name/main.rs` + modules). See [tooling/test-pack.md](tooling/test-pack.md). A guard under `gdtf_test_utils/tests/no_flat_integration_tests/` fails if packed crates grow new flats.

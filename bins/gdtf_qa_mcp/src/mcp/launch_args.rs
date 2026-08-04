@@ -163,10 +163,7 @@ mod tests {
         let Ok(spec) = parse_game(&json!({ "features": "dev_tools" })) else {
             unreachable!("a comma-separated feature string parses");
         };
-        assert_eq!(
-            spec.features().render(),
-            Some("dev_tools".to_owned())
-        );
+        assert_eq!(spec.features().render(), Some("dev_tools".to_owned()));
     }
 
     #[test]

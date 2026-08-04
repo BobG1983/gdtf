@@ -4,8 +4,8 @@ Design for the fight → consequences → next fight loop. Parent: post-action e
 
 **Status:**
 
-- **GTW-678 injury carry — Accepted** (in-battle injury table already defined; no second post-action roll).
-- **GTW-679 advancement — proposed** (training vs XP split + combined specials). Do not implement until Accepted.
+- **Injury carry — Accepted** (in-battle injury table already defined; no second post-action roll).
+- **Advancement — proposed** (training vs XP split + combined specials). Do not implement until Accepted.
 
 Related built systems:
 
@@ -14,7 +14,7 @@ Related built systems:
 
 ---
 
-## 1. Injury after battle (GTW-678) — Accepted
+## 1. Injury after battle — Accepted
 
 ### Conflict with older MVP text
 
@@ -57,7 +57,7 @@ Data first (no UI): BattleResults + kill log + roster fold. Then screen copy. He
 
 ---
 
-## 2. Advancement (GTW-679)
+## 2. Advancement — proposed
 
 ### Two tracks — hard split
 

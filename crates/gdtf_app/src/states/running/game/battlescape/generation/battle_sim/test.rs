@@ -27,7 +27,7 @@ fn procgen_app_with_absent_theme(theme: ThemeUuid) -> App {
 
 #[test]
 fn absent_theme_procgen_fallback_warns_and_lands_on_the_report() {
-    let theme = ThemeUuid::from_legacy_theme(&ThemeName::new("gtw-582-absent-theme".to_owned()));
+    let theme = ThemeUuid::from_legacy_theme(&ThemeName::new("absent-theme-fixture".to_owned()));
     let mut app = procgen_app_with_absent_theme(theme);
 
     let captured = capture_logs(|| {

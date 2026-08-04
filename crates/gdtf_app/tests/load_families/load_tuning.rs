@@ -1,7 +1,4 @@
 //! Combat tuning load: gate holds without it; real path resolves; failure uses default.
-#[path = "load_suite/gate.rs"]
-mod gate;
-
 use std::path::PathBuf;
 
 use gdtf_app::test_support::{AppState, app_state, load_released};
@@ -10,6 +7,8 @@ use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
 };
 use gdtf_ui::theme::default_theme;
+
+use crate::load_suite::gate;
 
 const TRANSITION_BUDGET: u32 = 32;
 

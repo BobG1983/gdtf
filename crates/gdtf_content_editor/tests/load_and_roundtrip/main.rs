@@ -1,6 +1,6 @@
-//! Packed integration suite (GTW-797).
+//! Editor content loading and save round trips.
 
-mod load_redrive;
-mod load_handoff;
-mod prefab_save_roundtrip;
 mod connector_pairing_roundtrip;
+mod load_handoff;
+mod load_redrive;
+mod prefab_save_roundtrip;
