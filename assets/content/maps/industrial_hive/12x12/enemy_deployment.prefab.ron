@@ -1,27 +1,12 @@
-// GTW-490 migration of assets/content/maps/industrial_hive/12x12/enemy_deployment.prefab.ron
-// to the UUID-keyed PrefabSpec model (GTW-486/489), under the `maps/<theme>/<size>/`
-// root. The legacy `walls` + `scatter` lists collapse into ONE `placements` list, each mapping
-// an old stem ref to the migrated industrial_hive TerrainUuid. The old `default_floor` (a theme
-// concern) and the old per-prefab openings (no schema field) are dropped.
-//
-// GTW-492 (T07b): the v2 procgen assembler now CONSUMES this fragment — it must carry the
-// legacy fragment's `Enemy` deployment role (the assembler places the opposing spawn zone at
-// the strict-opposite anchor on an `Enemy`-role fragment). The migration had deferred the role
-// to "the v2 assembler"; the assembler is here, so the role is authored.
+// Enemy deployment zone fragment for IndustrialHive 12x12.
 (
-    // The IndustrialHive ThemeUuid (must match the migrated terrain_theme.ron key).
     theme: "00000000-0000-0000-0000-01840a900001",
-    // The 12x12x1 footprint (unchanged from the legacy fragment).
     size: (width: 12, height: 12, levels: 1),
-    // The deployment role this fragment plays — the opposing gang's spawn zone (GTW-492).
     role: Enemy,
-    // The placed pieces — the legacy `walls` (bulkhead L) + `scatter` (barricade), by migrated UUID.
     placements: [
-        // old `walls` — a short L of bulkhead cover near the back corner, mirroring the player zone.
         (piece: "00000000-0000-0000-0000-01840a910002", at: (cell: (x: 10, y: 10), level: 0)),
         (piece: "00000000-0000-0000-0000-01840a910002", at: (cell: (x: 9, y: 10), level: 0)),
         (piece: "00000000-0000-0000-0000-01840a910002", at: (cell: (x: 10, y: 9), level: 0)),
-        // old `scatter` — a barricade prop mid-zone for forward cover.
         (piece: "00000000-0000-0000-0000-01840a910001", at: (cell: (x: 5, y: 5), level: 0)),
     ],
 )
