@@ -1,5 +1,6 @@
 //! Battle lifecycle: setup, teardown, outcome checks, and in-progress state.
 
+mod content;
 mod messages;
 mod outcome;
 mod plugin;

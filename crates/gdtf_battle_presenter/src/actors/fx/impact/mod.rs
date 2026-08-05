@@ -5,6 +5,6 @@ mod signal;
 #[cfg(test)]
 mod test;
 
-pub use animate::animate_impact;
+pub use animate::{advance_impact_animations, seed_impact_animations};
 pub(super) use animation::ImpactAnimation;
 pub use signal::ShotImpactResolved;

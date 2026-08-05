@@ -1,65 +1,77 @@
 //! Enemy turn brain: fire if possible, else advance, else end turn.
 
-use bevy::prelude::{Entity, MessageWriter, Res};
+use bevy::prelude::{Entity, Res};
 
 use super::{
     advance::plan_reposition,
     decide::{AiTarget, pick_nearest},
     engage::{WeaponLookup, engageable_targets},
-    snapshot::{EnemyTurnGangers, GangerRow, MidWalk, cell_order},
+    params::{AiActRequests, AiPlanningGrids},
+    snapshot::{EnemyTurnGangers, GangerRow, cell_order, ganger_rows},
 };
 use crate::{
     acts::{EndTurnRequested, FireRequested, MoveRequested},
     battle::PlayerFaction,
-    cover::CoverLedger,
     ganger::LifeState,
-    injuries::{HandsAvailable, InflictedInjuries, MovementCostFactor},
     magazine::{Magazine, mode_tu_cost},
-    march::MarchGrids,
-    occupancy::OccupancyGrid,
-    pathfinder::MoveGrids,
-    surface::SurfaceGrid,
-    terrain::floor::FloorCostGrid,
-    tuning::CombatTuning,
     turn::ActiveFaction,
-    vertical::VerticalLinkGraph,
     visibility::OmniscientFog,
     weapon::Handedness,
 };
 
+// A target this enemy can engage right now, as a fire request.
+fn plan_shot(
+    enemy: &GangerRow,
+    targets: &[GangerRow],
+    weapons: &WeaponLookup,
+    grids: &AiPlanningGrids,
+    is_dead: &impl Fn(Entity) -> bool,
+) -> Option<FireRequested> {
+    let (magazine, fire_mode, handedness) = weapons.firing(enemy.entity)?;
+    let mode = fire_mode.single();
+    let magazine: Magazine = *magazine;
+    let handedness: Handedness = *handedness;
+    let fire_cost = mode_tu_cost(&mode, &enemy.tu_max, &enemy.aiming, grids.tuning());
+    let engageable = engageable_targets(
+        enemy,
+        targets,
+        (magazine, mode, handedness),
+        fire_cost,
+        grids.march(),
+        grids.tuning(),
+        is_dead,
+    );
+    let target = pick_nearest(enemy.position.cell(), enemy.position.level(), &engageable)?;
+    Some(FireRequested::new(
+        enemy.entity,
+        mode,
+        target.cell,
+        target.level,
+    ))
+}
+
+// One step closer to the nearest target, as a move request.
+fn plan_step(
+    enemy: &GangerRow,
+    rows: &[GangerRow],
+    all_targets: &[AiTarget],
+    omniscient: Option<&OmniscientFog>,
+    grids: &AiPlanningGrids,
+) -> Option<MoveRequested> {
+    let goal = pick_nearest(enemy.position.cell(), enemy.position.level(), all_targets)?;
+    let dest = plan_reposition(enemy, &goal, rows, omniscient?, grids.routes())?;
+    Some(MoveRequested::new(enemy.entity, dest))
+}
+
 /// One enemy acts: shoot an engageable target, move closer, or end the turn.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the enemy brain reads the active/player factions, the combat tuning, the five \
-              read grids (occupancy / surface / cover / links / floor costs) + the AI move \
-              fog, the ganger + wielded-weapon + \
-              weapon-entity queries, and the three act MessageWriters; each is a distinct \
-              Bevy SystemParam, mirroring dispatch_fire's own argument-count carve-out, and \
-              bundling them would only hide the real reads"
-)]
-#[expect(
-    clippy::too_many_lines,
-    reason = "the brain is ONE cohesive per-frame engage-or-advance-or-hold pass over the \
-              enemy gangers (snapshot → sorted decision loop → emission-decoupled turn-end); \
-              splitting it would thread the grids/tuning/snapshot + the two borrowed closures \
-              (is_dead / relation_of) through helpers, obscuring the access set more than the \
-              length costs (the setup_battle too_many_lines precedent)"
-)]
 pub fn enemy_ai_turn(
     active: Res<ActiveFaction>,
     player: Option<Res<PlayerFaction>>,
-    tuning: Res<CombatTuning>,
-    occupancy: Res<OccupancyGrid>,
-    surface: Res<SurfaceGrid>,
-    cover: Res<CoverLedger>,
-    links: Res<VerticalLinkGraph>,
-    floor_costs: Res<FloorCostGrid>,
     omniscient: Option<Res<OmniscientFog>>,
+    grids: AiPlanningGrids,
     gangers: EnemyTurnGangers,
     weapon_lookup: WeaponLookup,
-    mut fire_writer: MessageWriter<FireRequested>,
-    mut move_writer: MessageWriter<MoveRequested>,
-    mut end_turn_writer: MessageWriter<EndTurnRequested>,
+    mut orders: AiActRequests,
 ) {
     let Some(player_faction) = player.as_deref().map(|player| **player) else {
         return;
@@ -69,43 +81,7 @@ pub fn enemy_ai_turn(
         return;
     }
 
-    let rows: Vec<GangerRow> = gangers
-        .iter()
-        .map(
-            |(
-                entity,
-                position,
-                stance,
-                facing,
-                aiming,
-                life,
-                tu,
-                tu_max,
-                faction,
-                walking,
-                injuries,
-            )| {
-                GangerRow {
-                    entity,
-                    position: *position,
-                    stance: *stance,
-                    facing: *facing,
-                    aiming: *aiming,
-                    life: *life,
-                    tu: *tu,
-                    tu_max: *tu_max,
-                    faction: *faction,
-                    walking: MidWalk::new(walking),
-                    hands: injuries
-                        .map_or_else(HandsAvailable::default, InflictedInjuries::hands_available),
-                    factor: injuries.map_or(
-                        MovementCostFactor::IDENTITY,
-                        InflictedInjuries::movement_cost_factor,
-                    ),
-                }
-            },
-        )
-        .collect();
+    let rows = ganger_rows(&gangers);
 
     let mut enemies: Vec<GangerRow> = rows
         .iter()
@@ -136,56 +112,14 @@ pub fn enemy_ai_turn(
             continue;
         }
 
-        let enemy_cell = enemy.position.cell();
-        let enemy_level = enemy.position.level();
-
-        let weapon_data = weapon_lookup.firing(enemy.entity);
-        if let Some((magazine, fire_mode, handedness)) = weapon_data {
-            let mode = fire_mode.single();
-            let magazine: Magazine = *magazine;
-            let handedness: Handedness = *handedness;
-            let fire_cost = mode_tu_cost(&mode, &enemy.tu_max, &enemy.aiming, &tuning);
-            let engageable = engageable_targets(
-                enemy,
-                &targets,
-                (magazine, mode, handedness),
-                fire_cost,
-                MarchGrids {
-                    occupancy: &occupancy,
-                    surface:   &surface,
-                    cover:     &cover,
-                },
-                &tuning,
-                is_dead,
-            );
-            if let Some(target) = pick_nearest(enemy_cell, enemy_level, &engageable) {
-                fire_writer.write(FireRequested::new(
-                    enemy.entity,
-                    mode,
-                    target.cell,
-                    target.level,
-                ));
-                acted = true;
-                break;
-            }
+        if let Some(shot) = plan_shot(enemy, &targets, &weapon_lookup, &grids, is_dead) {
+            orders.fire.write(shot);
+            acted = true;
+            break;
         }
 
-        if let (Some(goal), Some(omniscient)) = (
-            pick_nearest(enemy_cell, enemy_level, &all_targets),
-            omniscient.as_deref(),
-        ) && let Some(dest) = plan_reposition(
-            enemy,
-            &goal,
-            &rows,
-            omniscient,
-            MoveGrids {
-                occupancy:   &occupancy,
-                links:       &links,
-                floor_costs: &floor_costs,
-                tuning:      &tuning,
-            },
-        ) {
-            move_writer.write(MoveRequested::new(enemy.entity, dest));
+        if let Some(step) = plan_step(enemy, &rows, &all_targets, omniscient.as_deref(), &grids) {
+            orders.step.write(step);
             acted = true;
             break;
         }
@@ -193,6 +127,6 @@ pub fn enemy_ai_turn(
 
     let any_walking = enemies.iter().any(|enemy| *enemy.walking);
     if !acted && !any_walking {
-        end_turn_writer.write(EndTurnRequested);
+        orders.end_turn.write(EndTurnRequested);
     }
 }

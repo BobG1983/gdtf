@@ -52,8 +52,8 @@ mod test {
 
     use super::{super::text::spawn_floating_text, FctSlotAllocator};
     use crate::{
-        CombatText, FctEmphasis, FctRiseRate, FctStackIndex, FctTtlSeconds, FloatingCombatText,
-        animate_floating_text,
+        CombatText, FctDrift, FctEmphasis, FctLabel, FctRiseRate, FctSlot, FctStackIndex,
+        FctTtlSeconds, FloatingCombatText, animate_floating_text,
     };
 
     const TEST_TTL: FctTtlSeconds = FctTtlSeconds::new(0.15);
@@ -77,17 +77,11 @@ mod test {
         };
         let slot = allocator.next_slot(at);
         probe.recorded.push(slot);
-        let (cell, level) = at.split();
         spawn_floating_text(
             &mut commands,
-            CombatText::new("-7"),
-            Color::WHITE,
-            FctEmphasis::Normal,
-            cell,
-            level,
-            slot,
-            probe.ttl,
-            FctRiseRate::default(),
+            FctLabel::new(CombatText::new("-7"), Color::WHITE, FctEmphasis::Normal),
+            FctSlot::new(at, slot),
+            FctDrift::new(FctRiseRate::default(), probe.ttl),
         );
     }
 

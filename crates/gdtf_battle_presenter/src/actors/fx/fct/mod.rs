@@ -27,6 +27,6 @@ pub use stacked_reader::{
     register_consequence_fct_core,
 };
 pub use text::{
-    CombatText, FctEmphasis, FctStackIndex, FloatingCombatText, animate_floating_text,
-    spawn_floating_text,
+    CombatText, FctDrift, FctEmphasis, FctLabel, FctSlot, FctStackIndex, FloatingCombatText,
+    animate_floating_text, spawn_floating_text,
 };

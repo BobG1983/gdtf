@@ -4,59 +4,43 @@ use bevy::prelude::*;
 use gdtf_battle_presenter::PlaybackGate;
 use gdtf_battle_sim::{
     battle::PlayerFaction,
-    fire::MeleeQuery,
     ganger::LifeState,
     prelude::{Faction, Position},
-    weapon::{WieldedBy, Wields},
 };
 
 use crate::{
-    ActIntent, InspectTarget, PendingActIntent,
-    fire_surface::{ShooterFireData, WeaponMagazine},
+    ActIntent, PendingActIntent,
+    fire_surface::ShooterArms,
     selection::{
-        PathPreviewTarget,
         decision::{
-            LeftClickReads, TurnReads, apply_left_click, apply_pin, decide_left_click, decide_pin,
-            decide_turn,
+            LeftClickReads, PointerSelection, TurnReads, apply_left_click, apply_pin,
+            decide_left_click, decide_pin, decide_turn,
         },
         resources::SelectedShooter,
     },
 };
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "needs Wields, magazine, melee probe, and PathPreviewTarget; LeftClickReads already bundles Res reads"
-)]
 /// Handle left-click: decide act, apply selection, and update inspect pin.
 pub fn left_click_act(
     gate: PlaybackGate,
     reads: LeftClickReads,
     factions: Query<&Faction>,
     lifes: Query<&LifeState>,
-    shooters: Query<ShooterFireData>,
-    wields: Query<&Wields>,
-    weapons: Query<WeaponMagazine, With<WieldedBy>>,
-    melee: MeleeQuery,
-    mut selected: ResMut<SelectedShooter>,
+    arms: ShooterArms,
+    mut selection: PointerSelection,
     mut pending: ResMut<PendingActIntent>,
-    mut inspect: ResMut<InspectTarget>,
-    mut target: ResMut<PathPreviewTarget>,
 ) {
     if !reads.mouse.just_pressed(MouseButton::Left) {
         return;
     }
     let gate_open = gate.is_open();
-    let outcome = gate_open.then(|| {
-        decide_left_click(
-            &reads, &inspect, &target, &factions, &lifes, &shooters, &wields, &weapons, &melee,
-            &selected,
-        )
-    });
-    let pin = decide_pin(&reads, &inspect, &factions);
+    let outcome =
+        gate_open.then(|| decide_left_click(&reads, &selection, &factions, &lifes, &arms));
+    let pin = decide_pin(&reads, &selection.inspect, &factions);
     if let Some(outcome) = outcome {
-        apply_left_click(outcome, &mut selected, &mut pending, &mut target);
+        apply_left_click(outcome, &mut selection, &mut pending);
     }
-    apply_pin(pin, &mut inspect);
+    apply_pin(pin, &mut selection);
 }
 
 /// Handle right-click: queue a turn-to-face intent when a player ganger is selected.

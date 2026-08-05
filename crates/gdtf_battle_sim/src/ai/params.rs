@@ -1,0 +1,63 @@
+//! System params for the enemy turn: planning grids and outgoing act requests.
+
+use bevy::{
+    ecs::system::SystemParam,
+    prelude::{MessageWriter, Res},
+};
+
+use crate::{
+    acts::{EndTurnRequested, FireRequested, MoveRequested},
+    cover::CoverLedger,
+    march::MarchGrids,
+    occupancy::OccupancyGrid,
+    pathfinder::MoveGrids,
+    surface::SurfaceGrid,
+    terrain::floor::FloorCostGrid,
+    tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
+};
+
+/// The grids and tuning the enemy AI plans sight and routes against.
+#[derive(SystemParam)]
+pub struct AiPlanningGrids<'w> {
+    occupancy:   Res<'w, OccupancyGrid>,
+    surface:     Res<'w, SurfaceGrid>,
+    cover:       Res<'w, CoverLedger>,
+    links:       Res<'w, VerticalLinkGraph>,
+    floor_costs: Res<'w, FloorCostGrid>,
+    tuning:      Res<'w, CombatTuning>,
+}
+
+impl AiPlanningGrids<'_> {
+    /// Grids a line of sight marches through.
+    pub(super) fn march(&self) -> MarchGrids<'_> {
+        MarchGrids {
+            occupancy: &self.occupancy,
+            surface:   &self.surface,
+            cover:     &self.cover,
+        }
+    }
+
+    /// Grids a route is costed against.
+    pub(super) fn routes(&self) -> MoveGrids<'_> {
+        MoveGrids {
+            occupancy:   &self.occupancy,
+            links:       &self.links,
+            floor_costs: &self.floor_costs,
+            tuning:      &self.tuning,
+        }
+    }
+
+    /// Combat tuning.
+    pub(super) fn tuning(&self) -> &CombatTuning {
+        &self.tuning
+    }
+}
+
+/// The acts one enemy turn requests.
+#[derive(SystemParam)]
+pub struct AiActRequests<'w> {
+    pub(super) fire:     MessageWriter<'w, FireRequested>,
+    pub(super) step:     MessageWriter<'w, MoveRequested>,
+    pub(super) end_turn: MessageWriter<'w, EndTurnRequested>,
+}

@@ -3,11 +3,18 @@
 use bevy::prelude::Entity;
 
 use crate::{
-    ganger::{Facing, Faction, Fight, Luck, Position, Stance, Tu},
+    ganger::{Facing, Faction, Fight, Luck, Position, Stance, Toughness, Tu},
     melee::MeleeWeaponHit,
     rng::{FightRng, InjuryRng, SeverityRng, ShotRng},
     weapon::DamageType,
 };
+
+/// The defender's toughness and luck after injury modifiers.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct DefenderResilience {
+    pub(super) toughness: Toughness,
+    pub(super) luck:      Luck,
+}
 
 /// Frozen attacker state used during one melee resolution.
 pub(super) struct AttackerSnapshot<'a> {

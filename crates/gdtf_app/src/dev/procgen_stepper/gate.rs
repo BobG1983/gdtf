@@ -1,7 +1,8 @@
 use bevy::prelude::{Res, Resource};
 
 crate::support_item! {
-                                                                    #[derive(Resource, Debug, Default, Clone, Copy)]
+    /// Present while the stepper owns situation generation.
+    #[derive(Resource, Debug, Default, Clone, Copy)]
     struct ProcgenStepperActive;
 }
 

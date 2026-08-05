@@ -6,5 +6,5 @@ mod test;
 
 pub use level::{LevelStep, step_level};
 pub use seam::{
-    ActIntent, ActWriters, PendingActIntent, SelectionCycleReads, dispatch_act_intents,
+    ActIntent, ActWriters, PendingActIntent, SelectionCycleReads, ShownLevel, dispatch_act_intents,
 };

@@ -11,7 +11,8 @@ use crate::states::running::game::battlescape::contextual_panel::seam::{
 };
 
 crate::support_item! {
-                                            #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Contextual button that dismounts the occupied emplacement.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ExitEmplacementButton;
 }
 

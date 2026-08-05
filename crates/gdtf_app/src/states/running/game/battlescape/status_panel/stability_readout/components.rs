@@ -3,7 +3,8 @@ use gdtf_battle_sim::stability::ConeMult;
 use gdtf_ui::FillFraction;
 
 crate::support_item! {
-                                        #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The stability readout's bar fill.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct StabilityBar;
 }
 

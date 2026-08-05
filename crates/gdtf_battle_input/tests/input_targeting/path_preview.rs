@@ -27,17 +27,14 @@ const PLAYER_FACTION: Faction = Faction::new(0);
 const BUDGET: Tu = Tu::new(200);
 
 fn full_vision() -> SquadVisibility {
+    let (Ok(width), Ok(height)) = (i32::try_from(GRID_WIDTH), i32::try_from(GRID_HEIGHT)) else {
+        return SquadVisibility::default();
+    };
     let mut all = HashSet::default();
     for level in 0..MAX_LEVELS {
-        for y in 0..GRID_HEIGHT {
-            for x in 0..GRID_WIDTH {
-                #[expect(
-                    clippy::cast_possible_wrap,
-                    reason = "x/y are 0..60 and level is 0..MAX_LEVELS by the loop bounds, so the \
-                              usize/u8 -> i32/u8 narrowing cannot truncate or wrap"
-                )]
-                let c = CellLevel::new(Cell::new(x as i32, y as i32), Level::new(level));
-                all.insert(c);
+        for y in 0..height {
+            for x in 0..width {
+                all.insert(CellLevel::new(Cell::new(x, y), Level::new(level)));
             }
         }
     }

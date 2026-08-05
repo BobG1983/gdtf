@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::LeftClickOutcome;
+use super::{LeftClickOutcome, state::PointerSelection};
 use crate::{
     ActIntent, PendingActIntent,
     selection::{
@@ -14,10 +14,14 @@ use crate::{
 /// Mutate selection, pending intents, and path preview from a left-click outcome.
 pub fn apply_left_click(
     outcome: LeftClickOutcome,
-    selected: &mut ResMut<SelectedShooter>,
+    selection: &mut PointerSelection,
     pending: &mut ResMut<PendingActIntent>,
-    target: &mut ResMut<PathPreviewTarget>,
 ) {
+    let PointerSelection {
+        selected,
+        move_target: target,
+        ..
+    } = selection;
     match outcome {
         LeftClickOutcome::Fire(request) => {
             pending.push(ActIntent::Fire(request));

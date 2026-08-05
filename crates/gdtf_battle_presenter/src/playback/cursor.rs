@@ -2,8 +2,8 @@
 
 use std::time::Duration;
 
-use bevy::prelude::*;
-use gdtf_battle_sim::act_log::ActSeq;
+use bevy::{ecs::system::SystemParam, prelude::*};
+use gdtf_battle_sim::act_log::{ActLog, ActSeq};
 
 /// Whether the FX pipeline has been observed busy during an impact wait.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -191,5 +191,20 @@ impl PlaybackCursor {
         self.skipped
             .add(u32::try_from(oldest.distance_from(self.shown)).unwrap_or(u32::MAX));
         self.shown = oldest;
+    }
+}
+
+/// The act log being played and where the view has read to in it.
+#[derive(SystemParam)]
+pub struct LogPlayhead<'w> {
+    pub(super) log:    Option<Res<'w, ActLog>>,
+    pub(super) cursor: ResMut<'w, PlaybackCursor>,
+}
+
+impl LogPlayhead<'_> {
+    /// Oldest retained and newest sequence, when a log is loaded.
+    #[must_use]
+    pub fn span(&self) -> Option<(ActSeq, ActSeq)> {
+        self.log.as_ref().map(|log| (log.oldest_seq(), log.head()))
     }
 }

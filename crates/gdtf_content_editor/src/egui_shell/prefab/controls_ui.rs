@@ -5,6 +5,7 @@ use gdtf_battle_sim::level::UuidThemeRegistry;
 
 use crate::{
     canvas::CurrentEditLevel,
+    editor_map::EditorMap,
     egui_shell::prefab::{
         level_rail::{self, RailCtx, RailUiState},
         size_fields,
@@ -12,30 +13,41 @@ use crate::{
     session::MapEditorSession,
 };
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the controls panel drives every prefab RIGHT-panel control from the borrows the shell \
-              already holds (session + edit level + view mode + the rail state/map/registries + \
-              themes + the debug save name); each is a distinct borrow threaded through the shell's \
-              panel closure and Bevy's injection cannot reduce them without a wrapper that changes \
-              the crate API"
-)]
+/// The prefab the controls panel edits: its painted cells, its session, and its active storey.
+pub(crate) struct EditedPrefab<'a> {
+    pub(crate) map:        &'a EditorMap,
+    pub(crate) session:    &'a mut MapEditorSession,
+    pub(crate) edit_level: &'a mut CurrentEditLevel,
+}
+
+/// The storey visibility toggles the controls panel drives.
+pub(crate) struct StoreyToggles<'a> {
+    pub(crate) view:    &'a mut ViewMode,
+    pub(crate) isolate: &'a mut IsolateView,
+}
+
+/// The terrain and theme definitions the prefab's cells resolve against.
+#[derive(Clone, Copy)]
+pub(crate) struct TerrainLibrary<'a> {
+    pub(crate) terrain: Option<&'a gdtf_battle_sim::terrain::def::TerrainDefRegistry>,
+    pub(crate) themes:  Option<&'a UuidThemeRegistry>,
+}
+
 pub(crate) fn controls_panel(
     ui: &mut egui::Ui,
-    session: &mut MapEditorSession,
-    edit_level: &mut CurrentEditLevel,
-    view: &mut ViewMode,
-    isolate: &mut IsolateView,
-    #[cfg_attr(
-        not(debug_assertions),
-        expect(unused_variables, reason = "save-only in debug")
-    )]
-    save_name: &mut String,
-    map: &crate::editor_map::EditorMap,
-    registry: Option<&gdtf_battle_sim::terrain::def::TerrainDefRegistry>,
-    themes: Option<&UuidThemeRegistry>,
+    prefab: EditedPrefab<'_>,
+    storeys: StoreyToggles<'_>,
+    library: TerrainLibrary<'_>,
     rail_state: &mut RailUiState,
+    save_name: &mut String,
 ) {
+    let EditedPrefab {
+        map,
+        session,
+        edit_level,
+    } = prefab;
+    let StoreyToggles { view, isolate } = storeys;
+
     ui.heading("Prefab");
     ui.separator();
 
@@ -47,7 +59,7 @@ pub(crate) fn controls_panel(
             map,
             session,
             edit_level,
-            registry,
+            registry: library.terrain,
             state: rail_state,
         },
     );
@@ -58,11 +70,12 @@ pub(crate) fn controls_panel(
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_control(ui, session, map, registry, themes, save_name);
+        save_control(ui, map, session, library, save_name);
     }
     #[cfg(not(debug_assertions))]
     {
-        let _ = themes;
+        let _ = library.themes;
+        let _ = save_name;
     }
 }
 
@@ -97,14 +110,13 @@ fn isolate_toggle(ui: &mut egui::Ui, isolate: &mut IsolateView) {
     }
 }
 
-/// panic). Debug-only — the whole prefab save path is `#[cfg(debug_assertions)]`.
+/// Debug-only — the whole prefab save path is `#[cfg(debug_assertions)]`.
 #[cfg(debug_assertions)]
 fn save_control(
     ui: &mut egui::Ui,
+    map: &EditorMap,
     session: &MapEditorSession,
-    map: &crate::editor_map::EditorMap,
-    registry: Option<&gdtf_battle_sim::terrain::def::TerrainDefRegistry>,
-    themes: Option<&UuidThemeRegistry>,
+    library: TerrainLibrary<'_>,
     save_name: &mut String,
 ) {
     ui.label("Prefab name");
@@ -112,11 +124,12 @@ fn save_control(
     if !ui.button("Save prefab").clicked() {
         return;
     }
-    let Some(registry) = registry else {
+    let Some(registry) = library.terrain else {
         bevy::log::error!("prefab save: terrain registry not resolved");
         return;
     };
-    let theme_display = themes
+    let theme_display = library
+        .themes
         .and_then(|themes| themes.def(&session.theme()))
         .map_or_else(String::new, |def| (*def.display_name).clone());
     match crate::save::write_prefab(map, registry, session, &theme_display, save_name) {

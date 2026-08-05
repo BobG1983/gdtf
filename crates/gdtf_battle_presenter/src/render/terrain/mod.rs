@@ -1,6 +1,7 @@
 mod active_level;
 mod band;
 mod link_draw;
+mod quads;
 mod resolve;
 mod restamp;
 mod roles;
@@ -13,7 +14,9 @@ mod treatment;
 mod test;
 
 pub use active_level::{ActiveLevel, PresenterSystems, ViewMode};
+pub use band::DrawnStoreys;
 pub use link_draw::{VerticalLinkSprite, draw_vertical_links};
+pub use quads::TerrainQuads;
 pub use resolve::{
     MissingTileTexture, anchor_world_offset, resolve_sprite, setup_missing_tile_texture,
     single_rect_layout, source_parts, source_px_size, source_urect,

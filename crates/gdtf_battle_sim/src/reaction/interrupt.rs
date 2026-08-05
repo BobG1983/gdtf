@@ -1,91 +1,68 @@
 //! Evaluate one actor/reactor pair for opportunity fire.
 
-use bevy::prelude::{Entity, Query, With};
+use bevy::prelude::Entity;
 
 use super::{
     declared::{InterruptDeclared, InterruptSignals},
-    ledger::{InterruptCommit, PendingSpendLedger},
-    snapshot::{ReactionRow, row_cell_level},
+    ledger::InterruptCommit,
+    params::{ReactionGrids, ReactorArms, ReactorEligibility, ReactorShot},
+    snapshot::{ReactionPair, ReactionPass, row_cell_level},
 };
 use crate::{
-    acts::{
-        FireArcDecision, FireRequested, WeaponProbes, decide_fire_arc, movement::ReactionShotFired,
-    },
-    cover::CoverLedger,
-    fire::WieldsQuery,
-    ganger::{Facing, Suppressed, Tu},
+    acts::{FireArcDecision, FireRequested, decide_fire_arc, movement::ReactionShotFired},
+    ganger::{Facing, LifeState, Tu},
     injuries::HandsAvailable,
     los::{Observer, PeekOffset, Target, can_see},
-    magazine::{FireActor, Magazine, can_fire, clamp_burst, mode_tu_cost},
-    march::MarchGrids,
-    occupancy::OccupancyGrid,
+    magazine::{FireActor, can_fire, clamp_burst, mode_tu_cost},
     rng::ReactionRng,
-    surface::SurfaceGrid,
-    tuning::{
-        CombatTuning, ReactionsUsed, interrupt_probability, may_interrupt, reaction_score,
-        rolls_interrupt,
-    },
-    weapon::{FireMode, Handedness},
+    tuning::{interrupt_probability, may_interrupt, reaction_score, rolls_interrupt},
 };
 
-/// Try to interrupt `actor` with `reactor`; returns a commit if fire is declared.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the per-pair evaluation borrows the trigger system's own params (the \
-              wielded-weapon + weapon-entity queries, the weapon-marker probe bundle, the \
-              suppressed probe, the pass's pending-spend ledger, the mutable ReactionsUsed \
-              counter, the four read grids + tuning, the seeded ReactionRng, the is_dead \
-              corpse predicate, and the two act MessageWriters); each is a distinct borrow \
-              mirroring reaction_trigger's own argument-count carve-out — bundling would \
-              only hide the reads"
-)]
+/// Try to interrupt the pair's actor with its reactor; a commit means fire was declared.
 pub(super) fn try_reaction(
-    actor: &ReactionRow,
-    reactor: &ReactionRow,
-    ledger: &PendingSpendLedger,
-    wields: &WieldsQuery,
-    weapons: &Query<(&Magazine, &FireMode, &Handedness)>,
-    probes: &WeaponProbes,
-    suppressed: &Query<(), With<Suppressed>>,
-    used: &mut Query<&mut ReactionsUsed>,
-    tuning: &CombatTuning,
-    occupancy: &OccupancyGrid,
-    surface: &SurfaceGrid,
-    cover: &CoverLedger,
+    pair: ReactionPair<'_>,
+    pass: &ReactionPass<'_>,
+    arms: &ReactorArms,
+    eligibility: &mut ReactorEligibility,
+    grids: &ReactionGrids,
     rng: &mut ReactionRng,
-    is_dead: &impl Fn(Entity) -> bool,
     signals: &mut InterruptSignals,
 ) -> Option<InterruptCommit> {
+    let ReactionPair { actor, reactor } = pair;
+    let tuning = grids.tuning();
     let actor_cell = actor.position.cell();
     let actor_level = actor.position.level();
 
-    let tu_now = ledger.tu_of(reactor.entity, reactor.tu);
-    let facing_now = ledger.facing_of(reactor.entity, reactor.facing);
+    let tu_now = pass.tu_of(reactor.entity, reactor.tu);
+    let facing_now = pass.facing_of(reactor.entity, reactor.facing);
 
     if !*reactor.life.is_active() || *tu_now == 0 {
         return None;
     }
-    if suppressed.get(reactor.entity).is_ok() {
+    if *eligibility.suppressed(reactor.entity) {
         return None;
     }
-    let used_now = used
-        .get(reactor.entity)
-        .copied()
-        .unwrap_or_else(|_| ReactionsUsed::new(0));
+    let used_now = eligibility.used_by(reactor.entity);
     if !*may_interrupt(used_now, reactor.reactions, &tuning.reaction) {
         return None;
     }
 
-    let (mode, live_magazine, handedness, weapon_entity) =
-        reactor_weapon(reactor.entity, wields, weapons, probes)?;
-    let magazine = ledger.magazine_of(weapon_entity, live_magazine);
+    let ReactorShot {
+        mode,
+        magazine: live_magazine,
+        handedness,
+        weapon,
+    } = arms.shot(reactor.entity)?;
+    let magazine = pass.magazine_of(weapon, live_magazine);
     let fire_cost = mode_tu_cost(&mode, &reactor.tu_max, &reactor.aiming, tuning);
 
     let observer = Observer {
         position:         &reactor.position,
         stance:           &reactor.stance,
         facing:           &facing_now,
-        stair_eye_offset: occupancy.stair_eye_offset_at(&row_cell_level(&reactor.position)),
+        stair_eye_offset: grids
+            .occupancy()
+            .stair_eye_offset_at(&row_cell_level(&reactor.position)),
         peek_offset:      PeekOffset::default(),
     };
     let target = Target {
@@ -97,13 +74,9 @@ pub(super) fn try_reaction(
         &target,
         reactor.life,
         tuning.view_range,
-        MarchGrids {
-            occupancy,
-            surface,
-            cover,
-        },
+        grids.march(),
         tuning,
-        is_dead,
+        |entity: Entity| pass.life_of(entity) == LifeState::Dead,
     ) {
         return None;
     }
@@ -149,33 +122,14 @@ pub(super) fn try_reaction(
     signals
         .declared
         .write(InterruptDeclared::new(reactor.entity, actor.entity));
-    if let Ok(mut counter) = used.get_mut(reactor.entity) {
-        counter.increment();
-    }
+    eligibility.record_use(reactor.entity);
     Some(InterruptCommit::predict(
         reactor.entity,
-        weapon_entity,
+        weapon,
         tu_now,
         Tu::new((*turn_cost).saturating_add(*fire_cost)),
         Facing::new(facing_after),
         clamp_burst(mode.shots, &magazine),
         magazine,
     ))
-}
-
-/// Resolve the reactor's firing weapon and magazine.
-pub(super) fn reactor_weapon(
-    reactor: Entity,
-    wields: &WieldsQuery,
-    weapons: &Query<(&Magazine, &FireMode, &Handedness)>,
-    probes: &WeaponProbes,
-) -> Option<(crate::weapon::FireModeSpec, Magazine, Handedness, Entity)> {
-    let weapon_entity = wields.get(reactor).ok().and_then(|w| {
-        w.firing_weapon(
-            |entity| probes.mounted.get(entity).is_ok(),
-            |entity| probes.melee.get(entity).is_ok(),
-        )
-    })?;
-    let (magazine, fire_mode, handedness) = weapons.get(weapon_entity).ok()?;
-    Some((fire_mode.single(), *magazine, *handedness, weapon_entity))
 }

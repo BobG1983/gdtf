@@ -1,14 +1,11 @@
 //! System: process fire requests through arc, volley, and outcome messages.
 
-use bevy::{
-    ecs::system::ParamSet,
-    prelude::{MessageReader, Res, ResMut},
-};
+use bevy::{ecs::system::ParamSet, prelude::MessageReader};
 
 use super::{
     arc::{FireArcDecision, decide_fire_arc},
     emit::emit_round_signals,
-    params::{BattleGridsParam, TurnQuery},
+    params::{BattleGridsParam, ShotRolls, TurnQuery},
     signals::{FireDeclaration, FireSignals, RoundCount},
 };
 use crate::{
@@ -19,16 +16,10 @@ use crate::{
     magazine::mode_tu_cost,
     metric::CellLevel,
     resolve_and_apply::WoundRoll,
-    rng::{InjuryRng, SeverityRng, ShotRng},
     tu::spend_tu,
-    tuning::CombatTuning,
     weapon::DamageType,
 };
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "wears/pieces and wields/weapons stay disjoint Bevy params"
-)]
 /// Read fire requests, turn if needed, run the shot pipeline, emit signals.
 pub fn dispatch_fire(
     mut requests: MessageReader<FireRequested>,
@@ -36,18 +27,13 @@ pub fn dispatch_fire(
     mut bodies: StruckBodies,
     mut arms: WieldedWeapons,
     mut grids: BattleGridsParam,
-    tuning: Res<CombatTuning>,
-    mut shot_rng: ResMut<ShotRng>,
-    mut severity_rng: ResMut<SeverityRng>,
-    injury_tables: Option<Res<InjuryTables>>,
-    injury_registry: Option<Res<InjuryRegistry>>,
-    mut injury_rng: ResMut<InjuryRng>,
+    mut rolls: ShotRolls,
     mut signals: FireSignals,
 ) {
     let empty_tables = InjuryTables::default();
     let empty_registry = InjuryRegistry::default();
-    let tables: &InjuryTables = injury_tables.as_deref().unwrap_or(&empty_tables);
-    let registry: &InjuryRegistry = injury_registry.as_deref().unwrap_or(&empty_registry);
+    let tables: &InjuryTables = rolls.tables.as_deref().unwrap_or(&empty_tables);
+    let registry: &InjuryRegistry = rolls.registry.as_deref().unwrap_or(&empty_registry);
     for request in requests.read() {
         let shooters = shooter_set.p0();
         let Ok(((position, facing, _, aiming, _, _, tu_max, _), _, tu)) =
@@ -74,7 +60,7 @@ pub fn dispatch_fire(
         };
         let damage: DamageType = *damage_type;
 
-        let fire_cost = mode_tu_cost(&request.mode, &tu_max, &aiming, &tuning);
+        let fire_cost = mode_tu_cost(&request.mode, &tu_max, &aiming, &rolls.tuning);
 
         match decide_fire_arc(
             facing,
@@ -82,7 +68,7 @@ pub fn dispatch_fire(
             request.target_cell,
             tu,
             fire_cost,
-            &tuning,
+            &rolls.tuning,
         ) {
             FireArcDecision::Reject => continue,
             FireArcDecision::TurnThenFire {
@@ -115,13 +101,13 @@ pub fn dispatch_fire(
             &mut arms,
             &mut bodies,
             grids.grids(),
-            &mut shot_rng,
+            &mut rolls.shot,
             &mut WoundRoll {
-                tuning: &tuning,
-                severity_rng: &mut severity_rng,
+                tuning: &rolls.tuning,
+                severity_rng: &mut rolls.severity,
                 tables,
                 registry,
-                injury_rng: &mut injury_rng,
+                injury_rng: &mut rolls.injury,
             },
         );
 

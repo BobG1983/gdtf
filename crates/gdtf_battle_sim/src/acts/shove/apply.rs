@@ -1,11 +1,14 @@
 //! Apply shove outcome: move position or resolve a fall hit.
 
-use bevy::prelude::{Entity, MessageWriter};
+use bevy::{
+    ecs::system::SystemParam,
+    prelude::{Entity, MessageWriter},
+};
 
 use super::verb::ShoveOutcome;
 use crate::{
     acts::InjuryInflicted,
-    armor::{BodyPart, PieceArmorMut, Wears},
+    armor::{BodyPart, WornArmor},
     falls::{FallImpact, FallOccurred, FallWoundEnv, resolve_fall_hit},
     ganger::{Hp, LifeState, Luck, Position, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
@@ -36,25 +39,23 @@ pub(crate) struct ShoveFallEnv<'a> {
     pub injury_rng:   &'a mut InjuryRng,
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the shared shove-apply helper threads the resolved outcome, the target's mutable \
-              surfaces + read stats (ShoveTargetSurfaces), the target entity, the two armor \
-              relationship queries (the struck-piece resolution), the fall environment + \
-              streams (ShoveFallEnv), and the two output writers — the irreducible fall-fold \
-              access set (the resolve_fall_hit / apply_falls precedent); bundling further would \
-              only hide the access set"
-)]
+/// Messages a shove writes when the target goes over an edge.
+#[derive(SystemParam)]
+pub struct ShoveFallSignals<'w> {
+    /// The fall itself.
+    pub fell:     MessageWriter<'w, FallOccurred>,
+    /// Any injury the landing rolled.
+    pub injuries: MessageWriter<'w, InjuryInflicted>,
+}
+
 /// Move the target, or resolve fall damage and messages when they go over an edge.
 pub(crate) fn apply_shove(
     outcome: ShoveOutcome,
     surfaces: ShoveTargetSurfaces<'_>,
     target_entity: Entity,
-    wears: &bevy::prelude::Query<&Wears>,
-    pieces: &mut bevy::prelude::Query<PieceArmorMut, bevy::prelude::With<crate::armor::WornBy>>,
+    armor: &mut WornArmor,
     env: ShoveFallEnv<'_>,
-    fell: &mut MessageWriter<FallOccurred>,
-    injuries: &mut MessageWriter<InjuryInflicted>,
+    signals: &mut ShoveFallSignals,
 ) {
     let ShoveTargetSurfaces {
         position,
@@ -79,18 +80,23 @@ pub(crate) fn apply_shove(
 
             *position = Position::new(CellLevel::new(dest_cell, landing.landing));
 
-            let piece_view = wears
+            let piece_view = armor
+                .wears
                 .get(target_entity)
                 .ok()
                 .and_then(|worn| worn.pieces().next())
                 .and_then(|piece_entity| {
-                    pieces.get_mut(piece_entity).ok().map(|piece| StruckPiece {
-                        floor:      *piece.floor,
-                        protection: *piece.protection,
-                        hardness:   *piece.hardness,
-                        armor_type: *piece.armor_type,
-                        integrity:  piece.integrity.into_inner(),
-                    })
+                    armor
+                        .pieces
+                        .get_mut(piece_entity)
+                        .ok()
+                        .map(|piece| StruckPiece {
+                            floor:      *piece.floor,
+                            protection: *piece.protection,
+                            hardness:   *piece.hardness,
+                            armor_type: *piece.armor_type,
+                            integrity:  piece.integrity.into_inner(),
+                        })
                 });
 
             let rolled = resolve_fall_hit(
@@ -119,9 +125,11 @@ pub(crate) fn apply_shove(
             );
 
             if let Some(rolled) = rolled {
-                injuries.write(InjuryInflicted::from_rolled(target_entity, rolled));
+                signals
+                    .injuries
+                    .write(InjuryInflicted::from_rolled(target_entity, rolled));
             }
-            fell.write(FallOccurred::new(
+            signals.fell.write(FallOccurred::new(
                 target_entity,
                 start,
                 landing.landing,

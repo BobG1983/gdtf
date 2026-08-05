@@ -2,56 +2,67 @@
 use bevy::prelude::*;
 
 crate::support_item! {
-                                    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Root node of the weapon cluster.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct WeaponPanelRoot;
 }
 
 crate::support_item! {
-                                #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The weapon cluster's scrolling content area.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct WeaponContent;
 }
 
 crate::support_item! {
-                        #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The panel showing the selected ganger's combined weapon state.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct CombinedWeaponPanel;
 }
 
 crate::support_item! {
-                    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The weapon's icon image.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct WeaponImage;
 }
 
 crate::support_item! {
-                #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// One weapon entry's panel.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct WeaponItemPanel;
 }
 
 crate::support_item! {
-                            #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The clickable button on one weapon entry.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct WeaponItemButton;
 }
 
 crate::support_item! {
-                            #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The panel holding the aim readout.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct AimPanel;
 }
 
 crate::support_item! {
-                        #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The aim readout text.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct AimLabel;
 }
 
 crate::support_item! {
-                #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The weapon name text.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct WeaponNameText;
 }
 
 crate::support_item! {
-                        #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The loaded/capacity magazine text.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct WeaponMagazineText;
 }
 
 crate::support_item! {
-                        #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The reload button.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ReloadButton;
 }

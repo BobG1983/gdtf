@@ -3,6 +3,7 @@
 mod declared;
 mod interrupt;
 mod ledger;
+mod params;
 mod reset;
 mod snapshot;
 mod trigger;
@@ -11,5 +12,8 @@ mod trigger;
 mod test;
 
 pub use declared::{InterruptDeclared, InterruptSignals};
+pub use params::{
+    ReactionGrids, ReactionTriggers, ReactorArms, ReactorEligibility, ReactorSuppressed,
+};
 pub use reset::reset_reactions_used;
 pub use trigger::reaction_trigger;

@@ -1,18 +1,14 @@
-use bevy::prelude::{Entity, MessageWriter, Query, With};
+use bevy::prelude::Entity;
 
 use super::{
-    MeleeFacts, MeleeWorld,
-    emit::{MeleeConnectSignals, emit_connect_signals},
-    queries::{MeleeGeomQuery, MeleeTargetQuery},
-    snapshot::{AttackerSnapshot, MeleeStreams},
+    MeleeCombatants, MeleeOutcomes, MeleeWorld,
+    emit::emit_connect_signals,
+    snapshot::{AttackerSnapshot, DefenderResilience, MeleeStreams},
 };
 use crate::{
-    acts::{
-        downed::is_8_adjacent,
-        request::{MeleeResolved, ShoveRequested},
-    },
-    armor::{PieceArmorMut, Wears, WornBy},
-    ganger::{LifeState, Luck, Toughness, Tu, effective_luck, effective_toughness},
+    acts::downed::is_8_adjacent,
+    armor::WornArmor,
+    ganger::{LifeState, effective_luck, effective_toughness},
     injuries::{InjuryRegistry, InjuryTables},
     los::{Observer, PeekOffset, Target, has_los},
     march::MarchGrids,
@@ -22,31 +18,17 @@ use crate::{
     tu::spend_tu,
 };
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the ganger arm threads the attacker snapshot, the target entity, the disjoint \
-              geometry / attacker-Tu / target-surfaces queries, the two armor relationship \
-              queries, the grouped world reads, the four draw streams, and the \
-              MeleeResolved + ShoveRequested writers and the grouped fact writers \
-              (MeleeFacts) — the irreducible per-arm access set (the strike_with_target \
-              precedent); bundling further would only hide the access set"
-)]
 pub(super) fn resolve_ganger_melee(
     attacker: &AttackerSnapshot<'_>,
     target_entity: Entity,
-    geom: &MeleeGeomQuery,
-    tu_q: &mut Query<&mut Tu>,
-    targets: &mut MeleeTargetQuery,
-    wears: &Query<&Wears>,
-    pieces: &mut Query<PieceArmorMut, With<WornBy>>,
+    combatants: &mut MeleeCombatants,
+    armor: &mut WornArmor,
     world: &mut MeleeWorld,
     streams: MeleeStreams<'_>,
-    resolved: &mut MessageWriter<MeleeResolved>,
-    facts: &mut MeleeFacts,
-    shoves: &mut MessageWriter<ShoveRequested>,
-    deaths: &mut MessageWriter<crate::effects::on_death::OnDeathOccurred>,
+    outcomes: &mut MeleeOutcomes,
 ) {
-    let Ok((&tgt_pos, &tgt_stance, _, &tgt_fight, &tgt_faction, _)) = geom.get(target_entity)
+    let Ok((&tgt_pos, &tgt_stance, _, &tgt_fight, &tgt_faction, _)) =
+        combatants.geom.get(target_entity)
     else {
         return;
     };
@@ -56,19 +38,22 @@ pub(super) fn resolve_ganger_melee(
     }
 
     let Ok((_, _, &tgt_life, _, &tgt_toughness, &tgt_luck, tgt_injuries)) =
-        targets.get(target_entity)
+        combatants.targets.get(target_entity)
     else {
         return;
     };
     if !*tgt_life.is_active() {
         return;
     }
-    let (effective_toughness, effective_luck) = match tgt_injuries {
-        Some(ledger) => (
-            effective_toughness(tgt_toughness, ledger),
-            effective_luck(tgt_luck, ledger),
-        ),
-        None => (tgt_toughness, tgt_luck),
+    let resilience = match tgt_injuries {
+        Some(ledger) => DefenderResilience {
+            toughness: effective_toughness(tgt_toughness, ledger),
+            luck:      effective_luck(tgt_luck, ledger),
+        },
+        None => DefenderResilience {
+            toughness: tgt_toughness,
+            luck:      tgt_luck,
+        },
     };
 
     let observer = Observer {
@@ -82,27 +67,30 @@ pub(super) fn resolve_ganger_melee(
         position: &tgt_pos,
         stance:   &tgt_stance,
     };
-    let is_dead = |entity: Entity| {
-        targets
-            .get(entity)
-            .is_ok_and(|(_, _, life, ..)| *life == LifeState::Dead)
+    let sighted = {
+        let is_dead = |entity: Entity| {
+            combatants
+                .targets
+                .get(entity)
+                .is_ok_and(|(_, _, life, ..)| *life == LifeState::Dead)
+        };
+        has_los(
+            &observer,
+            &los_target,
+            MarchGrids {
+                occupancy: &world.occupancy,
+                surface:   &world.surface,
+                cover:     &world.cover,
+            },
+            &world.tuning,
+            is_dead,
+        )
     };
-    let sighted = has_los(
-        &observer,
-        &los_target,
-        MarchGrids {
-            occupancy: &world.occupancy,
-            surface:   &world.surface,
-            cover:     &world.cover,
-        },
-        &world.tuning,
-        is_dead,
-    );
     if !*sighted {
         return;
     }
 
-    let Ok(mut attacker_tu) = tu_q.get_mut(attacker.entity) else {
+    let Ok(mut attacker_tu) = combatants.tu.get_mut(attacker.entity) else {
         return;
     };
     spend_tu(&mut attacker_tu, attacker.tu_cost);
@@ -113,17 +101,15 @@ pub(super) fn resolve_ganger_melee(
     let registry: &InjuryRegistry = world.registry.as_deref().unwrap_or(&empty_registry);
 
     let strike = strike_with_target(
-        targets,
-        wears,
-        pieces,
+        combatants,
+        armor,
         target_entity,
         Combatants {
             attacker_fight: attacker.fight,
             defender_fight: tgt_fight,
             attacker_luck:  attacker.luck,
         },
-        effective_toughness,
-        effective_luck,
+        resilience,
         attacker.weapon,
         MeleeStrikeEnv {
             tuning: &world.tuning,
@@ -143,51 +129,42 @@ pub(super) fn resolve_ganger_melee(
             target_entity,
             at,
             strike,
-            targets,
-            MeleeConnectSignals {
-                resolved,
-                facts,
-                shoves,
-                deaths,
-            },
+            &combatants.targets,
+            outcomes,
         );
     }
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the fold threads the target query + the two armor relationship queries + the \
-              target entity + the combatants + the projected Toughness/Luck + the weapon + \
-              the grouped strike environment (tuning + injury content + the four draw \
-              streams) — the irreducible input set resolve_melee_strike takes; bundling \
-              further would only hide the access set"
-)]
 fn strike_with_target(
-    targets: &mut MeleeTargetQuery,
-    wears: &Query<&Wears>,
-    pieces: &mut Query<PieceArmorMut, With<WornBy>>,
+    combatants: &mut MeleeCombatants,
+    armor: &mut WornArmor,
     target_entity: Entity,
-    combatants: Combatants,
-    toughness: Toughness,
-    luck: Luck,
+    contest: Combatants,
+    resilience: DefenderResilience,
     weapon: MeleeWeaponHit<'_>,
     env: MeleeStrikeEnv<'_>,
 ) -> MeleeStrike {
-    let piece_view = wears
+    let piece_view = armor
+        .wears
         .get(target_entity)
         .ok()
         .and_then(|worn| worn.pieces().next())
         .and_then(|piece_entity| {
-            pieces.get_mut(piece_entity).ok().map(|piece| StruckPiece {
-                floor:      *piece.floor,
-                protection: *piece.protection,
-                hardness:   *piece.hardness,
-                armor_type: *piece.armor_type,
-                integrity:  piece.integrity.into_inner(),
-            })
+            armor
+                .pieces
+                .get_mut(piece_entity)
+                .ok()
+                .map(|piece| StruckPiece {
+                    floor:      *piece.floor,
+                    protection: *piece.protection,
+                    hardness:   *piece.hardness,
+                    armor_type: *piece.armor_type,
+                    integrity:  piece.integrity.into_inner(),
+                })
         });
 
-    let Ok((mut hp, mut wounds, mut life, mut inflicted, ..)) = targets.get_mut(target_entity)
+    let Ok((mut hp, mut wounds, mut life, mut inflicted, ..)) =
+        combatants.targets.get_mut(target_entity)
     else {
         return MeleeStrike {
             connect:   crate::melee::Connected::new(false),
@@ -198,16 +175,16 @@ fn strike_with_target(
         };
     };
     resolve_melee_strike(
-        combatants,
+        contest,
         weapon,
         TargetGanger {
-            hp: &mut hp,
-            wounds: &mut wounds,
-            life: &mut life,
-            piece: piece_view,
+            hp:        &mut hp,
+            wounds:    &mut wounds,
+            life:      &mut life,
+            piece:     piece_view,
             inflicted: &mut inflicted,
-            toughness,
-            luck,
+            toughness: resilience.toughness,
+            luck:      resilience.luck,
         },
         target_entity,
         env,

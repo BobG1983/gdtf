@@ -3,7 +3,7 @@
 use bevy::prelude::{Color, Message};
 use gdtf_battle_sim::prelude::CellLevel;
 
-use super::text::{CombatText, FctEmphasis};
+use super::text::{CombatText, FctEmphasis, FctLabel};
 
 /// Where a pop should appear in the world.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,6 +68,12 @@ impl ConsequencePop {
     #[must_use]
     pub const fn anchor(&self) -> PopAnchor {
         self.anchor
+    }
+
+    /// Text, tint, and weight to spawn this pop with.
+    #[must_use]
+    pub fn label(&self) -> FctLabel {
+        FctLabel::new(self.text.clone(), self.color, self.emphasis)
     }
 }
 

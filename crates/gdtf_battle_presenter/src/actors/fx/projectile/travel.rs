@@ -1,5 +1,7 @@
 //! In-flight shot projectile motion.
 
+use std::time::Duration;
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     prelude::{Cell, Level},
@@ -13,63 +15,97 @@ use super::super::{fct::ClassifiedPop, tuning::ProjectileVelocity};
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ShotProjectile;
 
-/// Flight path, stagger, and payload for a shot projectile.
-#[derive(Component, Debug, Clone)]
-pub struct ProjectileTravel {
-    from:     Vec3,
-    to:       Vec3,
-    damage:   DamageType,
-    launch:   Timer,
-    velocity: ProjectileVelocity,
-    traveled: f32,
-    pops:     Vec<ClassifiedPop>,
-    anchor:   (Cell, Level),
-    shooter:  Entity,
-    report:   Option<HitReport>,
+/// Where a projectile flies from, to, how fast, and after what stagger.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(in crate::actors::fx) struct ProjectileFlight {
+    from:         Vec3,
+    to:           Vec3,
+    velocity:     ProjectileVelocity,
+    launch_delay: Duration,
 }
 
-impl ProjectileTravel {
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "endpoints, damage, velocity, pops, anchor, shooter, and report are the flight payload"
-    )]
+impl ProjectileFlight {
+    /// Build a muzzle-to-target path.
     #[must_use]
-    pub(in crate::actors::fx) fn new(
+    pub(in crate::actors::fx) const fn new(
         from: Vec3,
         to: Vec3,
-        damage: DamageType,
         velocity: ProjectileVelocity,
-        launch_delay: std::time::Duration,
+        launch_delay: Duration,
+    ) -> Self {
+        Self {
+            from,
+            to,
+            velocity,
+            launch_delay,
+        }
+    }
+}
+
+/// What a projectile delivers where it lands.
+#[derive(Debug, Clone)]
+pub(in crate::actors::fx) struct ImpactPayload {
+    damage:  DamageType,
+    pops:    Vec<ClassifiedPop>,
+    anchor:  (Cell, Level),
+    shooter: Entity,
+    report:  Option<HitReport>,
+}
+
+impl ImpactPayload {
+    /// Build the impact FX, pops, and report a shot carries.
+    #[must_use]
+    pub(in crate::actors::fx) const fn new(
+        damage: DamageType,
         pops: Vec<ClassifiedPop>,
         anchor: (Cell, Level),
         shooter: Entity,
         report: Option<HitReport>,
     ) -> Self {
         Self {
-            from,
-            to,
             damage,
-            launch: Timer::new(launch_delay, TimerMode::Once),
-            velocity,
-            traveled: 0.0,
             pops,
             anchor,
             shooter,
             report,
         }
     }
+}
+
+/// Flight path, stagger, and payload for a shot projectile.
+#[derive(Component, Debug, Clone)]
+pub struct ProjectileTravel {
+    flight:   ProjectileFlight,
+    launch:   Timer,
+    traveled: f32,
+    payload:  ImpactPayload,
+}
+
+impl ProjectileTravel {
+    #[must_use]
+    pub(in crate::actors::fx) fn new(flight: ProjectileFlight, payload: ImpactPayload) -> Self {
+        Self {
+            launch: Timer::new(flight.launch_delay, TimerMode::Once),
+            flight,
+            traveled: 0.0,
+            payload,
+        }
+    }
 
     #[must_use]
     fn distance(&self) -> f32 {
-        self.from.distance(self.to)
+        self.flight.from.distance(self.flight.to)
     }
 
     /// Advance flight. Returns `true` when the projectile has arrived.
-    pub fn advance(&mut self, delta: std::time::Duration) -> bool {
+    pub fn advance(&mut self, delta: Duration) -> bool {
         if !self.launch.tick(delta).is_finished() {
             return false;
         }
-        self.traveled = self.velocity.mul_add(delta.as_secs_f32(), self.traveled);
+        self.traveled = self
+            .flight
+            .velocity
+            .mul_add(delta.as_secs_f32(), self.traveled);
         self.traveled >= self.distance()
     }
 
@@ -92,38 +128,38 @@ impl ProjectileTravel {
     /// Current interpolated world position.
     #[must_use]
     pub fn position(&self) -> Vec3 {
-        self.from.lerp(self.to, self.fraction())
+        self.flight.from.lerp(self.flight.to, self.fraction())
     }
 
     /// Arrival world position.
     #[must_use]
     pub const fn arrival(&self) -> Vec3 {
-        self.to
+        self.flight.to
     }
 
     /// Damage type for impact FX.
     #[must_use]
     pub const fn damage(&self) -> DamageType {
-        self.damage
+        self.payload.damage
     }
 
     #[must_use]
     pub(super) fn take_pops(&mut self) -> Vec<ClassifiedPop> {
-        std::mem::take(&mut self.pops)
+        std::mem::take(&mut self.payload.pops)
     }
 
     #[must_use]
     pub(super) const fn anchor(&self) -> (Cell, Level) {
-        self.anchor
+        self.payload.anchor
     }
 
     #[must_use]
     pub(super) const fn shooter(&self) -> Entity {
-        self.shooter
+        self.payload.shooter
     }
 
     #[must_use]
     pub(super) fn report(&self) -> Option<HitReport> {
-        self.report.clone()
+        self.payload.report.clone()
     }
 }

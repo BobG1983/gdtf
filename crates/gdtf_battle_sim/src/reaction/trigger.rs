@@ -2,47 +2,25 @@
 
 use bevy::{
     platform::collections::HashSet,
-    prelude::{Changed, Entity, MessageReader, Query, Res, ResMut, With},
+    prelude::{Entity, ResMut},
 };
 
 use super::{
     declared::InterruptSignals,
     interrupt::try_reaction,
     ledger::PendingSpendLedger,
-    snapshot::{ReactionGangers, ReactionRow, cell_order},
+    params::{ReactionGrids, ReactionTriggers, ReactorArms, ReactorEligibility},
+    snapshot::{ReactionGangers, ReactionPair, ReactionPass, ReactionRow, cell_order},
 };
-use crate::{
-    acts::{FireDeclaration, WeaponProbes},
-    cover::CoverLedger,
-    fire::WieldsQuery,
-    ganger::{LifeState, Position, Suppressed},
-    magazine::Magazine,
-    occupancy::OccupancyGrid,
-    rng::ReactionRng,
-    surface::SurfaceGrid,
-    tuning::{CombatTuning, ReactionsUsed},
-    weapon::{FireMode, Handedness, Silenced, shooter_weapon_silenced},
-};
+use crate::rng::ReactionRng;
 
 /// On position change or loud fire declaration, try enemy opportunity shots.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "movers, declarations, weapon probes, grids, and writers are separate SystemParams"
-)]
 pub fn reaction_trigger(
-    moved: Query<Entity, Changed<Position>>,
-    mut declarations: MessageReader<FireDeclaration>,
+    mut triggers: ReactionTriggers,
     gangers: ReactionGangers,
-    wields: WieldsQuery,
-    weapons: Query<(&Magazine, &FireMode, &Handedness)>,
-    probes: WeaponProbes,
-    suppressed: Query<(), With<Suppressed>>,
-    silenced: Query<(), With<Silenced>>,
-    mut used: Query<&mut ReactionsUsed>,
-    tuning: Res<CombatTuning>,
-    occupancy: Res<OccupancyGrid>,
-    surface: Res<SurfaceGrid>,
-    cover: Res<CoverLedger>,
+    arms: ReactorArms,
+    mut eligibility: ReactorEligibility,
+    grids: ReactionGrids,
     rng: Option<ResMut<ReactionRng>>,
     mut signals: InterruptSignals,
 ) {
@@ -70,29 +48,10 @@ pub fn reaction_trigger(
         )
         .collect();
 
-    let mut actors: HashSet<Entity> = moved.iter().collect();
-    for declaration in declarations.read() {
-        if *shooter_weapon_silenced(
-            declaration.shooter,
-            &wields,
-            &probes.mounted,
-            &probes.melee,
-            &silenced,
-        ) {
-            continue;
-        }
-        actors.insert(declaration.shooter);
-    }
+    let actors: HashSet<Entity> = triggers.actors(&arms);
     if actors.is_empty() {
         return;
     }
-
-    let is_dead_fn = |entity: Entity| {
-        rows.iter()
-            .find(|row| row.entity == entity)
-            .is_some_and(|row| row.life == LifeState::Dead)
-    };
-    let is_dead = &is_dead_fn;
 
     let mut acting_rows: Vec<ReactionRow> = rows
         .iter()
@@ -114,23 +73,17 @@ pub fn reaction_trigger(
             .collect();
         reactors.sort_by_key(|row| cell_order(&row.position));
         for reactor in &reactors {
-            if let Some(commit) = try_reaction(
-                actor,
-                reactor,
-                &ledger,
-                &wields,
-                &weapons,
-                &probes,
-                &suppressed,
-                &mut used,
-                &tuning,
-                &occupancy,
-                &surface,
-                &cover,
+            let pass = ReactionPass::new(&rows, &ledger);
+            let commit = try_reaction(
+                ReactionPair { actor, reactor },
+                &pass,
+                &arms,
+                &mut eligibility,
+                &grids,
                 &mut rng,
-                is_dead,
                 &mut signals,
-            ) {
+            );
+            if let Some(commit) = commit {
                 ledger.commit(commit);
             }
         }

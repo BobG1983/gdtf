@@ -3,7 +3,6 @@
 use bevy::{
     camera::visibility::RenderLayers,
     ecs::template::template,
-    math::primitives::Rectangle,
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
@@ -14,13 +13,12 @@ use gdtf_battle_sim::{
 };
 
 use super::{
-    active_level::{ActiveLevel, ViewMode},
-    band::{drawn_band, level_band},
+    band::DrawnStoreys,
+    quads::TerrainQuads,
     restamp::StampedGraphic,
     static_map::{SpriteResolveCtx, StaticMap, graphic_name_at, i32_extent, storey_has_terrain},
-    treatment::{IsolateView, StoreyViewMode},
 };
-use crate::{TerrainFogMaterial, cell_to_world};
+use crate::cell_to_world;
 
 /// Marker on a static terrain tile, holding its cell.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -29,26 +27,18 @@ pub struct TerrainSprite {
     pub at: CellLevel,
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "material and mesh stores plus resolve ctx are separate Bevy params"
-)]
 /// Despawn and respawn all terrain tiles for the visible storey band.
 pub fn draw_static_battlefield(
     mut commands: Commands,
     map: StaticMap,
     resolve: SpriteResolveCtx,
-    active: Res<ActiveLevel>,
-    view: Res<ViewMode>,
-    isolate: Res<IsolateView>,
-    mut materials: ResMut<Assets<TerrainFogMaterial>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut quad: Local<Option<Handle<Mesh>>>,
+    storeys: DrawnStoreys,
+    mut quads: TerrainQuads,
     mut ready: MessageReader<BattleReady>,
     existing: Query<Entity, With<TerrainSprite>>,
 ) {
     let ready_fired = ready.read().count() > 0;
-    if !ready_fired && !active.is_changed() && !view.is_changed() && !isolate.is_changed() {
+    if !ready_fired && !*storeys.changed() {
         return;
     }
 
@@ -56,13 +46,11 @@ pub fn draw_static_battlefield(
         commands.entity(entity).despawn();
     }
 
-    let mesh = quad
-        .get_or_insert_with(|| meshes.add(Rectangle::from_size(Vec2::ONE)))
-        .clone();
+    let mesh = quads.quad();
 
     let graphic_facts = map.graphic_facts();
 
-    for level in level_band(drawn_band(*active, StoreyViewMode::new(*view, *isolate))) {
+    for level in storeys.levels() {
         for y in 0..i32_extent(GRID_HEIGHT) {
             for x in 0..i32_extent(GRID_WIDTH) {
                 let cell = Cell::new(x, y);
@@ -80,7 +68,7 @@ pub fn draw_static_battlefield(
                 let name = graphic_name_at(&key, &graphic_facts, &map);
                 let (material, offset) = resolve.resolved(name, &key);
                 let mesh2d = Mesh2d(mesh.clone());
-                let material2d = MeshMaterial2d(materials.add(material));
+                let material2d = MeshMaterial2d(quads.material(material));
                 let transform =
                     Transform::from_translation(cell_to_world(cell, level) + offset.extend(0.0));
                 let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);

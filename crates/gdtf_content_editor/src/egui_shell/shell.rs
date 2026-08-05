@@ -6,10 +6,7 @@ use crate::{
         autoload::{ModeSyncBundles, run_form_syncs},
         chrome::{mode_tabs, status_line, theme_combo_box},
         mode_panels::{ModePanelsCtx, central_panel, right_panel},
-        params::{
-            ArmorParams, AttachmentParams, GangParams, InjuryParams, MeleeWeaponParams,
-            PrefabParams, SharedRegistries, SpriteParams, WeaponParams,
-        },
+        params::{ContentForms, PrefabParams, SharedRegistries, TerrainThemeDrafts},
         prefab::palette_ui,
         terrain_form_ui,
         textures::resolve_panel_textures,
@@ -18,38 +15,20 @@ use crate::{
     },
     mode::EditorMode,
     session::MapEditorSession,
-    terrain_form::TerrainDraft,
-    theme_form::ThemeDraft,
 };
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the whole-editor egui system draws ALL panels in one pass (the EguiPrimaryContextPass \
-              requirement — bevy-traps #8); each param is a distinct Bevy SystemParam (the egui \
-              context, the state-scoped mutable drafts + mode + session, the per-mode model \
-              bundles — prefab / gang / armor / injury / sprite / attachment / weapon / melee — \
-              and the read-only registries); Bevy's injection model cannot reduce this without a \
-              wrapper resource that changes the crate's API surface"
-)]
 pub(crate) fn editor_egui_ui(
     mut contexts: EguiContexts,
-    mut prefab_save_name: Local<String>,
     mode: Option<ResMut<EditorMode>>,
     session: Option<ResMut<MapEditorSession>>,
-    terrain_draft: Option<ResMut<TerrainDraft>>,
-    theme_draft: Option<ResMut<ThemeDraft>>,
+    drafts: TerrainThemeDrafts,
     shared: SharedRegistries,
     mut prefab: PrefabParams,
-    mut gang: GangParams,
-    mut armor_mode: ArmorParams,
-    mut injury_mode: InjuryParams,
-    mut sprite_mode: SpriteParams,
-    mut attachment_mode: AttachmentParams,
-    mut weapon_mode: WeaponParams,
-    mut melee_weapon_mode: MeleeWeaponParams,
+    mut forms: ContentForms,
 ) -> Result {
+    let TerrainThemeDrafts { terrain, theme } = drafts;
     let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) =
-        (mode, session, terrain_draft, theme_draft)
+        (mode, session, terrain, theme)
     else {
         return Ok(());
     };
@@ -60,17 +39,17 @@ pub(crate) fn editor_egui_ui(
         shared.themes.as_deref(),
         &mut theme_draft,
         ModeSyncBundles {
-            gang:         &mut gang,
-            armor:        &mut armor_mode,
-            injury:       &mut injury_mode,
-            sprite:       &mut sprite_mode,
-            attachment:   &mut attachment_mode,
-            weapon:       &mut weapon_mode,
-            melee_weapon: &mut melee_weapon_mode,
+            gang:         &mut forms.gang,
+            armor:        &mut forms.armor,
+            injury:       &mut forms.injury,
+            sprite:       &mut forms.sprite,
+            attachment:   &mut forms.attachment,
+            weapon:       &mut forms.weapon,
+            melee_weapon: &mut forms.melee_weapon,
         },
     );
 
-    let textures = resolve_panel_textures(&mut contexts, *mode, &prefab, &mut sprite_mode);
+    let textures = resolve_panel_textures(&mut contexts, *mode, &prefab, &mut forms.sprite);
 
     let ctx = contexts.ctx_mut()?;
     let mut viewport_ui = egui::Ui::new(
@@ -107,7 +86,7 @@ pub(crate) fn editor_egui_ui(
                 &mut session,
                 shared.themes.as_deref(),
                 shared.terrain.as_deref(),
-                sprite_mode.registry.as_deref(),
+                forms.sprite.registry.as_deref(),
                 &textures.sprites,
             );
         }
@@ -124,19 +103,18 @@ pub(crate) fn editor_egui_ui(
         session:          &mut session,
         terrain_draft:    &mut terrain_draft,
         theme_draft:      &mut theme_draft,
-        prefab_save_name: &mut prefab_save_name,
         themes:           shared.themes.as_deref(),
         terrain_registry: shared.terrain.as_deref(),
         weapons:          shared.weapons.as_deref(),
         textures:         &textures,
         prefab:           &mut prefab,
-        gang:             &mut gang,
-        armor:            &mut armor_mode,
-        injury:           &mut injury_mode,
-        sprite:           &mut sprite_mode,
-        attachment:       &mut attachment_mode,
-        weapon:           &mut weapon_mode,
-        melee_weapon:     &mut melee_weapon_mode,
+        gang:             &mut forms.gang,
+        armor:            &mut forms.armor,
+        injury:           &mut forms.injury,
+        sprite:           &mut forms.sprite,
+        attachment:       &mut forms.attachment,
+        weapon:           &mut forms.weapon,
+        melee_weapon:     &mut forms.melee_weapon,
     };
     right_panel(&mut viewport_ui, *mode, &mut panel_ctx);
     central_panel(&mut viewport_ui, *mode, &mut panel_ctx);
