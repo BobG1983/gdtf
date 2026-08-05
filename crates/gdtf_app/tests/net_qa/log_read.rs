@@ -1,4 +1,5 @@
 use gdtf_app::qa_wire::{
+    act::ActSeqNet,
     deed::ActDeedKindNet,
     log::{ActProvenanceNet, LogDroppedCount, LogEntryNet, LogReadCap},
     token::GangerToken,
@@ -20,10 +21,15 @@ use super::{
 /// Cap the tight read applies, small enough to leave written lines outside the window.
 const TIGHT_CAP: u32 = 2;
 
+/// A cap far past any ceiling the command could sanely apply.
+const GREEDY_CAP: u32 = 100_000;
+
 #[derive(Debug, Deserialize)]
 struct LogBody {
     entries: Vec<LogEntryNet>,
     cap:     LogReadCap,
+    head:    ActSeqNet,
+    oldest:  ActSeqNet,
     dropped: LogDroppedCount,
 }
 
@@ -150,6 +156,64 @@ fn a_read_that_names_no_cap_stops_at_the_default_window() -> TestResult {
         "a read that names no cap still stops at the default window rather than handing back \
          the whole log: kept {kept} of {FLOODED_LOG_LINES} written, dropped {dropped}",
         dropped = *uncapped.dropped,
+    );
+    Ok(())
+}
+
+#[test]
+fn a_cap_past_the_ceiling_is_clamped_rather_than_handing_back_the_whole_log() -> TestResult {
+    let (replies, _logged) = exchange_expected(battle_with_a_flooded_log, |_logged| {
+        vec![run(
+            LOG_READ,
+            &format!("(cap:Some({GREEDY_CAP}))"),
+            RunOptions::default(),
+        )]
+    })?;
+    let greedy = decode(replies.into_iter().next())?;
+    let applied = *greedy.cap;
+    let kept = u32::try_from(greedy.entries.len()).unwrap_or(u32::MAX);
+
+    assert!(
+        applied < GREEDY_CAP,
+        "a caller asking for {GREEDY_CAP} lines gets the ceiling instead, or the read is the \
+         whole-log dump the QA surface exists to avoid: applied {applied}",
+    );
+    assert!(
+        applied < FLOODED_LOG_LINES,
+        "the fixture writes {FLOODED_LOG_LINES} lines, so the ceiling must sit under that for \
+         this case to prove anything — raise the fixture if the ceiling grew: applied {applied}",
+    );
+    assert_eq!(
+        kept, applied,
+        "the window the reply reports is the window it returned: kept {kept} of \
+         {FLOODED_LOG_LINES} written",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_read_reports_the_bounds_of_what_the_ring_buffer_still_holds() -> TestResult {
+    let (uncapped, capped, _logged) = default_and_capped()?;
+
+    for body in [&uncapped, &capped] {
+        assert!(
+            body.oldest <= body.head,
+            "the oldest retained line never sits past the next sequence the log would \
+             assign: {body:?}",
+        );
+    }
+    let Some(newest) = uncapped.entries.last() else {
+        return Err("the fixture wrote lines, so the default window returns some".into());
+    };
+    assert!(
+        newest.seq < uncapped.head,
+        "head names the sequence the log would assign next, so every returned line sits below \
+         it: {newest:?} against {uncapped:?}",
+    );
+    assert_eq!(
+        capped.head, uncapped.head,
+        "capping the window changes which lines come back, never where the log has got to: \
+         {capped:?} against {uncapped:?}",
     );
     Ok(())
 }

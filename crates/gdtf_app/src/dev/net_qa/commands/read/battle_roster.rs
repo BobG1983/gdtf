@@ -13,7 +13,10 @@ use super::{
     shown::{DrawnCell, ShownBattleReads, ganger_card},
 };
 use crate::{
-    dev::net_qa::{facts::GameFacts, wire::roster::GangerCardNet},
+    dev::net_qa::{
+        facts::GameFacts,
+        wire::{cell::CellLevelNet, roster::GangerCardNet},
+    },
     states::running::game::battlescape::{
         inspect_panel::shadow::{promote_shown_cover, promote_shown_occupancy},
         stat_block::StatBlockData,
@@ -40,7 +43,7 @@ impl QaCommand for BattleRoster {
     const NAME: CommandName = CommandName::from_static("battle.roster");
     const SUMMARY: CommandSummary = CommandSummary::from_static(
         "Read every player ganger's card plus the cards of enemies the squad can currently see, \
-         judged from the cell each sprite is drawn on. Cards carry the values the stat block is \
+         each on the cell its sprite is drawn on. Cards carry the values the stat block is \
          drawing, so they lag the sim while an act plays out, exactly as the screen does.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
@@ -80,7 +83,7 @@ fn handle_battle_roster(
         if player != Some(faction) && !visible {
             continue;
         }
-        gangers.push(ganger_card(entity, &row));
+        gangers.push(ganger_card(entity, CellLevelNet::from_sim(cell.at()), &row));
     }
     gangers.sort_unstable_by_key(|card| *card.token);
 

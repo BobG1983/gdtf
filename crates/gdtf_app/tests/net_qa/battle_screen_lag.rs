@@ -86,10 +86,16 @@ fn an_enemy_is_read_where_the_screen_draws_it_not_where_the_sim_moved_it() -> Te
         enemy.drawn, enemy.live,
         "the fixture must really split the two cells, or this case proves nothing",
     );
-    assert!(
-        roster.gangers.iter().any(|card| card.token == token),
-        "the roster judges from the same drawn cell, so it lists what the screen shows too: \
-         {enemy:?} — {roster:?}",
+    let Some(card) = roster.gangers.iter().find(|card| card.token == token) else {
+        unreachable!(
+            "the roster judges from the same drawn cell, so it lists what the screen shows too: \
+             {enemy:?} — {roster:?}"
+        );
+    };
+    assert_eq!(
+        card.at, enemy.drawn,
+        "the card places the ganger on the cell its sprite is drawn on, the same cell the lit \
+         area named: {card:?} against {enemy:?}",
     );
     Ok(())
 }

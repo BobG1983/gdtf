@@ -90,15 +90,19 @@ fn handle_battle_inspect(
         });
         responder.answer(&BattleInspectReply {
             at:    args.at,
-            shown: on_the_wire(decision, &rows),
+            shown: on_the_wire(decision, args.at, &rows),
         });
     }
 }
 
-fn on_the_wire(decision: InspectShown, rows: &Query<StatBlockData>) -> InspectShownNet {
+fn on_the_wire(
+    decision: InspectShown,
+    at: CellLevelNet,
+    rows: &Query<StatBlockData>,
+) -> InspectShownNet {
     match decision {
         InspectShown::Ganger(entity) => match rows.get(entity) {
-            Ok(row) => InspectShownNet::Ganger(ganger_card(entity, &row)),
+            Ok(row) => InspectShownNet::Ganger(ganger_card(entity, at, &row)),
             Err(_) => InspectShownNet::Nothing,
         },
         InspectShown::Cover(entry) => InspectShownNet::Cover(CoverBlockNet::from_sim(entry)),
