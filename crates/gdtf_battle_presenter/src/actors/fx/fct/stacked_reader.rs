@@ -13,7 +13,7 @@ use super::{
     super::FxTuning,
     pop::{ConsequenceFct, PopAnchor},
     slot_allocator::FctSlotAllocator,
-    text::{animate_floating_text, spawn_floating_text},
+    text::{FctDrift, FctSlot, animate_floating_text, spawn_floating_text},
 };
 use crate::{
     PresenterSystems,
@@ -49,17 +49,11 @@ pub fn read_consequence_fct<C: ConsequenceFct>(
             }
         };
         let slot = allocator.next_slot(at);
-        let (cell, level) = at.split();
         spawn_floating_text(
             &mut commands,
-            pop.text().clone(),
-            pop.color(),
-            pop.emphasis(),
-            cell,
-            level,
-            slot,
-            tuning.fct_ttl_seconds,
-            tuning.fct_rise_rate,
+            pop.label(),
+            FctSlot::new(at, slot),
+            FctDrift::from_tuning(&tuning),
         );
     }
 }

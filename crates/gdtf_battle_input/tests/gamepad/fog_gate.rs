@@ -1,7 +1,5 @@
 use bevy::{ecs::system::SystemState, prelude::*};
-use gdtf_battle_input::{
-    InspectTarget, LeftClickOutcome, PathPreviewTarget, SelectedFireMode, SelectedShooter,
-};
+use gdtf_battle_input::{InspectTarget, LeftClickOutcome, SelectedFireMode, SelectedShooter};
 use gdtf_battle_sim::{
     magazine::Magazine,
     prelude::{Cell, CellLevel, Tu},
@@ -96,21 +94,18 @@ fn apply_and_assert_inert(
     tu_before: u8,
     loaded_before: u16,
 ) {
-    use gdtf_battle_input::{PendingActIntent, apply_left_click};
+    use gdtf_battle_input::{PendingActIntent, PointerSelection, apply_left_click};
 
     let fire_mode_before = *app.world().resource::<SelectedFireMode>();
     let selected_before = *app.world().resource::<SelectedShooter>();
     {
         let world = app.world_mut();
-        let mut state: SystemState<(
-            ResMut<SelectedShooter>,
-            ResMut<PendingActIntent>,
-            ResMut<PathPreviewTarget>,
-        )> = SystemState::new(world);
-        let Ok((mut selected, mut pending, mut target)) = state.get_mut(world) else {
+        let mut state: SystemState<(PointerSelection, ResMut<PendingActIntent>)> =
+            SystemState::new(world);
+        let Ok((mut selection, mut pending)) = state.get_mut(world) else {
             return;
         };
-        apply_left_click(outcome, &mut selected, &mut pending, &mut target);
+        apply_left_click(outcome, &mut selection, &mut pending);
         state.apply(world);
     }
 

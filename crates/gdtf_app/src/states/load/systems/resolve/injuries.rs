@@ -1,6 +1,6 @@
 use bevy::{
-    asset::{AssetEvent, AssetServer, Assets, LoadedFolder, RecursiveDependencyLoadState},
-    prelude::{Commands, MessageReader, Res, ResMut, info},
+    asset::{AssetServer, Assets, LoadedFolder, RecursiveDependencyLoadState},
+    prelude::{Commands, ResMut, info},
 };
 use gdtf_assets::{ContentIntegrityReport, RonAsset, RonFolderSalvage};
 use gdtf_battle_sim::injuries::{InjuryDef, InjuryRegistry, InjuryTables, InjuryWeighting};
@@ -8,32 +8,41 @@ use gdtf_content_families::injuries::{
     begin_injuries_salvage, build_injury_data, settle_injuries_salvage,
 };
 
+use super::params::{InjuryAssetEdits, InjuryRebuildSources};
 use crate::states::load::resources::{ActiveInjuriesFolderHandle, LoadHandles};
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "one folder carries two asset types, so resolve reads two Assets collections plus two salvage states and the shared report"
-)]
+/// The asset collections one injury folder's contents live in.
+pub(super) struct InjuryAssets<'a> {
+    /// Every loaded folder, including the injury folder itself.
+    pub folders:    &'a Assets<LoadedFolder>,
+    /// Every loaded injury definition.
+    pub defs:       &'a Assets<RonAsset<InjuryDef>>,
+    /// Every loaded injury weighting table.
+    pub weightings: &'a Assets<RonAsset<InjuryWeighting>>,
+}
+
+/// What a partly failed injury folder left behind to salvage.
+pub(super) struct InjurySalvage<'a> {
+    /// The per-file salvage state for injury definitions.
+    pub defs:       Option<&'a RonFolderSalvage<InjuryDef>>,
+    /// The per-file salvage state for injury weightings.
+    pub weightings: Option<&'a RonFolderSalvage<InjuryWeighting>>,
+}
+
 pub(super) fn resolve_injuries(
     commands: &mut Commands,
     asset_server: &AssetServer,
-    folders: &Assets<LoadedFolder>,
-    injury_defs: &Assets<RonAsset<InjuryDef>>,
-    weightings: &Assets<RonAsset<InjuryWeighting>>,
+    assets: InjuryAssets<'_>,
     handles: &LoadHandles,
-    salvage: (
-        Option<&RonFolderSalvage<InjuryDef>>,
-        Option<&RonFolderSalvage<InjuryWeighting>>,
-    ),
+    salvage: InjurySalvage<'_>,
     report: Option<&mut ContentIntegrityReport>,
 ) {
-    let (def_salvage, weighting_salvage) = salvage;
-    if let (Some(def_salvage), Some(weighting_salvage)) = (def_salvage, weighting_salvage) {
+    if let (Some(def_salvage), Some(weighting_salvage)) = (salvage.defs, salvage.weightings) {
         settle_injuries_salvage(
             commands,
             asset_server,
-            injury_defs,
-            weightings,
+            assets.defs,
+            assets.weightings,
             def_salvage,
             weighting_salvage,
             report,
@@ -51,9 +60,9 @@ pub(super) fn resolve_injuries(
     if matches!(folder_state, RecursiveDependencyLoadState::Loaded) {
         let Some((registry, tables)) = build_injury_data(
             asset_server,
-            folders,
-            injury_defs,
-            weightings,
+            assets.folders,
+            assets.defs,
+            assets.weightings,
             &handles.injuries,
         ) else {
             return;
@@ -65,58 +74,21 @@ pub(super) fn resolve_injuries(
     }
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "one folder carries two asset types, so the redrive reads two AssetEvent readers plus two Assets collections and two rebuilt resources"
-)]
 pub(in crate::states::load) fn redrive_injuries_on_asset_event(
-    mut def_events: MessageReader<AssetEvent<RonAsset<InjuryDef>>>,
-    mut weighting_events: MessageReader<AssetEvent<RonAsset<InjuryWeighting>>>,
-    asset_server: Option<Res<AssetServer>>,
-    folder_handle: Option<Res<ActiveInjuriesFolderHandle>>,
-    folders: Option<Res<Assets<LoadedFolder>>>,
-    injury_defs: Option<Res<Assets<RonAsset<InjuryDef>>>>,
-    weightings: Option<Res<Assets<RonAsset<InjuryWeighting>>>>,
+    mut edits: InjuryAssetEdits,
+    sources: InjuryRebuildSources,
     resources: Option<(ResMut<InjuryRegistry>, ResMut<InjuryTables>)>,
 ) {
-    let (
-        Some(asset_server),
-        Some(folder_handle),
-        Some(folders),
-        Some(injury_defs),
-        Some(weightings),
-        Some((mut registry, mut tables)),
-    ) = (
-        asset_server,
-        folder_handle,
-        folders,
-        injury_defs,
-        weightings,
-        resources,
-    )
-    else {
-        def_events.clear();
-        weighting_events.clear();
+    let Some((mut registry, mut tables)) = resources else {
+        edits.discard();
         return;
     };
 
-    let def_modified = def_events
-        .read()
-        .any(|event| matches!(event, AssetEvent::Modified { .. }));
-    let weighting_modified = weighting_events
-        .read()
-        .any(|event| matches!(event, AssetEvent::Modified { .. }));
-    if !def_modified && !weighting_modified {
+    if !*edits.any_modified() {
         return;
     }
 
-    let Some((rebuilt_registry, rebuilt_tables)) = build_injury_data(
-        &asset_server,
-        &folders,
-        &injury_defs,
-        &weightings,
-        &folder_handle,
-    ) else {
+    let Some((rebuilt_registry, rebuilt_tables)) = sources.rebuild() else {
         return;
     };
     *registry = rebuilt_registry;

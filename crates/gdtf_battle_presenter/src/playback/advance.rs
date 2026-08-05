@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    act_log::{ActLog, PositionFacts, VitalsFacts},
+    act_log::{ActSeq, PositionFacts, VitalsFacts},
     ganger::{Hp, LifeState, Position, Tu, Wounds},
     inflicted_wound::InflictedWounds,
     injuries::InflictedInjuries,
@@ -10,7 +10,7 @@ use gdtf_battle_sim::{
 
 use super::{
     apply::{DrawnWriters, show_entry},
-    cursor::PlaybackCursor,
+    cursor::LogPlayhead,
     drawn::{DrawnLife, DrawnPosition, DrawnVitals},
     dwell::PlaybackTuning,
     emit::PlayedSignals,
@@ -41,52 +41,44 @@ impl FxPipelineProbe<'_, '_> {
     }
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "each param is a distinct, independently-borrowed read the cursor genuinely \
-              needs — the clock, the log, the cursor, the dwell table, the FX-busy probe, \
-              the gap-resync read, the drawn writers, and the played-signal writers. The \
-              two multi-query groups are ALREADY bundled (`FxPipelineProbe` / \
-              `DrawnWriters`); bundling the rest would only hide the access set"
-)]
 /// Tick holds and show the next act-log entry when free.
 pub fn advance_playback(
     time: Res<Time>,
-    log: Option<Res<ActLog>>,
-    mut cursor: ResMut<PlaybackCursor>,
+    mut playhead: LogPlayhead,
     tuning: Res<PlaybackTuning>,
     fx: FxPipelineProbe,
     resync: Query<ResyncData>,
     mut drawn: DrawnWriters,
     mut played: PlayedSignals,
 ) {
-    let Some(log) = log else {
-        if cursor.shown() != gdtf_battle_sim::act_log::ActSeq::START || cursor.is_holding() {
-            cursor.reset();
+    let Some((oldest, head)) = playhead.span() else {
+        if playhead.cursor.shown() != ActSeq::START || playhead.cursor.is_holding() {
+            playhead.cursor.reset();
         }
         return;
     };
 
-    if cursor.shown() > log.head() {
-        cursor.reset();
+    if playhead.cursor.shown() > head {
+        playhead.cursor.reset();
     }
 
-    if !cursor.tick_hold(time.delta(), fx.is_busy()) {
+    if !playhead.cursor.tick_hold(time.delta(), fx.is_busy()) {
         return;
     }
 
-    if cursor.shown() < log.oldest_seq() {
+    if playhead.cursor.shown() < oldest {
         resync_drawn_world(&resync, &mut drawn);
-        cursor.jump_to(log.head());
+        playhead.cursor.jump_to(head);
         return;
     }
 
-    let Some(entry) = log.at(cursor.shown()) else {
+    let shown = playhead.cursor.shown();
+    let Some(entry) = playhead.log.as_ref().and_then(|log| log.at(shown)) else {
         return;
     };
     let hold = show_entry(entry, &tuning, &mut drawn, &mut played);
-    cursor.advance_past_shown();
-    cursor.hold_for(hold);
+    playhead.cursor.advance_past_shown();
+    playhead.cursor.hold_for(hold);
 }
 
 fn resync_drawn_world(resync: &Query<ResyncData>, drawn: &mut DrawnWriters) {

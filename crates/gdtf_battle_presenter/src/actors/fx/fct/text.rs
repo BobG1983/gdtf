@@ -10,10 +10,10 @@ use bevy::{
     sprite::Anchor,
     text::{FontSize, FontWeight},
 };
-use gdtf_battle_sim::prelude::{Cell, CellLevel, Level};
+use gdtf_battle_sim::prelude::CellLevel;
 
 use super::{
-    super::tuning::{FctRiseRate, FctTtlSeconds},
+    super::tuning::{FctRiseRate, FctTtlSeconds, FxTuning},
     slot_allocator::FctAnchorCell,
 };
 use crate::{Layer, cell_to_world_layered};
@@ -80,6 +80,62 @@ impl FctEmphasis {
     }
 }
 
+/// What a floating combat pop says and how it reads.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FctLabel {
+    text:     CombatText,
+    color:    Color,
+    emphasis: FctEmphasis,
+}
+
+impl FctLabel {
+    /// Build a pop's text, tint, and weight.
+    #[must_use]
+    pub const fn new(text: CombatText, color: Color, emphasis: FctEmphasis) -> Self {
+        Self {
+            text,
+            color,
+            emphasis,
+        }
+    }
+}
+
+/// Where a pop sits: its cell and its place in that cell's stack.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FctSlot {
+    at:    CellLevel,
+    stack: FctStackIndex,
+}
+
+impl FctSlot {
+    /// Build from a cell and the stack slot allocated for it.
+    #[must_use]
+    pub const fn new(at: CellLevel, stack: FctStackIndex) -> Self {
+        Self { at, stack }
+    }
+}
+
+/// How a pop rises and fades.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FctDrift {
+    rise: FctRiseRate,
+    ttl:  FctTtlSeconds,
+}
+
+impl FctDrift {
+    /// Build from a rise rate and a lifetime.
+    #[must_use]
+    pub const fn new(rise: FctRiseRate, ttl: FctTtlSeconds) -> Self {
+        Self { rise, ttl }
+    }
+
+    /// Read the shipped rise rate and lifetime from FX tuning.
+    #[must_use]
+    pub const fn from_tuning(tuning: &FxTuning) -> Self {
+        Self::new(tuning.fct_rise_rate, tuning.fct_ttl_seconds)
+    }
+}
+
 /// Component driving rise and fade of a floating combat text entity.
 #[derive(Component, Debug, Clone)]
 pub struct FloatingCombatText {
@@ -113,49 +169,40 @@ impl FloatingCombatText {
     }
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the FCT pop's content, color, weight, world anchor, stack slot, and now its \
-              hot-reloadable lifetime + rise are all distinct caller-chosen inputs"
-)]
-/// Spawn a floating combat text pop at a cell.
+/// Spawn a floating combat text pop in its allocated stack slot.
 pub fn spawn_floating_text(
     commands: &mut Commands,
-    text: CombatText,
-    color: Color,
-    emphasis: FctEmphasis,
-    cell: Cell,
-    level: Level,
-    stack_index: FctStackIndex,
-    ttl: FctTtlSeconds,
-    rise: FctRiseRate,
+    label: FctLabel,
+    slot: FctSlot,
+    drift: FctDrift,
 ) {
+    let (cell, level) = slot.at.split();
     let mut world = cell_to_world_layered(cell, level, Layer::Highlight);
-    world.y = (*stack_index as f32).mul_add(-STACK_STEP_PX, world.y);
+    world.y = (*slot.stack as f32).mul_add(-STACK_STEP_PX, world.y);
 
-    let base_alpha = color.alpha();
+    let base_alpha = label.color.alpha();
 
-    let text_2d = Text2d::new((*text).clone());
+    let text_2d = Text2d::new((*label.text).clone());
     let text_font = TextFont {
-        font_size: FontSize::Px(emphasis.font_size()),
-        weight: emphasis.weight(),
+        font_size: FontSize::Px(label.emphasis.font_size()),
+        weight: label.emphasis.weight(),
         ..default()
     };
     let transform = Transform::from_translation(world);
     let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
-    let pop = FloatingCombatText::new(rise, ttl, base_alpha);
+    let pop = FloatingCombatText::new(drift.rise, drift.ttl, base_alpha);
 
     commands
         .spawn_scene((
             bsn! { template(move |_| Ok(text_2d.clone())) },
             bsn! { template(move |_| Ok(text_font.clone())) },
-            template_value(TextColor(color)),
+            template_value(TextColor(label.color)),
             template_value(Anchor::BOTTOM_CENTER),
             template_value(transform),
             template_value(layers),
             bsn! { template(move |_| Ok(pop.clone())) },
         ))
-        .insert(FctAnchorCell::new(CellLevel::new(cell, level)));
+        .insert(FctAnchorCell::new(slot.at));
 }
 
 /// Rise and fade floating combat text; despawn when expired.

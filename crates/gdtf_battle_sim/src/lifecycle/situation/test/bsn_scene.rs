@@ -1,41 +1,16 @@
 use super::support::*;
-use crate::armor::{ArmorIntegrity, ArmorType};
+use crate::{
+    armor::{ArmorIntegrity, ArmorType},
+    clearance::silhouette_band,
+    cover::HeightBand,
+    ganger::{DerivedStats, Direction, StanceKind},
+    magazine::Magazine,
+    occupancy::OccupancyGrid,
+    weapon::DamageType,
+};
 
-#[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "asserts every component round-trips through the bsn! scenes — the \
-              ganger's own set, the wielded weapon entity, the worn piece entities, plus occupancy"
-)]
-fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
-    use bevy::ecs::relationship::RelationshipTarget;
-
-    use crate::{
-        clearance::silhouette_band,
-        cover::HeightBand,
-        ganger::{Direction, StanceKind},
-        magazine::Magazine,
-        occupancy::OccupancyGrid,
-        weapon::DamageType,
-    };
-
-    let (situation, alice_at, ..) = minimal_fixture();
-    let alice_attrs = attributes_of(&situation.gangers[0]);
-    let alice_derived = derive_stats(&alice_attrs, &GangerStatTuning::default());
-    let expected_armor = arbitrary_armor(1);
-    let weapon_key = WeaponName::new(TEST_WEAPON_KEY.to_owned());
-    let expected_damage_type = test_registry()
-        .spec(&weapon_key)
-        .cloned()
-        .map(|spec| spec.into_bundle(weapon_key.clone()).0.damage_type);
-    let Some((mut app, setup)) = run_setup(situation) else {
-        return;
-    };
-
-    let alice: Entity = setup.occupants[0].occupant;
-    assert_eq!(setup.occupants[0].at, alice_at, "alice's authored cell");
-
-    let world: &mut World = app.world_mut();
+// The grid must place the spawned entity at its authored cell, with its stance band.
+fn assert_occupancy_placement(world: &World, alice: Entity, alice_at: CellLevel) {
     let grid_present = world.get_resource::<OccupancyGrid>().is_some();
     assert!(grid_present, "setup must insert an OccupancyGrid");
     let Some(grid) = world.get_resource::<OccupancyGrid>() else {
@@ -56,7 +31,16 @@ fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
         HeightBand::High,
         "precondition: a standing ganger's silhouette band is HIGH",
     );
+}
 
+// Every authored and derived component must round-trip onto the ganger entity.
+fn assert_ganger_set(
+    world: &mut World,
+    alice: Entity,
+    alice_at: CellLevel,
+    attrs: &GangerAttributes,
+    derived: &DerivedStats,
+) {
     let mut q = world.query::<(
         &Position,
         &GangerName,
@@ -91,22 +75,19 @@ fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
         "Stance round-trips"
     );
     assert_eq!(*aiming, Aiming::new(true), "Aiming round-trips");
-    assert_eq!(*hp, alice_derived.hp, "Hp == the derived knock-down pool");
+    assert_eq!(*hp, derived.hp, "Hp == the derived knock-down pool");
     assert_eq!(
-        *hp_max, alice_derived.hp_max,
+        *hp_max, derived.hp_max,
         "HpMax == the derived Hp (full at start)"
     );
+    assert_eq!(*wounds, derived.wounds, "Wounds == the derived life pool");
     assert_eq!(
-        *wounds, alice_derived.wounds,
-        "Wounds == the derived life pool"
-    );
-    assert_eq!(
-        *wounds_max, alice_derived.wounds_max,
+        *wounds_max, derived.wounds_max,
         "WoundsMax == the derived Wounds (full at start)",
     );
-    assert_eq!(*cur_tu, alice_derived.tu, "Tu == the derived action budget");
+    assert_eq!(*cur_tu, derived.tu, "Tu == the derived action budget");
     assert_eq!(
-        *tu_max, alice_derived.tu_max,
+        *tu_max, derived.tu_max,
         "TuMax == the derived Tu (full at start)"
     );
     assert_eq!(
@@ -115,18 +96,25 @@ fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
         "LifeState (template_value) round-trips"
     );
     assert_eq!(
-        *shooting, alice_derived.shooting,
+        *shooting, derived.shooting,
         "Shooting == the derived skill term"
     );
-    assert_eq!(*toughness, alice_attrs.toughness, "Toughness round-trips");
-    assert_eq!(*luck, alice_attrs.luck, "Luck round-trips");
+    assert_eq!(*toughness, attrs.toughness, "Toughness round-trips");
+    assert_eq!(*luck, attrs.luck, "Luck round-trips");
 
     let inflicted = world.get::<InflictedWounds>(alice);
     assert!(
         inflicted.is_some_and(|w| w.is_empty()),
         "InflictedWounds rides on the ganger, seeded EMPTY",
     );
+}
 
+// The wielded weapon entity must carry the authored key and composed damage type.
+fn assert_wielded_weapon(
+    world: &mut World,
+    alice: Entity,
+    expected_damage_type: Option<DamageType>,
+) {
     let weapon = world.get::<Wields>(alice).and_then(Wields::weapon);
     assert!(weapon.is_some(), "alice must wield a weapon entity");
     let Some(weapon) = weapon else { return };
@@ -149,6 +137,11 @@ fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
         expected_damage_type,
         "DamageType (template_value-composed) round-trips — NOT the Default sentinel",
     );
+}
+
+// One related piece entity per body part, carrying the authored armor values.
+fn assert_worn_armor(world: &World, alice: Entity, expected_armor: &ArmorSpec) {
+    use bevy::ecs::relationship::RelationshipTarget;
 
     let wears = world.get::<Wears>(alice);
     assert!(wears.is_some(), "alice must carry a Wears collection");
@@ -173,4 +166,29 @@ fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
             "worn piece armor_type at {part:?} round-trips on the piece entity",
         );
     }
+}
+
+#[test]
+fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
+    let (situation, alice_at, ..) = minimal_fixture();
+    let alice_attrs = attributes_of(&situation.gangers[0]);
+    let alice_derived = derive_stats(&alice_attrs, &GangerStatTuning::default());
+    let expected_armor = arbitrary_armor(1);
+    let weapon_key = WeaponName::new(TEST_WEAPON_KEY.to_owned());
+    let expected_damage_type = test_registry()
+        .spec(&weapon_key)
+        .cloned()
+        .map(|spec| spec.into_bundle(weapon_key.clone()).0.damage_type);
+    let Some((mut app, setup)) = run_setup(situation) else {
+        return;
+    };
+
+    let alice: Entity = setup.occupants[0].occupant;
+    assert_eq!(setup.occupants[0].at, alice_at, "alice's authored cell");
+
+    let world: &mut World = app.world_mut();
+    assert_occupancy_placement(world, alice, alice_at);
+    assert_ganger_set(world, alice, alice_at, &alice_attrs, &alice_derived);
+    assert_wielded_weapon(world, alice, expected_damage_type);
+    assert_worn_armor(world, alice, &expected_armor);
 }

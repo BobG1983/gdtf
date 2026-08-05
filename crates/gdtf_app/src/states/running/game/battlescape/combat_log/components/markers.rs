@@ -1,11 +1,13 @@
 use bevy::prelude::*;
 
 crate::support_item! {
-                                    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Root node of the combat log.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct CombatLogRoot;
 }
 
 crate::support_item! {
-                                        #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// One line of text in the combat log.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct CombatLogLine;
 }

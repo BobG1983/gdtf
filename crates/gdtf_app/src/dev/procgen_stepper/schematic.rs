@@ -64,7 +64,8 @@ fn draw_gridlines(painter: &egui::Painter, grid: GridSize, box_rect: egui::Rect,
 }
 
 crate::support_item! {
-                                    fn draw_schematic(ui: &mut egui::Ui, grid: GridSize, footprints: &[PlacedFootprint]) {
+    /// Paint the placed footprints onto a fixed-size top-down schematic.
+    fn draw_schematic(ui: &mut egui::Ui, grid: GridSize, footprints: &[PlacedFootprint]) {
         let (box_rect, _response) =
             ui.allocate_exact_size(egui::vec2(SCHEMATIC_EDGE, SCHEMATIC_EDGE), egui::Sense::hover());
         let scale = schematic_scale(grid, box_rect);

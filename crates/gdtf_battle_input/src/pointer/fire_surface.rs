@@ -1,6 +1,6 @@
 //! Fire request construction from selected shooter and fire mode.
 
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::{
     acts::FireRequested,
     fire::MeleeQuery,
@@ -26,29 +26,42 @@ pub type ShooterFireData<'a> = (
 /// Magazine and handedness on a wielded weapon entity.
 pub type WeaponMagazine<'a> = (&'a Magazine, &'a Handedness);
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "melee probe plus Wields and magazine queries so the ranged weapon resolves cleanly"
-)]
+/// A shooter's firing state and the ranged weapon they wield.
+#[derive(SystemParam)]
+pub struct ShooterArms<'w, 's> {
+    /// Life, time units, aiming, and injuries of the shooter.
+    shooters: Query<'w, 's, ShooterFireData<'static>>,
+    /// Weapons each shooter holds.
+    wields:   Query<'w, 's, &'static Wields>,
+    /// Magazine and handedness of a wielded weapon.
+    weapons:  Query<'w, 's, WeaponMagazine<'static>, With<WieldedBy>>,
+    /// Melee probe used to skip melee weapons when picking the ranged one.
+    melee:    MeleeQuery<'w, 's>,
+}
+
+impl ShooterArms<'_, '_> {
+    /// The shooter's ranged weapon magazine and handedness, if they hold one.
+    fn ranged_weapon(&self, shooter: Entity) -> Option<(&Magazine, &Handedness)> {
+        self.wields
+            .get(shooter)
+            .ok()
+            .and_then(|wields| wields.ranged_weapon(|entity| self.melee.get(entity).is_ok()))
+            .and_then(|weapon| self.weapons.get(weapon).ok())
+    }
+}
+
 #[must_use]
 pub(crate) fn try_fire_request(
     shooter: Entity,
     target: CellLevel,
     fire_mode: &SelectedFireMode,
     tuning: &CombatTuning,
-    shooters: &Query<ShooterFireData>,
-    wields: &Query<&Wields>,
-    weapons: &Query<WeaponMagazine, With<WieldedBy>>,
-    melee: &MeleeQuery,
+    arms: &ShooterArms,
 ) -> Option<FireRequested> {
-    let Ok((life, tu, tu_max, aiming, injuries)) = shooters.get(shooter) else {
+    let Ok((life, tu, tu_max, aiming, injuries)) = arms.shooters.get(shooter) else {
         return None;
     };
-    let (magazine, handedness) = wields
-        .get(shooter)
-        .ok()
-        .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))
-        .and_then(|weapon| weapons.get(weapon).ok())?;
+    let (magazine, handedness) = arms.ranged_weapon(shooter)?;
     let hands_available =
         injuries.map_or_else(HandsAvailable::default, InflictedInjuries::hands_available);
     let actor = FireActor {

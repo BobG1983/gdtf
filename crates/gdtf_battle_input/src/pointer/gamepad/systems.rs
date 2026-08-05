@@ -3,20 +3,18 @@
 use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
 use gdtf_battle_presenter::GamepadCursorMoved;
 use gdtf_battle_sim::{
-    fire::MeleeQuery,
     ganger::LifeState,
     prelude::{Faction, Position},
-    weapon::{WieldedBy, Wields},
 };
 
 use crate::{
-    ActIntent, InspectTarget, PendingActIntent,
-    fire_surface::{ShooterFireData, WeaponMagazine},
+    ActIntent, PendingActIntent,
+    fire_surface::ShooterArms,
     gamepad::cursor::{
         ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, GamepadCursor, move_cursor,
     },
     selection::{
-        LeftClickReads, PathPreviewTarget, SelectedShooter, TurnReads, apply_left_click, apply_pin,
+        LeftClickReads, PointerSelection, TurnReads, apply_left_click, apply_pin,
         decide_left_click, decide_pin, decide_turn,
     },
 };
@@ -61,24 +59,15 @@ pub fn mouse_reclaims_pointer(
     }
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "mirrors left_click_act: needs Wields, magazine, melee probe, and PathPreviewTarget"
-)]
 /// South button: same left-click decision path as mouse.
 pub fn gamepad_click_act(
     gamepads: Query<&Gamepad>,
     reads: LeftClickReads,
     factions: Query<&Faction>,
     lifes: Query<&LifeState>,
-    shooters: Query<ShooterFireData>,
-    wields: Query<&Wields>,
-    weapons: Query<WeaponMagazine, With<WieldedBy>>,
-    melee: MeleeQuery,
-    mut selected: ResMut<SelectedShooter>,
+    arms: ShooterArms,
+    mut selection: PointerSelection,
     mut pending: ResMut<PendingActIntent>,
-    mut inspect: ResMut<InspectTarget>,
-    mut target: ResMut<PathPreviewTarget>,
 ) {
     let Some(gamepad) = gamepads.iter().next() else {
         return;
@@ -86,13 +75,10 @@ pub fn gamepad_click_act(
     if !gamepad.just_pressed(GamepadButton::South) {
         return;
     }
-    let outcome = decide_left_click(
-        &reads, &inspect, &target, &factions, &lifes, &shooters, &wields, &weapons, &melee,
-        &selected,
-    );
-    let pin = decide_pin(&reads, &inspect, &factions);
-    apply_left_click(outcome, &mut selected, &mut pending, &mut target);
-    apply_pin(pin, &mut inspect);
+    let outcome = decide_left_click(&reads, &selection, &factions, &lifes, &arms);
+    let pin = decide_pin(&reads, &selection.inspect, &factions);
+    apply_left_click(outcome, &mut selection, &mut pending);
+    apply_pin(pin, &mut selection);
 }
 
 /// East button: turn-to-face like right-click.

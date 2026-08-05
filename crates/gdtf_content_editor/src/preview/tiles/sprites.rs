@@ -48,18 +48,18 @@ pub(super) const fn base_tile_tint(treatment: StoreyTreatment) -> Option<Color> 
     }
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the ghost needs the same model + registry inputs the base redraw resolved (map, \
-              defs, sprites, session, hover) plus the asset server + Commands to spawn one \
-              sprite; each is a borrowed SystemParam slice threaded from the single redraw system"
-)]
+/// The defs and asset server one preview tile's sprite is resolved from.
+#[derive(Clone, Copy)]
+pub(super) struct TileArtwork<'a> {
+    pub(super) registry: &'a TerrainDefRegistry,
+    pub(super) sprites:  &'a SpriteDefRegistry,
+    pub(super) assets:   &'a AssetServer,
+}
+
 pub(super) fn draw_hover_ghost(
     commands: &mut Commands,
-    asset_server: &AssetServer,
+    art: &TileArtwork<'_>,
     map: &EditorMap,
-    registry: &TerrainDefRegistry,
-    sprites: &SpriteDefRegistry,
     session: &MapEditorSession,
     hovered: &HoveredCell,
     level: Level,
@@ -74,7 +74,7 @@ pub(super) fn draw_hover_ghost(
     let placement = ProposedPlacement::new(slot, tile);
     let verdict = evaluate_placement(
         map,
-        registry,
+        art.registry,
         session.theme(),
         &placement,
         session.grid_size(),
@@ -84,8 +84,8 @@ pub(super) fn draw_hover_ghost(
     } else {
         GHOST_LEGAL
     };
-    match terrain_sprite_def(registry, sprites, &tile) {
-        Some(def) => spawn_tile_sprite(commands, asset_server, cell, def, tint, GHOST_Z),
+    match terrain_sprite_def(art.registry, art.sprites, &tile) {
+        Some(def) => spawn_tile_sprite(commands, art.assets, cell, def, tint, GHOST_Z),
         None => spawn_color_tile(commands, cell, tint, GHOST_Z),
     }
 }

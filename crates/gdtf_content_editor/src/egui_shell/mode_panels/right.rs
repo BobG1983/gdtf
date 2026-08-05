@@ -4,7 +4,8 @@ use super::ctx::ModePanelsCtx;
 use crate::{
     egui_shell::{
         armor_form_ui, attachment_form_ui, gang_form_ui, injury_form_ui, melee_weapon_form_ui,
-        prefab::controls_ui, sprite_form_ui, theme_form_ui, weapon_form_ui,
+        prefab::controls_ui::{self, EditedPrefab, StoreyToggles, TerrainLibrary},
+        sprite_form_ui, theme_form_ui, weapon_form_ui,
     },
     mode::EditorMode,
 };
@@ -28,15 +29,18 @@ pub(in crate::egui_shell) fn right_panel(
             ) {
                 controls_ui::controls_panel(
                     ui,
-                    ctx.session,
-                    edit_level,
-                    view,
-                    isolate,
-                    &mut *ctx.prefab_save_name,
-                    map,
-                    ctx.terrain_registry,
-                    ctx.themes,
+                    EditedPrefab {
+                        map,
+                        session: ctx.session,
+                        edit_level,
+                    },
+                    StoreyToggles { view, isolate },
+                    TerrainLibrary {
+                        terrain: ctx.terrain_registry,
+                        themes:  ctx.themes,
+                    },
                     &mut ctx.prefab.rail_state,
+                    &mut ctx.prefab.save_name,
                 );
             }
         }

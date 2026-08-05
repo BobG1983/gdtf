@@ -10,7 +10,7 @@ mod worn;
 mod test;
 
 pub use registry::{ArmorName, ArmorRegistry};
-pub use relationship::{PieceArmorMut, Wears, WornBy};
+pub use relationship::{PieceArmorMut, Wears, WornArmor, WornBy};
 pub use spec::ArmorSpec;
 pub use stats::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,

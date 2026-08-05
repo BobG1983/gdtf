@@ -1,7 +1,8 @@
 use gdtf_qa_protocol::ids::ShotName;
 
 crate::support_item! {
-                                                struct ScreenshotPayload(Option<ShotName>);
+    /// The shot name a screenshot command asked for, if any.
+    struct ScreenshotPayload(Option<ShotName>);
 }
 
 impl ScreenshotPayload {

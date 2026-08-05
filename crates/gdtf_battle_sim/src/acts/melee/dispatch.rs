@@ -1,52 +1,30 @@
 //! Process melee requests against gangers or structure cells.
 
-use bevy::prelude::{MessageReader, MessageWriter, Query, With};
+use bevy::prelude::MessageReader;
 
 use super::{
-    MeleeFacts, MeleeRngs, MeleeWorld,
+    MeleeArms, MeleeCombatants, MeleeOutcomes, MeleeRngs, MeleeWorld,
     ganger::resolve_ganger_melee,
-    queries::{MeleeGeomQuery, MeleeTargetQuery, MeleeWeaponQuery},
     snapshot::{AttackerSnapshot, MeleeStreams},
     structure::resolve_structure_melee,
 };
 use crate::{
-    acts::request::{MeleeRequested, MeleeResolved, MeleeTarget, ShoveRequested},
-    armor::{PieceArmorMut, Wears, WornBy},
-    fire::{MeleeQuery, WieldsQuery},
+    acts::request::{MeleeRequested, MeleeTarget},
+    armor::WornArmor,
     ganger::Tu,
     melee::MeleeWeaponHit,
-    occupancy_sync::CoverDestroyed,
     weapon::DamageType,
 };
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the melee dispatch needs the request reader, the disjoint geometry / attacker-Tu \
-              / target-surfaces ganger queries, the two armor relationship queries, the wields \
-              + melee-marker + melee-weapon-stat relationship queries, the grouped world reads \
-              (MeleeWorld: grids + tuning + injury content) + draw streams (MeleeRngs) \
-              bundles, and the MeleeResolved + MeleeStruck + InjuryInflicted + CoverDestroyed \
-              + ShoveRequested writers — each a distinct Bevy SystemParam (the dispatch_fire \
-              argument-count carve-out)"
-)]
 /// Resolve each melee request against a ganger or structure.
 pub fn dispatch_melee(
     mut requests: MessageReader<MeleeRequested>,
-    geom: MeleeGeomQuery,
-    mut tu_q: Query<&mut Tu>,
-    mut targets: MeleeTargetQuery,
-    wears: Query<&Wears>,
-    mut pieces: Query<PieceArmorMut, With<WornBy>>,
-    wields: WieldsQuery,
-    melee: MeleeQuery,
-    weapons: MeleeWeaponQuery,
+    mut combatants: MeleeCombatants,
+    mut armor: WornArmor,
+    arms: MeleeArms,
     mut world: MeleeWorld,
     rngs: MeleeRngs,
-    mut resolved: MessageWriter<MeleeResolved>,
-    mut facts: MeleeFacts,
-    mut cover_destroyed: MessageWriter<CoverDestroyed>,
-    mut shoves: MessageWriter<ShoveRequested>,
-    mut deaths: MessageWriter<crate::effects::on_death::OnDeathOccurred>,
+    mut outcomes: MeleeOutcomes,
 ) {
     let (Some(mut fight_rng), Some(mut shot_rng), Some(mut severity_rng), Some(mut injury_rng)) =
         (rngs.fight, rngs.shot, rngs.severity, rngs.injury)
@@ -55,20 +33,21 @@ pub fn dispatch_melee(
     };
     for request in requests.read() {
         let Ok((&atk_pos, &atk_stance, &atk_facing, &atk_fight, &atk_faction, &atk_luck)) =
-            geom.get(request.attacker)
+            combatants.geom.get(request.attacker)
         else {
             continue;
         };
 
-        let Some(weapon_entity) = wields
+        let Some(weapon_entity) = arms
+            .wields
             .get(request.attacker)
             .ok()
-            .and_then(|w| w.melee_weapon(|entity| melee.get(entity).is_ok()))
+            .and_then(|w| w.melee_weapon(|entity| arms.melee.get(entity).is_ok()))
         else {
             continue;
         };
         let Ok((damage, punch, shred, damage_type, fatal_bias, fight_mode, shove)) =
-            weapons.get(weapon_entity)
+            arms.weapons.get(weapon_entity)
         else {
             continue;
         };
@@ -99,11 +78,8 @@ pub fn dispatch_melee(
             MeleeTarget::Ganger(target_entity) => resolve_ganger_melee(
                 &attacker,
                 target_entity,
-                &geom,
-                &mut tu_q,
-                &mut targets,
-                &wears,
-                &mut pieces,
+                &mut combatants,
+                &mut armor,
                 &mut world,
                 MeleeStreams {
                     fight:    &mut fight_rng,
@@ -111,21 +87,12 @@ pub fn dispatch_melee(
                     severity: &mut severity_rng,
                     injury:   &mut injury_rng,
                 },
-                &mut resolved,
-                &mut facts,
-                &mut shoves,
-                &mut deaths,
+                &mut outcomes,
             ),
 
-            MeleeTarget::Structure(at) => resolve_structure_melee(
-                &attacker,
-                at,
-                &mut tu_q,
-                &mut world,
-                &mut resolved,
-                &mut cover_destroyed,
-                &mut deaths,
-            ),
+            MeleeTarget::Structure(at) => {
+                resolve_structure_melee(&attacker, at, &mut combatants, &mut world, &mut outcomes);
+            }
         }
     }
 }

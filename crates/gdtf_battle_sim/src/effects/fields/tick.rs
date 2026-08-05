@@ -1,7 +1,8 @@
 //! Per-turn field drain against occupants.
 
-use bevy::prelude::{
-    Commands, Component, Entity, Message, MessageWriter, Query, Res, ResMut, With,
+use bevy::{
+    ecs::system::SystemParam,
+    prelude::{Commands, Component, Entity, Message, MessageWriter, Query, Res, ResMut, With},
 };
 
 use super::{FieldDamage, FieldDef, FieldRegistry};
@@ -60,23 +61,28 @@ impl FieldAfflicted {
     }
 }
 
+/// Combatants a field can drain, their worn armor, and who is already draining.
+#[derive(SystemParam)]
+pub struct FieldOccupants<'w, 's> {
+    vitals:  Query<'w, 's, (&'static mut Hp, &'static mut LifeState, &'static Wears)>,
+    worn:    Query<'w, 's, &'static ArmorType, With<WornBy>>,
+    ongoing: Query<'w, 's, Entity, With<FieldOngoing>>,
+}
+
+/// Messages a field tick announces.
+#[derive(SystemParam)]
+pub struct FieldDrainSignals<'w> {
+    ticks:     MessageWriter<'w, FieldTicked>,
+    deaths:    MessageWriter<'w, OnDeathOccurred>,
+    afflicted: MessageWriter<'w, FieldAfflicted>,
+}
+
 /// Drain occupants standing in fields and expire placements.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the field clock reads the occupancy grid + the live registry + the occupant / \
-              worn-armor / span-marker queries and writes the tick / death / affliction-start \
-              signals plus the deferred span bookkeeping — each a distinct Bevy SystemParam \
-              (the dispatch_fire carve-out); bundling would only hide the access set"
-)]
 pub fn tick_fields(
     grid: Res<OccupancyGrid>,
     mut fields: ResMut<FieldRegistry>,
-    mut occupants: Query<(&mut Hp, &mut LifeState, &Wears)>,
-    worn: Query<&'static ArmorType, With<WornBy>>,
-    mut writer: MessageWriter<FieldTicked>,
-    mut deaths: MessageWriter<OnDeathOccurred>,
-    mut afflicted: MessageWriter<FieldAfflicted>,
-    ongoing: Query<Entity, With<FieldOngoing>>,
+    mut occupants: FieldOccupants,
+    mut signals: FieldDrainSignals,
     mut commands: Commands,
 ) {
     let placements: Vec<(CellLevel, FieldDef)> = fields
@@ -91,14 +97,17 @@ pub fn tick_fields(
         let Some(occupant) = grid.occupant(&cell) else {
             continue;
         };
-        let Ok((mut hp, mut life, wears)) = occupants.get_mut(occupant) else {
+        let Ok((mut hp, mut life, wears)) = occupants.vitals.get_mut(occupant) else {
             continue;
         };
         if *life == LifeState::Dead {
             continue;
         }
         let consequences = FieldEffect::consequences_of(&def);
-        let armor = OccupantArmor { wears, worn: &worn };
+        let armor = OccupantArmor {
+            wears,
+            worn: &occupants.worn,
+        };
         if consequences
             .iter()
             .any(|consequence| *consequence.exempts_occupant(&armor))
@@ -106,8 +115,8 @@ pub fn tick_fields(
             continue;
         }
         if !drained_this_round.contains(&occupant) {
-            if ongoing.get(occupant).is_err() {
-                afflicted.write(FieldAfflicted::new(occupant, cell));
+            if occupants.ongoing.get(occupant).is_err() {
+                signals.afflicted.write(FieldAfflicted::new(occupant, cell));
                 commands.entity(occupant).insert(FieldOngoing);
             }
             drained_this_round.insert(occupant);
@@ -116,15 +125,15 @@ pub fn tick_fields(
         let mut drain = OccupantDrain {
             hp:     &mut hp,
             life:   &mut life,
-            ticks:  &mut writer,
-            deaths: &mut deaths,
+            ticks:  &mut signals.ticks,
+            deaths: &mut signals.deaths,
         };
         for consequence in &consequences {
             consequence.drain_occupant(cell, occupant, &mut drain);
         }
     }
 
-    for entity in &ongoing {
+    for entity in &occupants.ongoing {
         if !drained_this_round.contains(&entity) {
             commands.entity(entity).remove::<FieldOngoing>();
         }

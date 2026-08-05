@@ -8,4 +8,4 @@ mod snapshot;
 mod structure;
 
 pub use dispatch::dispatch_melee;
-pub(super) use queries::{MeleeFacts, MeleeRngs, MeleeWorld};
+pub(super) use queries::{MeleeArms, MeleeCombatants, MeleeOutcomes, MeleeRngs, MeleeWorld};

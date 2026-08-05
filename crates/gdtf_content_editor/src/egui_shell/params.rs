@@ -25,6 +25,8 @@ use crate::{
     melee_weapon_form::MeleeWeaponDraft,
     preview::{target::PreviewTarget, view::PreviewPan},
     sprite_form::SpriteDraft,
+    terrain_form::TerrainDraft,
+    theme_form::ThemeDraft,
     weapon_form::WeaponDraft,
 };
 
@@ -46,6 +48,26 @@ pub(crate) struct PrefabParams<'w, 's> {
     pub(super) isolate:        Option<ResMut<'w, IsolateView>>,
     pub(super) preview_target: Option<Res<'w, PreviewTarget>>,
     pub(super) rail_state:     Local<'s, RailUiState>,
+    pub(super) save_name:      Local<'s, String>,
+}
+
+/// The in-progress terrain and theme edits the map-authoring modes hold.
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct TerrainThemeDrafts<'w> {
+    pub(super) terrain: Option<ResMut<'w, TerrainDraft>>,
+    pub(super) theme:   Option<ResMut<'w, ThemeDraft>>,
+}
+
+/// The draft and registries behind each content form the shell draws.
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct ContentForms<'w, 's> {
+    pub(super) gang:         GangParams<'w>,
+    pub(super) armor:        ArmorParams<'w>,
+    pub(super) injury:       InjuryParams<'w>,
+    pub(super) sprite:       SpriteParams<'w, 's>,
+    pub(super) attachment:   AttachmentParams<'w>,
+    pub(super) weapon:       WeaponParams<'w>,
+    pub(super) melee_weapon: MeleeWeaponParams<'w>,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]

@@ -1,4 +1,5 @@
 mod redraw;
+mod sources;
 mod sprites;
 
 #[cfg(test)]

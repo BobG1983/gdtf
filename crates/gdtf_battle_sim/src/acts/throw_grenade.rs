@@ -57,6 +57,17 @@ pub struct ThrowActor<'w, 's> {
     pub registry: Option<Res<'w, InjuryRegistry>>,
 }
 
+/// The arc weapon a thrower holds, and the probe that rules a melee weapon out.
+#[derive(bevy::ecs::system::SystemParam)]
+pub struct ThrownArms<'w, 's> {
+    /// Stats and magazine of each wielded weapon.
+    pub weapons: ThrowWeaponQuery<'w, 's>,
+    /// Wielded-weapon link on each combatant.
+    pub wields:  Query<'w, 's, &'static Wields>,
+    /// Melee weapon filter.
+    pub melee:   MeleeQuery<'w, 's>,
+}
+
 /// Grids and RNGs used while resolving a throw.
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct ThrowWorld<'w> {
@@ -103,21 +114,11 @@ impl GrenadeStats {
     }
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the throw needs its request reader + the disjoint thrower-actor / weapon / \
-              target / wears / pieces queries + the grouped world-grid & RNG bundle + the \
-              ThrowResolved signal writer — each a distinct Bevy SystemParam the arc march + \
-              blast fold reads; the actor + world bundles already group the resources to stay \
-              under Bevy's 16-param limit"
-)]
 /// Process throw requests for arc weapons with ammo.
 pub fn dispatch_throw_grenade(
     mut requests: MessageReader<ThrowGrenadeRequested>,
     mut actor: ThrowActor,
-    mut weapons: ThrowWeaponQuery,
-    wields: Query<&Wields>,
-    melee: MeleeQuery,
+    mut arms: ThrownArms,
     mut bodies: StruckBodies,
     mut world: ThrowWorld,
     mut resolved: MessageWriter<ThrowResolved>,
@@ -139,10 +140,11 @@ pub fn dispatch_throw_grenade(
         let thrower_cell = **thrower_pos;
         let thrower_luck = *thrower_luck;
 
-        let Some(weapon_entity) = wields
+        let Some(weapon_entity) = arms
+            .wields
             .get(request.thrower)
             .ok()
-            .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))
+            .and_then(|w| w.ranged_weapon(|entity| arms.melee.get(entity).is_ok()))
         else {
             continue;
         };
@@ -161,7 +163,7 @@ pub fn dispatch_throw_grenade(
             trajectory,
             fire_mode,
             mut magazine,
-        )) = weapons.get_mut(weapon_entity)
+        )) = arms.weapons.get_mut(weapon_entity)
         else {
             continue;
         };

@@ -10,7 +10,7 @@ use gdtf_ui::{
 use crate::states::load::{
     resources::{FailedAssetPath, LoadFailed, LoadHandles},
     systems::resolve::{
-        injuries::resolve_injuries,
+        injuries::{InjuryAssets, InjurySalvage, resolve_injuries},
         params::{LoadAssetCollections, ResolvedResources, SalvageStates},
         prefab::resolve_prefabs,
     },
@@ -54,14 +54,16 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolve_injuries(
             &mut commands,
             &asset_server,
-            &folders,
-            &injury_defs,
-            &weightings,
+            InjuryAssets {
+                folders:    &folders,
+                defs:       &injury_defs,
+                weightings: &weightings,
+            },
             &handles,
-            (
-                salvage.injury_defs.as_deref(),
-                salvage.injury_weightings.as_deref(),
-            ),
+            InjurySalvage {
+                defs:       salvage.injury_defs.as_deref(),
+                weightings: salvage.injury_weightings.as_deref(),
+            },
             salvage.report.as_deref_mut(),
         );
     }

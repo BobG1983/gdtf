@@ -2,21 +2,19 @@
 
 use bevy::{
     ecs::system::SystemParam,
-    prelude::{MessageReader, MessageWriter, Query, Res, ResMut, With},
+    prelude::{MessageReader, Query, Res, ResMut},
 };
 
 use super::{
-    apply::{ShoveFallEnv, ShoveTargetSurfaces, apply_shove},
+    apply::{ShoveFallEnv, ShoveFallSignals, ShoveTargetSurfaces, apply_shove},
     verb::resolve_shove,
 };
 use crate::{
     acts::{
-        InjuryInflicted,
         downed::is_8_adjacent,
         request::{ShoveRequested, ShoveSource},
     },
-    armor::{PieceArmorMut, Wears, WornBy},
-    falls::FallOccurred,
+    armor::WornArmor,
     ganger::{Faction, Hp, LifeState, Luck, Position, Toughness, Tu, Wounds},
     inflicted_wound::InflictedWounds,
     injuries::{InjuryRegistry, InjuryTables},
@@ -60,24 +58,14 @@ pub struct ShoveRngs<'w> {
 }
 
 /// Spend TU, resolve shove destination, and apply falls/injuries.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the shove dispatch threads the request reader, the single ganger query (read + \
-              fold), the shover-Tu query, the two armor relationship queries, the grouped grids \
-              (ShoveGrids) + fall streams (ShoveRngs) bundles, and the FallOccurred + \
-              InjuryInflicted writers — the irreducible access set (the apply_falls / \
-              dispatch_melee argument-count precedent)"
-)]
 pub fn dispatch_shove(
     mut requests: MessageReader<ShoveRequested>,
     mut gangers: ShoveGangerQuery,
     mut tu_q: Query<&mut Tu>,
-    wears: Query<&Wears>,
-    mut pieces: Query<PieceArmorMut, With<WornBy>>,
+    mut armor: WornArmor,
     grids: ShoveGrids,
     rngs: ShoveRngs,
-    mut fell: MessageWriter<FallOccurred>,
-    mut injuries: MessageWriter<InjuryInflicted>,
+    mut signals: ShoveFallSignals,
 ) {
     let (Some(surface), Some(occupancy), Some(tuning)) =
         (grids.surface, grids.occupancy, grids.tuning)
@@ -135,8 +123,7 @@ pub fn dispatch_shove(
                 luck,
             },
             request.target,
-            &wears,
-            &mut pieces,
+            &mut armor,
             ShoveFallEnv {
                 tuning: &tuning,
                 tables,
@@ -144,8 +131,7 @@ pub fn dispatch_shove(
                 severity_rng: &mut severity_rng,
                 injury_rng: &mut injury_rng,
             },
-            &mut fell,
-            &mut injuries,
+            &mut signals,
         );
     }
 }

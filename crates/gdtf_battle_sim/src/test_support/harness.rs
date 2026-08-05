@@ -6,11 +6,9 @@ use bevy::{
 };
 
 use super::{
-    registries::{
-        test_armor_registry, test_melee_weapon_registry, test_terrain_registry,
-        test_weapon_registry,
-    },
+    registries::{test_armor_registry, test_melee_weapon_registry, test_weapon_registry},
     situation::test_gang_registry,
+    terrain::test_terrain_registry,
 };
 use crate::{
     acts::SimActsPlugin,
@@ -42,13 +40,10 @@ pub fn full_vision() -> SquadVisibility {
     for level in 0..MAX_LEVELS {
         for y in 0..GRID_HEIGHT {
             for x in 0..GRID_WIDTH {
-                #[expect(
-                    clippy::cast_possible_wrap,
-                    reason = "x/y are 0..60 and level is 0..MAX_LEVELS (8) by the loop bounds, so \
-                              the usize/u8 -> i32/u8 narrowing cannot truncate or wrap"
-                )]
-                let c = CellLevel::new(Cell::new(x as i32, y as i32), Level::new(level));
-                all.insert(c);
+                let (Ok(x), Ok(y)) = (i32::try_from(x), i32::try_from(y)) else {
+                    continue;
+                };
+                all.insert(CellLevel::new(Cell::new(x, y), Level::new(level)));
             }
         }
     }
@@ -78,20 +73,24 @@ pub fn insert_sim_resources(app: &mut App, seed: BattleSeed) {
     app.insert_resource(floor_costs);
 }
 
+/// An optional piece a test app can carry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SimAppPart {
+    /// Acts plugin plus the core sim resources.
+    Acts,
+    /// Full battle sim plugin.
+    Battle,
+    /// Test weapon, melee weapon, armor, gang, and terrain registries.
+    Registries,
+    /// Vision covering the whole grid.
+    FullVision,
+}
+
 /// Builder for a minimal Bevy app with optional sim plugins and resources.
 #[derive(Debug, Clone)]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "each bool IS an independent on/off knob selecting a plugin/resource half — \
-              they are not mutually-entangled state (the one exclusion, acts vs battle, is \
-              documented); a state machine would obscure the builder-with-overrides shape"
-)]
 pub struct SimAppBuilder {
     seed:           u64,
-    acts:           bool,
-    battle:         bool,
-    registries:     bool,
-    full_vision:    bool,
+    parts:          HashSet<SimAppPart>,
     player_faction: Option<u8>,
     tuning:         Option<CombatTuning>,
 }
@@ -99,13 +98,10 @@ pub struct SimAppBuilder {
 impl SimAppBuilder {
     /// Defaults: no plugins, fixed test seed.
     #[must_use]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             seed:           TEST_SEED,
-            acts:           false,
-            battle:         false,
-            registries:     false,
-            full_vision:    false,
+            parts:          HashSet::default(),
             player_faction: None,
             tuning:         None,
         }
@@ -120,30 +116,26 @@ impl SimAppBuilder {
 
     /// Add the acts plugin and core resources.
     #[must_use]
-    pub const fn with_acts(mut self) -> Self {
-        self.acts = true;
-        self
+    pub fn with_acts(self) -> Self {
+        self.with_part(SimAppPart::Acts)
     }
 
     /// Add the full battle sim plugin.
     #[must_use]
-    pub const fn with_battle(mut self) -> Self {
-        self.battle = true;
-        self
+    pub fn with_battle(self) -> Self {
+        self.with_part(SimAppPart::Battle)
     }
 
     /// Insert test weapon/armor/gang/terrain registries.
     #[must_use]
-    pub const fn with_registries(mut self) -> Self {
-        self.registries = true;
-        self
+    pub fn with_registries(self) -> Self {
+        self.with_part(SimAppPart::Registries)
     }
 
     /// Cover the whole grid with vision.
     #[must_use]
-    pub const fn with_full_vision(mut self) -> Self {
-        self.full_vision = true;
-        self
+    pub fn with_full_vision(self) -> Self {
+        self.with_part(SimAppPart::FullVision)
     }
 
     /// Set the player faction index.
@@ -160,21 +152,27 @@ impl SimAppBuilder {
         self
     }
 
+    #[must_use]
+    fn with_part(mut self, part: SimAppPart) -> Self {
+        self.parts.insert(part);
+        self
+    }
+
     /// Build the app.
     pub fn build(self) -> App {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
-        if self.battle {
+        if self.parts.contains(&SimAppPart::Battle) {
             app.add_plugins((AssetPlugin::default(), ScenePlugin));
             app.add_plugins(BattleSimPlugin);
             app.insert_resource(CombatTuning::default());
             app.insert_resource(GangerStatTuning::default());
         }
-        if self.acts {
+        if self.parts.contains(&SimAppPart::Acts) {
             app.add_plugins(SimActsPlugin);
             insert_sim_resources(&mut app, BattleSeed::new(self.seed));
         }
-        if self.full_vision {
+        if self.parts.contains(&SimAppPart::FullVision) {
             app.insert_resource(full_vision());
         }
         if let Some(gang) = self.player_faction {
@@ -183,7 +181,7 @@ impl SimAppBuilder {
         if let Some(tuning) = self.tuning {
             app.insert_resource(tuning);
         }
-        if self.registries {
+        if self.parts.contains(&SimAppPart::Registries) {
             app.insert_resource(test_weapon_registry());
             app.insert_resource(test_melee_weapon_registry());
             app.insert_resource(test_armor_registry());

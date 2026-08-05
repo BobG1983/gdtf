@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::prelude::Faction;
 
-use super::reads::LeftClickReads;
+use super::{reads::LeftClickReads, state::PointerSelection};
 use crate::InspectTarget;
 
 /// Whether to pin, unpin, or keep the inspect target.
@@ -44,7 +44,8 @@ pub fn decide_pin(
 }
 
 /// Apply a pin outcome to the inspect target.
-pub fn apply_pin(outcome: PinOutcome, target: &mut ResMut<InspectTarget>) {
+pub fn apply_pin(outcome: PinOutcome, selection: &mut PointerSelection) {
+    let target = &mut selection.inspect;
     match outcome {
         PinOutcome::Pin(cell) => {
             if target.pinned() != Some(cell) {

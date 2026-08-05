@@ -1,6 +1,7 @@
 //! Multi-step walk: remaining route, reveal stop, reaction interrupt.
 
 use bevy::{
+    ecs::{query::QueryData, system::ParamSet},
     platform::collections::HashSet,
     prelude::{Commands, Deref, Entity, Message, MessageReader, MessageWriter, Query, Res},
 };
@@ -128,32 +129,48 @@ fn visible_enemy_cells(
         .collect()
 }
 
-#[expect(
-    clippy::type_complexity,
-    reason = "the committed walk genuinely needs a ParamSet of the MUTABLE mover query \
-              (step + charge + route state) and the READ-ONLY ganger snapshot query \
-              (reveal detection) — they overlap on Position (one `&mut`, one `&`), so a \
-              ParamSet time-multiplexes them to avoid an alias conflict (bevy-traps.md #3, \
-              the dispatch_fire precedent); Bevy's IntoSystem inference rejects a \
-              lifetime-generic type alias for the ParamSet, so it stays inline"
-)]
+/// One walking ganger's columns: where it is, and what it has left to walk.
+#[derive(QueryData)]
+#[query_data(mutable)]
+pub struct WalkerRow {
+    /// The walking ganger.
+    pub entity:   Entity,
+    /// Current cell, advanced one step per frame.
+    pub position: &'static mut Position,
+    /// Remaining time units, spent per step.
+    pub tu:       &'static mut Tu,
+    /// Alive check — a dead walker stops.
+    pub life:     &'static LifeState,
+    /// Faction, used to classify revealed gangers.
+    pub faction:  &'static Faction,
+    /// Route and enemy-reveal baseline.
+    pub walk:     &'static mut WalkInProgress,
+}
+
+// Query over every walking ganger.
+pub(super) type WalkerQuery<'world, 'state> = Query<'world, 'state, WalkerRow>;
+
+// Query of every ganger's cell and faction, for the reveal check.
+pub(super) type GangerCellQuery<'world, 'state> =
+    Query<'world, 'state, (Entity, &'static Position, &'static Faction)>;
+
+// The walkers themselves, plus the cell snapshot they check for enemy reveals.
+pub(super) type WalkWorld<'world, 'state> = ParamSet<
+    'world,
+    'state,
+    (
+        WalkerQuery<'static, 'static>,
+        GangerCellQuery<'static, 'static>,
+    ),
+>;
+
 /// Advance one step per frame for each walking ganger; stop on block, reveal, or interrupt.
 pub fn advance_walk(
-    mut world: bevy::ecs::system::ParamSet<(
-        Query<(
-            Entity,
-            &'static mut Position,
-            &'static mut Tu,
-            &'static LifeState,
-            &'static Faction,
-            &'static mut WalkInProgress,
-        )>,
-        Query<(Entity, &'static Position, &'static Faction)>,
-    )>,
+    mut world: WalkWorld,
     grid: Res<OccupancyGrid>,
     squad: Res<SquadVisibility>,
     mut reactions: MessageReader<ReactionShotFired>,
-    mut moves: MessageWriter<MovementOccurred>,
+    mut steps: MessageWriter<MovementOccurred>,
     mut commands: Commands,
 ) {
     let interrupted: HashSet<Entity> = reactions.read().map(|shot| shot.mover).collect();
@@ -164,7 +181,13 @@ pub fn advance_walk(
         .map(|(entity, position, faction)| (entity, **position, *faction))
         .collect();
 
-    for (mover, mut position, mut tu, &life, &faction, mut walk) in &mut world.p0() {
+    for row in &mut world.p0() {
+        let mover = row.entity;
+        let life = *row.life;
+        let faction = *row.faction;
+        let mut position = row.position;
+        let mut tu = row.tu;
+        let mut walk = row.walk;
         if !matches!(life, LifeState::Alive) {
             commands.entity(mover).remove::<WalkInProgress>();
             continue;
@@ -194,7 +217,7 @@ pub fn advance_walk(
         let from = position.cell();
         *position = Position::new(next);
         spend_tu(&mut tu, cost);
-        moves.write(MovementOccurred::new(mover, from, next.cell()));
+        steps.write(MovementOccurred::new(mover, from, next.cell()));
         walk.pop_next();
 
         if *walk.is_complete() {

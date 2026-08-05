@@ -39,7 +39,8 @@ pub(in crate::states::load) struct LoadHandles {
 }
 
 crate::support_item! {
-                                                                #[derive(Resource, Deref, Clone, Debug)]
+    /// The situation the load step resolved for the coming battle.
+    #[derive(Resource, Deref, Clone, Debug)]
     struct LoadedSituation(Situation);
 }
 

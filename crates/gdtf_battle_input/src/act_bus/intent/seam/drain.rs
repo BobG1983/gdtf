@@ -1,7 +1,7 @@
 //! Drain pending intents into sim messages and selection updates.
 
 use bevy::prelude::*;
-use gdtf_battle_presenter::{ActiveLevel, PlaybackGate, ViewMode};
+use gdtf_battle_presenter::PlaybackGate;
 use gdtf_battle_sim::{
     acts::{
         AimRequest, EndTurnRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
@@ -11,24 +11,19 @@ use gdtf_battle_sim::{
     prelude::{Stance, StanceKind},
 };
 
-use super::{ActIntent, ActWriters, PendingActIntent, SelectionCycleReads};
+use super::{ActIntent, ActWriters, PendingActIntent, SelectionCycleReads, bundles::ShownLevel};
 use crate::{
     SelectedShooter, cycle,
-    intent::level::{LevelStep, step_level},
+    intent::level::LevelStep,
     selection::{CycleDirection, cycle_player_selection},
 };
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "each param is a distinct access; ActWriters and SelectionCycleReads already bundle the multi-reads"
-)]
 /// Dispatch each pending intent when the playback gate allows it.
 pub fn dispatch_act_intents(
     gate: PlaybackGate,
     mut pending: ResMut<PendingActIntent>,
     mut selected: ResMut<SelectedShooter>,
-    mut active_level: ResMut<ActiveLevel>,
-    mut view_mode: ResMut<ViewMode>,
+    mut shown: ShownLevel,
     actors: Query<(&Stance, &Facing, &Aiming)>,
     mut acts: ActWriters,
     cycle_reads: SelectionCycleReads,
@@ -44,22 +39,9 @@ pub fn dispatch_act_intents(
                     *selected = SelectedShooter::cleared();
                 }
             }
-            ActIntent::LevelUp => {
-                let next = step_level(**active_level, LevelStep::Up);
-                if next != **active_level {
-                    *active_level = ActiveLevel::new(next);
-                }
-            }
-            ActIntent::LevelDown => {
-                let next = step_level(**active_level, LevelStep::Down);
-                if next != **active_level {
-                    *active_level = ActiveLevel::new(next);
-                }
-            }
-            ActIntent::ToggleFullView => {
-                let flipped = view_mode.toggled();
-                *view_mode = flipped;
-            }
+            ActIntent::LevelUp => shown.step(LevelStep::Up),
+            ActIntent::LevelDown => shown.step(LevelStep::Down),
+            ActIntent::ToggleFullView => shown.toggle_full_view(),
             ActIntent::StanceCycle => {
                 let Some(actor) = **selected else { continue };
                 let Ok((stance, ..)) = actors.get(actor) else {
