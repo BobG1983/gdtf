@@ -45,28 +45,8 @@ fn crate_depends_on_no_bevy_engine_or_tokio() {
     );
     for name in &names {
         assert!(
-            matches!(name.as_str(), "serde" | "ron" | "bevy_derive" | "schemars"),
-            "unexpected runtime dependency `{name}` (allowed: serde, ron, bevy_derive, schemars)"
+            matches!(name.as_str(), "serde" | "ron" | "bevy_derive"),
+            "unexpected runtime dependency `{name}` (allowed: serde, ron, bevy_derive)"
         );
     }
-}
-
-#[test]
-fn schemars_is_a_normal_dependency() {
-    let manifest = manifest();
-    let Some(line) = manifest
-        .lines()
-        .map(str::trim)
-        .find(|line| line.starts_with("schemars"))
-    else {
-        unreachable!("the manifest declares a `schemars` dependency");
-    };
-    assert!(
-        !line.contains("optional = true"),
-        "schemars is permanent (got `{line}`)"
-    );
-    assert!(
-        !manifest.contains("schema ="),
-        "the `schema` feature must be gone"
-    );
 }

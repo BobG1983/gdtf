@@ -14,7 +14,7 @@ fn refusal_for(options: RunOptions) -> (UnavailableCode, String) {
         &mut app,
         FAKE_COMMANDS,
         &FakePhase::NAME,
-        &args("{}"),
+        &args("()"),
         &options,
     );
 
@@ -59,7 +59,7 @@ fn the_default_riders_still_run_the_command() {
         &mut app,
         FAKE_COMMANDS,
         &FakePhase::NAME,
-        &args("{}"),
+        &args("()"),
         &plain(),
     );
 
@@ -75,7 +75,7 @@ fn a_refused_rider_never_queues_the_call() {
         &mut app,
         FAKE_COMMANDS,
         &FakePhase::NAME,
-        &args("{}"),
+        &args("()"),
         &RunOptions::new(Some(AwaitBudget::new(5)), None),
     );
 

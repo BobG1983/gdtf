@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::hello::ProtocolVersion;
-use crate::command::{CommandArgsJson, CommandName, RunOptions};
+use crate::command::{CommandArgsRon, CommandName, RunOptions};
 
 /// Top-level request from a QA client.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -21,8 +21,8 @@ pub enum QaRequest {
 pub struct RunCommand {
     /// Command to run.
     pub command:   CommandName,
-    /// JSON argument blob for the command.
-    pub arguments: CommandArgsJson,
+    /// RON argument text for the command.
+    pub arguments: CommandArgsRon,
     /// Optional run flags (`#[serde(default)]` for older frames).
     #[serde(default)]
     pub options:   RunOptions,
@@ -31,7 +31,7 @@ pub struct RunCommand {
 impl RunCommand {
     /// Build a run request with default options.
     #[must_use]
-    pub fn new(command: CommandName, arguments: CommandArgsJson) -> Self {
+    pub fn new(command: CommandName, arguments: CommandArgsRon) -> Self {
         Self::with_options(command, arguments, RunOptions::default())
     }
 
@@ -39,7 +39,7 @@ impl RunCommand {
     #[must_use]
     pub const fn with_options(
         command: CommandName,
-        arguments: CommandArgsJson,
+        arguments: CommandArgsRon,
         options: RunOptions,
     ) -> Self {
         Self {

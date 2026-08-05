@@ -1,18 +1,18 @@
-//! JSON argument and reply blobs, plus argument fault text.
+//! RON argument and reply blobs, plus argument fault text.
 
 use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
-/// JSON string of command arguments.
+/// RON text of command arguments.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct CommandArgsJson(String);
+pub struct CommandArgsRon(String);
 
-impl CommandArgsJson {
-    /// Wrap a JSON string.
+impl CommandArgsRon {
+    /// Wrap a RON string.
     #[must_use]
-    pub const fn new(json: String) -> Self {
-        Self(json)
+    pub const fn new(ron: String) -> Self {
+        Self(ron)
     }
 
     /// Borrow as `&str`.
@@ -22,16 +22,16 @@ impl CommandArgsJson {
     }
 }
 
-/// JSON string of a successful command reply body.
+/// RON text of a successful command reply body.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct CommandReplyJson(String);
+pub struct CommandReplyRon(String);
 
-impl CommandReplyJson {
-    /// Wrap a JSON string.
+impl CommandReplyRon {
+    /// Wrap a RON string.
     #[must_use]
-    pub const fn new(json: String) -> Self {
-        Self(json)
+    pub const fn new(ron: String) -> Self {
+        Self(ron)
     }
 
     /// Borrow as `&str`.

@@ -2,12 +2,12 @@
 
 use bevy::prelude::*;
 use gdtf_net_qa_transport::Responder;
-use gdtf_qa_protocol::command::{CommandArgsJson, CommandName};
+use gdtf_qa_protocol::command::{CommandArgsRon, CommandName};
 
 /// One admitted call waiting to be claimed by its command system.
 pub struct AdmittedCall {
     name:      CommandName,
-    arguments: CommandArgsJson,
+    arguments: CommandArgsRon,
     responder: Responder,
 }
 
@@ -25,7 +25,7 @@ pub struct CommandInbox(Vec<AdmittedCall>);
 
 impl CommandInbox {
     /// Push a new admitted call.
-    pub fn admit(&mut self, name: CommandName, arguments: CommandArgsJson, responder: Responder) {
+    pub fn admit(&mut self, name: CommandName, arguments: CommandArgsRon, responder: Responder) {
         self.0.push(AdmittedCall {
             name,
             arguments,
@@ -47,7 +47,7 @@ impl CommandInbox {
 
     /// Take all calls matching `name` and leave the rest.
     #[must_use]
-    pub fn take_for(&mut self, name: &CommandName) -> Vec<(CommandArgsJson, Responder)> {
+    pub fn take_for(&mut self, name: &CommandName) -> Vec<(CommandArgsRon, Responder)> {
         let mut taken = Vec::new();
         let mut kept = Vec::with_capacity(self.0.len());
         for call in self.0.drain(..) {

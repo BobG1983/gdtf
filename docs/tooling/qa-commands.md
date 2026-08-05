@@ -60,15 +60,16 @@ Four items: the argument type, the reply type, the unit struct, and the handler.
 ### The argument type
 
 ```rust
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct AppPhaseArgs {}
 ```
 
 `deny_unknown_fields` is not optional. It is what turns "you sent a field I do not have"
-into a `BadArguments` answer carrying this type's own derived schema, instead of a silently
-ignored key — and it is what puts `"additionalProperties": false` in the schema the
-catalogue publishes, so a client can see the strictness before it calls.
+into a `BadArguments` answer that NAMES the offending field and carries this type's own
+published shape, instead of a silently ignored key. The published shape cannot carry the
+attribute — the deserializer is never told about it — so what the strictness buys is the
+refusal itself, on the first call that gets it wrong.
 
 `Debug` is required by the trait: a decoded call waits in a `PendingQueue` whose deadline
 sweep logs the payload of anything that timed out unclaimed.
@@ -76,7 +77,7 @@ sweep logs the payload of anything that timed out unclaimed.
 ### The reply type
 
 ```rust
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct AppPhaseReply {
     /// Where the app is, at every level of its state machine.
     phase: AppPhaseNet,
@@ -85,12 +86,12 @@ pub(crate) struct AppPhaseReply {
 
 The reply is where a command's DOMAIN REFUSALS go — "the target is not adjacent", "there is
 no selected ganger". `CommandOutcome` has no `Refused` variant on purpose: a command that
-runs and says no does so inside its own declared reply type, whose schema the catalogue
+runs and says no does so inside its own declared reply type, whose shape the catalogue
 publishes.
 
-Anything the reply embeds must derive `JsonSchema` too. The game's five state enums do not,
-and deliberately are not made to: `crates/gdtf_app/src/states/` stays free of schema
-derives, and
+Anything the reply embeds must derive `Deserialize` too — that is the impl the published
+shape is read out of. The game's five state enums do not, and deliberately are not made to:
+`crates/gdtf_app/src/states/` stays free of wire derives, and
 [`commands/../wire/phase.rs`](../../crates/gdtf_app/src/dev/net_qa/wire/phase.rs) mints wire
 MIRRORS of them instead, with a wildcard-free `from_state` per level so a new state variant
 fails to compile until its mirror gains an arm.
@@ -156,9 +157,9 @@ fn handle_app_phase(
 }
 ```
 
-An ordinary Bevy system with ordinary system params. It never sees JSON and never sees a raw
-`Responder`: it gets `C::Args` in and answers `&C::Reply` out, so the shape a client was
-promised in the catalogue is the only shape it can produce.
+An ordinary Bevy system with ordinary system params. It never sees the wire text and never
+sees a raw `Responder`: it gets `C::Args` in and answers `&C::Reply` out, so the shape a
+client was promised in the catalogue is the only shape it can produce.
 
 The `is_empty` early-out is not a micro-optimisation. `take_calls` takes `&mut`, which
 dirties the queue's change-detection flag, and on a host with many commands almost every
@@ -179,15 +180,16 @@ frame has nothing to drain.
 
 Two layers, both cheap:
 
-- **The set.** `assert_game_command_set_is_conformant()` runs both per-host assertions —
-  unique names, parseable schemas — over the real slice. It is already registered; a new
-  command is covered by it the moment it joins the list.
+- **The set.** `assert_game_command_set_is_conformant()` runs the per-host assertions —
+  unique names, parseable shapes, one body per type name, and a deferral budget under the
+  socket's own wait — over the real slice. It is already registered; a new command is
+  covered by it the moment it joins the list.
 - **The command.** Add a case to
   [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs).
-  Its `exchange` helper negotiates and sends over a real socket into the real router, so a
-  case there exercises the whole path a live client drives. Assert on the reply's JSON rather
-  than on derived schema TEXT: pinning schema text breaks on any `schemars` release without a
-  behaviour changing.
+  Its `exchange` helper takes a fixture, negotiates, and sends over a real socket into the
+  real router, so a case there exercises the whole path a live client drives. Assert on the
+  reply rather than on published shape TEXT: the shape is traced from the type, so pinning
+  it re-states the type instead of testing behaviour.
 
 ## Calling it
 
@@ -196,15 +198,20 @@ From an MCP client, two tools and no more:
 ```text
 commands(host="game")                                    # what can I call?
 commands(host="game", command="app.phase", detail="Full") # what does it take?
-run(host="game", command="app.phase", arguments={})       # do it
+run(host="game", command="app.phase", arguments="()")     # do it
 ```
+
+Args, replies and published shapes are all **RON**. `arguments` is a string of compact RON
+shaped by that command's own `schemas.arguments`; a command that takes none is `"()"`. The
+MCP envelope itself stays JSON-RPC — the RON is opaque text riding inside it.
 
 `commands` reads the catalogue from the RUNNING host, so its `availability` column is the
 live answer rather than a static claim. Four things can go wrong, and each tells you how to
 fix it in one round trip: `Unknown` lists every name the host does offer, `BadArguments`
 carries the schema your body failed against, `Unavailable` names the precondition that is
 missing, and a rider this build has not implemented (`await_ready`, `capture`) is refused
-`Unavailable` with code `NotBuilt` rather than run without it.
+`Unavailable` with code `NotBuilt` rather than run without it. `BadArguments` names the
+offending field in its `detail`, which is what `deny_unknown_fields` really buys.
 
 ## Why the shape is what it is
 
@@ -212,9 +219,10 @@ missing, and a rider this build has not implemented (`await_ready`, `capture`) i
 variants that never change.**
 
 - A command is a unit struct implementing `QaCommand` (`crates/gdtf_qa_command`): two
-  associated types whose JSON Schemas are **derived** from the Rust types, a name, a
-  summary, a declared timing, a pure availability predicate over that host's facts type,
-  and the registration of an ordinary Bevy system.
+  associated types whose RON shapes are **traced out of their own `Deserialize` impls** —
+  the same impls that decode the wire, so a published shape cannot disagree with the
+  decoder — a name, a summary, a declared timing, a deferral budget, a pure availability
+  predicate over that host's facts type, and the registration of an ordinary Bevy system.
 - A host owns one `&[&dyn ErasedCommand<F>]` — the game's is `GAME_COMMANDS` in
   `crates/gdtf_app/src/dev/net_qa/commands/set.rs`. The catalogue walk, the admission scan
   and the registration walk all read that same slice, so **a command cannot be advertised
@@ -224,8 +232,9 @@ variants that never change.**
   no protocol version and adds no variant.
 - The MCP courier exposes exactly two tools, `commands` and `run`. **Neither names a
   command**, in its schema or its description. A client discovers what it can call by
-  calling `commands` against the running host, and reads schemas the host derived from its
-  own Rust types.
+  calling `commands` against the running host, and reads the RON shapes the host traced
+  from its own Rust types — one notation end to end, since the value it writes back is RON
+  too.
 - **Exactly one system per host drains the request inbox.** `NetInbox::drain()` takes
   everything in the channel, so a second router would swallow the first one's requests
   nondeterministically. The command layer widens the existing router with `Catalogue` and

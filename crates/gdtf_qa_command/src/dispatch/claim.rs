@@ -3,23 +3,23 @@
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::{
-    command::{ArgSchemaJson, ArgumentFault, CommandOutcome},
+    command::{ArgSchemaRon, ArgumentFault, CommandOutcome, shape_text},
     message::QaResponse,
 };
 
 use super::{CommandCall, CommandInbox};
-use crate::command::{QaCommand, schema::schema_text};
+use crate::command::QaCommand;
 
-/// Build a bad-arguments outcome that includes the expected schema.
+/// Build a bad-arguments outcome that includes the expected shape.
 #[must_use]
-pub fn bad_arguments<C: QaCommand>(fault: &serde_json::Error) -> QaResponse {
+pub fn bad_arguments<C: QaCommand>(fault: &ron::error::SpannedError) -> QaResponse {
     QaResponse::Outcome(CommandOutcome::BadArguments {
         detail: ArgumentFault::new(fault.to_string()),
-        schema: ArgSchemaJson::new(schema_text::<C::Args>()),
+        schema: ArgSchemaRon::new(shape_text::<C::Args>()),
     })
 }
 
-/// Claim inbox rows for `C`, deserialize args, or reply with a schema error.
+/// Claim inbox rows for `C`, deserialize args, or reply with a shape error.
 pub fn claim_calls<C: QaCommand>(
     mut inbox: ResMut<CommandInbox>,
     mut queue: ResMut<PendingQueue<CommandCall<C>>>,
@@ -28,7 +28,7 @@ pub fn claim_calls<C: QaCommand>(
         return;
     }
     for (arguments, responder) in inbox.take_for(&C::NAME) {
-        match serde_json::from_str::<C::Args>(arguments.as_str()) {
+        match ron::de::from_str::<C::Args>(arguments.as_str()) {
             Ok(args) => queue.push_new(CommandCall::<C>::new(args), responder),
             Err(fault) => responder.reply(bad_arguments::<C>(&fault)),
         }

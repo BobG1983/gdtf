@@ -32,7 +32,7 @@ fn answer_next_releases_the_oldest_waiter_only() {
         unreachable!("the oldest waiter must have been answered");
     };
     assert_eq!(
-        serde_json::from_str::<FakeSettleReply>(reply.as_str()).ok(),
+        ron::de::from_str::<FakeSettleReply>(reply.as_str()).ok(),
         Some(a_reply(1))
     );
     assert!(

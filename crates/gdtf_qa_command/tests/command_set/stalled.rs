@@ -17,7 +17,7 @@ fn a_call_no_handler_drains_is_answered_by_the_pending_deadline() {
         &mut app,
         FAKE_COMMANDS_STALLED,
         &FakeStall::NAME,
-        &args("{\"label\":\"nobody is listening\"}"),
+        &args("(label:\"nobody is listening\")"),
         &plain(),
     );
 
@@ -44,7 +44,7 @@ fn the_stalled_call_is_admitted_before_it_expires() {
         &mut app,
         FAKE_COMMANDS_STALLED,
         &FakeStall::NAME,
-        &args("{\"label\":\"queued and abandoned\"}"),
+        &args("(label:\"queued and abandoned\")"),
         &plain(),
     );
 

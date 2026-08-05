@@ -3,7 +3,6 @@
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary, CommandTiming};
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::facts::{FakeFacts, FakeLevel, FakeReady};
@@ -13,12 +12,12 @@ use crate::{
 };
 
 /// Empty arguments for `fake.phase`.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FakePhaseArgs {}
 
 /// Reply for `fake.phase`.
-#[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FakePhaseReply {
     /// Host ready flag.
     pub ready: FakeReady,
