@@ -5,5 +5,6 @@ mod courier_riders;
 mod courier_tools;
 mod host_local;
 mod protocol;
+mod run_arguments;
 mod screenshot_cwd;
 mod support;

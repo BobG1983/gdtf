@@ -31,15 +31,16 @@ impl ToolName {
                  one row per command with its name, a one-line summary, when it answers, and \
                  whether it can run RIGHT NOW in the state the host is in. `host` picks which \
                  child — \"game\" (the default) or \"editor\". `detail: \"Full\"` also \
-                 returns each command's derived argument and reply schemas, which is what you \
-                 read to build a `run` call. `command` narrows the reply to one row. Start \
+                 returns each command's argument and reply shapes as RON text, which is what \
+                 you read to build a `run` call. `command` narrows the reply to one row. Start \
                  every session here: the catalogue is the truth about what this build offers, \
                  and it changes with the host rather than with this tool."
             }
             Self::Run => {
                 "Run one command from a host's catalogue. `command` is the name `commands` \
-                 gave; `arguments` is the object that command's own `schemas.arguments` \
-                 describes (omit it for a command that takes none); `host` picks which child \
+                 gave; `arguments` is a compact-RON string shaped by that command's own \
+                 `schemas.arguments` (omit it for a command that takes none); `host` picks \
+                 which child \
                  — \"game\" (the default) or \"editor\". Two optional riders: `await_ready` \
                  keeps re-testing admission for that many seconds instead of deciding once, \
                  and `capture` takes a screenshot after the command has run (true for a \

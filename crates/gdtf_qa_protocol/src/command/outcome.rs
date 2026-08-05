@@ -4,7 +4,7 @@ use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
 use crate::command::{
-    ArgSchemaJson, ArgumentFault, CommandName, CommandReplyJson, RefusalNote, UnavailableCode,
+    ArgSchemaRon, ArgumentFault, CommandName, CommandReplyRon, RefusalNote, UnavailableCode,
 };
 
 /// Outcome of a run request.
@@ -12,8 +12,8 @@ use crate::command::{
 pub enum CommandOutcome {
     /// Command ran successfully.
     Ran {
-        /// Reply body as JSON.
-        reply:       CommandReplyJson,
+        /// Reply body as RON.
+        reply:       CommandReplyRon,
         /// Optional file attachments (e.g. PNG).
         attachments: Vec<ReplyAttachment>,
     },
@@ -28,8 +28,8 @@ pub enum CommandOutcome {
     BadArguments {
         /// What was wrong.
         detail: ArgumentFault,
-        /// Expected argument schema.
-        schema: ArgSchemaJson,
+        /// Expected argument shape.
+        schema: ArgSchemaRon,
     },
     /// Command name is not registered.
     Unknown {

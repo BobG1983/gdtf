@@ -1,11 +1,10 @@
 //! Misc scalar and command payloads on the wire.
 
 use bevy::prelude::Deref;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Index into the shooter's fire-mode list.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct FireModeIndex(u32);
 
@@ -18,7 +17,7 @@ impl FireModeIndex {
 }
 
 /// Situation asset name reference.
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct SituationRef(String);
 
@@ -31,7 +30,7 @@ impl SituationRef {
 }
 
 /// Battle seed on the wire.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct SeedNet(u64);
 
@@ -44,7 +43,7 @@ impl SeedNet {
 }
 
 /// Frame delay before an action.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct FrameDelay(u32);
 
@@ -57,7 +56,7 @@ impl FrameDelay {
 }
 
 /// Client request id.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct RequestId(u64);
 
@@ -70,7 +69,7 @@ impl RequestId {
 }
 
 /// Whether the procgen stepper is auto-running.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct AutoRunNet(bool);
 
@@ -83,7 +82,7 @@ impl AutoRunNet {
 }
 
 /// Procgen stepper command on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum StepperCommandNet {
     /// Advance one step.
     Next,

@@ -15,7 +15,7 @@ fn body(response: &Value) -> Value {
 #[test]
 fn an_unbuilt_rider_is_refused_not_silently_dropped() {
     let response = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":{},"await_ready":5}}}"#,
+        r#"{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":"()","await_ready":5}}}"#,
     );
     assert_eq!(response["result"]["isError"], json!(true));
     let body = body(&response);
@@ -34,11 +34,11 @@ fn an_unbuilt_rider_is_refused_not_silently_dropped() {
 fn the_capture_rider_travels_with_its_file_stem() {
     for (line, expected) in [
         (
-            r#"{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":{},"capture":true}}}"#,
+            r#"{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":"()","capture":true}}}"#,
             "capture=<host-chosen>",
         ),
         (
-            r#"{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":{},"capture":"mid_turn"}}}"#,
+            r#"{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":"()","capture":"mid_turn"}}}"#,
             "capture=mid_turn",
         ),
     ] {
@@ -61,7 +61,7 @@ fn the_capture_rider_travels_with_its_file_stem() {
 #[test]
 fn capture_false_is_a_plain_call_and_runs() {
     let response = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":{},"capture":false}}}"#,
+        r#"{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":"()","capture":false}}}"#,
     );
     assert_eq!(
         response["result"]["isError"],

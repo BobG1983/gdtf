@@ -1,18 +1,19 @@
 use crate::{
     command::{
-        ArgSchemaJson, ArgumentFault, ArtifactPath, AttachmentKind, AwaitBudget, CaptureRider,
-        CommandArgsJson, CommandAvailability, CommandCatalogue, CommandEntry, CommandName,
-        CommandOutcome, CommandReplyJson, CommandSummary, CommandTiming, RefusalNote,
-        ReplyAttachment, ReplySchemaJson, RunOptions, UnavailableCode,
+        ArgSchemaRon, ArgumentFault, ArtifactPath, AttachmentKind, AwaitBudget, CaptureRider,
+        CommandArgsRon, CommandAvailability, CommandCatalogue, CommandEntry, CommandName,
+        CommandOutcome, CommandReplyRon, CommandSummary, CommandTiming, RefusalNote,
+        ReplyAttachment, ReplySchemaRon, RunOptions, UnavailableCode,
     },
     ids::ShotName,
     message::ServerNameNet,
     test_support::assert_ron_round_trip,
 };
 
-const DERIVED_ARG_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"ShotName","description":"A requested capture's **file stem** — the caller-chosen name a\n[`CaptureRider`](crate::command::CaptureRider) writes under.\n\nThe host constrains the actual path under its own capture directory; this is\nonly the stem the client asks for. A name newtype over `String` (no-bare-types),\nserde-transparent. `Clone`-not-`Copy` (holds a `String`).","type":"string"}"#;
+const TRACED_ARG_SHAPE: &str = r#"(root:Named("FireArgs"),defs:[("CellNet",Record([("x",Int),("y",Int)])),("FireArgs",Record([("target",Named("CellNet")),("mode",Int)]))])"#;
 
-const DERIVED_REPLY_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"LevelNet","description":"A 0-based **storey** index — which floor of the coarse grid, valid `0..MAX_LEVELS`\n— the wire mirror of the sim `Level`.\n\nA private-inner newtype (no-bare-types), serde-transparent so it rides the wire as\nits bare `u8`. The contract does not re-encode the `MAX_LEVELS` bound here; the game\nside validates against the live grid extent.","type":"integer","format":"uint8","maximum":255,"minimum":0}"#;
+const TRACED_REPLY_SHAPE: &str =
+    r#"(root:Named("FireReply"),defs:[("FireReply",Record([("seq",Int)]))])"#;
 
 #[test]
 fn names_and_summaries_round_trip() {
@@ -38,16 +39,14 @@ fn a_static_and_an_owned_name_are_interchangeable() {
 }
 
 #[test]
-fn json_payload_newtypes_round_trip() {
-    assert_ron_round_trip(&CommandArgsJson::new(r#"{"mode":1}"#.to_owned()));
-    assert_ron_round_trip(&CommandReplyJson::new(
-        r#"{"Accepted":{"seq":412}}"#.to_owned(),
-    ));
+fn ron_payload_newtypes_round_trip() {
+    assert_ron_round_trip(&CommandArgsRon::new("(mode:1)".to_owned()));
+    assert_ron_round_trip(&CommandReplyRon::new("Accepted((seq:412))".to_owned()));
     assert_ron_round_trip(&ArgumentFault::new(
         "missing field `mode` at line 1 column 41".to_owned(),
     ));
-    assert_ron_round_trip(&ArgSchemaJson::new(DERIVED_ARG_SCHEMA.to_owned()));
-    assert_ron_round_trip(&ReplySchemaJson::new(DERIVED_REPLY_SCHEMA.to_owned()));
+    assert_ron_round_trip(&ArgSchemaRon::new(TRACED_ARG_SHAPE.to_owned()));
+    assert_ron_round_trip(&ReplySchemaRon::new(TRACED_REPLY_SHAPE.to_owned()));
 }
 
 #[test]
@@ -112,12 +111,12 @@ fn attachments_round_trip_every_kind() {
 fn command_outcome_round_trips_every_variant() {
     let cases = vec![
         CommandOutcome::Ran {
-            reply:       CommandReplyJson::new(r#"{"Accepted":{"seq":412}}"#.to_owned()),
+            reply:       CommandReplyRon::new("Accepted((seq:412))".to_owned()),
             attachments: Vec::new(),
         },
         CommandOutcome::Ran {
-            reply:       CommandReplyJson::new(
-                r#"{"saved":"target/qa_screenshots/after_fire.png"}"#.to_owned(),
+            reply:       CommandReplyRon::new(
+                r#"(saved:"target/qa_screenshots/after_fire.png")"#.to_owned(),
             ),
             attachments: vec![ReplyAttachment::new(
                 AttachmentKind::Png,
@@ -130,7 +129,7 @@ fn command_outcome_round_trips_every_variant() {
         },
         CommandOutcome::BadArguments {
             detail: ArgumentFault::new("missing field `mode` at line 1 column 41".to_owned()),
-            schema: ArgSchemaJson::new(DERIVED_ARG_SCHEMA.to_owned()),
+            schema: ArgSchemaRon::new(TRACED_ARG_SHAPE.to_owned()),
         },
         CommandOutcome::Unknown {
             known: vec![
@@ -186,7 +185,7 @@ fn a_populated_catalogue_round_trips() {
 }
 
 #[test]
-fn derived_schema_text_survives_the_round_trip_unchanged() {
+fn traced_shape_text_survives_the_round_trip_unchanged() {
     let catalogue = populated_catalogue();
     let Ok(encoded) = ron::ser::to_string(&catalogue) else {
         unreachable!("a catalogue serializes to compact RON");
@@ -199,13 +198,13 @@ fn derived_schema_text_survives_the_round_trip_unchanged() {
     };
     assert_eq!(
         first.arguments.as_str(),
-        DERIVED_ARG_SCHEMA,
-        "the derived argument schema text is unchanged",
+        TRACED_ARG_SHAPE,
+        "the traced argument shape text is unchanged",
     );
     assert_eq!(
         first.reply.as_str(),
-        DERIVED_REPLY_SCHEMA,
-        "the derived reply schema text is unchanged",
+        TRACED_REPLY_SHAPE,
+        "the traced reply shape text is unchanged",
     );
     assert_eq!(decoded, catalogue);
 }
@@ -218,16 +217,16 @@ fn populated_catalogue() -> CommandCatalogue {
                 CommandName::from_static("app.phase"),
                 CommandSummary::from_static("Read the whole state tuple plus readiness."),
                 CommandTiming::Immediate,
-                ArgSchemaJson::new(DERIVED_ARG_SCHEMA.to_owned()),
-                ReplySchemaJson::new(DERIVED_REPLY_SCHEMA.to_owned()),
+                ArgSchemaRon::new(TRACED_ARG_SHAPE.to_owned()),
+                ReplySchemaRon::new(TRACED_REPLY_SHAPE.to_owned()),
                 CommandAvailability::Available,
             ),
             CommandEntry::new(
                 CommandName::from_static("act.fire"),
                 CommandSummary::from_static("Fire the selected ganger's weapon at a cell."),
                 CommandTiming::Deferred,
-                ArgSchemaJson::new(DERIVED_ARG_SCHEMA.to_owned()),
-                ReplySchemaJson::new(DERIVED_REPLY_SCHEMA.to_owned()),
+                ArgSchemaRon::new(TRACED_ARG_SHAPE.to_owned()),
+                ReplySchemaRon::new(TRACED_REPLY_SHAPE.to_owned()),
                 CommandAvailability::Unavailable {
                     code: UnavailableCode::WrongState,
                     note: RefusalNote::from_static("the battle is still generating"),

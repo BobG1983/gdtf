@@ -1,10 +1,9 @@
 //! Keyboard and focus step keys on the wire.
 
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Physical key on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum KeyNet {
     /// Escape.
     Escape,
@@ -59,7 +58,7 @@ pub enum KeyNet {
 }
 
 /// Named keybind action on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum KeybindActionNet {
     /// Clear selection.
     SelectClear,
@@ -82,7 +81,7 @@ pub enum KeybindActionNet {
 }
 
 /// Either a physical key or a named keybind action.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum KeyPressNet {
     /// Physical key.
     Key(KeyNet),
@@ -91,7 +90,7 @@ pub enum KeyPressNet {
 }
 
 /// Focus navigation step on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FocusStepNet {
     /// Next focus target.
     Next,

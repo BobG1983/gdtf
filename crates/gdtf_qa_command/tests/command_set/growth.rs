@@ -34,7 +34,7 @@ fn the_added_command_resolves_and_runs() {
         &mut app,
         FAKE_COMMANDS_GROWN,
         &FakeEcho::NAME,
-        &args("{\"text\":\"hello\"}"),
+        &args("(text:\"hello\")"),
         &plain(),
     );
 
@@ -63,12 +63,12 @@ fn adding_a_command_moves_no_version() {
         &mut app,
         FAKE_COMMANDS_GROWN,
         &FakeEcho::NAME,
-        &args("{\"text\":\"still 14\"}"),
+        &args("(text:\"still 15\")"),
         &plain(),
     );
     app.update();
     let reply: FakeEchoReply = ran(&channel);
-    assert_eq!(reply.text.as_str(), "still 14");
+    assert_eq!(reply.text.as_str(), "still 15");
 
     assert_eq!(
         *ProtocolVersion::CURRENT,
@@ -77,8 +77,8 @@ fn adding_a_command_moves_no_version() {
     );
     assert_eq!(
         *ProtocolVersion::CURRENT,
-        14,
-        "the command-carrying envelope stands at 14"
+        15,
+        "the command-carrying envelope stands at 15"
     );
 }
 

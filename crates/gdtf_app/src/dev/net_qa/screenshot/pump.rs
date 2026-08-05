@@ -4,7 +4,7 @@ use bevy::{
 };
 use gdtf_net_qa_transport::{PendingQueue, Responder};
 use gdtf_qa_protocol::{
-    command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyJson, ReplyAttachment},
+    command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyRon, ReplyAttachment},
     ids::ShotName,
     message::{QaError, QaResponse},
 };
@@ -17,7 +17,7 @@ use super::{
 };
 use crate::dev::net_qa::present::QaCaptureTarget;
 
-const CAPTURE_REPLY_BODY: &str = "null";
+const CAPTURE_REPLY_BODY: &str = "()";
 
 crate::support_item! {
     /// How many frames the pump waits for a shot to land on disk.
@@ -149,7 +149,7 @@ fn spawn_capture(name: Option<&ShotName>, responder: Responder, sink: CaptureSin
 
 fn landed_reply(path: &CapturePath) -> QaResponse {
     QaResponse::Outcome(CommandOutcome::Ran {
-        reply:       CommandReplyJson::new(CAPTURE_REPLY_BODY.to_owned()),
+        reply:       CommandReplyRon::new(CAPTURE_REPLY_BODY.to_owned()),
         attachments: vec![ReplyAttachment::new(
             AttachmentKind::Png,
             ArtifactPath::new(path.to_string_lossy().into_owned()),

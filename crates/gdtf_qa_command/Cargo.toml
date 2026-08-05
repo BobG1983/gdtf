@@ -6,8 +6,7 @@ edition = "2024"
 [dependencies]
 bevy = { workspace = true }
 serde = { workspace = true }
-serde_json = "1"
-schemars = { workspace = true }
+ron = { workspace = true }
 gdtf_qa_protocol = { path = "../gdtf_qa_protocol" }
 gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport" }
 

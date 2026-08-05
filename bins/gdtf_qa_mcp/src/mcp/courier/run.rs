@@ -1,7 +1,5 @@
 use gdtf_qa_protocol::{
-    command::{
-        AwaitBudget, CaptureRider, CommandArgsJson, CommandName, CommandOutcome, RunOptions,
-    },
+    command::{AwaitBudget, CaptureRider, CommandArgsRon, CommandName, CommandOutcome, RunOptions},
     ids::ShotName,
     message::RunCommand,
 };
@@ -20,20 +18,14 @@ fn parse_command(args: &Value) -> Result<CommandName, String> {
     }
 }
 
-fn parse_arguments(args: &Value) -> Result<CommandArgsJson, String> {
-    let body = match args.get("arguments") {
-        None | Some(Value::Null) => return Ok(CommandArgsJson::new("{}".to_owned())),
-        Some(value @ Value::Object(_)) => value,
-        Some(other) => return Err(format!("`arguments` must be an object, not {other}")),
-    };
-    serde_json::to_string(body).map_or_else(
-        |err| {
-            Err(format!(
-                "`arguments` could not be re-encoded as JSON: {err}"
-            ))
-        },
-        |text| Ok(CommandArgsJson::new(text)),
-    )
+fn parse_arguments(args: &Value) -> Result<CommandArgsRon, String> {
+    match args.get("arguments") {
+        None | Some(Value::Null) => Ok(CommandArgsRon::new("()".to_owned())),
+        Some(Value::String(text)) => Ok(CommandArgsRon::new(text.clone())),
+        Some(other) => Err(format!(
+            "`arguments` must be a string of compact RON, not {other}"
+        )),
+    }
 }
 
 fn parse_await_ready(args: &Value) -> Result<Option<AwaitBudget>, String> {
@@ -65,10 +57,6 @@ pub(in crate::mcp) fn parse_run(args: &Value) -> Result<RunCommand, String> {
     ))
 }
 
-fn reply_value(text: &str) -> Value {
-    serde_json::from_str::<Value>(text).unwrap_or_else(|_| Value::String(text.to_owned()))
-}
-
 pub(in crate::mcp) fn render_outcome(
     outcome: &CommandOutcome,
     child_dir: Option<&WorkingDir>,
@@ -79,7 +67,7 @@ pub(in crate::mcp) fn render_outcome(
                 "type": "text",
                 "text": serde_json::to_string_pretty(&json!({
                     "outcome": "Ran",
-                    "reply": reply_value(reply.as_str()),
+                    "reply": reply.as_str(),
                 }))
                 .unwrap_or_else(|_| "<unserializable>".to_owned()),
             })];
@@ -94,7 +82,7 @@ pub(in crate::mcp) fn render_outcome(
         CommandOutcome::BadArguments { detail, schema } => tool_error(&describe(&json!({
             "outcome": "BadArguments",
             "detail": detail.as_str(),
-            "schema": super::commands::schema_document(schema.as_str()),
+            "schema": schema.as_str(),
         }))),
         CommandOutcome::Unknown { known } => tool_error(&describe(&json!({
             "outcome": "Unknown",

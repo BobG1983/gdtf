@@ -1,18 +1,20 @@
-//! Assert unique command names and parseable schema JSON.
+//! Assert unique command names and parseable RON shape documents.
 
-use gdtf_qa_protocol::command::{ArgSchemaJson, CommandName, ReplySchemaJson};
+use gdtf_qa_protocol::command::{
+    ArgSchemaRon, CommandName, ReplySchemaRon, ShapeBody, ShapeDoc, ShapeName,
+};
 
 use crate::command::ErasedCommand;
 
-/// One command's name and schema texts.
+/// One command's name and shape texts.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandRow {
     /// Command name.
     pub name:      CommandName,
-    /// Argument schema JSON.
-    pub arguments: ArgSchemaJson,
-    /// Reply schema JSON.
-    pub reply:     ReplySchemaJson,
+    /// Argument shape document.
+    pub arguments: ArgSchemaRon,
+    /// Reply shape document.
+    pub reply:     ReplySchemaRon,
 }
 
 /// Result of a unique-name check.
@@ -24,30 +26,39 @@ pub enum NameCheck {
     Duplicate(CommandName),
 }
 
-/// Result of a schema-parse check.
+/// Result of a shape-parse check.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SchemaCheck {
-    /// Every schema parses as JSON.
+    /// Every document parses as a shape.
     AllParse,
-    /// A schema failed to parse.
+    /// A document failed to parse.
     Unparseable {
-        /// Command that published the bad schema.
+        /// Command that published the bad document.
         command: CommandName,
         /// Which side failed.
         which:   SchemaSide,
     },
 }
 
-/// Which schema document failed to parse.
+/// Which shape document failed to parse.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SchemaSide {
-    /// Argument schema.
+    /// Argument shape.
     Arguments,
-    /// Reply schema.
+    /// Reply shape.
     Reply,
 }
 
-/// Collect name and schema rows from a command set.
+/// Result of a shape-name agreement check.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ShapeNameCheck {
+    /// Every type name carries one body across the whole set.
+    Agree,
+    /// A type name carries two different bodies.
+    Disagree(ShapeName),
+}
+
+/// Collect name and shape rows from a command set.
 #[must_use]
 pub fn command_rows<F>(commands: &[&dyn ErasedCommand<F>]) -> Vec<CommandRow> {
     commands
@@ -73,17 +84,17 @@ pub fn check_unique_names(rows: &[CommandRow]) -> NameCheck {
     NameCheck::Unique
 }
 
-/// Check that every schema string is valid JSON.
+/// Check that every shape document parses.
 #[must_use]
 pub fn check_schemas_parse(rows: &[CommandRow]) -> SchemaCheck {
     for row in rows {
-        if serde_json::from_str::<serde_json::Value>(row.arguments.as_str()).is_err() {
+        if ron::de::from_str::<ShapeDoc>(row.arguments.as_str()).is_err() {
             return SchemaCheck::Unparseable {
                 command: row.name.clone(),
                 which:   SchemaSide::Arguments,
             };
         }
-        if serde_json::from_str::<serde_json::Value>(row.reply.as_str()).is_err() {
+        if ron::de::from_str::<ShapeDoc>(row.reply.as_str()).is_err() {
             return SchemaCheck::Unparseable {
                 command: row.name.clone(),
                 which:   SchemaSide::Reply,
@@ -91,6 +102,29 @@ pub fn check_schemas_parse(rows: &[CommandRow]) -> SchemaCheck {
         }
     }
     SchemaCheck::AllParse
+}
+
+/// Check that one type name never carries two bodies across a command set.
+#[must_use]
+pub fn check_shape_names_agree(rows: &[CommandRow]) -> ShapeNameCheck {
+    let mut seen: Vec<(ShapeName, ShapeBody)> = Vec::new();
+    for row in rows {
+        for document in [row.arguments.as_str(), row.reply.as_str()] {
+            let Ok(doc) = ron::de::from_str::<ShapeDoc>(document) else {
+                continue;
+            };
+            for def in doc.defs() {
+                match seen.iter().find(|(name, _)| name == def.name()) {
+                    Some((name, body)) if body != def.body() => {
+                        return ShapeNameCheck::Disagree(name.clone());
+                    }
+                    Some(_) => {}
+                    None => seen.push((def.name().clone(), def.body().clone())),
+                }
+            }
+        }
+    }
+    ShapeNameCheck::Agree
 }
 
 /// Panic unless every command name is unique.
@@ -107,16 +141,30 @@ pub fn assert_unique_names<F>(commands: &[&dyn ErasedCommand<F>]) {
     );
 }
 
-/// Panic unless every published schema is valid JSON.
+/// Panic unless every published document is a shape.
 ///
 /// # Panics
 ///
-/// Panics when a schema document is not JSON.
+/// Panics when a document is not a RON shape.
 pub fn assert_schemas_parse<F>(commands: &[&dyn ErasedCommand<F>]) {
     let rows = command_rows(commands);
     assert_eq!(
         check_schemas_parse(&rows),
         SchemaCheck::AllParse,
-        "this host published a schema document that is not JSON"
+        "this host published a document that is not a RON shape"
+    );
+}
+
+/// Panic unless every type name carries one body across the set.
+///
+/// # Panics
+///
+/// Panics when two types in one host's set share a name but not a body.
+pub fn assert_shape_names_agree<F>(commands: &[&dyn ErasedCommand<F>]) {
+    let rows = command_rows(commands);
+    assert_eq!(
+        check_shape_names_agree(&rows),
+        ShapeNameCheck::Agree,
+        "two types in this host's set publish one name with different bodies"
     );
 }

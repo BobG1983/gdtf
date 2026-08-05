@@ -36,7 +36,7 @@ fn answer_produces_a_ran_outcome_with_no_attachments() {
     };
     assert!(attachments.is_empty(), "answer attaches nothing");
     assert_eq!(
-        serde_json::from_str::<FakePhaseReply>(reply.as_str()).ok(),
+        ron::de::from_str::<FakePhaseReply>(reply.as_str()).ok(),
         Some(a_reply())
     );
 }
@@ -56,7 +56,7 @@ fn answer_with_carries_the_attachments_through() {
         "the caller's attachment list reaches the outcome unchanged"
     );
     assert_eq!(
-        serde_json::from_str::<FakePhaseReply>(reply.as_str()).ok(),
+        ron::de::from_str::<FakePhaseReply>(reply.as_str()).ok(),
         Some(a_reply())
     );
 }

@@ -5,11 +5,14 @@ use gdtf_qa_command::{
     command::QaCommand,
     dispatch::{DEFERRED_BUDGET, DeferredBudget, DeferredReplies},
     test_support::{
-        FAKE_COMMANDS, FakeSettle, FakeSettleReply, FakeSettleSignal, fake_app, fake_facts_loaded,
-        run_fake_command,
+        FAKE_COMMANDS, FAKE_COMMANDS_GROWN, FAKE_COMMANDS_STALLED, FakePhase, FakeSettle,
+        FakeSettleReply, FakeSettleSignal, fake_app, fake_facts_loaded, run_fake_command,
     },
 };
-use gdtf_qa_protocol::message::{QaError, QaResponse};
+use gdtf_qa_protocol::{
+    command::CommandName,
+    message::{QaError, QaResponse},
+};
 
 use crate::support::{answer, args, no_answer_yet, plain, ran};
 
@@ -20,7 +23,7 @@ fn a_parked_reply_settles_on_a_later_frame() {
         &mut app,
         FAKE_COMMANDS,
         &FakeSettle::NAME,
-        &args("{}"),
+        &args("()"),
         &plain(),
     );
 
@@ -63,7 +66,7 @@ fn a_reply_that_never_settles_is_swept_with_a_deadline_answer() {
         &mut app,
         FAKE_COMMANDS,
         &FakeSettle::NAME,
-        &args("{}"),
+        &args("()"),
         &plain(),
     );
 
@@ -79,24 +82,80 @@ fn a_reply_that_never_settles_is_swept_with_a_deadline_answer() {
 }
 
 #[test]
-fn a_registered_command_parks_against_the_default_budget() {
+fn a_command_that_declares_no_budget_parks_against_the_default() {
     let app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
     assert_eq!(
         app.world()
-            .resource::<DeferredReplies<FakeSettle>>()
+            .resource::<DeferredReplies<FakePhase>>()
             .budget(),
         DEFERRED_BUDGET,
-        "registering a command must give its parking the default budget, which is the only \
-         budget the inequality below covers"
+        "a command that declares nothing must be registered with the crate default"
     );
 }
 
 #[test]
-fn the_deferral_budget_expires_before_the_socket_could() {
+fn a_command_that_declares_a_budget_is_registered_with_its_own() {
+    let app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
+    let registered = app
+        .world()
+        .resource::<DeferredReplies<FakeSettle>>()
+        .budget();
+    assert_eq!(
+        registered,
+        FakeSettle::DEFERRED_BUDGET,
+        "registration must apply the command's own declared budget"
+    );
+    assert_ne!(
+        registered, DEFERRED_BUDGET,
+        "this case proves nothing unless the declared budget differs from the default"
+    );
     assert!(
-        *DEFERRED_BUDGET < *DEFAULT_IO_TIMEOUT,
-        "the deferral budget ({:?}) must expire strictly before the socket timeout ({:?})",
-        *DEFERRED_BUDGET,
+        *registered < *DEFAULT_IO_TIMEOUT,
+        "a declared budget ({:?}) must still expire before the socket timeout ({:?})",
+        *registered,
         *DEFAULT_IO_TIMEOUT
     );
+}
+
+#[test]
+fn the_erased_view_reports_each_command_its_own_budget() {
+    let budget_of = |name: &CommandName| {
+        FAKE_COMMANDS_GROWN
+            .iter()
+            .find(|command| command.name() == *name)
+            .map(|command| command.deferred_budget())
+    };
+
+    assert_eq!(
+        budget_of(&FakeSettle::NAME),
+        Some(FakeSettle::DEFERRED_BUDGET),
+        "the erased view must publish the command's own declared budget, not a crate constant"
+    );
+    assert_ne!(
+        budget_of(&FakeSettle::NAME),
+        Some(DEFERRED_BUDGET),
+        "this case proves nothing unless the declared budget differs from the default"
+    );
+    assert_eq!(
+        budget_of(&FakePhase::NAME),
+        Some(DEFERRED_BUDGET),
+        "a command that declares nothing must publish the crate default"
+    );
+}
+
+#[test]
+fn every_published_command_expires_before_the_socket_could() {
+    for set in [FAKE_COMMANDS_GROWN, FAKE_COMMANDS_STALLED] {
+        for command in set {
+            let budget = command.deferred_budget();
+            assert!(
+                *budget < *DEFAULT_IO_TIMEOUT,
+                "`{}`'s deferral budget ({:?}) must expire strictly before the socket timeout \
+                 ({:?})",
+                command.name().as_str(),
+                *budget,
+                *DEFAULT_IO_TIMEOUT
+            );
+        }
+    }
 }

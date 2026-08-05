@@ -21,7 +21,9 @@ pub mod token;
 #[cfg(test)]
 mod test;
 
-pub(crate) use phase::{
-    AfterMathPhaseNet, AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet,
-    RunningPhaseNet,
-};
+crate::support_use!(
+    phase::{
+        AfterMathPhaseNet, AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet,
+        RunningPhaseNet,
+    };
+);

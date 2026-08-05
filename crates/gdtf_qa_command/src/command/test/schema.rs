@@ -1,52 +1,57 @@
+use gdtf_qa_protocol::command::{ShapeBody, ShapeDoc, shape_text};
+
 use crate::{
-    command::{ErasedCommand, schema::schema_text},
+    command::ErasedCommand,
     test_support::{FakeCell, FakeCellArgs, FakeCellReply, fake_facts_loaded},
 };
 
-fn parse(document: &str) -> serde_json::Value {
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(document) else {
-        unreachable!("a derived schema must be valid JSON, got: {document}");
+fn parse(document: &str) -> ShapeDoc {
+    let Ok(value) = ron::de::from_str::<ShapeDoc>(document) else {
+        unreachable!("a traced shape must be valid RON, got: {document}");
     };
     value
 }
 
-#[test]
-fn derived_argument_schema_names_every_field_and_is_closed() {
-    let document = schema_text::<FakeCellArgs>();
-    let value = parse(&document);
+fn record_fields(document: &str) -> Vec<String> {
+    let doc = parse(document);
+    let Some(ShapeBody::Record(fields)) = doc.root_body() else {
+        unreachable!("the root of a named-field struct is a record: {document}");
+    };
+    fields
+        .iter()
+        .map(|field| field.name().as_str().to_owned())
+        .collect()
+}
 
+#[test]
+fn traced_argument_shape_names_every_field() {
+    let document = shape_text::<FakeCellArgs>();
     assert!(
-        value.pointer("/properties/cell").is_some(),
-        "the argument schema must name the `cell` field: {document}"
-    );
-    assert_eq!(
-        value.pointer("/additionalProperties"),
-        Some(&serde_json::Value::Bool(false)),
-        "`deny_unknown_fields` must reach the published schema: {document}"
+        record_fields(&document).iter().any(|field| field == "cell"),
+        "the argument shape must name the `cell` field: {document}"
     );
 }
 
 #[test]
-fn derived_reply_schema_names_every_field() {
-    let document = schema_text::<FakeCellReply>();
-    let value = parse(&document);
-
-    for field in ["cell", "level"] {
+fn traced_reply_shape_names_every_field() {
+    let document = shape_text::<FakeCellReply>();
+    let fields = record_fields(&document);
+    for wanted in ["cell", "level"] {
         assert!(
-            value.pointer(&format!("/properties/{field}")).is_some(),
-            "the reply schema must name the `{field}` field: {document}"
+            fields.iter().any(|field| field == wanted),
+            "the reply shape must name the `{wanted}` field: {document}"
         );
     }
 }
 
 #[test]
-fn the_erased_view_publishes_the_derived_documents_unchanged() {
+fn the_erased_view_publishes_the_traced_documents_unchanged() {
     let command: &dyn ErasedCommand<_> = &FakeCell;
     let _availability = command.availability(&fake_facts_loaded());
 
-    assert_eq!(command.arg_schema().as_str(), schema_text::<FakeCellArgs>());
+    assert_eq!(command.arg_schema().as_str(), shape_text::<FakeCellArgs>());
     assert_eq!(
         command.reply_schema().as_str(),
-        schema_text::<FakeCellReply>()
+        shape_text::<FakeCellReply>()
     );
 }

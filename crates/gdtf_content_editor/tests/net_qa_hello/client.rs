@@ -7,7 +7,7 @@ use std::{
 
 use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
-    command::{CommandArgsJson, CommandName},
+    command::{CommandArgsRon, CommandName},
     framing::{FrameDecoder, encode},
     message::{ProtocolVersion, QaRequest, QaResponse, RunCommand},
 };
@@ -57,7 +57,7 @@ impl Client {
 pub(crate) fn run_a_command_the_editor_has_not_built() -> QaRequest {
     QaRequest::Run(RunCommand::new(
         CommandName::from_static("editor.phase"),
-        CommandArgsJson::new("{}".to_owned()),
+        CommandArgsRon::new("()".to_owned()),
     ))
 }
 

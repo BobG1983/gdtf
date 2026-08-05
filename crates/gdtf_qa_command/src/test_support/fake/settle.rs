@@ -1,26 +1,25 @@
 //! Deferred fake command that answers after a signal is raised.
 
+use core::time::Duration;
+
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary, CommandTiming};
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::facts::FakeFacts;
 use crate::{
     command::QaCommand,
-    dispatch::{CommandCall, DeferredReplies, QaCommandSystems, take_calls},
+    dispatch::{CommandCall, DeferredBudget, DeferredReplies, QaCommandSystems, take_calls},
 };
 
 /// Empty arguments for `fake.settle`.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FakeSettleArgs {}
 
 /// Frames waited before the reply was delivered.
-#[derive(
-    Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, JsonSchema,
-)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct FakeSettleCount(u32);
 
 impl FakeSettleCount {
@@ -32,7 +31,7 @@ impl FakeSettleCount {
 }
 
 /// Reply for `fake.settle`.
-#[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FakeSettleReply {
     /// Frames waited.
     pub waited: FakeSettleCount,
@@ -87,6 +86,7 @@ impl QaCommand for FakeSettle {
     const SUMMARY: CommandSummary =
         CommandSummary::from_static("Answer on a later frame, once the fake signal is raised.");
 
+    const DEFERRED_BUDGET: DeferredBudget = DeferredBudget::new(Duration::from_millis(750));
     const TIMING: CommandTiming = CommandTiming::Deferred;
 
     fn availability(_facts: &FakeFacts) -> CommandAvailability {

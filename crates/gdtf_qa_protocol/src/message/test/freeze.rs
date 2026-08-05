@@ -1,18 +1,18 @@
 //! The freeze: the wire's version number and the exact shape of its three enums
 //! [`ProtocolVersion::CURRENT`](crate::message::ProtocolVersion::CURRENT) or any enum
 use crate::{
-    command::{CommandArgsJson, CommandCatalogue, CommandName, CommandOutcome},
+    command::{CommandArgsRon, CommandCatalogue, CommandName, CommandOutcome},
     message::{
         HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, RunCommand, ServerNameNet,
     },
 };
 
 #[test]
-fn the_wire_stands_at_protocol_version_14() {
+fn the_wire_stands_at_protocol_version_15() {
     assert_eq!(
         *ProtocolVersion::CURRENT,
-        14,
-        "the command-layer wire is protocol version 14",
+        15,
+        "the command-layer wire is protocol version 15",
     );
 }
 
@@ -23,7 +23,7 @@ fn the_request_enum_has_exactly_three_variants() {
         QaRequest::Catalogue,
         QaRequest::Run(RunCommand::new(
             CommandName::from_static("app.phase"),
-            CommandArgsJson::new("{}".to_owned()),
+            CommandArgsRon::new("()".to_owned()),
         )),
     ];
     let mut seen = 0_usize;
