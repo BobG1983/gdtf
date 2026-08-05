@@ -4,8 +4,8 @@ use std::env;
 
 use bevy::{prelude::*, state::state::OnEnter};
 use gdtf_screenshot::{
-    CapturePath, CaptureProgress, PollCap, SettleFrames, parse_shot_path, poll_then_exit,
-    reset_progress, settle_then_capture,
+    CaptureCompletions, CapturePath, CapturePipelinePlugin, CaptureQueue, CaptureSystems, PollCap,
+    SettleFrames, parse_shot_path,
 };
 
 use super::{
@@ -50,6 +50,21 @@ pub struct EditorCapturePlugin {
 }
 
 impl EditorCapturePlugin {
+    /// Build for an explicit output path, with no forced authoring state.
+    #[must_use]
+    pub const fn with_path(path: CapturePath) -> Self {
+        Self {
+            path:              Some(path),
+            forced_mode:       None,
+            forced_kind:       None,
+            forced_attachment: None,
+            forced_weapon:     None,
+            forced_melee:      None,
+            forced_zoom:       None,
+            forced_view:       None,
+        }
+    }
+
     /// Build from process environment variables.
     #[must_use]
     pub fn from_env() -> Self {
@@ -92,11 +107,13 @@ impl Plugin for EditorCapturePlugin {
         let Some(path) = self.path.clone() else {
             return;
         };
+        if !app.is_plugin_added::<CapturePipelinePlugin<()>>() {
+            app.add_plugins(CapturePipelinePlugin::<()>::new());
+        }
         app.insert_resource(path)
             .insert_resource(SettleFrames::DEFAULT_EGUI)
             .insert_resource(PollCap::DEFAULT)
-            .init_resource::<CaptureProgress>()
-            .add_systems(OnEnter(EditorState::Editing), reset_progress);
+            .add_systems(OnEnter(EditorState::Editing), request_editor_capture);
         if let Some(forced) = self.forced_mode {
             app.insert_resource(forced);
         }
@@ -131,11 +148,25 @@ impl Plugin for EditorCapturePlugin {
                 drive_capture_grid_size,
                 drive_capture_selection,
                 drive_capture_paint_and_hover,
-                settle_then_capture,
-                poll_then_exit,
             )
                 .chain()
+                .before(CaptureSystems)
                 .run_if(in_state(EditorState::Editing)),
         );
+        app.add_systems(Update, exit_when_capture_finishes.after(CaptureSystems));
     }
+}
+
+fn request_editor_capture(path: Res<CapturePath>, mut queue: ResMut<CaptureQueue<()>>) {
+    queue.push_to(path.clone(), ());
+}
+
+fn exit_when_capture_finishes(
+    completions: Res<CaptureCompletions<()>>,
+    mut exit: MessageWriter<AppExit>,
+) {
+    if completions.is_empty() {
+        return;
+    }
+    exit.write(AppExit::Success);
 }

@@ -1,16 +1,16 @@
 use bevy::{camera::RenderTarget, prelude::*};
 use bevy_egui::PrimaryEguiContext;
+use gdtf_screenshot::PresentCamera;
 
 use super::harness::{
     HARNESS_SCALE_FACTOR, capture_target, egui_camera_target, headless_windowed_app,
-    record_egui_window_mapping, settle, spawn_editor_like_camera,
+    record_egui_window_mapping, settle, spawn_editor_like_camera, with_present_path,
 };
-use crate::net_qa::present::{EditorCapturePresentPlugin, blit::EditorQaPresentCamera};
 
 #[test]
 fn the_retarget_waits_for_the_egui_input_mapping() {
     let mut ungated = headless_windowed_app();
-    ungated.add_plugins(EditorCapturePresentPlugin);
+    with_present_path(&mut ungated);
     let camera = spawn_editor_like_camera(&mut ungated);
     settle(&mut ungated);
     let target = ungated.world().entity(camera).get::<RenderTarget>();
@@ -21,7 +21,7 @@ fn the_retarget_waits_for_the_egui_input_mapping() {
     );
 
     let mut gated = headless_windowed_app();
-    gated.add_plugins(EditorCapturePresentPlugin);
+    with_present_path(&mut gated);
     let camera = spawn_editor_like_camera(&mut gated);
     record_egui_window_mapping(&mut gated, camera);
     settle(&mut gated);
@@ -41,7 +41,7 @@ fn the_retarget_waits_for_the_egui_input_mapping() {
 #[test]
 fn the_camera_aims_at_the_whole_capture_target_value() {
     let mut app = headless_windowed_app();
-    app.add_plugins(EditorCapturePresentPlugin);
+    with_present_path(&mut app);
     let camera = spawn_editor_like_camera(&mut app);
     record_egui_window_mapping(&mut app, camera);
     settle(&mut app);
@@ -62,7 +62,7 @@ fn the_camera_aims_at_the_whole_capture_target_value() {
 #[test]
 fn the_image_render_target_carries_the_windows_scale_factor() {
     let mut app = headless_windowed_app();
-    app.add_plugins(EditorCapturePresentPlugin);
+    with_present_path(&mut app);
     let camera = spawn_editor_like_camera(&mut app);
     record_egui_window_mapping(&mut app, camera);
     settle(&mut app);
@@ -82,21 +82,21 @@ fn the_image_render_target_carries_the_windows_scale_factor() {
 #[test]
 fn the_capture_target_resource_holds_the_windows_scale_factor() {
     let mut app = headless_windowed_app();
-    app.add_plugins(EditorCapturePresentPlugin);
+    with_present_path(&mut app);
     settle(&mut app);
 
     let created = capture_target(&app);
     assert!(
         created.as_ref().map(|target| target.scale_factor) == Some(HARNESS_SCALE_FACTOR),
-        "EditorQaCaptureTarget must carry the window's scale factor ({HARNESS_SCALE_FACTOR}) \
-         alongside its handle; it holds {created:?}",
+        "QaCaptureTarget must carry the window's scale factor ({HARNESS_SCALE_FACTOR}) alongside \
+         its handle; it holds {created:?}",
     );
 }
 
 #[test]
 fn the_primary_egui_context_stays_on_the_retargeted_camera() {
     let mut app = headless_windowed_app();
-    app.add_plugins(EditorCapturePresentPlugin);
+    with_present_path(&mut app);
     let camera = spawn_editor_like_camera(&mut app);
     record_egui_window_mapping(&mut app, camera);
     settle(&mut app);
@@ -113,7 +113,7 @@ fn the_primary_egui_context_stays_on_the_retargeted_camera() {
 
     let mut present = app
         .world_mut()
-        .query_filtered::<Entity, With<EditorQaPresentCamera>>();
+        .query_filtered::<Entity, With<PresentCamera>>();
     let present_cameras: Vec<Entity> = present.iter(app.world()).collect();
     assert!(
         present_cameras.len() == 1 && !present_cameras.contains(&camera),

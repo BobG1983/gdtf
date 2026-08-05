@@ -1,10 +1,9 @@
 use bevy::{camera::RenderTarget, prelude::*};
 use bevy_egui::{PrimaryEguiContext, input::WindowToEguiContextMap};
-
-use super::target::{EditorQaCaptureTarget, aims_at};
+use gdtf_screenshot::{QaCaptureTarget, aims_at};
 
 pub(in crate::net_qa) fn retarget_editor_camera_to_offscreen(
-    target: Option<Res<EditorQaCaptureTarget>>,
+    target: Option<Res<QaCaptureTarget>>,
     map: Option<Res<WindowToEguiContextMap>>,
     cameras: Query<(Entity, &RenderTarget), With<PrimaryEguiContext>>,
     mut commands: Commands,

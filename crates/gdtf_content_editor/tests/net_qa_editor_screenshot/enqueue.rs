@@ -1,17 +1,16 @@
-use std::sync::mpsc::Receiver;
-
 use bevy::prelude::*;
-use gdtf_content_editor::EditorScreenshotPayload;
-use gdtf_net_qa_transport::{PendingQueue, Responder};
-use gdtf_qa_protocol::{ids::ShotName, message::QaResponse};
+use gdtf_screenshot::{CaptureCompletions, CaptureOutcome, CaptureQueue, ShotStem};
 
-pub(crate) fn enqueue_capture(app: &mut App, name: &str) -> Receiver<QaResponse> {
-    let (responder, reply_rx) = Responder::channel();
+pub(crate) fn enqueue_capture(app: &mut App, name: &str) {
     app.world_mut()
-        .resource_mut::<PendingQueue<EditorScreenshotPayload>>()
-        .push_new(
-            EditorScreenshotPayload::new(Some(ShotName::new(name.to_owned()))),
-            responder,
-        );
-    reply_rx
+        .resource_mut::<CaptureQueue<()>>()
+        .push(Some(ShotStem::new(name)), ());
+}
+
+pub(crate) fn finished_captures(app: &App) -> Vec<CaptureOutcome> {
+    app.world()
+        .resource::<CaptureCompletions<()>>()
+        .iter()
+        .map(|completion| completion.outcome().clone())
+        .collect()
 }

@@ -4,6 +4,8 @@
 mod app_phase_depth;
 mod battle_fixture;
 mod battle_socket;
+mod capture_fixture;
+mod capture_screenshot;
 mod catalogue_shapes;
 mod command_exchange;
 mod command_set;
