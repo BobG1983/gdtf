@@ -11,7 +11,7 @@ use gdtf_qa_mcp::{
     QaLink, QaPort, StopOutcome, TailLines, WorkingDir, base64::encode_standard, dispatch,
 };
 use gdtf_qa_protocol::{
-    command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyJson, ReplyAttachment},
+    command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyRon, ReplyAttachment},
     message::{QaError, QaRequest, QaResponse},
 };
 use serde_json::{Value, json};
@@ -24,7 +24,7 @@ const ATTACHED_BYTES: &[u8] = b"attach-attached-png-bytes";
 
 const SECOND_BYTES: &[u8] = b"attach-second-png-bytes";
 
-const ATTACHING_REPLY: &str = r#"{"phase":{"app":"Running"}}"#;
+const ATTACHING_REPLY: &str = "(phase:(app:Running))";
 
 struct AttachingLink(Vec<ReplyAttachment>);
 
@@ -32,7 +32,7 @@ impl QaLink for AttachingLink {
     fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
         match request {
             QaRequest::Run(_) => Ok(QaResponse::Outcome(CommandOutcome::Ran {
-                reply:       CommandReplyJson::new(ATTACHING_REPLY.to_owned()),
+                reply:       CommandReplyRon::new(ATTACHING_REPLY.to_owned()),
                 attachments: self.0.clone(),
             })),
             _ => Ok(QaResponse::Error(QaError::Malformed)),
@@ -113,7 +113,7 @@ fn run_attaching(attachments: Vec<ReplyAttachment>, child_dir: Option<PathBuf>) 
         HostPair::new(&mut game_link, &mut game_life),
         HostPair::new(&mut editor_link, &mut editor_life),
     );
-    let line = r#"{"jsonrpc":"2.0","id":50,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.capture","arguments":{}}}}"#;
+    let line = r#"{"jsonrpc":"2.0","id":50,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.capture","arguments":"()"}}}"#;
     let Some(response) = dispatch(line, &mut hosts) else {
         unreachable!("a request with an id yields a response line");
     };

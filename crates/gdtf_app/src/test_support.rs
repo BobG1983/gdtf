@@ -35,8 +35,9 @@ pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Comm
 
 #[cfg(debug_assertions)]
 pub use crate::dev::net_qa::{
-    NET_QA_PROTOCOL_VERSION, NET_QA_SERVER_NAME, NetQaPlugin, QaShotDir, ScreenshotPayload,
-    ShotPollBudget, assert_game_command_set_is_conformant, game_command_names, net_qa_hello_facts,
+    BattleActivity, GameFacts, GameFactsParam, NET_QA_PROTOCOL_VERSION, NET_QA_SERVER_NAME,
+    NetQaPlugin, QaShotDir, ScreenshotPayload, ShotPollBudget,
+    assert_game_command_set_is_conformant, game_command_names, net_qa_hello_facts,
 };
 #[cfg(feature = "dev_tools")]
 pub use crate::dev::procgen_stepper::{

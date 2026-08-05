@@ -1,9 +1,9 @@
 use crate::{
     command::{
-        ArgSchemaJson, ArgumentFault, ArtifactPath, AttachmentKind, AwaitBudget, CommandArgsJson,
+        ArgSchemaRon, ArgumentFault, ArtifactPath, AttachmentKind, AwaitBudget, CommandArgsRon,
         CommandAvailability, CommandCatalogue, CommandEntry, CommandName, CommandOutcome,
-        CommandReplyJson, CommandSummary, CommandTiming, RefusalNote, ReplyAttachment,
-        ReplySchemaJson, RunOptions, UnavailableCode,
+        CommandReplyRon, CommandSummary, CommandTiming, RefusalNote, ReplyAttachment,
+        ReplySchemaRon, RunOptions, UnavailableCode,
     },
     message::{
         HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, RunCommand, ServerNameNet,
@@ -19,18 +19,27 @@ fn catalogue() -> CommandCatalogue {
                 CommandName::from_static("app.phase"),
                 CommandSummary::from_static("Read the whole state tuple plus readiness."),
                 CommandTiming::Immediate,
-                ArgSchemaJson::new(
-                    r#"{"type":"object","properties":{},"additionalProperties":false}"#.to_owned(),
+                ArgSchemaRon::new(
+                    r#"(root:Named("AppPhaseArgs"),defs:[("AppPhaseArgs",Record([]))])"#.to_owned(),
                 ),
-                ReplySchemaJson::new(r#"{"type":"object","required":["app"]}"#.to_owned()),
+                ReplySchemaRon::new(
+                    r#"(root:Named("AppPhaseReply"),defs:[("AppPhaseReply",Record([("app",Text)]))])"#
+                        .to_owned(),
+                ),
                 CommandAvailability::Available,
             ),
             CommandEntry::new(
                 CommandName::from_static("act.fire"),
                 CommandSummary::from_static("Fire the selected ganger's weapon at a cell."),
                 CommandTiming::Deferred,
-                ArgSchemaJson::new(r#"{"type":"object","required":["target"]}"#.to_owned()),
-                ReplySchemaJson::new(r#"{"oneOf":[{"required":["Accepted"]}]}"#.to_owned()),
+                ArgSchemaRon::new(
+                    r#"(root:Named("FireArgs"),defs:[("FireArgs",Record([("target",Int)]))])"#
+                        .to_owned(),
+                ),
+                ReplySchemaRon::new(
+                    r#"(root:Named("FireReply"),defs:[("FireReply",Choice([("Accepted",Unit)]))])"#
+                        .to_owned(),
+                ),
                 CommandAvailability::Unavailable {
                     code: UnavailableCode::WrongState,
                     note: RefusalNote::from_static("the battle is still generating"),
@@ -46,11 +55,11 @@ fn the_requests_round_trip() {
     assert_ron_round_trip(&QaRequest::Catalogue);
     assert_ron_round_trip(&QaRequest::Run(RunCommand::new(
         CommandName::from_static("act.fire"),
-        CommandArgsJson::new(r#"{"target":{"cell":[7,3],"level":0},"mode":1}"#.to_owned()),
+        CommandArgsRon::new("(target:(cell:(x:7,y:3),level:0),mode:1)".to_owned()),
     )));
     assert_ron_round_trip(&QaRequest::Run(RunCommand::new(
         CommandName::from_owned("app.phase".to_owned()),
-        CommandArgsJson::new("{}".to_owned()),
+        CommandArgsRon::new("()".to_owned()),
     )));
 }
 
@@ -58,7 +67,7 @@ fn the_requests_round_trip() {
 fn a_run_carries_its_riders_over_the_wire() {
     let plain = RunCommand::new(
         CommandName::from_static("app.phase"),
-        CommandArgsJson::new("{}".to_owned()),
+        CommandArgsRon::new("()".to_owned()),
     );
     assert!(
         plain.options.is_plain(),
@@ -68,7 +77,7 @@ fn a_run_carries_its_riders_over_the_wire() {
 
     let with_budget = RunCommand::with_options(
         CommandName::from_static("app.phase"),
-        CommandArgsJson::new("{}".to_owned()),
+        CommandArgsRon::new("()".to_owned()),
         RunOptions::new(Some(AwaitBudget::new(5)), None),
     );
     assert_eq!(
@@ -82,7 +91,7 @@ fn a_run_carries_its_riders_over_the_wire() {
 /// The compatibility claim the `#[serde(default)]` on that field makes: this is the exact
 #[test]
 fn a_run_encoded_without_options_decodes_as_a_plain_call() {
-    let legacy = r#"Run((command:"app.phase",arguments:"{}"))"#;
+    let legacy = r#"Run((command:"app.phase",arguments:"()"))"#;
     let Ok(decoded) = ron::de::from_str::<QaRequest>(legacy) else {
         unreachable!("a Run without `options` must still decode: {legacy}");
     };
@@ -104,7 +113,7 @@ fn the_responses_round_trip() {
     assert_ron_round_trip(&QaResponse::Catalogue(catalogue()));
     for outcome in [
         CommandOutcome::Ran {
-            reply:       CommandReplyJson::new(r#"{"Accepted":{"seq":412}}"#.to_owned()),
+            reply:       CommandReplyRon::new("Accepted((seq:412))".to_owned()),
             attachments: vec![ReplyAttachment::new(
                 AttachmentKind::Png,
                 ArtifactPath::new("target/qa_screenshots/after_fire.png".to_owned()),
@@ -116,7 +125,9 @@ fn the_responses_round_trip() {
         },
         CommandOutcome::BadArguments {
             detail: ArgumentFault::new("missing field `mode` at line 1 column 41".to_owned()),
-            schema: ArgSchemaJson::new(r#"{"type":"object","required":["mode"]}"#.to_owned()),
+            schema: ArgSchemaRon::new(
+                r#"(root:Named("FireArgs"),defs:[("FireArgs",Record([("mode",Int)]))])"#.to_owned(),
+            ),
         },
         CommandOutcome::Unknown {
             known: vec![CommandName::from_static("app.phase")],

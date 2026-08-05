@@ -15,7 +15,7 @@ fn an_unknown_field_is_answered_bad_arguments_with_the_command_s_schema() {
         &mut app,
         FAKE_COMMANDS,
         &FakePhase::NAME,
-        &args("{\"nope\":1}"),
+        &args("(nope:1)"),
         &plain(),
     );
 
@@ -31,8 +31,8 @@ fn an_unknown_field_is_answered_bad_arguments_with_the_command_s_schema() {
         detail.as_str()
     );
     assert!(
-        schema.as_str().contains("\"additionalProperties\":false"),
-        "the attached schema is FakePhaseArgs' own closed record: {}",
+        schema.as_str().contains("FakePhaseArgs"),
+        "the attached document is FakePhaseArgs' own shape: {}",
         schema.as_str()
     );
 }
@@ -44,7 +44,7 @@ fn a_wrongly_typed_field_is_answered_with_that_command_s_schema() {
         &mut app,
         FAKE_COMMANDS,
         &FakeCell::NAME,
-        &args("{\"cell\":\"over there\"}"),
+        &args("(cell:\"over there\")"),
         &plain(),
     );
 
@@ -56,7 +56,12 @@ fn a_wrongly_typed_field_is_answered_with_that_command_s_schema() {
     };
     assert!(
         schema.as_str().contains("\"cell\""),
-        "the attached schema is FakeCellArgs', not FakePhaseArgs': {}",
+        "the attached shape names the `cell` field: {}",
+        schema.as_str()
+    );
+    assert!(
+        schema.as_str().contains("FakeCellArgs"),
+        "the attached document is FakeCellArgs', not FakePhaseArgs': {}",
         schema.as_str()
     );
 }
@@ -68,7 +73,7 @@ fn a_bad_payload_never_reaches_the_handler() {
         &mut app,
         FAKE_COMMANDS,
         &FakePhase::NAME,
-        &args("{\"nope\":1}"),
+        &args("(nope:1)"),
         &plain(),
     );
 

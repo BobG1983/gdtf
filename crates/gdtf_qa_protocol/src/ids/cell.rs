@@ -4,9 +4,7 @@ use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
 /// X coordinate of a cell.
-#[derive(
-    schemars::JsonSchema, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
-)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct CellXNet(i32);
 
@@ -19,9 +17,7 @@ impl CellXNet {
 }
 
 /// Y coordinate of a cell.
-#[derive(
-    schemars::JsonSchema, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
-)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct CellYNet(i32);
 
@@ -34,9 +30,7 @@ impl CellYNet {
 }
 
 /// Vertical storey / level index.
-#[derive(
-    schemars::JsonSchema, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
-)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct LevelNet(u8);
 
@@ -49,7 +43,7 @@ impl LevelNet {
 }
 
 /// 2D cell on the wire.
-#[derive(schemars::JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CellNet {
     /// X coordinate.
     pub x: CellXNet,
@@ -66,7 +60,7 @@ impl CellNet {
 }
 
 /// Cell plus vertical level.
-#[derive(schemars::JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CellLevelNet {
     /// Floor cell.
     pub cell:  CellNet,

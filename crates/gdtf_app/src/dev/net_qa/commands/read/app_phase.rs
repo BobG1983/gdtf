@@ -5,7 +5,6 @@ use gdtf_qa_command::{
     dispatch::{CommandCall, QaCommandSystems, take_calls},
 };
 use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary, CommandTiming};
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::dev::net_qa::{
@@ -13,11 +12,11 @@ use crate::dev::net_qa::{
     wire::AppPhaseNet,
 };
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct AppPhaseArgs {}
 
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct AppPhaseReply {
     phase: AppPhaseNet,
 }

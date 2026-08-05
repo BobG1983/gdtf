@@ -5,6 +5,7 @@ mod conformance;
 mod deferred;
 mod growth;
 mod one_predicate;
+mod raw_reply;
 mod riders;
 mod round_trip;
 mod stalled;

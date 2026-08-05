@@ -10,7 +10,7 @@ fn an_unknown_name_is_answered_with_every_known_name() {
         &mut app,
         FAKE_COMMANDS,
         &CommandName::from_static("fake.phasee"),
-        &args("{}"),
+        &args("()"),
         &plain(),
     );
 
@@ -30,7 +30,7 @@ fn the_known_list_is_read_from_the_host_s_own_slice() {
         &mut app,
         gdtf_qa_command::test_support::FAKE_COMMANDS_GROWN,
         &CommandName::from_static("fake.nothing"),
-        &args("{}"),
+        &args("()"),
         &plain(),
     );
 

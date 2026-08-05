@@ -1,11 +1,10 @@
 //! Opaque entity tokens on the wire.
 
 use bevy::prelude::Deref;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Opaque ganger identity.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct GangerToken(u64);
 
@@ -18,7 +17,7 @@ impl GangerToken {
 }
 
 /// Opaque door identity.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DoorToken(u64);
 
@@ -31,7 +30,7 @@ impl DoorToken {
 }
 
 /// Opaque emplacement identity.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct EmplacementToken(u64);
 
@@ -44,7 +43,7 @@ impl EmplacementToken {
 }
 
 /// Opaque UI focus target identity.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct FocusTargetNet(u64);
 

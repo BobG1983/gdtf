@@ -16,7 +16,7 @@ pub fn register_command<C: QaCommand>(app: &mut App) {
     );
     app.init_resource::<CommandInbox>();
     app.init_resource::<PendingQueue<CommandCall<C>>>();
-    app.init_resource::<DeferredReplies<C>>();
+    app.insert_resource(DeferredReplies::<C>::with_budget(C::DEFERRED_BUDGET));
     app.add_systems(Update, claim_calls::<C>.in_set(QaCommandSystems::Claim));
     app.add_systems(Last, (sweep_pending::<CommandCall<C>>, sweep_deferred::<C>));
     C::register_handler(app);

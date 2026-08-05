@@ -4,11 +4,10 @@ use bevy::{app::App, state::state::State};
 use gdtf_app::test_support::{AppState, BattleScapeState, GameState, RunningState};
 use gdtf_net_qa_transport::{IncomingRequest, Responder};
 use gdtf_qa_protocol::{
-    command::{CommandArgsJson, CommandName, CommandOutcome, RunOptions},
+    command::{CommandArgsRon, CommandName, CommandOutcome, RunOptions},
     message::{QaRequest, QaResponse, RunCommand},
 };
 use gdtf_test_utils::advance_until;
-use serde_json::Value;
 
 use super::{
     battle_fixture::{DRIVE_BUDGET, menu_app_with_net_qa, request_battle},
@@ -22,12 +21,12 @@ fn send(tx: &mpsc::Sender<IncomingRequest>, request: QaRequest) -> mpsc::Receive
     reply_rx
 }
 
-fn read_phase(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) -> Value {
+fn read_phase(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) -> String {
     let reply = send(
         tx,
         QaRequest::Run(RunCommand::with_options(
             CommandName::from_static(APP_PHASE),
-            CommandArgsJson::new("{}".to_owned()),
+            CommandArgsRon::new("()".to_owned()),
             RunOptions::default(),
         )),
     );
@@ -36,13 +35,7 @@ fn read_phase(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) -> Value {
     let Ok(QaResponse::Outcome(CommandOutcome::Ran { reply, .. })) = reply.try_recv() else {
         unreachable!("a plain app.phase call must RUN");
     };
-    let Ok(body) = serde_json::from_str::<Value>(reply.as_str()) else {
-        unreachable!(
-            "the reply body is the command's own JSON: {}",
-            reply.as_str()
-        );
-    };
-    body
+    reply.as_str().to_owned()
 }
 
 fn live_name<S: bevy::state::state::States + core::fmt::Debug>(app: &App) -> Option<String> {
@@ -70,10 +63,16 @@ fn app_phase_reports_every_live_level_from_inside_a_battle() {
     );
 
     let body = read_phase(&mut app, &tx);
-    let phase = &body["phase"];
+
+    let Some(app_live) = live_name::<AppState>(&app) else {
+        unreachable!("`app` is live inside a battle, so its State resource exists");
+    };
+    assert!(
+        body.contains(&format!("app:{app_live}")),
+        "`app` must report the app's own live state ({app_live}): {body}",
+    );
 
     for (level, live) in [
-        ("app", live_name::<AppState>(&app)),
         ("running", live_name::<RunningState>(&app)),
         ("game", live_name::<GameState>(&app)),
         ("battlescape", live_name::<BattleScapeState>(&app)),
@@ -81,20 +80,18 @@ fn app_phase_reports_every_live_level_from_inside_a_battle() {
         let Some(live) = live else {
             unreachable!("`{level}` is live inside a battle, so its State resource exists");
         };
-        assert_eq!(
-            phase[level].as_str(),
-            Some(live.as_str()),
+        assert!(
+            body.contains(&format!("{level}:Some({live})")),
             "`{level}` must report the app's own live state ({live}): {body}",
         );
     }
 
-    assert_eq!(
-        phase["battlescape"], "BattleRunning",
+    assert!(
+        body.contains("battlescape:Some(BattleRunning)"),
         "the fixture rests the battle in BattleRunning: {body}",
     );
-    assert_eq!(
-        phase.get("aftermath"),
-        Some(&Value::Null),
-        "the aftermath has not started, so its level is present and null: {body}",
+    assert!(
+        body.contains("aftermath:None"),
+        "the aftermath has not started, so its level is present and None: {body}",
     );
 }

@@ -1,11 +1,10 @@
 //! Pointer position and mouse buttons on the wire.
 
 use bevy::prelude::Deref;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Pointer X in screen pixels.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct PointerXNet(i16);
 
@@ -18,7 +17,7 @@ impl PointerXNet {
 }
 
 /// Pointer Y in screen pixels.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct PointerYNet(i16);
 
@@ -31,7 +30,7 @@ impl PointerYNet {
 }
 
 /// Pointer position on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PointerPosNet {
     /// X coordinate.
@@ -49,7 +48,7 @@ impl PointerPosNet {
 }
 
 /// Mouse button on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MouseButtonNet {
     /// Left button.
     Left,

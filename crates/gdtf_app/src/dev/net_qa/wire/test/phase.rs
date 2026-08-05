@@ -168,7 +168,33 @@ fn phase_values_serialize_under_their_own_names() {
 }
 
 #[test]
-fn an_absent_level_serializes_as_an_explicit_null() {
+fn every_level_reads_back_through_its_own_accessor() {
+    let phase = AppPhaseNet::new(
+        LifecyclePhaseNet::Running,
+        Some(RunningPhaseNet::Game),
+        Some(GamePhaseNet::BattleScape),
+        Some(BattleScapePhaseNet::BattleRunning),
+        Some(AfterMathPhaseNet::DisplayAftermath),
+    );
+    assert_eq!(phase.app(), LifecyclePhaseNet::Running);
+    assert_eq!(phase.running(), Some(RunningPhaseNet::Game));
+    assert_eq!(phase.game(), Some(GamePhaseNet::BattleScape));
+    assert_eq!(
+        phase.battlescape(),
+        Some(BattleScapePhaseNet::BattleRunning)
+    );
+    assert_eq!(phase.aftermath(), Some(AfterMathPhaseNet::DisplayAftermath));
+
+    let shallow = AppPhaseNet::new(LifecyclePhaseNet::Init, None, None, None, None);
+    assert_eq!(shallow.app(), LifecyclePhaseNet::Init);
+    assert_eq!(shallow.running(), None);
+    assert_eq!(shallow.game(), None);
+    assert_eq!(shallow.battlescape(), None);
+    assert_eq!(shallow.aftermath(), None);
+}
+
+#[test]
+fn an_absent_level_serializes_as_an_explicit_none() {
     let phase = AppPhaseNet::new(
         LifecyclePhaseNet::from_state(&AppState::Running),
         Some(RunningPhaseNet::from_state(RunningState::Menu)),
@@ -176,16 +202,18 @@ fn an_absent_level_serializes_as_an_explicit_null() {
         None,
         None,
     );
-    let Ok(encoded) = serde_json::to_value(phase) else {
-        unreachable!("the phase record serializes");
-    };
-    assert_eq!(encoded["app"], "Running");
-    assert_eq!(encoded["running"], "Menu");
-    for level in ["game", "battlescape", "aftermath"] {
-        assert_eq!(
-            encoded.get(level),
-            Some(&serde_json::Value::Null),
-            "the inactive level `{level}` must be present and null: {encoded}",
-        );
-    }
+    assert_eq!(
+        encoded(&phase),
+        "(app:Running,running:Some(Menu),game:None,battlescape:None,aftermath:None)",
+        "every level is written, live or not — an inactive one is an explicit None",
+    );
+}
+
+#[test]
+fn an_unknown_level_is_refused() {
+    let hostile = "(app:Running,running:None,game:None,battlescape:None,aftermath:None,hive:None)";
+    assert!(
+        ron::de::from_str::<AppPhaseNet>(hostile).is_err(),
+        "`{hostile}` carries a level the phase record does not declare and must not decode",
+    );
 }

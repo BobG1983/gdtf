@@ -1,65 +1,58 @@
-use schemars::{JsonSchema, schema_for};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     command::{
-        ArgSchemaJson, CommandAvailability, CommandEntry, CommandName, CommandSummary,
-        CommandTiming, ReplySchemaJson,
+        ArgSchemaRon, CommandAvailability, CommandEntry, CommandName, CommandSummary,
+        CommandTiming, ReplySchemaRon, RonShape, ShapeBody, ShapeDoc, shape_text,
     },
     ids::{CellLevelNet, CellNet, ShotName},
     test_support::assert_ron_round_trip,
 };
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 struct ProbeArgs {
     actor: CellNet,
     at:    CellLevelNet,
     name:  Option<ShotName>,
 }
 
-fn schema_text<T: JsonSchema>() -> String {
-    let Ok(text) = serde_json::to_string(&schema_for!(T)) else {
-        unreachable!("a derived schema serializes to JSON text");
+fn parsed_shape(text: &str) -> ShapeDoc {
+    let Ok(doc) = ron::de::from_str::<ShapeDoc>(text) else {
+        unreachable!("a traced shape is parseable RON, got `{text}`");
     };
-    text
+    doc
 }
 
 #[test]
-fn a_derived_schema_over_id_newtypes_is_parseable_json() {
-    let text = schema_text::<ProbeArgs>();
+fn a_traced_shape_over_id_newtypes_names_every_field() {
+    let text = shape_text::<ProbeArgs>();
+    let doc = parsed_shape(&text);
 
-    let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) else {
-        unreachable!("the derived schema is parseable JSON, got `{text}`");
+    let Some(ShapeBody::Record(fields)) = doc.root_body() else {
+        unreachable!("the root of a named-field struct is a record: `{text}`");
     };
-    let Some(object) = parsed.as_object() else {
-        unreachable!("a derived schema is a JSON object, got `{text}`");
-    };
+    let named: Vec<&str> = fields.iter().map(|field| field.name().as_str()).collect();
     assert_eq!(
-        object.get("type").and_then(serde_json::Value::as_str),
-        Some("object"),
-        "the derived schema describes an object: `{text}`",
+        named,
+        vec!["actor", "at", "name"],
+        "the traced shape names every field in order: `{text}`",
     );
-    let Some(properties) = object
-        .get("properties")
-        .and_then(serde_json::Value::as_object)
-    else {
-        unreachable!("the derived schema lists its properties, got `{text}`");
+    let Some(name_field) = fields.iter().find(|field| field.name().as_str() == "name") else {
+        unreachable!("the `name` field was just found above");
     };
-    for field in ["actor", "at", "name"] {
-        assert!(
-            properties.contains_key(field),
-            "the derived schema names the `{field}` field: `{text}`",
-        );
-    }
+    assert!(
+        matches!(name_field.shape(), RonShape::Optional(_)),
+        "an `Option` field is Optional in the shape: `{text}`",
+    );
 }
 
 #[test]
-fn a_derived_schema_survives_the_ron_round_trip_inside_a_catalogue_row() {
-    let arguments = ArgSchemaJson::new(schema_text::<ProbeArgs>());
-    let reply = ReplySchemaJson::new(schema_text::<CellLevelNet>());
+fn a_traced_shape_survives_the_ron_round_trip_inside_a_catalogue_row() {
+    let arguments = ArgSchemaRon::new(shape_text::<ProbeArgs>());
+    let reply = ReplySchemaRon::new(shape_text::<CellLevelNet>());
     let entry = CommandEntry::new(
         CommandName::from_static("probe.act"),
-        CommandSummary::from_static("A stand-in command whose schemas are really derived."),
+        CommandSummary::from_static("A stand-in command whose shapes are really traced."),
         CommandTiming::Immediate,
         arguments.clone(),
         reply.clone(),
@@ -77,11 +70,11 @@ fn a_derived_schema_survives_the_ron_round_trip_inside_a_catalogue_row() {
     assert_eq!(
         decoded.arguments.as_str(),
         arguments.as_str(),
-        "the derived argument schema text is unchanged by the round trip",
+        "the traced argument shape text is unchanged by the round trip",
     );
     assert_eq!(
         decoded.reply.as_str(),
         reply.as_str(),
-        "the derived reply schema text is unchanged by the round trip",
+        "the traced reply shape text is unchanged by the round trip",
     );
 }

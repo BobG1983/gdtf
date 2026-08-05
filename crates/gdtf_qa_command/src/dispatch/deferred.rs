@@ -89,6 +89,15 @@ impl<C: QaCommand> Default for DeferredReplies<C> {
 }
 
 impl<C: QaCommand> DeferredReplies<C> {
+    /// Empty parking with an explicit timeout budget.
+    #[must_use]
+    pub const fn with_budget(budget: DeferredBudget) -> Self {
+        Self {
+            parked: VecDeque::new(),
+            budget,
+        }
+    }
+
     /// Park a responder to answer later.
     pub fn park(&mut self, responder: CommandResponder<C>) {
         self.parked.push_back(ParkedReply {

@@ -1,6 +1,6 @@
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::{
-    command::{CommandArgsJson, CommandName, CommandOutcome},
+    command::{CommandArgsRon, CommandName, CommandOutcome},
     message::QaResponse,
 };
 
@@ -15,7 +15,7 @@ fn the_inbox_takes_only_the_named_command_s_calls() {
     let mut inbox = CommandInbox::default();
     for name in [FakePhase::NAME, FakeCell::NAME, FakePhase::NAME] {
         let (responder, _answer) = Responder::channel();
-        inbox.admit(name, CommandArgsJson::new("{}".to_owned()), responder);
+        inbox.admit(name, CommandArgsRon::new("()".to_owned()), responder);
     }
     assert_eq!(inbox.len(), 3);
 
@@ -35,7 +35,7 @@ fn the_inbox_takes_nothing_for_an_unused_name() {
     let (responder, _answer) = Responder::channel();
     inbox.admit(
         FakePhase::NAME,
-        CommandArgsJson::new("{}".to_owned()),
+        CommandArgsRon::new("()".to_owned()),
         responder,
     );
 
@@ -45,9 +45,9 @@ fn the_inbox_takes_nothing_for_an_unused_name() {
 }
 
 #[test]
-fn bad_arguments_attaches_the_command_s_own_schema() {
-    let Err(fault) = serde_json::from_str::<<FakeCell as QaCommand>::Args>("{\"nope\":1}") else {
-        unreachable!("`{{\"nope\":1}}` must not decode into FakeCellArgs");
+fn bad_arguments_attaches_the_command_s_own_shape() {
+    let Err(fault) = ron::de::from_str::<<FakeCell as QaCommand>::Args>("(nope:1)") else {
+        unreachable!("`(nope:1)` must not decode into FakeCellArgs");
     };
     let response = bad_arguments::<FakeCell>(&fault);
 
@@ -60,7 +60,7 @@ fn bad_arguments_attaches_the_command_s_own_schema() {
     );
     assert!(
         schema.as_str().contains("\"cell\""),
-        "the attached schema is FakeCellArgs' own: {}",
+        "the attached shape is FakeCellArgs' own: {}",
         schema.as_str()
     );
 }

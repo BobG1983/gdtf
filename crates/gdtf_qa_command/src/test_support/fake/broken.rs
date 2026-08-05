@@ -1,16 +1,21 @@
-//! Command that publishes an unparseable argument schema.
+//! Command that publishes an unparseable argument shape.
 
 use bevy::prelude::App;
 use gdtf_qa_protocol::command::{
-    ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, CommandTiming, ReplySchemaJson,
+    ArgSchemaRon, CommandAvailability, CommandName, CommandSummary, CommandTiming, ReplySchemaRon,
 };
 
 use super::facts::FakeFacts;
-use crate::command::ErasedCommand;
+use crate::{
+    command::ErasedCommand,
+    dispatch::{DEFERRED_BUDGET, DeferredBudget},
+};
 
-const BROKEN_ARG_SCHEMA: &str = "{ this was written by hand and is not json";
+const BROKEN_ARG_SCHEMA: &str = "( this was written by hand and is not a shape";
 
-/// Test command whose argument schema is not JSON.
+const EMPTY_SHAPE: &str = "(root:Unit,defs:[])";
+
+/// Test command whose argument document is not a RON shape.
 pub struct FakeBrokenSchema;
 
 impl ErasedCommand<FakeFacts> for FakeBrokenSchema {
@@ -19,19 +24,23 @@ impl ErasedCommand<FakeFacts> for FakeBrokenSchema {
     }
 
     fn summary(&self) -> CommandSummary {
-        CommandSummary::from_static("Publishes an argument document that is not JSON.")
+        CommandSummary::from_static("Publishes an argument document that is not a RON shape.")
     }
 
     fn timing(&self) -> CommandTiming {
         CommandTiming::Immediate
     }
 
-    fn arg_schema(&self) -> ArgSchemaJson {
-        ArgSchemaJson::new(BROKEN_ARG_SCHEMA.to_owned())
+    fn deferred_budget(&self) -> DeferredBudget {
+        DEFERRED_BUDGET
     }
 
-    fn reply_schema(&self) -> ReplySchemaJson {
-        ReplySchemaJson::new("{}".to_owned())
+    fn arg_schema(&self) -> ArgSchemaRon {
+        ArgSchemaRon::new(BROKEN_ARG_SCHEMA.to_owned())
+    }
+
+    fn reply_schema(&self) -> ReplySchemaRon {
+        ReplySchemaRon::new(EMPTY_SHAPE.to_owned())
     }
 
     fn availability(&self, _facts: &FakeFacts) -> CommandAvailability {

@@ -1,11 +1,10 @@
 //! Host facts for the fake command set.
 
 use bevy::prelude::*;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Whether the fake host is loaded.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FakeReady(bool);
 
 impl FakeReady {
@@ -17,7 +16,7 @@ impl FakeReady {
 }
 
 /// Fake world level.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FakeLevel(u8);
 
 impl FakeLevel {

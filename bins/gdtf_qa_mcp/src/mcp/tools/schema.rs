@@ -76,8 +76,8 @@ fn commands_schema() -> Value {
             "detail": { "type": "string",
                         "enum": CatalogueDetail::labels(),
                         "description": "How much of each row to return; omit for \
-                         Summary. Full also carries each command's derived argument \
-                         and reply schemas." }
+                         Summary. Full also carries each command's argument and reply \
+                         shapes, as RON text." }
         }
     })
 }
@@ -88,10 +88,10 @@ fn run_schema() -> Value {
         "properties": {
             "command": { "type": "string",
                          "description": "The command to run, as `commands` named it." },
-            "arguments": { "type": "object",
-                           "description": "The command's arguments, shaped by its own \
-                            `schemas.arguments` from `commands`; omit for a command \
-                            that takes none." },
+            "arguments": { "type": "string",
+                           "description": "The command's arguments as compact RON, shaped by \
+                            its own `schemas.arguments` from `commands`; a command that takes \
+                            none is \"()\"." },
             "host": host_property(),
             "await_ready": { "type": "integer", "minimum": 0,
                              "description": "Whole seconds to keep re-testing admission \

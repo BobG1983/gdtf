@@ -5,7 +5,7 @@ use std::sync::mpsc::Receiver;
 use bevy::prelude::*;
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::{
-    command::{CommandArgsJson, CommandName, RunOptions},
+    command::{CommandArgsRon, CommandName, RunOptions},
     message::QaResponse,
 };
 
@@ -31,7 +31,7 @@ pub fn run_fake_command(
     app: &mut App,
     commands: &[&dyn ErasedCommand<FakeFacts>],
     name: &CommandName,
-    arguments: &CommandArgsJson,
+    arguments: &CommandArgsRon,
     options: &RunOptions,
 ) -> Receiver<QaResponse> {
     let (responder, answer) = Responder::channel();

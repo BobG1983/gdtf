@@ -2,7 +2,7 @@
 
 /// Build a command catalogue from erased commands and host facts.
 pub mod catalogue;
-/// Typed command trait, erased form, and JSON schema helpers.
+/// Typed command trait and its erased form.
 pub mod command;
 /// Admit, claim, reply, and schedule command calls on a Bevy app.
 pub mod dispatch;

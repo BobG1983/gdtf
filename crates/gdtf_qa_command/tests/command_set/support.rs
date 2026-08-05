@@ -1,12 +1,12 @@
 use std::sync::mpsc::{Receiver, TryRecvError};
 
 use gdtf_qa_protocol::{
-    command::{CommandArgsJson, CommandOutcome, RunOptions},
+    command::{CommandArgsRon, CommandOutcome, RunOptions},
     message::QaResponse,
 };
 
-pub(crate) fn args(json: &str) -> CommandArgsJson {
-    CommandArgsJson::new(json.to_owned())
+pub(crate) fn args(ron: &str) -> CommandArgsRon {
+    CommandArgsRon::new(ron.to_owned())
 }
 
 pub(crate) fn plain() -> RunOptions {
@@ -47,7 +47,7 @@ pub(crate) fn ran<T: serde::de::DeserializeOwned>(channel: &Receiver<QaResponse>
         attachments.is_empty(),
         "no fake command attaches a file: {attachments:?}"
     );
-    match serde_json::from_str::<T>(reply.as_str()) {
+    match ron::de::from_str::<T>(reply.as_str()) {
         Ok(value) => value,
         Err(fault) => unreachable!(
             "the reply did not decode into the command's declared type ({fault}): {}",

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use gdtf_qa_protocol::command::{CommandArgsJson, RunOptions};
+use gdtf_qa_protocol::command::{CommandArgsRon, RunOptions};
 
 use crate::{
     command::QaCommand,
@@ -58,7 +58,7 @@ fn a_frame_with_work_dirties_both_shared_resources() {
             &mut app,
             FAKE_COMMANDS,
             &name,
-            &CommandArgsJson::new("{}".to_owned()),
+            &CommandArgsRon::new("()".to_owned()),
             &RunOptions::default(),
         );
     }

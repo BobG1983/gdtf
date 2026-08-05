@@ -1,7 +1,6 @@
 //! Act sequence and network intent enum.
 
 use bevy::prelude::Deref;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -15,18 +14,7 @@ use super::{
 
 /// Monotonic act sequence number on the wire.
 #[derive(
-    Deref,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Serialize,
-    Deserialize,
-    JsonSchema,
+    Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
 )]
 #[serde(transparent)]
 pub struct ActSeqNet(u64);
@@ -40,7 +28,7 @@ impl ActSeqNet {
 }
 
 /// Player or automation intent sent over the QA channel.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum NetIntent {
     /// Fire at a cell with a fire-mode index.
     Fire {

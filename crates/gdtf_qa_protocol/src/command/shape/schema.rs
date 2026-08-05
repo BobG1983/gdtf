@@ -1,18 +1,18 @@
-//! JSON schema blobs for arguments and replies.
+//! RON shape documents published for arguments and replies.
 
 use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
-/// JSON schema describing command arguments.
+/// RON shape describing command arguments.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct ArgSchemaJson(String);
+pub struct ArgSchemaRon(String);
 
-impl ArgSchemaJson {
-    /// Wrap a schema JSON string.
+impl ArgSchemaRon {
+    /// Wrap a shape document's RON text.
     #[must_use]
-    pub const fn new(json: String) -> Self {
-        Self(json)
+    pub const fn new(ron: String) -> Self {
+        Self(ron)
     }
 
     /// Borrow as `&str`.
@@ -22,16 +22,16 @@ impl ArgSchemaJson {
     }
 }
 
-/// JSON schema describing a successful reply body.
+/// RON shape describing a successful reply body.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct ReplySchemaJson(String);
+pub struct ReplySchemaRon(String);
 
-impl ReplySchemaJson {
-    /// Wrap a schema JSON string.
+impl ReplySchemaRon {
+    /// Wrap a shape document's RON text.
     #[must_use]
-    pub const fn new(json: String) -> Self {
-        Self(json)
+    pub const fn new(ron: String) -> Self {
+        Self(ron)
     }
 
     /// Borrow as `&str`.
