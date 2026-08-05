@@ -1,6 +1,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
+use gdtf_battle_sim::prelude::BattleInProgress;
 
-use super::{GameFacts, StepperActivity};
+use super::{BattleModel, GameFacts, StepperActivity};
 use crate::{
     dev::net_qa::wire::{
         AfterMathPhaseNet, AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet,
@@ -21,6 +22,7 @@ crate::support_item! {
         game:        Option<Res<'w, State<GameState>>>,
         battlescape: Option<Res<'w, State<BattleScapeState>>>,
         aftermath:   Option<Res<'w, State<AfterMathState>>>,
+        battle:      Option<Res<'w, BattleInProgress>>,
         #[cfg(feature = "dev_tools")]
         stepper:     StepperMarker<'w>,
     }
@@ -55,8 +57,16 @@ impl GameFactsParam<'_> {
                         .as_ref()
                         .map(|state| AfterMathPhaseNet::from_state(*state.get())),
                 ),
+                self.battle_model(),
                 stepper,
             )
+        }
+    }
+
+    const fn battle_model(&self) -> BattleModel {
+        match self.battle {
+            Some(_) => BattleModel::Present,
+            None => BattleModel::Absent,
         }
     }
 }

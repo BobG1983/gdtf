@@ -1,0 +1,233 @@
+//! Battle fixtures that write world state, so a read has something real to answer with.
+
+use bevy::{app::App, ecs::entity::Entity};
+use gdtf_app::qa_wire::{
+    cell::CellLevelNet,
+    misc::ModeKindNet,
+    roster::{FactionNet, GangerNameNet},
+    token::GangerToken,
+    vitals::{HpMaxNet, TuMaxNet},
+};
+use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
+use gdtf_battle_presenter::DrawnPosition;
+use gdtf_battle_sim::{
+    act_log::{ActDeed, ActLog, ActProvenance, RecordedAct},
+    battle::{BattleInProgress, PlayerFaction},
+    entity::TerrainCell,
+    ganger::{Direction, Facing, Faction, GangerName, HpMax, Position, Tu, TuMax},
+    openable::OpenState,
+    prelude::{Cell, CellLevel},
+    turn::ActiveFaction,
+    weapon::{FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
+};
+use gdtf_net_qa_transport::NetQaPort;
+
+use super::{
+    expected::{
+        ExpectedEnemy, ExpectedFireMode, ExpectedTurn, FLOODED_LOG_LINES, LOG_LINES_WRITTEN,
+        LitCover, LiveCard, LoggedActor, PosedShooter, SpawnedDoor, Standing,
+    },
+    map::{a_free_open_cell, a_lit_cover_cell, settle},
+};
+use crate::{
+    battle_reads::{a_player_ganger, an_enemy_faction, an_enemy_ganger, an_enemy_ganger_at},
+    socket_support::{TestError, battle_app_listening},
+};
+
+/// A live battle with one enemy standing where the squad can or cannot see it.
+pub(crate) fn battle_with_an_enemy(
+    standing: Standing,
+) -> Result<(App, NetQaPort, ExpectedEnemy), TestError> {
+    let (mut app, port) = battle_app_listening()?;
+    settle(&mut app);
+    let Some(entity) = an_enemy_ganger(&app) else {
+        return Err("a generated battle must field at least one living enemy".into());
+    };
+    let Some(at) = a_free_open_cell(&app, standing) else {
+        return Err(format!("the generated map must offer a free open cell {standing:?}").into());
+    };
+    stand_at(&mut app, entity, at, at)?;
+    let at = CellLevelNet::from_sim(at);
+    Ok((app, port, ExpectedEnemy { entity, at }))
+}
+
+/// Move a ganger, sim and screen together, the way a settled battle holds it.
+pub(super) fn stand_at(
+    app: &mut App,
+    entity: Entity,
+    live: CellLevel,
+    drawn: CellLevel,
+) -> Result<(), TestError> {
+    let Ok(mut row) = app.world_mut().get_entity_mut(entity) else {
+        return Err("the ganger the world just answered with must still exist".into());
+    };
+    row.insert((
+        Position::new(live),
+        DrawnPosition::seeded(Position::new(drawn)),
+    ));
+    Ok(())
+}
+
+/// A live battle, reporting the first living enemy and where it is deployed.
+pub(crate) fn battle_reporting_an_enemy() -> Result<(App, NetQaPort, ExpectedEnemy), TestError> {
+    let (app, port) = battle_app_listening()?;
+    let Some((entity, at)) = an_enemy_ganger_at(&app) else {
+        return Err("a generated battle must field at least one living enemy".into());
+    };
+    Ok((app, port, ExpectedEnemy { entity, at }))
+}
+
+/// A live battle with a door in `state` standing where the squad can or cannot see it.
+pub(crate) fn battle_with_a_door(
+    standing: Standing,
+    state: OpenState,
+) -> Result<(App, NetQaPort, SpawnedDoor), TestError> {
+    let (mut app, port) = battle_app_listening()?;
+    settle(&mut app);
+    let Some(at) = a_free_open_cell(&app, standing) else {
+        return Err(format!("the generated map must offer a free open cell {standing:?}").into());
+    };
+    let entity = app.world_mut().spawn((TerrainCell::new(at), state)).id();
+    let at = CellLevelNet::from_sim(at);
+    Ok((app, port, SpawnedDoor { entity, at }))
+}
+
+/// A live battle whose selected shooter has been switched to full auto.
+pub(crate) fn battle_with_a_selected_fire_mode()
+-> Result<(App, NetQaPort, ExpectedFireMode), TestError> {
+    let (mut app, port) = battle_app_listening()?;
+    settle(&mut app);
+    app.world_mut()
+        .insert_resource(SelectedFireMode::new(FireModeSpec::new(
+            ModeKind::Full,
+            ModeConeMult::new(1.0),
+            ModeTuPercent::new(0.0),
+            ModeShots::new(1),
+        )));
+    let kind = ModeKindNet::from_sim(ModeKind::Full);
+    Ok((app, port, ExpectedFireMode { kind }))
+}
+
+/// A live battle, reporting one player ganger's identity as the world holds it.
+pub(crate) fn battle_reporting_a_player_card() -> Result<(App, NetQaPort, LiveCard), TestError> {
+    let (app, port) = battle_app_listening()?;
+    let Some((entity, _)) = a_player_ganger(&app) else {
+        return Err("a generated battle must field at least one player ganger".into());
+    };
+    let Ok(row) = app.world().get_entity(entity) else {
+        return Err("the ganger the world just answered with must still exist".into());
+    };
+    let (Some(faction), Some(tu_max)) = (row.get::<Faction>(), row.get::<TuMax>()) else {
+        return Err("a deployed ganger carries a gang and a TU maximum".into());
+    };
+    let card = LiveCard {
+        token:   GangerToken::new(entity.to_bits()),
+        name:    row
+            .get::<GangerName>()
+            .map(|name| GangerNameNet::new((**name).clone())),
+        faction: FactionNet::from_sim(*faction),
+        tu_max:  TuMaxNet::new(**tu_max),
+        hp_max:  row.get::<HpMax>().map(|max| HpMaxNet::new(**max)),
+    };
+    Ok((app, port, card))
+}
+
+/// A live battle, reporting a wall or cover cell that stands inside the lit area.
+pub(crate) fn battle_with_lit_cover() -> Result<(App, NetQaPort, LitCover), TestError> {
+    let (mut app, port) = battle_app_listening()?;
+    settle(&mut app);
+    let Some(at) = a_lit_cover_cell(&app) else {
+        return Err(
+            "a squad deployed inside a generated map always sees some wall or cover; the lit \
+             area held none"
+                .into(),
+        );
+    };
+    Ok((app, port, LitCover { at }))
+}
+
+/// A live battle whose act log already holds [`LOG_LINES_WRITTEN`] lines for one ganger.
+pub(crate) fn battle_with_log_lines() -> Result<(App, NetQaPort, LoggedActor), TestError> {
+    battle_with_a_log_of(LOG_LINES_WRITTEN)
+}
+
+/// A live battle whose act log holds [`FLOODED_LOG_LINES`] lines, past any default window.
+pub(crate) fn battle_with_a_flooded_log() -> Result<(App, NetQaPort, LoggedActor), TestError> {
+    battle_with_a_log_of(FLOODED_LOG_LINES)
+}
+
+fn battle_with_a_log_of(lines: u32) -> Result<(App, NetQaPort, LoggedActor), TestError> {
+    let (mut app, port) = battle_app_listening()?;
+    let Some((actor, _)) = a_player_ganger(&app) else {
+        return Err("a generated battle must field at least one player ganger".into());
+    };
+    let Some(mut log) = app.world_mut().get_resource_mut::<ActLog>() else {
+        return Err("a running battle carries the sim's act log".into());
+    };
+    for _ in 0..lines {
+        log.append(RecordedAct::new(
+            actor,
+            ActProvenance::Commanded,
+            ActDeed::TurnBegan {
+                now_active: Faction::new(0),
+            },
+        ));
+    }
+    Ok((app, port, LoggedActor { actor }))
+}
+
+/// A live battle whose selected shooter faces north holding `tu` time units.
+pub(crate) fn battle_with_a_shooter_facing_north(
+    tu: Tu,
+) -> Result<(App, NetQaPort, PosedShooter), TestError> {
+    let (mut app, port) = battle_app_listening()?;
+    let Some((shooter, at)) = a_player_ganger(&app) else {
+        return Err("a generated battle must field at least one player ganger".into());
+    };
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(shooter));
+    let Ok(mut row) = app.world_mut().get_entity_mut(shooter) else {
+        return Err("the ganger the world just answered with must still exist".into());
+    };
+    row.insert((Facing::new(Direction::North), tu));
+    let (cell, level) = at.to_sim().split();
+    let behind = CellLevel::new(Cell::new(cell.x, cell.y + 1), level);
+    let behind = CellLevelNet::from_sim(behind);
+    Ok((app, port, PosedShooter { behind }))
+}
+
+/// A live battle with an enemy gang set as the acting one, so the two turn gangs differ.
+pub(crate) fn battle_with_another_gang_acting() -> Result<(App, NetQaPort, ExpectedTurn), TestError>
+{
+    let (mut app, port) = battle_app_listening()?;
+    settle(&mut app);
+    let Some(player) = app
+        .world()
+        .get_resource::<PlayerFaction>()
+        .map(|gang| **gang)
+    else {
+        return Err("a running battle names the gang the player commands".into());
+    };
+    let Some(acting) = an_enemy_faction(&app) else {
+        return Err("a generated battle must field a gang other than the player's".into());
+    };
+    hold_the_sim_still(&mut app)?;
+    app.world_mut().insert_resource(ActiveFaction::new(acting));
+    let turn = ExpectedTurn {
+        active: FactionNet::from_sim(acting),
+        player: FactionNet::from_sim(player),
+    };
+    Ok((app, port, turn))
+}
+
+/// Stop the sim clock, so the turn cycle cannot move on while a read is in flight.
+fn hold_the_sim_still(app: &mut App) -> Result<(), TestError> {
+    if app
+        .world_mut()
+        .remove_resource::<BattleInProgress>()
+        .is_none()
+    {
+        return Err("a running battle carries the sim's in-progress marker".into());
+    }
+    Ok(())
+}

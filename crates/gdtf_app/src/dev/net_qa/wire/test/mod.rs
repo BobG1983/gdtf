@@ -1,12 +1,20 @@
 mod act;
 mod cell;
 mod coverage;
+mod deed;
 mod drive;
+mod inspect;
 mod log;
+mod offer;
 mod phase;
+mod roster;
 mod scalars;
 mod schema;
+mod sight;
 mod support;
+mod visible;
+mod vitals;
 mod wait;
+mod wound;
 
 pub(in crate::dev::net_qa::wire) use support::assert_ron_round_trip;
