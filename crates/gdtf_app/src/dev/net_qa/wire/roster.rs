@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     act_payload::StanceNet,
+    cell::CellLevelNet,
     token::GangerToken,
     vitals::{HpMaxNet, HpNet, TuMaxNet, TuNet, WoundsMaxNet, WoundsNet},
     wound::{InjuryNet, WoundNet},
@@ -49,6 +50,8 @@ impl FactionNet {
 pub struct GangerCardNet {
     /// Opaque ganger identity.
     pub token:        GangerToken,
+    /// Cell the sprite is drawn on, which lags the sim while an act plays out.
+    pub at:           CellLevelNet,
     /// Display name, absent for an unnamed ganger.
     pub name:         Option<GangerNameNet>,
     /// Gang index.

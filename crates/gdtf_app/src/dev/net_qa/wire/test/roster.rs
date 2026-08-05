@@ -1,6 +1,7 @@
 use super::assert_ron_round_trip;
 use crate::dev::net_qa::wire::{
     act_payload::StanceNet,
+    cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet},
     roster::{FactionNet, GangerCardNet, GangerNameNet},
     token::GangerToken,
     vitals::{HpMaxNet, HpNet, TuMaxNet, TuNet, WoundsMaxNet, WoundsNet},
@@ -10,6 +11,10 @@ use crate::dev::net_qa::wire::{
 pub(in crate::dev::net_qa::wire::test) fn a_card() -> GangerCardNet {
     GangerCardNet {
         token:        GangerToken::new(4_294_967_296),
+        at:           CellLevelNet::new(
+            CellNet::new(CellXNet::new(7), CellYNet::new(-3)),
+            LevelNet::new(1),
+        ),
         name:         Some(GangerNameNet::new("Vex".to_owned())),
         faction:      FactionNet::new(0),
         stance:       StanceNet::Crouching,

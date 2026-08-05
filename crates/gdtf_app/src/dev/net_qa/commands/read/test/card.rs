@@ -17,6 +17,7 @@ use crate::{
         commands::read::shown::ganger_card,
         wire::{
             act_payload::StanceNet,
+            cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet},
             roster::{FactionNet, GangerCardNet, GangerNameNet},
             token::GangerToken,
             vitals::{HpMaxNet, HpNet, TuMaxNet, TuNet, WoundsMaxNet, WoundsNet},
@@ -24,6 +25,12 @@ use crate::{
     },
     states::running::game::battlescape::stat_block::StatBlockData,
 };
+
+/// The cell the caller says the sprite is drawn on, distinct in both axes and off level zero.
+const DRAWN_AT: CellLevelNet = CellLevelNet::new(
+    CellNet::new(CellXNet::new(13), CellYNet::new(4)),
+    LevelNet::new(2),
+);
 
 /// Live values on the sim components, all distinct so a swapped field is visible.
 const LIVE_TU: Tu = Tu::new(11);
@@ -65,7 +72,7 @@ fn card_for(world: &mut World, entity: Entity) -> GangerCardNet {
     let Ok(row) = rows.get(world, entity) else {
         unreachable!("the ganger this test just spawned matches the stat block's own query");
     };
-    ganger_card(entity, &row)
+    ganger_card(entity, DRAWN_AT, &row)
 }
 
 fn drawn(tu: Tu, hp: Hp, wounds: Wounds, inflicted: InflictedWounds) -> DrawnVitals {
@@ -98,6 +105,11 @@ fn a_card_carries_the_identity_the_world_holds() {
         card.faction,
         FactionNet::from_sim(GANG),
         "the card carries the gang the ganger fights for: {card:?}",
+    );
+    assert_eq!(
+        card.at, DRAWN_AT,
+        "the card says where the sprite stands, so a reader can place it on the map without \
+         asking a second command: {card:?}",
     );
     assert_eq!(
         card.stance,

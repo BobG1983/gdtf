@@ -10,6 +10,7 @@ use gdtf_battle_sim::{battle::PlayerFaction, ganger::Position, prelude::CellLeve
 use crate::{
     dev::net_qa::wire::{
         act_payload::StanceNet,
+        cell::CellLevelNet,
         roster::{FactionNet, GangerCardNet, GangerNameNet},
         token::GangerToken,
         vitals::{HpMaxNet, HpNet, TuMaxNet, TuNet, WoundsMaxNet, WoundsNet},
@@ -65,6 +66,7 @@ impl DrawnCellItem<'_, '_> {
 #[must_use]
 pub(in crate::dev::net_qa) fn ganger_card(
     entity: Entity,
+    at: CellLevelNet,
     row: &StatBlockDataItem<'_, '_>,
 ) -> GangerCardNet {
     let tu = row.drawn.map_or(*row.tu, DrawnVitals::tu);
@@ -78,20 +80,21 @@ pub(in crate::dev::net_qa) fn ganger_card(
         .map_or(row.injuries, |drawn| Some(drawn.injuries()));
 
     GangerCardNet {
-        token:        GangerToken::new(entity.to_bits()),
-        name:         row.name.map(|name| GangerNameNet::new((**name).clone())),
-        faction:      FactionNet::from_sim(*row.faction),
-        stance:       StanceNet::from_sim(*row.stance),
-        tu:           TuNet::new(*tu),
-        tu_max:       TuMaxNet::new(**row.tu_max),
-        hp:           HpNet::new(*hp),
-        hp_max:       HpMaxNet::new(row.hp_max.map_or(*hp, |max| **max)),
-        wounds:       WoundsNet::new(*wounds),
-        wounds_max:   WoundsMaxNet::new(row.wounds_max.map_or(*wounds, |max| **max)),
+        token: GangerToken::new(entity.to_bits()),
+        at,
+        name: row.name.map(|name| GangerNameNet::new((**name).clone())),
+        faction: FactionNet::from_sim(*row.faction),
+        stance: StanceNet::from_sim(*row.stance),
+        tu: TuNet::new(*tu),
+        tu_max: TuMaxNet::new(**row.tu_max),
+        hp: HpNet::new(*hp),
+        hp_max: HpMaxNet::new(row.hp_max.map_or(*hp, |max| **max)),
+        wounds: WoundsNet::new(*wounds),
+        wounds_max: WoundsMaxNet::new(row.wounds_max.map_or(*wounds, |max| **max)),
         wounds_taken: taken.map_or_else(Vec::new, |list| {
             list.iter().copied().map(WoundNet::from_sim).collect()
         }),
-        injuries:     injuries.map_or_else(Vec::new, |list| {
+        injuries: injuries.map_or_else(Vec::new, |list| {
             list.gained().iter().map(InjuryNet::from_sim).collect()
         }),
     }
