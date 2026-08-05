@@ -1,47 +1,31 @@
 use bevy::{
-    DefaultPlugins,
-    app::{App, PluginGroup},
+    app::App,
     camera::{ImageRenderTarget, RenderTarget},
-    ecs::error::warn,
     prelude::*,
-    render::{RenderPlugin, settings::WgpuSettings},
-    window::{ExitCondition, WindowPlugin},
-    winit::WinitPlugin,
 };
 use bevy_egui::{PrimaryEguiContext, input::WindowToEguiContextMap};
+use gdtf_screenshot::{CapturePresentPlugin, PresentSystems, QaCaptureTarget};
+use gdtf_test_utils::GdtfWindowedTestAppBuilder;
 
-use crate::net_qa::present::target::EditorQaCaptureTarget;
+use crate::net_qa::present::retarget_editor_camera_to_offscreen;
 
 pub(super) const HARNESS_SCALE_FACTOR: f32 = 1.5;
 
 pub(super) fn headless_windowed_app() -> App {
-    let mut window = Window::default();
-    window.resolution.set_scale_factor(HARNESS_SCALE_FACTOR);
-    let mut app = App::new();
-    app.add_plugins(
-        DefaultPlugins
-            .set(RenderPlugin {
-                render_creation: WgpuSettings {
-                    backends: None,
-                    ..default()
-                }
-                .into(),
-                ..default()
-            })
-            .disable::<WinitPlugin>()
-            .disable::<bevy::log::LogPlugin>()
-            .disable::<bevy::app::TerminalCtrlCHandlerPlugin>()
-            .disable::<bevy::gizmos::GizmoPlugin>()
-            .disable::<bevy::audio::AudioPlugin>()
-            .set(WindowPlugin {
-                primary_window: Some(window),
-                exit_condition: ExitCondition::DontExit,
-                ..default()
-            }),
-    );
-    app.set_error_handler(warn);
+    let mut app = GdtfWindowedTestAppBuilder::new()
+        .scale_factor(HARNESS_SCALE_FACTOR)
+        .build();
     app.init_resource::<WindowToEguiContextMap>();
     app
+}
+
+/// Add the shared present path plus the editor's own retarget, the way the QA plugin does.
+pub(super) fn with_present_path(app: &mut App) {
+    app.add_plugins(CapturePresentPlugin);
+    app.add_systems(
+        Update,
+        retarget_editor_camera_to_offscreen.in_set(PresentSystems),
+    );
 }
 
 pub(super) fn spawn_editor_like_camera(app: &mut App) -> Entity {
@@ -72,7 +56,7 @@ pub(super) fn settle(app: &mut App) {
 
 pub(super) fn capture_target(app: &App) -> Option<ImageRenderTarget> {
     app.world()
-        .get_resource::<EditorQaCaptureTarget>()
+        .get_resource::<QaCaptureTarget>()
         .map(|target| (**target).clone())
 }
 

@@ -1,4 +1,5 @@
-//! one line in [`set`], and a test. It moves no protocol version, adds no wire variant and
+//! The game's typed QA commands and the set they are registered from.
+pub(crate) mod capture;
 #[cfg(feature = "headless_test")]
 pub(crate) mod conformance;
 pub(crate) mod read;

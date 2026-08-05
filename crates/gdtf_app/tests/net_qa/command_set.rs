@@ -24,10 +24,13 @@ fn the_game_command_set_is_conformant() {
 }
 
 #[test]
-fn the_game_offers_exactly_app_phase() {
+fn the_game_offers_exactly_app_phase_and_capture_screenshot() {
     assert_eq!(
         game_command_names(),
-        vec![CommandName::from_static("app.phase")],
+        vec![
+            CommandName::from_static("app.phase"),
+            CommandName::from_static("capture.screenshot"),
+        ],
     );
 }
 

@@ -4,3 +4,5 @@
 pub mod load;
 /// UI-focused test app builder.
 pub mod ui;
+/// Windowed (render-target) test app builder.
+pub mod windowed;

@@ -2972,6 +2972,8 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "gdtf_test_utils",
+ "image",
+ "tempfile",
 ]
 
 [[package]]

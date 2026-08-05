@@ -16,6 +16,7 @@ use gdtf_qa_protocol::{
     framing::{FrameDecoder, encode},
     message::{QaRequest, QaResponse},
 };
+use gdtf_screenshot::{PollCap, SettleFrames};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
 pub(crate) type TestError = Box<dyn Error + Send + Sync>;
@@ -103,6 +104,14 @@ fn listening_menu_app() -> Result<(App, NetQaPort), TestError> {
 
 pub(crate) fn game_app_listening() -> Result<(App, NetQaPort), TestError> {
     listening_menu_app()
+}
+
+/// The menu app with both capture tunables small enough for a reply inside `MAX_UPDATES`.
+pub(crate) fn capture_app_listening() -> Result<(App, NetQaPort), TestError> {
+    let (mut app, port) = listening_menu_app()?;
+    app.insert_resource(SettleFrames::new(2));
+    app.insert_resource(PollCap::new(4));
+    Ok((app, port))
 }
 
 pub(crate) fn battle_app_listening() -> Result<(App, NetQaPort), TestError> {

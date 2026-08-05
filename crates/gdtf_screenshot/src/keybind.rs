@@ -1,15 +1,15 @@
 //! Keyboard-triggered screenshot capture (F10).
 
-use bevy::{
-    prelude::*,
-    render::view::window::screenshot::{Screenshot, save_to_disk},
-};
+use bevy::prelude::*;
 
-use crate::path::timestamped_path;
+use crate::capture::{
+    CaptureCompletions, CaptureOutcome, CapturePipelinePlugin, CaptureQueue, CaptureSystems,
+    ShotStem,
+};
 
 const CAPTURE_KEY: KeyCode = KeyCode::F10;
 
-/// Scene label baked into the timestamped filename.
+/// Scene label baked into the capture's file name.
 #[derive(Clone, Debug)]
 pub struct CaptureTag(String);
 
@@ -27,7 +27,10 @@ impl CaptureTag {
     }
 }
 
-/// Plugin: press F10 to write a timestamped PNG under `target/screenshots`.
+#[derive(Clone, Copy, Debug)]
+struct KeybindShot;
+
+/// Plugin: press F10 to write a PNG into the shot directory, named after this app's tag.
 pub struct KeyboardCapturePlugin {
     tag: CaptureTag,
 }
@@ -44,8 +47,17 @@ impl KeyboardCapturePlugin {
 
 impl Plugin for KeyboardCapturePlugin {
     fn build(&self, app: &mut App) {
+        if !app.is_plugin_added::<CapturePipelinePlugin<KeybindShot>>() {
+            app.add_plugins(CapturePipelinePlugin::<KeybindShot>::new());
+        }
         app.insert_resource(KeybindCaptureTag(self.tag.clone()))
-            .add_systems(Update, capture_on_keypress);
+            .add_systems(
+                Update,
+                (
+                    capture_on_keypress.before(CaptureSystems),
+                    report_keybind_captures.after(CaptureSystems),
+                ),
+            );
     }
 }
 
@@ -55,16 +67,30 @@ struct KeybindCaptureTag(CaptureTag);
 fn capture_on_keypress(
     keys: Res<ButtonInput<KeyCode>>,
     tag: Res<KeybindCaptureTag>,
-    mut commands: Commands,
+    mut queue: ResMut<CaptureQueue<KeybindShot>>,
 ) {
     if !keys.just_pressed(CAPTURE_KEY) {
         return;
     }
-    let path = timestamped_path(tag.as_str());
-    info!("gdtf_screenshot: keybind capture -> {}", path.display());
-    commands
-        .spawn(Screenshot::primary_window())
-        .observe(save_to_disk((*path).clone()));
+    info!("gdtf_screenshot: keybind capture requested");
+    queue.push(Some(ShotStem::new(tag.as_str())), KeybindShot);
+}
+
+fn report_keybind_captures(mut completions: ResMut<CaptureCompletions<KeybindShot>>) {
+    for completion in completions.drain() {
+        let (outcome, _) = completion.into_parts();
+        match outcome {
+            CaptureOutcome::Landed(path) => {
+                info!(path = %path.display(), "gdtf_screenshot: keybind capture written");
+            }
+            CaptureOutcome::Refused(detail) => {
+                warn!(detail = %detail.as_str(), "gdtf_screenshot: keybind capture refused");
+            }
+            CaptureOutcome::TimedOut(path) => {
+                warn!(path = %path.display(), "gdtf_screenshot: keybind capture timed out");
+            }
+        }
+    }
 }
 
 #[cfg(test)]
