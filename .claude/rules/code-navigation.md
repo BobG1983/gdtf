@@ -29,6 +29,15 @@ workspace, so ask early and it is warm when it matters. If an early call says in
 not finished, that means cold, not broken — retry. (`cargo build` does not help; rust-analyzer
 keeps its own index.)
 
+**A cold answer is EMPTY, not an error — and empty looks exactly like a real zero.** Measured
+2026-08-04: `workspaceSymbol` for `apply_suppression`, a symbol that plainly exists, returned in
+5 seconds with *"No symbols found in workspace. This may occur if the workspace is empty, or if
+the LSP server has not finished indexing the project."* No error, no hang.
+
+File-local operations (`documentSymbol`, `hover`, `goToDefinition`) answer while cold.
+Workspace-wide ones (`findReferences`, `workspaceSymbol`, `goToImplementation`, the call
+hierarchy) need the full index and will quietly under-report until it is built.
+
 ## Which operation
 
 | Question | Operation |
