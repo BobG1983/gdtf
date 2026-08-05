@@ -10,9 +10,8 @@ mod ui;
 crate::support_use!(plugin::ProcgenStepperPlugin;);
 
 #[cfg(feature = "headless_test")]
-pub use commands::AutoStepDelay;
-#[cfg(feature = "headless_test")]
-pub use commands::{AutoRunning, PendingStepCommand, StepCommand};
+pub use commands::{AutoRunning, AutoStepDelay};
+crate::support_use!(commands::{PendingStepCommand, StepCommand};);
 pub(crate) use gate::battle_setup_runs_directly;
 crate::support_use!(gate::ProcgenStepperActive;);
 #[cfg(feature = "headless_test")]

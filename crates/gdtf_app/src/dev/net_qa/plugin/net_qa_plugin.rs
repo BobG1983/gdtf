@@ -4,8 +4,7 @@ use std::{net::TcpListener, sync::mpsc, thread};
 
 use bevy::prelude::*;
 use gdtf_net_qa_transport::{
-    DEFAULT_IO_TIMEOUT, IncomingRequest, NetInbox, NetIoTimeout, NetQaPort, bind_listener,
-    run_listener,
+    IncomingRequest, NetInbox, NetQaPort, NetTimeouts, bind_listener, run_listener,
 };
 
 use super::{
@@ -20,8 +19,8 @@ use crate::dev::net_qa::{
 enum Wiring {
     Disabled,
     Listener {
-        port:       NetQaPort,
-        io_timeout: NetIoTimeout,
+        port:     NetQaPort,
+        timeouts: NetTimeouts,
     },
     #[cfg(feature = "headless_test")]
     Channels {
@@ -29,8 +28,8 @@ enum Wiring {
     },
     #[cfg(feature = "headless_test")]
     Bound {
-        listener:   std::sync::Mutex<Option<TcpListener>>,
-        io_timeout: NetIoTimeout,
+        listener: std::sync::Mutex<Option<TcpListener>>,
+        timeouts: NetTimeouts,
     },
 }
 
@@ -48,8 +47,8 @@ impl NetQaPlugin {
         const fn from_env() -> Self {
             let wiring = if net_qa_enabled() {
                 Wiring::Listener {
-                    port: port_from_env(),
-                    io_timeout: DEFAULT_IO_TIMEOUT,
+                    port:     port_from_env(),
+                    timeouts: NetTimeouts::DEFAULT,
                 }
             } else {
                 Wiring::Disabled
@@ -79,17 +78,17 @@ impl NetQaPlugin {
         let (listener, bound) = bind_listener(port)?;
         let plugin = Self {
             wiring: Wiring::Bound {
-                listener:   std::sync::Mutex::new(Some(listener)),
-                io_timeout: DEFAULT_IO_TIMEOUT,
+                listener: std::sync::Mutex::new(Some(listener)),
+                timeouts: NetTimeouts::DEFAULT,
             },
         };
         Ok((plugin, bound))
     }
 }
 
-fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
+fn serve(app: &mut App, listener: TcpListener, timeouts: NetTimeouts) {
     let (tx, rx) = mpsc::channel::<IncomingRequest>();
-    thread::spawn(move || run_listener(listener, tx, io_timeout, hello_facts()));
+    thread::spawn(move || run_listener(listener, tx, timeouts, hello_facts()));
     app.insert_resource(NetInbox::new(rx));
     register_transport(app);
     register_consumers(app);
@@ -106,7 +105,7 @@ impl Plugin for NetQaPlugin {
     fn build(&self, app: &mut App) {
         match &self.wiring {
             Wiring::Disabled => {}
-            Wiring::Listener { port, io_timeout } => {
+            Wiring::Listener { port, timeouts } => {
                 let Ok((listener, bound)) = bind_listener(*port) else {
                     error!(
                         port = **port,
@@ -118,17 +117,14 @@ impl Plugin for NetQaPlugin {
                     port = *bound,
                     "net_qa: ON (dev) — loopback QA control channel listening"
                 );
-                serve(app, listener, *io_timeout);
+                serve(app, listener, *timeouts);
             }
             #[cfg(feature = "headless_test")]
-            Wiring::Bound {
-                listener,
-                io_timeout,
-            } => {
+            Wiring::Bound { listener, timeouts } => {
                 let Some(listener) = listener.lock().ok().and_then(|mut guard| guard.take()) else {
                     return;
                 };
-                serve(app, listener, *io_timeout);
+                serve(app, listener, *timeouts);
             }
             #[cfg(feature = "headless_test")]
             Wiring::Channels { inbox } => {

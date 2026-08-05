@@ -61,7 +61,8 @@ that build publishes, runs one by name, and stops it — no env-var-scripted bat
 the workspace. The request vocabulary is three commands — `Hello`, `Catalogue`, `Run` — so WHAT
 the game can be asked to do is its command list, read at run time. That list is being rebuilt
 one command at a time and today holds `app.phase`, `capture.screenshot`, `settings.read`,
-`ui.focus` and `playback.state`; adding to it is [tooling/qa-commands.md](tooling/qa-commands.md),
+`ui.focus`, `playback.state`, `battle.start`, `battle.flee`, `procgen.step` and `wait`;
+adding to it is [tooling/qa-commands.md](tooling/qa-commands.md),
 and driving it is
 [tooling/agent-qa.md](tooling/agent-qa.md). Census command (run from the repo root; re-run it
 when adding a flag and keep this table in step):

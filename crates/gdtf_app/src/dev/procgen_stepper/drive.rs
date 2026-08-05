@@ -14,7 +14,8 @@ use super::{
 use crate::states::{
     LoadedSituation,
     running::game::battlescape::generation::battle_sim::{
-        ProcgenContent, deploy_over_generated, outcome_from_packing_error, resolve_root_seed,
+        ProcgenContent, ResolvedBattleSeed, deploy_over_generated, outcome_from_packing_error,
+        resolve_root_seed,
     },
 };
 
@@ -31,6 +32,7 @@ pub(super) fn engage_stepper(
 ) {
     let authored: Situation = loaded.map_or_else(Situation::default, |loaded| (**loaded).clone());
     let seed = seed_override.map_or_else(resolve_root_seed, |r| *r);
+    commands.insert_resource(ResolvedBattleSeed::new(seed));
     commands.insert_resource(StagedProcgen::new(seed, authored.theme, authored.grid_size));
     commands.insert_resource(ProcgenStepperContext { authored, seed });
     commands.insert_resource(PendingStepCommand::default());

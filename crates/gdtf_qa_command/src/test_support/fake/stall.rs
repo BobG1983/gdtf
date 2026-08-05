@@ -41,6 +41,7 @@ pub struct FakeStall;
 impl QaCommand for FakeStall {
     type Args = FakeStallArgs;
     type Facts = FakeFacts;
+    type Parked = ();
     type Reply = FakeStallReply;
 
     const NAME: CommandName = CommandName::from_static("fake.stall");

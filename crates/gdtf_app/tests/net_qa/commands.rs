@@ -2,20 +2,44 @@ use gdtf_app::test_support::NET_QA_SERVER_NAME;
 use gdtf_qa_protocol::{
     command::{
         AwaitBudget, CommandAvailability, CommandName, CommandOutcome, CommandTiming, RunOptions,
+        UnavailableCode,
     },
     message::{QaRequest, QaResponse},
 };
 
 use super::{
     command_exchange::{
-        APP_PHASE, CAPTURE_SCREENSHOT, PLAYBACK_STATE, SETTINGS_READ, UI_FOCUS, exchange,
-        exchange_all, run,
+        APP_PHASE, BATTLE_FLEE, BATTLE_START, CAPTURE_SCREENSHOT, PLAYBACK_STATE, PROCGEN_STEP,
+        SETTINGS_READ, UI_FOCUS, WAIT, exchange, exchange_all, run,
     },
     socket_support::{TestResult, game_app_listening},
 };
 
+/// Without the stepper compiled in, `procgen.step` is published but can never be built.
+#[cfg(not(feature = "dev_tools"))]
+pub(crate) const PROCGEN_STEP_IN_THE_MENU: UnavailableCode = UnavailableCode::NotBuilt;
+
+/// With the stepper compiled in, the Menu is simply the wrong place to step generation.
+#[cfg(feature = "dev_tools")]
+pub(crate) const PROCGEN_STEP_IN_THE_MENU: UnavailableCode = UnavailableCode::WrongState;
+
+/// Every command the game publishes, in declaration order.
+pub(crate) fn published_names() -> Vec<CommandName> {
+    vec![
+        CommandName::from_static(APP_PHASE),
+        CommandName::from_static(CAPTURE_SCREENSHOT),
+        CommandName::from_static(SETTINGS_READ),
+        CommandName::from_static(UI_FOCUS),
+        CommandName::from_static(PLAYBACK_STATE),
+        CommandName::from_static(BATTLE_START),
+        CommandName::from_static(BATTLE_FLEE),
+        CommandName::from_static(PROCGEN_STEP),
+        CommandName::from_static(WAIT),
+    ]
+}
+
 #[test]
-fn the_catalogue_lists_the_shell_read_set() -> TestResult {
+fn the_catalogue_lists_the_shell_reads_and_the_lifecycle_commands() -> TestResult {
     let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
     let QaResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
@@ -31,13 +55,7 @@ fn the_catalogue_lists_the_shell_read_set() -> TestResult {
         .collect();
     assert_eq!(
         published,
-        vec![
-            CommandName::from_static(APP_PHASE),
-            CommandName::from_static(CAPTURE_SCREENSHOT),
-            CommandName::from_static(SETTINGS_READ),
-            CommandName::from_static(UI_FOCUS),
-            CommandName::from_static(PLAYBACK_STATE),
-        ],
+        published_names(),
         "the game publishes exactly these commands today, in declaration order: {catalogue:?}",
     );
     for (name, timing) in [
@@ -46,6 +64,10 @@ fn the_catalogue_lists_the_shell_read_set() -> TestResult {
         (SETTINGS_READ, CommandTiming::Immediate),
         (UI_FOCUS, CommandTiming::Immediate),
         (PLAYBACK_STATE, CommandTiming::Immediate),
+        (BATTLE_START, CommandTiming::Deferred),
+        (BATTLE_FLEE, CommandTiming::Deferred),
+        (PROCGEN_STEP, CommandTiming::Immediate),
+        (WAIT, CommandTiming::Deferred),
     ] {
         let Some(entry) = catalogue
             .entries
@@ -55,10 +77,58 @@ fn the_catalogue_lists_the_shell_read_set() -> TestResult {
             unreachable!("the catalogue carries a row for {name}: {catalogue:?}");
         };
         assert_eq!(entry.timing, timing, "{name} publishes the wrong timing");
-        assert_eq!(entry.availability, CommandAvailability::Available);
         assert!(
             !entry.summary.as_str().is_empty(),
             "every row carries the one line a client reads to learn what it does",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn the_menu_catalogue_scopes_availability_to_what_the_menu_can_actually_do() -> TestResult {
+    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
+    let QaResponse::Catalogue(catalogue) = reply else {
+        unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
+    };
+    let availability_of = |name: &'static str| {
+        catalogue
+            .entries
+            .iter()
+            .find(|entry| entry.command == CommandName::from_static(name))
+            .map(|entry| entry.availability.clone())
+    };
+
+    for name in [
+        APP_PHASE,
+        CAPTURE_SCREENSHOT,
+        SETTINGS_READ,
+        UI_FOCUS,
+        PLAYBACK_STATE,
+        BATTLE_START,
+        WAIT,
+    ] {
+        assert_eq!(
+            availability_of(name),
+            Some(CommandAvailability::Available),
+            "{name} answers from the Menu, so the live catalogue must say so: {catalogue:?}",
+        );
+    }
+
+    for (name, code) in [
+        (BATTLE_FLEE, UnavailableCode::WrongState),
+        (PROCGEN_STEP, PROCGEN_STEP_IN_THE_MENU),
+    ] {
+        let Some(CommandAvailability::Unavailable { code: live, note }) = availability_of(name)
+        else {
+            unreachable!(
+                "{name} cannot run in the Menu, so its live row must be Unavailable: {catalogue:?}"
+            );
+        };
+        assert_eq!(live, code, "{name} must name why it cannot run");
+        assert!(
+            !note.as_str().is_empty(),
+            "{name}'s refusal must name the precondition that is missing",
         );
     }
     Ok(())
@@ -104,16 +174,7 @@ fn a_misspelled_name_is_unknown_and_lists_what_exists() -> TestResult {
     let QaResponse::Outcome(CommandOutcome::Unknown { known }) = reply else {
         unreachable!("a name this host does not offer must be Unknown, got {reply:?}");
     };
-    assert_eq!(
-        known,
-        vec![
-            CommandName::from_static(APP_PHASE),
-            CommandName::from_static(CAPTURE_SCREENSHOT),
-            CommandName::from_static(SETTINGS_READ),
-            CommandName::from_static(UI_FOCUS),
-            CommandName::from_static(PLAYBACK_STATE),
-        ],
-    );
+    assert_eq!(known, published_names());
     Ok(())
 }
 
@@ -185,7 +246,7 @@ fn an_unbuilt_rider_is_refused_rather_than_dropped() -> TestResult {
     };
     assert_eq!(
         code,
-        gdtf_qa_protocol::command::UnavailableCode::NotBuilt,
+        UnavailableCode::NotBuilt,
         "nothing about the app's state can make an unbuilt rider exist",
     );
     assert!(

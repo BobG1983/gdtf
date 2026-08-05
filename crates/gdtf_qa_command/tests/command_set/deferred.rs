@@ -1,6 +1,6 @@
 use core::time::Duration;
 
-use gdtf_net_qa_transport::DEFAULT_IO_TIMEOUT;
+use gdtf_net_qa_transport::DEFAULT_REPLY_TIMEOUT;
 use gdtf_qa_command::{
     command::QaCommand,
     dispatch::{DEFERRED_BUDGET, DeferredBudget, DeferredReplies},
@@ -110,10 +110,11 @@ fn a_command_that_declares_a_budget_is_registered_with_its_own() {
         "this case proves nothing unless the declared budget differs from the default"
     );
     assert!(
-        *registered < *DEFAULT_IO_TIMEOUT,
-        "a declared budget ({:?}) must still expire before the socket timeout ({:?})",
+        *registered < *DEFAULT_REPLY_TIMEOUT,
+        "a declared budget ({:?}) must still expire before the socket stops waiting for the reply \
+         ({:?})",
         *registered,
-        *DEFAULT_IO_TIMEOUT
+        *DEFAULT_REPLY_TIMEOUT
     );
 }
 
@@ -149,12 +150,12 @@ fn every_published_command_expires_before_the_socket_could() {
         for command in set {
             let budget = command.deferred_budget();
             assert!(
-                *budget < *DEFAULT_IO_TIMEOUT,
-                "`{}`'s deferral budget ({:?}) must expire strictly before the socket timeout \
-                 ({:?})",
+                *budget < *DEFAULT_REPLY_TIMEOUT,
+                "`{}`'s deferral budget ({:?}) must expire strictly before the socket stops \
+                 waiting for the reply ({:?})",
                 command.name().as_str(),
                 *budget,
-                *DEFAULT_IO_TIMEOUT
+                *DEFAULT_REPLY_TIMEOUT
             );
         }
     }

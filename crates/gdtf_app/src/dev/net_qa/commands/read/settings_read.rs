@@ -26,6 +26,7 @@ pub(crate) struct SettingsRead;
 impl QaCommand for SettingsRead {
     type Args = SettingsReadArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = SettingsReadReply;
 
     const NAME: CommandName = CommandName::from_static("settings.read");
