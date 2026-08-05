@@ -4,13 +4,17 @@ use std::{
     time::Duration,
 };
 
-use gdtf_net_qa_transport::NetIoTimeout;
+use gdtf_net_qa_transport::{DEFAULT_REPLY_TIMEOUT, NetIoTimeout, NetTimeouts};
 
 use super::harness::{TestResult, spawn_fake_host_side, spawn_listener};
 
 #[test]
-fn an_idle_client_is_reaped_by_the_read_timeout() -> TestResult {
-    let (port, inbox) = spawn_listener(NetIoTimeout::new(Duration::from_millis(150)))?;
+fn an_idle_client_is_reaped_by_the_read_timeout_not_by_the_reply_wait() -> TestResult {
+    let timeouts = NetTimeouts::new(
+        NetIoTimeout::new(Duration::from_millis(150)),
+        DEFAULT_REPLY_TIMEOUT,
+    );
+    let (port, inbox) = spawn_listener(timeouts)?;
     spawn_fake_host_side(inbox);
 
     let mut client = TcpStream::connect((Ipv4Addr::LOCALHOST, *port))?;
@@ -20,7 +24,8 @@ fn an_idle_client_is_reaped_by_the_read_timeout() -> TestResult {
     let read = client.read(&mut buf)?;
     assert_eq!(
         read, 0,
-        "the server must close an idle connection via the read-timeout reap",
+        "the server must close an idle connection via the read-timeout reap, and the long reply \
+         wait must not hold the channel open past it",
     );
     Ok(())
 }

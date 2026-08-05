@@ -31,6 +31,7 @@ pub struct FakePhase;
 impl QaCommand for FakePhase {
     type Args = FakePhaseArgs;
     type Facts = FakeFacts;
+    type Parked = ();
     type Reply = FakePhaseReply;
 
     const NAME: CommandName = CommandName::from_static("fake.phase");

@@ -18,6 +18,14 @@ pub(crate) const UI_FOCUS: &str = "ui.focus";
 
 pub(crate) const PLAYBACK_STATE: &str = "playback.state";
 
+pub(crate) const BATTLE_START: &str = "battle.start";
+
+pub(crate) const BATTLE_FLEE: &str = "battle.flee";
+
+pub(crate) const PROCGEN_STEP: &str = "procgen.step";
+
+pub(crate) const WAIT: &str = "wait";
+
 pub(crate) fn exchange_all(
     fixture: SocketFixture,
     requests: Vec<QaRequest>,

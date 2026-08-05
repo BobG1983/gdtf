@@ -70,6 +70,7 @@ impl ParkedAt {
 struct ParkedReply<C: QaCommand> {
     responder: CommandResponder<C>,
     parked_at: ParkedAt,
+    ticket:    C::Parked,
 }
 
 /// Bevy resource holding deferred responders for command `C`.
@@ -98,11 +99,12 @@ impl<C: QaCommand> DeferredReplies<C> {
         }
     }
 
-    /// Park a responder to answer later.
-    pub fn park(&mut self, responder: CommandResponder<C>) {
+    /// Park a responder, with the ticket this call waits on, to answer later.
+    pub fn park(&mut self, responder: CommandResponder<C>, ticket: C::Parked) {
         self.parked.push_back(ParkedReply {
             responder,
             parked_at: ParkedAt::now(),
+            ticket,
         });
     }
 
@@ -148,6 +150,27 @@ impl<C: QaCommand> DeferredReplies<C> {
             entry.responder.answer(reply);
             delivered += 1;
         }
+        DeliveredCount::new(delivered)
+    }
+
+    /// Answer only the parked entries `resolve` hands a reply back for; keep the rest.
+    #[must_use = "the delivered count says how many waiters the world just released"]
+    pub fn answer_resolved<F>(&mut self, mut resolve: F) -> DeliveredCount
+    where
+        F: FnMut(&C::Parked) -> Option<C::Reply>,
+    {
+        let mut delivered = 0_usize;
+        let mut kept = VecDeque::with_capacity(self.parked.len());
+        while let Some(entry) = self.parked.pop_front() {
+            match resolve(&entry.ticket) {
+                Some(reply) => {
+                    entry.responder.answer(&reply);
+                    delivered += 1;
+                }
+                None => kept.push_back(entry),
+            }
+        }
+        self.parked = kept;
         DeliveredCount::new(delivered)
     }
 
