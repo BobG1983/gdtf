@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     command::{
-        ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, CommandTiming,
-        ReplySchemaJson,
+        ArgSchemaRon, CommandAvailability, CommandName, CommandSummary, CommandTiming,
+        ReplySchemaRon,
     },
     message::ServerNameNet,
 };
@@ -37,10 +37,10 @@ pub struct CommandEntry {
     /// Immediate vs deferred (`#[serde(default)]` for older frames).
     #[serde(default)]
     pub timing:       CommandTiming,
-    /// JSON schema for arguments.
-    pub arguments:    ArgSchemaJson,
-    /// JSON schema for the reply body.
-    pub reply:        ReplySchemaJson,
+    /// RON shape for arguments.
+    pub arguments:    ArgSchemaRon,
+    /// RON shape for the reply body.
+    pub reply:        ReplySchemaRon,
     /// Whether the command can run right now.
     pub availability: CommandAvailability,
 }
@@ -52,8 +52,8 @@ impl CommandEntry {
         command: CommandName,
         summary: CommandSummary,
         timing: CommandTiming,
-        arguments: ArgSchemaJson,
-        reply: ReplySchemaJson,
+        arguments: ArgSchemaRon,
+        reply: ReplySchemaRon,
         availability: CommandAvailability,
     ) -> Self {
         Self {

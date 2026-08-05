@@ -11,7 +11,7 @@ pub struct ProtocolVersion(u32);
 
 impl ProtocolVersion {
     /// Current protocol version implemented by this crate.
-    pub const CURRENT: Self = Self::new(14);
+    pub const CURRENT: Self = Self::new(15);
 
     /// Wrap a version number.
     #[must_use]

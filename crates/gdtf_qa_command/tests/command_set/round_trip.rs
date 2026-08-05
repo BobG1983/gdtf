@@ -16,7 +16,7 @@ fn an_admitted_call_reaches_the_handler_and_answers_the_declared_reply() {
         &mut app,
         FAKE_COMMANDS,
         &FakePhase::NAME,
-        &args("{}"),
+        &args("()"),
         &plain(),
     );
 
@@ -39,7 +39,7 @@ fn arguments_decode_into_the_command_s_own_type() {
         &mut app,
         FAKE_COMMANDS,
         &FakeCell::NAME,
-        &args("{\"cell\":{\"x\":3,\"y\":-4}}"),
+        &args("(cell:(x:3,y:-4))"),
         &plain(),
     );
 
@@ -62,14 +62,14 @@ fn two_commands_in_one_frame_each_get_their_own_calls() {
         &mut app,
         FAKE_COMMANDS,
         &FakePhase::NAME,
-        &args("{}"),
+        &args("()"),
         &plain(),
     );
     let cell = run_fake_command(
         &mut app,
         FAKE_COMMANDS,
         &FakeCell::NAME,
-        &args("{\"cell\":{\"x\":0,\"y\":0}}"),
+        &args("(cell:(x:0,y:0))"),
         &plain(),
     );
 

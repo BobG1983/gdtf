@@ -10,7 +10,7 @@ use gdtf_qa_mcp::{
     QaLink, QaPort, StopOutcome, TailLines, WorkingDir, base64::encode_standard, dispatch,
 };
 use gdtf_qa_protocol::{
-    command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyJson, ReplyAttachment},
+    command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyRon, ReplyAttachment},
     message::{QaError, QaRequest, QaResponse},
 };
 use serde_json::{Value, json};
@@ -23,7 +23,7 @@ const GAME_SHOT_BYTES: &[u8] = b"shotcwd-game-png-bytes";
 
 const EDITOR_SHOT_BYTES: &[u8] = b"shotcwd-editor-png-bytes";
 
-const CAPTURE_REPLY: &str = "null";
+const CAPTURE_REPLY: &str = "()";
 
 struct RelativeShotLink(&'static str);
 
@@ -31,7 +31,7 @@ impl QaLink for RelativeShotLink {
     fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
         match request {
             QaRequest::Run(_) => Ok(QaResponse::Outcome(CommandOutcome::Ran {
-                reply:       CommandReplyJson::new(CAPTURE_REPLY.to_owned()),
+                reply:       CommandReplyRon::new(CAPTURE_REPLY.to_owned()),
                 attachments: vec![ReplyAttachment::new(
                     AttachmentKind::Png,
                     ArtifactPath::new(self.0.to_owned()),

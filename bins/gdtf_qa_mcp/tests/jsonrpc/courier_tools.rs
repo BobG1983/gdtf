@@ -1,7 +1,8 @@
 use serde_json::{Value, json};
 
 use crate::support::{
-    CANNED_ARG_SCHEMA, CANNED_COMMAND, CANNED_REPLY_SCHEMA, EDITOR_HOST_NAME, dispatch_json,
+    CANNED_ARG_SCHEMA, CANNED_COMMAND, CANNED_REPLY, CANNED_REPLY_SCHEMA, EDITOR_HOST_NAME,
+    dispatch_json,
 };
 
 fn body(response: &Value) -> Value {
@@ -37,7 +38,7 @@ fn commands_returns_the_summary_catalogue() {
 }
 
 #[test]
-fn commands_full_detail_carries_the_derived_schemas() {
+fn commands_full_detail_carries_each_shape_as_an_unparsed_string() {
     let response = dispatch_json(
         r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"commands","arguments":{"host":"game","command":"app.phase","detail":"Full"}}}"#,
     );
@@ -49,18 +50,15 @@ fn commands_full_detail_carries_the_derived_schemas() {
     };
     assert_eq!(rows.len(), 1, "the filter narrows to one row: {body}");
 
-    let Ok(arguments) = serde_json::from_str::<Value>(CANNED_ARG_SCHEMA) else {
-        unreachable!("the fixture's argument schema is JSON");
-    };
-    let Ok(reply) = serde_json::from_str::<Value>(CANNED_REPLY_SCHEMA) else {
-        unreachable!("the fixture's reply schema is JSON");
-    };
-    assert_eq!(rows[0]["schemas"]["arguments"], arguments);
-    assert_eq!(rows[0]["schemas"]["reply"], reply);
     assert_eq!(
-        rows[0]["schemas"]["arguments"]["additionalProperties"],
-        json!(false),
-        "the argument schema must publish its strictness: {body}",
+        rows[0]["schemas"]["arguments"],
+        json!(CANNED_ARG_SCHEMA),
+        "the published shape travels as opaque text, not as a parsed document: {body}",
+    );
+    assert_eq!(
+        rows[0]["schemas"]["reply"],
+        json!(CANNED_REPLY_SCHEMA),
+        "the published reply shape travels as opaque text: {body}",
     );
 }
 
@@ -78,21 +76,22 @@ fn an_unknown_command_filter_is_an_error_naming_the_known_ones() {
 }
 
 #[test]
-fn run_returns_the_five_level_state_tuple() {
+fn run_returns_the_ron_reply_text_intact() {
     let response = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":{}}}}"#,
+        r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":"()"}}}"#,
     );
     assert_eq!(response["result"]["isError"], json!(false));
     let body = body(&response);
     assert_eq!(body["outcome"], json!("Ran"));
-    let phase = &body["reply"]["phase"];
-    assert_eq!(phase["app"], json!("Running"));
-    assert_eq!(phase["running"], json!("Menu"));
-    for level in ["game", "battlescape", "aftermath"] {
-        assert_eq!(
-            phase[level],
-            Value::Null,
-            "the inactive level `{level}` is present and null: {body}",
+    assert_eq!(
+        body["reply"],
+        json!(CANNED_REPLY),
+        "the RON reply travels as opaque text, so no enum field is blanked: {body}",
+    );
+    for wanted in ["app:Running", "running:Some(Menu)", "battlescape:None"] {
+        assert!(
+            body["reply"].as_str().is_some_and(|r| r.contains(wanted)),
+            "`{wanted}` must survive the render: {body}",
         );
     }
 }
@@ -100,7 +99,7 @@ fn run_returns_the_five_level_state_tuple() {
 #[test]
 fn an_unknown_command_run_lists_the_known_names() {
     let response = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phasee","arguments":{}}}}"#,
+        r#"{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phasee","arguments":"()"}}}"#,
     );
     assert_eq!(
         response["result"]["isError"],
@@ -115,7 +114,7 @@ fn an_unknown_command_run_lists_the_known_names() {
 #[test]
 fn bad_arguments_come_back_with_the_schema_attached() {
     let response = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":{"nope":1}}}}"#,
+        r#"{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"run","arguments":{"host":"game","command":"app.phase","arguments":"(nope:1)"}}}"#,
     );
     assert_eq!(response["result"]["isError"], json!(true));
     let body = body(&response);
@@ -124,11 +123,11 @@ fn bad_arguments_come_back_with_the_schema_attached() {
         body["detail"].as_str().is_some_and(|d| d.contains("nope")),
         "the fault names the field that was wrong: {body}",
     );
-    let Ok(schema) = serde_json::from_str::<Value>(CANNED_ARG_SCHEMA) else {
-        unreachable!("the fixture's argument schema is JSON");
-    };
-    assert_eq!(body["schema"], schema);
-    assert_eq!(body["schema"]["additionalProperties"], json!(false));
+    assert_eq!(
+        body["schema"],
+        json!(CANNED_ARG_SCHEMA),
+        "the attached shape travels as opaque text: {body}",
+    );
 }
 
 #[test]

@@ -4,9 +4,9 @@ use gdtf_qa_mcp::{
 };
 use gdtf_qa_protocol::{
     command::{
-        ArgSchemaJson, ArgumentFault, CommandAvailability, CommandCatalogue, CommandEntry,
-        CommandName, CommandOutcome, CommandReplyJson, CommandSummary, CommandTiming, RefusalNote,
-        ReplySchemaJson, RunOptions, UnavailableCode,
+        ArgSchemaRon, ArgumentFault, CommandAvailability, CommandCatalogue, CommandEntry,
+        CommandName, CommandOutcome, CommandReplyRon, CommandSummary, CommandTiming, RefusalNote,
+        ReplySchemaRon, RunOptions, UnavailableCode,
     },
     message::{QaError, QaRequest, QaResponse, RunCommand, ServerNameNet},
 };
@@ -15,9 +15,11 @@ use serde_json::Value;
 pub(crate) const EDITOR_HOST_NAME: &str = "gdtf-editor-net-qa";
 
 pub(crate) const CANNED_COMMAND: &str = "app.phase";
-pub(crate) const CANNED_ARG_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"AppPhaseArgs","type":"object","properties":{},"additionalProperties":false}"#;
-pub(crate) const CANNED_REPLY_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"AppPhaseReply","type":"object","properties":{"phase":{"type":"object"}},"required":["phase"]}"#;
-pub(crate) const CANNED_REPLY: &str = r#"{"phase":{"app":"Running","running":"Menu","game":null,"battlescape":null,"aftermath":null}}"#;
+pub(crate) const CANNED_ARG_SCHEMA: &str =
+    r#"(root:Named("AppPhaseArgs"),defs:[("AppPhaseArgs",Record([]))])"#;
+pub(crate) const CANNED_REPLY_SCHEMA: &str = r#"(root:Named("AppPhaseReply"),defs:[("AppPhaseReply",Record([("phase",Named("AppPhaseNet"))]))])"#;
+pub(crate) const CANNED_REPLY: &str =
+    "(phase:(app:Running,running:Some(Menu),game:None,battlescape:None,aftermath:None))";
 
 fn canned_catalogue() -> CommandCatalogue {
     CommandCatalogue::new(
@@ -26,8 +28,8 @@ fn canned_catalogue() -> CommandCatalogue {
             CommandName::from_static(CANNED_COMMAND),
             CommandSummary::from_static("Read where the app is at every level."),
             CommandTiming::Immediate,
-            ArgSchemaJson::new(CANNED_ARG_SCHEMA.to_owned()),
-            ReplySchemaJson::new(CANNED_REPLY_SCHEMA.to_owned()),
+            ArgSchemaRon::new(CANNED_ARG_SCHEMA.to_owned()),
+            ReplySchemaRon::new(CANNED_REPLY_SCHEMA.to_owned()),
             CommandAvailability::Available,
         )],
     )
@@ -62,17 +64,17 @@ fn canned_run(run: &RunCommand) -> CommandOutcome {
             note: RefusalNote::from_owned(riders_that_arrived(&run.options)),
         };
     }
-    if run.arguments.as_str() != "{}" {
+    if run.arguments.as_str() != "()" {
         return CommandOutcome::BadArguments {
             detail: ArgumentFault::new(format!(
                 "unknown field, expected no fields: {}",
                 run.arguments.as_str()
             )),
-            schema: ArgSchemaJson::new(CANNED_ARG_SCHEMA.to_owned()),
+            schema: ArgSchemaRon::new(CANNED_ARG_SCHEMA.to_owned()),
         };
     }
     CommandOutcome::Ran {
-        reply:       CommandReplyJson::new(CANNED_REPLY.to_owned()),
+        reply:       CommandReplyRon::new(CANNED_REPLY.to_owned()),
         attachments: Vec::new(),
     }
 }

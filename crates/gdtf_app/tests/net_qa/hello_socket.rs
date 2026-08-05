@@ -2,7 +2,7 @@ use std::{sync::mpsc, thread};
 
 use gdtf_app::test_support::{NET_QA_PROTOCOL_VERSION, NET_QA_SERVER_NAME};
 use gdtf_qa_protocol::{
-    command::{CommandArgsJson, CommandName},
+    command::{CommandArgsRon, CommandName},
     message::{ProtocolVersion, QaError, QaRequest, QaResponse, RunCommand},
 };
 
@@ -15,7 +15,7 @@ const STALE_VERSION: ProtocolVersion = ProtocolVersion::new(12);
 fn run_request() -> QaRequest {
     QaRequest::Run(RunCommand::new(
         CommandName::from_static("app.phase"),
-        CommandArgsJson::new("{}".to_owned()),
+        CommandArgsRon::new("()".to_owned()),
     ))
 }
 

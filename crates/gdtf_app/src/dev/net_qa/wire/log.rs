@@ -1,13 +1,12 @@
 //! Combat log provenance and read limits on the wire.
 
 use bevy::prelude::Deref;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::token::GangerToken;
 
 /// Why an act was logged.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ActProvenanceNet {
     /// Player or QA commanded.
     Commanded,
@@ -23,7 +22,7 @@ pub enum ActProvenanceNet {
 }
 
 /// Max number of log lines to return in one read.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct LogReadCap(u32);
 
@@ -36,7 +35,7 @@ impl LogReadCap {
 }
 
 /// How many log lines were dropped before the read window.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct LogDroppedCount(u32);
 

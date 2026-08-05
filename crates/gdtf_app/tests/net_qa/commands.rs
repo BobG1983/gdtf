@@ -5,16 +5,15 @@ use gdtf_qa_protocol::{
     },
     message::{QaRequest, QaResponse},
 };
-use serde_json::Value;
 
 use super::{
     command_exchange::{APP_PHASE, exchange, exchange_all, run},
-    socket_support::TestResult,
+    socket_support::{TestResult, game_app_listening},
 };
 
 #[test]
 fn the_catalogue_lists_exactly_app_phase() -> TestResult {
-    let reply = exchange(QaRequest::Catalogue)?;
+    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
     let QaResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
     };
@@ -41,83 +40,42 @@ fn the_catalogue_lists_exactly_app_phase() -> TestResult {
 }
 
 #[test]
-fn the_catalogue_row_carries_the_derived_schemas() -> TestResult {
-    let reply = exchange(QaRequest::Catalogue)?;
-    let QaResponse::Catalogue(catalogue) = reply else {
-        unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
-    };
-    let Some(entry) = catalogue.entries.first() else {
-        unreachable!("a one-row catalogue has a first row");
-    };
-
-    let Ok(arguments) = serde_json::from_str::<Value>(entry.arguments.as_str()) else {
-        unreachable!(
-            "the derived argument schema is JSON: {}",
-            entry.arguments.as_str()
-        );
-    };
-    assert_eq!(
-        arguments["title"], "AppPhaseArgs",
-        "the argument schema is derived from the command's own Args type: {arguments}",
-    );
-    assert_eq!(
-        arguments["additionalProperties"], false,
-        "`deny_unknown_fields` must reach the published schema: {arguments}",
-    );
-
-    let Ok(reply_schema) = serde_json::from_str::<Value>(entry.reply.as_str()) else {
-        unreachable!("the derived reply schema is JSON: {}", entry.reply.as_str());
-    };
-    assert_eq!(
-        reply_schema["title"], "AppPhaseReply",
-        "the reply schema is derived from the command's own Reply type: {reply_schema}",
-    );
-    assert!(
-        reply_schema["properties"]["phase"].is_object(),
-        "the reply schema describes the nested phase record: {reply_schema}",
-    );
-    Ok(())
-}
-
-#[test]
-fn running_app_phase_returns_the_five_level_tuple() -> TestResult {
-    let reply = exchange(run(APP_PHASE, "{}", RunOptions::default()))?;
+fn running_app_phase_answers_ron_with_every_level_written() -> TestResult {
+    let reply = exchange(
+        game_app_listening,
+        run(APP_PHASE, "()", RunOptions::default()),
+    )?;
     let QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
         unreachable!("a plain app.phase call must RUN, got {reply:?}");
     };
-    let Ok(body) = serde_json::from_str::<Value>(reply.as_str()) else {
-        unreachable!(
-            "the reply body is the command's own JSON: {}",
-            reply.as_str()
-        );
-    };
-    let phase = &body["phase"];
-    assert_eq!(
-        phase["app"], "Running",
-        "the harness rests the app in Running: {body}",
+    let body = reply.as_str();
+
+    assert!(
+        ron::de::from_str::<ron::Value>(body).is_ok(),
+        "the reply body is RON, not JSON: {body}",
     );
-    assert_eq!(
-        phase["running"], "Menu",
-        "entering Running enters the Menu screen, and the reply must report the LIVE \
-         sub-state rather than an absent one: {body}",
-    );
-    for level in ["running", "game", "battlescape", "aftermath"] {
+    for wanted in [
+        "app:Running",
+        "running:Some(Menu)",
+        "game:None",
+        "battlescape:None",
+        "aftermath:None",
+    ] {
         assert!(
-            phase.get(level).is_some(),
-            "the nested level `{level}` is always PRESENT, null when not live: {body}",
+            body.contains(wanted),
+            "the reply writes every level explicitly, live or not — `{wanted}` is missing \
+             from {body}",
         );
     }
-    assert_eq!(
-        phase["battlescape"],
-        Value::Null,
-        "no battle is running, so the battle phase is null: {body}",
-    );
     Ok(())
 }
 
 #[test]
 fn a_misspelled_name_is_unknown_and_lists_what_exists() -> TestResult {
-    let reply = exchange(run("app.phasee", "{}", RunOptions::default()))?;
+    let reply = exchange(
+        game_app_listening,
+        run("app.phasee", "()", RunOptions::default()),
+    )?;
     let QaResponse::Outcome(CommandOutcome::Unknown { known }) = reply else {
         unreachable!("a name this host does not offer must be Unknown, got {reply:?}");
     };
@@ -127,18 +85,25 @@ fn a_misspelled_name_is_unknown_and_lists_what_exists() -> TestResult {
 
 #[test]
 fn an_unknown_argument_is_bad_arguments_with_the_schema() -> TestResult {
-    let mut replies = exchange_all(vec![
-        QaRequest::Catalogue,
-        run(APP_PHASE, r#"{"nope":1}"#, RunOptions::default()),
-    ])?;
+    let mut replies = exchange_all(
+        game_app_listening,
+        vec![
+            QaRequest::Catalogue,
+            run(APP_PHASE, "(nope:1)", RunOptions::default()),
+        ],
+    )?;
     let Some(outcome) = replies.pop() else {
         unreachable!("two requests yield two replies");
     };
     let Some(QaResponse::Catalogue(catalogue)) = replies.pop() else {
         unreachable!("the first reply is the catalogue");
     };
-    let Some(entry) = catalogue.entries.first() else {
-        unreachable!("a one-row catalogue has a first row");
+    let Some(entry) = catalogue
+        .entries
+        .iter()
+        .find(|entry| entry.command == CommandName::from_static(APP_PHASE))
+    else {
+        unreachable!("the catalogue carries the row the call names: {catalogue:?}");
     };
 
     let QaResponse::Outcome(CommandOutcome::BadArguments { detail, schema }) = outcome else {
@@ -151,21 +116,24 @@ fn an_unknown_argument_is_bad_arguments_with_the_schema() -> TestResult {
     );
     assert_eq!(
         schema, entry.arguments,
-        "the schema attached to a refusal is the SAME document the catalogue publishes",
+        "the shape attached to a refusal is the SAME document the catalogue publishes",
     );
     Ok(())
 }
 
 #[test]
 fn an_unbuilt_rider_is_refused_rather_than_dropped() -> TestResult {
-    let mut replies = exchange_all(vec![
-        run(APP_PHASE, "{}", RunOptions::default()),
-        run(
-            APP_PHASE,
-            "{}",
-            RunOptions::new(Some(AwaitBudget::new(5)), None),
-        ),
-    ])?;
+    let mut replies = exchange_all(
+        game_app_listening,
+        vec![
+            run(APP_PHASE, "()", RunOptions::default()),
+            run(
+                APP_PHASE,
+                "()",
+                RunOptions::new(Some(AwaitBudget::new(5)), None),
+            ),
+        ],
+    )?;
     let Some(with_rider) = replies.pop() else {
         unreachable!("two requests yield two replies");
     };

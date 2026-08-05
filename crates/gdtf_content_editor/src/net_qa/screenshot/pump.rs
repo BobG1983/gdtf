@@ -2,7 +2,7 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_net_qa_transport::{PendingQueue, Responder};
 use gdtf_qa_protocol::{
     command::{
-        ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyJson, RefusalNote,
+        ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyRon, RefusalNote,
         ReplyAttachment, UnavailableCode,
     },
     ids::ShotName,
@@ -117,11 +117,11 @@ fn claim_one(
     }
 }
 
-const CAPTURE_REPLY_BODY: &str = "null";
+const CAPTURE_REPLY_BODY: &str = "()";
 
 fn landed_reply(path: &CapturePath) -> QaResponse {
     QaResponse::Outcome(CommandOutcome::Ran {
-        reply:       CommandReplyJson::new(CAPTURE_REPLY_BODY.to_owned()),
+        reply:       CommandReplyRon::new(CAPTURE_REPLY_BODY.to_owned()),
         attachments: vec![ReplyAttachment::new(
             AttachmentKind::Png,
             ArtifactPath::new(path.to_string_lossy().into_owned()),

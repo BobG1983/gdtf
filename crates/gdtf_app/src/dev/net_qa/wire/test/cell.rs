@@ -50,4 +50,10 @@ fn an_unknown_field_is_refused() {
         ron::de::from_str::<CellLevelNet>(hostile).is_err(),
         "`{hostile}` carries an unknown field and must not decode",
     );
+
+    let hostile = "(x:1,y:2,z:3)";
+    assert!(
+        ron::de::from_str::<CellNet>(hostile).is_err(),
+        "`{hostile}` carries an unknown field and must not decode",
+    );
 }

@@ -7,10 +7,6 @@ edition = "2024"
 serde = { workspace = true }
 ron = { workspace = true }
 bevy_derive = { workspace = true }
-schemars = { workspace = true }
-
-[dev-dependencies]
-serde_json = "1"
 
 [lints]
 workspace = true

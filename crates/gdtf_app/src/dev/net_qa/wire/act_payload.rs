@@ -1,13 +1,12 @@
 //! Stance, aim, facing, and melee target wire payloads.
 
 use bevy::prelude::Deref;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{cell::CellLevelNet, token::GangerToken};
 
 /// Stance on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum StanceNet {
     /// Standing.
     Standing,
@@ -18,7 +17,7 @@ pub enum StanceNet {
 }
 
 /// Aiming flag on the wire.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct AimNet(bool);
 
@@ -31,7 +30,7 @@ impl AimNet {
 }
 
 /// Facing on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FacingNet {
     /// North.
     North,
@@ -52,7 +51,7 @@ pub enum FacingNet {
 }
 
 /// Melee target on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MeleeTargetNet {
     /// Attack a ganger.
     Ganger(GangerToken),

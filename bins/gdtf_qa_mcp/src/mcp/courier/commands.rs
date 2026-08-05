@@ -49,16 +49,12 @@ pub(in crate::mcp) fn parse_filter(args: &Value) -> Result<Option<CommandName>, 
     }
 }
 
-pub(super) fn schema_document(text: &str) -> Value {
-    serde_json::from_str::<Value>(text).unwrap_or_else(|_| Value::String(text.to_owned()))
-}
-
 fn render_entry(entry: &CommandEntry, detail: CatalogueDetail) -> Value {
     let schemas = match detail {
         CatalogueDetail::Summary => Value::Null,
         CatalogueDetail::Full => json!({
-            "arguments": schema_document(entry.arguments.as_str()),
-            "reply": schema_document(entry.reply.as_str()),
+            "arguments": entry.arguments.as_str(),
+            "reply": entry.reply.as_str(),
         }),
     };
     json!({

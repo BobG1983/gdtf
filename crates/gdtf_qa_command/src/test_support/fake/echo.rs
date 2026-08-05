@@ -5,7 +5,6 @@ use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
 };
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::facts::FakeFacts;
@@ -15,7 +14,7 @@ use crate::{
 };
 
 /// Text payload for the echo command.
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct FakeEchoText(String);
 
@@ -34,7 +33,7 @@ impl FakeEchoText {
 }
 
 /// Arguments for `fake.echo`.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FakeEchoArgs {
     /// Text to echo.
@@ -42,7 +41,7 @@ pub struct FakeEchoArgs {
 }
 
 /// Reply for `fake.echo`.
-#[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FakeEchoReply {
     /// Echoed text.
     pub text: FakeEchoText,

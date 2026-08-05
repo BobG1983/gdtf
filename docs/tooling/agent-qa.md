@@ -267,8 +267,8 @@ rebuild, and needs no MCP reconnect. That is the whole point of the design; see
 | `launch` | host-local | — (starts the child via that host's `HostManager`) | all optional: `host`, `port`, `package`, `features` (array or comma-separated string), `working_dir`, `env` |
 | `stop` | host-local | — (stops the child via that host's `HostManager`) | optional `host` |
 | `logs` | host-local | — (reads the child's captured output) | optional `host`, `max_lines` (trailing lines to return) |
-| `commands` | forward | `QaRequest::Catalogue` | optional `host`, `command` (name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the two derived schemas) |
-| `run` | forward | `QaRequest::Run` | `command` (required, from `commands`), `arguments` (optional object, default `{}`), optional `host`, `await_ready` (whole seconds), `capture` (`true` or a file stem) |
+| `commands` | forward | `QaRequest::Catalogue` | optional `host`, `command` (name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the two published RON shapes) |
+| `run` | forward | `QaRequest::Run` | `command` (required, from `commands`), `arguments` (optional string of compact RON, default `"()"`), optional `host`, `await_ready` (whole seconds), `capture` (`true` or a file stem) |
 
 Notes an agent relies on:
 
@@ -279,14 +279,17 @@ Notes an agent relies on:
   the precondition named until one is running. Start every session here, and act
   on what it advertises — it is the truth about the build in front of you, and it
   changes with the host rather than with this document.
-- **`detail: "Full"`** adds each row's derived argument and reply schemas — the
-  documents you read to build a `run` call. They are DERIVED from the command's
-  own Rust types by the host, so they cannot drift from what it accepts.
+- **`detail: "Full"`** adds each row's published argument and reply shapes — the
+  RON documents you read to build a `run` call. The host traces them out of the
+  command's own `Deserialize` impls, the same impls that decode the wire, so they
+  cannot disagree with what it accepts. `arguments` is then a string of compact
+  RON shaped by that command's own `schemas.arguments`; a command that takes none
+  is `"()"`.
 - **`run`'s three refusals each self-correct in one round trip.** A name the host
   does not know comes back `Unknown` listing every name it does offer; arguments
-  it will not decode come back `BadArguments` carrying the schema they failed
-  against; a command that cannot run in this state comes back `Unavailable` with
-  the precondition named.
+  it will not decode come back `BadArguments` carrying the shape they failed
+  against and naming the field that broke; a command that cannot run in this state
+  comes back `Unavailable` with the precondition named.
 - **`run`'s two riders** are `await_ready` (keep re-testing admission for that
   many seconds instead of deciding once) and `capture` (take a screenshot after
   the command has run). Neither is built yet: a call carrying either comes back
@@ -379,15 +382,16 @@ against the shipped five-tool surface:
 2. `commands` — read that host's live catalogue: what it offers, and what is
    available right now.
 3. `commands` with `detail: "Full"` and a `command` filter — read one command's
-   derived argument and reply schemas.
-4. `run` with that command and its arguments — do the thing.
+   published argument and reply shapes.
+4. `run` with that command and its arguments, written as compact RON — do the
+   thing.
 5. `logs` — if a step surprised you, read what the child printed.
 6. `stop` — stop the child and release the port.
 
-On the game host today step 4 is `run { command: "app.phase" }`, which answers
-the five-level state tuple (`app`, `running`, `game`, `battlescape`,
-`aftermath`, the nested four `null` where they are not live). Steps 2-4 are what
-change as commands land; steps 1, 5 and 6 never do.
+On the game host today step 4 is `run { command: "app.phase", arguments: "()" }`,
+which answers the five-level state tuple (`app`, `running`, `game`,
+`battlescape`, `aftermath`, the nested four `None` where they are not live).
+Steps 2-4 are what change as commands land; steps 1, 5 and 6 never do.
 
 The two hosts are independent: a game child on `7616` and an editor child on
 `7617` are tracked by separate `HostManager`s, one per host, constructed in

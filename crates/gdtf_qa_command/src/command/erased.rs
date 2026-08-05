@@ -2,13 +2,16 @@
 
 use bevy::prelude::App;
 use gdtf_qa_protocol::command::{
-    ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, CommandTiming, ReplySchemaJson,
+    ArgSchemaRon, CommandAvailability, CommandName, CommandSummary, CommandTiming, ReplySchemaRon,
+    shape_text,
 };
 
-use super::{QaCommand, schema::schema_text};
+use super::QaCommand;
+use crate::dispatch::DeferredBudget;
 
 /// Object-safe view of a command for catalogues and host registration.
-/// Concrete types implement this automatically via [`QaCommand`]. Args should derive `Debug`, `serde::Deserialize`, and `schemars::JsonSchema`. Replies should derive `serde::Serialize` and `schemars::JsonSchema`.
+/// Concrete types implement this automatically via [`QaCommand`]. Both the argument and the
+/// reply type derive `serde::Deserialize`, which is what the published shape is read out of.
 pub trait ErasedCommand<F>: Send + Sync {
     /// Stable command name.
     fn name(&self) -> CommandName;
@@ -16,10 +19,12 @@ pub trait ErasedCommand<F>: Send + Sync {
     fn summary(&self) -> CommandSummary;
     /// When the command may run relative to the frame.
     fn timing(&self) -> CommandTiming;
-    /// JSON Schema for the argument payload.
-    fn arg_schema(&self) -> ArgSchemaJson;
-    /// JSON Schema for the reply payload.
-    fn reply_schema(&self) -> ReplySchemaJson;
+    /// How long this command's deferred replies may wait.
+    fn deferred_budget(&self) -> DeferredBudget;
+    /// RON shape for the argument payload.
+    fn arg_schema(&self) -> ArgSchemaRon;
+    /// RON shape for the reply payload.
+    fn reply_schema(&self) -> ReplySchemaRon;
     /// Whether the command is available given host facts.
     fn availability(&self, facts: &F) -> CommandAvailability;
     /// Register Bevy systems for this command on `app`.
@@ -39,12 +44,16 @@ impl<C: QaCommand> ErasedCommand<C::Facts> for C {
         C::TIMING
     }
 
-    fn arg_schema(&self) -> ArgSchemaJson {
-        ArgSchemaJson::new(schema_text::<C::Args>())
+    fn deferred_budget(&self) -> DeferredBudget {
+        C::DEFERRED_BUDGET
     }
 
-    fn reply_schema(&self) -> ReplySchemaJson {
-        ReplySchemaJson::new(schema_text::<C::Reply>())
+    fn arg_schema(&self) -> ArgSchemaRon {
+        ArgSchemaRon::new(shape_text::<C::Args>())
+    }
+
+    fn reply_schema(&self) -> ReplySchemaRon {
+        ReplySchemaRon::new(shape_text::<C::Reply>())
     }
 
     fn availability(&self, facts: &C::Facts) -> CommandAvailability {

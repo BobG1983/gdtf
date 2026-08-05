@@ -9,7 +9,6 @@ use gdtf_qa_protocol::{
     },
     ids::CellNet,
 };
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::facts::{FakeFacts, FakeLevel};
@@ -19,7 +18,7 @@ use crate::{
 };
 
 /// Arguments for `fake.cell`.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FakeCellArgs {
     /// Cell to read.
@@ -27,7 +26,7 @@ pub struct FakeCellArgs {
 }
 
 /// Reply for `fake.cell`.
-#[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FakeCellReply {
     /// Echoed cell.
     pub cell:  CellNet,

@@ -5,7 +5,7 @@ use core::marker::PhantomData;
 use bevy::prelude::*;
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::{
-    command::{CommandOutcome, CommandReplyJson, RefusalNote, ReplyAttachment, UnavailableCode},
+    command::{CommandOutcome, CommandReplyRon, RefusalNote, ReplyAttachment, UnavailableCode},
     message::{QaError, QaResponse},
 };
 
@@ -34,9 +34,9 @@ impl<C: QaCommand> CommandResponder<C> {
 
     /// Serialize `reply` with attachments and send a successful outcome.
     pub fn answer_with(self, reply: &C::Reply, attachments: Vec<ReplyAttachment>) {
-        match serde_json::to_string(reply) {
-            Ok(json) => self.inner.reply(QaResponse::Outcome(CommandOutcome::Ran {
-                reply: CommandReplyJson::new(json),
+        match ron::ser::to_string(reply) {
+            Ok(text) => self.inner.reply(QaResponse::Outcome(CommandOutcome::Ran {
+                reply: CommandReplyRon::new(text),
                 attachments,
             })),
             Err(fault) => {
@@ -59,7 +59,9 @@ impl<C: QaCommand> CommandResponder<C> {
             }));
     }
 
-    pub(crate) fn into_inner(self) -> Responder {
+    /// Unwrap to the raw transport responder for a hand-built protocol answer.
+    #[must_use]
+    pub fn into_inner(self) -> Responder {
         self.inner
     }
 }

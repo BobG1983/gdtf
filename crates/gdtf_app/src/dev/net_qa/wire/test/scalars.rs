@@ -81,3 +81,12 @@ fn a_pointer_position_serializes_as_a_named_pair() {
         "(x:1,y:2)",
     );
 }
+
+#[test]
+fn a_pointer_position_refuses_an_unknown_field() {
+    let hostile = "(x:1,y:2,z:3)";
+    assert!(
+        ron::de::from_str::<PointerPosNet>(hostile).is_err(),
+        "`{hostile}` carries an unknown field and must not decode",
+    );
+}

@@ -1,6 +1,6 @@
 //! The facts the listener is given ([`host_facts`]) carry a version that is NOT
 use gdtf_qa_protocol::{
-    command::{CommandArgsJson, CommandName},
+    command::{CommandArgsRon, CommandName},
     framing::encode_frame,
     message::{QaError, QaRequest, QaResponse, RunCommand},
 };
@@ -13,7 +13,7 @@ use super::socket::{
 fn run_request() -> QaRequest {
     QaRequest::Run(RunCommand::new(
         CommandName::from_static("app.phase"),
-        CommandArgsJson::new("{}".to_owned()),
+        CommandArgsRon::new("()".to_owned()),
     ))
 }
 
