@@ -5,7 +5,10 @@ use super::{
     capture::CaptureScreenshot,
     lifecycle::{BattleFlee, BattleStart},
     procgen::ProcgenStep,
-    read::{AppPhase, PlaybackState, SettingsRead, UiFocus},
+    read::{
+        AppPhase, BattleInspect, BattleOffers, BattleRoster, BattleSelection, BattleSightline,
+        BattleTurn, BattleVisible, LogRead, PlaybackState, SettingsRead, UiFocus,
+    },
     wait::Wait,
 };
 use crate::dev::net_qa::{config::SERVER_NAME, facts::GameFacts};
@@ -16,6 +19,14 @@ pub(in crate::dev::net_qa) const GAME_COMMANDS: &[&dyn ErasedCommand<GameFacts>]
     &SettingsRead,
     &UiFocus,
     &PlaybackState,
+    &BattleRoster,
+    &BattleTurn,
+    &BattleSelection,
+    &BattleOffers,
+    &BattleInspect,
+    &BattleSightline,
+    &BattleVisible,
+    &LogRead,
     &BattleStart,
     &BattleFlee,
     &ProcgenStep,

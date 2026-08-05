@@ -9,8 +9,9 @@ use gdtf_qa_protocol::{
 
 use super::{
     command_exchange::{
-        APP_PHASE, BATTLE_FLEE, BATTLE_START, CAPTURE_SCREENSHOT, PLAYBACK_STATE, PROCGEN_STEP,
-        SETTINGS_READ, UI_FOCUS, WAIT, exchange, exchange_all, run,
+        APP_PHASE, BATTLE_FLEE, BATTLE_INSPECT, BATTLE_OFFERS, BATTLE_ROSTER, BATTLE_SELECTION,
+        BATTLE_SIGHTLINE, BATTLE_START, BATTLE_TURN, BATTLE_VISIBLE, CAPTURE_SCREENSHOT, LOG_READ,
+        PLAYBACK_STATE, PROCGEN_STEP, SETTINGS_READ, UI_FOCUS, WAIT, exchange, exchange_all, run,
     },
     socket_support::{TestResult, game_app_listening},
 };
@@ -31,6 +32,14 @@ pub(crate) fn published_names() -> Vec<CommandName> {
         CommandName::from_static(SETTINGS_READ),
         CommandName::from_static(UI_FOCUS),
         CommandName::from_static(PLAYBACK_STATE),
+        CommandName::from_static(BATTLE_ROSTER),
+        CommandName::from_static(BATTLE_TURN),
+        CommandName::from_static(BATTLE_SELECTION),
+        CommandName::from_static(BATTLE_OFFERS),
+        CommandName::from_static(BATTLE_INSPECT),
+        CommandName::from_static(BATTLE_SIGHTLINE),
+        CommandName::from_static(BATTLE_VISIBLE),
+        CommandName::from_static(LOG_READ),
         CommandName::from_static(BATTLE_START),
         CommandName::from_static(BATTLE_FLEE),
         CommandName::from_static(PROCGEN_STEP),
@@ -39,7 +48,7 @@ pub(crate) fn published_names() -> Vec<CommandName> {
 }
 
 #[test]
-fn the_catalogue_lists_the_shell_reads_and_the_lifecycle_commands() -> TestResult {
+fn the_catalogue_lists_the_shell_reads_the_battle_reads_and_the_lifecycle_commands() -> TestResult {
     let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
     let QaResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
@@ -80,6 +89,48 @@ fn the_catalogue_lists_the_shell_reads_and_the_lifecycle_commands() -> TestResul
         assert!(
             !entry.summary.as_str().is_empty(),
             "every row carries the one line a client reads to learn what it does",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn the_catalogue_refuses_every_battle_read_at_the_menu() -> TestResult {
+    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
+    let QaResponse::Catalogue(catalogue) = reply else {
+        unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
+    };
+    for name in [
+        BATTLE_ROSTER,
+        BATTLE_TURN,
+        BATTLE_SELECTION,
+        BATTLE_OFFERS,
+        BATTLE_INSPECT,
+        BATTLE_SIGHTLINE,
+        BATTLE_VISIBLE,
+        LOG_READ,
+    ] {
+        let Some(entry) = catalogue
+            .entries
+            .iter()
+            .find(|entry| entry.command == CommandName::from_static(name))
+        else {
+            unreachable!("the catalogue carries a row for {name}: {catalogue:?}");
+        };
+        assert!(
+            matches!(
+                entry.availability,
+                CommandAvailability::Unavailable {
+                    code: gdtf_qa_protocol::command::UnavailableCode::WrongState,
+                    ..
+                }
+            ),
+            "the catalogue's availability column is the live answer, so `{name}` reads as \
+             refused at the menu: {entry:?}",
+        );
+        assert!(
+            entry.timing == CommandTiming::Immediate,
+            "every battle read answers inside the frame it is claimed in: {entry:?}",
         );
     }
     Ok(())

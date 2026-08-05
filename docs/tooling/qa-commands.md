@@ -222,13 +222,60 @@ run(host="game", command="battle.start", arguments="(seed: Some(42))")
 run(host="game", command="wait", arguments="(condition: BattleDecided)")
 ```
 
-The game offers nine commands today: `app.phase`, `capture.screenshot`, `settings.read`,
-`ui.focus`, `playback.state`, `battle.start`, `battle.flee`, `procgen.step` and `wait`.
+The game offers seventeen commands today: `app.phase`, `capture.screenshot`, `settings.read`,
+`ui.focus`, `playback.state`, `battle.roster`, `battle.turn`, `battle.selection`,
+`battle.offers`, `battle.inspect`, `battle.sightline`, `battle.visible`, `log.read`,
+`battle.start`, `battle.flee`, `procgen.step` and `wait`.
 
 `settings.read`, `ui.focus` and `playback.state` are the shell reads — they take `()`, are
 `Immediate`, and answer before a battle: `settings.read` reports the Options values,
 `ui.focus` reports the focused widget and the widgets the current screen registered as
 focusable, and `playback.state` reports whether the screen has caught up with the act log.
+
+The eight battle reads are `Immediate` too, and report only what the player can see.
+`battle.roster` lists every player card plus the enemies the squad can currently see, each
+card naming the cell its sprite stands on — the
+reduction is which enemies appear, not which fields a card carries, since the stat block
+already draws a visible enemy's whole card —
+`battle.turn` names the acting gang and the player's, `battle.selection` reports the
+selected shooter, its fire mode and the hovered and pinned inspect cells, `battle.offers`
+lists the contextual buttons the panel is showing with the target each would act on,
+`battle.inspect` reads one cell exactly as the inspect panel draws it, `battle.sightline`
+answers whether the squad can see a cell and whether the selected shooter could engage it,
+`battle.visible`
+lists the enemies, doors and cover inside the lit area, and `log.read` returns a window of
+the act log — `since` picks where it starts, `cap` how many lines it keeps, and the reply
+brackets the window with the log's `head` and `oldest` so a caller can page.
+
+`log.read` is where the whole-log dump would come back if it were allowed to, so its cap
+is bounded rather than obeyed: absent it is 50, and any cap a caller names is clamped to
+200. The ring buffer holds 2048 lines. A caller that wants more than one window pages with
+`since`, taking the previous reply's `head` as the next cursor, and compares its cursor
+against `oldest` to see whether the buffer threw lines away in between.
+
+Every read that answers a fog question reads the same playback-gated shadows the panels
+read — the shown fog, the shown occupancy grid and cover ledger, and each ganger's drawn
+cell and drawn vitals. That covers `battle.roster`, `battle.inspect`, `battle.visible` and
+the `can_see` half of `battle.sightline`. A ganger is therefore reported on the cell its
+sprite stands on, and counts as seen or hidden from that cell, not from the one the sim
+has already moved it to, and no read ever reports fog the screen has not drawn yet. The
+rest read live state on purpose, because what they report is not drawn from a shadow:
+`battle.turn` and `battle.offers` report resources the sim and the panel write each frame,
+the `can_engage` half of `battle.sightline` asks the sim's own firing-arc gate,
+`battle.selection` reports the pointer's live selection, and `log.read` reads the act log
+with no fog filter, matching a combat log that filters none either.
+
+Each read refuses `Unavailable` with code `WrongState` off the battle screen. `log.read`
+is the one whose phase gate leaves a window open — the battlescape is up while the battle
+is still generating, and the act log arrives with the rest of the battle runtime — so a
+call inside that window is refused `MissingModel` rather than answered with an empty log
+that would read as "nothing has happened".
+`battle.sightline` further needs the battle's running phase, and `battle.offers`,
+`battle.inspect` and `battle.visible` need a running battle whose sim state is loaded —
+without it the offer and inspect systems never run, so answering would report "nothing
+offered" where the truth is "not computed yet". Those three words are pinned command by
+command in
+[`commands/read/test/availability_words.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/read/test/availability_words.rs).
 
 `capture.screenshot` writes a PNG of what the game is showing and answers `Ran` with a
 `ReplyAttachment(Png, …)` naming it; `name` is optional and becomes the file stem inside

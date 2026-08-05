@@ -1,9 +1,10 @@
-//! Combat log provenance and read limits on the wire.
+//! Combat log entries, provenance and read limits on the wire.
 
 use bevy::prelude::Deref;
+use gdtf_battle_sim::act_log::{ActEntry, ActProvenance};
 use serde::{Deserialize, Serialize};
 
-use super::token::GangerToken;
+use super::{act::ActSeqNet, deed::ActDeedKindNet, token::GangerToken};
 
 /// Why an act was logged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -19,6 +20,48 @@ pub enum ActProvenanceNet {
     },
     /// Clock / timer driven.
     Clock,
+}
+
+impl ActProvenanceNet {
+    /// Mirror the sim's provenance.
+    #[must_use]
+    pub const fn from_sim(provenance: ActProvenance) -> Self {
+        match provenance {
+            ActProvenance::Commanded => Self::Commanded,
+            ActProvenance::AiTurn => Self::AiTurn,
+            ActProvenance::Reaction { interrupted } => Self::Reaction {
+                interrupted: GangerToken::new(interrupted.to_bits()),
+            },
+            ActProvenance::Clock => Self::Clock,
+        }
+    }
+}
+
+/// One act-log line as a QA client reads it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LogEntryNet {
+    /// Monotonic sequence number.
+    pub seq:        ActSeqNet,
+    /// Who acted.
+    pub actor:      GangerToken,
+    /// Where the act came from.
+    pub provenance: ActProvenanceNet,
+    /// What kind of act it was.
+    pub kind:       ActDeedKindNet,
+}
+
+impl LogEntryNet {
+    /// Mirror a stored act-log entry.
+    #[must_use]
+    pub fn from_sim(entry: &ActEntry) -> Self {
+        Self {
+            seq:        ActSeqNet::new(*entry.seq()),
+            actor:      GangerToken::new(entry.actor().to_bits()),
+            provenance: ActProvenanceNet::from_sim(entry.provenance()),
+            kind:       ActDeedKindNet::from_deed(entry.deed()),
+        }
+    }
 }
 
 /// Max number of log lines to return in one read.
