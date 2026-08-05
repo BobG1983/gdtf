@@ -58,6 +58,47 @@ pub(super) struct GangerRow {
     pub(super) factor:   MovementCostFactor,
 }
 
+/// Snapshot every combatant into decision rows for this turn.
+pub(super) fn ganger_rows(gangers: &EnemyTurnGangers) -> Vec<GangerRow> {
+    gangers
+        .iter()
+        .map(
+            |(
+                entity,
+                position,
+                stance,
+                facing,
+                aiming,
+                life,
+                tu,
+                tu_max,
+                faction,
+                walking,
+                injuries,
+            )| {
+                GangerRow {
+                    entity,
+                    position: *position,
+                    stance: *stance,
+                    facing: *facing,
+                    aiming: *aiming,
+                    life: *life,
+                    tu: *tu,
+                    tu_max: *tu_max,
+                    faction: *faction,
+                    walking: MidWalk::new(walking),
+                    hands: injuries
+                        .map_or_else(HandsAvailable::default, InflictedInjuries::hands_available),
+                    factor: injuries.map_or(
+                        MovementCostFactor::IDENTITY,
+                        InflictedInjuries::movement_cost_factor,
+                    ),
+                }
+            },
+        )
+        .collect()
+}
+
 /// `CellLevel` from a position.
 pub(super) fn row_cell_level(position: &Position) -> CellLevel {
     **position

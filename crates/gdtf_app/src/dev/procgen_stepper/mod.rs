@@ -1,3 +1,4 @@
+mod clock;
 mod commands;
 mod drive;
 mod gate;

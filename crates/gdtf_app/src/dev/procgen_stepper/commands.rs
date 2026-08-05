@@ -16,6 +16,7 @@ crate::support_item! {
 }
 
 crate::support_item! {
+    /// The stepper command queued this frame, if any.
     #[derive(Resource, Debug, Default, Clone, Copy)]
     struct PendingStepCommand(Option<StepCommand>);
 }
@@ -37,6 +38,7 @@ impl PendingStepCommand {
 }
 
 crate::support_item! {
+    /// Whether the stepper advances on its own timer.
     #[derive(Resource, Debug, Default, Clone, Copy)]
     struct AutoRunning(bool);
 }
@@ -59,12 +61,14 @@ impl AutoRunning {
 }
 
 crate::support_item! {
+    /// The dwell between automatic stepper steps.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     struct AutoStepDelay(Duration);
 }
 
 impl AutoStepDelay {
     crate::support_item! {
+        /// The dwell used when nothing overrides it.
         const DEFAULT: Self = Self(Duration::from_millis(400));
     }
 

@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 
 crate::support_item! {
-                                            #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Root node of the battlescape bottom bar.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct BottomBarRoot;
 }
 

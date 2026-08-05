@@ -1,6 +1,7 @@
 //! Resolve buffered deaths and fan their authored effects.
 
 use bevy::{
+    ecs::system::SystemParam,
     platform::collections::{HashMap, HashSet},
     prelude::{Entity, MessageReader, Query, Res, ResMut, Resource, With},
 };
@@ -51,26 +52,43 @@ impl CoverOnDeathRegistry {
     }
 }
 
+/// The weapon a victim carried, and the effect it fires when they die.
+#[derive(SystemParam)]
+pub struct DeathWeapons<'w, 's> {
+    wields:    Query<'w, 's, &'static Wields>,
+    on_deaths: Query<'w, 's, &'static OnDeath>,
+    melee:     Query<'w, 's, (), With<MeleeWeapon>>,
+    mounted:   Query<'w, 's, (), With<MountedWeapon>>,
+}
+
+impl DeathWeapons<'_, '_> {
+    // The on-death effect carried by the victim's firing weapon, if any.
+    fn effect_of(&self, victim: Entity) -> Option<OnDeathEffect> {
+        let weapon = self.wields.get(victim).ok()?.firing_weapon(
+            |entity| self.mounted.get(entity).is_ok(),
+            |entity| self.melee.get(entity).is_ok(),
+        )?;
+        self.on_deaths
+            .get(weapon)
+            .ok()
+            .map(|on_death| on_death.effect().clone())
+    }
+}
+
+/// The field ledger a death effect spawns into, and the catalog it reads.
+#[derive(SystemParam)]
+pub struct FieldSpawning<'w> {
+    placed: ResMut<'w, FieldRegistry>,
+    defs:   Option<Res<'w, FieldDefRegistry>>,
+}
+
 /// Fan each buffered death through its weapon or cover on-death effect.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the resolver threads the death reader, the three disjoint weapon-resolution \
-              queries (wields / melee / mounted markers) + the OnDeath read + the victim-surface \
-              query, and the four battle-lifetime world resources (occupancy / field registry / \
-              field catalog / cover-on-death registry) — each a distinct Bevy SystemParam (the \
-              dispatch_fire / fold_ganger_round argument-count carve-out); bundling would only \
-              hide the access set"
-)]
 pub fn resolve_on_death(
     mut deaths: MessageReader<OnDeathOccurred>,
-    wields: Query<&Wields>,
-    on_deaths: Query<&OnDeath>,
-    melee: Query<(), With<MeleeWeapon>>,
-    mounted: Query<(), With<MountedWeapon>>,
+    weapons: DeathWeapons,
     mut victims: Query<VictimRow>,
     grid: Res<OccupancyGrid>,
-    mut fields: ResMut<FieldRegistry>,
-    field_defs: Option<Res<FieldDefRegistry>>,
+    mut fields: FieldSpawning,
     cover_on_death: Res<CoverOnDeathRegistry>,
 ) {
     let mut queue: Vec<OnDeathOccurred> = deaths.read().copied().collect();
@@ -84,12 +102,7 @@ pub fn resolve_on_death(
         let effect: Option<OnDeathEffect> = if death.entity == Entity::PLACEHOLDER {
             cover_on_death.effect(&death.at).cloned()
         } else {
-            wields
-                .get(death.entity)
-                .ok()
-                .and_then(|w| w.firing_weapon(|e| mounted.get(e).is_ok(), |e| melee.get(e).is_ok()))
-                .and_then(|weapon_entity| on_deaths.get(weapon_entity).ok())
-                .map(|on_death| on_death.effect().clone())
+            weapons.effect_of(death.entity)
         };
         let Some(effect) = effect else {
             continue;
@@ -98,8 +111,8 @@ pub fn resolve_on_death(
         let mut fan_out = DeathFanOut {
             grid:       &grid,
             victims:    &mut victims,
-            fields:     &mut fields,
-            field_defs: field_defs.as_deref(),
+            fields:     &mut fields.placed,
+            field_defs: fields.defs.as_deref(),
             cascade:    &mut queue,
         };
         effect.fan_at(death.at, &mut fan_out);

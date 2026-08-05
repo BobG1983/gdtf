@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use super::super::pan::{
-    EdgeBandPx, PanSpeed, StickDeadzone, keyboard_pan_dir, mouse_edge_dir, pan_velocity,
+    EdgeBandPx, PanAxis, PanSpeed, StickDeadzone, keyboard_pan_dir, mouse_edge_dir, pan_velocity,
     stick_pan_dir, viewport_edge_dir,
 };
 
@@ -54,43 +54,72 @@ fn mouse_edge_dir_maps_each_edge_with_the_y_flip() {
 }
 
 #[test]
-fn keyboard_pan_dir_combines_keys_and_cancels_opposites() {
+fn keyboard_pan_dir_combines_axes_and_cancels_opposites() {
     assert_eq!(
-        keyboard_pan_dir(true, false, false, false),
+        keyboard_pan_dir(PanAxis::Positive, PanAxis::Still),
         Vec2::new(0.0, 1.0),
         "W → +Y",
     );
     assert_eq!(
-        keyboard_pan_dir(false, true, false, false),
+        keyboard_pan_dir(PanAxis::Negative, PanAxis::Still),
         Vec2::new(0.0, -1.0),
         "S → -Y",
     );
     assert_eq!(
-        keyboard_pan_dir(false, false, true, false),
+        keyboard_pan_dir(PanAxis::Still, PanAxis::Negative),
         Vec2::new(-1.0, 0.0),
         "A → -X",
     );
     assert_eq!(
-        keyboard_pan_dir(false, false, false, true),
+        keyboard_pan_dir(PanAxis::Still, PanAxis::Positive),
         Vec2::new(1.0, 0.0),
         "D → +X",
     );
 
     assert_eq!(
-        keyboard_pan_dir(true, false, false, true),
+        keyboard_pan_dir(PanAxis::Positive, PanAxis::Positive),
         Vec2::new(1.0, 1.0),
         "W+D → up-right (+X, +Y)",
     );
 
     assert_eq!(
-        keyboard_pan_dir(true, true, false, false),
+        keyboard_pan_dir(PanAxis::from_keys(true, true), PanAxis::Still),
         Vec2::ZERO,
         "W+S cancel → ZERO",
     );
     assert_eq!(
-        keyboard_pan_dir(false, false, true, true),
+        keyboard_pan_dir(PanAxis::Still, PanAxis::from_keys(true, true)),
         Vec2::ZERO,
         "A+D cancel → ZERO",
+    );
+}
+
+#[test]
+fn pan_axis_resolves_each_key_pair() {
+    assert_eq!(
+        PanAxis::from_keys(true, false),
+        PanAxis::Positive,
+        "the positive key alone pushes the axis positive",
+    );
+    assert_eq!(
+        PanAxis::from_keys(false, true),
+        PanAxis::Negative,
+        "the negative key alone pushes the axis negative",
+    );
+    assert_eq!(
+        PanAxis::from_keys(true, true),
+        PanAxis::Still,
+        "both keys held cancel to Still",
+    );
+    assert_eq!(
+        PanAxis::from_keys(false, false),
+        PanAxis::Still,
+        "neither key held is Still",
+    );
+    assert_eq!(
+        PanAxis::default(),
+        PanAxis::Still,
+        "an unpushed axis defaults to Still",
     );
 }
 

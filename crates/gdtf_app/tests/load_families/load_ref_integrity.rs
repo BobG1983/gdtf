@@ -43,12 +43,171 @@ fn has_dangling(
     })
 }
 
+fn assert_situation_edges(report: &[ContentFinding]) {
+    assert!(
+        has_dangling(
+            report,
+            "skirmish.ron",
+            "ghost_gang",
+            "GangRegistry",
+            ReferenceKeyScheme::FileStem,
+        ),
+        "the missing gang ref must be reported under the FILE-STEM scheme; findings: {report:?}",
+    );
+    assert!(
+        has_dangling(
+            report,
+            "skirmish.ron",
+            "Missing Member",
+            "GangRegistry roster `fixture_gang`",
+            ReferenceKeyScheme::DisplayName,
+        ),
+        "the missing member ref must be reported under the DISPLAY-NAME scheme; findings: {report:?}",
+    );
+    assert!(
+        has_dangling(
+            report,
+            "skirmish.ron",
+            "00000000-0000-0000-0000-058200000001",
+            "UuidThemeRegistry",
+            ReferenceKeyScheme::Uuid,
+        ),
+        "the situation's dangling theme UUID must be reported; findings: {report:?}",
+    );
+    assert!(
+        has_dangling(
+            report,
+            "walls",
+            "00000000-0000-0000-0000-058200000002",
+            "TerrainDefRegistry",
+            ReferenceKeyScheme::Uuid,
+        ),
+        "the situation's dangling wall terrain UUID must be reported; findings: {report:?}",
+    );
+    assert!(
+        has_dangling(
+            report,
+            "fields",
+            "ghost_field",
+            "FieldDefRegistry",
+            ReferenceKeyScheme::FileStem,
+        ),
+        "the situation's dangling field key must be reported; findings: {report:?}",
+    );
+}
+
+fn assert_roster_loadout_edges(report: &[ContentFinding]) {
+    for (target, family) in [
+        ("ghost_gun", "WeaponRegistry"),
+        ("ghost_vest", "ArmorRegistry"),
+        ("ghost_blade", "MeleeWeaponRegistry"),
+    ] {
+        assert!(
+            has_dangling(
+                report,
+                "fixture_gang",
+                target,
+                family,
+                ReferenceKeyScheme::FileStem,
+            ),
+            "the member's dangling `{target}` key must be reported against {family}; \
+             findings: {report:?}",
+        );
+    }
+    assert!(
+        !has_dangling(
+            report,
+            "skirmish.ron",
+            "Real Member",
+            "GangRegistry roster `fixture_gang`",
+            ReferenceKeyScheme::DisplayName,
+        ),
+        "a resolvable member ref must not be reported; findings: {report:?}",
+    );
+}
+
+fn assert_item_edges(report: &[ContentFinding]) {
+    assert!(
+        has_dangling(
+            report,
+            "fixture_gun",
+            "ghost_scope",
+            "AttachmentRegistry",
+            ReferenceKeyScheme::FileStem,
+        ),
+        "the weapon's dangling attachment key must be reported; findings: {report:?}",
+    );
+    assert!(
+        has_dangling(
+            report,
+            "Torso",
+            "ghost_injury",
+            "InjuryRegistry",
+            ReferenceKeyScheme::FileStem,
+        ),
+        "the weighting row's dangling injury key must be reported; findings: {report:?}",
+    );
+    assert!(
+        has_dangling(
+            report,
+            "emplacement mounted_weapon",
+            "ghost_cannon",
+            "WeaponRegistry",
+            ReferenceKeyScheme::FileStem,
+        ),
+        "the emplacement's dangling mounted-weapon key must be reported; findings: {report:?}",
+    );
+    assert!(
+        has_dangling(
+            report,
+            "Ghost Tile",
+            "ghost_graphic",
+            "SpriteDefRegistry",
+            ReferenceKeyScheme::FileStem,
+        ),
+        "the terrain def's dangling graphic_name must be reported; findings: {report:?}",
+    );
+}
+
+fn assert_theme_and_prefab_edges(report: &[ContentFinding]) {
+    for target in [
+        "00000000-0000-0000-0000-058200000005",
+        "00000000-0000-0000-0000-058200000006",
+    ] {
+        assert!(
+            has_dangling(
+                report,
+                "Fixture Theme",
+                target,
+                "TerrainDefRegistry",
+                ReferenceKeyScheme::Uuid,
+            ),
+            "the theme's dangling terrain UUID `{target}` must be reported; findings: {report:?}",
+        );
+    }
+    assert!(
+        has_dangling(
+            report,
+            "broken_refs",
+            "00000000-0000-0000-0000-058200000003",
+            "UuidThemeRegistry",
+            ReferenceKeyScheme::Uuid,
+        ),
+        "the prefab's dangling theme UUID must be reported; findings: {report:?}",
+    );
+    assert!(
+        has_dangling(
+            report,
+            "broken_refs",
+            "00000000-0000-0000-0000-058200000004",
+            "TerrainDefRegistry",
+            ReferenceKeyScheme::Uuid,
+        ),
+        "the prefab's dangling placed terrain UUID must be reported; findings: {report:?}",
+    );
+}
+
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "one POSITIVE assertion per C1 edge class over ONE Load-chain app spin-up; \
-              splitting per edge would re-run the whole real async Load once per class"
-)]
 fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
     let mut app = GdtfLoadTestAppBuilder::with_asset_root(ref_integrity_root())
         .starting_in(AppState::Load)
@@ -66,158 +225,10 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
 
     let report = findings_snapshot(&app);
 
-    assert!(
-        has_dangling(
-            &report,
-            "skirmish.ron",
-            "ghost_gang",
-            "GangRegistry",
-            ReferenceKeyScheme::FileStem,
-        ),
-        "the missing gang ref must be reported under the FILE-STEM scheme; findings: {report:?}",
-    );
-    assert!(
-        has_dangling(
-            &report,
-            "skirmish.ron",
-            "Missing Member",
-            "GangRegistry roster `fixture_gang`",
-            ReferenceKeyScheme::DisplayName,
-        ),
-        "the missing member ref must be reported under the DISPLAY-NAME scheme; findings: {report:?}",
-    );
-    for (target, family) in [
-        ("ghost_gun", "WeaponRegistry"),
-        ("ghost_vest", "ArmorRegistry"),
-        ("ghost_blade", "MeleeWeaponRegistry"),
-    ] {
-        assert!(
-            has_dangling(
-                &report,
-                "fixture_gang",
-                target,
-                family,
-                ReferenceKeyScheme::FileStem,
-            ),
-            "the member's dangling `{target}` key must be reported against {family}; \
-             findings: {report:?}",
-        );
-    }
-    assert!(
-        has_dangling(
-            &report,
-            "fixture_gun",
-            "ghost_scope",
-            "AttachmentRegistry",
-            ReferenceKeyScheme::FileStem,
-        ),
-        "the weapon's dangling attachment key must be reported; findings: {report:?}",
-    );
-    assert!(
-        has_dangling(
-            &report,
-            "Torso",
-            "ghost_injury",
-            "InjuryRegistry",
-            ReferenceKeyScheme::FileStem,
-        ),
-        "the weighting row's dangling injury key must be reported; findings: {report:?}",
-    );
-    assert!(
-        has_dangling(
-            &report,
-            "skirmish.ron",
-            "00000000-0000-0000-0000-058200000001",
-            "UuidThemeRegistry",
-            ReferenceKeyScheme::Uuid,
-        ),
-        "the situation's dangling theme UUID must be reported; findings: {report:?}",
-    );
-    assert!(
-        has_dangling(
-            &report,
-            "walls",
-            "00000000-0000-0000-0000-058200000002",
-            "TerrainDefRegistry",
-            ReferenceKeyScheme::Uuid,
-        ),
-        "the situation's dangling wall terrain UUID must be reported; findings: {report:?}",
-    );
-    assert!(
-        has_dangling(
-            &report,
-            "fields",
-            "ghost_field",
-            "FieldDefRegistry",
-            ReferenceKeyScheme::FileStem,
-        ),
-        "the situation's dangling field key must be reported; findings: {report:?}",
-    );
-    for target in [
-        "00000000-0000-0000-0000-058200000005",
-        "00000000-0000-0000-0000-058200000006",
-    ] {
-        assert!(
-            has_dangling(
-                &report,
-                "Fixture Theme",
-                target,
-                "TerrainDefRegistry",
-                ReferenceKeyScheme::Uuid,
-            ),
-            "the theme's dangling terrain UUID `{target}` must be reported; findings: {report:?}",
-        );
-    }
-    assert!(
-        has_dangling(
-            &report,
-            "broken_refs",
-            "00000000-0000-0000-0000-058200000003",
-            "UuidThemeRegistry",
-            ReferenceKeyScheme::Uuid,
-        ),
-        "the prefab's dangling theme UUID must be reported; findings: {report:?}",
-    );
-    assert!(
-        has_dangling(
-            &report,
-            "broken_refs",
-            "00000000-0000-0000-0000-058200000004",
-            "TerrainDefRegistry",
-            ReferenceKeyScheme::Uuid,
-        ),
-        "the prefab's dangling placed terrain UUID must be reported; findings: {report:?}",
-    );
-    assert!(
-        has_dangling(
-            &report,
-            "emplacement mounted_weapon",
-            "ghost_cannon",
-            "WeaponRegistry",
-            ReferenceKeyScheme::FileStem,
-        ),
-        "the emplacement's dangling mounted-weapon key must be reported; findings: {report:?}",
-    );
-    assert!(
-        has_dangling(
-            &report,
-            "Ghost Tile",
-            "ghost_graphic",
-            "SpriteDefRegistry",
-            ReferenceKeyScheme::FileStem,
-        ),
-        "the terrain def's dangling graphic_name must be reported; findings: {report:?}",
-    );
-    assert!(
-        !has_dangling(
-            &report,
-            "skirmish.ron",
-            "Real Member",
-            "GangRegistry roster `fixture_gang`",
-            ReferenceKeyScheme::DisplayName,
-        ),
-        "a resolvable member ref must not be reported; findings: {report:?}",
-    );
+    assert_situation_edges(&report);
+    assert_roster_loadout_edges(&report);
+    assert_item_edges(&report);
+    assert_theme_and_prefab_edges(&report);
 
     let load_released = advance_until(
         &mut app,

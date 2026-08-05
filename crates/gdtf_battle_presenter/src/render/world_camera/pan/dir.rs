@@ -31,17 +31,54 @@ pub fn viewport_edge_dir(cursor: Vec2, viewport: Rect, edge: EdgeBandPx) -> Vec2
     mouse_edge_dir(cursor - viewport.min, viewport.size(), edge)
 }
 
-/// Keyboard WASD / arrow pan direction from four independent key states.
-#[expect(
-    clippy::fn_params_excessive_bools,
-    reason = "the four pan-key pressed states are the contract's specified keyboard_pan_dir \
-              signature (up/down/left/right); they are independent inputs, not a flag soup"
-)]
+/// Which way one pan axis is being pushed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PanAxis {
+    /// Neither key held, or both (they cancel).
+    #[default]
+    Still,
+    /// Toward up / right.
+    Positive,
+    /// Toward down / left.
+    Negative,
+}
+
+impl PanAxis {
+    /// Resolve one axis from its two opposed keys.
+    #[must_use]
+    pub const fn from_keys(positive: bool, negative: bool) -> Self {
+        match (positive, negative) {
+            (true, false) => Self::Positive,
+            (false, true) => Self::Negative,
+            _ => Self::Still,
+        }
+    }
+
+    /// Signed unit contribution of this axis.
+    pub(crate) const fn signum(self) -> PanUnit {
+        match self {
+            Self::Still => PanUnit::new(0.0),
+            Self::Positive => PanUnit::new(1.0),
+            Self::Negative => PanUnit::new(-1.0),
+        }
+    }
+}
+
+/// One axis's signed unit share of the pan direction.
+#[derive(Deref, Debug, Clone, Copy)]
+pub(crate) struct PanUnit(f32);
+
+impl PanUnit {
+    /// Wrap a signed unit share.
+    const fn new(unit: f32) -> Self {
+        Self(unit)
+    }
+}
+
+/// Keyboard WASD / arrow pan direction from both resolved axes.
 #[must_use]
-pub fn keyboard_pan_dir(up: bool, down: bool, left: bool, right: bool) -> Vec2 {
-    let x = f32::from(right) - f32::from(left);
-    let y = f32::from(up) - f32::from(down);
-    Vec2::new(x, y)
+pub fn keyboard_pan_dir(vertical: PanAxis, horizontal: PanAxis) -> Vec2 {
+    Vec2::new(*horizontal.signum(), *vertical.signum())
 }
 
 /// Stick pan direction after applying the deadzone.

@@ -1,8 +1,12 @@
 //! Bevy relationships between wearer and armor piece entities.
 
 use bevy::{
-    ecs::{query::QueryData, relationship::RelationshipTarget},
-    prelude::{Component, Entity},
+    ecs::{
+        query::{QueryData, With},
+        relationship::RelationshipTarget,
+        system::SystemParam,
+    },
+    prelude::{Component, Entity, Query},
 };
 
 use super::stats::{
@@ -56,4 +60,13 @@ pub struct PieceArmorMut {
     pub hardness:   &'static ArmorHardness,
     /// Type.
     pub armor_type: &'static ArmorType,
+}
+
+/// The armor sets combatants wear and the individual pieces a hit damages.
+#[derive(SystemParam)]
+pub struct WornArmor<'w, 's> {
+    /// Worn armor set on each combatant.
+    pub wears:  Query<'w, 's, &'static Wears>,
+    /// Individual worn armor pieces.
+    pub pieces: Query<'w, 's, PieceArmorMut, With<WornBy>>,
 }

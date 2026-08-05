@@ -12,10 +12,10 @@ use gdtf_battle_sim::{
 use crate::{
     ArmorBrokenFct, BleedingFct, ConsequenceFctAppExt, DotFct, EffectRoles, FieldFct,
     FxReaderAppExt, FxTuning, InjuryFct, OnDeathFct, PresenterSystems, ShotImpactResolved,
-    SuppressionFct, TopDownAtlases, advance_projectiles, animate_floating_text, animate_impact,
-    expire_flashes, read_armor_broken, read_bleeding, read_cover_destroyed, read_fall_occurred,
-    read_melee_resolved, read_throw_resolved, register_consequence_fct_core,
-    spawn_shot_projectiles,
+    SuppressionFct, TopDownAtlases, advance_impact_animations, advance_projectiles,
+    animate_floating_text, expire_flashes, read_armor_broken, read_bleeding, read_cover_destroyed,
+    read_fall_occurred, read_melee_resolved, read_throw_resolved, register_consequence_fct_core,
+    seed_impact_animations, spawn_shot_projectiles,
 };
 
 pub(super) fn register_fx_flash_systems(app: &mut App) {
@@ -47,7 +47,10 @@ pub(super) fn register_fx_flash_systems(app: &mut App) {
     )
     .add_systems(
         Update,
-        animate_impact
+        // No sync point between the two: a flash seeded this frame must not also
+        // be ticked this frame.
+        (seed_impact_animations, advance_impact_animations)
+            .chain_ignore_deferred()
             .in_set(PresenterSystems::Overlay)
             .after(animate_floating_text)
             .run_if(render_gate.and_then(resource_exists::<FxTuning>)),

@@ -33,6 +33,7 @@ enum Wiring {
 }
 
 crate::support_item! {
+    /// Serves the QA command channel from inside the running game.
     struct NetQaPlugin {
         wiring: Wiring,
     }

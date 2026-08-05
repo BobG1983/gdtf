@@ -1,93 +1,61 @@
 use bevy::prelude::*;
-use gdtf_battle_presenter::{
-    ActiveLevel, IsolateView, StoreyTreatment, StoreyViewMode, ViewMode, storey_treatment,
-};
+use gdtf_battle_presenter::{ActiveLevel, StoreyTreatment, StoreyViewMode, storey_treatment};
 use gdtf_battle_sim::{
-    level::{GridSize, UuidThemeRegistry},
+    level::GridSize,
     metric::{CellLevel, Level},
     prelude::Cell,
-    terrain::def::{TerrainDefRegistry, TerrainUuid},
+    terrain::def::TerrainUuid,
 };
-use gdtf_content_families::sprites::SpriteDefRegistry;
 
-use super::sprites::{
-    MISSING_SPRITE_TINT, OVERLAY_Z_LIFT, STIPPLE_TINT, STOREY_Z_GAP, TILE_Z, VOID_GRID_TINT,
-    base_tile_tint, draw_hover_ghost, spawn_color_tile, spawn_overlay_sprite, spawn_tile_sprite,
+use super::{
+    sources::{PreviewSubject, StoreyVisibility, TileArt},
+    sprites::{
+        MISSING_SPRITE_TINT, OVERLAY_Z_LIFT, STIPPLE_TINT, STOREY_Z_GAP, TILE_Z, TileArtwork,
+        VOID_GRID_TINT, base_tile_tint, draw_hover_ghost, spawn_color_tile, spawn_overlay_sprite,
+        spawn_tile_sprite,
+    },
 };
 use crate::{
-    canvas::CurrentEditLevel,
     editor_map::EditorMap,
-    hovered_cell::HoveredCell,
     preview::{overlay::PreviewOverlayImages, target::PreviewTile},
-    session::MapEditorSession,
     terrain_graphics::terrain_sprite_def,
 };
 
 const GROUND_STOREY: u8 = 0;
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the preview redraw reads every model input it depends on (map, session, edit level, \
-              hover, view mode, isolate toggle) + the three shared registries (terrain defs, \
-              themes, sprite defs) + the asset server + the generated overlay textures + Commands \
-              to (re)spawn; each is a distinct Bevy SystemParam and Bevy's injection cannot reduce \
-              them without a wrapper resource that changes the crate API"
-)]
 pub(crate) fn redraw_preview_tiles(
     mut commands: Commands,
-    map: Option<Res<EditorMap>>,
-    session: Option<Res<MapEditorSession>>,
-    edit_level: Option<Res<CurrentEditLevel>>,
-    hovered: Option<Res<HoveredCell>>,
-    view: Option<Res<ViewMode>>,
-    isolate: Option<Res<IsolateView>>,
-    overlays: Option<Res<PreviewOverlayImages>>,
-    registry: Option<Res<TerrainDefRegistry>>,
-    themes: Option<Res<UuidThemeRegistry>>,
-    sprites: Option<Res<SpriteDefRegistry>>,
-    asset_server: Option<Res<AssetServer>>,
+    subject: PreviewSubject,
+    storeys: StoreyVisibility,
+    art: TileArt,
     existing: Query<Entity, With<PreviewTile>>,
 ) {
-    let (
-        Some(map),
-        Some(session),
-        Some(edit_level),
-        Some(hovered),
-        Some(view),
-        Some(isolate),
-        Some(overlays),
-        Some(registry),
-        Some(themes),
-        Some(sprites),
-        Some(asset_server),
-    ) = (
-        map,
-        session,
-        edit_level,
-        hovered,
-        view,
-        isolate,
-        overlays,
-        registry,
-        themes,
-        sprites,
-        asset_server,
-    )
-    else {
+    let (Some(map), Some(session), Some(hovered)) = (
+        subject.map.as_deref(),
+        subject.session.as_deref(),
+        subject.hovered.as_deref(),
+    ) else {
+        return;
+    };
+    let (Some(edit_level), Some(view), Some(isolate)) = (
+        storeys.edit_level.as_deref(),
+        storeys.view.as_deref(),
+        storeys.isolate.as_deref(),
+    ) else {
+        return;
+    };
+    let (Some(registry), Some(themes), Some(sprites), Some(overlays), Some(asset_server)) = (
+        art.terrain.as_deref(),
+        art.themes.as_deref(),
+        art.sprites.as_deref(),
+        art.overlays.as_deref(),
+        art.asset_server.as_deref(),
+    ) else {
         return;
     };
 
-    let dirty = map.is_changed()
-        || session.is_changed()
-        || edit_level.is_changed()
-        || hovered.is_changed()
-        || view.is_changed()
-        || isolate.is_changed()
-        || overlays.is_changed()
-        || registry.is_changed()
-        || themes.is_changed()
-        || sprites.is_changed();
-    if !dirty {
+    let dirty = subject.changed() | storeys.changed() | art.changed();
+    if !*dirty {
         return;
     }
 
@@ -99,11 +67,13 @@ pub(crate) fn redraw_preview_tiles(
     let size = session.grid_size();
     let theme = session.theme();
     let pass = StoreyPass {
-        map: &map,
-        registry: &registry,
-        sprites: &sprites,
-        asset_server: &asset_server,
-        overlays: &overlays,
+        map,
+        art: TileArtwork {
+            registry,
+            sprites,
+            assets: asset_server,
+        },
+        overlays,
         default_floor: session
             .default_floor()
             .or_else(|| themes.default_floor(&theme)),
@@ -117,23 +87,12 @@ pub(crate) fn redraw_preview_tiles(
         draw_storey(&mut commands, &pass, storey, treatment);
     }
 
-    draw_hover_ghost(
-        &mut commands,
-        pass.asset_server,
-        &map,
-        &registry,
-        &sprites,
-        &session,
-        &hovered,
-        level,
-    );
+    draw_hover_ghost(&mut commands, &pass.art, map, session, hovered, level);
 }
 
 struct StoreyPass<'a> {
     map:           &'a EditorMap,
-    registry:      &'a TerrainDefRegistry,
-    sprites:       &'a SpriteDefRegistry,
-    asset_server:  &'a AssetServer,
+    art:           TileArtwork<'a>,
     overlays:      &'a PreviewOverlayImages,
     default_floor: Option<TerrainUuid>,
     size:          GridSize,
@@ -173,9 +132,9 @@ fn draw_storey(
                 }
                 continue;
             };
-            match terrain_sprite_def(pass.registry, pass.sprites, &tile) {
+            match terrain_sprite_def(pass.art.registry, pass.art.sprites, &tile) {
                 Some(def) => {
-                    spawn_tile_sprite(commands, pass.asset_server, cell, def, tint, z);
+                    spawn_tile_sprite(commands, pass.art.assets, cell, def, tint, z);
                 }
                 None => spawn_color_tile(commands, cell, MISSING_SPRITE_TINT, z),
             }

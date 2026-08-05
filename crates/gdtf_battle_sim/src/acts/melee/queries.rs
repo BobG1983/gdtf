@@ -6,13 +6,21 @@ use bevy::{
 };
 
 use crate::{
-    acts::{InjuryInflicted, request::MeleeStruck},
+    acts::{
+        InjuryInflicted,
+        request::{MeleeResolved, MeleeStruck, ShoveRequested},
+    },
     armor_wear::ArmorBroken,
     cover::CoverLedger,
-    ganger::{Facing, Faction, Fight, Hp, LifeState, Luck, Position, Stance, Toughness, Wounds},
+    effects::on_death::OnDeathOccurred,
+    fire::{MeleeQuery, WieldsQuery},
+    ganger::{
+        Facing, Faction, Fight, Hp, LifeState, Luck, Position, Stance, Toughness, Tu, Wounds,
+    },
     inflicted_wound::InflictedWounds,
     injuries::{InflictedInjuries, InjuryRegistry, InjuryTables},
     occupancy::OccupancyGrid,
+    occupancy_sync::CoverDestroyed,
     rng::{FightRng, InjuryRng, SeverityRng, ShotRng},
     surface::SurfaceGrid,
     tuning::CombatTuning,
@@ -60,6 +68,22 @@ pub(super) type MeleeWeaponQuery<'world, 'state> = Query<
     ),
 >;
 
+/// The attacker and defender rows one melee reads, spends TU from, and wounds.
+#[derive(SystemParam)]
+pub struct MeleeCombatants<'w, 's> {
+    pub(super) geom:    MeleeGeomQuery<'w, 's>,
+    pub(super) targets: MeleeTargetQuery<'w, 's>,
+    pub(super) tu:      Query<'w, 's, &'static mut Tu>,
+}
+
+/// The melee weapon a combatant swings, and the probes that find it.
+#[derive(SystemParam)]
+pub struct MeleeArms<'w, 's> {
+    pub(super) wields:  WieldsQuery<'w, 's>,
+    pub(super) melee:   MeleeQuery<'w, 's>,
+    pub(super) weapons: MeleeWeaponQuery<'w, 's>,
+}
+
 /// Grids, tuning, and injury content for melee.
 #[derive(SystemParam)]
 pub struct MeleeWorld<'w> {
@@ -86,4 +110,14 @@ pub struct MeleeFacts<'w> {
     pub(super) struck:   MessageWriter<'w, MeleeStruck>,
     pub(super) breaks:   MessageWriter<'w, ArmorBroken>,
     pub(super) injuries: MessageWriter<'w, InjuryInflicted>,
+}
+
+/// Every message a melee resolution announces.
+#[derive(SystemParam)]
+pub struct MeleeOutcomes<'w> {
+    pub(super) resolved: MessageWriter<'w, MeleeResolved>,
+    pub(super) facts:    MeleeFacts<'w>,
+    pub(super) shoves:   MessageWriter<'w, ShoveRequested>,
+    pub(super) deaths:   MessageWriter<'w, OnDeathOccurred>,
+    pub(super) cover:    MessageWriter<'w, CoverDestroyed>,
 }

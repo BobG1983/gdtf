@@ -4,18 +4,15 @@ use bevy::prelude::*;
 use gdtf_battle_presenter::cell_squad_visible;
 use gdtf_battle_sim::{
     acts::{FireRequested, MoveRequested},
-    fire::MeleeQuery,
     ganger::LifeState,
     prelude::{CellLevel, Faction},
     visibility::FactionRelation,
-    weapon::{WieldedBy, Wields},
 };
 
-use super::reads::LeftClickReads;
+use super::{reads::LeftClickReads, state::PointerSelection};
 use crate::{
-    InspectTarget,
-    fire_surface::{ShooterFireData, WeaponMagazine, try_fire_request},
-    selection::{path_preview::PathPreviewTarget, resources::SelectedShooter},
+    fire_surface::{ShooterArms, try_fire_request},
+    selection::resources::SelectedShooter,
 };
 
 /// Result of a left-click on the battlescape.
@@ -35,27 +32,19 @@ pub enum LeftClickOutcome {
     Clear,
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "PathPreviewTarget stays a separate arg so the caller can hold ResMut without aliasing LeftClickReads"
-)]
 /// Decide what a left-click should do given hover, selection, and fire mode.
 #[must_use]
 pub fn decide_left_click(
     reads: &LeftClickReads,
-    inspect: &InspectTarget,
-    move_target: &PathPreviewTarget,
+    selection: &PointerSelection,
     factions: &Query<&Faction>,
     lifes: &Query<&LifeState>,
-    shooters: &Query<ShooterFireData>,
-    wields: &Query<&Wields>,
-    weapons: &Query<WeaponMagazine, With<WieldedBy>>,
-    melee: &MeleeQuery,
-    selected: &SelectedShooter,
+    arms: &ShooterArms,
 ) -> LeftClickOutcome {
-    let Some(target) = inspect.hovered() else {
+    let Some(target) = selection.inspect.hovered() else {
         return LeftClickOutcome::NoOp;
     };
+    let selected: &SelectedShooter = &selection.selected;
     let player = **reads.player;
     let occupant = reads.occupancy.occupant(&target);
     let occupant_faction = occupant.and_then(|e| factions.get(e).ok().copied());
@@ -79,16 +68,8 @@ pub fn decide_left_click(
     if let (Some(shooter), Some(enemy_faction)) = (**selected, occupant_faction)
         && selection_is_player
         && enemy_faction != player
-        && let Some(request) = try_fire_request(
-            shooter,
-            target,
-            &reads.fire_mode,
-            &reads.tuning,
-            shooters,
-            wields,
-            weapons,
-            melee,
-        )
+        && let Some(request) =
+            try_fire_request(shooter, target, &reads.fire_mode, &reads.tuning, arms)
     {
         return LeftClickOutcome::Fire(request);
     }
@@ -98,16 +79,8 @@ pub fn decide_left_click(
         && occupant.is_none()
         && *reads.occupancy.is_blocked(&target)
         && cell_squad_visible(reads.squad_visibility.as_deref(), &target, None).is_squad_visible()
-        && let Some(request) = try_fire_request(
-            shooter,
-            target,
-            &reads.fire_mode,
-            &reads.tuning,
-            shooters,
-            wields,
-            weapons,
-            melee,
-        )
+        && let Some(request) =
+            try_fire_request(shooter, target, &reads.fire_mode, &reads.tuning, arms)
     {
         return LeftClickOutcome::Fire(request);
     }
@@ -131,7 +104,7 @@ pub fn decide_left_click(
         if reads.links.links_from(&target).next().is_some() {
             return LeftClickOutcome::NoOp;
         }
-        return if **move_target == Some(target) {
+        return if **selection.move_target == Some(target) {
             LeftClickOutcome::Move(MoveRequested::new(actor, target))
         } else {
             LeftClickOutcome::SetMoveTarget(target)

@@ -5,7 +5,8 @@ use gdtf_qa_protocol::ids::ShotName;
 use gdtf_screenshot::CapturePath;
 
 crate::support_item! {
-                                                    #[derive(Resource, Clone, Debug, Deref)]
+    /// The directory QA screenshots are written to.
+    #[derive(Resource, Clone, Debug, Deref)]
     struct QaShotDir(PathBuf);
 }
 

@@ -8,7 +8,7 @@ use super::{
         marker::WorldCamera,
         tuning::{DwellDelaySeconds, PanTuning},
     },
-    dir::{keyboard_pan_dir, pan_velocity, stick_pan_dir, viewport_edge_dir},
+    dir::{PanAxis, keyboard_pan_dir, pan_velocity, stick_pan_dir, viewport_edge_dir},
     tunables::{EdgeBandPx, PanSpeed, STICK_DEADZONE},
 };
 
@@ -35,10 +35,14 @@ pub fn pan_camera(
     let mut dir = Vec2::ZERO;
 
     dir += keyboard_pan_dir(
-        keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp),
-        keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown),
-        keys.pressed(KeyCode::KeyA) || keys.pressed(KeyCode::ArrowLeft),
-        keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight),
+        PanAxis::from_keys(
+            keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp),
+            keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown),
+        ),
+        PanAxis::from_keys(
+            keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight),
+            keys.pressed(KeyCode::KeyA) || keys.pressed(KeyCode::ArrowLeft),
+        ),
     );
 
     if let Some(gamepad) = gamepads.iter().next() {

@@ -8,6 +8,7 @@ mod projectile;
 mod readers;
 mod registrar;
 mod roles;
+mod sprites;
 mod tuning;
 
 #[cfg(test)]
@@ -18,14 +19,15 @@ pub use fall::read_fall_occurred;
 pub use fct::{
     ArmorBrokenFct, BleedingFct, CombatLogEvent, CombatLogSource, CombatLogSourceAppExt,
     CombatLogSystems, CombatText, ConsequenceFct, ConsequenceFctAppExt, ConsequenceFctSystems,
-    ConsequencePop, DotFct, FctAnchorCell, FctEmphasis, FctSlotAllocator, FctStackIndex,
-    FctValence, FieldFct, FloatingCombatText, InjuryFct, InjuryLogText, LogLine, LogName,
-    OnDeathFct, PopAnchor, SuppressionFct, animate_floating_text, classify_log_event,
-    forward_live_log_source, forward_log_source, forward_turn_started, read_consequence_fct,
-    register_consequence_fct_core, severity_color, spawn_floating_text, valence_color,
+    ConsequencePop, DotFct, FctAnchorCell, FctDrift, FctEmphasis, FctLabel, FctSlot,
+    FctSlotAllocator, FctStackIndex, FctValence, FieldFct, FloatingCombatText, InjuryFct,
+    InjuryLogText, LogLine, LogName, OnDeathFct, PopAnchor, SuppressionFct, animate_floating_text,
+    classify_log_event, forward_live_log_source, forward_log_source, forward_turn_started,
+    read_consequence_fct, register_consequence_fct_core, severity_color, spawn_floating_text,
+    valence_color,
 };
 pub use flash::{FlashTtl, FxFlash, expire_flashes};
-pub use impact::{ShotImpactResolved, animate_impact};
+pub use impact::{ShotImpactResolved, advance_impact_animations, seed_impact_animations};
 pub use melee::read_melee_resolved;
 pub use projectile::{
     PendingImpact, ProjectileTravel, ShotProjectile, advance_projectiles, spawn_shot_projectiles,
@@ -37,6 +39,7 @@ pub use roles::{
     COMPASS_DIRECTIONS, DIRECTION_COUNT, DamageTypeFx, EffectRoles, IMPACT_FRAME_COUNT,
     nearest_direction_index,
 };
+pub use sprites::FxSprites;
 pub(crate) use tuning::register_fx_tuning_hot_ron;
 pub use tuning::{
     FctRiseRate, FctTtlSeconds, FxTuning, ImpactFrameSeconds, InterShotSeconds,

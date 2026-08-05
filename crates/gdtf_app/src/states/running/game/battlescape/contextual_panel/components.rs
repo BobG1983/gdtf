@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 
 crate::support_item! {
-                                                            #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Root node of the contextual act panel.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ContextualPanelRoot;
 }
 

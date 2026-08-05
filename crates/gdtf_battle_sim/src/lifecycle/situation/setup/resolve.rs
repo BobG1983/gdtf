@@ -8,7 +8,10 @@ use super::super::terrain_resolve::{
 };
 use crate::{
     armor::{ArmorRegistry, ArmorSpec},
-    effects::fields::{FieldDefRegistry, FieldRegistry},
+    effects::{
+        fields::{FieldDefRegistry, FieldRegistry},
+        on_death::CoverOnDeathRegistry,
+    },
     equipment::attachments::{AttachmentRegistry, resolve_pending_attachments},
     ganger::{GangMember, GangRegistry},
     situation::{BattleSetupError, PlacedGanger, Situation},
@@ -97,42 +100,29 @@ pub(super) fn resolve_armor_specs(
     Ok(armor_specs)
 }
 
-#[expect(
-    clippy::type_complexity,
-    reason = "the resolved cover pieces and their captured on-death entries are produced \
-              by ONE walls-then-scatter walk and consumed together by the orchestrator; \
-              splitting the pair into a named struct would add a new abstraction the \
-              split rules strike (P9 — no new types to shrink counts)"
-)]
+/// The cover pieces a situation spawns, plus the on-death effects their cells carry.
+pub(super) struct ResolvedCovers {
+    pub(super) pieces:   Vec<ResolvedCoverPiece>,
+    pub(super) on_death: CoverOnDeathRegistry,
+}
+
 pub(super) fn resolve_covers(
     situation: &Situation,
     terrain: Option<&TerrainDefRegistry>,
-) -> Result<
-    (
-        Vec<ResolvedCoverPiece>,
-        Vec<(
-            crate::metric::CellLevel,
-            crate::effects::on_death::OnDeathEffect,
-        )>,
-    ),
-    BattleSetupError,
-> {
-    let mut resolved_covers: Vec<ResolvedCoverPiece> = Vec::new();
-    let mut cover_on_death_entries: Vec<(
-        crate::metric::CellLevel,
-        crate::effects::on_death::OnDeathEffect,
-    )> = Vec::new();
+) -> Result<ResolvedCovers, BattleSetupError> {
+    let mut pieces: Vec<ResolvedCoverPiece> = Vec::new();
+    let mut on_death = CoverOnDeathRegistry::default();
     for cover in situation.walls.iter().chain(situation.scatter.iter()) {
         let def = resolve_terrain_or_err(terrain, &cover.piece)?;
         if let Some(effect) = &def.on_death {
-            cover_on_death_entries.push((cover.at, effect.clone()));
+            on_death.insert(cover.at, effect.clone());
         }
         let Some(resolved) = resolve_cover_def(&cover.piece, def) else {
             return Err(BattleSetupError::TerrainNotFound { piece: cover.piece });
         };
-        resolved_covers.push(resolved);
+        pieces.push(resolved);
     }
-    Ok((resolved_covers, cover_on_death_entries))
+    Ok(ResolvedCovers { pieces, on_death })
 }
 
 pub(super) fn resolve_slabs(

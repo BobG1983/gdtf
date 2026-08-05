@@ -3,7 +3,8 @@ use bevy::prelude::*;
 use crate::states::*;
 
 crate::support_item! {
-        struct ScenesPlugin;
+    /// Registers every scene plugin behind the app's state machine.
+    struct ScenesPlugin;
 }
 
 impl Plugin for ScenesPlugin {

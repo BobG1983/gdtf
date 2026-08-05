@@ -11,7 +11,7 @@ use bevy::{
     time::TimeUpdateStrategy,
 };
 use gdtf_battle_sim::{
-    prelude::{Cell, Level},
+    prelude::{Cell, CellLevel, Level},
     severity::Severity,
 };
 
@@ -19,8 +19,8 @@ use super::{
     super::tuning::{FctRiseRate, FctTtlSeconds},
     palette::{FctValence, severity_color, valence_color},
     text::{
-        CombatText, FctEmphasis, FctStackIndex, FloatingCombatText, animate_floating_text,
-        spawn_floating_text,
+        CombatText, FctDrift, FctEmphasis, FctLabel, FctSlot, FctStackIndex, FloatingCombatText,
+        animate_floating_text, spawn_floating_text,
     },
 };
 
@@ -55,14 +55,9 @@ fn spawn_pop_with(
         .run_system_once(move |mut commands: Commands| {
             spawn_floating_text(
                 &mut commands,
-                CombatText::new("-7"),
-                color,
-                emphasis,
-                cell,
-                level,
-                stack,
-                TEST_TTL,
-                FctRiseRate::default(),
+                FctLabel::new(CombatText::new("-7"), color, emphasis),
+                FctSlot::new(CellLevel::new(cell, level), stack),
+                FctDrift::new(FctRiseRate::default(), TEST_TTL),
             );
         });
     assert!(

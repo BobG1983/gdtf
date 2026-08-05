@@ -35,7 +35,6 @@ pub(in crate::egui_shell) struct ModePanelsCtx<
     pub(in crate::egui_shell) session:          &'a mut ResMut<'sess, MapEditorSession>,
     pub(in crate::egui_shell) terrain_draft:    &'a mut ResMut<'ter, TerrainDraft>,
     pub(in crate::egui_shell) theme_draft:      &'a mut ResMut<'theme, ThemeDraft>,
-    pub(in crate::egui_shell) prefab_save_name: &'a mut String,
     pub(in crate::egui_shell) themes:           Option<&'a UuidThemeRegistry>,
     pub(in crate::egui_shell) terrain_registry: Option<&'a TerrainDefRegistry>,
     pub(in crate::egui_shell) weapons:          Option<&'a WeaponRegistry>,

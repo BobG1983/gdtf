@@ -9,10 +9,13 @@ use crate::{
     cover::CoverLedger,
     fire::{BattleGrids, MeleeQuery, MountedQuery},
     ganger::{Facing, Tu},
+    injuries::{InjuryRegistry, InjuryTables},
     metric::CellLevel,
     occupancy::OccupancyGrid,
+    rng::{InjuryRng, SeverityRng, ShotRng},
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
+    tuning::CombatTuning,
 };
 
 /// Occupancy, surface, cover, slab, and brace cells for fire.
@@ -39,6 +42,17 @@ impl BattleGridsParam<'_> {
     pub(super) fn occupant_at(&self, at: CellLevel) -> Option<Entity> {
         self.occupancy.occupant(&at)
     }
+}
+
+/// Combat tuning, injury content, and the RNG streams a shot rolls against.
+#[derive(SystemParam)]
+pub struct ShotRolls<'w> {
+    pub(super) tuning:   Res<'w, CombatTuning>,
+    pub(super) shot:     ResMut<'w, ShotRng>,
+    pub(super) severity: ResMut<'w, SeverityRng>,
+    pub(super) injury:   ResMut<'w, InjuryRng>,
+    pub(super) tables:   Option<Res<'w, InjuryTables>>,
+    pub(super) registry: Option<Res<'w, InjuryRegistry>>,
 }
 
 /// Melee and mounted weapon probes on the shooter.

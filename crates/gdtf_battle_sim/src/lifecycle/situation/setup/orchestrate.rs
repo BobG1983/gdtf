@@ -47,7 +47,7 @@ pub fn setup_battle(
     let melee_bundles =
         resolve::resolve_melee_bundles(&resolved_members, melee_weapons, attachments)?;
     let armor_specs = resolve::resolve_armor_specs(&resolved_members, armor)?;
-    let (resolved_covers, cover_on_death_entries) = resolve::resolve_covers(situation, terrain)?;
+    let resolved_covers = resolve::resolve_covers(situation, terrain)?;
     let resolved_slabs = resolve::resolve_slabs(situation, terrain)?;
 
     let field_registry = resolve::build_field_registry(situation, fields)?;
@@ -64,7 +64,7 @@ pub fn setup_battle(
     );
 
     let (mut terrain_pairs, occupancy_kinds) =
-        seed_cover::seed_cover_terrain(situation, resolved_covers, commands);
+        seed_cover::seed_cover_terrain(situation, resolved_covers.pieces, commands);
 
     let (stair_cell_set, brace_stair_cells_set) = seed_slabs::stair_cell_sets(situation);
 
@@ -100,9 +100,7 @@ pub fn setup_battle(
 
     commands.insert_resource(field_registry);
 
-    commands.insert_resource(crate::effects::on_death::CoverOnDeathRegistry::new(
-        cover_on_death_entries,
-    ));
+    commands.insert_resource(resolved_covers.on_death);
 
     Ok(setup)
 }

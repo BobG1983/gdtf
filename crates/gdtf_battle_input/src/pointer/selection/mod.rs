@@ -12,8 +12,8 @@ mod systems;
 
 pub use auto_select::{auto_select_first_player_ganger, clear_downed_selection};
 pub use decision::{
-    LeftClickOutcome, LeftClickReads, PinOutcome, TurnReads, apply_left_click, apply_pin,
-    decide_left_click, decide_pin, decide_turn,
+    LeftClickOutcome, LeftClickReads, PinOutcome, PointerSelection, TurnReads, apply_left_click,
+    apply_pin, decide_left_click, decide_pin, decide_turn,
 };
 pub use fire_target::{FireTargetReads, populate_fire_target};
 pub use highlight::update_selection_highlight;

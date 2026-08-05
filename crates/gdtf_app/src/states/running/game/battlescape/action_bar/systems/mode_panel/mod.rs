@@ -1,5 +1,6 @@
 mod cost_lines;
 mod order;
+mod probes;
 mod select;
 mod spawn;
 mod visibility;

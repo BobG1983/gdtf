@@ -21,7 +21,7 @@ pub use act_bus::{
     focus_bridge::{PanelNavOrder, focused_panel_button},
     intent,
     intent::{
-        ActIntent, ActWriters, LevelStep, PendingActIntent, SelectionCycleReads,
+        ActIntent, ActWriters, LevelStep, PendingActIntent, SelectionCycleReads, ShownLevel,
         dispatch_act_intents, step_level,
     },
     keybinds,
@@ -35,7 +35,9 @@ pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin};
 pub use pointer::{
     fire_mode,
     fire_mode::{SelectedFireMode, sync_fire_mode_on_select},
-    fire_surface, gamepad,
+    fire_surface,
+    fire_surface::ShooterArms,
+    gamepad,
     gamepad::{
         ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, CursorSpeed, CursorStickDeadzone,
         GamepadCursor, emit_gamepad_cursor_move, gamepad_click_act, gamepad_turn,
@@ -48,10 +50,11 @@ pub use pointer::{
     selection,
     selection::{
         CellOrderKey, CycleDirection, FireTargetReads, LeftClickOutcome, LeftClickReads,
-        PathPreviewTarget, PinOutcome, PreviewGrids, SelectedShooter, SelectionHighlight,
-        TurnReads, apply_left_click, apply_pin, auto_select_first_player_ganger, cell_order_key,
-        cycle_player_selection, decide_left_click, decide_pin, decide_turn, left_click_act,
-        populate_fire_target, populate_path_preview, reset_move_target_on_fire_mode_change,
-        right_click_turn_to_face, update_selection_highlight,
+        PathPreviewTarget, PinOutcome, PointerSelection, PreviewGrids, SelectedShooter,
+        SelectionHighlight, TurnReads, apply_left_click, apply_pin,
+        auto_select_first_player_ganger, cell_order_key, cycle_player_selection, decide_left_click,
+        decide_pin, decide_turn, left_click_act, populate_fire_target, populate_path_preview,
+        reset_move_target_on_fire_mode_change, right_click_turn_to_face,
+        update_selection_highlight,
     },
 };

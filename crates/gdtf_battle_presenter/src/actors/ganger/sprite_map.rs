@@ -1,6 +1,6 @@
 //! Map from sim ganger entities to their sprite entities.
 
-use bevy::{platform::collections::HashMap, prelude::*};
+use bevy::{ecs::system::SystemParam, platform::collections::HashMap, prelude::*};
 
 /// Sim entity → sprite entity lookup.
 #[derive(Resource, Default, Debug)]
@@ -35,4 +35,20 @@ impl GangerSprites {
 pub struct GangerSprite {
     /// Sim ganger this sprite represents.
     pub entity: Entity,
+}
+
+/// Where each sim ganger's sprite currently sits in the world.
+#[derive(SystemParam)]
+pub struct GangerSpriteWorld<'w, 's> {
+    sprites:    Res<'w, GangerSprites>,
+    transforms: Query<'w, 's, &'static Transform, With<GangerSprite>>,
+}
+
+impl GangerSpriteWorld<'_, '_> {
+    /// World position of a sim ganger's drawn sprite, if it has one.
+    #[must_use]
+    pub fn position_of(&self, sim: Entity) -> Option<Vec3> {
+        let sprite = self.sprites.sprite_for(sim)?;
+        Some(self.transforms.get(sprite).ok()?.translation)
+    }
 }
