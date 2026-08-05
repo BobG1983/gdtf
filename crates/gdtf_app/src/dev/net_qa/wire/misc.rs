@@ -1,6 +1,7 @@
 //! Misc scalar and command payloads on the wire.
 
 use bevy::prelude::Deref;
+use gdtf_battle_sim::procgen::ProcgenStage;
 use serde::{Deserialize, Serialize};
 
 /// Index into the shooter's fire-mode list.
@@ -78,6 +79,32 @@ impl AutoRunNet {
     #[must_use]
     pub const fn new(running: bool) -> Self {
         Self(running)
+    }
+}
+
+/// Which stage staged procgen is on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ProcgenStageNet {
+    /// Placing player and enemy spawns.
+    Assemble,
+    /// Filling free space with content prefabs.
+    Fill,
+    /// Emitting the situation.
+    Emit,
+    /// Finished, whether it succeeded or failed.
+    Done,
+}
+
+impl ProcgenStageNet {
+    /// Mirror the sim's own stage.
+    #[must_use]
+    pub const fn from_stage(stage: ProcgenStage) -> Self {
+        match stage {
+            ProcgenStage::Assemble => Self::Assemble,
+            ProcgenStage::Fill => Self::Fill,
+            ProcgenStage::Emit => Self::Emit,
+            ProcgenStage::Done => Self::Done,
+        }
     }
 }
 

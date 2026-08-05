@@ -26,6 +26,7 @@ pub(crate) struct AppPhase;
 impl QaCommand for AppPhase {
     type Args = AppPhaseArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = AppPhaseReply;
 
     const NAME: CommandName = CommandName::from_static("app.phase");

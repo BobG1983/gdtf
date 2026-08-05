@@ -6,7 +6,10 @@ use gdtf_battle_sim::{
     situation::Situation,
 };
 
-use super::{content::ProcgenContent, procgen::procgen_battle_situation, seed::resolve_root_seed};
+use super::{
+    content::ProcgenContent, procgen::procgen_battle_situation, resolved::ResolvedBattleSeed,
+    seed::resolve_root_seed,
+};
 use crate::states::{
     load::LoadedSituation, running::game::battlescape::generation::resources::GenerationComplete,
 };
@@ -17,9 +20,11 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
     content: ProcgenContent,
     report: Option<ResMut<ContentIntegrityReport>>,
     mut setup: MessageWriter<SetupBattleRequested>,
+    mut commands: Commands,
 ) {
     let authored: Situation = loaded.map_or_else(Situation::default, |loaded| (**loaded).clone());
     let seed = seed_override.map_or_else(resolve_root_seed, |r| *r);
+    commands.insert_resource(ResolvedBattleSeed::new(seed));
     info!(
         seed = *seed,
         "battle setup: resolved BattleSeed (RNG replay handle)"

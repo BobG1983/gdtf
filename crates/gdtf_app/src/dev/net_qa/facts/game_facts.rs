@@ -1,17 +1,18 @@
-use super::BattleActivity;
+use super::{BattleActivity, StepperActivity};
 use crate::dev::net_qa::wire::{AppPhaseNet, BattleScapePhaseNet};
 
 crate::support_item! {
     /// What a game command's availability check may read about the host.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     struct GameFacts {
-        phase: AppPhaseNet,
+        phase:   AppPhaseNet,
+        stepper: StepperActivity,
     }
 }
 
 impl GameFacts {
-    pub(crate) const fn new(phase: AppPhaseNet) -> Self {
-        Self { phase }
+    pub(crate) const fn new(phase: AppPhaseNet, stepper: StepperActivity) -> Self {
+        Self { phase, stepper }
     }
 
     crate::support_item! {
@@ -19,6 +20,14 @@ impl GameFacts {
         #[must_use]
         const fn phase(self) -> AppPhaseNet {
             self.phase
+        }
+    }
+
+    crate::support_item! {
+        /// Whether the procgen stepper owns generation right now.
+        #[must_use]
+        const fn stepper(self) -> StepperActivity {
+            self.stepper
         }
     }
 

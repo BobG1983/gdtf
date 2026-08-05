@@ -13,10 +13,12 @@ pub mod wire;
 crate::support_use!(plugin::NetQaPlugin;);
 
 #[cfg(feature = "headless_test")]
-pub use commands::{assert_game_command_set_is_conformant, game_command_names};
+pub use commands::{
+    assert_game_command_set_is_conformant, game_command_names, shorten_wait_budget,
+};
 #[cfg(feature = "headless_test")]
 pub use config::{
     NET_QA_PROTOCOL_VERSION, SERVER_NAME as NET_QA_SERVER_NAME, hello_facts as net_qa_hello_facts,
 };
 #[cfg(feature = "headless_test")]
-pub use facts::{BattleActivity, GameFacts, GameFactsParam};
+pub use facts::{BattleActivity, GameFacts, GameFactsParam, StepperActivity};

@@ -10,8 +10,7 @@ use std::{
 
 use bevy::prelude::*;
 use gdtf_net_qa_transport::{
-    DEFAULT_IO_TIMEOUT, IncomingRequest, NetInbox, NetIoTimeout, NetQaPort, bind_listener,
-    run_listener,
+    IncomingRequest, NetInbox, NetQaPort, NetTimeouts, bind_listener, run_listener,
 };
 use gdtf_screenshot::{CapturePipelinePlugin, CapturePresentPlugin, PresentSystems, ShotDir};
 
@@ -25,12 +24,12 @@ use crate::EditorState;
 
 enum Wiring {
     Listener {
-        port:       NetQaPort,
-        io_timeout: NetIoTimeout,
+        port:     NetQaPort,
+        timeouts: NetTimeouts,
     },
     Bound {
-        listener:   Mutex<Option<TcpListener>>,
-        io_timeout: NetIoTimeout,
+        listener: Mutex<Option<TcpListener>>,
+        timeouts: NetTimeouts,
     },
 }
 
@@ -45,8 +44,8 @@ impl NetQaEditorPlugin {
     pub const fn from_env() -> Self {
         Self {
             wiring: Wiring::Listener {
-                port:       DEFAULT_EDITOR_PORT,
-                io_timeout: DEFAULT_IO_TIMEOUT,
+                port:     DEFAULT_EDITOR_PORT,
+                timeouts: NetTimeouts::DEFAULT,
             },
         }
     }
@@ -60,8 +59,8 @@ impl NetQaEditorPlugin {
         let (listener, bound) = bind_listener(port)?;
         let plugin = Self {
             wiring: Wiring::Bound {
-                listener:   Mutex::new(Some(listener)),
-                io_timeout: DEFAULT_IO_TIMEOUT,
+                listener: Mutex::new(Some(listener)),
+                timeouts: NetTimeouts::DEFAULT,
             },
         };
         Ok((plugin, bound))
@@ -77,7 +76,7 @@ impl Default for NetQaEditorPlugin {
 impl Plugin for NetQaEditorPlugin {
     fn build(&self, app: &mut App) {
         match &self.wiring {
-            Wiring::Listener { port, io_timeout } => {
+            Wiring::Listener { port, timeouts } => {
                 let Ok((listener, bound)) = bind_listener(*port) else {
                     error!(
                         port = **port,
@@ -89,24 +88,21 @@ impl Plugin for NetQaEditorPlugin {
                     port = *bound,
                     "editor net_qa: ON (dev) — loopback QA control channel listening"
                 );
-                serve(app, listener, *io_timeout);
+                serve(app, listener, *timeouts);
             }
-            Wiring::Bound {
-                listener,
-                io_timeout,
-            } => {
+            Wiring::Bound { listener, timeouts } => {
                 let Some(listener) = listener.lock().ok().and_then(|mut guard| guard.take()) else {
                     return;
                 };
-                serve(app, listener, *io_timeout);
+                serve(app, listener, *timeouts);
             }
         }
     }
 }
 
-fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
+fn serve(app: &mut App, listener: TcpListener, timeouts: NetTimeouts) {
     let (tx, rx) = mpsc::channel::<IncomingRequest>();
-    thread::spawn(move || run_listener(listener, tx, io_timeout, editor_hello_facts()));
+    thread::spawn(move || run_listener(listener, tx, timeouts, editor_hello_facts()));
     app.insert_resource(NetInbox::new(rx));
     if !app.is_plugin_added::<CapturePipelinePlugin<()>>() {
         app.add_plugins(CapturePipelinePlugin::<()>::new());

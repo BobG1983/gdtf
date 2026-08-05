@@ -3,7 +3,9 @@
 
 mod app_phase_depth;
 mod battle_fixture;
+mod battle_flee;
 mod battle_socket;
+mod battle_start;
 mod capture_fixture;
 mod capture_screenshot;
 mod catalogue_shapes;
@@ -15,6 +17,8 @@ mod facts_probe;
 mod hello_socket;
 mod menu_spawned;
 mod playback_state;
+mod procgen_step;
 mod settings_read;
 mod socket_support;
 mod ui_focus;
+mod wait;

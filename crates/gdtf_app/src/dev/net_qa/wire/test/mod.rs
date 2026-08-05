@@ -7,5 +7,6 @@ mod phase;
 mod scalars;
 mod schema;
 mod support;
+mod wait;
 
 pub(in crate::dev::net_qa::wire) use support::assert_ron_round_trip;

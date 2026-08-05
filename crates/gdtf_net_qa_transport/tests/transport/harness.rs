@@ -6,9 +6,7 @@ use std::{
     thread,
 };
 
-use gdtf_net_qa_transport::{
-    IncomingRequest, NetIoTimeout, NetQaPort, bind_listener, run_listener,
-};
+use gdtf_net_qa_transport::{IncomingRequest, NetQaPort, NetTimeouts, bind_listener, run_listener};
 use gdtf_qa_protocol::{
     framing::{FrameDecoder, encode},
     message::{HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet},
@@ -17,11 +15,11 @@ use gdtf_qa_protocol::{
 pub(crate) type TestResult = Result<(), Box<dyn Error>>;
 
 pub(crate) fn spawn_listener(
-    io_timeout: NetIoTimeout,
+    timeouts: NetTimeouts,
 ) -> Result<(NetQaPort, Receiver<IncomingRequest>), Box<dyn Error>> {
     let (tx, rx) = mpsc::channel::<IncomingRequest>();
     let (listener, port) = bind_listener(NetQaPort::new(0))?;
-    thread::spawn(move || run_listener(listener, tx, io_timeout, test_facts()));
+    thread::spawn(move || run_listener(listener, tx, timeouts, test_facts()));
     Ok((port, rx))
 }
 

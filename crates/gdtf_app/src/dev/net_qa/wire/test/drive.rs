@@ -1,7 +1,9 @@
+use gdtf_battle_sim::procgen::ProcgenStage;
+
 use super::assert_ron_round_trip;
 use crate::dev::net_qa::wire::{
     key::FocusStepNet,
-    misc::{AutoRunNet, StepperCommandNet},
+    misc::{AutoRunNet, ProcgenStageNet, StepperCommandNet},
 };
 
 fn encoded<T: serde::Serialize>(value: &T) -> String {
@@ -45,6 +47,23 @@ fn stepper_commands_round_trip_every_variant() {
     }
     assert_ron_round_trip(&AutoRunNet::new(true));
     assert_ron_round_trip(&AutoRunNet::new(false));
+}
+
+#[test]
+fn procgen_stages_round_trip_every_variant() {
+    for stage in [
+        ProcgenStage::Assemble,
+        ProcgenStage::Fill,
+        ProcgenStage::Emit,
+        ProcgenStage::Done,
+    ] {
+        assert_ron_round_trip(&ProcgenStageNet::from_stage(stage));
+    }
+    assert_eq!(
+        ProcgenStageNet::from_stage(ProcgenStage::Fill),
+        ProcgenStageNet::Fill,
+        "the wire mirror must name the same stage the sim is on",
+    );
 }
 
 /// a round trip alone cannot see a lost `#[serde(transparent)]` or a `serde(rename)`.

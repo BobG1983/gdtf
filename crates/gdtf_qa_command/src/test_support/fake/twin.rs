@@ -15,6 +15,7 @@ pub struct FakePhaseTwin;
 impl QaCommand for FakePhaseTwin {
     type Args = FakePhaseArgs;
     type Facts = FakeFacts;
+    type Parked = ();
     type Reply = FakePhaseReply;
 
     const NAME: CommandName = FakePhase::NAME;
