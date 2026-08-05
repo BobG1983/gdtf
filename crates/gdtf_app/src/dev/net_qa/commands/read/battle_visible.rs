@@ -47,6 +47,7 @@ pub(crate) struct BattleVisible;
 impl QaCommand for BattleVisible {
     type Args = BattleVisibleArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = BattleVisibleReply;
 
     const NAME: CommandName = CommandName::from_static("battle.visible");

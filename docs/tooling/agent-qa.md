@@ -263,7 +263,7 @@ Notes an agent relies on:
   the command has run). Neither is built yet: a call carrying either comes back
   `Unavailable { code: NotBuilt }` rather than running the command with the rider
   silently dropped.
-- **What the channel answers today.** The GAME host publishes thirteen commands.
+- **What the channel answers today.** The GAME host publishes seventeen commands.
   `app.phase` reports where the app is at every level of its state machine.
   `capture.screenshot` writes a PNG of what the game is showing and attaches it
   to the reply. Three shell reads answer before a battle: `settings.read` (the
@@ -273,7 +273,12 @@ Notes an agent relies on:
   `battle.roster`, `battle.turn`, `battle.selection`, `battle.offers`,
   `battle.inspect`, `battle.sightline`, `battle.visible` and `log.read`; each
   one's precondition and reply shape is in
-  [`qa-commands.md`](qa-commands.md). The
+  [`qa-commands.md`](qa-commands.md).
+  `battle.start` and `battle.flee` are the two ends of a battle, each taking the
+  same path its button does. `procgen.step` advances staged generation by one
+  stage when the procgen stepper owns it. `wait` holds its reply until one of
+  seven named conditions comes true, so an agent can stop polling — the channel
+  serves one caller at a time, so a parked `wait` holds it until it answers. The
   EDITOR host publishes none yet and answers every
   `run` `Unknown`. That is the expected state mid-epic, not a regression: the
   surface that used to sit here was deleted before the commands that replace it
@@ -345,6 +350,17 @@ shape:
   `encode()` frames a message; `FrameDecoder` turns an incoming byte stream back
   into `Frame`s (split-read tolerant), capped at `MAX_FRAME_LEN`. The codec does
   no I/O — each side owns its own socket.
+- **The two timeouts** — `NetTimeouts` in
+  `crates/gdtf_net_qa_transport/src/config.rs`, which both hosts run with as
+  `NetTimeouts::DEFAULT`. A socket read or write gives up after **5 seconds**,
+  which is what stops an idle client holding the channel; the listener then
+  waits up to **180 seconds** for the host to answer a forwarded request, and
+  sends `Timeout` itself if none arrives. They are separate numbers on purpose:
+  a `wait` parked for its two-minute budget has to be able to answer, and the
+  command-set conformance check asserts every command's budget expires before
+  that 180. The MCP host's own link timeout — `LINK_TIMEOUT`, **200 seconds**,
+  in `bins/gdtf_qa_mcp/src/link.rs` — sits outside both, so a slow command comes
+  back as a reply rather than a broken socket.
 
 Every public type in `gdtf_qa_protocol` round-trips through compact RON
 identically, proven by the crate's per-module round-trip tests.
@@ -365,7 +381,7 @@ against the shipped five-tool surface:
 5. `logs` — if a step surprised you, read what the child printed.
 6. `stop` — stop the child and release the port.
 
-On the game host today step 4 is one of thirteen. `run { command: "app.phase",
+On the game host today step 4 is one of seventeen. `run { command: "app.phase",
 arguments: "()" }` answers the five-level state tuple (`app`, `running`, `game`,
 `battlescape`, `aftermath`, the nested four `None` where they are not live).
 `run { command: "capture.screenshot", arguments: "(name: Some(\"menu\"))" }`
@@ -374,8 +390,15 @@ shell reads all take `()`: `settings.read` answers whether sound is on,
 `ui.focus` answers the focused widget and the focusable set as opaque entity
 tokens, and `playback.state` answers `(caught_up: true)` wherever no battle is
 playing. The eight battle reads refuse `Unavailable { code: WrongState }` off
-the battle screen, so at the menu step 4 is one of five in practice. Steps 2-4
-are what change as commands land; steps 1, 5 and 6 never do.
+the battle screen. `run { command: "battle.start", arguments: "(seed: Some(42))" }`
+leaves the menu and answers once generation has finished, carrying the seed the
+battle used; omit the seed and the game resolves its own and reports that.
+`run { command: "battle.flee", arguments: "()" }` ends a running battle.
+`run { command: "procgen.step", arguments: "()" }` advances staged generation by
+one stage, and refuses `NotBuilt` in a build without `dev_tools`.
+`run { command: "wait", arguments: "(condition: BattleDecided)" }` holds until
+that condition comes true, or answers `Timeout` after two minutes. Steps 2-4 are
+what change as commands land; steps 1, 5 and 6 never do.
 
 The two hosts are independent: a game child on `7616` and an editor child on
 `7617` are tracked by separate `HostManager`s, one per host, constructed in

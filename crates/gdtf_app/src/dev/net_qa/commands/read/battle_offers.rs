@@ -41,6 +41,7 @@ pub(crate) struct BattleOffers;
 impl QaCommand for BattleOffers {
     type Args = BattleOffersArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = BattleOffersReply;
 
     const NAME: CommandName = CommandName::from_static("battle.offers");

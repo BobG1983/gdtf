@@ -26,6 +26,7 @@ pub(crate) struct BattleTurn;
 impl QaCommand for BattleTurn {
     type Args = BattleTurnArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = BattleTurnReply;
 
     const NAME: CommandName = CommandName::from_static("battle.turn");

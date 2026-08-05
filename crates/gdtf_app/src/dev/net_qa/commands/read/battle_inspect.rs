@@ -47,6 +47,7 @@ pub(crate) struct BattleInspect;
 impl QaCommand for BattleInspect {
     type Args = BattleInspectArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = BattleInspectReply;
 
     const NAME: CommandName = CommandName::from_static("battle.inspect");

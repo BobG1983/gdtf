@@ -34,6 +34,7 @@ pub(crate) struct BattleRoster;
 impl QaCommand for BattleRoster {
     type Args = BattleRosterArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = BattleRosterReply;
 
     const NAME: CommandName = CommandName::from_static("battle.roster");

@@ -50,6 +50,7 @@ pub(crate) struct BattleSightline;
 impl QaCommand for BattleSightline {
     type Args = BattleSightlineArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = BattleSightlineReply;
 
     const NAME: CommandName = CommandName::from_static("battle.sightline");

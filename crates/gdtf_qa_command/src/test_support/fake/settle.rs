@@ -80,6 +80,7 @@ pub struct FakeSettle;
 impl QaCommand for FakeSettle {
     type Args = FakeSettleArgs;
     type Facts = FakeFacts;
+    type Parked = ();
     type Reply = FakeSettleReply;
 
     const NAME: CommandName = CommandName::from_static("fake.settle");
@@ -112,7 +113,7 @@ fn park_fake_settle(
         return;
     }
     for (_args, responder) in take_calls::<FakeSettle>(&mut queue) {
-        deferred.park(responder);
+        deferred.park(responder, ());
     }
 }
 

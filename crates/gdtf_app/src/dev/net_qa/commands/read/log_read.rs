@@ -37,6 +37,7 @@ pub(crate) struct LogRead;
 impl QaCommand for LogRead {
     type Args = LogReadArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = LogReadReply;
 
     const NAME: CommandName = CommandName::from_static("log.read");

@@ -31,6 +31,7 @@ pub(crate) struct BattleSelection;
 impl QaCommand for BattleSelection {
     type Args = BattleSelectionArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = BattleSelectionReply;
 
     const NAME: CommandName = CommandName::from_static("battle.selection");

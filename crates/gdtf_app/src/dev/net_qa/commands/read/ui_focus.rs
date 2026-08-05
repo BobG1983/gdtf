@@ -27,6 +27,7 @@ pub(crate) struct UiFocus;
 impl QaCommand for UiFocus {
     type Args = UiFocusArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = UiFocusReply;
 
     const NAME: CommandName = CommandName::from_static("ui.focus");

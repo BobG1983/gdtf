@@ -6,8 +6,6 @@ crate::support_item! {
     struct BattleRunningComplete;
 }
 
-pub(in crate::states::running::game::battlescape) fn insert_battle_running_complete(
-    commands: &mut Commands,
-) {
+pub(crate) fn insert_battle_running_complete(commands: &mut Commands) {
     commands.insert_resource(BattleRunningComplete);
 }

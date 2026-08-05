@@ -14,6 +14,7 @@ mod sight;
 mod support;
 mod visible;
 mod vitals;
+mod wait;
 mod wound;
 
 pub(in crate::dev::net_qa::wire) use support::assert_ron_round_trip;
