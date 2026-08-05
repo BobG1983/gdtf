@@ -14,8 +14,10 @@ two frozen envelope variants rather than a variant of its own
 Everything below is written from the simplest command the game publishes,
 [`crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs).
 Read that file alongside this one: every shape shown here is in it, at that path. Nothing
-here describes a command nobody has written. The game's other command,
-[`commands/capture/screenshot.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs),
+here describes a command nobody has written. The game's other reads — `settings.read`,
+`ui.focus` and `playback.state`, beside it under `commands/read/` — are the same four items
+reading a different resource, and
+[`commands/capture/screenshot.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs)
 is the same four items with a `Deferred` handler — see [Calling it](#calling-it).
 
 ## What the QA channel is for
@@ -187,12 +189,15 @@ Two layers, both cheap:
   unique names, parseable shapes, one body per type name, and a deferral budget under the
   socket's own wait — over the real slice. It is already registered; a new command is
   covered by it the moment it joins the list.
-- **The command.** Add a case to
-  [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs).
-  Its `exchange` helper takes a fixture, negotiates, and sends over a real socket into the
-  real router, so a case there exercises the whole path a live client drives. Assert on the
-  reply rather than on published shape TEXT: the shape is traced from the type, so pinning
-  it re-states the type instead of testing behaviour.
+- **The command.** Add a file per command under `crates/gdtf_app/tests/net_qa/` —
+  `settings_read.rs`, `ui_focus.rs` and `playback_state.rs` are the pattern — and declare it
+  in that directory's `main.rs`. The shared `exchange` helper takes a fixture, negotiates, and
+  sends over a real socket into the real router, so a case there exercises the whole path a
+  live client drives. Assert on the reply rather than on published shape TEXT: the shape is
+  traced from the type, so pinning it re-states the type instead of testing behaviour.
+  [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs)
+  is for the cases that span the whole host — the catalogue listing, an unknown name, the
+  deferral budget — and grows by a name in those lists, not by a per-command case.
 
 ## Calling it
 
@@ -205,7 +210,11 @@ run(host="game", command="app.phase", arguments="()")     # do it
 run(host="game", command="capture.screenshot", arguments="(name: Some(\"menu\"))")
 ```
 
-The game offers two commands today: `app.phase` and `capture.screenshot`.
+The game offers five commands today: `app.phase`, `capture.screenshot`, `settings.read`,
+`ui.focus` and `playback.state`. The last three are the shell reads — they take `()`, are
+`Immediate`, and answer before a battle: `settings.read` reports the Options values,
+`ui.focus` reports the focused widget and the widgets the current screen registered as
+focusable, and `playback.state` reports whether the screen has caught up with the act log.
 `capture.screenshot` writes a PNG of what the game is showing and answers `Ran` with a
 `ReplyAttachment(Png, …)` naming it; `name` is optional and becomes the file stem inside
 the host's shot directory. It is `Deferred`, so the reply arrives once the PNG is on disk;

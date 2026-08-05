@@ -15,6 +15,8 @@ pub mod misc;
 pub(crate) mod phase;
 /// Pointer position and mouse buttons.
 pub mod pointer;
+/// Menu and shell read payloads.
+pub mod shell;
 /// Entity tokens for gangers, doors, and emplacements.
 pub mod token;
 

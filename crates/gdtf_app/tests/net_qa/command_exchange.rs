@@ -12,6 +12,12 @@ pub(crate) const APP_PHASE: &str = "app.phase";
 
 pub(crate) const CAPTURE_SCREENSHOT: &str = "capture.screenshot";
 
+pub(crate) const SETTINGS_READ: &str = "settings.read";
+
+pub(crate) const UI_FOCUS: &str = "ui.focus";
+
+pub(crate) const PLAYBACK_STATE: &str = "playback.state";
+
 pub(crate) fn exchange_all(
     fixture: SocketFixture,
     requests: Vec<QaRequest>,

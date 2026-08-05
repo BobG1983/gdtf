@@ -5,8 +5,8 @@ use super::sound::SoundEnabled;
 use super::stepper::ProcgenStepperEnabled;
 
 #[derive(Resource, Clone, Copy, PartialEq, Eq, Debug)]
-pub(in crate::states::running::options) struct GameSettings {
-    pub(in crate::states::running::options) sound:           SoundEnabled,
+pub(crate) struct GameSettings {
+    pub(crate) sound: SoundEnabled,
     #[cfg(feature = "dev_tools")]
     pub(in crate::states::running::options) procgen_stepper: ProcgenStepperEnabled,
 }
