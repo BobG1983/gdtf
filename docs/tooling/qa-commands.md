@@ -1,6 +1,6 @@
 ---
 name: Adding a QA command
-description: How to add a command to a QA host — a file, one line in that host's list, and a test — written from the one command that exists, app.phase.
+description: How to add a command to a QA host — a file, one line in that host's list, and a test — written from app.phase, the simplest command the game publishes.
 ---
 
 # Adding a QA command
@@ -11,10 +11,12 @@ variant, and changes nothing in the MCP courier — because a command is DATA ca
 two frozen envelope variants rather than a variant of its own
 (see [Why the shape is what it is](#why-the-shape-is-what-it-is) below).
 
-Everything below is written from the ONE command that exists today,
+Everything below is written from the simplest command the game publishes,
 [`crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs).
 Read that file alongside this one: every shape shown here is in it, at that path. Nothing
-here describes a command nobody has written.
+here describes a command nobody has written. The game's other command,
+[`commands/capture/screenshot.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs),
+is the same four items with a `Deferred` handler — see [Calling it](#calling-it).
 
 ## What the QA channel is for
 
@@ -125,8 +127,9 @@ impl QaCommand for AppPhase {
 - **`NAME`** is `family.verb`, lowercase and dotted. It must be unique within the host's
   set; `assert_unique_names` over that set is what proves it.
 - **`TIMING`** is a declaration, not a measurement: `Immediate` if the handler answers
-  inside `take_calls`, `Deferred` if it parks its responder in `DeferredReplies` and answers
-  on a later frame.
+  inside `take_calls`, `Deferred` if it parks its responder and answers on a later frame —
+  in `DeferredReplies`, or in a pipeline queue of its own, as `capture.screenshot` parks
+  its responder in `CaptureQueue`.
 - **`availability`** is a PURE function of the frame's facts — no `App`, no queries — so it
   is unit-testable on its own, and the SAME call decides both what the catalogue advertises
   and whether a `Run` is admitted. The two cannot disagree. `app.phase` is always
@@ -199,7 +202,19 @@ From an MCP client, two tools and no more:
 commands(host="game")                                    # what can I call?
 commands(host="game", command="app.phase", detail="Full") # what does it take?
 run(host="game", command="app.phase", arguments="()")     # do it
+run(host="game", command="capture.screenshot", arguments="(name: Some(\"menu\"))")
 ```
+
+The game offers two commands today: `app.phase` and `capture.screenshot`.
+`capture.screenshot` writes a PNG of what the game is showing and answers `Ran` with a
+`ReplyAttachment(Png, …)` naming it; `name` is optional and becomes the file stem inside
+the host's shot directory. It is `Deferred`, so the reply arrives once the PNG is on disk;
+a capture that never lands answers `Timeout`, and one aimed at an image nothing renders
+into is refused `Unavailable` with code `WrongState`. The capture pipeline itself — queue,
+settle, aim check, spawn, verify — lives in `crates/gdtf_screenshot` and is shared by both
+hosts; the command in
+[`crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs)
+only maps its `CaptureOutcome` onto the wire.
 
 Args, replies and published shapes are all **RON**. `arguments` is a string of compact RON
 shaped by that command's own `schemas.arguments`; a command that takes none is `"()"`. The

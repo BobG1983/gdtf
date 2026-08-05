@@ -5,12 +5,12 @@ use std::env;
 use bevy::prelude::*;
 
 use crate::{
+    capture::{CaptureCompletions, CapturePipelinePlugin, CaptureQueue, CaptureSystems},
     path::{CapturePath, parse_shot_path},
     settle::{PollCap, SettleFrames},
-    trigger::{CaptureProgress, poll_then_exit, settle_then_capture},
 };
 
-/// Captures a screenshot after settle frames, then exits when the file lands.
+/// Captures a screenshot after settle frames, then exits when the capture finishes.
 /// Inactive when no path is configured (`from_env` missing/blank).
 pub struct ScreenshotCapturePlugin {
     path:   Option<CapturePath>,
@@ -66,15 +66,27 @@ impl Plugin for ScreenshotCapturePlugin {
             return;
         };
         info!("gdtf_screenshot: capture ON -> {}", path.display());
+        if !app.is_plugin_added::<CapturePipelinePlugin<()>>() {
+            app.add_plugins(CapturePipelinePlugin::<()>::new());
+        }
         app.insert_resource(path)
             .insert_resource(self.settle)
             .insert_resource(self.poll)
-            .init_resource::<CaptureProgress>()
-            .add_systems(
-                Update,
-                (settle_then_capture, poll_then_exit)
-                    .chain()
-                    .run_if(resource_exists::<CapturePath>),
-            );
+            .add_systems(Startup, request_capture)
+            .add_systems(Update, exit_when_capture_finishes.after(CaptureSystems));
     }
+}
+
+fn request_capture(path: Res<CapturePath>, mut queue: ResMut<CaptureQueue<()>>) {
+    queue.push_to(path.clone(), ());
+}
+
+fn exit_when_capture_finishes(
+    completions: Res<CaptureCompletions<()>>,
+    mut exit: MessageWriter<AppExit>,
+) {
+    if completions.is_empty() {
+        return;
+    }
+    exit.write(AppExit::Success);
 }

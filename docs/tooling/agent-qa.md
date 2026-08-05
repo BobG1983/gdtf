@@ -61,10 +61,11 @@ dropped.
 Whatever the recipe, two environment variables are set on the child LAST, so a
 recipe's own `env` can never displace them:
 
-- `GDTF_NET_QA=1` — opts the build into the QA control channel (the runtime gate,
-  below).
-- `GDTF_NET_QA_PORT=<port>` — the loopback port the game listens on and the host
-  then connects to.
+- `GDTF_NET_QA=1` — read by nothing. A debug build always opens the channel; see
+  [the debug-build gate](#the-debug-build-gate).
+- `GDTF_NET_QA_PORT=<port>` — read by nothing. The game always listens on `7616`.
+
+The host still sets both, and the child ignores both.
 
 The variable names come from the launch recipe's `QaChannel`
 (`bins/gdtf_qa_mcp/src/lifecycle/launch/channel.rs`), which carries one pair per
@@ -131,34 +132,22 @@ streams, interleaved — which shows how far the build got.
 The editor can also be brought UP by hand — driving it still goes through the
 MCP host, per the rule above. It is a separate binary package
 (`bins/gdtf_content_editor/Cargo.toml`, package `gdtf_content_editor_bin`) with
-its own `net_qa` feature, its own two environment variables, and its own default
-port, and running it by hand opens the same channel that launch opens.
-The binary feature passthrough is what makes that possible; without it the
-editor's listener existed only inside workspace-wide `cargo` checks and no
-launchable editor could open a port at all.
+its own default port, and running it by hand opens the same channel that launch
+opens.
 
 ```bash
-GDTF_EDITOR_NET_QA=1 GDTF_EDITOR_NET_QA_PORT=7617 \
-  cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher
+cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher
 ```
 
 `cargo edrun` (`.cargo/config.toml`) is the same command as an alias, and
-`cargo edbuild` builds without running. The plain `edrun` / `edbuild` aliases
-include `file_watcher` (hot-reload RON) and deliberately leave `net_qa` off — a
-normal dev editor should not pay the QA feature's compile cost.
+`cargo edbuild` builds without running. Both include `file_watcher` (hot-reload
+RON).
 
-- `GDTF_EDITOR_NET_QA=1` — opts the build into the editor's QA control channel.
-  Truthy is `1` / `true` / `yes` / `on`, trimmed and case-insensitive
-  (`crates/gdtf_content_editor/src/net_qa/env.rs`); anything else, including
-  unset, leaves the editor inert.
-- `GDTF_EDITOR_NET_QA_PORT=<port>` — the loopback port. Unset or unparseable
-  falls back to **`7617`**, the `DEFAULT_EDITOR_PORT` in
-  `crates/gdtf_content_editor/src/net_qa/config.rs` — deliberately one above the
-  game's `7616`, so both hosts can be up at once without fighting for a socket.
-
-The names are the editor's OWN, not the game's: setting `GDTF_NET_QA` does
-nothing to the editor, and pointing both hosts at one variable would switch them
-both on at one port.
+A debug editor build always opens the channel on **`7617`**, the
+`DEFAULT_EDITOR_PORT` in `crates/gdtf_content_editor/src/net_qa/config.rs` —
+deliberately one above the game's `7616`, so both hosts can be up at once without
+fighting for a socket. `GDTF_EDITOR_NET_QA` and `GDTF_EDITOR_NET_QA_PORT` are read
+by nothing; the MCP host still sets them and the editor ignores them.
 
 When the channel comes up the editor writes this line to **stderr** at `info`
 level (`crates/gdtf_content_editor/src/net_qa/plugin.rs`), carrying the port it
@@ -196,54 +185,33 @@ The editor itself answers the two command-layer requests (`route_editor_requests
 in `crates/gdtf_content_editor/src/net_qa/router/route.rs`): a `Catalogue`, with
 an EMPTY command list under its own host name, and a `Run`, with `Unknown` —
 because the editor publishes no commands yet. Building its set is follow-on work.
-Its capture pump (`crates/gdtf_content_editor/src/net_qa/screenshot/`) is still
-there and still tested, waiting for the capture command that will fill its queue.
+Its capture pipeline is the shared one in `crates/gdtf_screenshot/src/capture/`,
+registered by the editor's QA plugin and driven today only by the editor's own
+integration suite, waiting for the capture command that will fill its queue.
 The wire shape, the framing, and the protocol version are the game's — see
 [the protocol sketch](#the-protocol-sketch) — so one client library speaks to
 both.
 
-## The feature + env double gate
+## The debug-build gate
 
-The server is gated twice, so it cannot leak into a shipped binary and cannot
-open a port by accident:
+One gate, at compile time, so the listener cannot reach a shipped binary: the
+plugin wiring site `crates/gdtf_app/src/dev/plugin.rs` is `cfg(debug_assertions)`,
+so a release build never contains the server code. The editor mirrors it at
+`crates/gdtf_content_editor/src/app.rs`.
 
-1. **The `net_qa` cargo feature** must be enabled at build time. The binary
-   feature `net_qa = ["gdtf_app/net_qa"]` lives in
-   `bins/grimdark_turfwar/Cargo.toml`; it chains to the library feature
-   `net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_screenshot", "dep:image"]` in
-   `crates/gdtf_app/Cargo.toml`. Only that feature pulls in the wire-contract
-   crate, the self-capture crate, and image encoding. A build without it never
-   links them.
+There is no cargo feature and no runtime arming. `net_qa` used to be a feature on
+both hosts, and `GDTF_NET_QA` used to arm it at run time; both were removed. What
+is left keeps the old names but reads nothing: `net_qa_enabled()`
+(`crates/gdtf_app/src/dev/net_qa/env.rs`) returns a literal `true`, and
+`NetQaPlugin::from_env` / `NetQaEditorPlugin::from_env` take their port from a
+constant.
 
-2. **The compile gate** at the plugin wiring site,
-   `crates/gdtf_app/src/dev/plugin.rs`, is
-   `cfg!(debug_assertions)` — the server code is only
-   compiled in a debug build with the feature on. A release build never contains
-   it, because it opens a listener.
-
-3. **The runtime env gate** keeps even a `net_qa` debug build inert by default.
-   `crates/gdtf_app/src/dev/net_qa/env.rs` reads `GDTF_NET_QA`: `net_qa_enabled()`
-   treats `1` / `true` / `yes` / `on` (trimmed, case-insensitive) as enabled and
-   anything else — including unset — as disabled. `NetQaPlugin::from_env`
-   (`crates/gdtf_app/src/dev/net_qa/plugin/net_qa_plugin.rs`) registers nothing unless that
-   check passes.
-
-The listen **interface** is never configurable — it is hardcoded to
-`Ipv4Addr::LOCALHOST`. Only the **port** is read from the environment:
-`port_from_env()` parses `GDTF_NET_QA_PORT` as a `u16`, or falls back to
-`DEFAULT_PORT` (`7616`) defined in `crates/gdtf_app/src/dev/net_qa/config.rs`.
-
-The editor mirrors all three gates with its own names: the binary feature
-`net_qa = ["gdtf_content_editor/net_qa"]` in
-`bins/gdtf_content_editor/Cargo.toml` chains to
-`net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_net_qa_transport", "dep:image"]` in
-`crates/gdtf_content_editor/Cargo.toml`; the wiring site
-`crates/gdtf_content_editor/src/app.rs` is
-`cfg(debug_assertions)`; and
-`NetQaEditorPlugin::from_env` reads `GDTF_EDITOR_NET_QA`. That binary feature is
-pinned by a conformance test —
-`crates/gdtf_test_utils/tests/binary_feature_passthrough/` fails the suite if a
-binary over a `net_qa`-bearing library stops declaring the passthrough.
+The listen **interface** is never configurable — hardcoded to
+`Ipv4Addr::LOCALHOST` — and the **port** is a constant too: `GAME_QA_PORT`
+(`7616`) and `EDITOR_QA_PORT` (`7617`) in `crates/gdtf_qa_protocol/src/ports.rs`,
+wrapped as `DEFAULT_PORT` and `DEFAULT_EDITOR_PORT` in each host's
+`net_qa/config.rs`. One constant per host is why the two never contend for a
+socket.
 
 ## The tool vocabulary
 
@@ -295,12 +263,13 @@ Notes an agent relies on:
   the command has run). Neither is built yet: a call carrying either comes back
   `Unavailable { code: NotBuilt }` rather than running the command with the rider
   silently dropped.
-- **What the channel answers today.** The GAME host publishes one command,
-  `app.phase` — where the app is at every level of its state machine. The EDITOR
-  host publishes none yet and answers every `run` `Unknown`. That is the expected
-  state mid-epic, not a regression: the surface that used to sit here was deleted
-  before the commands that replace it were written, so any gap is a compile error
-  rather than a silent fallback.
+- **What the channel answers today.** The GAME host publishes two commands:
+  `app.phase` — where the app is at every level of its state machine — and
+  `capture.screenshot`, which writes a PNG of what the game is showing and
+  attaches it to the reply. The EDITOR host publishes none yet and answers every
+  `run` `Unknown`. That is the expected state mid-epic, not a regression: the
+  surface that used to sit here was deleted before the commands that replace it
+  were written, so any gap is a compile error rather than a silent fallback.
 - **`logs` is the first thing to try when a launch came up but the app is not
   behaving.** Both of the child's output streams are captured at spawn into one
   buffer, in the order they were written, so the reply is what the process
@@ -388,15 +357,15 @@ against the shipped five-tool surface:
 5. `logs` — if a step surprised you, read what the child printed.
 6. `stop` — stop the child and release the port.
 
-On the game host today step 4 is `run { command: "app.phase", arguments: "()" }`,
-which answers the five-level state tuple (`app`, `running`, `game`,
+On the game host today step 4 is one of two. `run { command: "app.phase",
+arguments: "()" }` answers the five-level state tuple (`app`, `running`, `game`,
 `battlescape`, `aftermath`, the nested four `None` where they are not live).
-Steps 2-4 are what change as commands land; steps 1, 5 and 6 never do.
+`run { command: "capture.screenshot", arguments: "(name: Some(\"menu\"))" }`
+writes a PNG and answers with it attached; the `name` is optional. Steps 2-4 are
+what change as commands land; steps 1, 5 and 6 never do.
 
 The two hosts are independent: a game child on `7616` and an editor child on
 `7617` are tracked by separate `HostManager`s, one per host, constructed in
 `bins/gdtf_qa_mcp/src/serve.rs` and looked up by `HostSet::pair` in
 `bins/gdtf_qa_mcp/src/hosts/set.rs`. Each call reaches the child its `host`
 argument names, and a `stop` aimed at the editor never touches the game.
-
-> **Note:** `net_qa` is no longer a cargo feature; QA modules compile under `debug_assertions` and always listen on the shared ports in `gdtf_qa_protocol::ports`. Env arming (`GDTF_NET_QA` / `GDTF_EDITOR_NET_QA` and port vars) is removed.

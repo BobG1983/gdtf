@@ -7,12 +7,9 @@ use bevy::{
     winit::WinitPlugin,
 };
 use bevy_egui::EguiPlugin;
-use gdtf_content_editor::{
-    EditorQaShotDir, EditorShotPollBudget, EditorShotSettle, EditorState, MapEditorPlugin,
-    NetQaEditorPlugin,
-};
+use gdtf_content_editor::{EditorState, MapEditorPlugin, NetQaEditorPlugin};
 use gdtf_net_qa_transport::NetQaPort;
-use gdtf_screenshot::{PollCap, SettleFrames};
+use gdtf_screenshot::{PollCap, SettleFrames, ShotDir};
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
 use crate::support::{EDITING_UPDATES, TEST_POLL_BUDGET, TEST_SETTLE, TestError};
@@ -22,9 +19,9 @@ const WINDOW_PX: UVec2 = UVec2::new(320, 180);
 const GPU_SCALE_FACTOR: f32 = 1.75;
 
 fn pin_tunables(app: &mut App, shot_dir: PathBuf) {
-    app.insert_resource(EditorQaShotDir::new(shot_dir));
-    app.insert_resource(EditorShotSettle::new(SettleFrames::new(TEST_SETTLE)));
-    app.insert_resource(EditorShotPollBudget::new(PollCap::new(TEST_POLL_BUDGET)));
+    app.insert_resource(ShotDir::new(shot_dir));
+    app.insert_resource(SettleFrames::new(TEST_SETTLE));
+    app.insert_resource(PollCap::new(TEST_POLL_BUDGET));
 }
 
 pub(crate) fn headless_editor_app(shot_dir: PathBuf) -> Result<(App, NetQaPort), TestError> {

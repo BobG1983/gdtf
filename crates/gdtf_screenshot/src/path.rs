@@ -1,9 +1,6 @@
 //! Output path helpers for screenshot captures.
 
-use std::{
-    path::PathBuf,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::path::PathBuf;
 
 use bevy::prelude::*;
 
@@ -29,22 +26,9 @@ pub fn parse_shot_path(value: Option<&str>) -> Option<CapturePath> {
         .map(|trimmed| CapturePath::new(PathBuf::from(trimmed)))
 }
 
-const SCREENSHOTS_DIR: &str = "target/screenshots";
-
-/// Build a unique path under `target/screenshots` using `name` and the current unix time.
-#[must_use]
-pub fn timestamped_path(name: &str) -> CapturePath {
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |elapsed| elapsed.as_secs());
-    CapturePath::new(PathBuf::from(format!(
-        "{SCREENSHOTS_DIR}/{name}-{secs}.png"
-    )))
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{SCREENSHOTS_DIR, parse_shot_path, timestamped_path};
+    use super::parse_shot_path;
 
     #[test]
     fn path_gate_accepts_non_empty_and_rejects_blank() {
@@ -62,17 +46,5 @@ mod tests {
             parsed.map(|path| path.to_string_lossy().into_owned()),
             Some("/trim/out.png".to_owned())
         );
-    }
-
-    #[test]
-    fn timestamped_path_is_under_screenshots_dir_and_png() {
-        let path = timestamped_path("editor");
-        let text = path.to_string_lossy();
-        assert!(
-            text.starts_with(SCREENSHOTS_DIR),
-            "under target/screenshots: {text}"
-        );
-        assert!(text.contains("editor-"), "carries the scene tag: {text}");
-        assert!(text.ends_with(".png"), "is a PNG: {text}");
     }
 }
