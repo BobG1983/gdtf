@@ -9,37 +9,28 @@ use bevy::{
 
 use super::{
     super::{
-        fct::FctSlotAllocator, projectile::spawn_pops_at_anchor, readers::fx_sprite_scaled,
-        roles::EffectRoles, tuning::FxTuning,
+        fct::FctSlotAllocator, projectile::spawn_pops_at_anchor, sprites::FxSprites,
+        tuning::FxTuning,
     },
     ImpactAnimation,
     animation::{ImpactStep, impact_frame_scale},
     signal::ShotImpactResolved,
 };
-use crate::TopDownAtlases;
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "Commands, tables, writer, allocator, and seed/playing queries are separate params"
-)]
 /// Turn pending impacts into animated flashes and emit [`ShotImpactResolved`].
-pub fn animate_impact(
+pub fn seed_impact_animations(
     mut commands: Commands,
-    time: Res<Time>,
-    roles: Res<EffectRoles>,
-    atlases: Res<TopDownAtlases>,
+    sprites: FxSprites,
     tuning: Res<FxTuning>,
     mut impact_resolved: MessageWriter<ShotImpactResolved>,
     allocator: FctSlotAllocator,
     seeds: Query<(Entity, &super::super::projectile::PendingImpact)>,
-    mut playing: Query<(Entity, &mut Sprite, &mut ImpactAnimation)>,
 ) {
     let frame_seconds = tuning.impact_frame_seconds;
     for (seed_entity, impact) in &seeds {
-        let fx = roles.fx_for(impact.damage);
-        if let Some(tile) = fx.impact.first()
-            && let Some(sprite) =
-                fx_sprite_scaled(*tile, Color::WHITE, impact_frame_scale(0), &atlases)
+        let first_tile = sprites.fx_for(impact.damage).impact.first().copied();
+        if let Some(tile) = first_tile
+            && let Some(sprite) = sprites.tile(tile, Color::WHITE, impact_frame_scale(0))
         {
             let transform = Transform::from_translation(impact.at);
             let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
@@ -64,15 +55,22 @@ pub fn animate_impact(
         });
         commands.entity(seed_entity).despawn();
     }
+}
 
+/// Step playing impact flashes to their next frame; despawn when finished.
+pub fn advance_impact_animations(
+    mut commands: Commands,
+    time: Res<Time>,
+    sprites: FxSprites,
+    mut playing: Query<(Entity, &mut Sprite, &mut ImpactAnimation)>,
+) {
     let delta = time.delta();
     for (entity, mut sprite, mut anim) in &mut playing {
         match anim.advance(delta) {
             ImpactStep::Showing(frame) => {
-                let fx = roles.fx_for(anim.damage());
-                if let Some(tile) = fx.impact.get(frame)
-                    && let Some(next) =
-                        fx_sprite_scaled(*tile, Color::WHITE, impact_frame_scale(frame), &atlases)
+                let next_tile = sprites.fx_for(anim.damage()).impact.get(frame).copied();
+                if let Some(tile) = next_tile
+                    && let Some(next) = sprites.tile(tile, Color::WHITE, impact_frame_scale(frame))
                 {
                     *sprite = next;
                 }

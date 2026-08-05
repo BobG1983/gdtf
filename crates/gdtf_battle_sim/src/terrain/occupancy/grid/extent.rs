@@ -16,7 +16,7 @@ impl OccupancyGrid {
             .iter()
             .enumerate()
             .filter(|(_, slot)| slot.terrain != TerrainKind::Open || slot.occupant.is_some())
-            .map(|(index, _)| Self::cell_level_of_index(SlotIndex::new(index)))
+            .filter_map(|(index, _)| Self::cell_level_of_index(SlotIndex::new(index)))
     }
 
     /// Lowest and highest authored storey, if any cells exist.
@@ -33,20 +33,16 @@ impl OccupancyGrid {
 
     /// Every cell in the dense grid.
     pub fn all_cells(&self) -> impl Iterator<Item = CellLevel> {
-        (0..SLOT_COUNT).map(|index| Self::cell_level_of_index(SlotIndex::new(index)))
+        (0..SLOT_COUNT).filter_map(|index| Self::cell_level_of_index(SlotIndex::new(index)))
     }
 
-    fn cell_level_of_index(index: SlotIndex) -> CellLevel {
-        let level = *index / (GRID_WIDTH * GRID_HEIGHT);
-        let plane = *index % (GRID_WIDTH * GRID_HEIGHT);
-        let y = plane / GRID_WIDTH;
-        let x = plane % GRID_WIDTH;
-        #[expect(
-            clippy::cast_possible_wrap,
-            reason = "x/y are 0..60 and level is 0..MAX_LEVELS (8) by the index's own \
-                      construction, so these conversions cannot truncate, wrap, or sign-flip"
-        )]
-        let key = (x as i32, y as i32, level as u8);
-        CellLevel::new(Cell::new(key.0, key.1), Level::new(key.2))
+    // `None` for a slot index whose coordinates do not fit the cell types.
+    fn cell_level_of_index(index: SlotIndex) -> Option<CellLevel> {
+        let plane_size = GRID_WIDTH * GRID_HEIGHT;
+        let level = u8::try_from(*index / plane_size).ok()?;
+        let plane = *index % plane_size;
+        let y = i32::try_from(plane / GRID_WIDTH).ok()?;
+        let x = i32::try_from(plane % GRID_WIDTH).ok()?;
+        Some(CellLevel::new(Cell::new(x, y), Level::new(level)))
     }
 }

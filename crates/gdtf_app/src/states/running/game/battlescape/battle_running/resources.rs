@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 
 crate::support_item! {
-                                                                            #[derive(Resource)]
+    /// Inserted once the battle-running phase has finished.
+    #[derive(Resource)]
     struct BattleRunningComplete;
 }
 

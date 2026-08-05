@@ -1,17 +1,20 @@
 use bevy::prelude::*;
 
 crate::support_item! {
-                        #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Root node of the options screen.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct OptionsScreenRoot;
 }
 
 crate::support_item! {
-                    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The options screen heading text.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct OptionsTitle;
 }
 
 crate::support_item! {
-                                    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The sound on/off toggle track.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct SoundToggle;
 }
 
@@ -19,12 +22,14 @@ crate::support_item! {
 pub(in crate::states::running::options) struct SoundToggleKnob;
 
 crate::support_item! {
-                    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// The text showing whether sound is on or off.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct SoundValueLabel;
 }
 
 crate::support_item! {
-                                            #[cfg(feature = "dev_tools")]
+    /// The procgen stepper on/off toggle track.
+    #[cfg(feature = "dev_tools")]
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ProcgenStepperToggle;
 }
@@ -34,12 +39,14 @@ crate::support_item! {
 pub(in crate::states::running::options) struct ProcgenStepperToggleKnob;
 
 crate::support_item! {
-                    #[cfg(feature = "dev_tools")]
+    /// The text showing whether the procgen stepper is on or off.
+    #[cfg(feature = "dev_tools")]
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ProcgenStepperValueLabel;
 }
 
 crate::support_item! {
-                            #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Button that leaves the options screen.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ContinueButton;
 }

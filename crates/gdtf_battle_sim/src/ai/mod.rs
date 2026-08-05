@@ -4,6 +4,7 @@ mod advance;
 mod brain;
 mod decide;
 mod engage;
+mod params;
 mod snapshot;
 
 #[cfg(test)]

@@ -5,11 +5,15 @@ use gdtf_battle_sim::{
     terrain::def::TerrainDefRegistry,
 };
 use gdtf_content_editor::{
-    EditorMap, EditorMode, MapEditorSession, PreviewPan, PreviewTarget, ProposedPlacement,
-    apply_placement,
+    EditorMap, EditorMode, HoveredCell, MapEditorSession, PreviewPan, PreviewTarget,
+    ProposedPlacement, apply_placement,
 };
 
 use super::harness::*;
+
+fn sprite_count(app: &mut App) -> usize {
+    app.world_mut().query::<&Sprite>().iter(app.world()).count()
+}
 
 #[test]
 fn editing_inserts_the_preview_target_and_pan() {
@@ -45,6 +49,56 @@ fn redraw_spawns_preview_tile_sprites() {
         sprite_count > 0,
         "the change-driven redraw must spawn at least one preview tile sprite (the default-floor \
          fill) — a non-empty viewport, not a black one (C4.3 / C4.12); got {sprite_count}",
+    );
+}
+
+#[test]
+fn the_hover_ghost_needs_both_a_hovered_cell_and_a_selected_tile() {
+    let mut app = editor_app();
+    advance_to_editing(&mut app);
+    for _ in 0..8 {
+        app.update();
+    }
+
+    {
+        let Some(mut session) = app.world_mut().get_resource_mut::<MapEditorSession>() else {
+            unreachable!("the session is inserted in Editing");
+        };
+        session.clear_selected_tile();
+    }
+    {
+        let Some(mut hovered) = app.world_mut().get_resource_mut::<HoveredCell>() else {
+            unreachable!("the hovered cell is inserted in Editing");
+        };
+        hovered.set(Cell::new(0, 0), Level::new(0));
+    }
+    app.update();
+
+    let without_ghost = sprite_count(&mut app);
+    assert!(
+        without_ghost > 0,
+        "precondition: the redraw spawned preview tiles",
+    );
+
+    let selected = app
+        .world()
+        .get_resource::<MapEditorSession>()
+        .and_then(MapEditorSession::default_floor);
+    let Some(tile) = selected else {
+        return;
+    };
+    {
+        let Some(mut session) = app.world_mut().get_resource_mut::<MapEditorSession>() else {
+            unreachable!("the session is inserted in Editing");
+        };
+        session.select_tile(tile);
+    }
+    app.update();
+
+    assert_eq!(
+        sprite_count(&mut app),
+        without_ghost + 1,
+        "a hovered cell plus a selected tile draws exactly one ghost sprite over the storey fill",
     );
 }
 

@@ -1,7 +1,7 @@
 mod advance;
 mod pending;
 mod spawn;
-mod travel;
+pub(in crate::actors::fx) mod travel;
 
 pub use advance::advance_projectiles;
 pub use pending::PendingImpact;

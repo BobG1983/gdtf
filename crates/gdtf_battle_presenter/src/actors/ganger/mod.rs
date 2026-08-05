@@ -19,6 +19,6 @@ pub use frame::{FacingFrame, facing_frame};
 pub use roles::CharacterRoles;
 pub(crate) use roles::register_character_roles_hot_ron;
 pub use spawn_move::{move_ganger_sprites, spawn_ganger_sprites};
-pub use sprite_map::{GangerSprite, GangerSprites};
+pub use sprite_map::{GangerSprite, GangerSpriteWorld, GangerSprites};
 pub use tween::{SpriteTween, advance_sprite_tweens};
 pub use visibility::{GangerVisibilityFacts, resolve_ganger_visibility};

@@ -1,8 +1,8 @@
 //! Emit melee connect messages: resolved, struck, injury, shove, death.
 
-use bevy::prelude::{Entity, MessageWriter};
+use bevy::prelude::Entity;
 
-use super::{MeleeFacts, queries::MeleeTargetQuery, snapshot::AttackerSnapshot};
+use super::{MeleeOutcomes, queries::MeleeTargetQuery, snapshot::AttackerSnapshot};
 use crate::{
     acts::{
         InjuryInflicted,
@@ -15,14 +15,6 @@ use crate::{
     metric::CellLevel,
 };
 
-/// Writers used after a successful melee connect.
-pub(super) struct MeleeConnectSignals<'a, 'r, 'f, 's, 'd> {
-    pub(super) resolved: &'a mut MessageWriter<'r, MeleeResolved>,
-    pub(super) facts:    &'a mut MeleeFacts<'f>,
-    pub(super) shoves:   &'a mut MessageWriter<'s, ShoveRequested>,
-    pub(super) deaths:   &'a mut MessageWriter<'d, OnDeathOccurred>,
-}
-
 /// Write outcome messages for a connected melee strike.
 pub(super) fn emit_connect_signals(
     attacker: &AttackerSnapshot<'_>,
@@ -30,24 +22,24 @@ pub(super) fn emit_connect_signals(
     at: CellLevel,
     strike: MeleeStrike,
     targets: &MeleeTargetQuery,
-    signals: MeleeConnectSignals<'_, '_, '_, '_, '_>,
+    outcomes: &mut MeleeOutcomes,
 ) {
-    signals
+    outcomes
         .resolved
         .write(MeleeResolved::new(at, attacker.strike_damage_type));
 
-    signals.facts.struck.write(MeleeStruck::new(
+    outcomes.facts.struck.write(MeleeStruck::new(
         attacker.entity,
         target_entity,
         strike.hp_damage,
     ));
 
     if let ArmorWearOutcome::Broke(broken) = strike.wear {
-        signals.facts.breaks.write(broken);
+        outcomes.facts.breaks.write(broken);
     }
 
     if let Some(rolled) = strike.injury {
-        signals
+        outcomes
             .facts
             .injuries
             .write(InjuryInflicted::from_rolled(target_entity, rolled));
@@ -57,13 +49,13 @@ pub(super) fn emit_connect_signals(
         .get(target_entity)
         .is_ok_and(|(_, _, &life, ..)| life == LifeState::Dead)
     {
-        signals
+        outcomes
             .deaths
             .write(OnDeathOccurred::new(target_entity, at));
     }
 
     if *attacker.shove {
-        signals
+        outcomes
             .shoves
             .write(ShoveRequested::new_weapon(attacker.entity, target_entity));
     }

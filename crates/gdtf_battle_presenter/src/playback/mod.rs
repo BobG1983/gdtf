@@ -11,7 +11,7 @@ mod seed;
 pub use advance::{FxPipelineProbe, advance_playback};
 pub use apply::DrawnWriters;
 pub use caught_up::{PlaybackGate, playback_caught_up};
-pub use cursor::{ActHold, ActHoldPhase, FxSeenBusy, PlaybackCursor, SkippedActs};
+pub use cursor::{ActHold, ActHoldPhase, FxSeenBusy, LogPlayhead, PlaybackCursor, SkippedActs};
 pub use drawn::{DrawnLife, DrawnMagazine, DrawnPose, DrawnPosition, DrawnVitals};
 pub use dwell::{
     ConsequenceSeconds, FireBeatSeconds, ImpactCapSeconds, LifeChangeSeconds, MinorSeconds,

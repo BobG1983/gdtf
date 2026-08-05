@@ -1,8 +1,11 @@
 mod plugin;
 pub(in crate::states::running::game::battlescape::generation) use plugin::BattleSimPlugin;
 
+mod content;
 mod deploy;
 mod procgen;
+#[cfg(feature = "dev_tools")]
+pub(crate) use content::ProcgenContent;
 #[cfg(feature = "dev_tools")]
 pub(crate) use deploy::deploy_over_generated;
 #[cfg(feature = "dev_tools")]

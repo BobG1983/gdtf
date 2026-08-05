@@ -1,16 +1,13 @@
 //! Mark enemies in the fire impact radius as suppressed.
 
-use bevy::prelude::{
-    Commands, Deref, Entity, Message, MessageReader, MessageWriter, Query, Res, With,
-};
+use bevy::prelude::{Commands, Deref, Entity, Message, MessageReader, MessageWriter, Query, Res};
 
 use crate::{
     acts::FireRequested,
-    fire::{MeleeQuery, MountedQuery, WieldsQuery},
     ganger::{Faction, Position, Suppressed, SuppressorCell},
     metric::{Cell, CellLevel, Level},
     tuning::{CombatTuning, SuppressionRadius},
-    weapon::{Silenced, shooter_weapon_silenced},
+    weapon::FiringWeapon,
 };
 
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,18 +52,10 @@ fn within_radius(
 }
 
 /// On [`FireRequested`], suppress enemies near the impact (unless the weapon is silenced).
-#[expect(
-    clippy::too_many_arguments,
-    reason = "fire buffer, shooter query, silence probes, and Commands are separate params"
-)]
 pub fn apply_suppression(
     mut fires: MessageReader<FireRequested>,
-    positions: Query<(&Position, &Faction)>,
     gangers: Query<(Entity, &Position, &Faction, Option<&Suppressed>)>,
-    wields: WieldsQuery,
-    mounted: MountedQuery,
-    melee: MeleeQuery,
-    silenced: Query<(), With<Silenced>>,
+    firing: FiringWeapon,
     tuning: Option<Res<CombatTuning>>,
     mut commands: Commands,
     mut applied: MessageWriter<SuppressionApplied>,
@@ -80,10 +69,10 @@ pub fn apply_suppression(
         bevy::platform::collections::HashSet::default();
 
     for fire in fires.read() {
-        if *shooter_weapon_silenced(fire.shooter, &wields, &mounted, &melee, &silenced) {
+        if *firing.silenced(fire.shooter) {
             continue;
         }
-        let Ok((shooter_position, shooter_faction)) = positions.get(fire.shooter) else {
+        let Ok((_, shooter_position, shooter_faction, _)) = gangers.get(fire.shooter) else {
             continue;
         };
         let suppressor = SuppressorCell::new(**shooter_position);

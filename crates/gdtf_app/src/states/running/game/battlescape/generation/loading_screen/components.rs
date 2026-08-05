@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 
 crate::support_item! {
-                                                                #[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq)]
+    /// Root node of the generation loading screen.
+    #[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq)]
     struct LoadingScreenRoot;
 }
 

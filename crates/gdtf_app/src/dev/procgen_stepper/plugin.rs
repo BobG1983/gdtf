@@ -15,6 +15,7 @@ use super::{
 use crate::states::BattleScapeState;
 
 crate::support_item! {
+    /// Drives situation generation one stage at a time.
     struct ProcgenStepperPlugin {
         enabled: bool,
     }

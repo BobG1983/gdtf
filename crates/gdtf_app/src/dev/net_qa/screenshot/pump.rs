@@ -20,7 +20,8 @@ use crate::dev::net_qa::present::QaCaptureTarget;
 const CAPTURE_REPLY_BODY: &str = "null";
 
 crate::support_item! {
-                                                #[derive(Resource, Clone, Copy, Debug, Deref)]
+    /// How many frames the pump waits for a shot to land on disk.
+    #[derive(Resource, Clone, Copy, Debug, Deref)]
     struct ShotPollBudget(u32);
 }
 

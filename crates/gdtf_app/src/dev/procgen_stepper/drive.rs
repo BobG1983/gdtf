@@ -2,18 +2,19 @@ use bevy::prelude::*;
 use gdtf_assets::ContentIntegrityReport;
 use gdtf_battle_sim::{
     battle::SetupBattleRequested,
-    level::{PrefabRegistry, UuidThemeRegistry},
-    procgen::{ProcgenTuning, StagedProcgen, StagedProcgenRegistries},
+    procgen::{ProcgenTuning, StagedProcgen},
     rng::BattleSeed,
     situation::Situation,
-    terrain::def::TerrainDefRegistry,
 };
 
-use super::commands::{AutoRunning, AutoStepTimer, PendingStepCommand, StepCommand};
+use super::{
+    clock::AutoStepClock,
+    commands::{AutoRunning, AutoStepTimer, PendingStepCommand, StepCommand},
+};
 use crate::states::{
     LoadedSituation,
     running::game::battlescape::generation::battle_sim::{
-        deploy_over_generated, outcome_from_packing_error, resolve_root_seed,
+        ProcgenContent, deploy_over_generated, outcome_from_packing_error, resolve_root_seed,
     },
 };
 
@@ -37,23 +38,11 @@ pub(super) fn engage_stepper(
     commands.insert_resource(AutoStepTimer::default());
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "one system drives the whole per-frame advance decision: the driver + the two \
-              latch resources + the live registries it borrows for its ONE stage — each a \
-              distinct Bevy SystemParam (Option<Res<_>> for every Load-state resource, \
-              mirroring request_battle_setup's own justified exception)"
-)]
 pub(super) fn advance_stepper_drive(
     driver: Option<ResMut<StagedProcgen>>,
     pending: Option<ResMut<PendingStepCommand>>,
-    auto_running: Option<Res<AutoRunning>>,
-    timer: Option<ResMut<AutoStepTimer>>,
-    time: Res<Time>,
-    prefabs: Option<Res<PrefabRegistry>>,
-    themes: Option<Res<UuidThemeRegistry>>,
-    terrain_defs: Option<Res<TerrainDefRegistry>>,
-    tuning: Option<Res<ProcgenTuning>>,
+    content: ProcgenContent,
+    mut clock: AutoStepClock,
 ) {
     let (Some(mut driver), Some(mut pending)) = (driver, pending) else {
         return;
@@ -61,20 +50,9 @@ pub(super) fn advance_stepper_drive(
     if driver.is_done() {
         return;
     }
-    let (Some(prefabs), Some(themes), Some(terrain_defs)) = (
-        prefabs.as_deref(),
-        themes.as_deref(),
-        terrain_defs.as_deref(),
-    ) else {
-        return;
-    };
     let default_tuning = ProcgenTuning::default();
-    let tuning = tuning.as_deref().unwrap_or(&default_tuning);
-    let registries = StagedProcgenRegistries {
-        prefabs,
-        themes,
-        terrain_defs,
-        tuning,
+    let Some(registries) = content.staged(&default_tuning) else {
+        return;
     };
 
     if let Some(command) = pending.take() {
@@ -89,14 +67,7 @@ pub(super) fn advance_stepper_drive(
         return;
     }
 
-    let (Some(auto_running), Some(mut timer)) = (auto_running, timer) else {
-        return;
-    };
-    if !auto_running.is_running() {
-        return;
-    }
-    timer.tick(time.delta());
-    if timer.just_finished() {
+    if *clock.stage_due() {
         let _advanced = driver.advance(registries);
     }
 }

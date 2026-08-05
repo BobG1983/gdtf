@@ -13,7 +13,8 @@ use crate::states::running::game::battlescape::contextual_panel::seam::{
 };
 
 crate::support_item! {
-                                    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Contextual button that mounts an adjacent emplacement.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct EnterEmplacementButton;
 }
 

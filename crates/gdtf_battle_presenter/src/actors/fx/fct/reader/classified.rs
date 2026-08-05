@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::super::text::{CombatText, FctEmphasis};
+use super::super::text::{CombatText, FctEmphasis, FctLabel};
 
 #[derive(Debug, Clone)]
 pub(in crate::actors::fx) struct ClassifiedPop {
@@ -36,5 +36,9 @@ impl ClassifiedPop {
 
     pub(in crate::actors::fx) const fn emphasis(&self) -> FctEmphasis {
         self.emphasis
+    }
+
+    pub(in crate::actors::fx) fn label(&self) -> FctLabel {
+        FctLabel::new(self.text.clone(), self.color, self.emphasis)
     }
 }

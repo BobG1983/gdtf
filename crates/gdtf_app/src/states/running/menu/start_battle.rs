@@ -4,9 +4,10 @@ use gdtf_battle_sim::rng::BattleSeed;
 use crate::states::RunningState;
 
 crate::support_item! {
-                                                    #[derive(Message, Debug, Clone)]
+    /// Asks the app to leave the menu and start a battle.
+    #[derive(Message, Debug, Clone)]
     struct StartBattleRequested {
-                        seed: Option<BattleSeed>,
+        seed: Option<BattleSeed>,
     }
 }
 

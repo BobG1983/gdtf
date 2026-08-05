@@ -135,3 +135,20 @@ pub struct ConsequenceState<'w, 's> {
 pub struct LifeSources<'w, 's> {
     pub(super) gangers: Query<'w, 's, (Entity, &'static Position, &'static LifeState)>,
 }
+
+/// This frame's act messages, grouped by act family.
+#[derive(SystemParam)]
+pub struct ActMessages<'w, 's> {
+    pub(super) turn:         TurnSources<'w, 's>,
+    pub(super) movement:     MovementSources<'w, 's>,
+    pub(super) fire:         FireSources<'w, 's>,
+    pub(super) consequences: ConsequenceMessages<'w, 's>,
+}
+
+/// Current combatant state the log samples alongside those messages.
+#[derive(SystemParam)]
+pub struct ActState<'w, 's> {
+    pub(super) posture: PostureSources<'w, 's>,
+    pub(super) vitals:  ConsequenceState<'w, 's>,
+    pub(super) life:    LifeSources<'w, 's>,
+}

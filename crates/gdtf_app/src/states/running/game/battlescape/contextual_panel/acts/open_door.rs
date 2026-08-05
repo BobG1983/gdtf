@@ -13,7 +13,8 @@ use crate::states::running::game::battlescape::contextual_panel::seam::{
 };
 
 crate::support_item! {
-                                        #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Contextual button that opens or closes an adjacent door.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct OpenDoorButton;
 }
 

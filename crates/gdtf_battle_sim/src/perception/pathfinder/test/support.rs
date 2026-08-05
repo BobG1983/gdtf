@@ -1,11 +1,12 @@
 //! graph from authored slabs, and a default tuning. RELATIONS-ONLY: no pinned
 use bevy::{platform::collections::HashSet, prelude::Entity};
 
+pub(super) use crate::test_support::full_vision;
 use crate::{
     ganger::Tu,
     injuries::MovementCostFactor,
-    metric::{Cell, CellLevel, Level, MAX_LEVELS},
-    occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, TerrainKind},
+    metric::CellLevel,
+    occupancy::{OccupancyGrid, TerrainKind},
     pathfinder::{MoveGrids, Path, PlanningView, find_path, reachable_within},
     terrain::floor::FloorCostGrid,
     test_support::{SituationBuilder, key},
@@ -20,24 +21,6 @@ pub(super) fn cell(x: i32, y: i32, level: u8) -> CellLevel {
 
 pub(super) fn all_other(_occupant: Entity) -> FactionRelation {
     FactionRelation::Other
-}
-
-pub(super) fn full_vision() -> SquadVisibility {
-    let mut all = HashSet::default();
-    for level in 0..MAX_LEVELS {
-        for y in 0..GRID_HEIGHT {
-            for x in 0..GRID_WIDTH {
-                #[expect(
-                    clippy::cast_possible_wrap,
-                    reason = "x/y are 0..60 and level is 0..MAX_LEVELS (8) by the loop bounds, so \
-                              the usize/u8 -> i32/u8 narrowing cannot truncate or wrap"
-                )]
-                let c = CellLevel::new(Cell::new(x as i32, y as i32), Level::new(level));
-                all.insert(c);
-            }
-        }
-    }
-    SquadVisibility::new(all.clone(), all)
 }
 
 pub(super) fn fog(visible: &[CellLevel], explored_only: &[CellLevel]) -> SquadVisibility {

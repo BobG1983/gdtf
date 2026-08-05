@@ -4,6 +4,7 @@ mod bundle;
 mod components;
 mod dot;
 mod fire_mode;
+mod firing;
 mod melee;
 mod registry;
 mod relationship;
@@ -25,6 +26,7 @@ pub use fire_mode::{
     AoeRange, BlastRadius, ConeHalfAngle, FireMode, FireModeSpec, HitType, ModeConeMult, ModeKind,
     ModeShots, ModeTuPercent,
 };
+pub use firing::FiringWeapon;
 pub use melee::{
     FISTS_KEY, FightMode, FightModeKind, FightModeSpec, MeleeDamageProfile, MeleeWeapon,
     MeleeWeaponBundle, MeleeWeaponRegistry, MeleeWeaponSpec, Reach, Strikes, TuCost,

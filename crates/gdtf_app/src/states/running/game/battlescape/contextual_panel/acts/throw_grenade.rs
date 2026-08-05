@@ -12,7 +12,8 @@ use crate::states::running::game::battlescape::contextual_panel::seam::{
 };
 
 crate::support_item! {
-                                        #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Contextual button that throws a grenade at the inspected cell.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ThrowGrenadeButton;
 }
 

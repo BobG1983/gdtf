@@ -5,7 +5,8 @@ use gdtf_battle_sim::{falls::FallOccurred, prelude::Position};
 
 use super::{
     fct::{
-        CombatText, FctEmphasis, FctSlotAllocator, FctValence, spawn_floating_text, valence_color,
+        CombatText, FctDrift, FctEmphasis, FctLabel, FctSlot, FctSlotAllocator, FctValence,
+        spawn_floating_text, valence_color,
     },
     readers::spawn_flash,
     roles::EffectRoles,
@@ -45,14 +46,13 @@ pub fn read_fall_occurred(
         let slot = allocator.next_slot(at);
         spawn_floating_text(
             &mut commands,
-            CombatText::new("Fell"),
-            valence_color(FctValence::Neutral),
-            FctEmphasis::Normal,
-            cell,
-            level,
-            slot,
-            tuning.fct_ttl_seconds,
-            tuning.fct_rise_rate,
+            FctLabel::new(
+                CombatText::new("Fell"),
+                valence_color(FctValence::Neutral),
+                FctEmphasis::Normal,
+            ),
+            FctSlot::new(at, slot),
+            FctDrift::from_tuning(&tuning),
         );
     }
 }

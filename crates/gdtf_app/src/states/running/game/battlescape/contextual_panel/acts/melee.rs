@@ -17,7 +17,8 @@ use crate::states::running::game::battlescape::contextual_panel::seam::{
 };
 
 crate::support_item! {
-                                        #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Contextual button that swings at an adjacent target.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct MeleeButton;
 }
 

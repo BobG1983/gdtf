@@ -11,7 +11,8 @@ use crate::states::running::game::battlescape::contextual_panel::seam::{
 };
 
 crate::support_item! {
-                                #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    /// Contextual button that executes an adjacent downed ganger.
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ExecuteButton;
 }
 

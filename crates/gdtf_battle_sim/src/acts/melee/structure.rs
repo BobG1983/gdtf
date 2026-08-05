@@ -1,12 +1,10 @@
 //! Melee against cover / structure cells.
 
-use bevy::prelude::{MessageWriter, Query};
-
-use super::{MeleeWorld, snapshot::AttackerSnapshot};
+use super::{MeleeCombatants, MeleeOutcomes, MeleeWorld, snapshot::AttackerSnapshot};
 use crate::{
     acts::{downed::is_8_adjacent, request::MeleeResolved},
     cover::CoverEvent,
-    ganger::{Position, Tu},
+    ganger::Position,
     melee::resolve_structural_melee,
     metric::CellLevel,
     occupancy_sync::CoverDestroyed,
@@ -17,11 +15,9 @@ use crate::{
 pub(super) fn resolve_structure_melee(
     attacker: &AttackerSnapshot<'_>,
     at: CellLevel,
-    tu_q: &mut Query<&mut Tu>,
+    combatants: &mut MeleeCombatants,
     world: &mut MeleeWorld,
-    resolved: &mut MessageWriter<MeleeResolved>,
-    cover_destroyed: &mut MessageWriter<CoverDestroyed>,
-    deaths: &mut MessageWriter<crate::effects::on_death::OnDeathOccurred>,
+    outcomes: &mut MeleeOutcomes,
 ) {
     if !*is_8_adjacent(attacker.position, Position::new(at)) {
         return;
@@ -33,7 +29,7 @@ pub(super) fn resolve_structure_melee(
         .copied()
         .unwrap_or(STRUCTURE_SMASH_FALLBACK);
 
-    let Ok(mut attacker_tu) = tu_q.get_mut(attacker.entity) else {
+    let Ok(mut attacker_tu) = combatants.tu.get_mut(attacker.entity) else {
         return;
     };
     spend_tu(&mut attacker_tu, attacker.tu_cost);
@@ -47,10 +43,14 @@ pub(super) fn resolve_structure_melee(
     );
 
     if let CoverEvent::Destroyed(cell) = event {
-        cover_destroyed.write(CoverDestroyed::new(cell));
-        deaths.write(crate::effects::on_death::OnDeathOccurred::cover(cell));
+        outcomes.cover.write(CoverDestroyed::new(cell));
+        outcomes
+            .deaths
+            .write(crate::effects::on_death::OnDeathOccurred::cover(cell));
     }
-    resolved.write(MeleeResolved::new(at, attacker.strike_damage_type));
+    outcomes
+        .resolved
+        .write(MeleeResolved::new(at, attacker.strike_damage_type));
 }
 
 const STRUCTURE_SMASH_FALLBACK: crate::cover::CoverEntry = crate::cover::CoverEntry::seeded(

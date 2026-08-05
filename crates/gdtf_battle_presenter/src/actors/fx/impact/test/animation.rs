@@ -2,7 +2,9 @@ use std::time::Duration;
 
 use gdtf_battle_sim::weapon::DamageType;
 
-use super::animation::{IMPACT_FRAME_SCALES, ImpactAnimation, ImpactStep, impact_frame_scale};
+use super::super::animation::{
+    IMPACT_FRAME_SCALES, ImpactAnimation, ImpactStep, impact_frame_scale,
+};
 use crate::fx::{roles::IMPACT_FRAME_COUNT, tuning::ImpactFrameSeconds};
 
 const FRAME_SECONDS: f32 = ImpactFrameSeconds::DEFAULT;

@@ -5,10 +5,8 @@ use bevy::{
     prelude::*,
 };
 use gdtf_battle_input::{
-    GdtfBattleInputPlugin, InspectTarget, LeftClickOutcome, PathPreviewTarget, SelectedFireMode,
-    SelectedShooter, decide_left_click,
-    fire_surface::{ShooterFireData, WeaponMagazine},
-    selection::LeftClickReads,
+    GdtfBattleInputPlugin, LeftClickOutcome, SelectedFireMode, ShooterArms, decide_left_click,
+    selection::{LeftClickReads, PointerSelection},
 };
 use gdtf_battle_sim::{
     battle::PlayerFaction,
@@ -19,8 +17,8 @@ use gdtf_battle_sim::{
     vertical::VerticalLinkGraph,
     visibility::SquadVisibility,
     weapon::{
-        FireMode, FireModeSpec, Handedness, MagazineSize, MeleeWeapon, ModeConeMult, ModeKind,
-        ModeShots, ModeTuPercent, WieldedBy, Wields,
+        FireMode, FireModeSpec, Handedness, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, WieldedBy,
     },
 };
 
@@ -102,45 +100,17 @@ pub(crate) fn seed_fog(app: &mut App, visible: &[CellLevel], explored: &[CellLev
 
 type DecideParams<'w, 's> = (
     LeftClickReads<'w>,
-    Res<'w, InspectTarget>,
-    Res<'w, PathPreviewTarget>,
+    PointerSelection<'w>,
     Query<'w, 's, &'static Faction>,
     Query<'w, 's, &'static LifeState>,
-    Query<'w, 's, ShooterFireData<'static>>,
-    Query<'w, 's, &'static Wields>,
-    Query<'w, 's, WeaponMagazine<'static>, With<WieldedBy>>,
-    Query<'w, 's, (), With<MeleeWeapon>>,
-    Res<'w, SelectedShooter>,
+    ShooterArms<'w, 's>,
 );
 
 pub(crate) fn decide(app: &mut App) -> LeftClickOutcome {
     let world = app.world_mut();
     let mut state: SystemState<DecideParams> = SystemState::new(world);
-    let Ok((
-        reads,
-        inspect,
-        move_target,
-        factions,
-        lifes,
-        shooters,
-        wields,
-        weapons,
-        melee,
-        selected,
-    )) = state.get(world)
-    else {
+    let Ok((reads, selection, factions, lifes, arms)) = state.get_mut(world) else {
         return LeftClickOutcome::NoOp;
     };
-    decide_left_click(
-        &reads,
-        &inspect,
-        &move_target,
-        &factions,
-        &lifes,
-        &shooters,
-        &wields,
-        &weapons,
-        &melee,
-        &selected,
-    )
+    decide_left_click(&reads, &selection, &factions, &lifes, &arms)
 }

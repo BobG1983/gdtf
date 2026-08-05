@@ -15,7 +15,10 @@ use gdtf_battle_sim::{
 };
 
 use super::super::{
-    projectile::{PendingImpact, ProjectileTravel, ShotProjectile, advance_projectiles},
+    projectile::{
+        PendingImpact, ProjectileTravel, ShotProjectile, advance_projectiles,
+        travel::{ImpactPayload, ProjectileFlight},
+    },
     tuning::{InterShotSeconds, ProjectileVelocity},
 };
 
@@ -29,6 +32,17 @@ fn test_anchor() -> (Cell, Level) {
 
 fn test_shooter() -> bevy::ecs::entity::Entity {
     bevy::ecs::entity::Entity::PLACEHOLDER
+}
+
+// A kinetic bolt carrying no pops and no hit report.
+fn test_payload() -> ImpactPayload {
+    ImpactPayload::new(
+        DamageType::Kinetic,
+        Vec::new(),
+        test_anchor(),
+        test_shooter(),
+        None,
+    )
 }
 
 fn pending_impacts(app: &mut App) -> Vec<PendingImpact> {
@@ -58,15 +72,8 @@ fn projectile_travels_then_despawns_leaving_a_pending_impact() {
             Transform::from_translation(from),
             Visibility::Hidden,
             ProjectileTravel::new(
-                from,
-                to,
-                DamageType::Kinetic,
-                ProjectileVelocity::default(),
-                Duration::ZERO,
-                Vec::new(),
-                test_anchor(),
-                test_shooter(),
-                None,
+                ProjectileFlight::new(from, to, ProjectileVelocity::default(), Duration::ZERO),
+                test_payload(),
             ),
             ShotProjectile,
         ))
@@ -133,26 +140,12 @@ fn projectile_flies_at_a_constant_velocity_regardless_of_distance() {
     let far = Vec3::new(per_step_px * 3.0, 0.0, 0.0);
     let velocity = ProjectileVelocity::default();
     let mut short = ProjectileTravel::new(
-        origin,
-        near,
-        DamageType::Kinetic,
-        velocity,
-        Duration::ZERO,
-        Vec::new(),
-        test_anchor(),
-        test_shooter(),
-        None,
+        ProjectileFlight::new(origin, near, velocity, Duration::ZERO),
+        test_payload(),
     );
     let mut long = ProjectileTravel::new(
-        origin,
-        far,
-        DamageType::Kinetic,
-        velocity,
-        Duration::ZERO,
-        Vec::new(),
-        test_anchor(),
-        test_shooter(),
-        None,
+        ProjectileFlight::new(origin, far, velocity, Duration::ZERO),
+        test_payload(),
     );
 
     assert!(
@@ -179,15 +172,8 @@ fn staggered_round_holds_at_the_muzzle_until_its_launch_delay_elapses() {
     let to = Vec3::new(100.0, 0.0, 0.0);
     let launch_delay = Duration::from_secs_f32(TEST_INTER_SHOT);
     let mut bolt = ProjectileTravel::new(
-        from,
-        to,
-        DamageType::Kinetic,
-        ProjectileVelocity::default(),
-        launch_delay,
-        Vec::new(),
-        test_anchor(),
-        test_shooter(),
-        None,
+        ProjectileFlight::new(from, to, ProjectileVelocity::default(), launch_delay),
+        test_payload(),
     );
 
     assert!(
