@@ -8,14 +8,34 @@ use gdtf_qa_protocol::{
 
 use super::{
     command_exchange::{
-        APP_PHASE, CAPTURE_SCREENSHOT, PLAYBACK_STATE, SETTINGS_READ, UI_FOCUS, exchange,
-        exchange_all, run,
+        APP_PHASE, BATTLE_INSPECT, BATTLE_OFFERS, BATTLE_ROSTER, BATTLE_SELECTION,
+        BATTLE_SIGHTLINE, BATTLE_TURN, BATTLE_VISIBLE, CAPTURE_SCREENSHOT, LOG_READ,
+        PLAYBACK_STATE, SETTINGS_READ, UI_FOCUS, exchange, exchange_all, run,
     },
     socket_support::{TestResult, game_app_listening},
 };
 
+/// Every command the game publishes, in declaration order.
+fn published_names() -> Vec<CommandName> {
+    vec![
+        CommandName::from_static(APP_PHASE),
+        CommandName::from_static(CAPTURE_SCREENSHOT),
+        CommandName::from_static(SETTINGS_READ),
+        CommandName::from_static(UI_FOCUS),
+        CommandName::from_static(PLAYBACK_STATE),
+        CommandName::from_static(BATTLE_ROSTER),
+        CommandName::from_static(BATTLE_TURN),
+        CommandName::from_static(BATTLE_SELECTION),
+        CommandName::from_static(BATTLE_OFFERS),
+        CommandName::from_static(BATTLE_INSPECT),
+        CommandName::from_static(BATTLE_SIGHTLINE),
+        CommandName::from_static(BATTLE_VISIBLE),
+        CommandName::from_static(LOG_READ),
+    ]
+}
+
 #[test]
-fn the_catalogue_lists_the_shell_read_set() -> TestResult {
+fn the_catalogue_lists_the_shell_and_battle_read_set() -> TestResult {
     let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
     let QaResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
@@ -31,13 +51,7 @@ fn the_catalogue_lists_the_shell_read_set() -> TestResult {
         .collect();
     assert_eq!(
         published,
-        vec![
-            CommandName::from_static(APP_PHASE),
-            CommandName::from_static(CAPTURE_SCREENSHOT),
-            CommandName::from_static(SETTINGS_READ),
-            CommandName::from_static(UI_FOCUS),
-            CommandName::from_static(PLAYBACK_STATE),
-        ],
+        published_names(),
         "the game publishes exactly these commands today, in declaration order: {catalogue:?}",
     );
     for (name, timing) in [
@@ -59,6 +73,48 @@ fn the_catalogue_lists_the_shell_read_set() -> TestResult {
         assert!(
             !entry.summary.as_str().is_empty(),
             "every row carries the one line a client reads to learn what it does",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn the_catalogue_refuses_every_battle_read_at_the_menu() -> TestResult {
+    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
+    let QaResponse::Catalogue(catalogue) = reply else {
+        unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
+    };
+    for name in [
+        BATTLE_ROSTER,
+        BATTLE_TURN,
+        BATTLE_SELECTION,
+        BATTLE_OFFERS,
+        BATTLE_INSPECT,
+        BATTLE_SIGHTLINE,
+        BATTLE_VISIBLE,
+        LOG_READ,
+    ] {
+        let Some(entry) = catalogue
+            .entries
+            .iter()
+            .find(|entry| entry.command == CommandName::from_static(name))
+        else {
+            unreachable!("the catalogue carries a row for {name}: {catalogue:?}");
+        };
+        assert!(
+            matches!(
+                entry.availability,
+                CommandAvailability::Unavailable {
+                    code: gdtf_qa_protocol::command::UnavailableCode::WrongState,
+                    ..
+                }
+            ),
+            "the catalogue's availability column is the live answer, so `{name}` reads as \
+             refused at the menu: {entry:?}",
+        );
+        assert!(
+            entry.timing == CommandTiming::Immediate,
+            "every battle read answers inside the frame it is claimed in: {entry:?}",
         );
     }
     Ok(())
@@ -104,16 +160,7 @@ fn a_misspelled_name_is_unknown_and_lists_what_exists() -> TestResult {
     let QaResponse::Outcome(CommandOutcome::Unknown { known }) = reply else {
         unreachable!("a name this host does not offer must be Unknown, got {reply:?}");
     };
-    assert_eq!(
-        known,
-        vec![
-            CommandName::from_static(APP_PHASE),
-            CommandName::from_static(CAPTURE_SCREENSHOT),
-            CommandName::from_static(SETTINGS_READ),
-            CommandName::from_static(UI_FOCUS),
-            CommandName::from_static(PLAYBACK_STATE),
-        ],
-    );
+    assert_eq!(known, published_names());
     Ok(())
 }
 

@@ -1,6 +1,7 @@
 mod components;
+pub(crate) mod decide;
 mod plugin;
-mod shadow;
+pub(crate) mod shadow;
 mod systems;
 
 #[cfg(test)]

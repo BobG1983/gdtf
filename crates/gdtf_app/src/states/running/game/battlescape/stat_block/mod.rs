@@ -11,8 +11,9 @@ mod test;
 
 pub(in crate::states::running::game::battlescape) use build::spawn_stat_block;
 pub(in crate::states::running::game::battlescape) use components::StatBlockRefs;
+pub(crate) use update::{StatBlockData, StatBlockDataItem};
 pub(in crate::states::running::game::battlescape) use update::{
-    StatBlockData, StatBlockWidgets, clear_stat_block, update_stat_block,
+    StatBlockWidgets, clear_stat_block, update_stat_block,
 };
 
 #[cfg(feature = "headless_test")]

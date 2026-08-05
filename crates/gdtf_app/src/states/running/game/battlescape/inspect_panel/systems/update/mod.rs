@@ -1,4 +1,3 @@
-mod fog;
 mod object_block;
 mod panel;
 mod params;

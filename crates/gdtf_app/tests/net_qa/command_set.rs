@@ -24,7 +24,7 @@ fn the_game_command_set_is_conformant() {
 }
 
 #[test]
-fn the_game_offers_the_shell_read_set() {
+fn the_game_offers_the_shell_and_battle_read_set() {
     assert_eq!(
         game_command_names(),
         vec![
@@ -33,6 +33,14 @@ fn the_game_offers_the_shell_read_set() {
             CommandName::from_static("settings.read"),
             CommandName::from_static("ui.focus"),
             CommandName::from_static("playback.state"),
+            CommandName::from_static("battle.roster"),
+            CommandName::from_static("battle.turn"),
+            CommandName::from_static("battle.selection"),
+            CommandName::from_static("battle.offers"),
+            CommandName::from_static("battle.inspect"),
+            CommandName::from_static("battle.sightline"),
+            CommandName::from_static("battle.visible"),
+            CommandName::from_static("log.read"),
         ],
     );
 }

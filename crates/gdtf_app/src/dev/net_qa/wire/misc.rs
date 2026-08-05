@@ -1,7 +1,31 @@
 //! Misc scalar and command payloads on the wire.
 
 use bevy::prelude::Deref;
+use gdtf_battle_sim::weapon::ModeKind;
 use serde::{Deserialize, Serialize};
+
+/// Which fire mode the shooter has selected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ModeKindNet {
+    /// One shot.
+    Single,
+    /// Short burst.
+    Burst,
+    /// Full auto.
+    Full,
+}
+
+impl ModeKindNet {
+    /// Mirror the sim's fire-mode kind.
+    #[must_use]
+    pub const fn from_sim(kind: ModeKind) -> Self {
+        match kind {
+            ModeKind::Single => Self::Single,
+            ModeKind::Burst => Self::Burst,
+            ModeKind::Full => Self::Full,
+        }
+    }
+}
 
 /// Index into the shooter's fire-mode list.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -18,7 +18,7 @@ use crate::states::{
 };
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(in crate::states::running::game::battlescape) enum ContextualPanelSystems {
+pub(crate) enum ContextualPanelSystems {
     Offer,
     Toggle,
     Rank,

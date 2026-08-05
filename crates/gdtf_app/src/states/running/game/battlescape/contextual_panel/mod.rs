@@ -1,8 +1,8 @@
 mod acts;
 mod components;
 mod plugin;
-mod registrar;
-mod seam;
+pub(crate) mod registrar;
+pub(crate) mod seam;
 mod systems;
 
 pub(in crate::states::running::game::battlescape) use plugin::ContextualPanelPlugin;

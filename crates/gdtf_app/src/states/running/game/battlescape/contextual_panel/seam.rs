@@ -53,9 +53,7 @@ impl VisibleSlotRank {
 }
 
 #[derive(Resource, Debug)]
-pub(in crate::states::running::game::battlescape) struct ContextualOffer<A: ContextualAct>(
-    Option<A::Target>,
-);
+pub(crate) struct ContextualOffer<A: ContextualAct>(Option<A::Target>);
 
 impl<A: ContextualAct> Default for ContextualOffer<A> {
     fn default() -> Self {
@@ -71,14 +69,12 @@ impl<A: ContextualAct> PartialEq for ContextualOffer<A> {
 
 impl<A: ContextualAct> ContextualOffer<A> {
     #[must_use]
-    pub(in crate::states::running::game::battlescape) const fn new(
-        target: Option<A::Target>,
-    ) -> Self {
+    pub(crate) const fn new(target: Option<A::Target>) -> Self {
         Self(target)
     }
 
     #[must_use]
-    pub(in crate::states::running::game::battlescape) const fn target(&self) -> Option<A::Target> {
+    pub(crate) const fn target(&self) -> Option<A::Target> {
         self.0
     }
 

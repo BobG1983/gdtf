@@ -1,33 +1,9 @@
 use bevy::prelude::*;
-use gdtf_battle_sim::{
-    cover::{CoverEntry, CoverLedger, HeightBand},
-    occupancy::TerrainKind,
-    prelude::OccupancyGrid,
-};
+use gdtf_battle_sim::cover::{CoverEntry, HeightBand};
 use gdtf_ui::{FillFraction, set_progress_bar};
 
 use super::params::InspectNodes;
 use crate::states::running::game::battlescape::stat_block::StatBlockWidgets;
-
-pub(super) fn object_entry(
-    cell: gdtf_battle_sim::metric::CellLevel,
-    grid: Option<&OccupancyGrid>,
-    ledger: Option<&CoverLedger>,
-) -> Option<CoverEntry> {
-    let grid = grid?;
-    let terrain = grid.terrain(&cell);
-    if !matches!(terrain, TerrainKind::Wall | TerrainKind::Cover) {
-        return None;
-    }
-    ledger.and_then(|l| l.peek(&cell).copied()).or_else(|| {
-        Some(CoverEntry::seeded(
-            gdtf_battle_sim::cover::CoverHp::new(1),
-            gdtf_battle_sim::cover::HeightBand::High,
-            gdtf_battle_sim::armor::ArmorProtection::new(0),
-            gdtf_battle_sim::armor::ArmorHardness::new(0),
-        ))
-    })
-}
 
 pub(super) fn fill_object_block(
     widgets: &mut StatBlockWidgets,

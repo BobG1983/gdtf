@@ -11,6 +11,7 @@ use bevy::{
     state::state::{NextState, State},
 };
 use gdtf_app::test_support::{AppState, BattleScapeState, NetQaPlugin, RunningState};
+use gdtf_battle_sim::rng::BattleSeed;
 use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
     framing::{FrameDecoder, encode},
@@ -33,6 +34,9 @@ const POLL_STEP: Duration = Duration::from_millis(10);
 const MAX_UPDATES: u32 = 400;
 
 const DRIVE_BUDGET: u32 = 512;
+
+/// Pins procgen so every battle fixture generates the same map on every run.
+const FIXTURE_SEED: BattleSeed = BattleSeed::new(20_260_805);
 
 pub(crate) struct Client {
     stream:  TcpStream,
@@ -116,6 +120,7 @@ pub(crate) fn capture_app_listening() -> Result<(App, NetQaPort), TestError> {
 
 pub(crate) fn battle_app_listening() -> Result<(App, NetQaPort), TestError> {
     let (mut app, port) = listening_menu_app()?;
+    app.insert_resource(FIXTURE_SEED);
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);

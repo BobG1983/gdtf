@@ -4,12 +4,14 @@ use gdtf_battle_sim::prelude::Faction;
 use gdtf_ui::ProgressBarFill;
 
 use super::{
-    fog::occupant_squad_visible,
-    object_block::{fill_object_block, object_entry},
+    object_block::fill_object_block,
     params::{FactionTint, InspectNodes, InspectReads},
 };
 use crate::states::running::game::battlescape::{
-    inspect_panel::components::InspectStatBlockHost,
+    inspect_panel::{
+        components::InspectStatBlockHost,
+        decide::{InspectShown, inspect_shown},
+    },
     stat_block::{
         StatBlockData, StatBlockRefs, StatBlockWidgets, clear_stat_block, update_stat_block,
     },
@@ -21,7 +23,6 @@ pub(in crate::states::running::game::battlescape) fn update_inspect_panel(
     reads: InspectReads,
     blocks: Query<&StatBlockRefs, With<InspectStatBlockHost>>,
     data: Query<StatBlockData>,
-    factions: Query<&Faction>,
     mut widgets: StatBlockWidgets,
     mut nodes: InspectNodes,
     mut tint: FactionTint,
@@ -31,16 +32,16 @@ pub(in crate::states::running::game::battlescape) fn update_inspect_panel(
     };
 
     let cell = effective_cell(reads.target.effective());
-    let occupant = cell.and_then(|c| {
-        let grid = reads.occupancy()?;
-        let occupant = grid.occupant(&c)?;
-        occupant_squad_visible(c, occupant, &factions, &reads).then_some(occupant)
+    let shown = inspect_shown(cell, reads.shown(), |entity| {
+        data.get(entity).ok().map(|row| *row.faction)
     });
 
     let host = nodes.host.iter().next();
     let object_block = nodes.object_block.iter().next();
 
-    if let Some(ganger) = occupant.and_then(|e| data.get(e).ok()) {
+    if let InspectShown::Ganger(entity) = shown
+        && let Ok(ganger) = data.get(entity)
+    {
         toggle(&mut widgets.visibility, &nodes.root, Visibility::Inherited);
         set_display(&mut nodes.display, host, Display::Flex);
         set_display(&mut nodes.display, object_block, Display::None);
@@ -49,7 +50,7 @@ pub(in crate::states::running::game::battlescape) fn update_inspect_panel(
         return;
     }
 
-    if let Some(entry) = cell.and_then(|c| object_entry(c, reads.occupancy(), reads.cover())) {
+    if let InspectShown::Cover(entry) = shown {
         toggle(&mut widgets.visibility, &nodes.root, Visibility::Inherited);
         set_display(&mut nodes.display, host, Display::None);
         set_display(&mut nodes.display, object_block, Display::Flex);
