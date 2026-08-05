@@ -1,6 +1,6 @@
 mod components;
 mod plugin;
-mod settings;
+pub(crate) mod settings;
 mod systems;
 
 pub(in crate::states::running) use plugin::OptionsScenePlugin;

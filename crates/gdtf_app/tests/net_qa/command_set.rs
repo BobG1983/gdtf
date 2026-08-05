@@ -24,12 +24,15 @@ fn the_game_command_set_is_conformant() {
 }
 
 #[test]
-fn the_game_offers_exactly_app_phase_and_capture_screenshot() {
+fn the_game_offers_the_shell_read_set() {
     assert_eq!(
         game_command_names(),
         vec![
             CommandName::from_static("app.phase"),
             CommandName::from_static("capture.screenshot"),
+            CommandName::from_static("settings.read"),
+            CommandName::from_static("ui.focus"),
+            CommandName::from_static("playback.state"),
         ],
     );
 }

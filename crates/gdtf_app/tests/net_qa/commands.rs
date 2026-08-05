@@ -7,12 +7,15 @@ use gdtf_qa_protocol::{
 };
 
 use super::{
-    command_exchange::{APP_PHASE, CAPTURE_SCREENSHOT, exchange, exchange_all, run},
+    command_exchange::{
+        APP_PHASE, CAPTURE_SCREENSHOT, PLAYBACK_STATE, SETTINGS_READ, UI_FOCUS, exchange,
+        exchange_all, run,
+    },
     socket_support::{TestResult, game_app_listening},
 };
 
 #[test]
-fn the_catalogue_lists_app_phase_and_capture_screenshot() -> TestResult {
+fn the_catalogue_lists_the_shell_read_set() -> TestResult {
     let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
     let QaResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
@@ -31,12 +34,18 @@ fn the_catalogue_lists_app_phase_and_capture_screenshot() -> TestResult {
         vec![
             CommandName::from_static(APP_PHASE),
             CommandName::from_static(CAPTURE_SCREENSHOT),
+            CommandName::from_static(SETTINGS_READ),
+            CommandName::from_static(UI_FOCUS),
+            CommandName::from_static(PLAYBACK_STATE),
         ],
-        "the game publishes exactly these two commands today: {catalogue:?}",
+        "the game publishes exactly these commands today, in declaration order: {catalogue:?}",
     );
     for (name, timing) in [
         (APP_PHASE, CommandTiming::Immediate),
         (CAPTURE_SCREENSHOT, CommandTiming::Deferred),
+        (SETTINGS_READ, CommandTiming::Immediate),
+        (UI_FOCUS, CommandTiming::Immediate),
+        (PLAYBACK_STATE, CommandTiming::Immediate),
     ] {
         let Some(entry) = catalogue
             .entries
@@ -100,6 +109,9 @@ fn a_misspelled_name_is_unknown_and_lists_what_exists() -> TestResult {
         vec![
             CommandName::from_static(APP_PHASE),
             CommandName::from_static(CAPTURE_SCREENSHOT),
+            CommandName::from_static(SETTINGS_READ),
+            CommandName::from_static(UI_FOCUS),
+            CommandName::from_static(PLAYBACK_STATE),
         ],
     );
     Ok(())
