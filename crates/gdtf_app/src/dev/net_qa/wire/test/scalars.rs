@@ -3,6 +3,7 @@ use super::assert_ron_round_trip;
 use crate::dev::net_qa::wire::{
     misc::{FireModeIndex, FrameDelay, RequestId, SeedNet, SituationRef},
     pointer::{MouseButtonNet, PointerPosNet, PointerXNet, PointerYNet},
+    shell::{CaughtUpNet, SoundNet},
     token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
 };
 
@@ -28,6 +29,14 @@ fn scalar_handles_round_trip() {
     assert_ron_round_trip(&SeedNet::new(0xDEAD_BEEF));
     assert_ron_round_trip(&FrameDelay::new(15));
     assert_ron_round_trip(&RequestId::new(1));
+}
+
+#[test]
+fn shell_read_flags_round_trip() {
+    assert_ron_round_trip(&SoundNet::new(true));
+    assert_ron_round_trip(&SoundNet::new(false));
+    assert_ron_round_trip(&CaughtUpNet::new(true));
+    assert_ron_round_trip(&CaughtUpNet::new(false));
 }
 
 #[test]
@@ -69,6 +78,8 @@ fn every_scalar_serializes_transparently() {
     assert_eq!(encoded(&RequestId::new(1)), "1");
     assert_eq!(encoded(&PointerXNet::new(-3)), "-3");
     assert_eq!(encoded(&PointerYNet::new(58)), "58");
+    assert_eq!(encoded(&SoundNet::new(true)), "true");
+    assert_eq!(encoded(&CaughtUpNet::new(false)), "false");
 }
 
 #[test]

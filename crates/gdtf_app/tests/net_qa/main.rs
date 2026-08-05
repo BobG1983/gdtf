@@ -14,4 +14,7 @@ mod deadline;
 mod facts_probe;
 mod hello_socket;
 mod menu_spawned;
+mod playback_state;
+mod settings_read;
 mod socket_support;
+mod ui_focus;

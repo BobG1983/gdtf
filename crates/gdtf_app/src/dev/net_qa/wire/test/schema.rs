@@ -21,6 +21,7 @@ use crate::dev::net_qa::{
             RunningPhaseNet,
         },
         pointer::{MouseButtonNet, PointerPosNet, PointerXNet, PointerYNet},
+        shell::{CaughtUpNet, SoundNet},
         token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
     },
 };
@@ -93,6 +94,9 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<RequestId>("RequestId");
     assert_schema_is_usable::<AutoRunNet>("AutoRunNet");
     assert_schema_is_usable::<StepperCommandNet>("StepperCommandNet");
+
+    assert_schema_is_usable::<SoundNet>("SoundNet");
+    assert_schema_is_usable::<CaughtUpNet>("CaughtUpNet");
 
     assert_schema_is_usable::<LifecyclePhaseNet>("LifecyclePhaseNet");
     assert_schema_is_usable::<RunningPhaseNet>("RunningPhaseNet");

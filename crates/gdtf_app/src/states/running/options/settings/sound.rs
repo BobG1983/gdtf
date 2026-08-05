@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 #[derive(Deref, Clone, Copy, PartialEq, Eq, Debug)]
-pub(in crate::states::running::options) struct SoundEnabled(bool);
+pub(crate) struct SoundEnabled(bool);
 
 impl SoundEnabled {
     pub(in crate::states::running::options) const fn new(on: bool) -> Self {
