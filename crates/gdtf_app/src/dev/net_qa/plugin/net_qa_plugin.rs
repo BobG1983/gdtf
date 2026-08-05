@@ -8,11 +8,13 @@ use gdtf_net_qa_transport::{
     run_listener,
 };
 
-use super::{register_consumers::register_consumers, register_transport::register_transport};
+use super::{
+    register_consumers::register_consumers, register_present::register_present,
+    register_transport::register_transport,
+};
 use crate::dev::net_qa::{
     config::hello_facts,
     env::{net_qa_enabled, port_from_env},
-    present::CapturePresentPlugin,
 };
 
 enum Wiring {
@@ -91,7 +93,7 @@ fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
     app.insert_resource(NetInbox::new(rx));
     register_transport(app);
     register_consumers(app);
-    app.add_plugins(CapturePresentPlugin);
+    register_present(app);
 }
 
 impl Default for NetQaPlugin {

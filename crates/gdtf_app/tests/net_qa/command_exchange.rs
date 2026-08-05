@@ -10,6 +10,8 @@ use super::socket_support::{Client, SocketFixture, TestError, drive_until_report
 
 pub(crate) const APP_PHASE: &str = "app.phase";
 
+pub(crate) const CAPTURE_SCREENSHOT: &str = "capture.screenshot";
+
 pub(crate) fn exchange_all(
     fixture: SocketFixture,
     requests: Vec<QaRequest>,

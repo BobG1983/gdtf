@@ -1,5 +1,3 @@
-mod blit;
 mod harness;
-mod inert;
-mod present;
+mod ordering;
 mod retarget;

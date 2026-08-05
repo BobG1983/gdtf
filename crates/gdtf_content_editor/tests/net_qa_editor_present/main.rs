@@ -6,7 +6,7 @@ mod support;
 
 use bevy::{camera::RenderTarget, prelude::*};
 use bevy_egui::PrimaryEguiContext;
-use gdtf_content_editor::EditorShotSource;
+use gdtf_screenshot::CaptureSource;
 
 use crate::{
     harness::{HARNESS_SCALE_FACTOR, advance_to_editing, windowed_editor_app},
@@ -18,14 +18,14 @@ fn the_running_editor_captures_the_offscreen_image_its_egui_camera_renders_into(
     let (mut app, _port) = windowed_editor_app()?;
     advance_to_editing(&mut app);
 
-    let source = app.world().get_resource::<EditorShotSource>();
+    let source = app.world().get_resource::<CaptureSource>();
     let named = match source {
-        Some(EditorShotSource::Offscreen(handle)) => Some(handle.clone()),
+        Some(CaptureSource::Offscreen(handle)) => Some(handle.clone()),
         _ => None,
     };
     assert!(
         named.is_some(),
-        "the running editor must capture through EditorShotSource::Offscreen with no caller \
+        "the running editor must capture through CaptureSource::Offscreen with no caller \
          inserting it; it holds {source:?}",
     );
 

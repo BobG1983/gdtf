@@ -6,47 +6,28 @@ mod harness;
 mod source;
 mod support;
 
-use std::{
-    path::PathBuf,
-    sync::mpsc::{Receiver, TryRecvError},
-};
+use std::path::PathBuf;
 
 use bevy::prelude::*;
-use gdtf_qa_protocol::{
-    command::{AttachmentKind, CommandOutcome},
-    message::{QaError, QaResponse},
-};
+use gdtf_screenshot::CaptureOutcome;
 use gdtf_test_utils::gpu_probe::gpu_adapter_probe;
 
 use crate::{
-    enqueue::enqueue_capture,
+    enqueue::{enqueue_capture, finished_captures},
     harness::{advance_to_editing, gpu_editor_app, headless_editor_app, spawned_captures},
     support::{DRIVE_UPDATES, TEST_SETTLE, TestError, TestResult},
 };
 
 const SHOT_NAME: &str = "editor_shell";
 
-fn drive_until_reply(app: &mut App, rx: &Receiver<QaResponse>) -> Result<QaResponse, TestError> {
+fn drive_until_finished(app: &mut App) -> Result<CaptureOutcome, TestError> {
     for _ in 0..DRIVE_UPDATES {
         app.update();
-        match rx.try_recv() {
-            Ok(reply) => return Ok(reply),
-            Err(TryRecvError::Empty) => {}
-            Err(TryRecvError::Disconnected) => break,
+        if let Some(outcome) = finished_captures(app).first() {
+            return Ok(outcome.clone());
         }
     }
-    Err("the editor never answered the queued capture".into())
-}
-
-fn attached_png(reply: &QaResponse) -> Option<String> {
-    let QaResponse::Outcome(CommandOutcome::Ran { attachments, .. }) = reply else {
-        return None;
-    };
-    let attachment = attachments.first()?;
-    if attachment.kind != AttachmentKind::Png {
-        return None;
-    }
-    Some(attachment.path.as_str().to_owned())
+    Err("the editor never finished the queued capture".into())
 }
 
 #[test]
@@ -55,7 +36,7 @@ fn a_claimed_capture_lands_a_png_on_disk() -> TestResult {
         eprintln!(
             "SKIP a_claimed_capture_lands_a_png_on_disk: no usable wgpu adapter \
              (GPU-less runner). The ordering half of the contract is covered by \
-             the_reply_waits_for_the_capture_that_never_lands, which needs no GPU.",
+             the_capture_that_never_lands_times_out, which needs no GPU.",
         );
         return Ok(());
     }
@@ -63,16 +44,13 @@ fn a_claimed_capture_lands_a_png_on_disk() -> TestResult {
     let (mut app, _port) = gpu_editor_app(tmp.path().to_path_buf())?;
     advance_to_editing(&mut app);
 
-    let reply_rx = enqueue_capture(&mut app, SHOT_NAME);
-    let reply = drive_until_reply(&mut app, &reply_rx)?;
+    enqueue_capture(&mut app, SHOT_NAME);
+    let outcome = drive_until_finished(&mut app)?;
 
-    let Some(saved) = attached_png(&reply) else {
-        return Err(format!(
-            "the editor must attach the PNG once its capture lands, not {reply:?}"
-        )
-        .into());
+    let CaptureOutcome::Landed(saved) = outcome else {
+        return Err(format!("the editor's capture must land a PNG, not {outcome:?}").into());
     };
-    let png = PathBuf::from(saved.as_str());
+    let png = PathBuf::from(&*saved);
     assert!(
         png.starts_with(tmp.path()),
         "the capture must land inside the confinement directory, not at {}",
@@ -81,12 +59,12 @@ fn a_claimed_capture_lands_a_png_on_disk() -> TestResult {
     assert!(
         png.file_name()
             .is_some_and(|stem| { stem.to_string_lossy().starts_with(SHOT_NAME) }),
-        "the wire-supplied name must reach the file name, which was {}",
+        "the requested name must reach the file name, which was {}",
         png.display(),
     );
     assert!(
         png.exists(),
-        "the editor attached {} but no file is there — the reply must name a PNG that exists",
+        "the editor reported {} landed but no file is there",
         png.display(),
     );
     let bytes = std::fs::read(&png)?;
@@ -121,12 +99,12 @@ fn a_claimed_capture_lands_a_png_on_disk() -> TestResult {
 }
 
 #[test]
-fn the_reply_waits_for_the_capture_that_never_lands() -> TestResult {
+fn the_capture_that_never_lands_times_out() -> TestResult {
     let tmp = tempfile::TempDir::new()?;
     let (mut app, _port) = headless_editor_app(tmp.path().to_path_buf())?;
     advance_to_editing(&mut app);
 
-    let reply_rx = enqueue_capture(&mut app, SHOT_NAME);
+    enqueue_capture(&mut app, SHOT_NAME);
 
     let mut spawned_at = None;
     for frame in 1..=DRIVE_UPDATES {
@@ -139,34 +117,26 @@ fn the_reply_waits_for_the_capture_that_never_lands() -> TestResult {
     let spawned_at = spawned_at.ok_or("the pump never spawned a capture")?;
     assert!(
         spawned_at >= TEST_SETTLE + 2,
-        "the capture must wait out the {TEST_SETTLE}-frame settle window before it is \
-         spawned; it appeared on frame {spawned_at}",
+        "the capture must wait out the {TEST_SETTLE}-frame settle window before it is spawned; \
+         it appeared on frame {spawned_at}",
     );
 
-    match reply_rx.try_recv() {
-        Err(TryRecvError::Empty) => {}
-        Ok(early) => {
-            return Err(format!(
-                "the editor replied {early:?} at the moment its capture was spawned — before \
-                 any PNG could have landed"
-            )
-            .into());
-        }
-        Err(TryRecvError::Disconnected) => {
-            return Err("the reply channel closed before the editor answered".into());
-        }
-    }
+    let finished = finished_captures(&app);
+    assert!(
+        finished.is_empty(),
+        "the editor reported {finished:?} at the moment its capture was spawned — before any \
+         PNG could have landed",
+    );
     let written = std::fs::read_dir(tmp.path())?.count();
     assert_eq!(
         written, 0,
         "no file may exist in the confinement directory at the moment the capture is spawned",
     );
 
-    let reply = drive_until_reply(&mut app, &reply_rx)?;
+    let outcome = drive_until_finished(&mut app)?;
     assert!(
-        matches!(reply, QaResponse::Error(QaError::Timeout)),
-        "a capture whose PNG never lands must be answered Timeout, never an attachment; got \
-         {reply:?}",
+        matches!(outcome, CaptureOutcome::TimedOut(_)),
+        "a capture whose PNG never lands must time out, never land; got {outcome:?}",
     );
     Ok(())
 }

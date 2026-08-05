@@ -7,12 +7,12 @@ use gdtf_qa_protocol::{
 };
 
 use super::{
-    command_exchange::{APP_PHASE, exchange, exchange_all, run},
+    command_exchange::{APP_PHASE, CAPTURE_SCREENSHOT, exchange, exchange_all, run},
     socket_support::{TestResult, game_app_listening},
 };
 
 #[test]
-fn the_catalogue_lists_exactly_app_phase() -> TestResult {
+fn the_catalogue_lists_app_phase_and_capture_screenshot() -> TestResult {
     let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
     let QaResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
@@ -21,21 +21,37 @@ fn the_catalogue_lists_exactly_app_phase() -> TestResult {
         *catalogue.host, NET_QA_SERVER_NAME,
         "the catalogue must answer under the same host name the handshake reports: {catalogue:?}",
     );
+    let published: Vec<CommandName> = catalogue
+        .entries
+        .iter()
+        .map(|entry| entry.command.clone())
+        .collect();
     assert_eq!(
-        catalogue.entries.len(),
-        1,
-        "the game publishes exactly one command today: {catalogue:?}",
+        published,
+        vec![
+            CommandName::from_static(APP_PHASE),
+            CommandName::from_static(CAPTURE_SCREENSHOT),
+        ],
+        "the game publishes exactly these two commands today: {catalogue:?}",
     );
-    let Some(entry) = catalogue.entries.first() else {
-        unreachable!("a one-row catalogue has a first row");
-    };
-    assert_eq!(entry.command, CommandName::from_static(APP_PHASE));
-    assert_eq!(entry.timing, CommandTiming::Immediate);
-    assert_eq!(entry.availability, CommandAvailability::Available);
-    assert!(
-        !entry.summary.as_str().is_empty(),
-        "every row carries the one line a client reads to learn what it does",
-    );
+    for (name, timing) in [
+        (APP_PHASE, CommandTiming::Immediate),
+        (CAPTURE_SCREENSHOT, CommandTiming::Deferred),
+    ] {
+        let Some(entry) = catalogue
+            .entries
+            .iter()
+            .find(|entry| entry.command == CommandName::from_static(name))
+        else {
+            unreachable!("the catalogue carries a row for {name}: {catalogue:?}");
+        };
+        assert_eq!(entry.timing, timing, "{name} publishes the wrong timing");
+        assert_eq!(entry.availability, CommandAvailability::Available);
+        assert!(
+            !entry.summary.as_str().is_empty(),
+            "every row carries the one line a client reads to learn what it does",
+        );
+    }
     Ok(())
 }
 
@@ -79,7 +95,13 @@ fn a_misspelled_name_is_unknown_and_lists_what_exists() -> TestResult {
     let QaResponse::Outcome(CommandOutcome::Unknown { known }) = reply else {
         unreachable!("a name this host does not offer must be Unknown, got {reply:?}");
     };
-    assert_eq!(known, vec![CommandName::from_static(APP_PHASE)]);
+    assert_eq!(
+        known,
+        vec![
+            CommandName::from_static(APP_PHASE),
+            CommandName::from_static(CAPTURE_SCREENSHOT),
+        ],
+    );
     Ok(())
 }
 

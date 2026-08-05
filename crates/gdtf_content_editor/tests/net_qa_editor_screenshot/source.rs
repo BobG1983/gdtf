@@ -1,4 +1,4 @@
-use gdtf_content_editor::EditorShotSource;
+use gdtf_screenshot::CaptureSource;
 
 use crate::{harness::headless_editor_app, support::TestResult};
 
@@ -7,11 +7,11 @@ fn the_real_editor_app_captures_through_the_shipped_source() -> TestResult {
     let tmp = tempfile::TempDir::new()?;
     let (app, _port) = headless_editor_app(tmp.path().to_path_buf())?;
 
-    let source = app.world().get_resource::<EditorShotSource>();
+    let source = app.world().get_resource::<CaptureSource>();
     assert!(
-        matches!(source, Some(EditorShotSource::Offscreen(_))),
+        matches!(source, Some(CaptureSource::Offscreen(_))),
         "the real editor app must carry the capture source its QA plugin installs — \
-         EditorShotSource::Offscreen now, never PrimaryWindow; it carries {source:?}",
+         CaptureSource::Offscreen now, never PrimaryWindow; it carries {source:?}",
     );
     Ok(())
 }

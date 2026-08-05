@@ -19,6 +19,7 @@ pub use advance::{advance_until, advance_until_load_state, advance_until_resourc
 pub use default_plugins_harness::{
     load::GdtfLoadTestAppBuilder,
     ui::{GdtfUiTestAppBuilder, NoCamera, WithCamera},
+    windowed::GdtfWindowedTestAppBuilder,
 };
 pub use gpu_probe::{
     FORCE_NO_GPU_ENV, GpuAdapterProbe, gpu_adapter_probe, gpu_adapter_probe_forced,

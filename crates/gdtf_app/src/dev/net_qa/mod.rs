@@ -7,7 +7,6 @@ mod facts;
 mod plugin;
 mod present;
 mod router;
-mod screenshot;
 /// Wire types for external QA clients.
 pub mod wire;
 
@@ -21,5 +20,3 @@ pub use config::{
 };
 #[cfg(feature = "headless_test")]
 pub use facts::{BattleActivity, GameFacts, GameFactsParam};
-#[cfg(feature = "headless_test")]
-pub use screenshot::{QaShotDir, ScreenshotPayload, ShotPollBudget};

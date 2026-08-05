@@ -37,5 +37,5 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 
 ## Tooling
 
-- [tooling/agent-qa.md](tooling/agent-qa.md) — the agent QA control channel: how the MCP host launches the game, the `net_qa` feature + `GDTF_NET_QA` env double gate, the five MCP tools an agent calls, and the JSON-RPC-stdio / framed-RON wire shape.
-- [tooling/qa-commands.md](tooling/qa-commands.md) — how to add a QA command: the file, the one line in a host's list, and the test — written from `app.phase`, the command that exists. It also records why the shape is what it is.
+- [tooling/agent-qa.md](tooling/agent-qa.md) — the agent QA control channel: how the MCP host launches the game, the debug-build gate that opens the channel, the five MCP tools an agent calls, and the JSON-RPC-stdio / framed-RON wire shape.
+- [tooling/qa-commands.md](tooling/qa-commands.md) — how to add a QA command: the file, the one line in a host's list, and the test — written from `app.phase`, the simplest command the game publishes. It also records why the shape is what it is.

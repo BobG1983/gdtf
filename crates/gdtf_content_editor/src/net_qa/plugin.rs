@@ -3,31 +3,27 @@
 use std::{
     io,
     net::TcpListener,
+    path::PathBuf,
     sync::{Mutex, mpsc},
     thread,
 };
 
 use bevy::prelude::*;
 use gdtf_net_qa_transport::{
-    DEFAULT_IO_TIMEOUT, IncomingRequest, NetInbox, NetIoTimeout, NetQaPort, PendingQueue,
-    bind_listener, run_listener, sweep_pending,
+    DEFAULT_IO_TIMEOUT, IncomingRequest, NetInbox, NetIoTimeout, NetQaPort, bind_listener,
+    run_listener,
 };
+use gdtf_screenshot::{CapturePipelinePlugin, CapturePresentPlugin, PresentSystems, ShotDir};
 
 use super::{
-    config::editor_hello_facts,
-    env::{editor_net_qa_enabled, editor_port_from_env},
-    present::EditorCapturePresentPlugin,
+    config::{DEFAULT_EDITOR_PORT, EDITOR_QA_SHOT_DIR, editor_hello_facts},
+    present::retarget_editor_camera_to_offscreen,
     router::route_editor_requests,
     schedule::EditorNetQaSystems,
-    screenshot::{
-        EditorInFlightShots, EditorQaShotDir, EditorScreenshotPayload, EditorShotPollBudget,
-        EditorShotSequence, EditorShotSettle, EditorShotSource, drive_editor_screenshots,
-    },
 };
 use crate::EditorState;
 
 enum Wiring {
-    Disabled,
     Listener {
         port:       NetQaPort,
         io_timeout: NetIoTimeout,
@@ -47,15 +43,12 @@ impl NetQaEditorPlugin {
     /// Build the default wiring: debug builds listen on the shared editor QA port.
     #[must_use]
     pub const fn from_env() -> Self {
-        let wiring = if editor_net_qa_enabled() {
-            Wiring::Listener {
-                port:       editor_port_from_env(),
+        Self {
+            wiring: Wiring::Listener {
+                port:       DEFAULT_EDITOR_PORT,
                 io_timeout: DEFAULT_IO_TIMEOUT,
-            }
-        } else {
-            Wiring::Disabled
-        };
-        Self { wiring }
+            },
+        }
     }
 
     /// Bind a loopback listener on `port` for tests.
@@ -84,7 +77,6 @@ impl Default for NetQaEditorPlugin {
 impl Plugin for NetQaEditorPlugin {
     fn build(&self, app: &mut App) {
         match &self.wiring {
-            Wiring::Disabled => {}
             Wiring::Listener { port, io_timeout } => {
                 let Ok((listener, bound)) = bind_listener(*port) else {
                     error!(
@@ -116,26 +108,21 @@ fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
     let (tx, rx) = mpsc::channel::<IncomingRequest>();
     thread::spawn(move || run_listener(listener, tx, io_timeout, editor_hello_facts()));
     app.insert_resource(NetInbox::new(rx));
-    app.init_resource::<PendingQueue<EditorScreenshotPayload>>();
-    app.init_resource::<EditorInFlightShots>();
-    app.init_resource::<EditorShotSequence>();
-    app.init_resource::<EditorQaShotDir>();
-    app.init_resource::<EditorShotSettle>();
-    app.init_resource::<EditorShotPollBudget>();
-    app.init_resource::<EditorShotSource>();
-    app.add_plugins(EditorCapturePresentPlugin);
+    if !app.is_plugin_added::<CapturePipelinePlugin<()>>() {
+        app.add_plugins(CapturePipelinePlugin::<()>::new());
+    }
+    app.insert_resource(ShotDir::new(PathBuf::from(EDITOR_QA_SHOT_DIR)));
+    app.add_plugins(CapturePresentPlugin);
+    app.add_systems(
+        Update,
+        retarget_editor_camera_to_offscreen.in_set(PresentSystems),
+    );
     app.configure_sets(
         Update,
         EditorNetQaSystems::Gather.run_if(resource_exists::<State<EditorState>>),
     );
     app.add_systems(
         Update,
-        (
-            route_editor_requests,
-            drive_editor_screenshots,
-            sweep_pending::<EditorScreenshotPayload>,
-        )
-            .chain()
-            .in_set(EditorNetQaSystems::Gather),
+        route_editor_requests.in_set(EditorNetQaSystems::Gather),
     );
 }

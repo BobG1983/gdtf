@@ -14,7 +14,8 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_screenshot::{
-    CapturePath, CaptureProgress, ScreenshotCapturePlugin, SettleFrames, settle::PollCap,
+    CaptureCompletions, CapturePath, CaptureQueue, ScreenshotCapturePlugin, SettleFrames,
+    settle::PollCap,
 };
 
 const TEST_SETTLE: SettleFrames = SettleFrames::new(3);
@@ -33,6 +34,7 @@ fn headless_capture_app(path: PathBuf) -> App {
 #[test]
 fn active_plugin_wires_the_pipeline_and_requests_after_settle() {
     let path = std::env::temp_dir().join("gdtf_screenshot_test_active.png");
+    drop(fs::remove_file(&path));
     let mut app = headless_capture_app(path);
 
     assert!(
@@ -40,26 +42,44 @@ fn active_plugin_wires_the_pipeline_and_requests_after_settle() {
         "active plugin inserts CapturePath"
     );
     assert!(
-        app.world().get_resource::<CaptureProgress>().is_some(),
-        "active plugin inits CaptureProgress"
+        app.world().get_resource::<CaptureQueue<()>>().is_some(),
+        "active plugin inits the shared CaptureQueue"
     );
 
     app.update();
     assert!(
-        !progress_requested(&app),
-        "no capture requested before the settle window"
+        !queue_is_idle(&app),
+        "the startup request must be queued on the first update"
+    );
+    assert!(
+        !spawned_a_screenshot(&mut app),
+        "no capture is spawned before the settle window"
     );
 
     for _ in 0..*TEST_SETTLE + 2 {
         app.update();
     }
     assert!(
-        progress_requested(&app),
-        "capture requested once the settle window elapsed"
-    );
-    assert!(
         spawned_a_screenshot(&mut app),
         "a Screenshot entity was spawned (the save_to_disk pipeline)"
+    );
+
+    for _ in 0..32 {
+        app.update();
+    }
+    assert!(
+        !completions_are_empty(&app),
+        "with no PNG landing the capture must finish (timed out) rather than hang"
+    );
+    assert!(
+        queue_is_idle(&app),
+        "a finished capture leaves nothing queued and nothing in flight"
+    );
+    assert_eq!(
+        app.should_exit(),
+        Some(AppExit::Success),
+        "a finished capture must write AppExit — without it the CLI capture flow takes its shot \
+         and then runs forever"
     );
 }
 
@@ -76,8 +96,14 @@ fn inert_plugin_registers_nothing() {
         "inert plugin inserts no CapturePath"
     );
     assert!(
-        app.world().get_resource::<CaptureProgress>().is_none(),
-        "inert plugin inits no CaptureProgress"
+        app.world().get_resource::<CaptureQueue<()>>().is_none(),
+        "inert plugin inits no CaptureQueue"
+    );
+    assert!(
+        app.world()
+            .get_resource::<CaptureCompletions<()>>()
+            .is_none(),
+        "inert plugin inits no CaptureCompletions"
     );
 
     for _ in 0..8 {
@@ -86,6 +112,11 @@ fn inert_plugin_registers_nothing() {
     assert!(
         !spawned_a_screenshot(&mut app),
         "inert plugin never spawns a Screenshot"
+    );
+    assert_eq!(
+        app.should_exit(),
+        None,
+        "an inert plugin has no capture to finish, so it must never end the process"
     );
 }
 
@@ -176,10 +207,16 @@ fn real_gpu_capture_writes_a_png() {
     drop(fs::remove_file(&out));
 }
 
-fn progress_requested(app: &App) -> bool {
+fn queue_is_idle(app: &App) -> bool {
     app.world()
-        .get_resource::<CaptureProgress>()
-        .is_some_and(CaptureProgress::is_requested)
+        .get_resource::<CaptureQueue<()>>()
+        .is_some_and(CaptureQueue::is_idle)
+}
+
+fn completions_are_empty(app: &App) -> bool {
+    app.world()
+        .get_resource::<CaptureCompletions<()>>()
+        .is_none_or(CaptureCompletions::is_empty)
 }
 
 fn spawned_a_screenshot(app: &mut App) -> bool {
