@@ -19,4 +19,6 @@ pub use config::{
     NET_QA_PROTOCOL_VERSION, SERVER_NAME as NET_QA_SERVER_NAME, hello_facts as net_qa_hello_facts,
 };
 #[cfg(feature = "headless_test")]
-pub use facts::{BattleActivity, GameFacts, GameFactsParam};
+pub use facts::{
+    BattleActivity, BattleModel, BattleScreen, GameFacts, GameFactsParam, PresenterReadiness,
+};

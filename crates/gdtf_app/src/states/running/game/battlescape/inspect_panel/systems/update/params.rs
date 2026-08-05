@@ -11,6 +11,7 @@ use crate::states::running::game::battlescape::inspect_panel::{
         InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
         InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
     },
+    decide::ShownBattle,
     shadow::{ShownCoverLedger, ShownOccupancyGrid},
 };
 
@@ -53,6 +54,16 @@ impl InspectReads<'_> {
     #[must_use]
     pub(in crate::states::running::game::battlescape) fn fog(&self) -> Option<&SquadVisibility> {
         self.squad.as_deref().map(ShownSquadVisibility::visibility)
+    }
+
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) fn shown(&self) -> ShownBattle<'_> {
+        ShownBattle::new(
+            self.occupancy(),
+            self.cover(),
+            self.fog(),
+            self.player.as_deref(),
+        )
     }
 }
 

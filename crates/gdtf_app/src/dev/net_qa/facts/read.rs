@@ -1,6 +1,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
+use gdtf_battle_sim::prelude::BattleInProgress;
 
-use super::GameFacts;
+use super::{BattleModel, GameFacts};
 use crate::{
     dev::net_qa::wire::{
         AfterMathPhaseNet, AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet,
@@ -18,6 +19,7 @@ crate::support_item! {
         game:        Option<Res<'w, State<GameState>>>,
         battlescape: Option<Res<'w, State<BattleScapeState>>>,
         aftermath:   Option<Res<'w, State<AfterMathState>>>,
+        battle:      Option<Res<'w, BattleInProgress>>,
     }
 }
 
@@ -26,21 +28,31 @@ impl GameFactsParam<'_> {
         /// Read the host's live phase into a facts value.
         #[must_use]
         fn sample(&self) -> GameFacts {
-            GameFacts::new(AppPhaseNet::new(
-                LifecyclePhaseNet::from_state(self.app.get()),
-                self.running
-                    .as_ref()
-                    .map(|state| RunningPhaseNet::from_state(*state.get())),
-                self.game
-                    .as_ref()
-                    .map(|state| GamePhaseNet::from_state(*state.get())),
-                self.battlescape
-                    .as_ref()
-                    .map(|state| BattleScapePhaseNet::from_state(*state.get())),
-                self.aftermath
-                    .as_ref()
-                    .map(|state| AfterMathPhaseNet::from_state(*state.get())),
-            ))
+            GameFacts::new(
+                AppPhaseNet::new(
+                    LifecyclePhaseNet::from_state(self.app.get()),
+                    self.running
+                        .as_ref()
+                        .map(|state| RunningPhaseNet::from_state(*state.get())),
+                    self.game
+                        .as_ref()
+                        .map(|state| GamePhaseNet::from_state(*state.get())),
+                    self.battlescape
+                        .as_ref()
+                        .map(|state| BattleScapePhaseNet::from_state(*state.get())),
+                    self.aftermath
+                        .as_ref()
+                        .map(|state| AfterMathPhaseNet::from_state(*state.get())),
+                ),
+                self.battle_model(),
+            )
+        }
+    }
+
+    const fn battle_model(&self) -> BattleModel {
+        match self.battle {
+            Some(_) => BattleModel::Present,
+            None => BattleModel::Absent,
         }
     }
 }

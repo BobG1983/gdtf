@@ -21,7 +21,7 @@ use crate::states::running::game::battlescape::stat_block::{
 pub(in crate::states::running::game::battlescape) const MAX_WOUND_PIPS: usize = 6;
 
 #[derive(QueryData)]
-pub(in crate::states::running::game::battlescape) struct StatBlockData {
+pub(crate) struct StatBlockData {
     pub name:       Option<&'static GangerName>,
     pub faction:    &'static Faction,
     pub stance:     &'static Stance,

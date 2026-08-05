@@ -10,19 +10,29 @@ use crate::dev::net_qa::{
         act::{ActSeqNet, NetIntent},
         act_payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet},
         cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet},
+        deed::ActDeedKindNet,
+        inspect::{
+            CoverBlockNet, CoverHpNet, HardnessNet, HeightBandNet, InspectShownNet, ProtectionNet,
+        },
         key::{FocusStepNet, KeyNet, KeyPressNet, KeybindActionNet},
-        log::{ActProvenanceNet, LogDroppedCount, LogReadCap},
+        log::{ActProvenanceNet, LogDroppedCount, LogEntryNet, LogReadCap},
         misc::{
-            AutoRunNet, FireModeIndex, FrameDelay, RequestId, SeedNet, SituationRef,
+            AutoRunNet, FireModeIndex, FrameDelay, ModeKindNet, RequestId, SeedNet, SituationRef,
             StepperCommandNet,
         },
+        offer::{ContextualActNet, ContextualOfferNet, OfferTargetNet},
         phase::{
             AfterMathPhaseNet, AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet,
             RunningPhaseNet,
         },
         pointer::{MouseButtonNet, PointerPosNet, PointerXNet, PointerYNet},
+        roster::{FactionNet, GangerCardNet, GangerNameNet},
         shell::{CaughtUpNet, SoundNet},
+        sight::{CanEngageNet, CanSeeNet, SightlineNet},
         token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
+        visible::{DoorOpenNet, VisibleCoverNet, VisibleDoorNet, VisibleGangerNet},
+        vitals::{HpMaxNet, HpNet, TuMaxNet, TuNet, WoundsMaxNet, WoundsNet},
+        wound::{BodyPartNet, InjuryNameNet, InjuryNet, SeverityNet, WoundNet},
     },
 };
 
@@ -86,6 +96,47 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<ActProvenanceNet>("ActProvenanceNet");
     assert_schema_is_usable::<LogReadCap>("LogReadCap");
     assert_schema_is_usable::<LogDroppedCount>("LogDroppedCount");
+    assert_schema_is_usable::<ActDeedKindNet>("ActDeedKindNet");
+    assert_schema_is_usable::<LogEntryNet>("LogEntryNet");
+
+    assert_schema_is_usable::<TuNet>("TuNet");
+    assert_schema_is_usable::<TuMaxNet>("TuMaxNet");
+    assert_schema_is_usable::<HpNet>("HpNet");
+    assert_schema_is_usable::<HpMaxNet>("HpMaxNet");
+    assert_schema_is_usable::<WoundsNet>("WoundsNet");
+    assert_schema_is_usable::<WoundsMaxNet>("WoundsMaxNet");
+
+    assert_schema_is_usable::<SeverityNet>("SeverityNet");
+    assert_schema_is_usable::<BodyPartNet>("BodyPartNet");
+    assert_schema_is_usable::<WoundNet>("WoundNet");
+    assert_schema_is_usable::<InjuryNameNet>("InjuryNameNet");
+    assert_schema_is_usable::<InjuryNet>("InjuryNet");
+
+    assert_schema_is_usable::<GangerNameNet>("GangerNameNet");
+    assert_schema_is_usable::<FactionNet>("FactionNet");
+    assert_schema_is_usable::<GangerCardNet>("GangerCardNet");
+
+    assert_schema_is_usable::<HardnessNet>("HardnessNet");
+    assert_schema_is_usable::<ProtectionNet>("ProtectionNet");
+    assert_schema_is_usable::<HeightBandNet>("HeightBandNet");
+    assert_schema_is_usable::<CoverHpNet>("CoverHpNet");
+    assert_schema_is_usable::<CoverBlockNet>("CoverBlockNet");
+    assert_schema_is_usable::<InspectShownNet>("InspectShownNet");
+
+    assert_schema_is_usable::<DoorOpenNet>("DoorOpenNet");
+    assert_schema_is_usable::<VisibleGangerNet>("VisibleGangerNet");
+    assert_schema_is_usable::<VisibleDoorNet>("VisibleDoorNet");
+    assert_schema_is_usable::<VisibleCoverNet>("VisibleCoverNet");
+
+    assert_schema_is_usable::<ContextualActNet>("ContextualActNet");
+    assert_schema_is_usable::<OfferTargetNet>("OfferTargetNet");
+    assert_schema_is_usable::<ContextualOfferNet>("ContextualOfferNet");
+
+    assert_schema_is_usable::<CanSeeNet>("CanSeeNet");
+    assert_schema_is_usable::<CanEngageNet>("CanEngageNet");
+    assert_schema_is_usable::<SightlineNet>("SightlineNet");
+
+    assert_schema_is_usable::<ModeKindNet>("ModeKindNet");
 
     assert_schema_is_usable::<FireModeIndex>("FireModeIndex");
     assert_schema_is_usable::<SituationRef>("SituationRef");

@@ -1,6 +1,7 @@
 //! Stance, aim, facing, and melee target wire payloads.
 
 use bevy::prelude::Deref;
+use gdtf_battle_sim::prelude::{Stance, StanceKind};
 use serde::{Deserialize, Serialize};
 
 use super::{cell::CellLevelNet, token::GangerToken};
@@ -14,6 +15,18 @@ pub enum StanceNet {
     Crouching,
     /// Prone.
     Prone,
+}
+
+impl StanceNet {
+    /// Mirror the sim's posture.
+    #[must_use]
+    pub fn from_sim(stance: Stance) -> Self {
+        match *stance {
+            StanceKind::Standing => Self::Standing,
+            StanceKind::Crouching => Self::Crouching,
+            StanceKind::Prone => Self::Prone,
+        }
+    }
 }
 
 /// Aiming flag on the wire.

@@ -1,16 +1,19 @@
 use crate::dev::net_qa::{
-    facts::{BattleActivity, GameFacts},
+    facts::{BattleActivity, BattleModel, GameFacts},
     wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet, RunningPhaseNet},
 };
 
 fn facts_with(battlescape: Option<BattleScapePhaseNet>) -> GameFacts {
-    GameFacts::new(AppPhaseNet::new(
-        LifecyclePhaseNet::Running,
-        Some(RunningPhaseNet::Game),
-        Some(GamePhaseNet::BattleScape),
-        battlescape,
-        None,
-    ))
+    GameFacts::new(
+        AppPhaseNet::new(
+            LifecyclePhaseNet::Running,
+            Some(RunningPhaseNet::Game),
+            Some(GamePhaseNet::BattleScape),
+            battlescape,
+            None,
+        ),
+        BattleModel::Absent,
+    )
 }
 
 #[test]

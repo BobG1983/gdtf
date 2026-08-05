@@ -263,12 +263,17 @@ Notes an agent relies on:
   the command has run). Neither is built yet: a call carrying either comes back
   `Unavailable { code: NotBuilt }` rather than running the command with the rider
   silently dropped.
-- **What the channel answers today.** The GAME host publishes five commands.
+- **What the channel answers today.** The GAME host publishes thirteen commands.
   `app.phase` reports where the app is at every level of its state machine.
   `capture.screenshot` writes a PNG of what the game is showing and attaches it
   to the reply. Three shell reads answer before a battle: `settings.read` (the
   Options values), `ui.focus` (the focused widget and the focusable set) and
-  `playback.state` (whether the screen has caught up with the act log). The
+  `playback.state` (whether the screen has caught up with the act log). Eight
+  battle reads answer inside a battle and report only what the player can see:
+  `battle.roster`, `battle.turn`, `battle.selection`, `battle.offers`,
+  `battle.inspect`, `battle.sightline`, `battle.visible` and `log.read`; each
+  one's precondition and reply shape is in
+  [`qa-commands.md`](qa-commands.md). The
   EDITOR host publishes none yet and answers every
   `run` `Unknown`. That is the expected state mid-epic, not a regression: the
   surface that used to sit here was deleted before the commands that replace it
@@ -360,7 +365,7 @@ against the shipped five-tool surface:
 5. `logs` — if a step surprised you, read what the child printed.
 6. `stop` — stop the child and release the port.
 
-On the game host today step 4 is one of five. `run { command: "app.phase",
+On the game host today step 4 is one of thirteen. `run { command: "app.phase",
 arguments: "()" }` answers the five-level state tuple (`app`, `running`, `game`,
 `battlescape`, `aftermath`, the nested four `None` where they are not live).
 `run { command: "capture.screenshot", arguments: "(name: Some(\"menu\"))" }`
@@ -368,7 +373,9 @@ writes a PNG and answers with it attached; the `name` is optional. The three
 shell reads all take `()`: `settings.read` answers whether sound is on,
 `ui.focus` answers the focused widget and the focusable set as opaque entity
 tokens, and `playback.state` answers `(caught_up: true)` wherever no battle is
-playing. Steps 2-4 are what change as commands land; steps 1, 5 and 6 never do.
+playing. The eight battle reads refuse `Unavailable { code: WrongState }` off
+the battle screen, so at the menu step 4 is one of five in practice. Steps 2-4
+are what change as commands land; steps 1, 5 and 6 never do.
 
 The two hosts are independent: a game child on `7616` and an editor child on
 `7617` are tracked by separate `HostManager`s, one per host, constructed in

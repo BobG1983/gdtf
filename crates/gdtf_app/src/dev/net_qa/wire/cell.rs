@@ -1,6 +1,7 @@
 //! Cell and cell-level coordinates on the wire.
 
 use bevy::prelude::Deref;
+use gdtf_battle_sim::prelude::{Cell, CellLevel, Level};
 use serde::{Deserialize, Serialize};
 
 /// Cell X coordinate.
@@ -75,5 +76,24 @@ impl CellLevelNet {
     #[must_use]
     pub const fn new(cell: CellNet, level: LevelNet) -> Self {
         Self { cell, level }
+    }
+
+    /// Mirror a sim cell-level key.
+    #[must_use]
+    pub fn from_sim(at: CellLevel) -> Self {
+        let (cell, level) = at.split();
+        Self::new(
+            CellNet::new(CellXNet::new(cell.x), CellYNet::new(cell.y)),
+            LevelNet::new(*level),
+        )
+    }
+
+    /// Convert back into a sim cell-level key.
+    #[must_use]
+    pub fn to_sim(self) -> CellLevel {
+        CellLevel::new(
+            Cell::new(*self.cell.x, *self.cell.y),
+            Level::new(*self.level),
+        )
     }
 }

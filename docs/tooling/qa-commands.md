@@ -210,11 +210,48 @@ run(host="game", command="app.phase", arguments="()")     # do it
 run(host="game", command="capture.screenshot", arguments="(name: Some(\"menu\"))")
 ```
 
-The game offers five commands today: `app.phase`, `capture.screenshot`, `settings.read`,
-`ui.focus` and `playback.state`. The last three are the shell reads — they take `()`, are
+The game offers thirteen commands today: `app.phase`, `capture.screenshot`, `settings.read`,
+`ui.focus`, `playback.state`, `battle.roster`, `battle.turn`, `battle.selection`,
+`battle.offers`, `battle.inspect`, `battle.sightline`, `battle.visible` and `log.read`.
+
+`settings.read`, `ui.focus` and `playback.state` are the shell reads — they take `()`, are
 `Immediate`, and answer before a battle: `settings.read` reports the Options values,
 `ui.focus` reports the focused widget and the widgets the current screen registered as
 focusable, and `playback.state` reports whether the screen has caught up with the act log.
+
+The eight battle reads are `Immediate` too, and report only what the player can see.
+`battle.roster` lists every player card plus the enemies the squad can currently see — the
+reduction is which enemies appear, not which fields a card carries, since the stat block
+already draws a visible enemy's whole card —
+`battle.turn` names the acting gang and the player's, `battle.selection` reports the
+selected shooter, its fire mode and the hovered and pinned inspect cells, `battle.offers`
+lists the contextual buttons the panel is showing with the target each would act on,
+`battle.inspect` reads one cell exactly as the inspect panel draws it, `battle.sightline`
+answers whether the squad can see a cell and whether the selected shooter could engage it,
+`battle.visible`
+lists the enemies, doors and cover inside the lit area, and `log.read` returns the tail of
+the act log with a `cap` on how many lines.
+
+Every read that answers a fog question reads the same playback-gated shadows the panels
+read — the shown fog, the shown occupancy grid and cover ledger, and each ganger's drawn
+cell and drawn vitals. That covers `battle.roster`, `battle.inspect`, `battle.visible` and
+the `can_see` half of `battle.sightline`. A ganger is therefore reported on the cell its
+sprite stands on, and counts as seen or hidden from that cell, not from the one the sim
+has already moved it to, and no read ever reports fog the screen has not drawn yet. The
+rest read live state on purpose, because what they report is not drawn from a shadow:
+`battle.turn` and `battle.offers` report resources the sim and the panel write each frame,
+the `can_engage` half of `battle.sightline` asks the sim's own firing-arc gate,
+`battle.selection` reports the pointer's live selection, and `log.read` reads the act log
+with no fog filter, matching a combat log that filters none either.
+
+Each read refuses `Unavailable` with code `WrongState` off the battle screen.
+`battle.sightline` further needs the battle's running phase, and `battle.offers`,
+`battle.inspect` and `battle.visible` need a running battle whose sim state is loaded —
+without it the offer and inspect systems never run, so answering would report "nothing
+offered" where the truth is "not computed yet". Those three words are pinned command by
+command in
+[`commands/read/test/availability_words.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/read/test/availability_words.rs).
+
 `capture.screenshot` writes a PNG of what the game is showing and answers `Ran` with a
 `ReplyAttachment(Png, …)` naming it; `name` is optional and becomes the file stem inside
 the host's shot directory. It is `Deferred`, so the reply arrives once the PNG is on disk;

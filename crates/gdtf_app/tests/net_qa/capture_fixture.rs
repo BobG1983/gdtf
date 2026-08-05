@@ -51,7 +51,7 @@ fn workspace_assets_root() -> PathBuf {
         .join("assets")
 }
 
-fn planted_shot_name() -> String {
+fn stand_in_shot_name() -> String {
     format!("{HEADLESS_SHOT_NAME}_0.png")
 }
 
@@ -61,7 +61,7 @@ fn stand_in_for_the_renderer(dir: Res<ShotDir>) {
     if !dir.is_dir() {
         return;
     }
-    let path = dir.join(planted_shot_name());
+    let path = dir.join(stand_in_shot_name());
     if path.exists() {
         return;
     }
