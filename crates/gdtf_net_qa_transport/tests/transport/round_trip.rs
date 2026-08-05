@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use gdtf_net_qa_transport::NetIoTimeout;
+use gdtf_net_qa_transport::{NetIoTimeout, NetReplyTimeout, NetTimeouts};
 use gdtf_qa_protocol::message::{ProtocolVersion, QaError, QaRequest, QaResponse};
 
 use super::harness::{
@@ -13,7 +13,10 @@ use super::harness::{
 
 #[test]
 fn hello_round_trips_and_a_second_client_is_busy() -> TestResult {
-    let (port, inbox) = spawn_listener(NetIoTimeout::new(Duration::from_secs(5)))?;
+    let (port, inbox) = spawn_listener(NetTimeouts::new(
+        NetIoTimeout::new(Duration::from_secs(5)),
+        NetReplyTimeout::new(Duration::from_secs(5)),
+    ))?;
     spawn_fake_host_side(inbox);
 
     let mut client_a = TcpStream::connect((Ipv4Addr::LOCALHOST, *port))?;

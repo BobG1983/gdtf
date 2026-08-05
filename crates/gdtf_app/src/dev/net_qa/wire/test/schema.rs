@@ -17,8 +17,8 @@ use crate::dev::net_qa::{
         key::{FocusStepNet, KeyNet, KeyPressNet, KeybindActionNet},
         log::{ActProvenanceNet, LogDroppedCount, LogEntryNet, LogReadCap},
         misc::{
-            AutoRunNet, FireModeIndex, FrameDelay, ModeKindNet, RequestId, SeedNet, SituationRef,
-            StepperCommandNet,
+            AutoRunNet, FireModeIndex, FrameDelay, ModeKindNet, ProcgenStageNet, RequestId,
+            SeedNet, SituationRef, StepperCommandNet,
         },
         offer::{ContextualActNet, ContextualOfferNet, OfferTargetNet},
         phase::{
@@ -32,6 +32,7 @@ use crate::dev::net_qa::{
         token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
         visible::{DoorOpenNet, VisibleCoverNet, VisibleDoorNet, VisibleGangerNet},
         vitals::{HpMaxNet, HpNet, TuMaxNet, TuNet, WoundsMaxNet, WoundsNet},
+        wait::{ActCountNet, AppPhaseTargetNet, WaitConditionNet},
         wound::{BodyPartNet, InjuryNameNet, InjuryNet, SeverityNet, WoundNet},
     },
 };
@@ -145,6 +146,7 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<RequestId>("RequestId");
     assert_schema_is_usable::<AutoRunNet>("AutoRunNet");
     assert_schema_is_usable::<StepperCommandNet>("StepperCommandNet");
+    assert_schema_is_usable::<ProcgenStageNet>("ProcgenStageNet");
 
     assert_schema_is_usable::<SoundNet>("SoundNet");
     assert_schema_is_usable::<CaughtUpNet>("CaughtUpNet");
@@ -155,6 +157,10 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<BattleScapePhaseNet>("BattleScapePhaseNet");
     assert_schema_is_usable::<AfterMathPhaseNet>("AfterMathPhaseNet");
     assert_schema_is_usable::<AppPhaseNet>("AppPhaseNet");
+
+    assert_schema_is_usable::<ActCountNet>("ActCountNet");
+    assert_schema_is_usable::<AppPhaseTargetNet>("AppPhaseTargetNet");
+    assert_schema_is_usable::<WaitConditionNet>("WaitConditionNet");
 }
 
 #[test]

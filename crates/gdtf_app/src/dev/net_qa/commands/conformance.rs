@@ -1,6 +1,6 @@
 //! Game command set conformance checks for tests.
 
-use gdtf_net_qa_transport::DEFAULT_IO_TIMEOUT;
+use gdtf_net_qa_transport::DEFAULT_REPLY_TIMEOUT;
 use gdtf_qa_protocol::command::CommandName;
 
 use super::set::GAME_COMMANDS;
@@ -9,7 +9,7 @@ use super::set::GAME_COMMANDS;
 ///
 /// # Panics
 ///
-/// Panics when a command's deferral budget would outlive the socket's own wait.
+/// Panics when a command's deferral budget would outlive the socket's wait for its reply.
 pub fn assert_game_command_set_is_conformant() {
     gdtf_qa_command::test_support::assert_unique_names(GAME_COMMANDS);
     gdtf_qa_command::test_support::assert_schemas_parse(GAME_COMMANDS);
@@ -17,11 +17,12 @@ pub fn assert_game_command_set_is_conformant() {
     for command in GAME_COMMANDS {
         let budget = command.deferred_budget();
         assert!(
-            *budget < *DEFAULT_IO_TIMEOUT,
-            "`{}`'s deferral budget ({:?}) must expire strictly before the socket timeout ({:?})",
+            *budget < *DEFAULT_REPLY_TIMEOUT,
+            "`{}`'s deferral budget ({:?}) must expire strictly before the socket stops waiting \
+             for the reply ({:?})",
             command.name().as_str(),
             *budget,
-            *DEFAULT_IO_TIMEOUT
+            *DEFAULT_REPLY_TIMEOUT
         );
     }
 }

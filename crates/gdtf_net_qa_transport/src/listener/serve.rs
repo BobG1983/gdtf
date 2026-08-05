@@ -13,17 +13,17 @@ use gdtf_qa_protocol::{
 use super::session::{FrameVerdict, SessionState};
 use crate::{
     channel::{IncomingRequest, Responder},
-    config::NetIoTimeout,
+    config::{NetReplyTimeout, NetTimeouts},
 };
 
 pub(super) fn handle_client(
     mut stream: TcpStream,
     request_tx: &Sender<IncomingRequest>,
-    io_timeout: NetIoTimeout,
+    timeouts: NetTimeouts,
     facts: &HelloFacts,
 ) {
-    drop(stream.set_read_timeout(Some(*io_timeout)));
-    drop(stream.set_write_timeout(Some(*io_timeout)));
+    drop(stream.set_read_timeout(Some(*timeouts.io())));
+    drop(stream.set_write_timeout(Some(*timeouts.io())));
     let mut decoder = FrameDecoder::new();
     let mut session = SessionState::Fresh;
     let mut buf = [0u8; 4096];
@@ -43,7 +43,7 @@ pub(super) fn handle_client(
                 &mut stream,
                 &frame,
                 request_tx,
-                io_timeout,
+                timeouts.reply(),
                 facts,
                 &mut session,
             )
@@ -59,7 +59,7 @@ fn handle_frame(
     stream: &mut TcpStream,
     frame: &gdtf_qa_protocol::framing::Frame,
     request_tx: &Sender<IncomingRequest>,
-    io_timeout: NetIoTimeout,
+    reply_timeout: NetReplyTimeout,
     facts: &HelloFacts,
     session: &mut SessionState,
 ) -> ControlFlow<()> {
@@ -72,7 +72,7 @@ fn handle_frame(
             Ok(()) => ControlFlow::Continue(()),
             Err(_) => ControlFlow::Break(()),
         },
-        FrameVerdict::Forward => forward_to_host(stream, request, request_tx, io_timeout),
+        FrameVerdict::Forward => forward_to_host(stream, request, request_tx, reply_timeout),
     }
 }
 
@@ -80,7 +80,7 @@ fn forward_to_host(
     stream: &mut TcpStream,
     request: QaRequest,
     request_tx: &Sender<IncomingRequest>,
-    io_timeout: NetIoTimeout,
+    reply_timeout: NetReplyTimeout,
 ) -> ControlFlow<()> {
     let (responder, reply_rx) = Responder::channel();
     if request_tx
@@ -90,7 +90,7 @@ fn forward_to_host(
         return ControlFlow::Break(());
     }
     let response = reply_rx
-        .recv_timeout(*io_timeout)
+        .recv_timeout(*reply_timeout)
         .unwrap_or(QaResponse::Error(QaError::Timeout));
     match write_frame(stream, &response) {
         Ok(()) => ControlFlow::Continue(()),

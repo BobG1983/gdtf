@@ -33,6 +33,7 @@ pub mod token;
 pub mod visible;
 /// Ganger vitals.
 pub mod vitals;
+pub(crate) mod wait;
 /// Wounds and lasting injuries.
 pub mod wound;
 
@@ -45,3 +46,6 @@ crate::support_use!(
         RunningPhaseNet,
     };
 );
+crate::support_use!(wait::{AppPhaseTargetNet, WaitConditionNet};);
+#[cfg(feature = "headless_test")]
+pub use wait::ActCountNet;

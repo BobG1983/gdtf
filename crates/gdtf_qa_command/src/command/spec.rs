@@ -19,6 +19,9 @@ pub trait QaCommand: Sized + Send + Sync + 'static {
     /// Serialized reply payload.
     type Reply: Serialize + DeserializeOwned + Send + Sync + 'static;
 
+    /// What a deferred call carries while it waits. `()` when every waiter settles alike.
+    type Parked: Send + Sync + 'static;
+
     /// Stable command name.
     const NAME: CommandName;
 

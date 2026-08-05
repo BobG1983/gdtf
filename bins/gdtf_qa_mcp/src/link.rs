@@ -14,7 +14,9 @@ use gdtf_qa_protocol::{
 use crate::{error::McpError, hosts::QaHost};
 
 /// Default connect/read/write timeout for a QA link.
-pub const LINK_TIMEOUT: LinkTimeout = LinkTimeout::new(Duration::from_secs(10));
+///
+/// Outlives the host's own reply wait so a slow command answers rather than breaking the socket.
+pub const LINK_TIMEOUT: LinkTimeout = LinkTimeout::new(Duration::from_secs(200));
 
 /// TCP port of a host's net QA listener.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

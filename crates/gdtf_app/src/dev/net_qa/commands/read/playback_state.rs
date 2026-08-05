@@ -24,6 +24,7 @@ pub(crate) struct PlaybackState;
 impl QaCommand for PlaybackState {
     type Args = PlaybackStateArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = PlaybackStateReply;
 
     const NAME: CommandName = CommandName::from_static("playback.state");

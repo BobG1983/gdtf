@@ -2,34 +2,17 @@ use std::sync::mpsc;
 
 use bevy::{app::App, state::state::State};
 use gdtf_app::test_support::{AppState, BattleScapeState, GameState, RunningState};
-use gdtf_net_qa_transport::{IncomingRequest, Responder};
-use gdtf_qa_protocol::{
-    command::{CommandArgsRon, CommandName, CommandOutcome, RunOptions},
-    message::{QaRequest, QaResponse, RunCommand},
-};
+use gdtf_net_qa_transport::IncomingRequest;
+use gdtf_qa_protocol::{command::CommandOutcome, message::QaResponse};
 use gdtf_test_utils::advance_until;
 
 use super::{
-    battle_fixture::{DRIVE_BUDGET, menu_app_with_net_qa, request_battle},
+    battle_fixture::{DRIVE_BUDGET, menu_app_with_net_qa, request_battle, run_request, send},
     command_exchange::APP_PHASE,
 };
 
-fn send(tx: &mpsc::Sender<IncomingRequest>, request: QaRequest) -> mpsc::Receiver<QaResponse> {
-    let (responder, reply_rx) = Responder::channel();
-    let sent = tx.send(IncomingRequest::new(request, responder));
-    assert!(sent.is_ok(), "the router inbox must be open");
-    reply_rx
-}
-
 fn read_phase(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) -> String {
-    let reply = send(
-        tx,
-        QaRequest::Run(RunCommand::with_options(
-            CommandName::from_static(APP_PHASE),
-            CommandArgsRon::new("()".to_owned()),
-            RunOptions::default(),
-        )),
-    );
+    let reply = send(tx, run_request(APP_PHASE, "()"));
     app.update();
     app.update();
     let Ok(QaResponse::Outcome(CommandOutcome::Ran { reply, .. })) = reply.try_recv() else {

@@ -4,7 +4,7 @@ use gdtf_qa_protocol::command::{CommandAvailability, UnavailableCode};
 
 use crate::dev::net_qa::{
     commands::set::GAME_COMMANDS,
-    facts::{BattleModel, GameFacts},
+    facts::{BattleModel, GameFacts, StepperActivity},
     wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet, RunningPhaseNet},
 };
 
@@ -20,13 +20,17 @@ const BATTLE_READS: &[&str] = &[
     "log.read",
 ];
 
-/// Commands that answer outside a battle, so no battle case says anything about them.
+/// Commands these battle-read cases say nothing about.
 const NOT_BATTLE_READS: &[&str] = &[
     "app.phase",
     "capture.screenshot",
     "settings.read",
     "ui.focus",
     "playback.state",
+    "battle.start",
+    "battle.flee",
+    "procgen.step",
+    "wait",
 ];
 
 fn on_the_battle_screen(battlescape: BattleScapePhaseNet, model: BattleModel) -> GameFacts {
@@ -39,6 +43,7 @@ fn on_the_battle_screen(battlescape: BattleScapePhaseNet, model: BattleModel) ->
             None,
         ),
         model,
+        StepperActivity::NotStepping,
     )
 }
 
@@ -52,6 +57,7 @@ fn at_the_menu() -> GameFacts {
             None,
         ),
         BattleModel::Absent,
+        StepperActivity::NotStepping,
     )
 }
 

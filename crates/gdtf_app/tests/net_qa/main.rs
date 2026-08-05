@@ -3,6 +3,7 @@
 
 mod app_phase_depth;
 mod battle_fixture;
+mod battle_flee;
 mod battle_inspect;
 mod battle_offers;
 mod battle_reads;
@@ -12,6 +13,7 @@ mod battle_selection;
 mod battle_setup;
 mod battle_sightline;
 mod battle_socket;
+mod battle_start;
 mod battle_turn;
 mod battle_visible;
 mod capture_fixture;
@@ -26,6 +28,8 @@ mod hello_socket;
 mod log_read;
 mod menu_spawned;
 mod playback_state;
+mod procgen_step;
 mod settings_read;
 mod socket_support;
 mod ui_focus;
+mod wait;

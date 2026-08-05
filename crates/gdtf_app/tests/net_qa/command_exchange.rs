@@ -36,6 +36,14 @@ pub(crate) const BATTLE_VISIBLE: &str = "battle.visible";
 
 pub(crate) const LOG_READ: &str = "log.read";
 
+pub(crate) const BATTLE_START: &str = "battle.start";
+
+pub(crate) const BATTLE_FLEE: &str = "battle.flee";
+
+pub(crate) const PROCGEN_STEP: &str = "procgen.step";
+
+pub(crate) const WAIT: &str = "wait";
+
 /// Build the fixture, let `plan` read the live world to shape the requests, then exchange.
 pub(crate) fn exchange_planned(
     fixture: SocketFixture,

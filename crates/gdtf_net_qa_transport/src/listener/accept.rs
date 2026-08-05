@@ -15,13 +15,13 @@ use gdtf_qa_protocol::{
 };
 
 use super::serve::handle_client;
-use crate::{channel::IncomingRequest, config::NetIoTimeout};
+use crate::{channel::IncomingRequest, config::NetTimeouts};
 
 /// its wiring on `cfg(debug_assertions)` and an env var) whose
 pub fn run_listener(
     listener: TcpListener,
     request_tx: Sender<IncomingRequest>,
-    io_timeout: NetIoTimeout,
+    timeouts: NetTimeouts,
     facts: HelloFacts,
 ) {
     let busy = Arc::new(AtomicBool::new(false));
@@ -37,7 +37,7 @@ pub fn run_listener(
         let busy = Arc::clone(&busy);
         let facts = facts.clone();
         thread::spawn(move || {
-            handle_client(stream, &tx, io_timeout, &facts);
+            handle_client(stream, &tx, timeouts, &facts);
             busy.store(false, Ordering::Release);
         });
     }

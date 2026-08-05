@@ -24,7 +24,7 @@ fn the_game_command_set_is_conformant() {
 }
 
 #[test]
-fn the_game_offers_the_shell_and_battle_read_set() {
+fn the_game_offers_the_shell_reads_the_battle_reads_and_the_lifecycle_commands() {
     assert_eq!(
         game_command_names(),
         vec![
@@ -41,7 +41,13 @@ fn the_game_offers_the_shell_and_battle_read_set() {
             CommandName::from_static("battle.sightline"),
             CommandName::from_static("battle.visible"),
             CommandName::from_static("log.read"),
+            CommandName::from_static("battle.start"),
+            CommandName::from_static("battle.flee"),
+            CommandName::from_static("procgen.step"),
+            CommandName::from_static("wait"),
         ],
+        "the published list is part of the wire contract and does not change with the build's \
+         features — only `procgen.step`'s availability code does",
     );
 }
 

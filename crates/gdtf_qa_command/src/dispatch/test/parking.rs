@@ -17,8 +17,8 @@ fn answer_next_releases_the_oldest_waiter_only() {
     let mut parked = DeferredReplies::<FakeSettle>::default();
     let (first_raw, first) = Responder::channel();
     let (second_raw, second) = Responder::channel();
-    parked.park(CommandResponder::new(first_raw));
-    parked.park(CommandResponder::new(second_raw));
+    parked.park(CommandResponder::new(first_raw), ());
+    parked.park(CommandResponder::new(second_raw), ());
     assert_eq!(parked.len(), 2);
 
     assert_eq!(

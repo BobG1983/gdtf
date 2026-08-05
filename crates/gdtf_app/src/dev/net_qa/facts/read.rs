@@ -1,7 +1,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::prelude::BattleInProgress;
 
-use super::{BattleModel, GameFacts};
+use super::{BattleModel, GameFacts, StepperActivity};
 use crate::{
     dev::net_qa::wire::{
         AfterMathPhaseNet, AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet,
@@ -9,6 +9,9 @@ use crate::{
     },
     states::{AfterMathState, AppState, BattleScapeState, GameState, RunningState},
 };
+
+#[cfg(feature = "dev_tools")]
+type StepperMarker<'w> = Option<Res<'w, crate::dev::procgen_stepper::ProcgenStepperActive>>;
 
 crate::support_item! {
     /// Live `State` resources a game command's facts are sampled from.
@@ -20,6 +23,8 @@ crate::support_item! {
         battlescape: Option<Res<'w, State<BattleScapeState>>>,
         aftermath:   Option<Res<'w, State<AfterMathState>>>,
         battle:      Option<Res<'w, BattleInProgress>>,
+        #[cfg(feature = "dev_tools")]
+        stepper:     StepperMarker<'w>,
     }
 }
 
@@ -28,6 +33,14 @@ impl GameFactsParam<'_> {
         /// Read the host's live phase into a facts value.
         #[must_use]
         fn sample(&self) -> GameFacts {
+            #[cfg(feature = "dev_tools")]
+            let stepper = match self.stepper {
+                Some(_) => StepperActivity::Stepping,
+                None => StepperActivity::NotStepping,
+            };
+            #[cfg(not(feature = "dev_tools"))]
+            let stepper = StepperActivity::NotStepping;
+
             GameFacts::new(
                 AppPhaseNet::new(
                     LifecyclePhaseNet::from_state(self.app.get()),
@@ -45,6 +58,7 @@ impl GameFactsParam<'_> {
                         .map(|state| AfterMathPhaseNet::from_state(*state.get())),
                 ),
                 self.battle_model(),
+                stepper,
             )
         }
     }
