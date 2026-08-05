@@ -53,6 +53,7 @@ pub struct FakeEcho;
 impl QaCommand for FakeEcho {
     type Args = FakeEchoArgs;
     type Facts = FakeFacts;
+    type Parked = ();
     type Reply = FakeEchoReply;
 
     const NAME: CommandName = CommandName::from_static("fake.echo");

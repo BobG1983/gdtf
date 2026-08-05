@@ -106,6 +106,7 @@ fails to compile until its mirror gains an arm.
 impl QaCommand for AppPhase {
     type Args = AppPhaseArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = AppPhaseReply;
 
     const NAME: CommandName = CommandName::from_static("app.phase");
@@ -132,6 +133,11 @@ impl QaCommand for AppPhase {
   inside `take_calls`, `Deferred` if it parks its responder and answers on a later frame —
   in `DeferredReplies`, or in a pipeline queue of its own, as `capture.screenshot` parks
   its responder in `CaptureQueue`.
+- **`Parked`** is what a call carries while it waits, and is `()` for every command whose
+  waiters all settle together — an `Immediate` one included. `wait` is the reason it exists:
+  each of its parked calls holds the condition it asked for, so
+  `DeferredReplies::answer_resolved` releases only the ones whose condition has come true and
+  leaves the rest parked.
 - **`availability`** is a PURE function of the frame's facts — no `App`, no queries — so it
   is unit-testable on its own, and the SAME call decides both what the catalogue advertises
   and whether a `Run` is admitted. The two cannot disagree. `app.phase` is always
@@ -186,12 +192,16 @@ frame has nothing to drain.
 Two layers, both cheap:
 
 - **The set.** `assert_game_command_set_is_conformant()` runs the per-host assertions —
-  unique names, parseable shapes, one body per type name, and a deferral budget under the
-  socket's own wait — over the real slice. It is already registered; a new command is
-  covered by it the moment it joins the list.
-- **The command.** Add a file per command under `crates/gdtf_app/tests/net_qa/` —
-  `settings_read.rs`, `ui_focus.rs` and `playback_state.rs` are the pattern — and declare it
-  in that directory's `main.rs`. The shared `exchange` helper takes a fixture, negotiates, and
+  unique names, parseable shapes, one body per type name, and a deferral budget that expires
+  before the socket stops waiting for the reply — over the real slice. It is already
+  registered; a new command is covered by it the moment it joins the list.
+- **The command.** Add a case file per command under `crates/gdtf_app/tests/net_qa/` and declare
+  it in that directory's `main.rs`. One file is the usual shape —
+  [`settings_read.rs`](../../crates/gdtf_app/tests/net_qa/settings_read.rs) and
+  [`battle_start.rs`](../../crates/gdtf_app/tests/net_qa/battle_start.rs) — and a command with
+  several kinds of case gets a directory instead, as `wait` does in
+  [`tests/net_qa/wait`](../../crates/gdtf_app/tests/net_qa/wait).
+  The shared `exchange` helper takes a fixture, negotiates, and
   sends over a real socket into the real router, so a case there exercises the whole path a
   live client drives. Assert on the reply rather than on published shape TEXT: the shape is
   traced from the type, so pinning it re-states the type instead of testing behaviour.
@@ -208,13 +218,18 @@ commands(host="game")                                    # what can I call?
 commands(host="game", command="app.phase", detail="Full") # what does it take?
 run(host="game", command="app.phase", arguments="()")     # do it
 run(host="game", command="capture.screenshot", arguments="(name: Some(\"menu\"))")
+run(host="game", command="battle.start", arguments="(seed: Some(42))")
+run(host="game", command="wait", arguments="(condition: BattleDecided)")
 ```
 
-The game offers five commands today: `app.phase`, `capture.screenshot`, `settings.read`,
-`ui.focus` and `playback.state`. The last three are the shell reads — they take `()`, are
+The game offers nine commands today: `app.phase`, `capture.screenshot`, `settings.read`,
+`ui.focus`, `playback.state`, `battle.start`, `battle.flee`, `procgen.step` and `wait`.
+
+`settings.read`, `ui.focus` and `playback.state` are the shell reads — they take `()`, are
 `Immediate`, and answer before a battle: `settings.read` reports the Options values,
 `ui.focus` reports the focused widget and the widgets the current screen registered as
 focusable, and `playback.state` reports whether the screen has caught up with the act log.
+
 `capture.screenshot` writes a PNG of what the game is showing and answers `Ran` with a
 `ReplyAttachment(Png, …)` naming it; `name` is optional and becomes the file stem inside
 the host's shot directory. It is `Deferred`, so the reply arrives once the PNG is on disk;
@@ -224,6 +239,41 @@ settle, aim check, spawn, verify — lives in `crates/gdtf_screenshot` and is sh
 hosts; the command in
 [`crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs)
 only maps its `CaptureOutcome` onto the wire.
+
+`battle.start` and `battle.flee` are the two ends of a battle, and each takes the same path
+the button does — `battle.start` writes the message the Battlescape button writes, and
+`battle.flee` inserts the same marker the Flee button inserts. Both are `Deferred`.
+`battle.start` needs the Menu; its only argument is the seed, which is optional. Omit it and
+the game resolves its own; either way the reply carries the seed the battle actually used,
+read back from the record generation keeps in
+[`crates/gdtf_app/src/states/running/game/battlescape/generation/battle_sim/resolved.rs`](../../crates/gdtf_app/src/states/running/game/battlescape/generation/battle_sim/resolved.rs).
+The reply arrives once generation has finished, so the app is already in the battle.
+`battle.flee` needs a battle in its running phase and answers once the battle has left it.
+
+`procgen.step` advances staged generation by one stage, writing the same request the stepper
+panel's Next button writes. It is `Immediate` and needs the procgen stepper to own a
+situation that is still generating. The stepper is a `dev_tools` build option: the command is
+published either way, so the command list is the same in every build, but a binary built
+without `dev_tools` refuses it `Unavailable` with code `NotBuilt` rather than dropping the
+name.
+
+`wait` holds its reply until one named condition becomes true, so an agent can stop polling.
+It is `Deferred` with a two-minute budget, and answers `Timeout` — never a refusal — when the
+condition never comes. The channel serves one caller at a time, so a parked `wait` holds it
+until it answers and any other connection meanwhile is told `Busy`. The seven conditions are
+`CaughtUp` (the playback gate is open),
+`Phase` (the live phase matches every level the caller named; levels left out are wildcards,
+so `(condition: Phase((game: Some(BattleScape))))` waits for the battle map whatever the
+battle is doing), `LogAtLeast` (the act log holds at least N entries), `WalkComplete` (nobody
+is part-way through a walk), `TurnChanged` (a turn hand-off after the call was admitted),
+`BattleDecided` (the battle has been decided — by an outcome or by fleeing) and
+`GenerationComplete` (the situation has finished generating). The last two read markers the
+app clears as it leaves the phase that set them, so ask for them while that phase is still
+live: a `BattleDecided` asked once the battle has moved on to the aftermath answers `Timeout`,
+and so does a `GenerationComplete` asked once the battle map is up. A name that is not one of
+those seven fails to deserialize and comes back as `BadArguments` with `wait`'s own argument
+shape attached. The conditions and what each resolves against live in
+[`crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs).
 
 Args, replies and published shapes are all **RON**. `arguments` is a string of compact RON
 shaped by that command's own `schemas.arguments`; a command that takes none is `"()"`. The

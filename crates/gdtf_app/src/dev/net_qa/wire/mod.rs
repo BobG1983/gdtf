@@ -19,6 +19,7 @@ pub mod pointer;
 pub mod shell;
 /// Entity tokens for gangers, doors, and emplacements.
 pub mod token;
+pub(crate) mod wait;
 
 #[cfg(test)]
 mod test;
@@ -29,3 +30,6 @@ crate::support_use!(
         RunningPhaseNet,
     };
 );
+crate::support_use!(wait::{AppPhaseTargetNet, WaitConditionNet};);
+#[cfg(feature = "headless_test")]
+pub use wait::ActCountNet;

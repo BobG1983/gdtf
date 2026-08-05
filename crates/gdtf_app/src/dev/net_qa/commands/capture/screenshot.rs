@@ -37,6 +37,7 @@ pub(crate) struct CaptureScreenshot;
 impl QaCommand for CaptureScreenshot {
     type Args = CaptureScreenshotArgs;
     type Facts = GameFacts;
+    type Parked = ();
     type Reply = CaptureScreenshotReply;
 
     const NAME: CommandName = CommandName::from_static("capture.screenshot");

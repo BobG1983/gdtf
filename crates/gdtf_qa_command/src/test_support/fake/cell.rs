@@ -40,6 +40,7 @@ pub struct FakeCell;
 impl QaCommand for FakeCell {
     type Args = FakeCellArgs;
     type Facts = FakeFacts;
+    type Parked = ();
     type Reply = FakeCellReply;
 
     const NAME: CommandName = CommandName::from_static("fake.cell");

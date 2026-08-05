@@ -26,10 +26,15 @@ const SHOWN_IN_THE_EXAMPLE: &[&str] = &[
 
 const CITED_PATHS: &[&str] = &[
     "crates/gdtf_app/src/dev/net_qa/commands/set.rs",
+    "crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs",
     "crates/gdtf_app/src/dev/net_qa/facts/game_facts.rs",
     "crates/gdtf_app/src/dev/net_qa/wire/phase.rs",
+    "crates/gdtf_app/src/states/running/game/battlescape/generation/battle_sim/resolved.rs",
     "crates/gdtf_app/tests/net_qa/commands.rs",
     "crates/gdtf_app/tests/net_qa/command_set.rs",
+    "crates/gdtf_app/tests/net_qa/settings_read.rs",
+    "crates/gdtf_app/tests/net_qa/battle_start.rs",
+    "crates/gdtf_app/tests/net_qa/wait",
 ];
 
 fn repo_root() -> PathBuf {
