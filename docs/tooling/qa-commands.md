@@ -222,12 +222,14 @@ run(host="game", command="battle.start", arguments="(seed: Some(42))")
 run(host="game", command="wait", arguments="(condition: BattleDecided)")
 ```
 
-The game offers twenty-eight commands today: `app.phase`, `capture.screenshot`,
+The game offers thirty-four commands today: `app.phase`, `capture.screenshot`,
 `settings.read`, `ui.focus`, `playback.state`, `battle.roster`, `battle.turn`,
 `battle.selection`, `battle.offers`, `battle.inspect`, `battle.sightline`, `battle.visible`,
 `log.read`, `battle.start`, `battle.flee`, `procgen.step`, `wait`, `act.select`,
 `act.select_next`, `act.select_prev`, `act.select_clear`, `act.move`, `act.fire`,
-`act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing` and `act.end_turn`.
+`act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing`, `act.end_turn`,
+`input.press_key`, `input.hover`, `input.set_focus`, `input.focus_step`, `input.activate`
+and `input.click_cell`.
 
 `settings.read`, `ui.focus` and `playback.state` are the shell reads — they take `()`, are
 `Immediate`, and answer before a battle: `settings.read` reports the Options values,
@@ -376,6 +378,45 @@ all, so it refuses `MissingModel` naming the absent resource — the same call `
 makes when the act log has not arrived. Without that refusal the reply would be an empty
 window, which is exactly what a shot the sim declined answers, and a caller could not tell
 a real sim decision from a host that was not loaded.
+
+The six `input.*` commands drive the raw input paths, for the screens and the moments where a
+named act is not enough. Each one writes what the real device writes and lets the game decide
+what that means.
+
+`input.press_key` writes the same `KeyboardInput` message `bevy_winit` writes, which
+`keyboard_input_system` folds into `ButtonInput<KeyCode>` in `PreUpdate` — so every consumer
+sees the press on the next frame, keybinds and focus bridge alike. It takes either a physical
+key or a named action; a named action is resolved through the live `Keybinds` resource, so a
+rebind is honoured and the reply names the physical key that was actually pressed. It is the
+one `Deferred` command of the six: the reply is held until the matching release has been
+written, so the caller's next command sees a settled keyboard rather than a key stuck down. A
+named action asked for before the keybind table has loaded is refused `MissingModel`.
+
+`input.hover` moves the pointer to a pixel: the cursor goes into the primary window and a
+`CursorMoved` message goes out, which also takes pointer ownership back from the gamepad. It
+never resolves a cell — projecting a pixel onto a cell belongs to `pick_hovered_cell`, and the
+reply echoes the pixel only. Read the resulting cell with `battle.selection`. A host with no
+primary window refuses `WrongState` naming it.
+
+`input.set_focus`, `input.focus_step` and `input.activate` are the focus bridge. `set_focus`
+puts focus on one widget named by a token from `ui.focus`'s focusable list, and refuses
+`WrongState` for a token the current screen never registered — focus can never land somewhere
+the navigation map cannot leave. `focus_step` writes one navigate request: `Next` and `Prev`
+are the down and up edges, `Left` and `Right` the west and east ones; a step with no neighbour
+that way is swallowed exactly as the real one is, so compare the focus the reply reports
+against the focus before the call. `activate` writes the activation message Enter and the
+gamepad's south button write, always on whatever holds focus and never on a caller-named
+target, and refuses `WrongState` when nothing is focused. All three run in the same frame band
+the real keyboard bridge runs in, so the screen has acted by the time the reply lands.
+
+`input.click_cell` is the left click. It makes the named cell the hovered inspect target and
+then runs the game's own decide-then-apply pair — `decide_left_click`, `decide_pin`,
+`apply_left_click`, `apply_pin` — so one click may select a ganger, pin a move target, confirm
+the move or fire, and the decision is the game's rather than the caller's. It is not a side
+door into the sim: an act it decides goes onto the same `PendingActIntent` bus every act does
+— a click that only selects a ganger or pins a target pushes nothing — it answers the same
+`ActReply` window, and it needs the same `Running` plus `Caught` state the eleven `act.*`
+commands need.
 
 Args, replies and published shapes are all **RON**. `arguments` is a string of compact RON
 shaped by that command's own `schemas.arguments`; a command that takes none is `"()"`. The

@@ -1,5 +1,6 @@
 //! Keyboard and focus step keys on the wire.
 
+use gdtf_battle_input::{BoundKey, Keybinds};
 use serde::{Deserialize, Serialize};
 
 /// Physical key on the wire.
@@ -47,6 +48,8 @@ pub enum KeyNet {
     Digit8,
     /// Digit 9.
     Digit9,
+    /// Enter.
+    Enter,
     /// Up arrow.
     ArrowUp,
     /// Down arrow.
@@ -55,6 +58,74 @@ pub enum KeyNet {
     ArrowLeft,
     /// Right arrow.
     ArrowRight,
+}
+
+impl KeyNet {
+    /// The keybind vocabulary's name for this key.
+    #[must_use]
+    pub const fn bound(self) -> BoundKey {
+        match self {
+            Self::Escape => BoundKey::KeyEscape,
+            Self::KeyQ => BoundKey::KeyQ,
+            Self::KeyE => BoundKey::KeyE,
+            Self::KeyC => BoundKey::KeyC,
+            Self::KeyF => BoundKey::KeyF,
+            Self::KeyR => BoundKey::KeyR,
+            Self::KeyV => BoundKey::KeyV,
+            Self::Tab => BoundKey::KeyTab,
+            Self::PageUp => BoundKey::KeyPageUp,
+            Self::PageDown => BoundKey::KeyPageDown,
+            Self::BracketLeft => BoundKey::KeyBracketLeft,
+            Self::BracketRight => BoundKey::KeyBracketRight,
+            Self::Digit1 => BoundKey::KeyDigit1,
+            Self::Digit2 => BoundKey::KeyDigit2,
+            Self::Digit3 => BoundKey::KeyDigit3,
+            Self::Digit4 => BoundKey::KeyDigit4,
+            Self::Digit5 => BoundKey::KeyDigit5,
+            Self::Digit6 => BoundKey::KeyDigit6,
+            Self::Digit7 => BoundKey::KeyDigit7,
+            Self::Digit8 => BoundKey::KeyDigit8,
+            Self::Digit9 => BoundKey::KeyDigit9,
+            Self::Enter => BoundKey::KeyEnter,
+            Self::ArrowUp => BoundKey::KeyArrowUp,
+            Self::ArrowDown => BoundKey::KeyArrowDown,
+            Self::ArrowLeft => BoundKey::KeyArrowLeft,
+            Self::ArrowRight => BoundKey::KeyArrowRight,
+        }
+    }
+
+    /// The wire's name for a key the keybind table holds.
+    #[must_use]
+    pub const fn from_bound(key: BoundKey) -> Self {
+        match key {
+            BoundKey::KeyEscape => Self::Escape,
+            BoundKey::KeyQ => Self::KeyQ,
+            BoundKey::KeyE => Self::KeyE,
+            BoundKey::KeyC => Self::KeyC,
+            BoundKey::KeyF => Self::KeyF,
+            BoundKey::KeyR => Self::KeyR,
+            BoundKey::KeyV => Self::KeyV,
+            BoundKey::KeyTab => Self::Tab,
+            BoundKey::KeyPageUp => Self::PageUp,
+            BoundKey::KeyPageDown => Self::PageDown,
+            BoundKey::KeyBracketLeft => Self::BracketLeft,
+            BoundKey::KeyBracketRight => Self::BracketRight,
+            BoundKey::KeyDigit1 => Self::Digit1,
+            BoundKey::KeyDigit2 => Self::Digit2,
+            BoundKey::KeyDigit3 => Self::Digit3,
+            BoundKey::KeyDigit4 => Self::Digit4,
+            BoundKey::KeyDigit5 => Self::Digit5,
+            BoundKey::KeyDigit6 => Self::Digit6,
+            BoundKey::KeyDigit7 => Self::Digit7,
+            BoundKey::KeyDigit8 => Self::Digit8,
+            BoundKey::KeyDigit9 => Self::Digit9,
+            BoundKey::KeyEnter => Self::Enter,
+            BoundKey::KeyArrowUp => Self::ArrowUp,
+            BoundKey::KeyArrowDown => Self::ArrowDown,
+            BoundKey::KeyArrowLeft => Self::ArrowLeft,
+            BoundKey::KeyArrowRight => Self::ArrowRight,
+        }
+    }
 }
 
 /// Named keybind action on the wire.
@@ -78,6 +149,24 @@ pub enum KeybindActionNet {
     SelectNext,
     /// Select previous ganger.
     SelectPrev,
+}
+
+impl KeybindActionNet {
+    /// The key this action is bound to in the live keybind table.
+    #[must_use]
+    pub const fn bound(self, keybinds: &Keybinds) -> BoundKey {
+        match self {
+            Self::SelectClear => keybinds.select_clear,
+            Self::LevelUp => keybinds.level_up,
+            Self::LevelDown => keybinds.level_down,
+            Self::ToggleFullView => keybinds.toggle_full_view,
+            Self::StanceCycle => keybinds.stance_cycle,
+            Self::AimToggle => keybinds.aim_toggle,
+            Self::FacingCycle => keybinds.facing_cycle,
+            Self::SelectNext => keybinds.select_next,
+            Self::SelectPrev => keybinds.select_prev,
+        }
+    }
 }
 
 /// Either a physical key or a named keybind action.

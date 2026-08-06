@@ -28,7 +28,10 @@ pub(crate) struct ActTicket {
 
 impl ActTicket {
     /// Park with the log head at claim time and the actor whose walk to watch.
-    pub(super) const fn new(from: ActSeqNet, actor: Option<Entity>) -> Self {
+    pub(in crate::dev::net_qa::commands) const fn new(
+        from: ActSeqNet,
+        actor: Option<Entity>,
+    ) -> Self {
         Self { from, actor }
     }
 }
@@ -60,14 +63,18 @@ impl ActClaim<'_> {
 
 /// What an act command reads once the sim has recorded the frame.
 #[derive(SystemParam)]
-pub(super) struct ActSettle<'w, 's> {
+pub(in crate::dev::net_qa::commands) struct ActSettle<'w, 's> {
     log:     Option<Res<'w, ActLog>>,
     walking: Query<'w, 's, (), With<WalkInProgress>>,
 }
 
 impl ActSettle<'_, '_> {
     /// The window one parked call opened, closed at this frame's log head.
-    pub(super) fn window(&self, from_seq: ActSeqNet, actor: Option<Entity>) -> ActReply {
+    pub(in crate::dev::net_qa::commands) fn window(
+        &self,
+        from_seq: ActSeqNet,
+        actor: Option<Entity>,
+    ) -> ActReply {
         ActReply::Accepted {
             from_seq,
             to_seq: head_of(self.log.as_deref()),
@@ -79,8 +86,10 @@ impl ActSettle<'_, '_> {
 }
 
 /// Answer every act call parked this frame with the window the sim just closed.
-pub(super) fn settle_acts<C>(settle: &ActSettle, deferred: &mut DeferredReplies<C>)
-where
+pub(in crate::dev::net_qa::commands) fn settle_acts<C>(
+    settle: &ActSettle,
+    deferred: &mut DeferredReplies<C>,
+) where
     C: QaCommand<Parked = ActTicket, Reply = ActReply>,
 {
     if deferred.is_empty() {
@@ -132,6 +141,7 @@ pub(super) fn a_ganger(
     life.is_none_or(|life| *life.is_active()).then_some(entity)
 }
 
-fn head_of(log: Option<&ActLog>) -> ActSeqNet {
+/// The act-log head, or zero on a host with no log yet.
+pub(in crate::dev::net_qa::commands) fn head_of(log: Option<&ActLog>) -> ActSeqNet {
     ActSeqNet::new(log.map_or(0, |log| *log.head()))
 }

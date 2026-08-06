@@ -7,6 +7,9 @@ use super::{
         ActSelectPrev, ActSetAiming, ActSetFacing, ActSetStance,
     },
     capture::CaptureScreenshot,
+    input::{
+        InputActivate, InputClickCell, InputFocusStep, InputHover, InputPressKey, InputSetFocus,
+    },
     lifecycle::{BattleFlee, BattleStart},
     procgen::ProcgenStep,
     read::{
@@ -46,6 +49,12 @@ pub(in crate::dev::net_qa) const GAME_COMMANDS: &[&dyn ErasedCommand<GameFacts>]
     &ActSetAiming,
     &ActSetFacing,
     &ActEndTurn,
+    &InputPressKey,
+    &InputHover,
+    &InputSetFocus,
+    &InputFocusStep,
+    &InputActivate,
+    &InputClickCell,
 ];
 
 #[must_use]
