@@ -24,13 +24,16 @@ use gdtf_net_qa_transport::NetQaPort;
 
 use super::{
     expected::{
-        ExpectedEnemy, ExpectedFireMode, ExpectedTurn, FLOODED_LOG_LINES, LOG_LINES_WRITTEN,
-        LitCover, LiveCard, LoggedActor, PosedShooter, SpawnedDoor, Standing,
+        ExpectedEnemy, ExpectedFireMode, ExpectedTurn, FLOODED_LOG_LINES, IdlePair,
+        LOG_LINES_WRITTEN, LitCover, LiveCard, LoggedActor, PosedShooter, SpawnedDoor, Standing,
     },
-    map::{a_free_open_cell, a_lit_cover_cell, settle},
+    map::{a_free_open_cell, a_free_open_cell_beside, a_lit_cover_cell, settle},
 };
 use crate::{
-    battle_reads::{a_player_ganger, an_enemy_faction, an_enemy_ganger, an_enemy_ganger_at},
+    battle_reads::{
+        a_player_ganger, an_enemy_faction, an_enemy_ganger, an_enemy_ganger_at,
+        an_unselected_player_ganger, cell_of,
+    },
     socket_support::{TestError, battle_app_listening},
 };
 
@@ -66,6 +69,42 @@ pub(super) fn stand_at(
         DrawnPosition::seeded(Position::new(drawn)),
     ));
     Ok(())
+}
+
+/// A live battle with a living enemy stood beside a player ganger the game has not selected.
+pub(crate) fn battle_with_an_enemy_beside_an_idle_ganger()
+-> Result<(App, NetQaPort, IdlePair), TestError> {
+    let (mut app, port) = battle_app_listening()?;
+    settle(&mut app);
+    let Some(shooter) = an_unselected_player_ganger(&app) else {
+        return Err("a generated battle must field a player ganger the game has not picked".into());
+    };
+    let Some(at) = cell_of(&app, shooter) else {
+        return Err("the ganger the world just answered with must be standing somewhere".into());
+    };
+    let Some(enemy) = an_enemy_ganger(&app) else {
+        return Err("a generated battle must field at least one living enemy".into());
+    };
+    let away_from: Vec<CellLevel> = selected_cell(&app).into_iter().collect();
+    let Some(next_to) = a_free_open_cell_beside(&app, at.to_sim(), &away_from) else {
+        return Err(
+            "the generated map must offer a free open cell beside the idle ganger, out \
+                    of reach of the ganger the game selected"
+                .into(),
+        );
+    };
+    stand_at(&mut app, enemy, next_to, next_to)?;
+    settle(&mut app);
+    Ok((app, port, IdlePair { shooter, enemy }))
+}
+
+/// The cell the ganger the game selected for itself is standing on.
+fn selected_cell(app: &App) -> Option<CellLevel> {
+    let selected = app
+        .world()
+        .get_resource::<SelectedShooter>()
+        .and_then(|shooter| **shooter)?;
+    cell_of(app, selected).map(CellLevelNet::to_sim)
 }
 
 /// A live battle, reporting the first living enemy and where it is deployed.
