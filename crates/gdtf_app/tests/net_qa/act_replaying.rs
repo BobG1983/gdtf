@@ -1,10 +1,10 @@
 //! A live app whose screen is behind the act log refuses every act with `Replaying`.
 
 use bevy::app::App;
-use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
     command::{CommandOutcome, RunOptions, UnavailableCode},
     message::QaResponse,
+    ports::NetQaPort,
 };
 
 use super::{

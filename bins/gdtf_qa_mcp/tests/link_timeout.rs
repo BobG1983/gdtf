@@ -1,7 +1,7 @@
 //! The link must wait longer than the host it is talking to.
 
-use gdtf_net_qa_transport::DEFAULT_REPLY_TIMEOUT;
 use gdtf_qa_mcp::link::LINK_TIMEOUT;
+use gdtf_qa_protocol::timeouts::DEFAULT_REPLY_TIMEOUT;
 
 #[test]
 fn the_link_outwaits_the_hosts_own_reply_wait() {

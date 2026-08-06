@@ -1,26 +1,14 @@
-//! Port and timeout types for the net QA transport.
+//! Timeouts both ends of the net QA wire agree on.
 
 use core::time::Duration;
 
-use bevy::prelude::Deref;
+use bevy_derive::Deref;
 
 /// Default read/write timeout for net QA sockets.
 pub const DEFAULT_IO_TIMEOUT: NetIoTimeout = NetIoTimeout::new(Duration::from_secs(5));
 
 /// Default limit on how long a host may take to answer a forwarded request.
 pub const DEFAULT_REPLY_TIMEOUT: NetReplyTimeout = NetReplyTimeout::new(Duration::from_secs(180));
-
-/// TCP port used by a net QA listener or client.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct NetQaPort(u16);
-
-impl NetQaPort {
-    /// Wrap a port number.
-    #[must_use]
-    pub const fn new(port: u16) -> Self {
-        Self(port)
-    }
-}
 
 /// Socket read/write timeout, which bounds how long an idle client holds the channel.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]

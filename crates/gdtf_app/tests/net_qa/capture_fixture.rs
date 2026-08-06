@@ -10,7 +10,7 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_app::test_support::{self, AppState, NetQaPlugin, RunningState};
-use gdtf_net_qa_transport::NetQaPort;
+use gdtf_qa_protocol::ports::NetQaPort;
 use gdtf_screenshot::{CaptureSystems, PollCap, SettleFrames, ShotDir};
 use gdtf_test_utils::advance_until;
 

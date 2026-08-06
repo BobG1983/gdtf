@@ -9,10 +9,10 @@ use gdtf_app::{
     qa_wire::shell::SoundNet,
     test_support::{RunningState, SoundToggle, SoundValueLabel},
 };
-use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
     command::{CommandOutcome, RunOptions},
     message::QaResponse,
+    ports::NetQaPort,
 };
 use gdtf_test_utils::advance_until;
 use serde::Deserialize;

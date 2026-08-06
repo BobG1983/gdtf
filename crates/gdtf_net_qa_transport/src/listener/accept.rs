@@ -12,10 +12,11 @@ use std::{
 use gdtf_qa_protocol::{
     framing::encode,
     message::{HelloFacts, QaError, QaResponse},
+    timeouts::NetTimeouts,
 };
 
 use super::serve::handle_client;
-use crate::{channel::IncomingRequest, config::NetTimeouts};
+use crate::channel::IncomingRequest;
 
 /// its wiring on `cfg(debug_assertions)` and an env var) whose
 pub fn run_listener(

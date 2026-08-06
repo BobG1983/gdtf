@@ -1,4 +1,4 @@
-use gdtf_net_qa_transport::DEFAULT_REPLY_TIMEOUT;
+use gdtf_qa_protocol::timeouts::DEFAULT_REPLY_TIMEOUT;
 
 use crate::dispatch::DEFERRED_BUDGET;
 

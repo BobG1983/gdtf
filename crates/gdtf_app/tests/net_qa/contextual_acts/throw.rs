@@ -2,8 +2,7 @@
 
 use bevy::app::App;
 use gdtf_app::qa_wire::act::ActRefusalNet;
-use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::command::RunOptions;
+use gdtf_qa_protocol::{command::RunOptions, ports::NetQaPort};
 
 use super::{
     super::{
