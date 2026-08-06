@@ -24,7 +24,7 @@ fn the_game_command_set_is_conformant() {
 }
 
 #[test]
-fn the_game_offers_the_reads_the_lifecycle_commands_and_the_classic_acts() {
+fn the_game_offers_the_reads_the_lifecycle_commands_the_classic_acts_and_raw_input() {
     assert_eq!(
         game_command_names(),
         vec![
@@ -56,6 +56,12 @@ fn the_game_offers_the_reads_the_lifecycle_commands_and_the_classic_acts() {
             CommandName::from_static("act.set_aiming"),
             CommandName::from_static("act.set_facing"),
             CommandName::from_static("act.end_turn"),
+            CommandName::from_static("input.press_key"),
+            CommandName::from_static("input.hover"),
+            CommandName::from_static("input.set_focus"),
+            CommandName::from_static("input.focus_step"),
+            CommandName::from_static("input.activate"),
+            CommandName::from_static("input.click_cell"),
         ],
         "the published list is part of the wire contract and does not change with the build's \
          features — only `procgen.step`'s availability code does",

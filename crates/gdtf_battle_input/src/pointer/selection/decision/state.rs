@@ -17,3 +17,16 @@ pub struct PointerSelection<'w> {
     /// Cell the move path preview is pinned to.
     pub(in crate::pointer) move_target: ResMut<'w, PathPreviewTarget>,
 }
+
+impl PointerSelection<'_> {
+    /// The hovered and pinned inspect target a click decision reads.
+    #[must_use]
+    pub fn inspect(&self) -> &InspectTarget {
+        &self.inspect
+    }
+
+    /// The inspect target, for a caller that sets the hover before deciding.
+    pub fn inspect_mut(&mut self) -> &mut InspectTarget {
+        &mut self.inspect
+    }
+}

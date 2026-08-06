@@ -263,7 +263,7 @@ Notes an agent relies on:
   the command has run). Neither is built yet: a call carrying either comes back
   `Unavailable { code: NotBuilt }` rather than running the command with the rider
   silently dropped.
-- **What the channel answers today.** The GAME host publishes twenty-eight commands.
+- **What the channel answers today.** The GAME host publishes thirty-four commands.
   `app.phase` reports where the app is at every level of its state machine.
   `capture.screenshot` writes a PNG of what the game is showing and attaches it
   to the reply. Three shell reads answer before a battle: `settings.read` (the
@@ -288,8 +288,14 @@ Notes an agent relies on:
   `act.select` before every act: the game re-selects the first living player
   ganger as soon as nothing is selected, so `act.select_clear` is undone on the
   next frame and an act after a clear runs through whoever the game re-picked.
-  The
-  EDITOR host publishes none yet and answers every
+  Six `input.*` commands drive the raw input paths for the screens and the
+  moments a named act cannot reach: `input.press_key` writes the same keyboard
+  message winit writes and resolves a named action through the live keybind
+  table, `input.hover` moves the pointer to a pixel and leaves the pixel-to-cell
+  projection to the picking system, `input.set_focus`, `input.focus_step` and
+  `input.activate` are the focus bridge the menu and the Options screen are
+  driven with, and `input.click_cell` takes the game's own left-click decision
+  on a cell. The EDITOR host publishes none yet and answers every
   `run` `Unknown`. That is the expected state mid-epic, not a regression: the
   surface that used to sit here was deleted before the commands that replace it
   were written, so any gap is a compile error rather than a silent fallback.
@@ -391,7 +397,7 @@ against the shipped five-tool surface:
 5. `logs` — if a step surprised you, read what the child printed.
 6. `stop` — stop the child and release the port.
 
-On the game host today step 4 is one of twenty-eight. `run { command: "app.phase",
+On the game host today step 4 is one of thirty-four. `run { command: "app.phase",
 arguments: "()" }` answers the five-level state tuple (`app`, `running`, `game`,
 `battlescape`, `aftermath`, the nested four `None` where they are not live).
 `run { command: "capture.screenshot", arguments: "(name: Some(\"menu\"))" }`

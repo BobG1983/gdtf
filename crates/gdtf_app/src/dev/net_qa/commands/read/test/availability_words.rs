@@ -42,6 +42,12 @@ const NOT_BATTLE_READS: &[&str] = &[
     "act.set_aiming",
     "act.set_facing",
     "act.end_turn",
+    "input.press_key",
+    "input.hover",
+    "input.set_focus",
+    "input.focus_step",
+    "input.activate",
+    "input.click_cell",
 ];
 
 fn on_the_battle_screen(battlescape: BattleScapePhaseNet, model: BattleModel) -> GameFacts {

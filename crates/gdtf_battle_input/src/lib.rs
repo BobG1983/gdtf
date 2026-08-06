@@ -31,7 +31,7 @@ pub use act_bus::{
     sets,
     sets::InputSystems,
 };
-pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin};
+pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin, battle_act_gate};
 pub use pointer::{
     fire_mode,
     fire_mode::{SelectedFireMode, sync_fire_mode_on_select},
