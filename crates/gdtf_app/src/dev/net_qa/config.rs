@@ -1,9 +1,8 @@
 //! Game net QA identity and hello facts.
 
-use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
     message::{HelloFacts, ProtocolVersion, ServerNameNet},
-    ports::GAME_QA_PORT,
+    ports::{GAME_QA_PORT, NetQaPort},
 };
 
 crate::support_item! {

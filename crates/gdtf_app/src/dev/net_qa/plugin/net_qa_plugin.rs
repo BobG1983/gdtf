@@ -3,9 +3,8 @@
 use std::{net::TcpListener, sync::mpsc, thread};
 
 use bevy::prelude::*;
-use gdtf_net_qa_transport::{
-    IncomingRequest, NetInbox, NetQaPort, NetTimeouts, bind_listener, run_listener,
-};
+use gdtf_net_qa_transport::{IncomingRequest, NetInbox, bind_listener, run_listener};
+use gdtf_qa_protocol::{ports::NetQaPort, timeouts::NetTimeouts};
 
 use super::{
     register_consumers::register_consumers, register_present::register_present,

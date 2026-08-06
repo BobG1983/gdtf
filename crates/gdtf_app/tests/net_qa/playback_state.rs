@@ -2,10 +2,10 @@ use bevy::app::App;
 use gdtf_app::qa_wire::shell::CaughtUpNet;
 use gdtf_battle_presenter::playback::{ActHold, PlaybackCursor};
 use gdtf_battle_sim::act_log::ActLog;
-use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
     command::{CommandOutcome, RunOptions},
     message::QaResponse,
+    ports::NetQaPort,
 };
 use serde::Deserialize;
 

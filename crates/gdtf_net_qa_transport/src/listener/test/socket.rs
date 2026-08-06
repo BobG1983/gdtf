@@ -10,11 +10,12 @@ use std::{
 use gdtf_qa_protocol::{
     framing::{FrameDecoder, encode},
     message::{HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet},
+    ports::NetQaPort,
+    timeouts::{NetIoTimeout, NetReplyTimeout, NetTimeouts},
 };
 
 use crate::{
     channel::IncomingRequest,
-    config::{NetIoTimeout, NetQaPort, NetReplyTimeout, NetTimeouts},
     listener::{bind_listener, run_listener},
 };
 

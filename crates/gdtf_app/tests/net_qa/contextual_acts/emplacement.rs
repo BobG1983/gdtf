@@ -9,8 +9,7 @@ use gdtf_battle_sim::{
     ganger::Position,
     prelude::CellLevel,
 };
-use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::command::RunOptions;
+use gdtf_qa_protocol::{command::RunOptions, ports::NetQaPort};
 use gdtf_test_utils::advance_until;
 
 use super::{

@@ -8,10 +8,10 @@ use gdtf_app::qa_wire::{
     roster::GangerCardNet,
     token::GangerToken,
 };
-use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
     command::RunOptions,
     message::{QaRequest, QaResponse},
+    ports::NetQaPort,
 };
 use serde::Deserialize;
 

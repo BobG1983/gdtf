@@ -1,7 +1,6 @@
 //! Game command set conformance checks for tests.
 
-use gdtf_net_qa_transport::DEFAULT_REPLY_TIMEOUT;
-use gdtf_qa_protocol::command::CommandName;
+use gdtf_qa_protocol::{command::CommandName, timeouts::DEFAULT_REPLY_TIMEOUT};
 
 use super::set::GAME_COMMANDS;
 

@@ -6,8 +6,7 @@ use gdtf_app::qa_wire::{
     token::GangerToken,
 };
 use gdtf_battle_input::InspectTarget;
-use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::{command::RunOptions, message::QaResponse};
+use gdtf_qa_protocol::{command::RunOptions, message::QaResponse, ports::NetQaPort};
 use serde::Deserialize;
 
 use super::{
