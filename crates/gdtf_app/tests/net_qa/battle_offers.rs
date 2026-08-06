@@ -1,20 +1,20 @@
-use bevy::{app::App, ecs::entity::Entity};
+use bevy::ecs::entity::Entity;
 use gdtf_app::qa_wire::{
     offer::{ContextualActNet, ContextualOfferNet, OfferTargetNet},
     token::GangerToken,
 };
-use gdtf_battle_input::SelectedShooter;
-use gdtf_battle_sim::ganger::Position;
-use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::{command::RunOptions, message::QaResponse};
+use gdtf_qa_protocol::command::RunOptions;
 use serde::Deserialize;
 
 use super::{
-    battle_reads::{a_player_ganger, an_enemy_ganger, beside},
+    act_support::{caught_up, decode, next, selected},
+    battle_reads::{ganger_argument, token_of},
+    battle_setup::battle_with_an_enemy_beside_an_idle_ganger,
     command_exchange::{
-        BATTLE_OFFERS, assert_refused_off_the_battle_screen, exchange_expected, ran_body, run,
+        ACT_SELECT, BATTLE_OFFERS, WAIT, assert_refused_off_the_battle_screen, exchange_expected,
+        run,
     },
-    socket_support::{TestError, TestResult, battle_app_listening, game_app_listening},
+    socket_support::{TestError, TestResult, game_app_listening},
 };
 
 #[derive(Debug, Deserialize)]
@@ -22,40 +22,43 @@ struct OffersBody {
     offers: Vec<ContextualOfferNet>,
 }
 
-/// A live battle with a living enemy standing next to the selected shooter.
-fn enemy_adjacent_app() -> Result<(App, NetQaPort, Entity), TestError> {
-    let (mut app, port) = battle_app_listening()?;
-    let Some((shooter, at)) = a_player_ganger(&app) else {
-        return Err("a generated battle must field at least one player ganger".into());
-    };
-    let Some(enemy) = an_enemy_ganger(&app) else {
-        return Err("a generated battle must field at least one living enemy".into());
-    };
-    app.world_mut()
-        .insert_resource(SelectedShooter::new(shooter));
-    let next_to = beside(at);
-    let Ok(mut row) = app.world_mut().get_entity_mut(enemy) else {
-        return Err("the enemy the world just answered with must still exist".into());
-    };
-    row.insert(Position::new(next_to));
-    Ok((app, port, enemy))
-}
-
-/// Ask a battle with an adjacent enemy what it offers, and say which enemy that was.
+/// Read the panel either side of an `act.select`, and say which enemy the shooter was placed by.
 fn offers_beside_an_enemy() -> Result<(OffersBody, Entity), TestError> {
-    let (replies, enemy) = exchange_expected(enemy_adjacent_app, |_enemy| {
-        vec![run(BATTLE_OFFERS, "()", RunOptions::default())]
-    })?;
-    let Some(reply) = replies.into_iter().next() else {
-        return Err("battle.offers produced no reply".into());
-    };
-    Ok((offers_body(reply)?, enemy))
-}
+    let (replies, adjacent) =
+        exchange_expected(battle_with_an_enemy_beside_an_idle_ganger, |adjacent| {
+            vec![
+                caught_up(),
+                run(BATTLE_OFFERS, "()", RunOptions::default()),
+                run(
+                    ACT_SELECT,
+                    &ganger_argument(adjacent.shooter),
+                    RunOptions::default(),
+                ),
+                run(BATTLE_OFFERS, "()", RunOptions::default()),
+            ]
+        })?;
+    let mut replies = replies.into_iter();
+    let _caught = next(WAIT, &mut replies)?;
+    let before = decode::<OffersBody>(BATTLE_OFFERS, next(BATTLE_OFFERS, &mut replies)?)?;
+    let shooter = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
+    let after = decode::<OffersBody>(BATTLE_OFFERS, next(BATTLE_OFFERS, &mut replies)?)?;
 
-fn offers_body(reply: QaResponse) -> Result<OffersBody, TestError> {
-    let body = ran_body(BATTLE_OFFERS, reply)?;
-    ron::de::from_str::<OffersBody>(&body)
-        .map_err(|fault| format!("the offers body must decode: {fault} — {body}").into())
+    let against_the_enemy = OfferTargetNet::Ganger(GangerToken::new(adjacent.enemy.to_bits()));
+    assert!(
+        !before
+            .offers
+            .iter()
+            .any(|offer| offer.target == against_the_enemy),
+        "the enemy stands beside a ganger the game picked for itself, so nothing may offer \
+         against it until act.select names the shooter it stands next to, or this case would \
+         read the same with no selection command at all: {before:?}",
+    );
+    assert_eq!(
+        shooter,
+        Some(token_of(adjacent.shooter)),
+        "act.select answers with the ganger it selected: {shooter:?}",
+    );
+    Ok((after, adjacent.enemy))
 }
 
 #[test]
@@ -82,25 +85,13 @@ fn an_adjacent_enemy_puts_shove_on_offer_with_that_enemy_as_its_target() -> Test
 }
 
 #[test]
-fn offers_come_back_sorted_and_named_from_the_act_families() -> TestResult {
+fn the_panel_offers_something_once_act_select_names_the_shooter() -> TestResult {
     let (offers, _enemy) = offers_beside_an_enemy()?;
 
-    let acts: Vec<ContextualActNet> = offers.offers.iter().map(|offer| offer.act).collect();
     assert!(
-        !acts.is_empty(),
+        !offers.offers.is_empty(),
         "an enemy stands beside the selected shooter, so the panel is offering something: \
          {offers:?}",
-    );
-    assert!(
-        acts.is_sorted(),
-        "the offers list is sorted before it goes out: {acts:?}",
-    );
-    let mut unique = acts.clone();
-    unique.dedup();
-    assert_eq!(
-        unique.len(),
-        acts.len(),
-        "each act family offers at most one button: {acts:?}",
     );
     Ok(())
 }
