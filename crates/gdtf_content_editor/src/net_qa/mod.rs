@@ -1,7 +1,6 @@
 //! Editor net-QA host wiring (debug + `net_qa` feature).
 mod config;
 mod plugin;
-mod present;
 mod router;
 mod schedule;
 

@@ -13,9 +13,6 @@ pub const EDITOR_QA_SERVER_NAME: &str = "gdtf-editor-net-qa";
 
 pub(super) const DEFAULT_EDITOR_PORT: NetQaPort = NetQaPort::new(EDITOR_QA_PORT);
 
-/// Directory the editor's QA captures are written to.
-pub(super) const EDITOR_QA_SHOT_DIR: &str = "target/editor_qa_screenshots";
-
 #[must_use]
 pub(super) fn editor_hello_facts() -> HelloFacts {
     HelloFacts::new(

@@ -7,7 +7,7 @@ use super::{
     dir::{ShotDir, ShotSequence, next_capture_path},
     frames::{FrameTick, FramesLeft},
     outcome::CaptureOutcome,
-    queue::{CaptureCompletions, CaptureDestination, CaptureQueue, CaptureStage, InFlightCapture},
+    queue::{CaptureCompletions, CaptureQueue, CaptureStage, InFlightCapture},
     source::CaptureSource,
     spawn::{ensure_dir, spawn_capture},
     verify::{ShotFile, inspect_shot},
@@ -40,12 +40,7 @@ fn claim_requests<P: Send + Sync + 'static>(
     sequence: &mut ShotSequence,
 ) {
     for request in queue.take_queued() {
-        let path = match request.destination {
-            CaptureDestination::Stem(stem) => {
-                next_capture_path(&tunables.dir, stem.as_ref(), sequence)
-            }
-            CaptureDestination::Exact(path) => path,
-        };
+        let path = next_capture_path(&tunables.dir, request.stem.as_ref(), sequence);
         ensure_dir(&path);
         queue.keep(InFlightCapture {
             path,

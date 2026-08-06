@@ -7,14 +7,9 @@ use bevy::prelude::*;
 use super::{frames::FramesLeft, outcome::CaptureOutcome, stem::ShotStem};
 use crate::path::CapturePath;
 
-pub(super) enum CaptureDestination {
-    Stem(Option<ShotStem>),
-    Exact(CapturePath),
-}
-
 pub(super) struct CaptureRequest<P> {
-    pub(super) destination: CaptureDestination,
-    pub(super) payload:     P,
+    pub(super) stem:    Option<ShotStem>,
+    pub(super) payload: P,
 }
 
 pub(super) enum CaptureStage {
@@ -47,18 +42,7 @@ impl<P: Send + Sync + 'static> Default for CaptureQueue<P> {
 impl<P: Send + Sync + 'static> CaptureQueue<P> {
     /// Queue a capture that lands under the shot directory under `stem`.
     pub fn push(&mut self, stem: Option<ShotStem>, payload: P) {
-        self.queued.push_back(CaptureRequest {
-            destination: CaptureDestination::Stem(stem),
-            payload,
-        });
-    }
-
-    /// Queue a capture that lands at exactly `path`.
-    pub fn push_to(&mut self, path: CapturePath, payload: P) {
-        self.queued.push_back(CaptureRequest {
-            destination: CaptureDestination::Exact(path),
-            payload,
-        });
+        self.queued.push_back(CaptureRequest { stem, payload });
     }
 
     /// Whether nothing is queued and nothing is in flight.
