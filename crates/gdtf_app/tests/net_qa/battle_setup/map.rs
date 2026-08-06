@@ -4,6 +4,8 @@ use bevy::app::App;
 use gdtf_app::qa_wire::cell::CellLevelNet;
 use gdtf_battle_presenter::ShownSquadVisibility;
 use gdtf_battle_sim::{
+    acts::downed::is_8_adjacent,
+    ganger::Position,
     occupancy::TerrainKind,
     prelude::{CellLevel, OccupancyGrid},
     visibility::SquadVisibility,
@@ -11,7 +13,7 @@ use gdtf_battle_sim::{
 
 use super::expected::Standing;
 
-/// Frames a fixture runs before it writes, so a start-of-battle system cannot undo the write.
+/// Frames a fixture runs to let the app's own systems finish, either side of its write.
 const SETTLE_FRAMES: u8 = 8;
 
 /// The fog the screen is drawing, which every battle read answers from.
@@ -60,7 +62,24 @@ pub(super) fn a_free_open_cell(app: &App, standing: Standing) -> Option<CellLeve
     })
 }
 
-/// Run the app far enough that start-of-battle systems have finished writing.
+/// The first empty floor cell 8-adjacent to `beside` and 8-adjacent to nothing in `clear_of`.
+pub(super) fn a_free_open_cell_beside(
+    app: &App,
+    beside: CellLevel,
+    clear_of: &[CellLevel],
+) -> Option<CellLevel> {
+    let grid = app.world().get_resource::<OccupancyGrid>()?;
+    map_cells(grid).into_iter().find(|at| {
+        *is_8_adjacent(Position::new(beside), Position::new(*at))
+            && clear_of
+                .iter()
+                .all(|away| !*is_8_adjacent(Position::new(*away), Position::new(*at)))
+            && grid.occupant(at).is_none()
+            && matches!(grid.terrain(at), TerrainKind::Open)
+    })
+}
+
+/// Run the app far enough that the systems writing around this point have finished.
 pub(super) fn settle(app: &mut App) {
     for _ in 0..SETTLE_FRAMES {
         app.update();

@@ -128,7 +128,11 @@ fn the_selection_reports_the_pin_the_inspect_target_holds() -> TestResult {
     );
     assert_eq!(
         selection.hovered, None,
-        "pinning does not invent a hover cell: {selection:?}",
+        "pinning does not invent a hover cell, and this harness builds with \
+         `primary_window: None`, so `pick_hovered_cell` has no cursor to project and resolves \
+         `None` every frame — the windowed game answers a cell here after `input.hover`, and \
+         that projection is pinned in `crates/gdtf_battle_input/tests/picking/resolve.rs`: \
+         {selection:?}",
     );
     Ok(())
 }

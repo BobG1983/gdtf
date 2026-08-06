@@ -1,15 +1,13 @@
 //! Clicks over a real socket: one selects a player ganger, one pins the cell an enemy stands on.
 
-use bevy::{app::App, ecs::entity::Entity};
 use gdtf_app::qa_wire::{cell::CellLevelNet, token::GangerToken};
-use gdtf_battle_sim::ganger::Position;
 use gdtf_qa_protocol::command::RunOptions;
 
 use super::{
     act_support::{accepted, battle_app_reporting, caught_up, decode, next},
     battle_reads::{
         an_enemy_ganger_at, an_unreachable_cell, an_unselected_player_ganger, cell_argument,
-        token_of,
+        cell_of, token_of,
     },
     command_exchange::{
         BATTLE_SELECTION, INPUT_CLICK_CELL, WAIT, assert_refused_off_the_battle_screen,
@@ -32,15 +30,6 @@ struct ClickTarget {
     at:    CellLevelNet,
 }
 
-/// Where a ganger stands, as the wire spells cells.
-fn standing_at(app: &App, entity: Entity) -> Option<CellLevelNet> {
-    app.world()
-        .get_entity(entity)
-        .ok()?
-        .get::<Position>()
-        .map(|position| CellLevelNet::from_sim(**position))
-}
-
 #[test]
 fn a_click_on_a_player_ganger_selects_it() -> TestResult {
     let (replies, target) = exchange_expected(
@@ -49,7 +38,7 @@ fn a_click_on_a_player_ganger_selects_it() -> TestResult {
                 let entity = an_unselected_player_ganger(app)?;
                 Some(ClickTarget {
                     token: token_of(entity),
-                    at:    standing_at(app, entity)?,
+                    at:    cell_of(app, entity)?,
                 })
             },
             NO_UNSELECTED,

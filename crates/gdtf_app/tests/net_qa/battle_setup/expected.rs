@@ -62,6 +62,13 @@ pub(crate) struct ExpectedEnemy {
     pub(crate) at:     CellLevelNet,
 }
 
+/// A player ganger the game left unselected, and the enemy a fixture stood next to it.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct IdlePair {
+    pub(crate) shooter: Entity,
+    pub(crate) enemy:   Entity,
+}
+
 /// The openable a fixture spawned, and where it stands.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SpawnedDoor {

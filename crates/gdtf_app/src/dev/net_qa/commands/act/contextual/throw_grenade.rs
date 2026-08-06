@@ -26,10 +26,11 @@ impl QaCommand for ActThrowGrenade {
     const SUMMARY: CommandSummary = CommandSummary::from_static(
         "Throw at the cell the contextual panel is offering, taking the same path the Throw \
          button does. It takes no target: the panel offers the cell the cursor hovers, and only \
-         when the shooter wields an arcing ranged weapon. No QA command holds the cursor on a \
-         cell yet — `input.click_cell` writes the hover and the frame's own cursor pick \
-         overwrites it — so read `battle.offers` to see whether a cell is on offer. Refused \
-         `NoOffer` when none is.",
+         when the shooter wields an arcing ranged weapon. `input.hover` puts the cursor on a \
+         pixel and the pick turns that pixel into a cell, but the panel scans for offers before \
+         that pick runs, so the cell it offers is the one the frame before resolved. Read \
+         `battle.offers` to see which cell came out. A host with no primary window never \
+         resolves one at all. Refused `NoOffer` when nothing is on offer.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
