@@ -1,4 +1,4 @@
-use gdtf_net_qa_transport::{DEFAULT_IO_TIMEOUT, DEFAULT_REPLY_TIMEOUT};
+use gdtf_qa_protocol::timeouts::{DEFAULT_IO_TIMEOUT, DEFAULT_REPLY_TIMEOUT};
 
 #[test]
 fn an_idle_client_gives_the_channel_back_sooner_than_a_working_one() {

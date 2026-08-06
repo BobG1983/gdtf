@@ -9,8 +9,10 @@ use gdtf_app::{
     qa_wire::token::FocusTargetNet,
     test_support::{BattlescapeButton, MenuTitle, OptionsButton},
 };
-use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::command::{RunOptions, UnavailableCode};
+use gdtf_qa_protocol::{
+    command::{RunOptions, UnavailableCode},
+    ports::NetQaPort,
+};
 
 use super::{
     act_support::{decode, next},

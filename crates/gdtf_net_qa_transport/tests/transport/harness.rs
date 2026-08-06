@@ -6,10 +6,12 @@ use std::{
     thread,
 };
 
-use gdtf_net_qa_transport::{IncomingRequest, NetQaPort, NetTimeouts, bind_listener, run_listener};
+use gdtf_net_qa_transport::{IncomingRequest, bind_listener, run_listener};
 use gdtf_qa_protocol::{
     framing::{FrameDecoder, encode},
     message::{HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet},
+    ports::NetQaPort,
+    timeouts::NetTimeouts,
 };
 
 pub(crate) type TestResult = Result<(), Box<dyn Error>>;

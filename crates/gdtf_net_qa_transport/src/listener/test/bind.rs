@@ -1,4 +1,6 @@
-use crate::{config::NetQaPort, listener::bind::bind_listener};
+use gdtf_qa_protocol::ports::NetQaPort;
+
+use crate::listener::bind::bind_listener;
 
 #[test]
 fn bind_zero_resolves_to_a_real_port() {

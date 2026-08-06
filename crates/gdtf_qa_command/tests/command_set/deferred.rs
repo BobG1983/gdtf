@@ -1,6 +1,5 @@
 use core::time::Duration;
 
-use gdtf_net_qa_transport::DEFAULT_REPLY_TIMEOUT;
 use gdtf_qa_command::{
     command::QaCommand,
     dispatch::{DEFERRED_BUDGET, DeferredBudget, DeferredReplies},
@@ -12,6 +11,7 @@ use gdtf_qa_command::{
 use gdtf_qa_protocol::{
     command::CommandName,
     message::{QaError, QaResponse},
+    timeouts::DEFAULT_REPLY_TIMEOUT,
 };
 
 use crate::support::{answer, args, no_answer_yet, plain, ran};

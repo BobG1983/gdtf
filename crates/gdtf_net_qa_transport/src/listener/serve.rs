@@ -8,13 +8,11 @@ use std::{
 use gdtf_qa_protocol::{
     framing::{FrameDecoder, encode},
     message::{HelloFacts, QaError, QaRequest, QaResponse},
+    timeouts::{NetReplyTimeout, NetTimeouts},
 };
 
 use super::session::{FrameVerdict, SessionState};
-use crate::{
-    channel::{IncomingRequest, Responder},
-    config::{NetReplyTimeout, NetTimeouts},
-};
+use crate::channel::{IncomingRequest, Responder};
 
 pub(super) fn handle_client(
     mut stream: TcpStream,

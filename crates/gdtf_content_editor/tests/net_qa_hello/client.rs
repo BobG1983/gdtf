@@ -5,11 +5,11 @@ use std::{
     time::Duration,
 };
 
-use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
     command::{CommandArgsRon, CommandName},
     framing::{FrameDecoder, encode},
     message::{ProtocolVersion, QaRequest, QaResponse, RunCommand},
+    ports::NetQaPort,
 };
 
 use crate::support::{ClientResult, TestError};

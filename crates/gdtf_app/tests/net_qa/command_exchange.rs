@@ -2,10 +2,10 @@ use std::{sync::mpsc, thread};
 
 use bevy::app::App;
 use gdtf_app::test_support::NET_QA_PROTOCOL_VERSION;
-use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
     command::{CommandArgsRon, CommandName, CommandOutcome, RunOptions, UnavailableCode},
     message::{QaRequest, QaResponse, RunCommand},
+    ports::NetQaPort,
 };
 
 use super::socket_support::{Client, SocketFixture, TestError, drive_until_reported};

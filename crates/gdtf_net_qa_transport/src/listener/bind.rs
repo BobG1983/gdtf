@@ -5,7 +5,7 @@ use std::{
     net::{Ipv4Addr, TcpListener},
 };
 
-use crate::config::NetQaPort;
+use gdtf_qa_protocol::ports::NetQaPort;
 
 /// Bind on localhost at `port` (or an ephemeral port if `0`).
 ///

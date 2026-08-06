@@ -1,4 +1,4 @@
-use gdtf_net_qa_transport::NetQaPort;
+use gdtf_qa_protocol::ports::NetQaPort;
 
 use super::config::DEFAULT_PORT;
 
