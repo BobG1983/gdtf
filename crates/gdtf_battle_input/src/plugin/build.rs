@@ -39,7 +39,8 @@ pub struct GdtfBattleInputActive;
 /// Registers battle input systems, resources, and messages.
 pub struct GdtfBattleInputPlugin;
 
-pub(super) fn battle_act_gate() -> impl SystemCondition<()> {
+/// Run condition every left-click act path carries: the battle resources those systems read.
+pub fn battle_act_gate() -> impl SystemCondition<()> {
     resource_exists::<BattleInProgress>
         .and_then(resource_exists::<OccupancyGrid>)
         .and_then(resource_exists::<ButtonInput<MouseButton>>)

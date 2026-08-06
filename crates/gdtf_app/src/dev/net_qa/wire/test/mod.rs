@@ -6,6 +6,7 @@ mod coverage;
 mod deed;
 mod drive;
 mod inspect;
+mod keybind;
 mod log;
 mod offer;
 mod phase;
