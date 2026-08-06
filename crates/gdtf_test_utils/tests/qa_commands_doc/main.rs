@@ -31,7 +31,7 @@ const COMMAND_SOURCES: &str = "crates/gdtf_app/src/dev/net_qa/commands";
 const NAME_DECLARATION: &str = "CommandName::from_static(\"";
 
 /// Names no host offers, which the guide must therefore never claim.
-const NEVER_BUILT: &[&str] = &["battle.state", "act.throw_grenade"];
+const NEVER_BUILT: &[&str] = &["battle.state"];
 
 const CITED_PATHS: &[&str] = &[
     "crates/gdtf_app/src/dev/net_qa/commands/set.rs",

@@ -4,8 +4,12 @@ use crate::dev::net_qa::wire::{
     token::GangerToken,
 };
 
-fn act_refusals() -> [ActRefusalNet; 2] {
-    [ActRefusalNet::UnknownToken, ActRefusalNet::NoShooter]
+fn act_refusals() -> [ActRefusalNet; 3] {
+    [
+        ActRefusalNet::UnknownToken,
+        ActRefusalNet::NoShooter,
+        ActRefusalNet::NoOffer,
+    ]
 }
 
 #[test]
@@ -18,7 +22,7 @@ fn act_complete_round_trips_both_ways() {
 fn act_refusal_round_trips_every_variant() {
     for reason in act_refusals() {
         match reason {
-            ActRefusalNet::UnknownToken | ActRefusalNet::NoShooter => {}
+            ActRefusalNet::UnknownToken | ActRefusalNet::NoShooter | ActRefusalNet::NoOffer => {}
         }
         assert_ron_round_trip(&reason);
     }

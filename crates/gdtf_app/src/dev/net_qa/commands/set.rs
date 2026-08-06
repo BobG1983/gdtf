@@ -3,8 +3,9 @@ use gdtf_qa_protocol::message::ServerNameNet;
 
 use super::{
     act::{
-        ActEndTurn, ActFire, ActMove, ActReload, ActSelect, ActSelectClear, ActSelectNext,
-        ActSelectPrev, ActSetAiming, ActSetFacing, ActSetStance,
+        ActEndTurn, ActEnterEmplacement, ActExecute, ActExitEmplacement, ActFire, ActMelee,
+        ActMove, ActOpenDoor, ActReload, ActSelect, ActSelectClear, ActSelectNext, ActSelectPrev,
+        ActSetAiming, ActSetFacing, ActSetStance, ActShove, ActStabilize, ActThrowGrenade,
     },
     capture::CaptureScreenshot,
     input::{
@@ -49,6 +50,14 @@ pub(in crate::dev::net_qa) const GAME_COMMANDS: &[&dyn ErasedCommand<GameFacts>]
     &ActSetAiming,
     &ActSetFacing,
     &ActEndTurn,
+    &ActMelee,
+    &ActShove,
+    &ActStabilize,
+    &ActExecute,
+    &ActThrowGrenade,
+    &ActOpenDoor,
+    &ActEnterEmplacement,
+    &ActExitEmplacement,
     &InputPressKey,
     &InputHover,
     &InputSetFocus,

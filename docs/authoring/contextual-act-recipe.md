@@ -14,7 +14,10 @@ The drain invariant (Q5-approved wording): **per-act generic drains in one
 explicitly-ordered SystemSet, same-frame semantics preserved.** A press queued this
 update is drained to its `*Requested` this update, and the sim consumes it the same
 frame (`ContextualPanelSystems::Press` → `ContextualActSystems::Drain` →
-`dispatch_act_intents` → `SimSystems::Simulate`, all explicit edges).
+`dispatch_act_intents` → `SimSystems::Simulate`, all explicit edges). The QA command band
+joins the same chain: `ActCommandSystems::Claim` is ordered before
+`ContextualActSystems::Drain` in `commands/register.rs`, so a command's push is drained in
+the frame it was claimed in, exactly as a press is.
 
 ## The stations, in order
 
@@ -77,7 +80,46 @@ on the ticket) why the AI does not use it yet.
 Why-not record for the eight existing contextual acts: they are player-affordance
 surfaces pending the AI-acts expansion; none has a brain arm today.
 
-### 5. Tests + test-surface (as the act warrants)
+### 5. QA command (one file + one line + one socket case)
+
+- **New module**
+  `crates/gdtf_app/src/dev/net_qa/commands/act/contextual/<act>.rs`: a unit struct
+  implementing `QaCommand` named `act.<act>`, with `type Args = NoArgs`,
+  `type Parked = ContextualTicket`, `type Reply = ContextualReply`,
+  `CommandTiming::Immediate` and `availability = running_and_caught`. It also implements
+  `ContextualCommand`, which is where the act family is named — `type Act = <Act>` plus
+  `const TARGET`, the mapper `battle.offers` already uses for that target kind (`ganger` /
+  `door` / `emplacement` / `cell` / `melee` in `commands/read/battle_offers.rs`). The family
+  is stated once and `TARGET` is typed against it, so a mapper from the wrong family will not
+  compile. `register_handler` is then one call to `register_contextual::<Self>`, which puts
+  the claim and settle systems in `ActCommandSystems::ContextualClaim` and
+  `ActCommandSystems::Settle`
+  — the bands already carry the edges to the panel's offer scan, to the contextual drain and
+  to `SimSystems::Record`. Wire the module + re-export in `contextual/mod.rs`.
+- **One line** in `crates/gdtf_app/src/dev/net_qa/commands/set.rs` (`GAME_COMMANDS`), plus
+  the matching name in `tests/net_qa/command_exchange.rs`, the expected lists in
+  `tests/net_qa/command_set.rs` and `tests/net_qa/commands.rs`, and the timing row in
+  `tests/net_qa/catalogue_acts.rs`.
+- **The command takes NO target argument, and no new one may.** The panel offers exactly one
+  target per family and no press carries a target of its own, so a command that accepted one
+  would be a second code path doing something no player can do. The command reads
+  `ContextualOffer<A>`, pushes `offer.target()` onto `PendingContextualIntents<A>`, and
+  refuses `NoOffer` when the family is offering nothing. It evaluates no legality and no TU —
+  the sim's `dispatch_<act>` is still the only gate.
+- **One socket case** in `crates/gdtf_app/tests/net_qa/contextual_acts/`, on the existing
+  `battle_app_listening()` fixture: spawn the scenario relative to the selected shooter,
+  call the command, assert the reply names the offered target. Assert on the WORLD, not the
+  log, for any act `ActDeed` has no variant for — doors and emplacements log nothing, and an
+  empty window there is correct.
+- **Shape the scene so only this family is offered**, and move the generated map's own
+  candidates out of reach first (`clear_doors_around`, `clear_enemies_around`, and the
+  emplacement equivalent). That is what makes the case discriminating: a command wired to a
+  neighbouring family — stabilize to execute, enter to exit — then answers `NoOffer` and the
+  case goes red instead of silently acting on the wrong thing. Relying on the seeded map to
+  hold no rival candidate is a map-shaped flake.
+- **One line** in `docs/tooling/qa-commands.md`'s command list, and its count.
+
+### 6. Tests + test-surface (as the act warrants)
 
 - A headless end-to-end press test in the `crates/gdtf_app/tests/contextual_panel/`
   suite — one file per act, sharing `harness.rs`'s `battle_running_app()`: offer →
@@ -95,6 +137,8 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
 `Shove` (ported end-to-end in) is the reference walk: sim
 `crates/gdtf_battle_sim/src/acts/shove/`, input `act_bus/contextual/shove.rs` +
 `.add_contextual_act::<ShoveAct>()`, app `contextual_panel/acts/shove.rs` +
-`.add_contextual_act_button::<ShoveAct, _>(acts::shove::offer_shove)`, AI why-not
+`.add_contextual_act_button::<ShoveAct, _>(acts::shove::offer_shove)`, QA
+`commands/act/contextual/shove.rs` + its `GAME_COMMANDS` line, AI why-not
 recorded above, and the press/offer/same-frame tests in
-`crates/gdtf_app/tests/contextual_panel/shove.rs`.
+`crates/gdtf_app/tests/contextual_panel/shove.rs` plus the socket case in
+`crates/gdtf_app/tests/net_qa/contextual_acts/`.

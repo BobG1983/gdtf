@@ -6,6 +6,7 @@ pub(crate) mod seam;
 mod systems;
 
 pub(in crate::states::running::game::battlescape) use plugin::ContextualPanelPlugin;
+pub(crate) use seam::ContextualOffer;
 
 #[cfg(feature = "headless_test")]
 pub(crate) mod test_support {
@@ -16,5 +17,6 @@ pub(crate) mod test_support {
             shove::ShoveButton, stabilize::StabilizeButton, throw_grenade::ThrowGrenadeButton,
         },
         components::ContextualPanelRoot,
+        registrar::ContextualPanelSystems,
     };
 }
