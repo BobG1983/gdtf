@@ -44,6 +44,9 @@ const CITED_PATHS: &[&str] = &[
     "crates/gdtf_app/tests/net_qa/settings_read.rs",
     "crates/gdtf_app/tests/net_qa/battle_start.rs",
     "crates/gdtf_app/tests/net_qa/wait",
+    "crates/gdtf_app/tests/contextual_panel/throw.rs",
+    "crates/gdtf_battle_input/tests/picking/resolve.rs",
+    "crates/gdtf_battle_input/tests/picking/viewport.rs",
 ];
 
 fn repo_root() -> PathBuf {

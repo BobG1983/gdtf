@@ -100,13 +100,6 @@ pub(crate) fn an_enemy_ganger_at(app: &App) -> Option<(Entity, CellLevelNet)> {
         .map(|(entity, position)| (*entity, CellLevelNet::from_sim(**position)))
 }
 
-/// The cell one step east of `at`, which is 8-adjacent to it.
-pub(crate) fn beside(at: CellLevelNet) -> CellLevel {
-    let at = at.to_sim();
-    let (cell, level) = at.split();
-    CellLevel::new(Cell::new(cell.x + 1, cell.y), level)
-}
-
 /// The eight directions a step can take, as cell offsets.
 const AROUND: [(i32, i32); 8] = [
     (1, 0),
@@ -214,6 +207,12 @@ pub(crate) fn ganger_argument(entity: Entity) -> String {
         unreachable!("a wire token serializes to compact RON");
     };
     format!("(ganger:{text})")
+}
+
+/// The cell a ganger is standing on right now.
+pub(crate) fn cell_of(app: &App, entity: Entity) -> Option<CellLevelNet> {
+    let position = *app.world().get_entity(entity).ok()?.get::<Position>()?;
+    Some(CellLevelNet::from_sim(*position))
 }
 
 /// Which way a ganger is facing right now, as the wire spells it.

@@ -1,4 +1,4 @@
-use bevy::{math::Vec2, prelude::*};
+use bevy::{math::Vec2, prelude::*, window::PrimaryWindow};
 use gdtf_battle_input::world_to_cell;
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::prelude::Level;
@@ -15,11 +15,9 @@ fn picking_resolves_the_cursor_to_the_documented_cell() {
     app.update();
 
     let world = unproject(&mut app, cursor);
-    assert!(
-        world.is_some(),
-        "the synthetic camera must unproject the cursor"
-    );
-    let Some(world) = world else { return };
+    let Some(world) = world else {
+        unreachable!("the synthetic camera must unproject the in-grid cursor");
+    };
     let expected = world_to_cell(world, level);
     assert!(
         expected.is_some(),
@@ -55,7 +53,7 @@ fn picking_fails_closed_to_none() {
         app.update();
         let world = unproject(&mut app, cursor);
         let Some(world) = world else {
-            return;
+            unreachable!("the synthetic camera must unproject the left-of-origin cursor");
         };
         assert_eq!(
             world_to_cell(world, level),
@@ -86,6 +84,34 @@ fn picking_fails_closed_to_none() {
             hovered(&app),
             None,
             "with no WorldCamera the picking must resolve InspectTarget to None",
+        );
+    }
+
+    {
+        let mut app = picking_app(level);
+        set_cursor(&mut app, Some(TARGET_SIZE * 0.5));
+        app.update();
+        assert!(
+            hovered(&app).is_some(),
+            "the centre cursor must resolve a cell while the window is there, or despawning it \
+             below proves nothing",
+        );
+
+        let windows: Vec<Entity> = {
+            let mut q = app
+                .world_mut()
+                .query_filtered::<Entity, With<PrimaryWindow>>();
+            q.iter(app.world()).collect()
+        };
+        for window in windows {
+            app.world_mut().entity_mut(window).despawn();
+        }
+        app.update();
+        assert_eq!(
+            hovered(&app),
+            None,
+            "with no primary window the picking must resolve InspectTarget to None, which is \
+             what every windowless QA host relies on",
         );
     }
 }

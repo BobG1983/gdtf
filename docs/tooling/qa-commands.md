@@ -391,13 +391,16 @@ command pushes the offered target onto the same `PendingContextualIntents` queue
 pushes onto, and the sim's own `dispatch_*` is the authoritative gate: nothing on the QA side
 re-checks adjacency, faction, life state or TU.
 
-`act.throw_grenade` is the one an agent cannot drive yet. Its offer scan needs a hovered cell
-as well as a selection, and no QA command can hold one: `input.click_cell` writes
-`InspectTarget.hovered`, but `pick_hovered_cell` runs every battle frame and overwrites it
-from the real cursor. So the command refuses `NoOffer` unless a real cursor is over a cell and
-the shooter wields an arcing ranged weapon. Read `battle.offers` to see whether a cell is on
-offer at all. It ships because its refusal and its accepted path are both real; driving it end
-to end waits on a command that sets the hover durably.
+`act.throw_grenade` is the one that needs more than a selection: its offer scan reads the
+hovered cell, and it only offers while the shooter wields an arcing ranged weapon —
+[`crates/gdtf_app/tests/contextual_panel/throw.rs`](../../crates/gdtf_app/tests/contextual_panel/throw.rs)
+pins both halves, and pins that a press aims at the hovered cell. On a host with a primary
+window the drive is `input.hover`, then `battle.offers` to see which cell came out, then
+`act.throw_grenade`. Each of those lands on its own frame, which is what makes it work:
+`ContextualPanelSystems::Offer` is ordered *before* `pick_hovered_cell`, so within any one
+frame the offer scan reads the cell the frame before resolved, never the pixel that arrived
+this frame. With nothing hovered — including every host built without a primary window — the
+command refuses `NoOffer`.
 
 They are `Immediate`, they need the same `Running` plus `Caught` state the classic acts need,
 and they answer `ContextualReply`: `Accepted { from_seq, to_seq, complete, target }`, where
@@ -436,6 +439,32 @@ named action asked for before the keybind table has loaded is refused `MissingMo
 never resolves a cell — projecting a pixel onto a cell belongs to `pick_hovered_cell`, and the
 reply echoes the pixel only. Read the resulting cell with `battle.selection`. A host with no
 primary window refuses `WrongState` naming it.
+
+Whether that pixel becomes a cell is `pick_hovered_cell`'s call, and it resolves `None` unless a
+`WorldCamera` and a primary window are both there, the cursor sits off the UI and inside the
+viewport, and the pixel lands on the grid.
+[`crates/gdtf_battle_input/tests/picking/resolve.rs`](../../crates/gdtf_battle_input/tests/picking/resolve.rs)
+asserts the projection and four of those refusals: no cursor position, an off-grid pixel, no
+`WorldCamera`, and no primary window. That last one resolves a cell first and then despawns the
+window, so it also catches a pick that holds the cell it last resolved instead of dropping it.
+[`crates/gdtf_battle_input/tests/picking/viewport.rs`](../../crates/gdtf_battle_input/tests/picking/viewport.rs)
+asserts the other two, a cursor outside the viewport rect and a cursor over a HUD panel.
+`input.click_cell` is no substitute: it
+writes the hovered cell directly and runs before that same pick, which overwrites it inside the
+frame, so only the cell it pins survives.
+
+**`hovered` needs a primary window; the pinned cell does not.** Drive the running game with
+`input.hover` and then read `battle.selection`: a pixel over the grid comes back as a cell, and
+a pixel over the UI or off the grid comes back `None`, because the pick fails closed rather
+than holding the cell it last resolved. The battle cases under
+[`crates/gdtf_app/tests/net_qa/`](../../crates/gdtf_app/tests/net_qa) run on one of two headless
+harnesses and neither has a primary window: `battle_app_listening` builds on
+`GdtfLoadTestAppBuilder`, which sets `primary_window: None`, and
+`battle_fixture::menu_app_with_net_qa` builds on `GdtfTestAppBuilder`, which is `MinimalPlugins`
+and never adds `WindowPlugin` at all. So on those hosts `input.hover` refuses `WrongState` and
+`battle.selection` reports `hovered: None` on every read, and they assert the pinned cell instead.
+The screenshot cases in that same directory build their own windowed app, so the limit is the
+harness rather than the wire.
 
 `input.set_focus`, `input.focus_step` and `input.activate` are the focus bridge. `set_focus`
 puts focus on one widget named by a token from `ui.focus`'s focusable list, and refuses

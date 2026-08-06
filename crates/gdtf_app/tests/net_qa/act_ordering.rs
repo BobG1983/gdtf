@@ -101,6 +101,48 @@ fn every_contextual_act_claim_runs_after_the_panel_has_scanned_this_frame_s_offe
 }
 
 #[test]
+fn the_offers_read_runs_after_the_panel_has_settled_its_buttons() -> TestResult {
+    let (mut app, _port) = battle_app_listening()?;
+    app.update();
+    let update = update_schedule(&app)?;
+    let graph = update.graph();
+
+    let read = a_system_named(update, "handle_battle_offers")?;
+    assert!(
+        ordered_before(
+            graph,
+            set_node(graph, ContextualPanelSystems::Toggle)?,
+            read
+        ),
+        "battle.offers tells a client an offer it reads is a button on screen; the panel chains \
+         its toggle after its offer scan, so ordering the read after the toggle is what puts it \
+         after the scan's write, and unordered the reply can disagree with the buttons",
+    );
+    Ok(())
+}
+
+#[test]
+fn the_panel_scans_its_offers_before_the_picker_recomputes_the_hover() -> TestResult {
+    let (mut app, _port) = battle_app_listening()?;
+    app.update();
+    let update = update_schedule(&app)?;
+    let graph = update.graph();
+
+    let picker = a_system_named(update, "pick_hovered_cell")?;
+    assert!(
+        ordered_before(
+            graph,
+            set_node(graph, ContextualPanelSystems::Offer)?,
+            picker
+        ),
+        "act.throw_grenade's summary and the QA guide both tell a client the offer it reads was \
+         scanned against the cell the previous frame resolved; run the scan after the pick and \
+         both go wrong by a frame while the suite stays green",
+    );
+    Ok(())
+}
+
+#[test]
 fn the_classic_act_claims_are_left_free_of_the_panel_s_offer_scan() -> TestResult {
     let (mut app, _port) = battle_app_listening()?;
     app.update();
