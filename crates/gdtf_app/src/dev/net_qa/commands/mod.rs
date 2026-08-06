@@ -12,7 +12,7 @@ pub(crate) mod set;
 pub(crate) mod wait;
 
 #[cfg(feature = "headless_test")]
-pub use act::ActCommandSystems;
+pub use act::{ActCommandSystems, ContextualReply};
 #[cfg(feature = "headless_test")]
 pub use conformance::{assert_game_command_set_is_conformant, game_command_names};
 pub(in crate::dev::net_qa) use register::register_game_commands;

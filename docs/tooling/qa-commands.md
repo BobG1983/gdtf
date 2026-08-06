@@ -222,13 +222,15 @@ run(host="game", command="battle.start", arguments="(seed: Some(42))")
 run(host="game", command="wait", arguments="(condition: BattleDecided)")
 ```
 
-The game offers thirty-four commands today: `app.phase`, `capture.screenshot`,
+The game offers forty-two commands today: `app.phase`, `capture.screenshot`,
 `settings.read`, `ui.focus`, `playback.state`, `battle.roster`, `battle.turn`,
 `battle.selection`, `battle.offers`, `battle.inspect`, `battle.sightline`, `battle.visible`,
 `log.read`, `battle.start`, `battle.flee`, `procgen.step`, `wait`, `act.select`,
 `act.select_next`, `act.select_prev`, `act.select_clear`, `act.move`, `act.fire`,
 `act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing`, `act.end_turn`,
-`input.press_key`, `input.hover`, `input.set_focus`, `input.focus_step`, `input.activate`
+`act.melee`, `act.shove`, `act.stabilize`, `act.execute`, `act.throw_grenade`,
+`act.open_door`, `act.enter_emplacement`, `act.exit_emplacement`, `input.press_key`,
+`input.hover`, `input.set_focus`, `input.focus_step`, `input.activate`
 and `input.click_cell`.
 
 `settings.read`, `ui.focus` and `playback.state` are the shell reads — they take `()`, are
@@ -326,7 +328,8 @@ those seven fails to deserialize and comes back as `BadArguments` with `wait`'s 
 shape attached. The conditions and what each resolves against live in
 [`crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs).
 
-The eleven `act.*` commands are the classic acts a player takes with the keyboard and the
+Eleven of the nineteen `act.*` commands are the classic acts a player takes with the keyboard
+and the
 pointer: `act.select`, `act.select_next`, `act.select_prev`, `act.select_clear`, `act.move`,
 `act.fire`, `act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing` and
 `act.end_turn`. Each pushes an `ActIntent` onto
@@ -363,14 +366,50 @@ before an act; do not treat the empty reply as a lasting state.
 comes round to the player again, so it lands after the enemy has finished acting and its
 window brackets everything that happened in between. Its budget is 30 seconds.
 
-The QA layer invents no refusal vocabulary of its own: `ActRefusalNet` has exactly two
-variants, `UnknownToken` (a `GangerToken` naming no living ganger) and `NoShooter` (the act
-needs a selection and there is none). Both are conditions the QA layer can see before the
-sim is involved. Everything else the sim decides, and the act log reports.
+The QA layer invents no refusal vocabulary of its own: `ActRefusalNet` has exactly three
+variants, `UnknownToken` (a `GangerToken` naming no living ganger), `NoShooter` (the act
+needs a selection and there is none) and `NoOffer` (the contextual panel is offering nothing
+for that act family). All three are conditions the QA layer can see before the sim is
+involved. Everything else the sim decides, and the act log reports.
 
 All eleven need a running battle whose screen has caught up with the act log — `Running` plus
 `Caught`. Off the battle screen they refuse `WrongState`; while the screen is still replaying
 they refuse `Replaying`, because the act bus drops an intent whose gate is shut.
+
+The other eight `act.*` commands are the contextual acts — `act.melee`, `act.shove`,
+`act.stabilize`, `act.execute`, `act.throw_grenade`, `act.open_door`,
+`act.enter_emplacement` and `act.exit_emplacement`. They live in
+[`crates/gdtf_app/src/dev/net_qa/commands/act/contextual/`](../../crates/gdtf_app/src/dev/net_qa/commands/act/contextual)
+and they all take `()`.
+
+**None of them takes a target, because no press does either.** The contextual panel offers
+exactly one target per act family, written by that family's offer scan, and a mouse click or
+a digit slot key pushes whatever the offer holds. A command that took a target could do
+something no player can. So an agent chooses by moving and selecting and then reading
+`battle.offers` — exactly as a player chooses by moving and looking at the panel. Each
+command pushes the offered target onto the same `PendingContextualIntents` queue the button
+pushes onto, and the sim's own `dispatch_*` is the authoritative gate: nothing on the QA side
+re-checks adjacency, faction, life state or TU.
+
+`act.throw_grenade` is the one an agent cannot drive yet. Its offer scan needs a hovered cell
+as well as a selection, and no QA command can hold one: `input.click_cell` writes
+`InspectTarget.hovered`, but `pick_hovered_cell` runs every battle frame and overwrites it
+from the real cursor. So the command refuses `NoOffer` unless a real cursor is over a cell and
+the shooter wields an arcing ranged weapon. Read `battle.offers` to see whether a cell is on
+offer at all. It ships because its refusal and its accepted path are both real; driving it end
+to end waits on a command that sets the hover durably.
+
+They are `Immediate`, they need the same `Running` plus `Caught` state the classic acts need,
+and they answer `ContextualReply`: `Accepted { from_seq, to_seq, complete, target }`, where
+`target` is the same `OfferTargetNet` `battle.offers` reported, or
+`Refused { reason: NoOffer }` when the family had nothing on offer. There is no unaffordable
+or illegal refusal: every contextual dispatch in the sim rejects by doing nothing and
+emitting nothing, so a call the sim declined comes back with `from_seq` equal to `to_seq`.
+
+**An empty window is not always a decline.** `ActDeed` has no variant for opening a door or
+entering and leaving an emplacement, so `act.open_door`, `act.enter_emplacement` and
+`act.exit_emplacement` answer an empty window even when they worked. Read the world for those
+three — the door's open state, the emplacement's occupancy — not the log.
 
 `act.fire` is the one act that needs more than the selection to build its request: the live
 `SelectedFireMode` and `CombatTuning`. A host holding neither cannot consider the shot at

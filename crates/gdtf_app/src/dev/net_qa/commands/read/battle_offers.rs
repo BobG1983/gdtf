@@ -23,7 +23,7 @@ use crate::{
         },
     },
     states::running::game::battlescape::contextual_panel::{
-        registrar::ContextualPanelSystems, seam::ContextualOffer,
+        ContextualOffer, registrar::ContextualPanelSystems,
     },
 };
 
@@ -139,7 +139,10 @@ fn push(
     }
 }
 
-pub(super) fn ganger<A>(offer: &ContextualOffer<A>) -> Option<OfferTargetNet>
+/// A ganger-targeted offer as the wire names it.
+pub(in crate::dev::net_qa::commands) fn ganger<A>(
+    offer: &ContextualOffer<A>,
+) -> Option<OfferTargetNet>
 where
     A: gdtf_battle_input::contextual::ContextualAct<Target = Entity>,
 {
@@ -148,7 +151,10 @@ where
         .map(|entity| OfferTargetNet::Ganger(GangerToken::new(entity.to_bits())))
 }
 
-pub(super) fn door<A>(offer: &ContextualOffer<A>) -> Option<OfferTargetNet>
+/// A door-targeted offer as the wire names it.
+pub(in crate::dev::net_qa::commands) fn door<A>(
+    offer: &ContextualOffer<A>,
+) -> Option<OfferTargetNet>
 where
     A: gdtf_battle_input::contextual::ContextualAct<Target = Entity>,
 {
@@ -157,7 +163,10 @@ where
         .map(|entity| OfferTargetNet::Door(DoorToken::new(entity.to_bits())))
 }
 
-pub(super) fn emplacement<A>(offer: &ContextualOffer<A>) -> Option<OfferTargetNet>
+/// An emplacement-targeted offer as the wire names it.
+pub(in crate::dev::net_qa::commands) fn emplacement<A>(
+    offer: &ContextualOffer<A>,
+) -> Option<OfferTargetNet>
 where
     A: gdtf_battle_input::contextual::ContextualAct<Target = Entity>,
 {
@@ -166,7 +175,10 @@ where
         .map(|entity| OfferTargetNet::Emplacement(EmplacementToken::new(entity.to_bits())))
 }
 
-pub(super) fn cell<A>(offer: &ContextualOffer<A>) -> Option<OfferTargetNet>
+/// A cell-targeted offer as the wire names it.
+pub(in crate::dev::net_qa::commands) fn cell<A>(
+    offer: &ContextualOffer<A>,
+) -> Option<OfferTargetNet>
 where
     A: gdtf_battle_input::contextual::ContextualAct<Target = gdtf_battle_sim::prelude::CellLevel>,
 {
@@ -175,7 +187,10 @@ where
         .map(|at| OfferTargetNet::Cell(CellLevelNet::from_sim(at)))
 }
 
-pub(super) fn melee(offer: &ContextualOffer<MeleeAct>) -> Option<OfferTargetNet> {
+/// A melee offer as the wire names it: a ganger, or the structure cell it would hit.
+pub(in crate::dev::net_qa::commands) fn melee(
+    offer: &ContextualOffer<MeleeAct>,
+) -> Option<OfferTargetNet> {
     offer.target().map(|target| match target {
         MeleeTarget::Ganger(entity) => OfferTargetNet::Ganger(GangerToken::new(entity.to_bits())),
         MeleeTarget::Structure(at) => OfferTargetNet::Cell(CellLevelNet::from_sim(at)),

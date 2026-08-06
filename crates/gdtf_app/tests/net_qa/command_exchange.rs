@@ -66,6 +66,22 @@ pub(crate) const ACT_SET_FACING: &str = "act.set_facing";
 
 pub(crate) const ACT_END_TURN: &str = "act.end_turn";
 
+pub(crate) const ACT_MELEE: &str = "act.melee";
+
+pub(crate) const ACT_SHOVE: &str = "act.shove";
+
+pub(crate) const ACT_STABILIZE: &str = "act.stabilize";
+
+pub(crate) const ACT_EXECUTE: &str = "act.execute";
+
+pub(crate) const ACT_THROW_GRENADE: &str = "act.throw_grenade";
+
+pub(crate) const ACT_OPEN_DOOR: &str = "act.open_door";
+
+pub(crate) const ACT_ENTER_EMPLACEMENT: &str = "act.enter_emplacement";
+
+pub(crate) const ACT_EXIT_EMPLACEMENT: &str = "act.exit_emplacement";
+
 pub(crate) const INPUT_PRESS_KEY: &str = "input.press_key";
 
 pub(crate) const INPUT_HOVER: &str = "input.hover";
@@ -109,6 +125,14 @@ pub(crate) fn published_names() -> Vec<CommandName> {
         ACT_SET_AIMING,
         ACT_SET_FACING,
         ACT_END_TURN,
+        ACT_MELEE,
+        ACT_SHOVE,
+        ACT_STABILIZE,
+        ACT_EXECUTE,
+        ACT_THROW_GRENADE,
+        ACT_OPEN_DOOR,
+        ACT_ENTER_EMPLACEMENT,
+        ACT_EXIT_EMPLACEMENT,
         INPUT_PRESS_KEY,
         INPUT_HOVER,
         INPUT_SET_FOCUS,

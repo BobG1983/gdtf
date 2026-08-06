@@ -17,12 +17,19 @@ use crate::states::{
     },
 };
 
-#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum ContextualPanelSystems {
-    Offer,
-    Toggle,
-    Rank,
-    Press,
+crate::support_item! {
+    /// Where the contextual panel's four jobs sit in the frame.
+    #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    enum ContextualPanelSystems {
+        /// Scan for each act family's target and write it to that family's offer.
+        Offer,
+        /// Show or hide each button from the offer just written.
+        Toggle,
+        /// Order the visible buttons into their slots.
+        Rank,
+        /// Turn a press or a slot key into a push onto the act bus.
+        Press,
+    }
 }
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
