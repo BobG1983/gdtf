@@ -208,8 +208,18 @@ if (fresh && fresh !== ticketText) {
   log(`${TICKET}: contract re-fetched — verifying against the CURRENT ticket text`)
 }
 
+// The verdict verify reported, or null when it reported none.
+const suiteVerdict = (out) => {
+  if (!out) return null
+  const m = /\b(GREEN|RED)\b/i.exec(out)
+  return m ? m[1].toUpperCase() : null
+}
+
+// Verify, asked a second time if it answered without a verdict. Same reasoning as the gate lenses:
+// a run that reproduced the evidence and forgot to write GREEN is not a red suite, and reading it
+// as one costs a fix round on work that may already be done.
 async function verify(attempt) {
-  return agent(`Independently verify ${TICKET} in ${REPO}. Trust NOTHING the implementer reported.
+  const brief = `Independently verify ${TICKET} in ${REPO}. Trust NOTHING the implementer reported.
 
 <ticket id="${TICKET}">
 ${contract}
@@ -223,18 +233,40 @@ ${GREEN}
 
 Reproduce every evidence clause yourself. Start with GREEN or RED on its own line.
 
-${HOUSE_RULES}`,
+${HOUSE_RULES}`
+
+  const first = await agent(brief,
     { model: 'opus', label: `verify:${TICKET}#${attempt}`, phase: 'Verify' })
+
+  if (suiteVerdict(first)) return first
+
+  log(`${TICKET}: verify answered without a verdict — asking it again`)
+
+  const again = await agent(`${brief}
+
+## YOUR LAST REPLY CARRIED NO VERDICT
+
+You were asked before and your reply contained neither GREEN nor RED, so nothing could be read from
+it. Here it is in full:
+
+<your-previous-reply>
+${first || '(you returned nothing at all)'}
+</your-previous-reply>
+
+Answer properly this time. If that reply already ran the suite and reached a conclusion, keep its
+findings and the command output verbatim and add the verdict it was missing — do not re-run what
+you already ran, and do not soften anything. If it never ran the suite, run it now. Start with
+GREEN or RED on its own line.`,
+    { model: 'opus', label: `verify:${TICKET}#${attempt}-again`, phase: 'Verify' })
+
+  if (suiteVerdict(again)) return again
+  return again || first
 }
 
 phase('Verify')
 let verifyOut = await verify(1)
 
-const readVerdict = (out) => {
-  if (!out) return false
-  const m = /\b(GREEN|RED)\b/i.exec(out)
-  return !!m && m[1].toUpperCase() === 'GREEN'
-}
+const readVerdict = (out) => suiteVerdict(out) === 'GREEN'
 
 const LENSES = [
   { key: 'fidelity', focus: `Does the diff implement EVERY clause exactly as written? Hunt silent narrowing. Check docs/ too.` },
@@ -242,16 +274,25 @@ const LENSES = [
   { key: 'structure', focus: `Module layout, no bare types, no unwrap/todo, Bevy schedule/ordering. Run ZERO cargo.` },
 ]
 
-async function gate(attempt) {
-  const verdicts = await parallel(LENSES.map(l => () =>
-    agent(`Adversarial read-only review of ${TICKET} in ${REPO}.
+// The verdict a lens reported, or null when it reported none.
+const verdictOf = (out) => {
+  if (!out) return null
+  const m = /\b(NON-COMPLIANT|COMPLIANT)\b/i.exec(out)
+  return m ? m[1].toUpperCase() : null
+}
+
+// One lens, asked a second time if it answered without a verdict. A review that reached a
+// conclusion and forgot to write the word is not a violation, and reading it as one costs a fix
+// round, a re-verify and a whole re-gate on work that may already be compliant.
+async function runLens(lens, attempt) {
+  const brief = `Adversarial read-only review of ${TICKET} in ${REPO}.
 
 <ticket id="${TICKET}">
 ${contract}
 </ticket>
 
 ## YOUR LENS
-${l.focus}
+${lens.focus}
 
 ## VERIFICATION EVIDENCE
 <verify-report>
@@ -260,21 +301,45 @@ ${verifyOut || '(verify died — treat cargo claims as UNPROVEN)'}
 
 ${HOUSE_RULES}
 
-Run ZERO cargo. Cite file:line. Start with COMPLIANT or NON-COMPLIANT.`,
-      { model: 'opus', label: `gate:${l.key}#${attempt}`, phase: 'Gate', agentType: 'design-gate' })
-  ))
-  return verdicts
+Run ZERO cargo. Cite file:line. Start with COMPLIANT or NON-COMPLIANT.`
+
+  const first = await agent(brief,
+    { model: 'opus', label: `gate:${lens.key}#${attempt}`, phase: 'Gate', agentType: 'design-gate' })
+
+  if (verdictOf(first)) return first
+
+  log(`${TICKET}: gate lens ${lens.key} answered without a verdict — asking it again`)
+
+  const again = await agent(`${brief}
+
+## YOUR LAST REPLY CARRIED NO VERDICT
+
+You were asked before and your reply contained neither COMPLIANT nor NON-COMPLIANT, so nothing
+could be read from it. Here it is in full:
+
+<your-previous-reply>
+${first || '(you returned nothing at all)'}
+</your-previous-reply>
+
+Review again and answer properly this time. If that reply already reached a conclusion, keep its
+findings and add the verdict it was missing — do not start over and do not soften anything. End
+with **COMPLIANT** or **NON-COMPLIANT** on its own line.`,
+    { model: 'opus', label: `gate:${lens.key}#${attempt}-again`, phase: 'Gate', agentType: 'design-gate' })
+
+  // Keep whichever reply actually carries a verdict; failing that, keep the longer evidence.
+  if (verdictOf(again)) return again
+  return again || first
+}
+
+async function gate(attempt) {
+  return await parallel(LENSES.map(l => () => runLens(l, attempt)))
 }
 
 phase('Gate')
 let attempt = 1
 let verdicts = await gate(attempt)
 
-const compliant = (out) => {
-  if (!out) return false
-  const m = /\b(NON-COMPLIANT|COMPLIANT)\b/i.exec(out)
-  return !!m && m[1].toUpperCase() === 'COMPLIANT'
-}
+const compliant = (out) => verdictOf(out) === 'COMPLIANT'
 
 const allPass = () => readVerdict(verifyOut) && verdicts.every(compliant)
 const reviewersHeardFrom = () => (verifyOut ? 1 : 0) + verdicts.filter(Boolean).length
@@ -286,8 +351,19 @@ while (!allPass() && attempt < 5) {
   attempt++
   phase('Fix')
   const problems = [
-    readVerdict(verifyOut) ? null : `<verify-verdict>\n${verifyOut || '(died)'}\n</verify-verdict>`,
-    ...verdicts.map((v, i) => compliant(v) ? null : `<gate-lens name="${LENSES[i].key}">\n${v || '(died)'}\n</gate-lens>`),
+    readVerdict(verifyOut)
+      ? null
+      : verifyOut
+        // Asked twice and still no verdict: say so, or the fix agent reads this as a red suite.
+        ? `<verify-verdict${suiteVerdict(verifyOut) ? '' : ' verdict="MISSING — verify was asked twice and never gave one; judge its findings on their own merits"'}>\n${verifyOut}\n</verify-verdict>`
+        : `<verify-verdict>\n(died — nothing to act on)\n</verify-verdict>`,
+    ...verdicts.map((v, i) => {
+      if (compliant(v)) return null
+      if (!v) return `<gate-lens name="${LENSES[i].key}">\n(died — nothing to act on)\n</gate-lens>`
+      // Asked twice and still no verdict: say so, or the fix agent reads the text as a violation list.
+      const note = verdictOf(v) ? '' : ' verdict="MISSING — this lens was asked twice and never gave one; judge its findings on their own merits"'
+      return `<gate-lens name="${LENSES[i].key}"${note}>\n${v}\n</gate-lens>`
+    }),
   ].filter(Boolean).join('\n\n')
 
   log(`${TICKET}: round ${attempt} — repairing`)

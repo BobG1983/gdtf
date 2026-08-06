@@ -10,8 +10,5 @@ pub(in crate::states::running::game::battlescape::generation) struct LoadingScre
 impl Plugin for LoadingScreenPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(BattleScapeState::Generation), spawn_loading_screen);
-
-        #[cfg(debug_assertions)]
-        super::capture::register_loading_capture(app);
     }
 }

@@ -8,6 +8,3 @@ pub(in crate::states::running::game::battlescape::generation) use plugin::Loadin
 pub(crate) mod test_support {
     pub use super::components::LoadingScreenRoot;
 }
-
-#[cfg(debug_assertions)]
-mod capture;

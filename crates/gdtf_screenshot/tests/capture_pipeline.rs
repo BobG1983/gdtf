@@ -1,5 +1,5 @@
-//! Capture pipeline: active plugin writes a PNG; inert plugin registers nothing.
-use std::{fs, path::PathBuf};
+//! Real-GPU capture: Bevy's screenshot pipeline writes a decodable PNG.
+use std::fs;
 
 use bevy::{
     camera::RenderTarget,
@@ -13,125 +13,6 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_screenshot::{
-    CaptureCompletions, CapturePath, CaptureQueue, ScreenshotCapturePlugin, SettleFrames,
-    settle::PollCap,
-};
-
-const TEST_SETTLE: SettleFrames = SettleFrames::new(3);
-
-fn headless_capture_app(path: PathBuf) -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    app.add_plugins(
-        ScreenshotCapturePlugin::with_path(CapturePath::new(path))
-            .settle(TEST_SETTLE)
-            .poll_cap(PollCap::new(10)),
-    );
-    app
-}
-
-#[test]
-fn active_plugin_wires_the_pipeline_and_requests_after_settle() {
-    let path = std::env::temp_dir().join("gdtf_screenshot_test_active.png");
-    drop(fs::remove_file(&path));
-    let mut app = headless_capture_app(path);
-
-    assert!(
-        app.world().get_resource::<CapturePath>().is_some(),
-        "active plugin inserts CapturePath"
-    );
-    assert!(
-        app.world().get_resource::<CaptureQueue<()>>().is_some(),
-        "active plugin inits the shared CaptureQueue"
-    );
-
-    app.update();
-    assert!(
-        !queue_is_idle(&app),
-        "the startup request must be queued on the first update"
-    );
-    assert!(
-        !spawned_a_screenshot(&mut app),
-        "no capture is spawned before the settle window"
-    );
-
-    for _ in 0..*TEST_SETTLE + 2 {
-        app.update();
-    }
-    assert!(
-        spawned_a_screenshot(&mut app),
-        "a Screenshot entity was spawned (the save_to_disk pipeline)"
-    );
-
-    for _ in 0..32 {
-        app.update();
-    }
-    assert!(
-        !completions_are_empty(&app),
-        "with no PNG landing the capture must finish (timed out) rather than hang"
-    );
-    assert!(
-        queue_is_idle(&app),
-        "a finished capture leaves nothing queued and nothing in flight"
-    );
-    assert_eq!(
-        app.should_exit(),
-        Some(AppExit::Success),
-        "a finished capture must write AppExit — without it the CLI capture flow takes its shot \
-         and then runs forever"
-    );
-}
-
-#[test]
-fn inert_plugin_registers_nothing() {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    app.add_plugins(ScreenshotCapturePlugin::from_env(
-        "GDTF_SCREENSHOT_TEST_DEFINITELY_UNSET_VAR",
-    ));
-
-    assert!(
-        app.world().get_resource::<CapturePath>().is_none(),
-        "inert plugin inserts no CapturePath"
-    );
-    assert!(
-        app.world().get_resource::<CaptureQueue<()>>().is_none(),
-        "inert plugin inits no CaptureQueue"
-    );
-    assert!(
-        app.world()
-            .get_resource::<CaptureCompletions<()>>()
-            .is_none(),
-        "inert plugin inits no CaptureCompletions"
-    );
-
-    for _ in 0..8 {
-        app.update();
-    }
-    assert!(
-        !spawned_a_screenshot(&mut app),
-        "inert plugin never spawns a Screenshot"
-    );
-    assert_eq!(
-        app.should_exit(),
-        None,
-        "an inert plugin has no capture to finish, so it must never end the process"
-    );
-}
-
-#[test]
-fn is_active_reflects_the_path_gate() {
-    assert!(
-        ScreenshotCapturePlugin::with_path(CapturePath::new(PathBuf::from("/abs/out.png")))
-            .is_active(),
-        "a configured path is active"
-    );
-    assert!(
-        !ScreenshotCapturePlugin::from_env("GDTF_SCREENSHOT_TEST_DEFINITELY_UNSET_VAR").is_active(),
-        "an unset env var is inert"
-    );
-}
 
 const TARGET_PX: u32 = 32;
 
@@ -142,10 +23,7 @@ fn real_gpu_capture_writes_a_png() {
     use gdtf_test_utils::gpu_probe::{GpuAdapterProbe, gpu_adapter_probe};
 
     if gpu_adapter_probe() == GpuAdapterProbe::Absent {
-        eprintln!(
-            "SKIP real_gpu_capture_writes_a_png: no usable wgpu adapter (GPU-less runner) — the \
-             capture pipeline wiring is covered by the headless test above."
-        );
+        eprintln!("SKIP real_gpu_capture_writes_a_png: no usable wgpu adapter (GPU-less runner).");
         return;
     }
 
@@ -205,21 +83,4 @@ fn real_gpu_capture_writes_a_png() {
         out.display()
     );
     drop(fs::remove_file(&out));
-}
-
-fn queue_is_idle(app: &App) -> bool {
-    app.world()
-        .get_resource::<CaptureQueue<()>>()
-        .is_some_and(CaptureQueue::is_idle)
-}
-
-fn completions_are_empty(app: &App) -> bool {
-    app.world()
-        .get_resource::<CaptureCompletions<()>>()
-        .is_none_or(CaptureCompletions::is_empty)
-}
-
-fn spawned_a_screenshot(app: &mut App) -> bool {
-    let mut query = app.world_mut().query::<&Screenshot>();
-    query.iter(app.world()).next().is_some()
 }
