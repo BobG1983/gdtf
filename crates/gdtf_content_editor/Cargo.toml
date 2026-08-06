@@ -11,7 +11,6 @@ gdtf_content_families = { path = "../gdtf_content_families" }
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
 ron = { workspace = true }
-gdtf_screenshot = { path = "../gdtf_screenshot" }
 gdtf_state_scoped = { path = "../gdtf_state_scoped" }
 gdtf_qa_protocol = { path = "../gdtf_qa_protocol" }
 gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport" }

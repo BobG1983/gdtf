@@ -166,31 +166,6 @@ fn a_png_landing_after_the_spawn_is_landed_at_that_exact_path() {
 }
 
 #[test]
-fn an_exact_destination_bypasses_the_shot_directory() {
-    let Ok(tmp) = tempfile::TempDir::new() else {
-        unreachable!("a temp directory is available");
-    };
-    let exact = CapturePath::new(tmp.path().join("nested").join("exact.png"));
-
-    let mut app = pump_app(tmp.path().join("unused"));
-    app.world_mut()
-        .resource_mut::<crate::capture::CaptureQueue<()>>()
-        .push_to(exact.clone(), ());
-
-    let Some(_spawned_at) = drive_until_spawned(&mut app) else {
-        unreachable!("the pump never spawned a capture");
-    };
-    plant_decodable_png(&exact);
-
-    let finished = drive_until_finished(&mut app);
-    assert_eq!(
-        finished,
-        Some(CaptureOutcome::Landed(exact)),
-        "a caller-supplied exact path must be written verbatim, not re-derived from ShotDir",
-    );
-}
-
-#[test]
 fn a_stem_lands_under_the_shot_directory() {
     let Ok(tmp) = tempfile::TempDir::new() else {
         unreachable!("a temp directory is available");

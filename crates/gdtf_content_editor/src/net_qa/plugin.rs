@@ -3,7 +3,6 @@
 use std::{
     io,
     net::TcpListener,
-    path::PathBuf,
     sync::{Mutex, mpsc},
     thread,
 };
@@ -12,11 +11,9 @@ use bevy::prelude::*;
 use gdtf_net_qa_transport::{
     IncomingRequest, NetInbox, NetQaPort, NetTimeouts, bind_listener, run_listener,
 };
-use gdtf_screenshot::{CapturePipelinePlugin, CapturePresentPlugin, PresentSystems, ShotDir};
 
 use super::{
-    config::{DEFAULT_EDITOR_PORT, EDITOR_QA_SHOT_DIR, editor_hello_facts},
-    present::retarget_editor_camera_to_offscreen,
+    config::{DEFAULT_EDITOR_PORT, editor_hello_facts},
     router::route_editor_requests,
     schedule::EditorNetQaSystems,
 };
@@ -104,15 +101,6 @@ fn serve(app: &mut App, listener: TcpListener, timeouts: NetTimeouts) {
     let (tx, rx) = mpsc::channel::<IncomingRequest>();
     thread::spawn(move || run_listener(listener, tx, timeouts, editor_hello_facts()));
     app.insert_resource(NetInbox::new(rx));
-    if !app.is_plugin_added::<CapturePipelinePlugin<()>>() {
-        app.add_plugins(CapturePipelinePlugin::<()>::new());
-    }
-    app.insert_resource(ShotDir::new(PathBuf::from(EDITOR_QA_SHOT_DIR)));
-    app.add_plugins(CapturePresentPlugin);
-    app.add_systems(
-        Update,
-        retarget_editor_camera_to_offscreen.in_set(PresentSystems),
-    );
     app.configure_sets(
         Update,
         EditorNetQaSystems::Gather.run_if(resource_exists::<State<EditorState>>),

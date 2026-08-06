@@ -30,18 +30,8 @@ const MAX_CAPTURE_UPDATES: usize = 240;
 
 const SETTLE_UPDATES: usize = 24;
 
-const OUT_ENV: &str = "GDTF_OPTIONS_SHOT_OUT";
-
-const OUT_ENV_OFF: &str = "GDTF_OPTIONS_SHOT_OUT_OFF";
-
-fn resolve_out(env_var: &str, stem: &str) -> (std::path::PathBuf, bool) {
-    match std::env::var(env_var) {
-        Ok(path) if !path.is_empty() => (std::path::PathBuf::from(path), true),
-        _ => (
-            std::env::temp_dir().join(format!("{stem}_{}.png", std::process::id())),
-            false,
-        ),
-    }
+fn shot_path(stem: &str) -> std::path::PathBuf {
+    std::env::temp_dir().join(format!("{stem}_{}.png", std::process::id()))
 }
 
 fn render_options_to_png(sound: SoundEnabled, out: &Path) -> bool {
@@ -116,21 +106,14 @@ fn renders_the_options_screen_to_a_png() {
         );
         return;
     }
-    let (out, keep) = resolve_out(OUT_ENV, "gdtf_options_screen");
+    let out = shot_path("gdtf_options_screen");
     let written = render_options_to_png(SoundEnabled::new(true), &out);
     assert!(
         written,
         "the Options screen capture must write a PNG to {}",
         out.display()
     );
-    if keep {
-        eprintln!(
-            "Options screen (sound ON) screenshot kept at {}",
-            out.display()
-        );
-    } else {
-        drop(std::fs::remove_file(&out));
-    }
+    drop(std::fs::remove_file(&out));
 }
 
 #[test]
@@ -143,19 +126,12 @@ fn renders_the_sound_off_options_screen_to_a_png() {
         );
         return;
     }
-    let (out, keep) = resolve_out(OUT_ENV_OFF, "gdtf_options_screen_off");
+    let out = shot_path("gdtf_options_screen_off");
     let written = render_options_to_png(SoundEnabled::new(false), &out);
     assert!(
         written,
         "the sound-OFF Options screen capture must write a PNG to {}",
         out.display()
     );
-    if keep {
-        eprintln!(
-            "Options screen (sound OFF) screenshot kept at {}",
-            out.display()
-        );
-    } else {
-        drop(std::fs::remove_file(&out));
-    }
+    drop(std::fs::remove_file(&out));
 }

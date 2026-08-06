@@ -5,7 +5,6 @@ mod armor_form;
 mod attachment_form;
 mod camera;
 mod canvas;
-mod capture;
 mod connector_pairing;
 mod editor_map;
 mod egui_shell;
@@ -43,7 +42,6 @@ pub use attachment_form::{
 #[cfg(debug_assertions)]
 pub use attachment_form::{write_attachment, write_attachment_in};
 pub use canvas::{CanvasZoom, CurrentEditLevel, LevelStep};
-pub use capture::EditorCapturePlugin;
 pub use connector_pairing::{
     PairingOutcome, apply_placement_with_pairing, is_up_connector, resolve_down_counterpart,
 };
