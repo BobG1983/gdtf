@@ -1,3 +1,4 @@
+mod act_availability;
 mod availability_words;
 mod card;
 mod log_window;

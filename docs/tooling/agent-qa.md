@@ -263,7 +263,7 @@ Notes an agent relies on:
   the command has run). Neither is built yet: a call carrying either comes back
   `Unavailable { code: NotBuilt }` rather than running the command with the rider
   silently dropped.
-- **What the channel answers today.** The GAME host publishes seventeen commands.
+- **What the channel answers today.** The GAME host publishes twenty-eight commands.
   `app.phase` reports where the app is at every level of its state machine.
   `capture.screenshot` writes a PNG of what the game is showing and attaches it
   to the reply. Three shell reads answer before a battle: `settings.read` (the
@@ -278,7 +278,17 @@ Notes an agent relies on:
   same path its button does. `procgen.step` advances staged generation by one
   stage when the procgen stepper owns it. `wait` holds its reply until one of
   seven named conditions comes true, so an agent can stop polling — the channel
-  serves one caller at a time, so a parked `wait` holds it until it answers. The
+  serves one caller at a time, so a parked `wait` holds it until it answers.
+  Eleven `act.*` commands give the orders a player gives: `act.select`,
+  `act.select_next`, `act.select_prev`, `act.select_clear`, `act.move`,
+  `act.fire`, `act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing`
+  and `act.end_turn`. Each pushes onto the same intent bus the keybinds and the
+  pointer push onto, so the sim keeps deciding legality; each answers the
+  act-log window it opened, which `log.read` then explains. Name the actor with
+  `act.select` before every act: the game re-selects the first living player
+  ganger as soon as nothing is selected, so `act.select_clear` is undone on the
+  next frame and an act after a clear runs through whoever the game re-picked.
+  The
   EDITOR host publishes none yet and answers every
   `run` `Unknown`. That is the expected state mid-epic, not a regression: the
   surface that used to sit here was deleted before the commands that replace it
@@ -381,7 +391,7 @@ against the shipped five-tool surface:
 5. `logs` — if a step surprised you, read what the child printed.
 6. `stop` — stop the child and release the port.
 
-On the game host today step 4 is one of seventeen. `run { command: "app.phase",
+On the game host today step 4 is one of twenty-eight. `run { command: "app.phase",
 arguments: "()" }` answers the five-level state tuple (`app`, `running`, `game`,
 `battlescape`, `aftermath`, the nested four `None` where they are not live).
 `run { command: "capture.screenshot", arguments: "(name: Some(\"menu\"))" }`

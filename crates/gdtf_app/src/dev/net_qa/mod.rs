@@ -14,7 +14,8 @@ crate::support_use!(plugin::NetQaPlugin;);
 
 #[cfg(feature = "headless_test")]
 pub use commands::{
-    assert_game_command_set_is_conformant, game_command_names, shorten_wait_budget,
+    ActCommandSystems, assert_game_command_set_is_conformant, game_command_names,
+    shorten_wait_budget,
 };
 #[cfg(feature = "headless_test")]
 pub use config::{
@@ -22,6 +23,6 @@ pub use config::{
 };
 #[cfg(feature = "headless_test")]
 pub use facts::{
-    BattleActivity, BattleModel, BattleScreen, GameFacts, GameFactsParam, PresenterReadiness,
-    StepperActivity,
+    BattleActivity, BattleModel, BattleScreen, GameFacts, GameFactsParam, PlaybackCatchUp,
+    PresenterReadiness, StepperActivity,
 };

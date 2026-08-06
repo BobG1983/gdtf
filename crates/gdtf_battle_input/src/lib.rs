@@ -36,7 +36,7 @@ pub use pointer::{
     fire_mode,
     fire_mode::{SelectedFireMode, sync_fire_mode_on_select},
     fire_surface,
-    fire_surface::ShooterArms,
+    fire_surface::{ShooterArms, try_fire_request},
     gamepad,
     gamepad::{
         ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, CursorSpeed, CursorStickDeadzone,

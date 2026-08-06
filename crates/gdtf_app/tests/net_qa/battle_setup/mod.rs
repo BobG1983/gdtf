@@ -8,6 +8,7 @@ mod map;
 pub(crate) use behind::{
     battle_with_a_frozen_fog, battle_with_a_ganger_the_screen_has_not_moved,
     battle_with_an_occupant_the_screen_has_not_seen, battle_with_remembered_cover,
+    hold_the_screen_still,
 };
 pub(crate) use expected::{
     ExpectedEnemy, FLOODED_LOG_LINES, LOG_LINES_WRITTEN, LoggedActor, SpawnedDoor, Standing,

@@ -22,14 +22,16 @@ use gdtf_battle_sim::{
 };
 
 use super::assert_ron_round_trip;
-use crate::dev::net_qa::wire::deed::ActDeedKindNet;
+use crate::dev::net_qa::wire::deed::{ActDeedKindNet, MoveRejectionNet};
 
 const KINDS: [ActDeedKindNet; 26] = [
     ActDeedKindNet::TurnBegan,
     ActDeedKindNet::PostureChanged,
     ActDeedKindNet::Stepped,
     ActDeedKindNet::MovedTo,
-    ActDeedKindNet::MoveRefused,
+    ActDeedKindNet::MoveRefused {
+        reason: MoveRejectionNet::Unreachable,
+    },
     ActDeedKindNet::Fired,
     ActDeedKindNet::RoundResolved,
     ActDeedKindNet::Reloaded,
@@ -97,6 +99,15 @@ fn an_injury() -> InjuryInflicted {
     }
 }
 
+/// The sim reason a wire reason came from. Exhaustive, so a crossed arm shows here.
+const fn a_sim_rejection(reason: MoveRejectionNet) -> MoveRejection {
+    match reason {
+        MoveRejectionNet::Unreachable => MoveRejection::Unreachable,
+        MoveRejectionNet::Unaffordable => MoveRejection::Unaffordable,
+        MoveRejectionNet::Suppressed => MoveRejection::Suppressed,
+    }
+}
+
 /// One sim deed per wire kind. Exhaustive, so a new kind needs a witness before this compiles.
 fn a_deed_for(kind: ActDeedKindNet) -> ActDeed {
     match kind {
@@ -119,8 +130,8 @@ fn a_deed_for(kind: ActDeedKindNet) -> ActDeed {
         ActDeedKindNet::MovedTo => ActDeed::MovedTo {
             position: a_position(),
         },
-        ActDeedKindNet::MoveRefused => ActDeed::MoveRefused {
-            reason: MoveRejection::Unreachable,
+        ActDeedKindNet::MoveRefused { reason } => ActDeed::MoveRefused {
+            reason: a_sim_rejection(reason),
         },
         ActDeedKindNet::Fired => ActDeed::Fired {
             target: Some(an_entity()),
@@ -202,6 +213,23 @@ fn variant_name(rendered: &str) -> &str {
 fn every_deed_kind_round_trips() {
     for kind in KINDS {
         assert_ron_round_trip(&kind);
+    }
+}
+
+#[test]
+fn every_move_rejection_round_trips_and_mirrors_its_sim_reason() {
+    for reason in [
+        MoveRejectionNet::Unreachable,
+        MoveRejectionNet::Unaffordable,
+        MoveRejectionNet::Suppressed,
+    ] {
+        assert_ron_round_trip(&reason);
+        assert_eq!(
+            MoveRejectionNet::from_sim(a_sim_rejection(reason)),
+            reason,
+            "a refused move carries the sim's own reason to the client, so the mirror must be \
+             lossless both ways",
+        );
     }
 }
 

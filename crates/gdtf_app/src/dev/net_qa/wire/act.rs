@@ -1,4 +1,4 @@
-//! Act sequence and network intent enum.
+//! Act sequence, act replies, and the network intent enum.
 
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
@@ -25,6 +25,62 @@ impl ActSeqNet {
     pub const fn new(seq: u64) -> Self {
         Self(seq)
     }
+}
+
+/// Whether the act finished inside the frame, rather than still walking itself out.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ActCompleteNet(bool);
+
+impl ActCompleteNet {
+    /// Build from a bool.
+    #[must_use]
+    pub const fn new(complete: bool) -> Self {
+        Self(complete)
+    }
+}
+
+/// Why the QA layer turned an act away before the sim ever saw it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ActRefusalNet {
+    /// The token named no live ganger.
+    UnknownToken,
+    /// The act needs a selected shooter and nothing is selected.
+    NoShooter,
+}
+
+/// What every classic act answers: the act-log window it opened, or a refusal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ActReply {
+    /// The intent reached the sim; read `from_seq..to_seq` from the act log for what it did.
+    Accepted {
+        /// Act-log head when the call was claimed.
+        from_seq: ActSeqNet,
+        /// Act-log head once the sim had run that frame.
+        to_seq:   ActSeqNet,
+        /// False while the actor is still walking the act out.
+        complete: ActCompleteNet,
+    },
+    /// The call never reached the sim.
+    Refused {
+        /// Why it was turned away.
+        reason: ActRefusalNet,
+    },
+}
+
+/// What the four selection commands answer: who is selected now, or a refusal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SelectReply {
+    /// The selection as it stands after the command ran.
+    Selected {
+        /// Selected shooter, absent when nothing is selected.
+        shooter: Option<GangerToken>,
+    },
+    /// The call never reached the selection.
+    Refused {
+        /// Why it was turned away.
+        reason: ActRefusalNet,
+    },
 }
 
 /// Player or automation intent sent over the QA channel.

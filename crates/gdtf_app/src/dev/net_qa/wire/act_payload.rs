@@ -1,7 +1,10 @@
 //! Stance, aim, facing, and melee target wire payloads.
 
 use bevy::prelude::Deref;
-use gdtf_battle_sim::prelude::{Stance, StanceKind};
+use gdtf_battle_sim::{
+    ganger::Direction,
+    prelude::{Stance, StanceKind},
+};
 use serde::{Deserialize, Serialize};
 
 use super::{cell::CellLevelNet, token::GangerToken};
@@ -25,6 +28,16 @@ impl StanceNet {
             StanceKind::Standing => Self::Standing,
             StanceKind::Crouching => Self::Crouching,
             StanceKind::Prone => Self::Prone,
+        }
+    }
+
+    /// The posture the sim knows this one as.
+    #[must_use]
+    pub const fn to_sim(self) -> StanceKind {
+        match self {
+            Self::Standing => StanceKind::Standing,
+            Self::Crouching => StanceKind::Crouching,
+            Self::Prone => StanceKind::Prone,
         }
     }
 }
@@ -61,6 +74,38 @@ pub enum FacingNet {
     West,
     /// North-west.
     NorthWest,
+}
+
+impl FacingNet {
+    /// Mirror the sim's direction.
+    #[must_use]
+    pub const fn from_sim(facing: Direction) -> Self {
+        match facing {
+            Direction::North => Self::North,
+            Direction::NorthEast => Self::NorthEast,
+            Direction::East => Self::East,
+            Direction::SouthEast => Self::SouthEast,
+            Direction::South => Self::South,
+            Direction::SouthWest => Self::SouthWest,
+            Direction::West => Self::West,
+            Direction::NorthWest => Self::NorthWest,
+        }
+    }
+
+    /// The direction the sim knows this one as.
+    #[must_use]
+    pub const fn to_sim(self) -> Direction {
+        match self {
+            Self::North => Direction::North,
+            Self::NorthEast => Direction::NorthEast,
+            Self::East => Direction::East,
+            Self::SouthEast => Direction::SouthEast,
+            Self::South => Direction::South,
+            Self::SouthWest => Direction::SouthWest,
+            Self::West => Direction::West,
+            Self::NorthWest => Direction::NorthWest,
+        }
+    }
 }
 
 /// Melee target on the wire.

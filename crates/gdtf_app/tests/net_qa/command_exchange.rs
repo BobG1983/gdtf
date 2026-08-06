@@ -44,6 +44,65 @@ pub(crate) const PROCGEN_STEP: &str = "procgen.step";
 
 pub(crate) const WAIT: &str = "wait";
 
+pub(crate) const ACT_SELECT: &str = "act.select";
+
+pub(crate) const ACT_SELECT_NEXT: &str = "act.select_next";
+
+pub(crate) const ACT_SELECT_PREV: &str = "act.select_prev";
+
+pub(crate) const ACT_SELECT_CLEAR: &str = "act.select_clear";
+
+pub(crate) const ACT_MOVE: &str = "act.move";
+
+pub(crate) const ACT_FIRE: &str = "act.fire";
+
+pub(crate) const ACT_RELOAD: &str = "act.reload";
+
+pub(crate) const ACT_SET_STANCE: &str = "act.set_stance";
+
+pub(crate) const ACT_SET_AIMING: &str = "act.set_aiming";
+
+pub(crate) const ACT_SET_FACING: &str = "act.set_facing";
+
+pub(crate) const ACT_END_TURN: &str = "act.end_turn";
+
+/// Every command the game publishes, in declaration order.
+pub(crate) fn published_names() -> Vec<CommandName> {
+    [
+        APP_PHASE,
+        CAPTURE_SCREENSHOT,
+        SETTINGS_READ,
+        UI_FOCUS,
+        PLAYBACK_STATE,
+        BATTLE_ROSTER,
+        BATTLE_TURN,
+        BATTLE_SELECTION,
+        BATTLE_OFFERS,
+        BATTLE_INSPECT,
+        BATTLE_SIGHTLINE,
+        BATTLE_VISIBLE,
+        LOG_READ,
+        BATTLE_START,
+        BATTLE_FLEE,
+        PROCGEN_STEP,
+        WAIT,
+        ACT_SELECT,
+        ACT_SELECT_NEXT,
+        ACT_SELECT_PREV,
+        ACT_SELECT_CLEAR,
+        ACT_MOVE,
+        ACT_FIRE,
+        ACT_RELOAD,
+        ACT_SET_STANCE,
+        ACT_SET_AIMING,
+        ACT_SET_FACING,
+        ACT_END_TURN,
+    ]
+    .into_iter()
+    .map(CommandName::from_static)
+    .collect()
+}
+
 /// Build the fixture, let `plan` read the live world to shape the requests, then exchange.
 pub(crate) fn exchange_planned(
     fixture: SocketFixture,
@@ -59,10 +118,22 @@ pub(crate) fn exchange_expected<T>(
     fixture: impl FnOnce() -> Result<(App, NetQaPort, T), TestError>,
     plan: impl FnOnce(&T) -> Vec<QaRequest>,
 ) -> Result<(Vec<QaResponse>, T), TestError> {
+    let (_app, replies, expected) = exchange_inspecting(fixture, plan)?;
+    Ok((replies, expected))
+}
+
+/// Exchange as `exchange_expected` does, and keep the live app so a case can read what it left.
+///
+/// A reply says what the QA layer answered; the app says what the sim actually holds. A case
+/// that has to tell one value from another reads the app.
+pub(crate) fn exchange_inspecting<T>(
+    fixture: impl FnOnce() -> Result<(App, NetQaPort, T), TestError>,
+    plan: impl FnOnce(&T) -> Vec<QaRequest>,
+) -> Result<(App, Vec<QaResponse>, T), TestError> {
     let (mut app, port, expected) = fixture()?;
     let requests = plan(&expected);
     let replies = exchange_over(&mut app, port, requests)?;
-    Ok((replies, expected))
+    Ok((app, replies, expected))
 }
 
 fn exchange_over(
@@ -70,6 +141,14 @@ fn exchange_over(
     port: NetQaPort,
     requests: Vec<QaRequest>,
 ) -> Result<Vec<QaResponse>, TestError> {
+    let rx = client_thread(port, requests);
+    drive_until_reported(app, &rx)
+}
+
+fn client_thread(
+    port: NetQaPort,
+    requests: Vec<QaRequest>,
+) -> mpsc::Receiver<Result<Vec<QaResponse>, TestError>> {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let collected = (|| -> Result<Vec<QaResponse>, TestError> {
@@ -86,7 +165,7 @@ fn exchange_over(
         })();
         let _sent = tx.send(collected);
     });
-    drive_until_reported(app, &rx)
+    rx
 }
 
 pub(crate) fn exchange_all(

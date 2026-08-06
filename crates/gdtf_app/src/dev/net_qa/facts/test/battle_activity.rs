@@ -1,5 +1,5 @@
 use crate::dev::net_qa::{
-    facts::{BattleActivity, BattleModel, GameFacts, StepperActivity},
+    facts::{BattleActivity, BattleModel, GameFacts, PlaybackCatchUp, StepperActivity},
     wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet, RunningPhaseNet},
 };
 
@@ -14,6 +14,7 @@ fn facts_with(battlescape: Option<BattleScapePhaseNet>) -> GameFacts {
         ),
         BattleModel::Absent,
         StepperActivity::NotStepping,
+        PlaybackCatchUp::CaughtUp,
     )
 }
 

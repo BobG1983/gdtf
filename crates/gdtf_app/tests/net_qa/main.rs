@@ -1,6 +1,18 @@
 //! Net-QA integration tests (debug + `net_qa` feature only).
 #![cfg(debug_assertions)]
 
+mod act_end_turn;
+mod act_fire;
+mod act_move;
+mod act_ordering;
+mod act_posture;
+mod act_refusals;
+mod act_reload;
+mod act_replaying;
+mod act_select;
+mod act_select_direction;
+mod act_stance;
+mod act_support;
 mod app_phase_depth;
 mod battle_fixture;
 mod battle_flee;
@@ -18,6 +30,7 @@ mod battle_turn;
 mod battle_visible;
 mod capture_fixture;
 mod capture_screenshot;
+mod catalogue_acts;
 mod catalogue_shapes;
 mod command_exchange;
 mod command_set;

@@ -1,7 +1,8 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
+use gdtf_battle_presenter::playback::PlaybackGate;
 use gdtf_battle_sim::prelude::BattleInProgress;
 
-use super::{BattleModel, GameFacts, StepperActivity};
+use super::{BattleModel, GameFacts, PlaybackCatchUp, StepperActivity};
 use crate::{
     dev::net_qa::wire::{
         AfterMathPhaseNet, AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet,
@@ -23,6 +24,7 @@ crate::support_item! {
         battlescape: Option<Res<'w, State<BattleScapeState>>>,
         aftermath:   Option<Res<'w, State<AfterMathState>>>,
         battle:      Option<Res<'w, BattleInProgress>>,
+        gate:        PlaybackGate<'w>,
         #[cfg(feature = "dev_tools")]
         stepper:     StepperMarker<'w>,
     }
@@ -59,6 +61,7 @@ impl GameFactsParam<'_> {
                 ),
                 self.battle_model(),
                 stepper,
+                self.catch_up(),
             )
         }
     }
@@ -67,6 +70,14 @@ impl GameFactsParam<'_> {
         match self.battle {
             Some(_) => BattleModel::Present,
             None => BattleModel::Absent,
+        }
+    }
+
+    fn catch_up(&self) -> PlaybackCatchUp {
+        if self.gate.is_open() {
+            PlaybackCatchUp::CaughtUp
+        } else {
+            PlaybackCatchUp::Behind
         }
     }
 }
