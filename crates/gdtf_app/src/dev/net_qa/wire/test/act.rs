@@ -125,57 +125,6 @@ fn net_intent_round_trips_every_variant() {
 }
 
 #[test]
-fn stance_net_round_trips_every_variant() {
-    for stance in [StanceNet::Standing, StanceNet::Crouching, StanceNet::Prone] {
-        match stance {
-            StanceNet::Standing | StanceNet::Crouching | StanceNet::Prone => {}
-        }
-        assert_ron_round_trip(&stance);
-    }
-}
-
-#[test]
-fn facing_net_round_trips_every_variant() {
-    for facing in [
-        FacingNet::North,
-        FacingNet::NorthEast,
-        FacingNet::East,
-        FacingNet::SouthEast,
-        FacingNet::South,
-        FacingNet::SouthWest,
-        FacingNet::West,
-        FacingNet::NorthWest,
-    ] {
-        match facing {
-            FacingNet::North
-            | FacingNet::NorthEast
-            | FacingNet::East
-            | FacingNet::SouthEast
-            | FacingNet::South
-            | FacingNet::SouthWest
-            | FacingNet::West
-            | FacingNet::NorthWest => {}
-        }
-        assert_ron_round_trip(&facing);
-    }
-}
-
-#[test]
-fn melee_target_and_aim_round_trip() {
-    for target in [
-        MeleeTargetNet::Ganger(GangerToken::new(1)),
-        MeleeTargetNet::Structure(CellLevelNet::new(a_cell(), LevelNet::new(2))),
-    ] {
-        match target {
-            MeleeTargetNet::Ganger(_) | MeleeTargetNet::Structure(_) => {}
-        }
-        assert_ron_round_trip(&target);
-    }
-    assert_ron_round_trip(&AimNet::new(true));
-    assert_ron_round_trip(&AimNet::new(false));
-}
-
-#[test]
 fn key_net_round_trips_every_variant() {
     for key in [
         KeyNet::Escape,

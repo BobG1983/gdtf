@@ -1,13 +1,16 @@
-use super::{BattleActivity, BattleModel, BattleScreen, PresenterReadiness, StepperActivity};
+use super::{
+    BattleActivity, BattleModel, BattleScreen, PlaybackCatchUp, PresenterReadiness, StepperActivity,
+};
 use crate::dev::net_qa::wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet};
 
 crate::support_item! {
     /// What a game command's availability check may read about the host.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     struct GameFacts {
-        phase:   AppPhaseNet,
-        model:   BattleModel,
-        stepper: StepperActivity,
+        phase:    AppPhaseNet,
+        model:    BattleModel,
+        stepper:  StepperActivity,
+        catch_up: PlaybackCatchUp,
     }
 }
 
@@ -16,11 +19,13 @@ impl GameFacts {
         phase: AppPhaseNet,
         model: BattleModel,
         stepper: StepperActivity,
+        catch_up: PlaybackCatchUp,
     ) -> Self {
         Self {
             phase,
             model,
             stepper,
+            catch_up,
         }
     }
 
@@ -37,6 +42,14 @@ impl GameFacts {
         #[must_use]
         const fn stepper(self) -> StepperActivity {
             self.stepper
+        }
+    }
+
+    crate::support_item! {
+        /// Whether the screen has caught up with the act log.
+        #[must_use]
+        const fn catch_up(self) -> PlaybackCatchUp {
+            self.catch_up
         }
     }
 

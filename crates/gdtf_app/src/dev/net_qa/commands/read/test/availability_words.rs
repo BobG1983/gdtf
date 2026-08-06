@@ -4,7 +4,7 @@ use gdtf_qa_protocol::command::{CommandAvailability, UnavailableCode};
 
 use crate::dev::net_qa::{
     commands::set::GAME_COMMANDS,
-    facts::{BattleModel, GameFacts, StepperActivity},
+    facts::{BattleModel, GameFacts, PlaybackCatchUp, StepperActivity},
     wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet, RunningPhaseNet},
 };
 
@@ -31,6 +31,17 @@ const NOT_BATTLE_READS: &[&str] = &[
     "battle.flee",
     "procgen.step",
     "wait",
+    "act.select",
+    "act.select_next",
+    "act.select_prev",
+    "act.select_clear",
+    "act.move",
+    "act.fire",
+    "act.reload",
+    "act.set_stance",
+    "act.set_aiming",
+    "act.set_facing",
+    "act.end_turn",
 ];
 
 fn on_the_battle_screen(battlescape: BattleScapePhaseNet, model: BattleModel) -> GameFacts {
@@ -44,6 +55,7 @@ fn on_the_battle_screen(battlescape: BattleScapePhaseNet, model: BattleModel) ->
         ),
         model,
         StepperActivity::NotStepping,
+        PlaybackCatchUp::CaughtUp,
     )
 }
 
@@ -58,6 +70,7 @@ fn at_the_menu() -> GameFacts {
         ),
         BattleModel::Absent,
         StepperActivity::NotStepping,
+        PlaybackCatchUp::CaughtUp,
     )
 }
 

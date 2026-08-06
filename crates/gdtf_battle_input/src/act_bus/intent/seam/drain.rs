@@ -62,6 +62,10 @@ pub fn dispatch_act_intents(
                 acts.aiming
                     .write(SetAimingRequested::new(actor, AimRequest::new(!**aiming)));
             }
+            ActIntent::SetAiming(request) => {
+                let Some(actor) = **selected else { continue };
+                acts.aiming.write(SetAimingRequested::new(actor, request));
+            }
             ActIntent::FacingCycle => {
                 let Some(actor) = **selected else { continue };
                 let Ok((_, facing, ..)) = actors.get(actor) else {

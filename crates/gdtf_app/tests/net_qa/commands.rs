@@ -11,7 +11,8 @@ use super::{
     command_exchange::{
         APP_PHASE, BATTLE_FLEE, BATTLE_INSPECT, BATTLE_OFFERS, BATTLE_ROSTER, BATTLE_SELECTION,
         BATTLE_SIGHTLINE, BATTLE_START, BATTLE_TURN, BATTLE_VISIBLE, CAPTURE_SCREENSHOT, LOG_READ,
-        PLAYBACK_STATE, PROCGEN_STEP, SETTINGS_READ, UI_FOCUS, WAIT, exchange, exchange_all, run,
+        PLAYBACK_STATE, PROCGEN_STEP, SETTINGS_READ, UI_FOCUS, WAIT, exchange, exchange_all,
+        published_names, run,
     },
     socket_support::{TestResult, game_app_listening},
 };
@@ -24,31 +25,8 @@ pub(crate) const PROCGEN_STEP_IN_THE_MENU: UnavailableCode = UnavailableCode::No
 #[cfg(feature = "dev_tools")]
 pub(crate) const PROCGEN_STEP_IN_THE_MENU: UnavailableCode = UnavailableCode::WrongState;
 
-/// Every command the game publishes, in declaration order.
-pub(crate) fn published_names() -> Vec<CommandName> {
-    vec![
-        CommandName::from_static(APP_PHASE),
-        CommandName::from_static(CAPTURE_SCREENSHOT),
-        CommandName::from_static(SETTINGS_READ),
-        CommandName::from_static(UI_FOCUS),
-        CommandName::from_static(PLAYBACK_STATE),
-        CommandName::from_static(BATTLE_ROSTER),
-        CommandName::from_static(BATTLE_TURN),
-        CommandName::from_static(BATTLE_SELECTION),
-        CommandName::from_static(BATTLE_OFFERS),
-        CommandName::from_static(BATTLE_INSPECT),
-        CommandName::from_static(BATTLE_SIGHTLINE),
-        CommandName::from_static(BATTLE_VISIBLE),
-        CommandName::from_static(LOG_READ),
-        CommandName::from_static(BATTLE_START),
-        CommandName::from_static(BATTLE_FLEE),
-        CommandName::from_static(PROCGEN_STEP),
-        CommandName::from_static(WAIT),
-    ]
-}
-
 #[test]
-fn the_catalogue_lists_the_shell_reads_the_battle_reads_and_the_lifecycle_commands() -> TestResult {
+fn the_catalogue_lists_the_reads_the_lifecycle_commands_and_the_classic_acts() -> TestResult {
     let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
     let QaResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");

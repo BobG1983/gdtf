@@ -24,7 +24,7 @@ fn the_game_command_set_is_conformant() {
 }
 
 #[test]
-fn the_game_offers_the_shell_reads_the_battle_reads_and_the_lifecycle_commands() {
+fn the_game_offers_the_reads_the_lifecycle_commands_and_the_classic_acts() {
     assert_eq!(
         game_command_names(),
         vec![
@@ -45,6 +45,17 @@ fn the_game_offers_the_shell_reads_the_battle_reads_and_the_lifecycle_commands()
             CommandName::from_static("battle.flee"),
             CommandName::from_static("procgen.step"),
             CommandName::from_static("wait"),
+            CommandName::from_static("act.select"),
+            CommandName::from_static("act.select_next"),
+            CommandName::from_static("act.select_prev"),
+            CommandName::from_static("act.select_clear"),
+            CommandName::from_static("act.move"),
+            CommandName::from_static("act.fire"),
+            CommandName::from_static("act.reload"),
+            CommandName::from_static("act.set_stance"),
+            CommandName::from_static("act.set_aiming"),
+            CommandName::from_static("act.set_facing"),
+            CommandName::from_static("act.end_turn"),
         ],
         "the published list is part of the wire contract and does not change with the build's \
          features — only `procgen.step`'s availability code does",
