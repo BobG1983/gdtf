@@ -47,6 +47,8 @@ pub enum ActRefusalNet {
     UnknownToken,
     /// The act needs a selected shooter and nothing is selected.
     NoShooter,
+    /// The contextual panel is offering nothing for that act family this frame.
+    NoOffer,
 }
 
 /// What every classic act answers: the act-log window it opened, or a refusal.

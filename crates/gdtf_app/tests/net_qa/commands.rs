@@ -26,7 +26,8 @@ pub(crate) const PROCGEN_STEP_IN_THE_MENU: UnavailableCode = UnavailableCode::No
 pub(crate) const PROCGEN_STEP_IN_THE_MENU: UnavailableCode = UnavailableCode::WrongState;
 
 #[test]
-fn the_catalogue_lists_the_reads_the_lifecycle_commands_and_the_classic_acts() -> TestResult {
+fn the_catalogue_lists_the_reads_the_lifecycle_commands_and_the_classic_and_contextual_acts()
+-> TestResult {
     let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
     let QaResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");

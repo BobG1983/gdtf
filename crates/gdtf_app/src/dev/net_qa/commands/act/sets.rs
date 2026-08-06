@@ -8,6 +8,8 @@ crate::support_item! {
     enum ActCommandSystems {
         /// Push the intent after the call is claimed and before the act bus drains.
         Claim,
+        /// Claim inside the band, but only once the panel has scanned this frame's offers.
+        ContextualClaim,
         /// Answer the parked call once the sim has recorded the frame.
         Settle,
     }

@@ -19,7 +19,7 @@ use crate::{
             token::{DoorToken, EmplacementToken, GangerToken},
         },
     },
-    states::running::game::battlescape::contextual_panel::seam::ContextualOffer,
+    states::running::game::battlescape::contextual_panel::ContextualOffer,
 };
 
 /// One entity per act, all distinct, so an offer landing under the wrong act is visible.

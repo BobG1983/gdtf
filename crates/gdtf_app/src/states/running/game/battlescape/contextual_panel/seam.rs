@@ -79,7 +79,7 @@ impl<A: ContextualAct> ContextualOffer<A> {
     }
 
     #[must_use]
-    pub(in crate::states::running::game::battlescape) const fn is_offered(&self) -> bool {
+    pub(crate) const fn is_offered(&self) -> bool {
         self.0.is_some()
     }
 }

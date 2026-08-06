@@ -36,6 +36,7 @@ mod catalogue_shapes;
 mod command_exchange;
 mod command_set;
 mod commands;
+mod contextual_acts;
 mod deadline;
 mod facts_probe;
 mod hello_socket;

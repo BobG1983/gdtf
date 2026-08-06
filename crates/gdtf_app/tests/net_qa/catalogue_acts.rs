@@ -1,4 +1,4 @@
-//! What the live catalogue says about the classic acts: timing, summary, and refusal.
+//! What the live catalogue says about the acts: timing, summary, and refusal.
 
 use gdtf_qa_protocol::{
     command::{CommandAvailability, CommandName, CommandTiming, UnavailableCode},
@@ -7,14 +7,16 @@ use gdtf_qa_protocol::{
 
 use super::{
     command_exchange::{
-        ACT_END_TURN, ACT_FIRE, ACT_MOVE, ACT_RELOAD, ACT_SELECT, ACT_SELECT_CLEAR,
-        ACT_SELECT_NEXT, ACT_SELECT_PREV, ACT_SET_AIMING, ACT_SET_FACING, ACT_SET_STANCE, exchange,
+        ACT_END_TURN, ACT_ENTER_EMPLACEMENT, ACT_EXECUTE, ACT_EXIT_EMPLACEMENT, ACT_FIRE,
+        ACT_MELEE, ACT_MOVE, ACT_OPEN_DOOR, ACT_RELOAD, ACT_SELECT, ACT_SELECT_CLEAR,
+        ACT_SELECT_NEXT, ACT_SELECT_PREV, ACT_SET_AIMING, ACT_SET_FACING, ACT_SET_STANCE,
+        ACT_SHOVE, ACT_STABILIZE, ACT_THROW_GRENADE, exchange,
     },
     socket_support::{TestResult, game_app_listening},
 };
 
-/// Every classic act, with the timing its row must publish.
-const ACT_TIMINGS: [(&str, CommandTiming); 11] = [
+/// Every act, classic and contextual, with the timing its row must publish.
+const ACT_TIMINGS: [(&str, CommandTiming); 19] = [
     (ACT_SELECT, CommandTiming::Immediate),
     (ACT_SELECT_NEXT, CommandTiming::Immediate),
     (ACT_SELECT_PREV, CommandTiming::Immediate),
@@ -26,6 +28,14 @@ const ACT_TIMINGS: [(&str, CommandTiming); 11] = [
     (ACT_SET_AIMING, CommandTiming::Immediate),
     (ACT_SET_FACING, CommandTiming::Immediate),
     (ACT_END_TURN, CommandTiming::Deferred),
+    (ACT_MELEE, CommandTiming::Immediate),
+    (ACT_SHOVE, CommandTiming::Immediate),
+    (ACT_STABILIZE, CommandTiming::Immediate),
+    (ACT_EXECUTE, CommandTiming::Immediate),
+    (ACT_THROW_GRENADE, CommandTiming::Immediate),
+    (ACT_OPEN_DOOR, CommandTiming::Immediate),
+    (ACT_ENTER_EMPLACEMENT, CommandTiming::Immediate),
+    (ACT_EXIT_EMPLACEMENT, CommandTiming::Immediate),
 ];
 
 #[test]

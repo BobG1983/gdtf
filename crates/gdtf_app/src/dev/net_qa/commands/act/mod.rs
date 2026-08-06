@@ -1,5 +1,6 @@
-//! The classic acts a QA client drives the battle with, one command per file.
+//! The acts a QA client drives the battle with, one command per file.
 pub(crate) mod aiming;
+pub(crate) mod contextual;
 pub(crate) mod end_turn;
 pub(crate) mod facing;
 pub(crate) mod fire;
@@ -16,6 +17,12 @@ pub(crate) mod support;
 mod test;
 
 pub(crate) use aiming::ActSetAiming;
+#[cfg(feature = "headless_test")]
+pub use contextual::ContextualReply;
+pub(crate) use contextual::{
+    ActEnterEmplacement, ActExecute, ActExitEmplacement, ActMelee, ActOpenDoor, ActShove,
+    ActStabilize, ActThrowGrenade,
+};
 pub(crate) use end_turn::ActEndTurn;
 pub(crate) use facing::ActSetFacing;
 pub(crate) use fire::ActFire;
