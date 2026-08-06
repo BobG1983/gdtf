@@ -1,5 +1,4 @@
 use std::{
-    collections::BTreeSet,
     fs,
     path::{Path, PathBuf},
     process::Command,
@@ -59,16 +58,4 @@ pub(crate) fn tracked_rs(root: &Path) -> Vec<String> {
     files.retain(|p| Path::new(p).extension().is_some_and(|e| e == "rs"));
     files.sort();
     files
-}
-
-pub(crate) fn registry_paths(root: &Path) -> BTreeSet<String> {
-    fs::read_to_string(root.join(".claude/rules/module-layout-exemptions.txt"))
-        .map(|text| {
-            text.lines()
-                .map(str::trim)
-                .filter(|l| !l.is_empty() && !l.starts_with('#'))
-                .filter_map(|l| l.split_whitespace().next().map(str::to_owned))
-                .collect()
-        })
-        .unwrap_or_default()
 }

@@ -1,26 +1,39 @@
-fn normalize(line: &str) -> String {
-    line.split_whitespace().collect::<Vec<_>>().join(" ")
-}
+use toml_edit::{DocumentMut, Item, Value};
 
-pub(crate) fn section_lines(manifest: &str, section: &str) -> Vec<String> {
-    let header = format!("[{section}]");
-    let mut inside = false;
-    let mut lines = Vec::new();
-    for raw in manifest.lines() {
-        let trimmed = raw.trim();
-        if trimmed.starts_with('[') && trimmed.ends_with(']') {
-            inside = trimmed == header;
-            continue;
-        }
-        if !inside || trimmed.is_empty() || trimmed.starts_with('#') {
-            continue;
-        }
-        lines.push(normalize(trimmed));
+// A manifest this guard cannot parse is a broken guard, not a pass.
+pub(crate) fn parse(path: &str, text: &str) -> DocumentMut {
+    match text.parse::<DocumentMut>() {
+        Ok(manifest) => manifest,
+        Err(error) => unreachable!("{path} is not valid TOML: {error}"),
     }
-    lines
 }
 
-pub(crate) fn declares(manifest: &str, section: &str, declaration: &str) -> bool {
-    let wanted = normalize(declaration);
-    section_lines(manifest, section).contains(&wanted)
+// The value at a dotted key path such as `workspace.lints.rustdoc.all`. Section headers, inline
+// tables and dotted keys all read the same way, so an equivalent spelling finds the same value.
+pub(crate) fn item_at<'a>(manifest: &'a DocumentMut, path: &str) -> Option<&'a Item> {
+    let mut keys = path.split('.');
+    let mut item = manifest.get(keys.next()?)?;
+    for key in keys {
+        item = item.get(key)?;
+    }
+    Some(item)
+}
+
+// The level of a lint entry, written either as `name = "deny"` or as a table carrying `level`.
+pub(crate) fn lint_level(entry: &Item) -> Option<&str> {
+    entry
+        .as_str()
+        .or_else(|| entry.get("level").and_then(Item::as_str))
+}
+
+// The priority of a lint entry, which decides whether a named lint can override a group.
+pub(crate) fn lint_priority(entry: &Item) -> Option<i64> {
+    entry.get("priority").and_then(Item::as_integer)
+}
+
+// Every string in a TOML array; empty when the item is not an array of strings.
+pub(crate) fn strings(item: &Item) -> Vec<&str> {
+    item.as_array().map_or_else(Vec::new, |array| {
+        array.iter().filter_map(Value::as_str).collect()
+    })
 }

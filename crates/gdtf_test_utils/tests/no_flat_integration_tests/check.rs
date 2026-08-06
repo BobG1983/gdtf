@@ -1,66 +1,41 @@
-//! Fail if a packed crate gains a new flat integration-test binary.
+//! Fail if any crate or bin gains a new flat integration-test binary.
 
-use std::{collections::BTreeSet, fs};
+use crate::tree::{flat_test_files, repo_root};
 
-use crate::tree::{PACKED_TEST_CRATES, repo_root};
-
-/// Flat files intentionally left solo (process-global or special harness).
-const ALLOWED_FLATS: &[(&str, &str)] = &[
-    ("crates/gdtf_app", "capstone.rs"),
-    ("crates/gdtf_battle_presenter", "terrain_missing_sprite.rs"),
+// Flat test files already in the tree when the guard started walking all of it.
+// They may stay; nothing new joins without a reason. Packing one into a directory
+// suite or deleting it is fine — drop its line too.
+const ALLOWED_FLATS: &[&str] = &[
+    "bins/gdtf_qa_mcp/tests/link_timeout.rs",
+    "bins/gdtf_qa_mcp/tests/loopback.rs",
+    "bins/gdtf_qa_mcp/tests/reconnect.rs",
+    "crates/gdtf_app/tests/capstone.rs",
+    "crates/gdtf_battle_presenter/tests/terrain_missing_sprite.rs",
+    "crates/gdtf_qa_protocol/tests/engine_free.rs",
+    "crates/gdtf_screenshot/tests/capture_pipeline.rs",
 ];
 
 #[test]
-fn packed_crates_have_no_unexpected_flat_integration_tests() {
+fn no_unexpected_flat_integration_tests() {
     let root = repo_root();
-    let allowed: BTreeSet<(&str, &str)> = ALLOWED_FLATS.iter().copied().collect();
-    let mut violations = Vec::new();
-
-    for crate_rel in PACKED_TEST_CRATES {
-        let tests = root.join(crate_rel).join("tests");
-        if !tests.is_dir() {
-            violations.push(format!("missing tests dir: {crate_rel}/tests"));
-            continue;
-        }
-        let Ok(entries) = fs::read_dir(&tests) else {
-            violations.push(format!("unreadable: {crate_rel}/tests"));
-            continue;
-        };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) != Some("rs") {
-                continue;
-            }
-            let name = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or_default();
-            if allowed.contains(&(crate_rel, name)) {
-                continue;
-            }
-            violations.push(format!(
-                "{crate_rel}/tests/{name} — flat integration binary; pack into a dir suite \
-                 (see docs/tooling/test-pack.md). Solo exception requires allowlist update."
-            ));
-        }
-    }
-
     assert!(
-        violations.is_empty(),
-        "unexpected flat integration tests:\n{}",
-        violations.join("\n")
+        root.join("crates").is_dir(),
+        "no crates directory under {} — this guard is reading the wrong directory and \
+         cannot see any test files",
+        root.display()
     );
-}
-
-#[test]
-fn allowlisted_solo_flats_still_exist() {
-    let root = repo_root();
-    for (crate_rel, name) in ALLOWED_FLATS {
-        let path = root.join(crate_rel).join("tests").join(name);
-        assert!(
-            path.is_file(),
-            "allowlisted solo flat missing: {} — update ALLOWED_FLATS if removed",
-            path.display()
-        );
-    }
+    let found: Vec<String> = flat_test_files(&root)
+        .into_iter()
+        .filter(|path| !ALLOWED_FLATS.contains(&path.as_str()))
+        .collect();
+    assert!(
+        found.is_empty(),
+        "these test files sit loose in a tests/ directory:\n{}\n\nEach one builds its own test \
+         binary and links Bevy again, which makes the suite slow. Move it into a directory suite \
+         — tests/<suite>/main.rs with the test in a module beside it — or, if it really has to \
+         run on its own, add it to ALLOWED_FLATS in \
+         crates/gdtf_test_utils/tests/no_flat_integration_tests/check.rs. The policy is in \
+         docs/testing.md and .claude/rules/module-layout.md rule 5.",
+        found.join("\n")
+    );
 }
