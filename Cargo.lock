@@ -2992,6 +2992,7 @@ dependencies = [
  "gdtf_app",
  "gdtf_battle_sim",
  "gdtf_ui",
+ "toml_edit",
  "wgpu",
 ]
 

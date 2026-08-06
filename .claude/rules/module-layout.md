@@ -121,17 +121,20 @@ guard's exactly.)
 
 ## Exemption registry
 
-`.claude/rules/module-layout-exemptions.txt` — one entry per line:
-`<repo-relative-path> — <one-paragraph why> (approved: GTW-N, <date>)`.
-Lines starting with `#` are comments.
+`EXEMPT_PATHS` in `crates/gdtf_test_utils/tests/module_layout/conformance.rs` —
+one repo-relative path per entry, and nothing else. The why and the approval go
+on the ticket, not in a comment: [`comment-hygiene.md`](./comment-hygiene.md)
+bans ticket ids and design rationale in Rust source. `git blame` on the entry
+finds the commit, whose subject names the ticket.
 
 - A file that genuinely cannot split without harming cohesion is PROPOSED with
   a one-paragraph why and USER-APPROVED before the entry is added — never
-  silently registered, never silently dropped.
+  silently registered, never silently dropped. Adding an entry is a change to
+  the guard's source, so it goes through review like any other code change.
 - The conformance test honors the registry and FAILS on stale entries (a
   registered path that no longer exists or no longer violates) — the registry
   only ever shrinks or is deliberately re-approved.
-- **Current approved entries: NONE.** The registry holds comments only. Every
+- **Current approved entries: NONE.** `EXEMPT_PATHS` is empty. Every
   exemption it has ever carried was retired by fixing the file rather than by
   keeping the carve-out: `crates/gdtf_battle_sim/src/lib.rs` went when GTW-628
   deleted the crate-root flat name ledger, and the two `gdtf_ui` widgets
