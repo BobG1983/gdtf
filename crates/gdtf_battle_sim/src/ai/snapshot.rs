@@ -1,13 +1,15 @@
 //! Snapshot of all gangers used for one enemy AI turn.
 
 use bevy::{
-    ecs::query::Has,
+    ecs::query::{Has, QueryData},
     prelude::{Deref, Entity, Query},
 };
 
 use crate::{
     acts::movement::WalkInProgress,
-    ganger::{Aiming, Facing, Faction, LifeState, Position, Stance, Tu, TuMax},
+    ganger::{
+        Aiming, Facing, Faction, LifeState, Position, Stance, Suppressed, SuppressorCell, Tu, TuMax,
+    },
     injuries::{HandsAvailable, InflictedInjuries, MovementCostFactor},
     metric::CellLevel,
 };
@@ -22,80 +24,69 @@ impl MidWalk {
     }
 }
 
+/// One combatant's columns, as the enemy turn reads them.
+#[derive(QueryData)]
+pub struct CombatantColumns {
+    entity:     Entity,
+    position:   &'static Position,
+    stance:     &'static Stance,
+    facing:     &'static Facing,
+    aiming:     &'static Aiming,
+    life:       &'static LifeState,
+    tu:         &'static Tu,
+    tu_max:     &'static TuMax,
+    faction:    &'static Faction,
+    walking:    Has<WalkInProgress>,
+    injuries:   Option<&'static InflictedInjuries>,
+    suppressed: Option<&'static Suppressed>,
+}
+
 /// Query of all combatants for the enemy turn.
-pub(super) type EnemyTurnGangers<'world, 'state> = Query<
-    'world,
-    'state,
-    (
-        Entity,
-        &'static Position,
-        &'static Stance,
-        &'static Facing,
-        &'static Aiming,
-        &'static LifeState,
-        &'static Tu,
-        &'static TuMax,
-        &'static Faction,
-        Has<WalkInProgress>,
-        Option<&'static InflictedInjuries>,
-    ),
->;
+pub(super) type EnemyTurnGangers<'world, 'state> = Query<'world, 'state, CombatantColumns>;
 
 /// One ganger's fields needed by the AI brain.
 #[derive(Clone, Copy)]
 pub(super) struct GangerRow {
-    pub(super) entity:   Entity,
-    pub(super) position: Position,
-    pub(super) stance:   Stance,
-    pub(super) facing:   Facing,
-    pub(super) aiming:   Aiming,
-    pub(super) life:     LifeState,
-    pub(super) tu:       Tu,
-    pub(super) tu_max:   TuMax,
-    pub(super) faction:  Faction,
-    pub(super) walking:  MidWalk,
-    pub(super) hands:    HandsAvailable,
-    pub(super) factor:   MovementCostFactor,
+    pub(super) entity:    Entity,
+    pub(super) position:  Position,
+    pub(super) stance:    Stance,
+    pub(super) facing:    Facing,
+    pub(super) aiming:    Aiming,
+    pub(super) life:      LifeState,
+    pub(super) tu:        Tu,
+    pub(super) tu_max:    TuMax,
+    pub(super) faction:   Faction,
+    pub(super) walking:   MidWalk,
+    pub(super) hands:     HandsAvailable,
+    pub(super) factor:    MovementCostFactor,
+    /// Where the fire pinning this ganger came from, when it is pinned at all.
+    pub(super) pinned_by: Option<SuppressorCell>,
 }
 
 /// Snapshot every combatant into decision rows for this turn.
 pub(super) fn ganger_rows(gangers: &EnemyTurnGangers) -> Vec<GangerRow> {
     gangers
         .iter()
-        .map(
-            |(
-                entity,
-                position,
-                stance,
-                facing,
-                aiming,
-                life,
-                tu,
-                tu_max,
-                faction,
-                walking,
-                injuries,
-            )| {
-                GangerRow {
-                    entity,
-                    position: *position,
-                    stance: *stance,
-                    facing: *facing,
-                    aiming: *aiming,
-                    life: *life,
-                    tu: *tu,
-                    tu_max: *tu_max,
-                    faction: *faction,
-                    walking: MidWalk::new(walking),
-                    hands: injuries
-                        .map_or_else(HandsAvailable::default, InflictedInjuries::hands_available),
-                    factor: injuries.map_or(
-                        MovementCostFactor::IDENTITY,
-                        InflictedInjuries::movement_cost_factor,
-                    ),
-                }
-            },
-        )
+        .map(|columns| GangerRow {
+            entity:    columns.entity,
+            position:  *columns.position,
+            stance:    *columns.stance,
+            facing:    *columns.facing,
+            aiming:    *columns.aiming,
+            life:      *columns.life,
+            tu:        *columns.tu,
+            tu_max:    *columns.tu_max,
+            faction:   *columns.faction,
+            walking:   MidWalk::new(columns.walking),
+            hands:     columns
+                .injuries
+                .map_or_else(HandsAvailable::default, InflictedInjuries::hands_available),
+            factor:    columns.injuries.map_or(
+                MovementCostFactor::IDENTITY,
+                InflictedInjuries::movement_cost_factor,
+            ),
+            pinned_by: columns.suppressed.map(|suppressed| suppressed.from),
+        })
         .collect()
 }
 

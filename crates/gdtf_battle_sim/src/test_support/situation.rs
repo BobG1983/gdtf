@@ -186,6 +186,21 @@ pub mod fixtures {
             .build()
     }
 
+    /// Three player gangers and one enemy, so a selection cycle can be told from its reverse.
+    ///
+    /// Two gangers make the cycle direction-blind: forward and back land on the same one.
+    #[must_use]
+    pub fn three_player_gangers() -> Situation {
+        SituationBuilder::new()
+            .with_gangers([
+                ganger_at(key(5, 6, 0), 0),
+                ganger_at(key(6, 6, 0), 0),
+                ganger_at(key(7, 6, 0), 0),
+                ganger_at(key(12, 12, 0), 1),
+            ])
+            .build()
+    }
+
     /// Only player-faction gangers.
     #[must_use]
     pub fn player_only() -> Situation {

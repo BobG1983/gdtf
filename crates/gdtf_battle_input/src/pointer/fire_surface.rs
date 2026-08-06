@@ -50,8 +50,9 @@ impl ShooterArms<'_, '_> {
     }
 }
 
+/// The fire request this shooter can take at `target`, or nothing when the sim declines.
 #[must_use]
-pub(crate) fn try_fire_request(
+pub fn try_fire_request(
     shooter: Entity,
     target: CellLevel,
     fire_mode: &SelectedFireMode,

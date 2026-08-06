@@ -6,6 +6,7 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_sim::{
     effects::fields::FieldDefRegistry,
+    situation::Situation,
     test_support::{
         fixtures, test_armor_registry, test_gang_registry, test_melee_weapon_registry,
         test_weapon_registry,
@@ -49,6 +50,13 @@ pub(crate) fn run_request(name: &'static str, arguments: &str) -> QaRequest {
 }
 
 pub(crate) fn menu_app_with_net_qa() -> (App, mpsc::Sender<IncomingRequest>) {
+    menu_app_with_situation(fixtures::two_ganger())
+}
+
+/// The same harness on a chosen battlefield, for a case the shipped two-ganger one cannot tell.
+pub(crate) fn menu_app_with_situation(
+    situation: Situation,
+) -> (App, mpsc::Sender<IncomingRequest>) {
     let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();
@@ -62,7 +70,7 @@ pub(crate) fn menu_app_with_net_qa() -> (App, mpsc::Sender<IncomingRequest>) {
     app.world_mut().insert_resource(FieldDefRegistry::default());
     app.world_mut().insert_resource(test_gang_registry());
     app.world_mut()
-        .insert_resource(LoadedSituation::new(fixtures::two_ganger()));
+        .insert_resource(LoadedSituation::new(situation));
 
     let (tx, rx) = mpsc::channel();
     app.add_plugins(NetQaPlugin::with_channels(rx));

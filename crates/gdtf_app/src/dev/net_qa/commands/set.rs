@@ -2,6 +2,10 @@ use gdtf_qa_command::command::ErasedCommand;
 use gdtf_qa_protocol::message::ServerNameNet;
 
 use super::{
+    act::{
+        ActEndTurn, ActFire, ActMove, ActReload, ActSelect, ActSelectClear, ActSelectNext,
+        ActSelectPrev, ActSetAiming, ActSetFacing, ActSetStance,
+    },
     capture::CaptureScreenshot,
     lifecycle::{BattleFlee, BattleStart},
     procgen::ProcgenStep,
@@ -31,6 +35,17 @@ pub(in crate::dev::net_qa) const GAME_COMMANDS: &[&dyn ErasedCommand<GameFacts>]
     &BattleFlee,
     &ProcgenStep,
     &Wait,
+    &ActSelect,
+    &ActSelectNext,
+    &ActSelectPrev,
+    &ActSelectClear,
+    &ActMove,
+    &ActFire,
+    &ActReload,
+    &ActSetStance,
+    &ActSetAiming,
+    &ActSetFacing,
+    &ActEndTurn,
 ];
 
 #[must_use]

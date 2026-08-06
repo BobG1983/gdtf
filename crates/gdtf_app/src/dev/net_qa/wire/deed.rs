@@ -1,7 +1,30 @@
 //! What kind of act a log line records, on the wire.
 
-use gdtf_battle_sim::act_log::ActDeed;
+use gdtf_battle_sim::{act_log::ActDeed, acts::MoveRejection};
 use serde::{Deserialize, Serialize};
+
+/// Why the sim turned a move down.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MoveRejectionNet {
+    /// No route reaches the destination.
+    Unreachable,
+    /// The route costs more time units than the actor has.
+    Unaffordable,
+    /// Suppression pinned the actor down.
+    Suppressed,
+}
+
+impl MoveRejectionNet {
+    /// Mirror the sim's own reason.
+    #[must_use]
+    pub const fn from_sim(reason: MoveRejection) -> Self {
+        match reason {
+            MoveRejection::Unreachable => Self::Unreachable,
+            MoveRejection::Unaffordable => Self::Unaffordable,
+            MoveRejection::Suppressed => Self::Suppressed,
+        }
+    }
+}
 
 /// Kind of a logged act, one variant per sim deed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -14,8 +37,11 @@ pub enum ActDeedKindNet {
     Stepped,
     /// Multi-cell move completed.
     MovedTo,
-    /// Move was refused.
-    MoveRefused,
+    /// Move was refused, carrying the sim's own reason.
+    MoveRefused {
+        /// Why the sim turned it down.
+        reason: MoveRejectionNet,
+    },
     /// Fire was declared.
     Fired,
     /// A single round resolved.
@@ -61,7 +87,7 @@ pub enum ActDeedKindNet {
 }
 
 impl ActDeedKindNet {
-    /// Mirror the sim's deed as a kind, dropping its payload.
+    /// Mirror the sim's deed as a kind, keeping only a refused move's reason.
     #[must_use]
     pub const fn from_deed(deed: &ActDeed) -> Self {
         match deed {
@@ -69,7 +95,9 @@ impl ActDeedKindNet {
             ActDeed::PostureChanged { .. } => Self::PostureChanged,
             ActDeed::Stepped { .. } => Self::Stepped,
             ActDeed::MovedTo { .. } => Self::MovedTo,
-            ActDeed::MoveRefused { .. } => Self::MoveRefused,
+            ActDeed::MoveRefused { reason } => Self::MoveRefused {
+                reason: MoveRejectionNet::from_sim(*reason),
+            },
             ActDeed::Fired { .. } => Self::Fired,
             ActDeed::RoundResolved { .. } => Self::RoundResolved,
             ActDeed::Reloaded { .. } => Self::Reloaded,

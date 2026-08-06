@@ -17,11 +17,14 @@ impl EndsBehindCover {
     }
 }
 
+/// Whether a suppressed mover is allowed to take this step.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct SuppressedMoveLegal(bool);
+pub(crate) struct SuppressedMoveLegal(bool);
 
 impl SuppressedMoveLegal {
-    pub(super) const fn new(legal: bool) -> Self {
+    /// Wrap whether the step is allowed.
+    #[must_use]
+    pub(crate) const fn new(legal: bool) -> Self {
         Self(legal)
     }
 }
@@ -48,7 +51,8 @@ fn ends_behind_cover(
 }
 
 /// Legal when dest is farther from suppressor and ends behind cover toward them.
-pub(super) fn suppressed_move_legal(
+#[must_use]
+pub(crate) fn suppressed_move_legal(
     start: &CellLevel,
     dest: &CellLevel,
     suppressor: &CellLevel,

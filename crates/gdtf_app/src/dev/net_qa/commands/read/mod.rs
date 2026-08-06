@@ -1,5 +1,5 @@
 pub(crate) mod app_phase;
-mod availability;
+pub(in crate::dev::net_qa) mod availability;
 pub(crate) mod battle_inspect;
 pub(crate) mod battle_offers;
 pub(crate) mod battle_roster;
