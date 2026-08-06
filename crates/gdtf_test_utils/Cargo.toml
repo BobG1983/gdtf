@@ -10,5 +10,10 @@ gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 gdtf_ui = { path = "../gdtf_ui" }
 wgpu = "=29.0.3"
 
+# Reads Cargo.toml as TOML in the repo-structure guards, so an equivalent spelling of the same
+# key cannot fail them. Already in the lock file via bevy_macro_utils; parse-only adds nothing.
+[dev-dependencies]
+toml_edit = { version = "0.25", default-features = false, features = ["parse"] }
+
 [lints]
 workspace = true

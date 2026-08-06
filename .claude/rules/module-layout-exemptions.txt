@@ -1,8 +1,0 @@
-# Module-layout exemption registry (.claude/rules/module-layout.md).
-# One entry per line: <repo-relative-path> — <one-paragraph why> (approved: GTW-N, <date>).
-# Entries require prior USER approval; the clause-7 conformance test honors this file and
-# FAILS on stale entries (path missing or no longer violating) — remove entries when moot.
-#
-# The text_field.rs / dropdown.rs deletion-pending entries (GTW-583 amendment, 2026-07-05)
-# were removed 2026-07-11: GTW-655 retired the GTW-434 procgen visualizer (their only
-# remaining consumer) and deleted both widget files outright.
