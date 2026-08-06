@@ -7,4 +7,4 @@ mod surface_reg;
 #[cfg(test)]
 mod test;
 
-pub use build::{GdtfBattleInputActive, GdtfBattleInputPlugin};
+pub use build::{GdtfBattleInputActive, GdtfBattleInputPlugin, battle_act_gate};

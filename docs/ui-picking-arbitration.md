@@ -201,9 +201,13 @@ Everything below is additive to what already exists; nothing needs a manifest ch
    `UiGlobalTransform` geometry and cannot race the backend.
 4. **The one prohibition.** No system or observer in `crates/` may translate a
    `Pointer<Press>` / `Pointer<Click>` / `Pointer<Release>` on a *world* entity into an act.
-   World acts have exactly one producer: `left_click_act` reading `InspectTarget`. Breaking
-   this is the only way to create a double-fire, so the rollout should carry a test asserting
-   a HUD-overlapping click produces no act, plus a review note pinning this prohibition.
+   A pointer press has exactly one producer: `left_click_act` reading `InspectTarget`. Two
+   other callers reach a world act — `gamepad_click_act` on the South button and, in a debug
+   build, the `input.click_cell` QA command — and both run the same `decide_left_click` /
+   `apply_left_click` pair rather than deciding for themselves, so neither is a second
+   decision path and neither reads a `Pointer` event. Breaking the prohibition is the only
+   way to create a double-fire, so the rollout should carry a test asserting a
+   HUD-overlapping click produces no act, plus a review note pinning it.
 5. **Optional, only if a HUD widget ever needs the backend to ignore it.** Insert
    `Pickable { should_block_lower: false, is_hoverable: false }` on that node. Do not reach
    for `UiPickingSettings { require_markers: true }` — that is global and would silently
@@ -256,10 +260,13 @@ says which parts exist.
 | Gamepad D-pad | **Yes.** `bridge_gamepad_navigation` maps D-pad up/down to `NavigateRequest` (`crates/gdtf_ui/src/focus_nav.rs`). Left/right are unbound (`NavDirection::WEST` / `EAST` exist but no device input raises them). | Binding left/right is trivial. | **Yes** — spawn a `Gamepad` component and assert `InputFocus` moves. |
 | Gamepad South | **Yes.** `bridge_gamepad_navigation` raises `FocusActivated` on `GamepadButton::South`. Bevy's own widgets do **not** cover this: `button_on_key_event` observes `FocusedInput<KeyboardInput>` only, so the project bridge is load-bearing — which is why §4 item 2 keeps the `FocusActivated` half. `InputDispatchPlugin` does dispatch `FocusedInput<GamepadButtonChangedEvent>` (the `gamepad` feature is on), so a project observer could consume it directly instead. | Already there. | **Yes.** |
 
-One note on evidence: `net_qa` has no mouse-click intent on the wire (only `PressKey` /
-`Hover` / `SetFocus`; `Inject` is battle-only), so a demo build cannot capture a real click on
-a non-menu button over the QA channel. Click evidence must be either a headless test or a new
-`net_qa` intent.
+One note on evidence: the QA channel has no mouse-button press on the wire. `input.hover`
+moves the pointer and `input.click_cell` takes the game's own left-click decision on a board
+cell, but neither presses a button on a UI widget, so a demo build still cannot capture a real
+click on a non-menu button over the channel. Click evidence must be a headless test or a new
+command. The keyboard and gamepad halves *are* drivable: `input.focus_step` and
+`input.activate` write the same `NavigateRequest` / `FocusActivated` messages the arrow keys
+and the D-pad write, and `input.set_focus` puts focus on a widget the screen registered.
 
 ## 7. What this finding did **not** determine
 

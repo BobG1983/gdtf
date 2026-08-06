@@ -148,6 +148,7 @@ fn key_net_round_trips_every_variant() {
         KeyNet::Digit7,
         KeyNet::Digit8,
         KeyNet::Digit9,
+        KeyNet::Enter,
         KeyNet::ArrowUp,
         KeyNet::ArrowDown,
         KeyNet::ArrowLeft,
@@ -175,12 +176,18 @@ fn key_net_round_trips_every_variant() {
             | KeyNet::Digit7
             | KeyNet::Digit8
             | KeyNet::Digit9
+            | KeyNet::Enter
             | KeyNet::ArrowUp
             | KeyNet::ArrowDown
             | KeyNet::ArrowLeft
             | KeyNet::ArrowRight => {}
         }
         assert_ron_round_trip(&key);
+        assert_eq!(
+            KeyNet::from_bound(key.bound()),
+            key,
+            "the wire key and the keybind vocabulary must name the same key both ways",
+        );
     }
 }
 

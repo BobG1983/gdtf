@@ -66,6 +66,18 @@ pub(crate) const ACT_SET_FACING: &str = "act.set_facing";
 
 pub(crate) const ACT_END_TURN: &str = "act.end_turn";
 
+pub(crate) const INPUT_PRESS_KEY: &str = "input.press_key";
+
+pub(crate) const INPUT_HOVER: &str = "input.hover";
+
+pub(crate) const INPUT_SET_FOCUS: &str = "input.set_focus";
+
+pub(crate) const INPUT_FOCUS_STEP: &str = "input.focus_step";
+
+pub(crate) const INPUT_ACTIVATE: &str = "input.activate";
+
+pub(crate) const INPUT_CLICK_CELL: &str = "input.click_cell";
+
 /// Every command the game publishes, in declaration order.
 pub(crate) fn published_names() -> Vec<CommandName> {
     [
@@ -97,6 +109,12 @@ pub(crate) fn published_names() -> Vec<CommandName> {
         ACT_SET_AIMING,
         ACT_SET_FACING,
         ACT_END_TURN,
+        INPUT_PRESS_KEY,
+        INPUT_HOVER,
+        INPUT_SET_FOCUS,
+        INPUT_FOCUS_STEP,
+        INPUT_ACTIVATE,
+        INPUT_CLICK_CELL,
     ]
     .into_iter()
     .map(CommandName::from_static)
