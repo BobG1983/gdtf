@@ -10,7 +10,7 @@ use super::{
     snapshot::{EnemyTurnGangers, GangerRow, cell_order, ganger_rows},
 };
 use crate::{
-    acts::{EndTurnRequested, FireRequested, MoveRequested},
+    acts::{EndTurnRequested, FireRequested, MoveRequested, movement::suppressed_move_legal},
     battle::PlayerFaction,
     ganger::LifeState,
     magazine::{Magazine, mode_tu_cost},
@@ -50,7 +50,7 @@ fn plan_shot(
     ))
 }
 
-// One step closer to the nearest target, as a move request.
+// One step closer to the nearest target, as a move request the sim will not turn down.
 fn plan_step(
     enemy: &GangerRow,
     rows: &[GangerRow],
@@ -60,6 +60,11 @@ fn plan_step(
 ) -> Option<MoveRequested> {
     let goal = pick_nearest(enemy.position.cell(), enemy.position.level(), all_targets)?;
     let dest = plan_reposition(enemy, &goal, rows, omniscient?, grids.routes())?;
+    if let Some(suppressor) = enemy.pinned_by
+        && !*suppressed_move_legal(&enemy.position, &dest, &suppressor, grids.cover())
+    {
+        return None;
+    }
     Some(MoveRequested::new(enemy.entity, dest))
 }
 

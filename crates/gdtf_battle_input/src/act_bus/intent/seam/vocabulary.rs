@@ -2,7 +2,7 @@
 
 use bevy::prelude::Entity;
 use gdtf_battle_sim::{
-    acts::{FireRequested, MoveRequested, SetFacingRequested},
+    acts::{AimRequest, FireRequested, MoveRequested, SetFacingRequested},
     prelude::StanceKind,
 };
 
@@ -23,6 +23,8 @@ pub enum ActIntent {
     SetStance(StanceKind),
     /// Toggle aiming on the selected shooter.
     AimToggle,
+    /// Set aiming on the selected shooter to a specific value.
+    SetAiming(AimRequest),
     /// Cycle the selected shooter's facing.
     FacingCycle,
     /// Fire at a target.

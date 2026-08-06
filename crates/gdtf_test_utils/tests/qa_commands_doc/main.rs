@@ -24,6 +24,15 @@ const SHOWN_IN_THE_EXAMPLE: &[&str] = &[
     "PendingQueue<CommandCall<AppPhase>>",
 ];
 
+/// Where each command declares the name it publishes under.
+const COMMAND_SOURCES: &str = "crates/gdtf_app/src/dev/net_qa/commands";
+
+/// The literal a command's name is declared with.
+const NAME_DECLARATION: &str = "CommandName::from_static(\"";
+
+/// Names no host offers, which the guide must therefore never claim.
+const NEVER_BUILT: &[&str] = &["battle.state", "act.throw_grenade"];
+
 const CITED_PATHS: &[&str] = &[
     "crates/gdtf_app/src/dev/net_qa/commands/set.rs",
     "crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs",
@@ -50,6 +59,40 @@ fn read(relative: &str) -> String {
         unreachable!("{relative} must exist at {}", path.display());
     };
     text
+}
+
+/// Every name a command declares itself with, read out of the command sources.
+fn published_command_names() -> Vec<String> {
+    let mut names: Vec<String> = Vec::new();
+    collect_names(&repo_root().join(COMMAND_SOURCES), &mut names);
+    names.sort_unstable();
+    names.dedup();
+    names
+}
+
+fn collect_names(directory: &Path, names: &mut Vec<String>) {
+    let Ok(entries) = fs::read_dir(directory) else {
+        unreachable!("{} must be readable", directory.display());
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_names(&path, names);
+        } else if path.extension().is_some_and(|kind| kind == "rs")
+            && let Ok(source) = fs::read_to_string(&path)
+        {
+            names.extend(names_in(&source));
+        }
+    }
+}
+
+fn names_in(source: &str) -> Vec<String> {
+    source
+        .split(NAME_DECLARATION)
+        .skip(1)
+        .filter_map(|tail| tail.split('"').next())
+        .map(str::to_owned)
+        .collect()
 }
 
 #[test]
@@ -105,11 +148,36 @@ fn every_shape_the_guide_shows_exists_in_the_worked_example() {
 #[test]
 fn the_guide_names_no_command_that_was_never_built() {
     let guide = read(GUIDE);
-    for invented in ["act.fire", "act.move", "battle.state"] {
+    let published = published_command_names();
+    for invented in NEVER_BUILT {
+        assert!(
+            !published.iter().any(|name| name == invented),
+            "`{invented}` is a real command now, so this guard's `NEVER_BUILT` list is stale \
+             — drop it from the list and document the command instead",
+        );
         assert!(
             !guide.contains(invented),
             "the guide names `{invented}`, which no host offers — the worked example must be \
              real code, cited by path",
         );
     }
+}
+
+#[test]
+fn the_guide_names_every_command_the_game_publishes() {
+    let guide = read(GUIDE);
+    let published = published_command_names();
+    assert!(
+        !published.is_empty(),
+        "the command sources must declare at least one name, or this guard reads nothing",
+    );
+    let undocumented: Vec<&String> = published
+        .iter()
+        .filter(|name| !guide.contains(name.as_str()))
+        .collect();
+    assert!(
+        undocumented.is_empty(),
+        "a client learns the surface from this guide, so every published command has to \
+         appear in it: {undocumented:?}",
+    );
 }

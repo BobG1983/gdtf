@@ -7,10 +7,10 @@ use crate::dev::net_qa::{
         set::GAME_COMMANDS,
     },
     wire::{
-        act::{ActSeqNet, NetIntent},
+        act::{ActCompleteNet, ActRefusalNet, ActReply, ActSeqNet, NetIntent, SelectReply},
         act_payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet},
         cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet},
-        deed::ActDeedKindNet,
+        deed::{ActDeedKindNet, MoveRejectionNet},
         inspect::{
             CoverBlockNet, CoverHpNet, HardnessNet, HeightBandNet, InspectShownNet, ProtectionNet,
         },
@@ -84,6 +84,10 @@ fn every_wire_type_traces_a_usable_shape() {
 
     assert_schema_is_usable::<NetIntent>("NetIntent");
     assert_schema_is_usable::<ActSeqNet>("ActSeqNet");
+    assert_schema_is_usable::<ActCompleteNet>("ActCompleteNet");
+    assert_schema_is_usable::<ActRefusalNet>("ActRefusalNet");
+    assert_schema_is_usable::<ActReply>("ActReply");
+    assert_schema_is_usable::<SelectReply>("SelectReply");
     assert_schema_is_usable::<StanceNet>("StanceNet");
     assert_schema_is_usable::<AimNet>("AimNet");
     assert_schema_is_usable::<FacingNet>("FacingNet");
@@ -97,6 +101,7 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<ActProvenanceNet>("ActProvenanceNet");
     assert_schema_is_usable::<LogReadCap>("LogReadCap");
     assert_schema_is_usable::<LogDroppedCount>("LogDroppedCount");
+    assert_schema_is_usable::<MoveRejectionNet>("MoveRejectionNet");
     assert_schema_is_usable::<ActDeedKindNet>("ActDeedKindNet");
     assert_schema_is_usable::<LogEntryNet>("LogEntryNet");
 

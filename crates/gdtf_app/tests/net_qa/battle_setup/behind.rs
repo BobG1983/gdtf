@@ -116,7 +116,7 @@ pub(crate) fn battle_with_an_occupant_the_screen_has_not_seen()
 }
 
 /// Hold the playback cursor, which shuts the gate and freezes every shadow the screen draws.
-fn hold_the_screen_still(app: &mut App) -> Result<(), TestError> {
+pub(crate) fn hold_the_screen_still(app: &mut App) -> Result<(), TestError> {
     let Some(mut cursor) = app.world_mut().get_resource_mut::<PlaybackCursor>() else {
         return Err("a battle presenter carries the playback cursor".into());
     };

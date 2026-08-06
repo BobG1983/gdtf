@@ -222,10 +222,12 @@ run(host="game", command="battle.start", arguments="(seed: Some(42))")
 run(host="game", command="wait", arguments="(condition: BattleDecided)")
 ```
 
-The game offers seventeen commands today: `app.phase`, `capture.screenshot`, `settings.read`,
-`ui.focus`, `playback.state`, `battle.roster`, `battle.turn`, `battle.selection`,
-`battle.offers`, `battle.inspect`, `battle.sightline`, `battle.visible`, `log.read`,
-`battle.start`, `battle.flee`, `procgen.step` and `wait`.
+The game offers twenty-eight commands today: `app.phase`, `capture.screenshot`,
+`settings.read`, `ui.focus`, `playback.state`, `battle.roster`, `battle.turn`,
+`battle.selection`, `battle.offers`, `battle.inspect`, `battle.sightline`, `battle.visible`,
+`log.read`, `battle.start`, `battle.flee`, `procgen.step`, `wait`, `act.select`,
+`act.select_next`, `act.select_prev`, `act.select_clear`, `act.move`, `act.fire`,
+`act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing` and `act.end_turn`.
 
 `settings.read`, `ui.focus` and `playback.state` are the shell reads — they take `()`, are
 `Immediate`, and answer before a battle: `settings.read` reports the Options values,
@@ -321,6 +323,59 @@ and so does a `GenerationComplete` asked once the battle map is up. A name that 
 those seven fails to deserialize and comes back as `BadArguments` with `wait`'s own argument
 shape attached. The conditions and what each resolves against live in
 [`crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs).
+
+The eleven `act.*` commands are the classic acts a player takes with the keyboard and the
+pointer: `act.select`, `act.select_next`, `act.select_prev`, `act.select_clear`, `act.move`,
+`act.fire`, `act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing` and
+`act.end_turn`. Each pushes an `ActIntent` onto
+[`PendingActIntent`](../../crates/gdtf_battle_input/src/act_bus/intent/seam/queue.rs), the
+same bus the keybinds and the pointer push onto, and `dispatch_act_intents` writes the sim
+message. **No act command writes to the sim itself**, so legality stays where it already
+lives: a shot the sim declines is never declared, and a move it refuses is logged as
+`MoveRefused` with the sim's own reason.
+
+The three `set_*` commands take an absolute value rather than cycling the way the keybind
+does, so the same call twice leaves the same state — that is what makes them driveable
+without reading the current value first.
+
+Ten of the eleven are `Immediate`. The claim system pushes the intent and records the act
+log's head, and a settle system ordered after `SimSystems::Record` answers in the same frame
+with `ActReply::Accepted { from_seq, to_seq, complete }`: `from_seq..to_seq` is the half-open
+act-log window the call opened, and `complete` is false while the actor is still walking the
+act out. Read the window with `log.read` to see what the sim actually did — the deed kinds
+inside it are the evidence, and a call the sim declined comes back with `from_seq` equal to
+`to_seq`. The four selection commands answer `SelectReply` instead, which names who is
+selected and carries no sequence numbers.
+
+**A cleared selection does not stay cleared.** The game always hands the player someone to
+act with:
+[`auto_select_first_player_ganger`](../../crates/gdtf_battle_input/src/pointer/selection/auto_select.rs)
+re-selects the first living player ganger by cell order whenever nothing is selected, and
+the clear keybind is undone the same way. So `act.select_clear` answers
+`SelectReply::Selected { shooter: None }` for the frame the clear landed in, and by the next
+frame someone is selected again. Every act runs on the live selection, so a call after a
+clear acts through whichever ganger the game re-picked. Name the actor with `act.select`
+before an act; do not treat the empty reply as a lasting state.
+
+`act.end_turn` is the one `Deferred` command of the set. Its reply is held until the turn
+comes round to the player again, so it lands after the enemy has finished acting and its
+window brackets everything that happened in between. Its budget is 30 seconds.
+
+The QA layer invents no refusal vocabulary of its own: `ActRefusalNet` has exactly two
+variants, `UnknownToken` (a `GangerToken` naming no living ganger) and `NoShooter` (the act
+needs a selection and there is none). Both are conditions the QA layer can see before the
+sim is involved. Everything else the sim decides, and the act log reports.
+
+All eleven need a running battle whose screen has caught up with the act log — `Running` plus
+`Caught`. Off the battle screen they refuse `WrongState`; while the screen is still replaying
+they refuse `Replaying`, because the act bus drops an intent whose gate is shut.
+
+`act.fire` is the one act that needs more than the selection to build its request: the live
+`SelectedFireMode` and `CombatTuning`. A host holding neither cannot consider the shot at
+all, so it refuses `MissingModel` naming the absent resource — the same call `log.read`
+makes when the act log has not arrived. Without that refusal the reply would be an empty
+window, which is exactly what a shot the sim declined answers, and a caller could not tell
+a real sim decision from a host that was not loaded.
 
 Args, replies and published shapes are all **RON**. `arguments` is a string of compact RON
 shaped by that command's own `schemas.arguments`; a command that takes none is `"()"`. The

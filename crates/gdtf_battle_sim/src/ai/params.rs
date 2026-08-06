@@ -52,6 +52,11 @@ impl AiPlanningGrids<'_> {
     pub(super) fn tuning(&self) -> &CombatTuning {
         &self.tuning
     }
+
+    /// The cover a suppressed mover has to end behind to break away.
+    pub(super) fn cover(&self) -> &CoverLedger {
+        &self.cover
+    }
 }
 
 /// The acts one enemy turn requests.
