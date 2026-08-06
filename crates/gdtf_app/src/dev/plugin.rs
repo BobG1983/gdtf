@@ -24,8 +24,6 @@ impl Plugin for DevAffordancesPlugin {
         ));
         #[cfg(debug_assertions)]
         app.add_plugins(super::net_qa::NetQaPlugin::from_env());
-        #[cfg(debug_assertions)]
-        app.add_plugins(gdtf_screenshot::KeyboardCapturePlugin::new("game"));
         #[cfg(not(any(feature = "dev_tools", debug_assertions)))]
         let _ = app;
     }
