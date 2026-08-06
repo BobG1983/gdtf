@@ -21,6 +21,9 @@ bevy_egui = { version = "0.41", optional = true }
 image = { version = "0.25", default-features = false, features = ["png"] }
 
 [dev-dependencies]
+# The net_qa schedule tests look systems up by name, and without `bevy/debug`
+# `System::name()` returns a placeholder instead of the real name.
+bevy = { workspace = true, features = ["debug"] }
 gdtf_test_utils = { path = "../gdtf_test_utils" }
 gdtf_state_scoped = { path = "../gdtf_state_scoped" }
 tempfile = "3"
