@@ -1,8 +1,8 @@
 //! The act commands must claim before the act bus drains and settle after the sim records.
 
 use bevy::ecs::schedule::IntoSystemSet;
-use gdtf_app::test_support::ActCommandSystems;
-use gdtf_battle_input::auto_select_first_player_ganger;
+use gdtf_app::test_support::{ActCommandSystems, ContextualPanelSystems};
+use gdtf_battle_input::{auto_select_first_player_ganger, contextual::ContextualActSystems};
 use gdtf_battle_sim::occupancy_sync::SimSystems;
 use gdtf_qa_command::dispatch::QaCommandSystems;
 
@@ -13,8 +13,12 @@ use super::{
     socket_support::{TestResult, battle_app_listening},
 };
 
-/// One command claims and settles, so each band holds the eleven acts plus `input.click_cell`.
-const BANDED_ACTS: usize = 12;
+/// One command claims and settles, so each band holds the nineteen acts plus
+/// `input.click_cell`.
+const BANDED_ACTS: usize = 20;
+
+/// The eight acts that fire whatever the contextual panel is offering.
+const CONTEXTUAL_ACTS: usize = 8;
 
 #[test]
 fn every_act_claim_runs_before_the_act_bus_drains() -> TestResult {
@@ -36,6 +40,85 @@ fn every_act_claim_runs_before_the_act_bus_drains() -> TestResult {
         "the claim band must be ordered before dispatch_act_intents; without that edge an act \
          command shares InputSystems::Gather with the drain and its intent lands a frame late",
     );
+    Ok(())
+}
+
+#[test]
+fn every_act_claim_runs_before_the_contextual_act_bus_drains() -> TestResult {
+    let (mut app, _port) = battle_app_listening()?;
+    app.update();
+    let update = update_schedule(&app)?;
+    let graph = update.graph();
+
+    let drains = members(graph, ContextualActSystems::Drain)?;
+    assert!(
+        !drains.is_empty(),
+        "the input plugin must register a drain per contextual act family, or ordering against \
+         the band orders against nothing",
+    );
+    let claims = set_node(graph, ActCommandSystems::Claim)?;
+    for drain in drains {
+        assert!(
+            ordered_before(graph, claims, drain),
+            "the claim band must be ordered before the contextual drain; without that edge the \
+             two only share InputSystems::Gather and a contextual act command's push lands a \
+             frame late",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn every_contextual_act_claim_runs_after_the_panel_has_scanned_this_frame_s_offers() -> TestResult {
+    let (mut app, _port) = battle_app_listening()?;
+    app.update();
+    let update = update_schedule(&app)?;
+    let graph = update.graph();
+
+    let scans = members(graph, ContextualPanelSystems::Offer)?;
+    assert!(
+        !scans.is_empty(),
+        "the panel must register an offer scan per contextual act family, or ordering against \
+         the band orders against nothing",
+    );
+    let claims = members(graph, ActCommandSystems::ContextualClaim)?;
+    assert_eq!(
+        claims.len(),
+        CONTEXTUAL_ACTS,
+        "every command that fires what the panel offers must register its claim system in the \
+         contextual band, or the band's ordering does not apply to it",
+    );
+    let offer = set_node(graph, ContextualPanelSystems::Offer)?;
+    for claim in claims {
+        assert!(
+            ordered_before(graph, offer, claim),
+            "a contextual act command reads the same per-frame offer the scan writes, so its \
+             claim must be ordered after it; unordered, a Res read and a ResMut write in one \
+             schedule run in whichever order the executor picks",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn the_classic_act_claims_are_left_free_of_the_panel_s_offer_scan() -> TestResult {
+    let (mut app, _port) = battle_app_listening()?;
+    app.update();
+    let update = update_schedule(&app)?;
+    let graph = update.graph();
+
+    let contextual = members(graph, ActCommandSystems::ContextualClaim)?;
+    let offer = set_node(graph, ContextualPanelSystems::Offer)?;
+    let classic = members(graph, ActCommandSystems::Claim)?
+        .into_iter()
+        .filter(|claim| !contextual.contains(claim));
+    for claim in classic {
+        assert!(
+            !ordered_before(graph, offer, claim),
+            "a classic act command never reads an offer, so widening the offer edge to the whole \
+             claim band would reorder it for nothing",
+        );
+    }
     Ok(())
 }
 

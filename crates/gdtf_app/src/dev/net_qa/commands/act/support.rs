@@ -34,6 +34,16 @@ impl ActTicket {
     ) -> Self {
         Self { from, actor }
     }
+
+    /// The act-log head as it stood when the call was claimed.
+    pub(in crate::dev::net_qa::commands) const fn claimed_at(&self) -> ActSeqNet {
+        self.from
+    }
+
+    /// The actor whose walk the reply reports on, when the call had one.
+    pub(in crate::dev::net_qa::commands) const fn actor(&self) -> Option<Entity> {
+        self.actor
+    }
 }
 
 /// What an act command reads and writes as it claims its calls.
@@ -69,6 +79,19 @@ pub(in crate::dev::net_qa::commands) struct ActSettle<'w, 's> {
 }
 
 impl ActSettle<'_, '_> {
+    /// The act-log head as it stands once the sim has recorded the frame.
+    pub(in crate::dev::net_qa::commands) fn head(&self) -> ActSeqNet {
+        head_of(self.log.as_deref())
+    }
+
+    /// Whether the actor has finished the act rather than still walking it out.
+    pub(in crate::dev::net_qa::commands) fn completed(
+        &self,
+        actor: Option<Entity>,
+    ) -> ActCompleteNet {
+        ActCompleteNet::new(actor.is_none_or(|actor| self.walking.get(actor).is_err()))
+    }
+
     /// The window one parked call opened, closed at this frame's log head.
     pub(in crate::dev::net_qa::commands) fn window(
         &self,
@@ -77,10 +100,8 @@ impl ActSettle<'_, '_> {
     ) -> ActReply {
         ActReply::Accepted {
             from_seq,
-            to_seq: head_of(self.log.as_deref()),
-            complete: ActCompleteNet::new(
-                actor.is_none_or(|actor| self.walking.get(actor).is_err()),
-            ),
+            to_seq: self.head(),
+            complete: self.completed(actor),
         }
     }
 }

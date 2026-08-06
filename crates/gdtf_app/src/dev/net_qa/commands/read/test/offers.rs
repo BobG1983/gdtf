@@ -18,7 +18,7 @@ use crate::{
             token::{DoorToken, EmplacementToken, GangerToken},
         },
     },
-    states::running::game::battlescape::contextual_panel::seam::ContextualOffer,
+    states::running::game::battlescape::contextual_panel::ContextualOffer,
 };
 
 fn a_target() -> Entity {

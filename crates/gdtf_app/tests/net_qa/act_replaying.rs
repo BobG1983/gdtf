@@ -10,7 +10,11 @@ use gdtf_qa_protocol::{
 use super::{
     battle_reads::{an_unreachable_cell, cell_argument},
     battle_setup::hold_the_screen_still,
-    command_exchange::{ACT_MOVE, ACT_SELECT_NEXT, ACT_SET_STANCE, exchange_all, run},
+    command_exchange::{
+        ACT_ENTER_EMPLACEMENT, ACT_EXECUTE, ACT_EXIT_EMPLACEMENT, ACT_MELEE, ACT_MOVE,
+        ACT_OPEN_DOOR, ACT_SELECT_NEXT, ACT_SET_STANCE, ACT_SHOVE, ACT_STABILIZE,
+        ACT_THROW_GRENADE, exchange_all, run,
+    },
     socket_support::{TestError, TestResult, battle_app_listening},
 };
 
@@ -37,6 +41,14 @@ fn an_act_is_refused_replaying_while_the_screen_is_behind_the_log() -> TestResul
         (ACT_SELECT_NEXT, "()".to_owned()),
         (ACT_MOVE, cell_argument(an_unreachable_cell())),
         (ACT_SET_STANCE, "(stance:Prone)".to_owned()),
+        (ACT_MELEE, "()".to_owned()),
+        (ACT_SHOVE, "()".to_owned()),
+        (ACT_STABILIZE, "()".to_owned()),
+        (ACT_EXECUTE, "()".to_owned()),
+        (ACT_THROW_GRENADE, "()".to_owned()),
+        (ACT_OPEN_DOOR, "()".to_owned()),
+        (ACT_ENTER_EMPLACEMENT, "()".to_owned()),
+        (ACT_EXIT_EMPLACEMENT, "()".to_owned()),
     ];
     let replies = exchange_all(
         battle_still_replaying,

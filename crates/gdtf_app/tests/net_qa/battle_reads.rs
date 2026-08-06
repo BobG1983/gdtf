@@ -8,6 +8,7 @@ use gdtf_app::qa_wire::{
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
+    acts::downed::is_8_adjacent,
     battle::PlayerFaction,
     ganger::{Aiming, Facing, Faction, LifeState, Position},
     occupancy::TerrainKind,
@@ -148,6 +149,45 @@ pub(crate) fn two_steps_from(app: &App, at: CellLevelNet) -> Option<CellLevelNet
         (is_clear(grid, &map, &first) && is_clear(grid, &map, &second))
             .then_some(CellLevelNet::from_sim(second))
     })
+}
+
+/// Every living enemy standing 8-adjacent to `at`, in the order their entity ids run.
+pub(crate) fn enemies_beside(app: &App, at: CellLevel) -> Vec<Entity> {
+    let world = app.world();
+    let Some(player) = world.get_resource::<PlayerFaction>().map(|player| **player) else {
+        return Vec::new();
+    };
+    let mut beside: Vec<Entity> = world
+        .iter_entities()
+        .filter_map(|entity| {
+            let faction = *entity.get::<Faction>()?;
+            let position = *entity.get::<Position>()?;
+            let alive = entity
+                .get::<LifeState>()
+                .is_none_or(|life| *life.is_active());
+            (faction != player && alive && *is_8_adjacent(Position::new(at), position))
+                .then_some(entity.id())
+        })
+        .collect();
+    beside.sort_unstable_by_key(|entity| entity.to_bits());
+    beside
+}
+
+/// Clear cells the map holds out of reach of `at`, so nothing stood there is 8-adjacent to it.
+pub(crate) fn clear_cells_away_from(app: &App, at: CellLevel) -> Vec<CellLevel> {
+    let Some(grid) = app.world().get_resource::<OccupancyGrid>() else {
+        return Vec::new();
+    };
+    let map: HashSet<CellLevel> = grid.all_cells().collect();
+    let mut away: Vec<CellLevel> = map
+        .iter()
+        .copied()
+        .filter(|step| {
+            is_clear(grid, &map, step) && !*is_8_adjacent(Position::new(at), Position::new(*step))
+        })
+        .collect();
+    away.sort_unstable_by_key(|step| (step.x, step.y, step.z));
+    away
 }
 
 /// A cell far outside any generated map, so nothing can be standing on it.

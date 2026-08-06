@@ -14,7 +14,7 @@ crate::support_use!(plugin::NetQaPlugin;);
 
 #[cfg(feature = "headless_test")]
 pub use commands::{
-    ActCommandSystems, assert_game_command_set_is_conformant, game_command_names,
+    ActCommandSystems, ContextualReply, assert_game_command_set_is_conformant, game_command_names,
     shorten_wait_budget,
 };
 #[cfg(feature = "headless_test")]
