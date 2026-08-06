@@ -30,14 +30,13 @@ Two homes, standard Cargo, placed per the module-layout test convention ([module
 - **In-crate unit tests** — a sibling `test/` directory (or `test.rs` leaf) next to the module under test (an inline `#[cfg(test)] mod test` only while tiny), for white-box coverage of private helpers and tight math. This is where most `gdtf_battle_sim` coverage lives.
 - **Integration tests** — `crates/<crate>/tests/`, one file per system or focused concern (`tests/<suite>/main.rs` dir-form once a suite outgrows one file), exercising the crate's public surface as a downstream user would (e.g. constructing a battle and driving a volley through the public verbs).
 
-Six repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
+Five repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
 
 - **`module_layout`** — the clause-7 module-layout conformance guard: wiring-only `mod.rs`, the warn>300 / block>400 line bands, and the exemption registry.
 - **`assets_tree_clean`** — the tracked `assets/` tree must be git-clean when the suite runs, so a test that mutates shipped authored content is caught loudly instead of silently corrupting authored work.
-- **`no_flat_integration_tests`** — a crate's `tests/` holds dir-form suites (`<suite>/main.rs`), never flat `tests/*.rs` binaries.
-- **`ci_workflow_features`** — every workspace-wide command in `.github/workflows/` stays on the static feature set.
+- **`no_flat_integration_tests`** — every crate's and bin's `tests/` holds dir-form suites (`<suite>/main.rs`), never flat `tests/*.rs` binaries.
 - **`rustdoc_lint_gate`** — the workspace denies the whole rustdoc lint group and every member opts into the workspace lints.
-- **`qa_commands_doc`** — [tooling/qa-commands.md](tooling/qa-commands.md) cites paths that exist, and every shape it shows is really in the command it is written from.
+- **`qa_commands_doc`** — [tooling/qa-commands.md](tooling/qa-commands.md) names every command the game publishes and none it does not, and every path it links to exists.
 
 ## Conventions
 
@@ -99,4 +98,4 @@ It pins **behavioral contracts**: the march's exact cell walk, the strictly-high
 
 ## Integration test packing
 
-Flat `tests/*.rs` files each become a separate binary and re-link Bevy. Prefer **dir-form** suites (`tests/suite_name/main.rs` + modules). See [tooling/test-pack.md](tooling/test-pack.md). A guard under `gdtf_test_utils/tests/no_flat_integration_tests/` fails if packed crates grow new flats.
+Flat `tests/*.rs` files each become a separate binary and re-link Bevy. Prefer **dir-form** suites (`tests/suite_name/main.rs` + modules), as [module-layout.md](../.claude/rules/module-layout.md) rule 5 requires. A guard under `gdtf_test_utils/tests/no_flat_integration_tests/` walks every `crates/*/tests/` and `bins/*/tests/` and fails on a new flat file; the ones already there when the walk was added are listed in its `ALLOWED_FLATS`.

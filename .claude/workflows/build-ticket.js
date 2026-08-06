@@ -95,71 +95,12 @@ if (!liveTicket) throw new Error(`could not fetch ${TICKET} for clause audit`)
 
 log(`${TICKET}: clause-audit input (live ticket text):\n${liveTicket}`)
 
-const auditOut = await agent(`Clause audit for ${TICKET}. READ-ONLY. Do not touch Linear status or post comments.
-
-You are given the LIVE ticket text (description + comments). Do not invent clauses from memory or from any summary string.
+const auditOut = await agent(`Clause audit for ${TICKET}.
 
 <live-ticket id="${TICKET}">
 ${liveTicket}
-</live-ticket>
-
-## Your job is to make the ticket buildable, NOT to refuse it
-
-You FIX what is wrong and hand the builder corrected clause text. Blocking is a last resort with a
-very narrow trigger. A previous version of this audit blocked the same ticket four times running,
-each time on something it could have simply corrected. That wasted a day and it is not to happen
-again.
-
-**Fix it yourself — write the corrected clause and move on. Never block for these:**
-a wrong file:line citation, a wrong count, a missing visibility widening, an orphaned import left by
-a deleted test, an unnamed or wrong test harness, an undefined reply shape that has one obvious
-source in the tree, a stale ruling a later comment already reversed, an unbounded escape hatch, a
-missing docs update, a test that should be edited rather than deleted, a clause that is merely
-vague. None of these need a human.
-
-**"This is hard", "this is a large diff", "this touches shared code", "this needs a production
-change" are NOT reasons to block.** Existing code and existing dependencies are not constraints —
-if replacing them is the cleaner path, say so and specify it. Deleting and simplifying is
-authorised.
-
-**AUDIT_BLOCK only when answering would invent PRODUCT behaviour** — what a command should return
-in a situation nobody has decided, or whether a feature should exist at all. Even then, state a
-recommendation.
-
-## Check the acceptance clauses as a SET
-
-1. Every clause names evidence this run can actually produce (suite, git, MCP, file:line).
-2. No two clauses contradict each other.
-3. Every clause asserts something checkable, not aspiration.
-4. Every cited path, symbol and line number exists and says what the ticket claims. Open them.
-   Several citations in this project have turned out wrong.
-5. A required test can actually pass in the harness it names, and is not vacuous there. Tickets here
-   have specified tests that were impossible or that passed for the wrong reason.
-6. The change does not trip a lint or a meta-test. This workspace is \`-D warnings\` with
-   \`unreachable_pub\`, \`missing_docs\` and \`allow_attributes\` all deny, and zero
-   \`#[expect]\`/\`#[allow]\` repo-wide.
-
-Never state a count that came from grep — grep counts lines containing a string. Use the LSP for
-symbol questions, and say which you used.
-
-## Output
-
-Line 1 is AUDIT_OK or AUDIT_BLOCK, on its own.
-
-On AUDIT_OK, follow it with a **CORRECTIONS** section: the corrected clause text, in full, for every
-clause you fixed. The builder is handed this verbatim and treats it as binding, so write it as
-instructions to a builder, not as a report about the ticket. If nothing needed correcting, say so in
-one line.
-
-On AUDIT_BLOCK, name the product decision needed and recommend an answer.
-
-If you produce no real audit, that is failure — say AUDIT_BLOCK.
-
-Historical shape of a catch (GTW-882): implementer prose disagreed with the tree; contradictory
-acceptance wording. Flag that class — and correct it.
-
-Do NOT post to Linear.`,
-  { model: 'opus', label: `clause-audit:${TICKET}`, phase: 'Clause-audit' })
+</live-ticket>`,
+  { model: 'opus', label: `clause-audit:${TICKET}`, phase: 'Clause-audit', agentType: 'clause-audit' })
 
 if (!auditOut) throw new Error(`${TICKET}: clause audit produced no report (empty reviewer) — abort`)
 

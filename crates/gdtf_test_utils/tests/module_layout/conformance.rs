@@ -2,11 +2,15 @@ use std::{collections::BTreeSet, fs};
 
 use crate::{
     census::{Band, band, modrs_reasons, pure_wiring, raw_line_count},
-    tree::{registry_paths, tracked_rs, workspace_root},
+    tree::{tracked_rs, workspace_root},
 };
 
 const BLOCK_LINES: usize = 400;
 const WARN_LINES: usize = 300;
+
+// Files the module-layout rule excuses, by repo-relative path. Adding one is a code
+// change: propose it, get the user's approval, then land the entry with the reason.
+const EXEMPT_PATHS: &[&str] = &[];
 
 struct Violation {
     lines: usize,
@@ -18,7 +22,6 @@ struct Violation {
 fn module_layout_conformance() {
     let root = workspace_root();
     let files = tracked_rs(&root);
-    let registry = registry_paths(&root);
     let mut violations: Vec<Violation> = Vec::new();
     let mut warns: Vec<(usize, String)> = Vec::new();
     let mut live_exemptions: BTreeSet<String> = BTreeSet::new();
@@ -35,13 +38,13 @@ fn module_layout_conformance() {
         };
         let lines = raw_line_count(&bytes);
         let file_band = band(path);
-        let registered = registry.contains(path);
+        let exempt = EXEMPT_PATHS.contains(&path.as_str());
         if file_band == Band::Mod {
             let reasons = modrs_reasons(&String::from_utf8_lossy(&bytes));
             if reasons.is_empty() {
                 continue;
             }
-            if registered {
+            if exempt {
                 live_exemptions.insert(path.clone());
             } else {
                 let text = format!("MODLOGIC {lines:5} {path}  [{}]", reasons.join("; "));
@@ -54,13 +57,13 @@ fn module_layout_conformance() {
             continue;
         }
         if lines > BLOCK_LINES {
-            if registered {
+            if exempt {
                 live_exemptions.insert(path.clone());
                 let base = path.rsplit('/').next().unwrap_or(path);
                 let crate_root = base == "lib.rs" || base == "main.rs";
                 if crate_root && !pure_wiring(&String::from_utf8_lossy(&bytes)) {
                     let text = format!(
-                        "BLOCK {} {lines:5} {path}  [registered crate root grew logic — must stay pure wiring]",
+                        "BLOCK {} {lines:5} {path}  [exempt crate root grew logic — must stay pure wiring]",
                         file_band.label()
                     );
                     violations.push(Violation {
@@ -81,12 +84,15 @@ fn module_layout_conformance() {
             warns.push((lines, path.clone()));
         }
     }
-    for entry in &registry {
+    for &entry in EXEMPT_PATHS {
         if !live_exemptions.contains(entry) {
-            let text = format!("stale exemption — remove {entry}");
+            let text = format!(
+                "{entry} is excused by EXEMPT_PATHS in this guard, but it no longer breaks the \
+                 rule (or no longer exists) — delete that entry"
+            );
             violations.push(Violation {
                 lines: 0,
-                path: entry.clone(),
+                path: entry.to_owned(),
                 text,
             });
         }
