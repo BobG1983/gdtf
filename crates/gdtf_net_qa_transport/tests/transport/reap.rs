@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use gdtf_net_qa_transport::{DEFAULT_REPLY_TIMEOUT, NetIoTimeout, NetTimeouts};
+use gdtf_qa_protocol::timeouts::{DEFAULT_REPLY_TIMEOUT, NetIoTimeout, NetTimeouts};
 
 use super::harness::{TestResult, spawn_fake_host_side, spawn_listener};
 

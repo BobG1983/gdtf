@@ -21,7 +21,8 @@ control channel. It has three processes and one shared wire contract:
 - **`gdtf_qa_protocol`** is the bevy-free crate all three link — `crates/gdtf_app`
   for the game, `crates/gdtf_content_editor` for the editor, and `bins/gdtf_qa_mcp`
   for the host. It carries the typed request/response message shapes, the command
-  DTOs, and the framing codec.
+  DTOs, the framing codec, and the values both ends have to agree on — the ports
+  and the two timeouts.
 
 The channel is a **dev-only** affordance: it never compiles into a release build,
 and even a `net_qa`-enabled build stays inert until an environment variable opts
@@ -367,7 +368,7 @@ shape:
   into `Frame`s (split-read tolerant), capped at `MAX_FRAME_LEN`. The codec does
   no I/O — each side owns its own socket.
 - **The two timeouts** — `NetTimeouts` in
-  `crates/gdtf_net_qa_transport/src/config.rs`, which both hosts run with as
+  `crates/gdtf_qa_protocol/src/timeouts.rs`, which both hosts run with as
   `NetTimeouts::DEFAULT`. A socket read or write gives up after **5 seconds**,
   which is what stops an idle client holding the channel; the listener then
   waits up to **180 seconds** for the host to answer a forwarded request, and

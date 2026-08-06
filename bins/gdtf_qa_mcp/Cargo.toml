@@ -8,8 +8,5 @@ gdtf_qa_protocol = { path = "../../crates/gdtf_qa_protocol" }
 serde = { workspace = true }
 serde_json = "1"
 
-[dev-dependencies]
-gdtf_net_qa_transport = { path = "../../crates/gdtf_net_qa_transport" }
-
 [lints]
 workspace = true

@@ -7,7 +7,7 @@ use gdtf_battle_sim::{
     prelude::{CellLevel, OccupancyGrid},
     visibility::SquadVisibility,
 };
-use gdtf_net_qa_transport::NetQaPort;
+use gdtf_qa_protocol::ports::NetQaPort;
 
 use super::{
     expected::{FrozenFog, LateOccupant, RememberedCover, SplitEnemy, Standing},

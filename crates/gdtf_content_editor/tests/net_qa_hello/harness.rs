@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use gdtf_content_editor::{EditorState, MapEditorPlugin, NetQaEditorPlugin};
-use gdtf_net_qa_transport::NetQaPort;
+use gdtf_qa_protocol::ports::NetQaPort;
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
 use crate::support::{EDITING_UPDATES, TestError};

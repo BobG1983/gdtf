@@ -12,10 +12,10 @@ use bevy::{
 };
 use gdtf_app::test_support::{AppState, BattleScapeState, NetQaPlugin, RunningState};
 use gdtf_battle_sim::rng::BattleSeed;
-use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
     framing::{FrameDecoder, encode},
     message::{QaRequest, QaResponse},
+    ports::NetQaPort,
 };
 use gdtf_screenshot::{PollCap, SettleFrames};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};

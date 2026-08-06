@@ -3,8 +3,7 @@
 use bevy::{app::App, ecs::entity::Entity};
 use gdtf_app::qa_wire::{act::ActRefusalNet, offer::OfferTargetNet, token::DoorToken};
 use gdtf_battle_sim::{openable::OpenState, prelude::CellLevel};
-use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::command::RunOptions;
+use gdtf_qa_protocol::{command::RunOptions, ports::NetQaPort};
 use gdtf_test_utils::advance_until;
 
 use super::{
