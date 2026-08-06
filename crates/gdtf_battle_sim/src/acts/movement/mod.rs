@@ -8,4 +8,5 @@ mod walk;
 
 pub use dispatch::dispatch_move;
 pub use signals::{MoveRejected, MoveRejection, MovementOccurred};
+pub(crate) use suppression_gate::suppressed_move_legal;
 pub use walk::{ReactionShotFired, RouteComplete, WalkInProgress, advance_walk};
