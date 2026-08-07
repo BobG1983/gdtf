@@ -88,7 +88,9 @@ pub fn dispatch_throw_grenade(
             hit_type:    fire_mode.single().hit_type,
         };
 
-        spend_tu(&mut thrower_tu, throw_grenade_tu_cost(tuning));
+        if spend_tu(&mut thrower_tu, throw_grenade_tu_cost(tuning)).is_err() {
+            continue;
+        }
         magazine.spend_round();
 
         let MarchResult { at: landing, .. } =

@@ -111,6 +111,16 @@ pub(super) fn try_reaction(
         return None;
     }
 
+    let commit = InterruptCommit::predict(
+        reactor.entity,
+        weapon,
+        tu_now,
+        spend,
+        facing_after,
+        clamp_burst(mode.shots, &magazine),
+        magazine,
+    )?;
+
     signals.fire.write(FireRequested::new(
         reactor.entity,
         mode,
@@ -122,15 +132,7 @@ pub(super) fn try_reaction(
         .declared
         .write(InterruptDeclared::new(reactor.entity, actor.entity));
     eligibility.record_use(reactor.entity);
-    Some(InterruptCommit::predict(
-        reactor.entity,
-        weapon,
-        tu_now,
-        spend,
-        facing_after,
-        clamp_burst(mode.shots, &magazine),
-        magazine,
-    ))
+    Some(commit)
 }
 
 // Where the reactor ends up facing, and what turning and shooting takes out of its pool.

@@ -214,9 +214,12 @@ pub fn advance_walk(
             continue;
         }
 
+        if spend_tu(&mut tu, cost).is_err() {
+            commands.entity(mover).remove::<WalkInProgress>();
+            continue;
+        }
         let from = position.cell();
         *position = Position::new(next);
-        spend_tu(&mut tu, cost);
         steps.write(MovementOccurred::new(mover, from, next.cell()));
         walk.pop_next();
 
