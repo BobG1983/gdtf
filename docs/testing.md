@@ -59,10 +59,11 @@ channel, open in every debug build: a coding-agent QA harness (`gdtf_qa_mcp`, or
 that build publishes, runs one by name, and stops it — no env-var-scripted battle drive left in
 the workspace. The request vocabulary is three commands — `Hello`, `Catalogue`, `Run` — so WHAT
 the game can be asked to do is its command list, read at run time. That list is being rebuilt
-one command at a time and today holds `app.phase`, `capture.screenshot`, `settings.read`,
-`ui.focus`, `playback.state`, `battle.start`, `battle.flee`, `procgen.step` and `wait`;
-adding to it is [tooling/qa-commands.md](tooling/qa-commands.md),
-and driving it is
+one command at a time and today spans the app phase, screenshots, the shell reads, the battle
+reads, the two ends of a battle, the procgen step, `wait`, the acts, the raw input paths and
+the view controls. Read the names off [tooling/qa-commands.md](tooling/qa-commands.md), which
+the `qa_commands_doc` guard holds to what the game publishes — a second copy here would only
+rot. That guide is also how a command is added, and driving it is
 [tooling/agent-qa.md](tooling/agent-qa.md). Census command (run from the repo root; re-run it
 when adding a flag and keep this table in step):
 

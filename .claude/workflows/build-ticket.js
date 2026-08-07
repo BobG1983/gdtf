@@ -203,9 +203,25 @@ if (!built) throw new Error(`build agent died on ${TICKET}`)
 const fresh = await agent(`Re-fetch ${TICKET} from Linear. READ-ONLY. Return CURRENT full description and complete comment thread, verbatim.`,
   { model: 'opus', label: `refetch:${TICKET}`, phase: 'Verify', agentType: 'project-manager' })
 
-const contract = fresh || ticketText
+// The contract everyone downstream judges against: the live ticket text PLUS the audit's
+// corrections. The corrections are never written back to Linear, so a re-fetch alone loses them —
+// and then the builder builds to one contract while verify and the lenses judge another. On
+// GTW-1012 that cost five gate rounds and a non-landing: the audit had replaced clause 2 in full,
+// the engineer built the replacement, and a lens failed it for not implementing the struck-out
+// sentence. The audit goes LAST so it wins on any conflict.
+const contract = `${fresh || ticketText}
+
+## CLAUSE AUDIT (this run) — the CORRECTIONS section is BINDING and OVERRIDES the text above
+
+The audit ran before the build, opened every citation, and corrected the ticket's facts. Its
+corrections were NOT written back to Linear, so the ticket text above is the uncorrected original.
+Where the two differ, the corrections win — the implementer built to them. Do NOT report a
+violation for failing to do something a correction struck out, and do NOT report one for doing
+what a correction requires. Judge the build against the corrected contract.
+
+${auditOut}`
 if (fresh && fresh !== ticketText) {
-  log(`${TICKET}: contract re-fetched — verifying against the CURRENT ticket text`)
+  log(`${TICKET}: contract re-fetched — verifying against the CURRENT ticket text plus the audit corrections`)
 }
 
 // The verdict verify reported, or null when it reported none.

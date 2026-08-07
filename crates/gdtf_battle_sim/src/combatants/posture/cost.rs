@@ -32,6 +32,12 @@ impl CanSetFacing {
     }
 }
 
+/// TU charged for taking or dropping aim. Aiming is free.
+#[must_use]
+pub const fn set_aiming_tu_cost() -> Tu {
+    Tu::new(0)
+}
+
 /// TU charged for one stance change.
 #[must_use]
 pub fn stance_tu_cost(cost: &StanceChangeTu) -> Tu {
