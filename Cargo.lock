@@ -2954,6 +2954,7 @@ dependencies = [
  "gdtf_qa_protocol",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
