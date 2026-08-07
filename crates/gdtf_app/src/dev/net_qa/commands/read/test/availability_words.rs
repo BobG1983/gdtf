@@ -56,6 +56,12 @@ const NOT_BATTLE_READS: &[&str] = &[
     "input.focus_step",
     "input.activate",
     "input.click_cell",
+    "view.level_up",
+    "view.level_down",
+    "view.toggle_full_view",
+    "view.pan",
+    "view.look_at",
+    "battle.set_fire_mode",
 ];
 
 fn on_the_battle_screen(battlescape: BattleScapePhaseNet, model: BattleModel) -> GameFacts {

@@ -1,8 +1,10 @@
 //! The act commands must claim before the act bus drains and settle after the sim records.
 
-use bevy::ecs::schedule::IntoSystemSet;
+use bevy::ecs::schedule::{IntoSystemSet, NodeId};
 use gdtf_app::test_support::{ActCommandSystems, ContextualPanelSystems};
-use gdtf_battle_input::{auto_select_first_player_ganger, contextual::ContextualActSystems};
+use gdtf_battle_input::{
+    InputSystems, auto_select_first_player_ganger, contextual::ContextualActSystems,
+};
 use gdtf_battle_sim::occupancy_sync::SimSystems;
 use gdtf_qa_command::dispatch::QaCommandSystems;
 
@@ -20,6 +22,14 @@ const BANDED_ACTS: usize = 20;
 /// The eight acts that fire whatever the contextual panel is offering.
 const CONTEXTUAL_ACTS: usize = 8;
 
+/// The three view controls push a view intent from outside the act claim band, so each one
+/// carries its own edge to the drain.
+const VIEW_CONTROLS: [&str; 3] = [
+    "handle_view_level_up",
+    "handle_view_level_down",
+    "handle_view_toggle_full_view",
+];
+
 #[test]
 fn every_act_claim_runs_before_the_act_bus_drains() -> TestResult {
     let (mut app, _port) = battle_app_listening()?;
@@ -31,8 +41,8 @@ fn every_act_claim_runs_before_the_act_bus_drains() -> TestResult {
     assert_eq!(
         claims.len(),
         BANDED_ACTS,
-        "every command that pushes onto the act bus must register its claim system in the band, \
-         or the band's ordering does not apply to it",
+        "every act command must register its claim system in the band, or the band's ordering \
+         does not apply to it",
     );
     let drain = a_system_named(update, "dispatch_act_intents")?;
     assert!(
@@ -40,6 +50,39 @@ fn every_act_claim_runs_before_the_act_bus_drains() -> TestResult {
         "the claim band must be ordered before dispatch_act_intents; without that edge an act \
          command shares InputSystems::Gather with the drain and its intent lands a frame late",
     );
+    Ok(())
+}
+
+#[test]
+fn every_view_control_runs_before_the_act_bus_drains() -> TestResult {
+    let (mut app, _port) = battle_app_listening()?;
+    app.update();
+    let update = update_schedule(&app)?;
+    let graph = update.graph();
+
+    let drain = a_system_named(update, "dispatch_act_intents")?;
+    let banded = members(graph, ActCommandSystems::Claim)?;
+    let gathering = members(graph, InputSystems::Gather)?;
+    for named in VIEW_CONTROLS {
+        let handler = a_system_named(update, named)?;
+        assert!(
+            gathering.contains(&handler),
+            "`{named}` gathers a view intent, so it belongs in InputSystems::Gather with the rest \
+             of the input the frame collects; outside that set it runs against whatever else the \
+             executor picks and only its own drain edge holds it in place",
+        );
+        assert!(
+            !banded.contains(&handler),
+            "`{named}` answers its own call rather than an act-log window, so joining the act \
+             claim band would put it in the settle band's count as well",
+        );
+        assert!(
+            ordered_before(graph, NodeId::System(handler), drain),
+            "`{named}` pushes a view intent from outside the claim band, so its own edge to \
+             dispatch_act_intents is the only thing draining that intent in the frame it was \
+             pushed; without it the two share InputSystems::Gather and the view moves a frame late",
+        );
+    }
     Ok(())
 }
 
