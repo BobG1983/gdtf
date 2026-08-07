@@ -385,12 +385,20 @@ for that act family). All three are conditions the QA layer can see before the s
 involved. Everything else the sim decides, and the act log reports.
 
 All eleven need a running battle whose screen has caught up with the act log — `Running` plus
-`Caught`. Off the battle screen they refuse `WrongState`; while the screen is still replaying
-they refuse `Replaying`, because the act bus drops an intent whose gate is shut. Ten of them
-ask for nothing more. `act.end_turn` also needs the turn to belong to the player, and refuses
-`WrongState` while another faction is acting: no player path ends someone else's turn — there
-is no button and no key for it — so allowing it over the wire would drive the sim somewhere
-real play cannot go. `wait` with `TurnChanged` is how a run gets past an enemy turn.
+`Caught`. Outside a running battle they refuse `WrongState`. Ten of them ask for nothing more:
+while the screen is still replaying they refuse `Replaying`, because the act bus drops an
+intent whose gate is shut. `act.end_turn` also needs the turn to belong to the player: no player
+path ends someone else's turn — there is no button and no key for it — so allowing it over the
+wire would drive the sim somewhere real play cannot go. `wait` with `TurnChanged` is how a run
+gets past an enemy turn.
+
+`act.end_turn` checks the turn owner *before* the screen, so on another faction's turn it
+refuses `WrongState` whether or not the screen is behind, and answers `Replaying` only when the
+turn is the player's own. The broader refusal wins: waiting for the screen to catch up cannot
+make the call work while the enemy is acting, so `Replaying` there would only buy the caller a
+retry that refuses again. Outside a running battle it still refuses `WrongState` with the same
+"no battle is running" reason the other ten give — the turn-owner check sits inside the running
+battle, not in front of it.
 
 The other eight `act.*` commands are the contextual acts — `act.melee`, `act.shove`,
 `act.stabilize`, `act.execute`, `act.throw_grenade`, `act.open_door`,
