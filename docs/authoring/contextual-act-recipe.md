@@ -30,9 +30,19 @@ the frame it was claimed in, exactly as a press is.
   `dispatch_<act>` system, `cost.rs` holds `<act>_tu_cost(…) -> Tu` and
   `can_<act>(…) -> Can<Act>`. Both are pure — they take what they need, return a cost or a
   yes/no, and change nothing. The dispatch gates on `can_<act>` (adjacency / faction /
-  state), spends exactly what `<act>_tu_cost` returned, and owns any act-specific ordering
+  state), charges exactly what `<act>_tu_cost` returned, and owns any act-specific ordering
   — these are deliberately NOT generic. A small act stays one file (`open_door.rs`,
   `reload.rs`, `enter_emplacement.rs`) with the same two pieces in it.
+- **A pool that cannot cover the cost refuses the act.** `spend_tu` returns
+  `Result<(), TuShortfall>` and never clamps, so a shortfall is a case the dispatch has to
+  handle: skip the request, change nothing, spend nothing. The usual shape is to fold
+  `can_spend_tu(tu, <act>_tu_cost(…))` into `can_<act>` itself — Open Door, Reload, Throw
+  Grenade, Enter / Exit Emplacement and `can_set_stance` all do, so the dispatch gets one
+  verdict rather than a second copy of the rule. Where the predicate is deliberately
+  TU-blind (`can_shove`, `can_melee`), the dispatch calls `can_spend_tu` itself before
+  touching anything, and the guarded `spend_tu` is the backstop. The one exception is
+  `set_facing`: a turn is divisible, so it charges the whole 45deg steps the pool affords
+  and lands partway.
 - **Sim owns the TU number.** Whoever needs it — dispatch, HUD, cursor preview, AI, a QA
   command — calls `<act>_tu_cost`; never a second copy of the math. Re-export the pair from
   `acts/mod.rs` so callers outside the sim can reach it. Execute and Stabilize are the two

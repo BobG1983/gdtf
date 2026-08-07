@@ -94,9 +94,10 @@ pub fn fire(
     }
 
     let charge = mode_tu_cost(order.mode, &shooter_tu_max, &shooter_aiming, tuning);
-    if let Ok((_, _, mut tu_mut)) = shooters.get_mut(shooter) {
-        spend_tu(&mut tu_mut, charge);
-    } else {
+    let Ok((_, _, mut tu_mut)) = shooters.get_mut(shooter) else {
+        return Volley::empty();
+    };
+    if spend_tu(&mut tu_mut, charge).is_err() {
         return Volley::empty();
     }
 

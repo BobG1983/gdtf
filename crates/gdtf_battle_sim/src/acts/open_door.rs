@@ -69,7 +69,9 @@ pub fn dispatch_open_door(
         if !*can_open_door(actor_pos, door_pos, *open_state, &actor_tu, &tuning) {
             continue;
         }
-        spend_tu(&mut actor_tu, open_door_tu_cost(&tuning));
+        if spend_tu(&mut actor_tu, open_door_tu_cost(&tuning)).is_err() {
+            continue;
+        }
         toggles.write(SetOpenable::toggle(request.door, *open_state));
     }
 }

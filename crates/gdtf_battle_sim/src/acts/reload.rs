@@ -104,7 +104,10 @@ pub fn dispatch_reload(
             continue;
         }
 
-        spend_tu(&mut tu, reload_tu_cost(&magazine));
+        if spend_tu(&mut tu, reload_tu_cost(&magazine)).is_err() {
+            results.write(ReloadResult::new(request.actor, ReloadOutcome::NoTu));
+            continue;
+        }
         magazine.refill();
         results.write(ReloadResult::new(request.actor, ReloadOutcome::Reloaded));
     }

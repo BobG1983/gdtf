@@ -215,7 +215,7 @@ fn set_facing_with_pool_below_one_step_does_not_turn_or_charge() {
 }
 
 #[test]
-fn set_stance_charge_saturates_when_cost_exceeds_pool() {
+fn set_stance_refuses_when_cost_exceeds_pool() {
     let cost = StanceChangeTu::new(200);
     let mut stance = Stance::new(StanceKind::Standing);
     let mut tu = Tu::new(5);
@@ -223,9 +223,13 @@ fn set_stance_charge_saturates_when_cost_exceeds_pool() {
     let changed = *set_stance(&mut stance, &mut tu, StanceKind::Prone, &cost);
 
     assert!(
-        changed,
-        "the stance still changes even when TU cannot cover it"
+        !changed,
+        "a stance change the pool cannot cover reports no change"
     );
-    assert_eq!(*stance, StanceKind::Prone, "the new stance is applied");
-    assert_eq!(*tu, 0, "over-spending floors the pool at 0, never wraps");
+    assert_eq!(
+        *stance,
+        StanceKind::Standing,
+        "the held stance is unchanged when the pool cannot cover the change",
+    );
+    assert_eq!(*tu, 5, "a refused stance change spends nothing");
 }

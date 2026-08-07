@@ -91,7 +91,9 @@ pub(super) fn resolve_ganger_melee(
     let Ok(mut attacker_tu) = combatants.tu.get_mut(attacker.entity) else {
         return;
     };
-    spend_tu(&mut attacker_tu, attacker.tu_cost);
+    if spend_tu(&mut attacker_tu, attacker.tu_cost).is_err() {
+        return;
+    }
 
     let empty_tables = InjuryTables::default();
     let empty_registry = InjuryRegistry::default();

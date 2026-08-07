@@ -1,6 +1,22 @@
-use gdtf_battle_sim::{acts::MeleeRequested, ganger::Direction, test_support::SituationBuilder};
+use bevy::{app::App, prelude::Entity};
+use gdtf_battle_sim::{
+    acts::{MeleeRequested, melee_tu_cost},
+    ganger::Direction,
+    prelude::Tu,
+    test_support::SituationBuilder,
+    weapon::{FightMode, MeleeWeapon, Wields},
+};
 
 use super::harness::*;
+
+/// What one strike with the melee weapon this attacker holds charges, off the live world.
+fn strike_cost(app: &App, attacker: Entity) -> Option<Tu> {
+    let world = app.world();
+    let weapon = world
+        .get::<Wields>(attacker)?
+        .melee_weapon(|entity| world.get::<MeleeWeapon>(entity).is_some())?;
+    world.get::<FightMode>(weapon).map(melee_tu_cost)
+}
 
 // === C5(a) — a smash on an adjacent Cover cell REDUCES its HP, spends TU, emits MeleeResolved. ===
 
@@ -121,6 +137,80 @@ fn the_structural_smash_is_seed_independent_no_fight_roll() {
     assert!(
         a.is_some_and(|hp| hp < 1_000),
         "precondition: the smash actually reduced the cover HP (a real, non-vacuous outcome)",
+    );
+}
+
+#[test]
+fn a_smash_the_pool_cannot_cover_leaves_the_cover_and_the_pool_alone() {
+    let (mut app, seed) = battle_app(0x5508_0D0D);
+    with_logs(&mut app);
+
+    let situation = SituationBuilder::new()
+        .with_gangers([attacker(ground(5, 5), PLAYER, Direction::East)])
+        .build_with_gangs();
+    drive_setup(&mut app, seed, situation);
+
+    let cover = ground(6, 5);
+    seed_cover(&mut app, cover, 1_000);
+
+    let Some(attacker_entity) = player_ganger(&mut app) else {
+        unreachable!("setup spawns one player attacker");
+    };
+    let (Some(cost), Some(hp_before)) = (strike_cost(&app, attacker_entity), cover_hp(&app, cover))
+    else {
+        unreachable!("the attacker holds a melee weapon and the cover cell was seeded");
+    };
+    assert!(
+        *cost > 0,
+        "the test melee weapon must charge something, or a below-cost pool proves nothing",
+    );
+    if let Some(mut pool) = app.world_mut().get_mut::<Tu>(attacker_entity) {
+        *pool = Tu::new(*cost - 1);
+    }
+
+    app.world_mut()
+        .write_message(MeleeRequested::new_structural(attacker_entity, cover));
+    step(&mut app, 3);
+
+    assert_eq!(
+        tu_of(&app, attacker_entity),
+        Some(*cost - 1),
+        "an attacker that cannot cover the smash spends nothing",
+    );
+    assert_eq!(
+        cover_hp(&app, cover),
+        Some(hp_before),
+        "a smash the attacker cannot afford leaves the cover's HP untouched",
+    );
+    assert!(
+        !cover_destroyed_flag(&app, cover),
+        "a smash the attacker cannot afford destroys nothing",
+    );
+    assert_eq!(
+        destroyed_hits(&app),
+        0,
+        "a smash the attacker cannot afford fires NO CoverDestroyed",
+    );
+    assert_eq!(
+        melee_hits(&app),
+        0,
+        "a smash the attacker cannot afford emits NO MeleeResolved",
+    );
+
+    if let Some(mut pool) = app.world_mut().get_mut::<Tu>(attacker_entity) {
+        *pool = Tu::new(*cost);
+    }
+    app.world_mut()
+        .write_message(MeleeRequested::new_structural(attacker_entity, cover));
+    step(&mut app, 3);
+    assert_eq!(
+        tu_of(&app, attacker_entity),
+        Some(0),
+        "the same smash from a pool that covers the cost is charged for",
+    );
+    assert!(
+        cover_hp(&app, cover).is_some_and(|hp| hp < hp_before),
+        "the same smash from a pool that covers the cost does reduce the cover's HP",
     );
 }
 

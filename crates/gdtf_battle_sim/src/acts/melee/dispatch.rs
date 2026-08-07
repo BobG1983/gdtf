@@ -13,6 +13,7 @@ use crate::{
     acts::request::{MeleeRequested, MeleeTarget},
     armor::WornArmor,
     melee::MeleeWeaponHit,
+    tu::can_spend_tu,
     weapon::DamageType,
 };
 
@@ -59,6 +60,13 @@ pub fn dispatch_melee(
             fatal_bias,
         };
         let tu_cost = melee_tu_cost(fight_mode);
+        let affordable = combatants
+            .tu
+            .get(request.attacker)
+            .is_ok_and(|tu| *can_spend_tu(tu, tu_cost));
+        if !affordable {
+            continue;
+        }
         let strike_damage_type: DamageType = *damage_type;
 
         let attacker = AttackerSnapshot {

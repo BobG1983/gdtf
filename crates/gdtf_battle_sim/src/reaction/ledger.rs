@@ -19,7 +19,7 @@ pub(super) struct InterruptCommit {
 }
 
 impl InterruptCommit {
-    /// Project post-interrupt TU, facing, and magazine.
+    /// Project post-interrupt TU, facing, and magazine, or nothing when the pool falls short.
     #[must_use]
     pub(super) fn predict(
         reactor: Entity,
@@ -29,20 +29,20 @@ impl InterruptCommit {
         facing_after: Facing,
         rounds: ModeShots,
         magazine: Magazine,
-    ) -> Self {
+    ) -> Option<Self> {
         let mut tu_after = tu_now;
-        spend_tu(&mut tu_after, spend);
+        spend_tu(&mut tu_after, spend).ok()?;
         let mut magazine_after = magazine;
         for _ in 0..*rounds {
             magazine_after.spend_round();
         }
-        Self {
+        Some(Self {
             reactor,
             weapon,
             tu_after,
             facing_after,
             magazine_after,
-        }
+        })
     }
 }
 
