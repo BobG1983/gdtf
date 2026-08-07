@@ -52,6 +52,23 @@ const HOUSE_RULES = `
 7. **Plain language.** See plain-language.md — short plain wording; quoted failures stay whole.
 
 8. **Report failures verbatim.** Never summarise a failure away.
+
+9. **Nobody in this workflow can write to Linear except the project-manager steps.** The engineer,
+   verify and the three gate lenses have no Linear tools — not held back, not granted. So
+   "did not file a ticket", "did not comment on the ticket" and "should have raised this on the
+   board" are NEVER valid findings against a build. They demand something the agent being judged
+   cannot do, and a round spent on one is a round wasted.
+
+   If your work uncovers something that needs a ticket or a board comment, **put it in your return
+   text under a heading naming it as out of scope**. The orchestrator reads every report and files
+   it. That is the whole procedure.
+
+10. **A designed behaviour is not a gap.** Before reporting that two numbers disagree, check whether
+    a test already asserts the disagreement on purpose. Example: \`battle.cost\` quotes a Move's whole
+    path, and a walk stopped by a block, a reveal or a reaction interrupt charges only the steps
+    taken. That is deliberate — \`acts/test/movement/cost.rs\` asserts a *completed* walk charges
+    exactly the quote, and \`acts/movement/walk.rs\` documents all three stop conditions. Grep the
+    tests for the invariant before calling a difference a defect.
 `
 
 const GREEN = `
