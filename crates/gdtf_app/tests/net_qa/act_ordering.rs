@@ -1,7 +1,8 @@
-//! The act commands must claim before the act bus drains and settle after the sim records.
+//! The act commands must claim after the turn tally, before the act bus drains, and settle after
+//! the sim records.
 
 use bevy::ecs::schedule::{IntoSystemSet, NodeId};
-use gdtf_app::test_support::{ActCommandSystems, ContextualPanelSystems};
+use gdtf_app::test_support::{ActCommandSystems, ContextualPanelSystems, count_turn_changes};
 use gdtf_battle_input::{
     InputSystems, auto_select_first_player_ganger, contextual::ContextualActSystems,
 };
@@ -240,6 +241,36 @@ fn every_command_claims_after_the_game_has_settled_its_selection() -> TestResult
         "the act claim band must be ordered after the command claim band, which is what carries \
          the auto-select edge on to the acts",
     );
+    Ok(())
+}
+
+#[test]
+fn every_act_claim_runs_after_the_turn_tally_has_counted_this_frame() -> TestResult {
+    let (mut app, _port) = battle_app_listening()?;
+    app.update();
+    let update = update_schedule(&app)?;
+    let graph = update.graph();
+
+    let tally = set_node(graph, count_turn_changes.into_system_set())?;
+    let counter = a_system_named(update, "count_turn_changes")?;
+    assert!(
+        covers(graph, tally, counter),
+        "the app must register count_turn_changes, or ordering against it orders against nothing",
+    );
+    let claims = members(graph, ActCommandSystems::Claim)?;
+    assert!(
+        !claims.is_empty(),
+        "the act commands must register their claim systems, or this ordering means nothing",
+    );
+    for claim in claims {
+        assert!(
+            ordered_before(graph, tally, claim),
+            "the claim band must be ordered after count_turn_changes; that edge is also the only \
+             thing holding the tally before dispatch_act_intents, so without it a wait parked in \
+             the same frame as an act command can read the count from after the hand-over the act \
+             caused and then hold out for a second one",
+        );
+    }
     Ok(())
 }
 

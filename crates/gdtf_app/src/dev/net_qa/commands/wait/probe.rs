@@ -25,9 +25,11 @@ impl ConditionMet {
     }
 }
 
-/// How many turn hand-offs this process has announced.
-#[derive(Resource, Deref, Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub(in crate::dev::net_qa) struct TurnChangeCount(u64);
+crate::support_item! {
+    /// How many turn hand-offs this process has announced.
+    #[derive(Resource, Deref, Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+    struct TurnChangeCount(u64);
+}
 
 impl TurnChangeCount {
     const fn count_one(&mut self) {
@@ -35,13 +37,12 @@ impl TurnChangeCount {
     }
 }
 
-/// Tally every `TurnStarted` so a wait can tell one that arrived after it was admitted.
-pub(in crate::dev::net_qa) fn count_turn_changes(
-    mut turns: MessageReader<TurnStarted>,
-    mut seen: ResMut<TurnChangeCount>,
-) {
-    for _turn in turns.read() {
-        seen.count_one();
+crate::support_item! {
+    /// Tally every `TurnStarted` so a wait can tell one that arrived after it was admitted.
+    fn count_turn_changes(mut turns: MessageReader<TurnStarted>, mut seen: ResMut<TurnChangeCount>) {
+        for _turn in turns.read() {
+            seen.count_one();
+        }
     }
 }
 
