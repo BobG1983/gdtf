@@ -9,10 +9,10 @@ use gdtf_qa_protocol::{
 
 use super::{
     command_exchange::{
-        APP_PHASE, BATTLE_FLEE, BATTLE_INSPECT, BATTLE_OFFERS, BATTLE_ROSTER, BATTLE_SELECTION,
-        BATTLE_SIGHTLINE, BATTLE_START, BATTLE_TURN, BATTLE_VISIBLE, CAPTURE_SCREENSHOT, LOG_READ,
-        PLAYBACK_STATE, PROCGEN_STEP, SETTINGS_READ, UI_FOCUS, WAIT, exchange, exchange_all,
-        published_names, run,
+        APP_PHASE, BATTLE_COST, BATTLE_FLEE, BATTLE_INSPECT, BATTLE_OFFERS, BATTLE_ROSTER,
+        BATTLE_SELECTION, BATTLE_SIGHTLINE, BATTLE_START, BATTLE_TURN, BATTLE_VISIBLE,
+        CAPTURE_SCREENSHOT, LOG_READ, PLAYBACK_STATE, PROCGEN_STEP, SETTINGS_READ, UI_FOCUS, WAIT,
+        exchange, exchange_all, published_names, run,
     },
     socket_support::{TestResult, game_app_listening},
 };
@@ -56,6 +56,7 @@ fn the_catalogue_lists_the_reads_the_lifecycle_commands_and_the_classic_and_cont
         (BATTLE_FLEE, CommandTiming::Deferred),
         (PROCGEN_STEP, CommandTiming::Immediate),
         (WAIT, CommandTiming::Deferred),
+        (BATTLE_COST, CommandTiming::Immediate),
     ] {
         let Some(entry) = catalogue
             .entries

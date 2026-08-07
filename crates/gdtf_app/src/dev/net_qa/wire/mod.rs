@@ -6,6 +6,8 @@ pub mod act;
 pub mod act_payload;
 /// Cell and cell-level coordinates.
 pub mod cell;
+/// Act, legality and refusal payloads for a TU cost preview.
+pub mod cost;
 /// Act-log deed kinds.
 pub mod deed;
 /// Cover blocks and the inspect panel's decision.
