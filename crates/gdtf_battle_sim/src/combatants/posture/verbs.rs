@@ -2,8 +2,9 @@
 
 use bevy::prelude::Deref;
 
+use super::cost::{afforded_turn_steps, stance_tu_cost, turn_tu_cost};
 use crate::{
-    ganger::{Aiming, Direction, Facing, RingSteps, Stance, StanceKind, Tu},
+    ganger::{Aiming, Direction, Facing, Stance, StanceKind, Tu},
     tu::spend_tu,
     tuning::{StanceChangeTu, TurnTu},
 };
@@ -37,7 +38,7 @@ pub const fn set_aiming(aiming: &mut Aiming, on: Aiming) {
     *aiming = on;
 }
 
-/// Change stance if different; spends `cost` TU on success.
+/// Change stance if different; spends [`stance_tu_cost`] on success.
 pub fn set_stance(
     stance: &mut Stance,
     tu: &mut Tu,
@@ -47,29 +48,19 @@ pub fn set_stance(
     if **stance == to {
         return StanceChanged::new(false);
     }
-    spend_tu(tu, Tu::new(**cost));
+    spend_tu(tu, stance_tu_cost(cost));
     *stance = Stance::new(to);
     StanceChanged::new(true)
 }
 
-/// Rotate facing toward `to` as far as TU allows; spends per-step turn cost.
+/// Rotate facing toward `to` as far as TU allows; spends [`turn_tu_cost`] for the afforded steps.
 pub fn set_facing(facing: &mut Facing, tu: &mut Tu, to: Direction, cost: &TurnTu) -> FacingChanged {
-    let total = *(**facing).steps_to(to);
-    if total == 0 {
+    let from: Direction = **facing;
+    let afforded = afforded_turn_steps(from, to, tu, cost);
+    if *afforded == 0 {
         return FacingChanged::new(false);
     }
-    let per = **cost;
-    let pool_steps = (**tu).checked_div(per).unwrap_or(total);
-    let afford = if pool_steps < total {
-        pool_steps
-    } else {
-        total
-    };
-    if afford == 0 {
-        return FacingChanged::new(false);
-    }
-    let landing = (**facing).rotated_toward(to, RingSteps::new(afford));
-    *facing = Facing::new(landing);
-    spend_tu(tu, Tu::new(per * afford));
+    *facing = Facing::new(from.rotated_toward(to, afforded));
+    spend_tu(tu, turn_tu_cost(afforded, cost));
     FacingChanged::new(true)
 }

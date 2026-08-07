@@ -143,6 +143,52 @@ fn reload_dispatch_when_not_alive_is_a_no_op() {
 }
 
 #[test]
+fn reload_charges_exactly_reload_tu_cost_and_can_reload_agrees_with_the_dispatch() {
+    let mut app = headless_app();
+    let reload_cost = 17u8;
+    let size = 30u16;
+    let magazine = empty_magazine(size, reload_cost);
+    let quoted = reload_tu_cost(&magazine);
+    assert_eq!(
+        *quoted, reload_cost,
+        "reload_tu_cost must read the per-weapon ReloadTu leaf",
+    );
+
+    let (actor, _) = spawn_reload_actor(&mut app, magazine, 60, LifeState::Alive);
+    assert!(
+        *can_reload(LifeState::Alive, &Tu::new(60), &magazine),
+        "an alive actor with an ample pool and room in the magazine can reload",
+    );
+    let tu_before = app.world().get::<Tu>(actor).map(|tu| **tu);
+
+    app.world_mut().write_message(ReloadRequested::new(actor));
+    app.update();
+    assert_eq!(
+        drain_reload_results(&mut app),
+        vec![ReloadResult::new(actor, ReloadOutcome::Reloaded)],
+        "the reload succeeded, so the charge below is the success charge",
+    );
+
+    assert_eq!(
+        tu_before
+            .zip(app.world().get::<Tu>(actor).map(|tu| **tu))
+            .map(|(b, a)| b - a),
+        Some(*quoted),
+        "the reload must charge exactly what reload_tu_cost quoted",
+    );
+
+    let broke = Tu::new(reload_cost.saturating_sub(1));
+    assert!(
+        !*can_reload(LifeState::Alive, &broke, &magazine),
+        "can_reload must refuse the same short pool the dispatch reports as NoTu",
+    );
+    assert!(
+        !*can_reload(LifeState::Dead, &Tu::new(60), &magazine),
+        "a dead actor cannot reload however full the pool",
+    );
+}
+
+#[test]
 fn reload_dispatch_of_a_full_magazine_is_a_no_op_no_charge() {
     let mut app = headless_app();
     let reload_cost = 12u8;

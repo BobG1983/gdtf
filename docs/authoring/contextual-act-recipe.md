@@ -7,8 +7,8 @@ the digit key bound to its visible slot — buffers that target, and the sim's
 bespoke dispatch is the authoritative gate. Since the whole ritual is
 descriptor + registrar shaped: **adding one act touches ONE new per-act module file per
 crate layer plus ONE registration line per layer** (plus that act's bespoke sim
-dispatch). There is no runtime descriptor table — registration is compile-time generic
-(`add_contextual_act::<A>()`), mirroring `add_message::<M>`.
+dispatch and its cost pair). There is no runtime descriptor table — registration is
+compile-time generic (`add_contextual_act::<A>()`), mirroring `add_message::<M>`.
 
 The drain invariant (Q5-approved wording): **per-act generic drains in one
 explicitly-ordered SystemSet, same-frame semantics preserved.** A press queued this
@@ -23,11 +23,22 @@ the frame it was claimed in, exactly as a press is.
 
 ### 1. Sim — the act itself (bespoke, load-bearing)
 
-- **New module** `crates/gdtf_battle_sim/src/acts/<act>.rs`: the
-  `<Act>Requested` message type (per-act message TYPES stay — no mega-enum) and the
-  bespoke `dispatch_<act>` system. The dispatch owns the authoritative gate
-  (adjacency / faction / state), the TU spend, and any act-specific ordering — these are
-  deliberately NOT generic.
+- **New message** in `crates/gdtf_battle_sim/src/acts/request/<family>.rs`: the
+  `<Act>Requested` type (per-act message TYPES stay — no mega-enum), re-exported from
+  `request/mod.rs`. Paired acts share a family file — `emplacement.rs` holds enter and exit.
+- **New module** `crates/gdtf_battle_sim/src/acts/<act>/`: `dispatch.rs` holds the bespoke
+  `dispatch_<act>` system, `cost.rs` holds `<act>_tu_cost(…) -> Tu` and
+  `can_<act>(…) -> Can<Act>`. Both are pure — they take what they need, return a cost or a
+  yes/no, and change nothing. The dispatch gates on `can_<act>` (adjacency / faction /
+  state), spends exactly what `<act>_tu_cost` returned, and owns any act-specific ordering
+  — these are deliberately NOT generic. A small act stays one file (`open_door.rs`,
+  `reload.rs`, `enter_emplacement.rs`) with the same two pieces in it.
+- **Sim owns the TU number.** Whoever needs it — dispatch, HUD, cursor preview, AI, a QA
+  command — calls `<act>_tu_cost`; never a second copy of the math. Re-export the pair from
+  `acts/mod.rs` so callers outside the sim can reach it. Execute and Stabilize are the two
+  acts that do not match yet: they carry `can_execute` / `can_stabilize` but return their
+  cost from the verb (`execute_downed` / `stabilize_downed`) rather than a standalone
+  `*_tu_cost`. Do not copy that shape.
 - **Registration lines** in `crates/gdtf_battle_sim/src/acts/plugin/` (`SimActsPlugin`):
   `.add_message::<<Act>Requested>()` in `register_messages` and the dispatch system
   `.in_set(SimSystems::Simulate)` in `wire_acts` (with explicit `.before`/`.after`
