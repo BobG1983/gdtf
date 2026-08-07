@@ -39,6 +39,7 @@ Short files under `.claude/rules/` — read and follow them:
 - [`code-navigation.md`](.claude/rules/code-navigation.md) — symbol questions go to the LSP; a grep count is not a caller count.
 - [`bevy-systems.md`](.claude/rules/bevy-systems.md) — SystemParam / QueryData / split; no too_many_arguments expects on systems.
 - [`background-work.md`](.claude/rules/background-work.md) — never poll; sub-agents always run backgrounded; relay every result.
+- [`qa-mcp-access.md`](.claude/rules/qa-mcp-access.md) — drive the running app only through the `mcp__gdtf-qa__*` tools; never a socket.
 
 Bevy ECS gotchas (system ordering, change detection, schedules, state transitions, query conflicts) live in the `bevy-expert` agent and supporting notes — treat them as binding when writing systems.
 

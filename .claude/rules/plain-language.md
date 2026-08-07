@@ -20,6 +20,13 @@ tickets, commit messages, chat). Reply structure in chat is `reply-shape.md`.
 - Never use metaphors when a literal description is possible.
 - Prefer short sentences over long ones. Break up long sentences into multiple sentences.
 - More sentences with simpler words is better than fewer sentences with complex words with dense meaning.
+- Never use a word whose only job is to make a sentence sound considered. The test is
+  mechanical: delete the word. If the meaning does not change, it was one of these. By
+  example — genuinely, precisely, crucially, fundamentally, essentially, notably,
+  importantly, ultimately, effectively, arguably, meaningfully, inherently, clearly,
+  obviously, simply. The list names a category, not a blocklist: a synonym you reach for
+  instead is the same violation. A listed word is allowed only where it is the exact
+  technical term for what is being described.
 - Assume the reader is competent. Do not over-explain.
 
 ## Avoid
