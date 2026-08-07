@@ -126,13 +126,22 @@ pub(crate) fn route_cost(app: &App, actor: Entity, dest: CellLevel) -> Option<Tu
 
 /// The first cell the actor can actually walk to and be charged for.
 pub(crate) fn a_reachable_cell(app: &App, actor: Entity) -> Option<CellLevel> {
+    a_reachable_cell_where(app, actor, |_| true)
+}
+
+/// The first cell the actor can walk to and be charged for that `wanted` also accepts.
+pub(crate) fn a_reachable_cell_where(
+    app: &App,
+    actor: Entity,
+    wanted: impl Fn(&CellLevel) -> bool,
+) -> Option<CellLevel> {
     let world = app.world();
     let (grids, squad) = terrain(app)?;
     let mover = mover(world, actor)?;
     let planning = planning_view(world, squad, mover.faction);
     reachable_within(mover.start, mover.budget, grids, mover.factor, &planning)
         .into_iter()
-        .find(|(cell, cost)| *cell != mover.start && **cost > 0)
+        .find(|(cell, cost)| *cell != mover.start && **cost > 0 && wanted(cell))
         .map(|(cell, _)| cell)
 }
 
