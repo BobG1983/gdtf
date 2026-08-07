@@ -16,7 +16,10 @@ tickets, commit messages, chat). Reply structure in chat is `reply-shape.md`.
 - State what changed before explaining why.
 - Write the shortest text that conveys all necessary information.
 - Delete filler, narration, and obvious observations.
-- Never use abstractions where a concrete noun or verb works.
+- Never use abstractions where a concrete noun or verb works
+- Never use metaphors when a literal description is possible.
+- Prefer short sentences over long ones. Break up long sentences into multiple sentences.
+- More sentences with simpler words is better than fewer sentences with complex words with dense meaning.
 - Assume the reader is competent. Do not over-explain.
 
 ## Avoid
