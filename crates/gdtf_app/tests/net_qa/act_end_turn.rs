@@ -11,7 +11,7 @@ use gdtf_qa_protocol::{
 };
 
 use super::{
-    act_support::{LogBody, accepted, decode, next, window},
+    act_support::{LogBody, accepted, complete, decode, next, window},
     command_exchange::{
         ACT_END_TURN, LOG_READ, assert_refused_off_the_battle_screen, exchange, exchange_all, run,
     },
@@ -87,6 +87,13 @@ fn ending_the_turn_over_the_socket_answers_across_the_enemy_turn() -> TestResult
         "the reply is held until the turn is back with the player, so its window brackets both \
          the hand-over to the enemy and the hand-back: {from:?}..{to:?} held {handovers} in {:?}",
         log.entries,
+    );
+    assert_eq!(
+        complete(ended).map(|done| *done),
+        Some(true),
+        "`act.end_turn` has no actor, so nobody can still be walking an act out and this flag \
+         is always true — anything that makes it conditional has to move the docs on \
+         `ActReply::Accepted`, the command summary and the QA guide with it",
     );
     Ok(())
 }
