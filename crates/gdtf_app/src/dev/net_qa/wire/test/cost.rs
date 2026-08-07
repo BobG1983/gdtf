@@ -62,6 +62,7 @@ fn cost_legality_and_refusals_round_trip() {
         CostRefusalNet::NoSuchGanger,
         CostRefusalNet::NotYourGanger,
         CostRefusalNet::NoPathToCell,
+        CostRefusalNet::Suppressed,
         CostRefusalNet::CannotAfford,
         CostRefusalNet::ActNotAllowed,
     ] {
@@ -79,6 +80,7 @@ fn legality_is_false_exactly_when_a_refusal_is_present() {
         CostRefusalNet::NoSuchGanger,
         CostRefusalNet::NotYourGanger,
         CostRefusalNet::NoPathToCell,
+        CostRefusalNet::Suppressed,
         CostRefusalNet::CannotAfford,
         CostRefusalNet::ActNotAllowed,
     ] {

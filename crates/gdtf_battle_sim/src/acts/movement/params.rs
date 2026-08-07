@@ -5,12 +5,10 @@ use bevy::{
     prelude::{Entity, Query, Res},
 };
 
-use super::suppression_gate::{SuppressedMoveLegal, suppressed_move_legal};
 use crate::{
     battle::PlayerFaction,
     cover::CoverLedger,
     ganger::{Faction, Suppressed},
-    metric::CellLevel,
     occupancy::OccupancyGrid,
     pathfinder::{MoveGrids, PlanningView},
     terrain::floor::FloorCostGrid,
@@ -66,7 +64,7 @@ impl MovePlanningView<'_, '_> {
     }
 }
 
-/// Whether a suppressed mover may break away, given the cover between them.
+/// The suppression markers and the cover a break-away step is judged against.
 #[derive(SystemParam)]
 pub struct SuppressionGate<'w, 's> {
     suppressed: Query<'w, 's, &'static Suppressed>,
@@ -74,16 +72,13 @@ pub struct SuppressionGate<'w, 's> {
 }
 
 impl SuppressionGate<'_, '_> {
-    /// Legal unless the actor is suppressed and the step does not break away.
-    pub(super) fn allows(
-        &self,
-        actor: Entity,
-        start: &CellLevel,
-        dest: &CellLevel,
-    ) -> SuppressedMoveLegal {
-        match self.suppressed.get(actor) {
-            Ok(suppressed) => suppressed_move_legal(start, dest, &suppressed.from, &self.cover),
-            Err(_) => SuppressedMoveLegal::new(true),
-        }
+    /// Whatever suppression holds this actor, if any holds it at all.
+    pub(super) fn on(&self, actor: Entity) -> Option<&Suppressed> {
+        self.suppressed.get(actor).ok()
+    }
+
+    /// The cover a suppressed mover may break away behind.
+    pub(super) fn cover(&self) -> &CoverLedger {
+        &self.cover
     }
 }

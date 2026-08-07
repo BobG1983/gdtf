@@ -1,4 +1,86 @@
 use super::support::*;
+use crate::pathfinder::Path;
+
+fn ground(x: i32, y: i32) -> CellLevel {
+    CellLevel::new(Cell::new(x, y), Level::new(0))
+}
+
+fn one_step(start: CellLevel, dest: CellLevel) -> Path {
+    Path::new(vec![start, dest], vec![Tu::new(1)], Tu::new(1))
+}
+
+fn cover_at(x: i32, y: i32) -> CoverLedger {
+    let mut ledger = CoverLedger::new();
+    ledger.insert(
+        ground(x, y),
+        CoverEntry::seeded(
+            CoverHp::new(10),
+            HeightBand::Mid,
+            ArmorProtection::new(0),
+            ArmorHardness::new(0),
+        ),
+    );
+    ledger
+}
+
+#[test]
+fn can_move_refuses_a_suppressed_step_toward_the_suppressor() {
+    let (start, dest) = (ground(10, 10), ground(11, 10));
+    let at = Position::new(start);
+    let pool = Tu::new(100);
+    let pinned = Suppressed::new(SuppressorCell::new(ground(20, 10)));
+
+    assert_eq!(
+        can_move(
+            Mover::new(&at, &pool, Some(&pinned)),
+            &dest,
+            &one_step(start, dest),
+            &cover_at(12, 10),
+        ),
+        MoveVerdict::Suppressed,
+        "the gate the dispatch and battle.cost share must refuse a step toward the suppressor, \
+         however full the pool",
+    );
+}
+
+#[test]
+fn can_move_allows_a_suppressed_step_that_breaks_away_behind_cover() {
+    let (start, dest) = (ground(10, 10), ground(9, 10));
+    let at = Position::new(start);
+    let pool = Tu::new(100);
+    let pinned = Suppressed::new(SuppressorCell::new(ground(20, 10)));
+
+    assert_eq!(
+        can_move(
+            Mover::new(&at, &pool, Some(&pinned)),
+            &dest,
+            &one_step(start, dest),
+            &cover_at(10, 10),
+        ),
+        MoveVerdict::Allowed,
+        "the same gate must allow a step that ends farther away and behind cover",
+    );
+}
+
+#[test]
+fn can_move_names_suppression_when_an_empty_pool_would_also_refuse() {
+    let (start, dest) = (ground(10, 10), ground(11, 10));
+    let at = Position::new(start);
+    let empty = Tu::new(0);
+    let pinned = Suppressed::new(SuppressorCell::new(ground(20, 10)));
+
+    assert_eq!(
+        can_move(
+            Mover::new(&at, &empty, Some(&pinned)),
+            &dest,
+            &one_step(start, dest),
+            &cover_at(12, 10),
+        ),
+        MoveVerdict::Suppressed,
+        "suppression is judged before the pool: a mover who is both suppressed and short of TU \
+         is refused Suppressed, which is what the dispatch rejects it with",
+    );
+}
 
 #[test]
 fn suppressed_move_toward_suppressor_is_rejected() {
