@@ -11,7 +11,7 @@ reply was accurate and used plain words. The defect was structure: reasoning
 before the answer, options nobody would pick, process narration, restating
 tool output already on screen.
 
-`plain-language.md` owns wording and length (code, docs, tickets, chat).
+`plain-language.md` owns wording and length (code, docs, tickets, chat) and **MUST** be followed.
 This file owns reply structure in chat only. Neither restates the other.
 
 ## Rules

@@ -25,7 +25,7 @@ pub use enter_emplacement::{
 };
 pub use fire::{
     BattleGridsParam, CanEngage, FireArcDecision, FireDeclaration, RoundCount, WeaponProbes,
-    can_engage, decide_fire_arc, dispatch_fire,
+    can_engage, decide_fire_arc, dispatch_fire, fire_arc_tu_cost,
 };
 pub use injury::{InjuryInflicted, apply_injury};
 pub use melee::{CanMelee, MeleeAttacker, MeleeReach, can_melee, dispatch_melee, melee_tu_cost};

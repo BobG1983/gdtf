@@ -48,15 +48,11 @@ pub fn decide_fire_arc(
     fire_cost: Tu,
     tuning: &CombatTuning,
 ) -> FireArcDecision {
-    if *target_in_arc(facing, actor_cell, target_cell, &tuning.firing_arc) {
-        return FireArcDecision::FireInArc;
-    }
-    let Some(target_facing) = Direction::from_cells(actor_cell, target_cell) else {
+    let Some((target_facing, turn_cost)) = turn_into_arc(facing, actor_cell, target_cell, tuning)
+    else {
         return FireArcDecision::FireInArc;
     };
-    let turn_cost = turn_tu_cost(facing.steps_to(target_facing), &tuning.turn_tu);
-    let combined = (*turn_cost).saturating_add(*fire_cost);
-    if *tu >= combined {
+    if *tu >= *turn_then_fire_cost(turn_cost, fire_cost) {
         FireArcDecision::TurnThenFire {
             facing: target_facing,
             turn_cost,
@@ -64,6 +60,42 @@ pub fn decide_fire_arc(
     } else {
         FireArcDecision::Reject
     }
+}
+
+/// The TU one shot charges from this facing: the shot, plus the turn it needs to face the target.
+#[must_use]
+pub fn fire_arc_tu_cost(
+    facing: Direction,
+    actor_cell: Cell,
+    target_cell: Cell,
+    fire_cost: Tu,
+    tuning: &CombatTuning,
+) -> Tu {
+    match turn_into_arc(facing, actor_cell, target_cell, tuning) {
+        Some((_, turn_cost)) => turn_then_fire_cost(turn_cost, fire_cost),
+        None => fire_cost,
+    }
+}
+
+// The facing the shot needs and what turning to it costs, or nothing when the target is in arc.
+fn turn_into_arc(
+    facing: Direction,
+    actor_cell: Cell,
+    target_cell: Cell,
+    tuning: &CombatTuning,
+) -> Option<(Direction, Tu)> {
+    if *target_in_arc(facing, actor_cell, target_cell, &tuning.firing_arc) {
+        return None;
+    }
+    let target_facing = Direction::from_cells(actor_cell, target_cell)?;
+    Some((
+        target_facing,
+        turn_tu_cost(facing.steps_to(target_facing), &tuning.turn_tu),
+    ))
+}
+
+fn turn_then_fire_cost(turn_cost: Tu, fire_cost: Tu) -> Tu {
+    Tu::new((*turn_cost).saturating_add(*fire_cost))
 }
 
 /// True unless the arc decision is [`FireArcDecision::Reject`].
