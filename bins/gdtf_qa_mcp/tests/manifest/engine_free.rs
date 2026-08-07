@@ -1,7 +1,10 @@
-//! The bridge declares nothing but the shared wire vocabulary, in any section.
+//! The bridge ships nothing but the shared wire vocabulary; tests may add a small allowlist.
 
-// Everything this stdio-to-TCP bridge is allowed to name as a dependency.
+// Everything this stdio-to-TCP bridge is allowed to name in a shipped section.
 const ALLOWED: &[&str] = &["gdtf_qa_protocol", "serde", "serde_json"];
+
+// Test-only crates allowed on top of ALLOWED, and only under [dev-dependencies].
+const ALLOWED_FOR_TESTS: &[&str] = &["tempfile"];
 
 // Section names Cargo reads dependencies from.
 const DEPENDENCY_KINDS: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
@@ -24,6 +27,12 @@ fn split_header(header: &str) -> (Option<&str>, &str) {
 
 fn is_dependency_kind(segment: &str) -> bool {
     DEPENDENCY_KINDS.contains(&segment)
+}
+
+// A test-only crate passes under [dev-dependencies] and nowhere else.
+fn is_allowed(section: &str, name: &str) -> bool {
+    ALLOWED.contains(&name)
+        || (split_header(section).1 == "dev-dependencies" && ALLOWED_FOR_TESTS.contains(&name))
 }
 
 // Every dependency the manifest declares, paired with the section it sits under.
@@ -77,11 +86,27 @@ fn no_section_of_the_manifest_reaches_past_the_wire_vocabulary() {
     );
     for (section, name) in &found {
         assert!(
-            ALLOWED.contains(&name.as_str()),
+            is_allowed(section, name),
             "`{name}` is declared under [{section}] — the bridge speaks the wire protocol and \
              nothing else, so no section may pull in the engine or its transport \
-             (allowed: {ALLOWED:?})"
+             (allowed: {ALLOWED:?}, plus {ALLOWED_FOR_TESTS:?} under [dev-dependencies])"
         );
+    }
+}
+
+#[test]
+fn a_test_only_crate_is_refused_outside_dev_dependencies() {
+    for name in ALLOWED_FOR_TESTS {
+        assert!(
+            is_allowed("dev-dependencies", name),
+            "`{name}` is a test-only crate, so [dev-dependencies] must accept it"
+        );
+        for section in ["dependencies", "build-dependencies"] {
+            assert!(
+                !is_allowed(section, name),
+                "`{name}` must stay out of [{section}] — the shipped bridge names only {ALLOWED:?}"
+            );
+        }
     }
 }
 
