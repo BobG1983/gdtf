@@ -16,7 +16,7 @@ use super::{
 };
 use crate::dev::net_qa::{
     commands::{
-        read::availability::{running_and_caught, turn_is_the_players},
+        read::availability::{acts_in_a_running_battle, screen_has_caught_up, turn_is_the_players},
         wait::probe::TurnChangeCount,
     },
     facts::GameFacts,
@@ -51,8 +51,11 @@ impl QaCommand for ActEndTurn {
     const TIMING: CommandTiming = CommandTiming::Deferred;
 
     fn availability(facts: &GameFacts) -> CommandAvailability {
-        match running_and_caught(*facts) {
-            CommandAvailability::Available => turn_is_the_players(*facts),
+        match acts_in_a_running_battle(*facts) {
+            CommandAvailability::Available => match turn_is_the_players(*facts) {
+                CommandAvailability::Available => screen_has_caught_up(*facts),
+                refused @ CommandAvailability::Unavailable { .. } => refused,
+            },
             refused @ CommandAvailability::Unavailable { .. } => refused,
         }
     }
