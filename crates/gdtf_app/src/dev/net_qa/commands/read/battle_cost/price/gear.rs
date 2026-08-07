@@ -4,8 +4,8 @@ use bevy::prelude::*;
 use gdtf_battle_input::ranged_weapon_of;
 use gdtf_battle_sim::{
     acts::{
-        MeleeAttacker, MeleeReach, can_melee, can_reload, can_throw_grenade, melee_tu_cost,
-        reload_tu_cost, throw_grenade_tu_cost,
+        MeleeAttacker, MeleeReach, can_melee, can_reload, can_throw_grenade, fire_arc_tu_cost,
+        melee_tu_cost, reload_tu_cost, throw_grenade_tu_cost,
     },
     injuries::{HandsAvailable, InflictedInjuries},
     magazine::{FireActor, can_fire, mode_tu_cost},
@@ -48,8 +48,14 @@ pub(super) fn fire_quote(
     else {
         return Quote::refused(CostRefusalNet::ActNotAllowed);
     };
-    let cost = mode_tu_cost(&spec, row.tu_max, row.aiming, tuning);
     let at = target.to_sim();
+    let cost = fire_arc_tu_cost(
+        **row.facing,
+        row.position.cell(),
+        at.cell(),
+        mode_tu_cost(&spec, row.tu_max, row.aiming, tuning),
+        tuning,
+    );
     let shooter = FireActor {
         life:            row.life,
         tu:              row.tu,

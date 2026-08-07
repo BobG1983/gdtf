@@ -9,13 +9,17 @@ use super::{
     snapshot::{ReactionPair, ReactionPass, row_cell_level},
 };
 use crate::{
-    acts::{FireArcDecision, FireRequested, decide_fire_arc, movement::ReactionShotFired},
+    acts::{
+        FireArcDecision, FireRequested, decide_fire_arc, fire_arc_tu_cost,
+        movement::ReactionShotFired,
+    },
     ganger::{Facing, LifeState, Tu},
     injuries::HandsAvailable,
     los::{Observer, PeekOffset, Target, can_see},
     magazine::{FireActor, can_fire, clamp_burst, mode_tu_cost},
+    metric::Cell,
     rng::ReactionRng,
-    tuning::{interrupt_probability, may_interrupt, reaction_score, rolls_interrupt},
+    tuning::{CombatTuning, interrupt_probability, may_interrupt, reaction_score, rolls_interrupt},
 };
 
 /// Try to interrupt the pair's actor with its reactor; a commit means fire was declared.
@@ -92,19 +96,14 @@ pub(super) fn try_reaction(
     if !*can_fire(&fire_actor, &mode, actor_cell, actor_level, tuning) {
         return None;
     }
-    let (facing_after, turn_cost) = match decide_fire_arc(
-        *facing_now,
+    let (facing_after, spend) = shot_pose(
+        facing_now,
         reactor.position.cell(),
         actor_cell,
         tu_now,
         fire_cost,
         tuning,
-    ) {
-        FireArcDecision::Reject => return None,
-        FireArcDecision::FireInArc => (*facing_now, Tu::new(0)),
-        FireArcDecision::TurnThenFire { facing, turn_cost } => (facing, turn_cost),
-    };
-
+    )?;
     let watcher_score = reaction_score(reactor.reactions, tu_now, reactor.tu_max);
     let mover_score = reaction_score(actor.reactions, actor.tu, actor.tu_max);
     let probability = interrupt_probability(watcher_score, mover_score, &tuning.reaction);
@@ -127,9 +126,36 @@ pub(super) fn try_reaction(
         reactor.entity,
         weapon,
         tu_now,
-        Tu::new((*turn_cost).saturating_add(*fire_cost)),
-        Facing::new(facing_after),
+        spend,
+        facing_after,
         clamp_burst(mode.shots, &magazine),
         magazine,
+    ))
+}
+
+// Where the reactor ends up facing, and what turning and shooting takes out of its pool.
+fn shot_pose(
+    facing_now: Facing,
+    reactor_cell: Cell,
+    actor_cell: Cell,
+    tu_now: Tu,
+    fire_cost: Tu,
+    tuning: &CombatTuning,
+) -> Option<(Facing, Tu)> {
+    let facing_after = match decide_fire_arc(
+        *facing_now,
+        reactor_cell,
+        actor_cell,
+        tu_now,
+        fire_cost,
+        tuning,
+    ) {
+        FireArcDecision::Reject => return None,
+        FireArcDecision::FireInArc => *facing_now,
+        FireArcDecision::TurnThenFire { facing, .. } => facing,
+    };
+    Some((
+        Facing::new(facing_after),
+        fire_arc_tu_cost(*facing_now, reactor_cell, actor_cell, fire_cost, tuning),
     ))
 }
