@@ -20,6 +20,22 @@ tickets, commit messages, chat). Reply structure in chat is `reply-shape.md`.
 - Never use metaphors when a literal description is possible.
 - Prefer short sentences over long ones. Break up long sentences into multiple sentences.
 - More sentences with simpler words is better than fewer sentences with complex words with dense meaning.
+- Never use a word whose only job is to make a sentence sound considered. The test is
+  mechanical: delete the word. If the meaning does not change, it was one of these. By
+  example — genuinely, precisely, crucially, fundamentally, essentially, notably,
+  importantly, ultimately, effectively, arguably, meaningfully, inherently, clearly,
+  obviously, simply. The list names a category, not a blocklist: a synonym you reach for
+  instead is the same violation. A listed word is allowed only where it is the exact
+  technical term for what is being described.
+- Do not invent a name for something that already has one. Established technical terms are
+  usually the precise ones — queue, tree, socket, buffer, pipeline, bus, handle, drain — so
+  use them. What is banned is coining a fresh figure of speech in their place. A Bevy
+  `SystemSet` is a system set, not a "band". `gdtf_qa_mcp` is the MCP server, not "the
+  courier". A file many modules read is a file many modules read, not "load-bearing".
+  Before naming anything, ask whether Rust, Bevy, or this repo already calls it something.
+  If so, that is its name. A word can be right in one place and coined in another:
+  `module-layout.md` uses "band" for a line-count range, which is that file's own
+  vocabulary — borrowing it for a system set is the invention.
 - Assume the reader is competent. Do not over-explain.
 
 ## Avoid
