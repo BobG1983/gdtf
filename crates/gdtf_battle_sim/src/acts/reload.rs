@@ -2,7 +2,7 @@
 
 use bevy::{
     ecs::query::With,
-    prelude::{Entity, Message, MessageReader, MessageWriter, Query},
+    prelude::{Deref, Entity, Message, MessageReader, MessageWriter, Query},
 };
 
 use crate::{
@@ -42,6 +42,34 @@ impl ReloadResult {
     }
 }
 
+/// Whether the actor may reload this magazine right now.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CanReload(bool);
+
+impl CanReload {
+    /// Wrap a boolean.
+    #[must_use]
+    pub const fn new(allowed: bool) -> Self {
+        Self(allowed)
+    }
+}
+
+/// TU charged for refilling this magazine.
+#[must_use]
+pub fn reload_tu_cost(magazine: &Magazine) -> Tu {
+    Tu::new(*magazine.reload_tu())
+}
+
+/// Alive, the magazine has room, and the pool covers the cost.
+#[must_use]
+pub fn can_reload(life: LifeState, tu: &Tu, magazine: &Magazine) -> CanReload {
+    CanReload::new(
+        life == LifeState::Alive
+            && !*magazine.is_full()
+            && *can_spend_tu(tu, reload_tu_cost(magazine)),
+    )
+}
+
 /// System: process [`ReloadRequested`] messages.
 pub fn dispatch_reload(
     mut requests: MessageReader<ReloadRequested>,
@@ -71,13 +99,12 @@ pub fn dispatch_reload(
             continue;
         }
 
-        let cost = Tu::new(*magazine.reload_tu());
-        if !*can_spend_tu(&tu, cost) {
+        if !*can_reload(life, &tu, &magazine) {
             results.write(ReloadResult::new(request.actor, ReloadOutcome::NoTu));
             continue;
         }
 
-        spend_tu(&mut tu, cost);
+        spend_tu(&mut tu, reload_tu_cost(&magazine));
         magazine.refill();
         results.write(ReloadResult::new(request.actor, ReloadOutcome::Reloaded));
     }

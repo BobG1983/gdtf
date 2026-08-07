@@ -1,6 +1,6 @@
 //! Enter and exit weapon emplacements.
 
-use bevy::prelude::{MessageReader, MessageWriter, Query, Res};
+use bevy::prelude::{Deref, Entity, MessageReader, MessageWriter, Query, Res};
 
 use crate::{
     acts::{
@@ -12,9 +12,77 @@ use crate::{
         emplacement::{EmplacementOccupant, EmplacementState, SetEmplacement},
         entity::TerrainCell,
     },
-    tu::spend_tu,
+    tu::{can_spend_tu, spend_tu},
     tuning::CombatTuning,
 };
+
+/// Whether the actor may occupy this emplacement right now.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CanEnterEmplacement(bool);
+
+impl CanEnterEmplacement {
+    /// Wrap a boolean.
+    #[must_use]
+    pub const fn new(allowed: bool) -> Self {
+        Self(allowed)
+    }
+}
+
+/// Whether the actor may vacate this emplacement right now.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CanExitEmplacement(bool);
+
+impl CanExitEmplacement {
+    /// Wrap a boolean.
+    #[must_use]
+    pub const fn new(allowed: bool) -> Self {
+        Self(allowed)
+    }
+}
+
+/// TU charged for entering an emplacement.
+#[must_use]
+pub fn enter_emplacement_tu_cost(tuning: &CombatTuning) -> Tu {
+    Tu::new(*tuning.enter_emplacement_tu)
+}
+
+/// TU charged for leaving an emplacement.
+#[must_use]
+pub fn exit_emplacement_tu_cost(tuning: &CombatTuning) -> Tu {
+    Tu::new(*tuning.exit_emplacement_tu)
+}
+
+/// Emplacement is empty, the actor is adjacent, and the pool covers the cost.
+#[must_use]
+pub fn can_enter_emplacement(
+    actor: Position,
+    emplacement: Position,
+    state: &EmplacementState,
+    tu: &Tu,
+    tuning: &CombatTuning,
+) -> CanEnterEmplacement {
+    CanEnterEmplacement::new(
+        !*state.is_occupied()
+            && *is_8_adjacent(actor, emplacement)
+            && *can_spend_tu(tu, enter_emplacement_tu_cost(tuning)),
+    )
+}
+
+/// The actor holds this emplacement and the pool covers the cost.
+#[must_use]
+pub fn can_exit_emplacement(
+    actor: Entity,
+    state: &EmplacementState,
+    occupant: &EmplacementOccupant,
+    tu: &Tu,
+    tuning: &CombatTuning,
+) -> CanExitEmplacement {
+    CanExitEmplacement::new(
+        *state.is_occupied()
+            && **occupant == actor
+            && *can_spend_tu(tu, exit_emplacement_tu_cost(tuning)),
+    )
+}
 
 /// System: occupy an adjacent empty emplacement.
 pub fn dispatch_enter_emplacement(
@@ -31,17 +99,14 @@ pub fn dispatch_enter_emplacement(
         let Ok((state, cell)) = emplacements.get(request.emplacement) else {
             continue;
         };
-        if *state.is_occupied() {
-            continue;
-        }
         let Ok((&actor_pos, mut actor_tu)) = actors.get_mut(request.actor) else {
             continue;
         };
-        let cost = Tu::new(*tuning.enter_emplacement_tu);
-        if !*is_8_adjacent(actor_pos, Position::new(**cell)) || **actor_tu < *cost {
+        let seat = Position::new(**cell);
+        if !*can_enter_emplacement(actor_pos, seat, state, &actor_tu, &tuning) {
             continue;
         }
-        spend_tu(&mut actor_tu, cost);
+        spend_tu(&mut actor_tu, enter_emplacement_tu_cost(&tuning));
         toggles.write(SetEmplacement::occupy(request.emplacement, request.actor));
     }
 }
@@ -61,17 +126,13 @@ pub fn dispatch_exit_emplacement(
         let Ok((state, occupant)) = emplacements.get(request.emplacement) else {
             continue;
         };
-        if !*state.is_occupied() || **occupant != request.actor {
-            continue;
-        }
         let Ok(mut actor_tu) = actors.get_mut(request.actor) else {
             continue;
         };
-        let cost = Tu::new(*tuning.exit_emplacement_tu);
-        if **actor_tu < *cost {
+        if !*can_exit_emplacement(request.actor, state, occupant, &actor_tu, &tuning) {
             continue;
         }
-        spend_tu(&mut actor_tu, cost);
+        spend_tu(&mut actor_tu, exit_emplacement_tu_cost(&tuning));
         toggles.write(SetEmplacement::vacate(request.emplacement, request.actor));
     }
 }

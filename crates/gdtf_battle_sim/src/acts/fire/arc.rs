@@ -6,6 +6,7 @@ use crate::{
     combatants::firing_arc::target_in_arc,
     ganger::{Direction, Tu},
     metric::Cell,
+    posture::turn_tu_cost,
     tuning::CombatTuning,
 };
 
@@ -53,11 +54,7 @@ pub fn decide_fire_arc(
     let Some(target_facing) = Direction::from_cells(actor_cell, target_cell) else {
         return FireArcDecision::FireInArc;
     };
-    let turn_cost = Tu::new(
-        facing
-            .steps_to(target_facing)
-            .saturating_mul(*tuning.turn_tu),
-    );
+    let turn_cost = turn_tu_cost(facing.steps_to(target_facing), &tuning.turn_tu);
     let combined = (*turn_cost).saturating_add(*fire_cost);
     if *tu >= combined {
         FireArcDecision::TurnThenFire {
