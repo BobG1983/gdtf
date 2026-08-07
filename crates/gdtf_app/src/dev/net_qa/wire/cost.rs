@@ -102,6 +102,8 @@ pub enum CostRefusalNet {
     NotYourGanger,
     /// No route reaches the cell.
     NoPathToCell,
+    /// Suppression holds the mover and the route does not break away from it.
+    Suppressed,
     /// The actor cannot pay the cost.
     CannotAfford,
     /// The act's own sim legality check said no.

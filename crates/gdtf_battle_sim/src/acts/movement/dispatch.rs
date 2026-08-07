@@ -3,7 +3,7 @@
 use bevy::prelude::{Commands, MessageReader, MessageWriter, Query};
 
 use super::{
-    cost::{can_move, move_step_tu_costs},
+    cost::{MoveVerdict, Mover, can_move, move_step_tu_costs},
     params::{MovePlanningView, PathfindingGrids, SuppressionGate},
     signals::{MoveRejected, MoveRejection},
 };
@@ -48,17 +48,20 @@ pub fn dispatch_move(
             continue;
         };
 
-        if !*gate.allows(request.actor, &start, &request.dest) {
-            rejects.write(MoveRejected::new(request.actor, MoveRejection::Suppressed));
-            continue;
-        }
-
-        if !*can_move(tu, &path) {
-            rejects.write(MoveRejected::new(
-                request.actor,
-                MoveRejection::Unaffordable,
-            ));
-            continue;
+        let mover = Mover::new(position, tu, gate.on(request.actor));
+        match can_move(mover, &request.dest, &path, gate.cover()) {
+            MoveVerdict::Suppressed => {
+                rejects.write(MoveRejected::new(request.actor, MoveRejection::Suppressed));
+                continue;
+            }
+            MoveVerdict::Unaffordable => {
+                rejects.write(MoveRejected::new(
+                    request.actor,
+                    MoveRejection::Unaffordable,
+                ));
+                continue;
+            }
+            MoveVerdict::Allowed => {}
         }
 
         let cells = path.cells();

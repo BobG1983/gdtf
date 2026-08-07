@@ -102,13 +102,22 @@ fn can_move_and_the_dispatch_refuse_the_same_pool() {
     let quoted = *move_tu_cost(&path);
     assert!(quoted > 0, "a three-cell route costs real TU");
 
+    let at = Position::new(ground(10, 10));
+    let empty = CoverLedger::new();
     let broke = Tu::new(quoted.saturating_sub(1));
-    assert!(
-        !*can_move(&broke, &path),
+    assert_eq!(
+        can_move(Mover::new(&at, &broke, None), &dest, &path, &empty),
+        MoveVerdict::Unaffordable,
         "can_move must refuse a pool one TU below the quote",
     );
-    assert!(
-        *can_move(&Tu::new(quoted), &path),
+    assert_eq!(
+        can_move(
+            Mover::new(&at, &Tu::new(quoted), None),
+            &dest,
+            &path,
+            &empty,
+        ),
+        MoveVerdict::Allowed,
         "can_move must allow a pool that exactly covers the quote",
     );
 
