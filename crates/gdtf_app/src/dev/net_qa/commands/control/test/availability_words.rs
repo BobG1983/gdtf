@@ -4,7 +4,7 @@ use gdtf_qa_protocol::command::{CommandAvailability, UnavailableCode};
 
 use crate::dev::net_qa::{
     commands::set::GAME_COMMANDS,
-    facts::{BattleModel, GameFacts, PlaybackCatchUp, StepperActivity},
+    facts::{BattleModel, GameFacts, PlaybackCatchUp, StepperActivity, TurnOwner},
     wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet, RunningPhaseNet},
 };
 
@@ -34,6 +34,7 @@ fn in_a_battle(
         model,
         StepperActivity::NotStepping,
         catch_up,
+        TurnOwner::Player,
     )
 }
 
@@ -49,6 +50,7 @@ fn at_the_menu() -> GameFacts {
         BattleModel::Absent,
         StepperActivity::NotStepping,
         PlaybackCatchUp::CaughtUp,
+        TurnOwner::OtherFaction,
     )
 }
 

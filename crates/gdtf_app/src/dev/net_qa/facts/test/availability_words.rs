@@ -1,6 +1,7 @@
 use crate::dev::net_qa::{
     facts::{
         BattleModel, BattleScreen, GameFacts, PlaybackCatchUp, PresenterReadiness, StepperActivity,
+        TurnOwner,
     },
     wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet, RunningPhaseNet},
 };
@@ -21,6 +22,7 @@ fn facts(
         model,
         StepperActivity::NotStepping,
         PlaybackCatchUp::CaughtUp,
+        TurnOwner::Player,
     )
 }
 

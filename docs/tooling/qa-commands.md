@@ -383,7 +383,11 @@ involved. Everything else the sim decides, and the act log reports.
 
 All eleven need a running battle whose screen has caught up with the act log — `Running` plus
 `Caught`. Off the battle screen they refuse `WrongState`; while the screen is still replaying
-they refuse `Replaying`, because the act bus drops an intent whose gate is shut.
+they refuse `Replaying`, because the act bus drops an intent whose gate is shut. Ten of them
+ask for nothing more. `act.end_turn` also needs the turn to belong to the player, and refuses
+`WrongState` while another faction is acting: no player path ends someone else's turn — there
+is no button and no key for it — so allowing it over the wire would drive the sim somewhere
+real play cannot go. `wait` with `TurnChanged` is how a run gets past an enemy turn.
 
 The other eight `act.*` commands are the contextual acts — `act.melee`, `act.shove`,
 `act.stabilize`, `act.execute`, `act.throw_grenade`, `act.open_door`,
@@ -492,8 +496,8 @@ then runs the game's own decide-then-apply pair — `decide_left_click`, `decide
 the move or fire, and the decision is the game's rather than the caller's. It is not a side
 door into the sim: an act it decides goes onto the same `PendingActIntent` bus every act does
 — a click that only selects a ganger or pins a target pushes nothing — it answers the same
-`ActReply` window, and it needs the same `Running` plus `Caught` state the eleven `act.*`
-commands need.
+`ActReply` window, and it needs the same `Running` plus `Caught` state every classic act
+needs. It carries no turn-owner check of its own: that one is `act.end_turn`'s alone.
 
 The six view and battle controls all need a running battle with its sim state loaded, and
 each takes the path the matching keyboard or panel control takes. `view.level_up`,
