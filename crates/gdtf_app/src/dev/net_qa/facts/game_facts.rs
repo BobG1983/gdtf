@@ -1,5 +1,6 @@
 use super::{
-    BattleActivity, BattleModel, BattleScreen, PlaybackCatchUp, PresenterReadiness, StepperActivity,
+    BattleActivity, BattleModel, BattleScreen, PlaybackCatchUp, PresenterReadiness,
+    StepperActivity, TurnOwner,
 };
 use crate::dev::net_qa::wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet};
 
@@ -7,10 +8,11 @@ crate::support_item! {
     /// What a game command's availability check may read about the host.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     struct GameFacts {
-        phase:    AppPhaseNet,
-        model:    BattleModel,
-        stepper:  StepperActivity,
-        catch_up: PlaybackCatchUp,
+        phase:      AppPhaseNet,
+        model:      BattleModel,
+        stepper:    StepperActivity,
+        catch_up:   PlaybackCatchUp,
+        turn_owner: TurnOwner,
     }
 }
 
@@ -20,12 +22,14 @@ impl GameFacts {
         model: BattleModel,
         stepper: StepperActivity,
         catch_up: PlaybackCatchUp,
+        turn_owner: TurnOwner,
     ) -> Self {
         Self {
             phase,
             model,
             stepper,
             catch_up,
+            turn_owner,
         }
     }
 
@@ -50,6 +54,14 @@ impl GameFacts {
         #[must_use]
         const fn catch_up(self) -> PlaybackCatchUp {
             self.catch_up
+        }
+    }
+
+    crate::support_item! {
+        /// Whether the acting faction is the one the player commands.
+        #[must_use]
+        const fn turn_owner(self) -> TurnOwner {
+            self.turn_owner
         }
     }
 
