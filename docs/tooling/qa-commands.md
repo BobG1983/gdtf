@@ -373,7 +373,10 @@ before an act; do not treat the empty reply as a lasting state.
 
 `act.end_turn` is the one `Deferred` command of the set. Its reply is held until the turn
 comes round to the player again, so it lands after the enemy has finished acting and its
-window brackets everything that happened in between. Its budget is 30 seconds.
+window brackets everything that happened in between. Its budget is 30 seconds. Its `complete`
+is always true, and carries no information: the command names no actor, so the settle watches
+nobody's walk. It is not a claim that every walk has finished. Do not branch on it — branch on
+the window, or wait on `WalkComplete` if a walk is what you are waiting for.
 
 The QA layer invents no refusal vocabulary of its own: `ActRefusalNet` has exactly three
 variants, `UnknownToken` (a `GangerToken` naming no living ganger), `NoShooter` (the act

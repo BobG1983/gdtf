@@ -44,7 +44,9 @@ impl QaCommand for ActEndTurn {
          `WrongState` while another faction is acting, because no player path ends someone \
          else's turn — wait on `TurnChanged` to get past an enemy turn. The reply is held back \
          until the turn comes round to the player again, so it lands after the enemy has \
-         finished acting, and brackets the act log across everything that happened in between.",
+         finished acting, and brackets the act log across everything that happened in between. \
+         `complete` is always true here: the command has no single actor to still be walking an \
+         act out, and the reply only lands once the turn is back with the player.",
     );
     const TIMING: CommandTiming = CommandTiming::Deferred;
 
@@ -97,6 +99,7 @@ fn settle_act_end_turn(
     let commanded = player.map(|player| **player);
     let players_turn = acting.is_some() && acting == commanded;
     let delivered = deferred.answer_resolved(|ticket| {
+        // No single actor to watch, so the window always reports itself complete.
         (players_turn && **turns > *ticket.parked_with).then(|| settle.window(ticket.from, None))
     });
     if *delivered > 0 {
