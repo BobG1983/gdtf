@@ -8,6 +8,9 @@ use super::{
         ActSetAiming, ActSetFacing, ActSetStance, ActShove, ActStabilize, ActThrowGrenade,
     },
     capture::CaptureScreenshot,
+    control::{
+        BattleSetFireMode, ViewLevelDown, ViewLevelUp, ViewLookAt, ViewPan, ViewToggleFullView,
+    },
     input::{
         InputActivate, InputClickCell, InputFocusStep, InputHover, InputPressKey, InputSetFocus,
     },
@@ -64,6 +67,12 @@ pub(in crate::dev::net_qa) const GAME_COMMANDS: &[&dyn ErasedCommand<GameFacts>]
     &InputFocusStep,
     &InputActivate,
     &InputClickCell,
+    &ViewLevelUp,
+    &ViewLevelDown,
+    &ViewToggleFullView,
+    &ViewPan,
+    &ViewLookAt,
+    &BattleSetFireMode,
 ];
 
 #[must_use]

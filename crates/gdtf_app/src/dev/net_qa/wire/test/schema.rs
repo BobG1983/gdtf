@@ -18,7 +18,7 @@ use crate::dev::net_qa::{
         log::{ActProvenanceNet, LogDroppedCount, LogEntryNet, LogReadCap},
         misc::{
             AutoRunNet, FireModeIndex, FrameDelay, ModeKindNet, ProcgenStageNet, RequestId,
-            SeedNet, SituationRef, StepperCommandNet,
+            SeedNet, SituationRef, StepperCommandNet, ViewModeNet,
         },
         offer::{ContextualActNet, ContextualOfferNet, OfferTargetNet},
         phase::{
@@ -143,6 +143,7 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<SightlineNet>("SightlineNet");
 
     assert_schema_is_usable::<ModeKindNet>("ModeKindNet");
+    assert_schema_is_usable::<ViewModeNet>("ViewModeNet");
 
     assert_schema_is_usable::<FireModeIndex>("FireModeIndex");
     assert_schema_is_usable::<SituationRef>("SituationRef");

@@ -3,6 +3,7 @@ pub(crate) mod act;
 pub(crate) mod capture;
 #[cfg(feature = "headless_test")]
 pub(crate) mod conformance;
+pub(crate) mod control;
 pub(crate) mod input;
 pub(crate) mod lifecycle;
 pub(crate) mod procgen;

@@ -1,7 +1,7 @@
 //! Selected fire mode resource and sync on selection change.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::weapon::{FireMode, FireModeSpec, MeleeWeapon, WieldedBy, Wields};
+use gdtf_battle_sim::weapon::{FireMode, FireModeSpec, MeleeWeapon, ModeKind, WieldedBy, Wields};
 
 use crate::SelectedShooter;
 
@@ -28,6 +28,34 @@ impl Default for SelectedFireMode {
     }
 }
 
+/// The ranged weapon `shooter` is wielding, if it holds one.
+#[must_use]
+pub fn ranged_weapon_of(
+    shooter: Entity,
+    wields: &Query<&Wields>,
+    melee: &Query<(), With<MeleeWeapon>>,
+) -> Option<Entity> {
+    wields
+        .get(shooter)
+        .ok()
+        .and_then(|held| held.ranged_weapon(|entity| melee.get(entity).is_ok()))
+}
+
+/// The selected shooter's ranged-weapon spec for `kind`, if it offers one.
+#[must_use]
+pub fn mode_spec_for(
+    selected: SelectedShooter,
+    wields: &Query<&Wields>,
+    weapons: &Query<&FireMode, With<WieldedBy>>,
+    melee: &Query<(), With<MeleeWeapon>>,
+    kind: ModeKind,
+) -> Option<FireModeSpec> {
+    let shooter = (*selected)?;
+    let weapon = ranged_weapon_of(shooter, wields, melee)?;
+    let fire_mode = weapons.get(weapon).ok()?;
+    fire_mode.iter().find(|spec| spec.kind == kind).copied()
+}
+
 /// Copy the selected shooter's ranged weapon fire mode into the resource.
 pub fn sync_fire_mode_on_select(
     selected: Res<SelectedShooter>,
@@ -44,11 +72,8 @@ pub fn sync_fire_mode_on_select(
     let Some(shooter) = **selected else {
         return;
     };
-    let Some(weapon) = wields
-        .get(shooter)
-        .ok()
-        .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))
-        .and_then(|weapon| weapons.get(weapon).ok())
+    let Some(weapon) =
+        ranged_weapon_of(shooter, &wields, &melee).and_then(|weapon| weapons.get(weapon).ok())
     else {
         return;
     };
