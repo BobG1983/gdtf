@@ -23,7 +23,17 @@ A clause-numbered contract (GTW-N) plus the implementer's summary. Number clause
    every caller, `goToDefinition` to confirm a cited path. A `grep` count is not a caller
    count; see [`code-navigation.md`](../rules/code-navigation.md). `LSP` is deferred — load
    it with `ToolSearch` first.
-3. **Run the green suite yourself** from [`.claude/rules/verification.md`](../rules/verification.md). All eight must exit 0. Use the aliases. Any failure = NON-COMPLIANT.
+3. **Run the green suite yourself** from [`.claude/rules/verification.md`](../rules/verification.md). All six must exit 0. Use the aliases. Any failure = NON-COMPLIANT.
+4. **Drive the running app when a clause is about behaviour you can see.** You hold
+   `mcp__gdtf-qa__*` — `launch`, `run`, `logs`, `commands`. Re-drive the live case yourself
+   rather than trusting the implementer's transcript. **"The gate cannot check this" is
+   false** for anything the command set reaches. The rules are in
+   [`qa-mcp-access.md`](../rules/qa-mcp-access.md); never reach past those tools to a socket.
+
+**When you are one lens of the gate fan-out, run ZERO cargo.** The verify step already ran
+the suite and its report is in your brief. Rebuilding the workspace three times in parallel
+buys nothing and costs minutes. Read, drive the app, cite `file:line` — that is your job.
+Rule 3 applies when you are the only reviewer.
 
 ## Historical failure modes (check every review)
 

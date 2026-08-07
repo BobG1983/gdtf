@@ -31,6 +31,32 @@ never a hand-tracked TODO list, never a persistent PM agent.
 5. "Done" on the board is a claim, not proof — audit the code before relying
    on it (see `design-fidelity.md`, rule 3).
 
+## Linear queries omit silently — an empty field may mean you did not ask
+
+Three of them, all the same shape: the call succeeds, reports no error, and leaves data
+out. **Never report absence from a default fetch.**
+
+1. **Labels need the team.** Without `team: GDTF` you get only the workspace labels and
+   `hasNextPage: false`, which reads as a complete list and is not. The team-scoped ones
+   are missing. This has already produced two agents contradicting each other about
+   whether a label exists — the one that scoped the query was right.
+2. **Relations need `includeRelations: true`.** Without it `get_issue` returns no
+   blocks / blocked-by / related-to edges at all, so a ticket with relations looks exactly
+   like a ticket without any. One agent reported a blocked-by edge "lives only in a
+   comment and does not exist"; it existed, reciprocal on both tickets.
+3. **Text search never reaches archived issues, and `includeArchived: true` does not fix
+   it.** The flag admits archived issues to enumeration, not to the query. Done tickets
+   are archived routinely to stay under the workspace cap, so **most of the board cannot
+   be found by searching**. To cover archived work, enumerate by state instead — and say
+   in the report which half you actually swept.
+
+## A comment written through the MCP wears the user's name
+
+The Linear MCP posts as the account owner, so a comment an agent wrote and a ruling the
+user made look identical on the board. **Never cite a Linear comment as a user decision**
+unless you can find that decision in the conversation. An agent's own note is not evidence
+that a dependency, a design principle, or a constraint was ever agreed.
+
 ## Labels
 
 Labels state facts about a ticket. Inventing a label in chat is forbidden.

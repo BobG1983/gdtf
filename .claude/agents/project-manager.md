@@ -41,10 +41,12 @@ writer of the Linear board; whoever invoked you routes their status changes thro
   starting new threads. Cite the issue identifier (e.g. GTW-12) + title.
 - **Create** tasks with a clear title and a markdown body (real newlines, never literal
   `\n`). Capture acceptance criteria / dependencies / open questions when known. A
-  behavioral ticket must say it ADDS tests on the real code path (gdtf has zero tests
-  today, so a green run does not by itself prove a feature works).
-- **Update** status as work moves (Todo → In Progress → In Review → Done). When marking
-  Done, you may append a short "DONE: …" note in the description or a comment.
+  behavioral ticket must say it ADDS tests on the real code path — the suite is large and
+  green, so a green run says nothing about a feature no test names.
+- **Update** status as work moves (Todo → In Progress → In Review → Done). **Post the
+  comment BEFORE you move the status**, always. `save_comment` fails outright against an
+  archived issue, and a Done ticket can be archived at any time — so a note you meant to
+  add after the move may become impossible to add at all.
 - **Report** board state crisply when asked (grouped by status).
 
 ## Always fetch and report comments alongside the raw ticket — never just the fields
