@@ -273,9 +273,9 @@ rest read live state on purpose, because what they report is not drawn from a sh
 `battle.turn` and `battle.offers` report resources the sim and the panel write each frame,
 the `can_engage` half of `battle.sightline` asks the sim's own firing-arc gate,
 `battle.selection` reports the pointer's live selection, `battle.cost` prices from the live
-tuning, grids, squad fog and ganger state the act itself would be charged against — a quote
-taken while playback is behind is what the sim would charge now, not what the sprite's cell
-suggests — and `log.read` reads the act log
+tuning, grids, squad fog, cover and ganger state the act itself would be charged against —
+a quote taken while playback is behind is what the sim would charge now, not what the
+sprite's cell suggests — and `log.read` reads the act log
 with no fog filter, matching a combat log that filters none either.
 
 Each read refuses `Unavailable` with code `WrongState` off the battle screen. `log.read`
@@ -284,8 +284,8 @@ is still generating, and the act log arrives with the rest of the battle runtime
 call inside that window is refused `MissingModel` rather than answered with an empty log
 that would read as "nothing has happened".
 `battle.sightline` and `battle.cost` further need the battle's running phase — `battle.cost`
-answers `MissingModel` inside that phase whenever the tuning, grids and fog it prices from
-are not loaded — and `battle.offers`,
+answers `MissingModel` inside that phase whenever the tuning, grids, fog and cover it
+prices from are not loaded — and `battle.offers`,
 `battle.inspect` and `battle.visible` need a running battle whose sim state is loaded —
 without it the offer and inspect systems never run, so answering would report "nothing
 offered" where the truth is "not computed yet". Those three words are pinned command by

@@ -1,4 +1,6 @@
-use gdtf_qa_protocol::command::{FALLBACK_SHAPE_TEXT, RonShape, ShapeDoc, ShapeName, shape_trace};
+use gdtf_qa_protocol::command::{
+    FALLBACK_SHAPE_TEXT, RonShape, ShapeBody, ShapeDoc, ShapeName, shape_trace,
+};
 use serde::de::DeserializeOwned;
 
 use crate::dev::net_qa::{
@@ -172,6 +174,22 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<ActCountNet>("ActCountNet");
     assert_schema_is_usable::<AppPhaseTargetNet>("AppPhaseTargetNet");
     assert_schema_is_usable::<WaitConditionNet>("WaitConditionNet");
+}
+
+#[test]
+fn the_published_refusal_shape_names_the_suppressed_variant() {
+    let Ok(doc) = shape_trace::<CostRefusalNet>() else {
+        unreachable!("`CostRefusalNet`'s shape must trace out of its own Deserialize impl")
+    };
+    let Some(ShapeBody::Choice(variants)) = doc.root_body() else {
+        unreachable!("`CostRefusalNet` publishes a choice of variants: {doc:?}")
+    };
+    assert!(
+        variants
+            .iter()
+            .any(|variant| variant.name().as_str() == "Suppressed"),
+        "a client reading the published shape must find the Suppressed refusal: {variants:?}",
+    );
 }
 
 #[test]
