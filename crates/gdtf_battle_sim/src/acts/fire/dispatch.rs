@@ -79,8 +79,10 @@ pub fn dispatch_fire(
                 let Ok((mut actor_facing, mut actor_tu)) = turners.get_mut(request.shooter) else {
                     continue;
                 };
+                if spend_tu(&mut actor_tu, turn_cost).is_err() {
+                    continue;
+                }
                 *actor_facing = Facing::new(target_facing);
-                spend_tu(&mut actor_tu, turn_cost);
             }
             FireArcDecision::FireInArc => {}
         }
