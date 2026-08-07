@@ -43,11 +43,25 @@ pub(in crate::dev::net_qa) const fn battle_is_live(facts: GameFacts) -> CommandA
 /// Available only in a running battle whose screen has caught up with the act log.
 pub(in crate::dev::net_qa) const fn running_and_caught(facts: GameFacts) -> CommandAvailability {
     match facts.battle_activity() {
-        BattleActivity::NotRunning => {
-            return refuse("this acts in a running battle, and no battle is running");
-        }
-        BattleActivity::Running => {}
+        BattleActivity::NotRunning => acts_in_a_running_battle(facts),
+        BattleActivity::Running => screen_has_caught_up(facts),
     }
+}
+
+/// Available only in a running battle, which is the only place an act is taken.
+pub(in crate::dev::net_qa) const fn acts_in_a_running_battle(
+    facts: GameFacts,
+) -> CommandAvailability {
+    match facts.battle_activity() {
+        BattleActivity::Running => CommandAvailability::Available,
+        BattleActivity::NotRunning => {
+            refuse("this acts in a running battle, and no battle is running")
+        }
+    }
+}
+
+/// Available only while the screen has caught up with the act log.
+pub(in crate::dev::net_qa) const fn screen_has_caught_up(facts: GameFacts) -> CommandAvailability {
     match facts.catch_up() {
         PlaybackCatchUp::CaughtUp => CommandAvailability::Available,
         PlaybackCatchUp::Behind => CommandAvailability::Unavailable {

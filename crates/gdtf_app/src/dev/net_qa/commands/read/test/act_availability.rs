@@ -1,6 +1,6 @@
 //! Where the classic acts answer: a running battle whose screen has caught up.
 
-use gdtf_qa_protocol::command::{CommandAvailability, UnavailableCode};
+use gdtf_qa_protocol::command::{CommandAvailability, RefusalNote, UnavailableCode};
 
 use crate::dev::net_qa::{
     commands::set::GAME_COMMANDS,
@@ -74,6 +74,14 @@ fn availability(name: &str, facts: GameFacts) -> CommandAvailability {
     command.availability(&facts)
 }
 
+/// The note a refused command answers with, so two refusals can be compared.
+fn refusal_note(name: &str, facts: GameFacts) -> RefusalNote {
+    let CommandAvailability::Unavailable { note, .. } = availability(name, facts) else {
+        unreachable!("`{name}` must refuse these facts");
+    };
+    note
+}
+
 fn assert_refused(what: &str, facts: GameFacts, code: UnavailableCode) {
     for name in CLASSIC_ACTS {
         let CommandAvailability::Unavailable { code: live, note } = availability(name, facts)
@@ -108,6 +116,14 @@ fn every_classic_act_answers_in_a_running_battle_the_screen_has_caught_up_with()
 #[test]
 fn every_classic_act_refuses_wrong_state_outside_a_running_battle() {
     assert_refused("at the menu", at_the_menu(), UnavailableCode::WrongState);
+    for name in CLASSIC_ACTS.iter().filter(|name| **name != "act.end_turn") {
+        assert_eq!(
+            refusal_note("act.end_turn", at_the_menu()),
+            refusal_note(name, at_the_menu()),
+            "`act.end_turn` must refuse the menu for the same reason `{name}` does: no battle is \
+             running, which is not a turn-owner refusal",
+        );
+    }
     assert_refused(
         "while the battle is still generating",
         in_a_battle(BattleScapePhaseNet::Generation, PlaybackCatchUp::CaughtUp),
@@ -147,6 +163,41 @@ fn act_end_turn_refuses_when_the_turn_is_not_the_players() {
             availability(name, facts),
             CommandAvailability::Available,
             "`{name}` is taken on whoever is selected, so an enemy turn must not refuse it",
+        );
+    }
+}
+
+#[test]
+fn act_end_turn_refuses_wrong_state_when_the_screen_is_behind_on_another_factions_turn() {
+    let facts = battle_facts(
+        BattleScapePhaseNet::BattleRunning,
+        PlaybackCatchUp::Behind,
+        TurnOwner::OtherFaction,
+    );
+
+    let CommandAvailability::Unavailable { code, note } = availability("act.end_turn", facts)
+    else {
+        unreachable!("`act.end_turn` must refuse while another faction is acting");
+    };
+    assert_eq!(
+        code,
+        UnavailableCode::WrongState,
+        "an enemy turn outlasts the replay, so a client told to wait for the screen would retry \
+         into the same refusal",
+    );
+    assert!(
+        !note.as_str().is_empty(),
+        "`act.end_turn`'s refusal must say the turn belongs to another faction",
+    );
+
+    for name in CLASSIC_ACTS.iter().filter(|name| **name != "act.end_turn") {
+        let CommandAvailability::Unavailable { code, .. } = availability(name, facts) else {
+            unreachable!("`{name}` must refuse while the screen is behind the log");
+        };
+        assert_eq!(
+            code,
+            UnavailableCode::Replaying,
+            "`{name}` reads no turn owner, so the replay is still the only reason it cannot act",
         );
     }
 }
