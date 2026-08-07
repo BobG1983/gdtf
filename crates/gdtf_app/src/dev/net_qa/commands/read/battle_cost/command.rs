@@ -27,7 +27,7 @@ use crate::dev::net_qa::{
 
 /// The refusal a call gets while the battle's sim resources are not up.
 const NO_MODEL: RefusalNote = RefusalNote::from_static(
-    "the battle's tuning, grids and fog are not loaded, so the sim has no cost to quote",
+    "the battle's tuning, grids, fog and cover are not loaded, so the sim has no cost to quote",
 );
 
 #[derive(Debug, Deserialize)]
@@ -71,7 +71,8 @@ impl QaCommand for BattleCost {
          taking it. Every number is the sim's own cost helper and every verdict its own legality \
          check, so what this quotes is what the act charges. It reads only — nothing in the \
          battle moves. A refusal names why: an unknown token, a ganger the player does not \
-         command, a cell with no route, a pool that cannot pay, or an act the sim rejects.",
+         command, a cell with no route, suppression the walk does not break away from, a pool \
+         that cannot pay, or an act the sim rejects.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -111,10 +112,11 @@ fn handle_battle_cost(
 mod test {
     use super::{BattleCostReply, CostRefusalNet, TuNet};
 
-    const REFUSALS: [CostRefusalNet; 5] = [
+    const REFUSALS: [CostRefusalNet; 6] = [
         CostRefusalNet::NoSuchGanger,
         CostRefusalNet::NotYourGanger,
         CostRefusalNet::NoPathToCell,
+        CostRefusalNet::Suppressed,
         CostRefusalNet::CannotAfford,
         CostRefusalNet::ActNotAllowed,
     ];

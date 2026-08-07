@@ -1,7 +1,7 @@
 //! What a route costs: the sim's own pathfinder, planned through the squad's fog.
 
 use gdtf_battle_sim::{
-    acts::{can_move, move_tu_cost},
+    acts::{MoveVerdict, Mover, can_move, move_tu_cost},
     injuries::{InflictedInjuries, MovementCostFactor},
     pathfinder::{PlanningView, find_path},
     visibility::FactionRelation,
@@ -20,26 +20,31 @@ pub(super) fn move_quote(
     row: &ActorRowItem<'_, '_>,
     dest: CellLevelNet,
 ) -> Quote {
-    let mover = *row.faction;
+    let mover_faction = *row.faction;
     let planning = PlanningView::new(world.squad, |occupant| match rows.factions.get(occupant) {
-        Ok(faction) if *faction == mover => FactionRelation::OwnSquad,
+        Ok(faction) if *faction == mover_faction => FactionRelation::OwnSquad,
         _ => FactionRelation::Other,
     });
     let factor = row.injuries.map_or(
         MovementCostFactor::IDENTITY,
         InflictedInjuries::movement_cost_factor,
     );
-    let Ok(path) = find_path(
-        **row.position,
-        dest.to_sim(),
-        world.grids,
-        factor,
-        &planning,
-    ) else {
+    let to = dest.to_sim();
+    let Ok(path) = find_path(**row.position, to, world.grids, factor, &planning) else {
         return Quote::refused(CostRefusalNet::NoPathToCell);
     };
+    let mover = Mover::new(row.position, row.tu, row.pinned);
     Quote::quoted(
         move_tu_cost(&path),
-        (!*can_move(row.tu, &path)).then_some(CostRefusalNet::CannotAfford),
+        refused_by(can_move(mover, &to, &path, world.cover)),
     )
+}
+
+// The wire refusal one walk verdict answers with, or nothing when the walk is allowed.
+const fn refused_by(verdict: MoveVerdict) -> Option<CostRefusalNet> {
+    match verdict {
+        MoveVerdict::Allowed => None,
+        MoveVerdict::Suppressed => Some(CostRefusalNet::Suppressed),
+        MoveVerdict::Unaffordable => Some(CostRefusalNet::CannotAfford),
+    }
 }

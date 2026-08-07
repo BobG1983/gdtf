@@ -6,10 +6,11 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     battle::PlayerFaction,
+    cover::CoverLedger,
     emplacement::{EmplacementOccupant, EmplacementState},
     entity::TerrainCell,
     floor::FloorCostGrid,
-    ganger::{Aiming, Facing, Faction, LifeState, Position, Stance, Tu, TuMax},
+    ganger::{Aiming, Facing, Faction, LifeState, Position, Stance, Suppressed, Tu, TuMax},
     injuries::InflictedInjuries,
     magazine::Magazine,
     occupancy::OccupancyGrid,
@@ -33,6 +34,7 @@ pub(super) struct ActorRow {
     pub(super) faction:  &'static Faction,
     pub(super) life:     &'static LifeState,
     pub(super) injuries: Option<&'static InflictedInjuries>,
+    pub(super) pinned:   Option<&'static Suppressed>,
 }
 
 /// Everything a cost reads off the wielded ranged weapon.
@@ -64,6 +66,8 @@ pub(super) struct LoadedWorld<'a> {
     pub(super) grids:  MoveGrids<'a>,
     /// The squad fog a player route is planned through.
     pub(super) squad:  &'a SquadVisibility,
+    /// The cover a suppressed mover would have to break away behind.
+    pub(super) cover:  &'a CoverLedger,
 }
 
 /// The sim resources a cost preview reads, each absent until a battle is loaded.
@@ -75,6 +79,7 @@ pub(super) struct CostWorld<'w> {
     links:       Option<Res<'w, VerticalLinkGraph>>,
     floor_costs: Option<Res<'w, FloorCostGrid>>,
     squad:       Option<Res<'w, SquadVisibility>>,
+    cover:       Option<Res<'w, CoverLedger>>,
 }
 
 impl CostWorld<'_> {
@@ -91,6 +96,7 @@ impl CostWorld<'_> {
                 tuning,
             },
             squad: self.squad.as_deref()?,
+            cover: self.cover.as_deref()?,
         })
     }
 }
