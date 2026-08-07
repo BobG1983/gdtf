@@ -2,6 +2,7 @@ mod act;
 mod act_payload;
 mod act_reply;
 mod cell;
+mod cost;
 mod coverage;
 mod deed;
 mod drive;

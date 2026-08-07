@@ -8,7 +8,7 @@ use crate::dev::net_qa::{
     wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet, RunningPhaseNet},
 };
 
-/// The eight reads this ticket added, each of which must appear in a case below.
+/// The battle reads, each of which must appear in a case below.
 const BATTLE_READS: &[&str] = &[
     "battle.roster",
     "battle.turn",
@@ -17,6 +17,7 @@ const BATTLE_READS: &[&str] = &[
     "battle.inspect",
     "battle.sightline",
     "battle.visible",
+    "battle.cost",
     "log.read",
 ];
 
@@ -164,7 +165,7 @@ fn the_battle_screen_reads_answer_after_the_battle_is_over() {
 }
 
 #[test]
-fn the_sightline_read_answers_on_a_running_battle_the_panels_have_not_loaded() {
+fn the_sightline_and_cost_reads_answer_on_a_running_battle_the_panels_have_not_loaded() {
     assert_answering(
         "in a running battle whose sim state is gone",
         on_the_battle_screen(BattleScapePhaseNet::BattleRunning, BattleModel::Absent),
@@ -174,6 +175,7 @@ fn the_sightline_read_answers_on_a_running_battle_the_panels_have_not_loaded() {
             "battle.selection",
             "log.read",
             "battle.sightline",
+            "battle.cost",
         ],
     );
 }

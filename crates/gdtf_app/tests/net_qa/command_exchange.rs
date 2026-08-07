@@ -8,7 +8,9 @@ use gdtf_qa_protocol::{
     ports::NetQaPort,
 };
 
-use super::socket_support::{Client, SocketFixture, TestError, drive_until_reported};
+use super::socket_support::{
+    Client, SocketFixture, TestError, battle_app_listening, drive_until_reported,
+};
 
 pub(crate) const APP_PHASE: &str = "app.phase";
 
@@ -33,6 +35,8 @@ pub(crate) const BATTLE_INSPECT: &str = "battle.inspect";
 pub(crate) const BATTLE_SIGHTLINE: &str = "battle.sightline";
 
 pub(crate) const BATTLE_VISIBLE: &str = "battle.visible";
+
+pub(crate) const BATTLE_COST: &str = "battle.cost";
 
 pub(crate) const LOG_READ: &str = "log.read";
 
@@ -121,6 +125,7 @@ pub(crate) fn published_names() -> Vec<CommandName> {
         BATTLE_INSPECT,
         BATTLE_SIGHTLINE,
         BATTLE_VISIBLE,
+        BATTLE_COST,
         LOG_READ,
         BATTLE_START,
         BATTLE_FLEE,
@@ -171,6 +176,18 @@ pub(crate) fn exchange_planned(
     let (mut app, port) = fixture()?;
     let requests = plan(&app);
     exchange_over(&mut app, port, requests)
+}
+
+/// Build the battle fixture, let `prepare` write the world and shape the requests, then exchange.
+///
+/// The app comes back so a case can read what the sim actually holds after the replies landed.
+pub(crate) fn exchange_in_battle(
+    prepare: impl FnOnce(&mut App) -> Vec<QaRequest>,
+) -> Result<(App, Vec<QaResponse>), TestError> {
+    let (mut app, port) = battle_app_listening()?;
+    let requests = prepare(&mut app);
+    let replies = exchange_over(&mut app, port, requests)?;
+    Ok((app, replies))
 }
 
 /// Build a fixture that reports what it set up, shape the requests from it, then exchange.
