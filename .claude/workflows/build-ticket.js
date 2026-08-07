@@ -308,9 +308,14 @@ const LENSES = [
 ]
 
 // The verdict a lens reported, or null when it reported none.
+// A verdict followed by '?' is rhetorical, not a verdict. A lens once opened with
+// "NON-COMPLIANT? No — **COMPLIANT** on this lens." and the first-match read failed a build the
+// lens had passed, costing a fix round that then reported nothing needed repairing.
+// This does not close the hole: "NON-COMPLIANT check: none found" defeats it too. The real fix is
+// a schema on the lens agent so the verdict is typed and nothing is parsed out of prose.
 const verdictOf = (out) => {
   if (!out) return null
-  const m = /\b(NON-COMPLIANT|COMPLIANT)\b/i.exec(out)
+  const m = /\b(NON-COMPLIANT|COMPLIANT)\b(?!\s*\?)/i.exec(out)
   return m ? m[1].toUpperCase() : null
 }
 
@@ -334,7 +339,17 @@ ${verifyOut || '(verify died — treat cargo claims as UNPROVEN)'}
 
 ${HOUSE_RULES}
 
-Run ZERO cargo. Cite file:line. Start with COMPLIANT or NON-COMPLIANT.`
+Run ZERO cargo. Cite file:line.
+
+## Your first line is read by a machine
+
+It must be **exactly one word — COMPLIANT or NON-COMPLIANT — alone on the line.** No punctuation
+after it, no lens name, no rhetorical opening. Put every word of your reasoning on the lines below.
+
+This is not a formatting preference. Three passing builds have been failed by a first line like
+"NON-COMPLIANT? No — COMPLIANT", "NON-COMPLIANT — no. COMPLIANT." or "NON-COMPLIANT check: none
+found on this lens." Each cost a repair round on code that was already correct. If your verdict is
+COMPLIANT, the word NON-COMPLIANT must not appear on line one at all.`
 
   const first = await agent(brief,
     { model: 'opus', label: `gate:${lens.key}#${attempt}`, phase: 'Gate', agentType: 'design-gate' })
@@ -355,8 +370,10 @@ ${first || '(you returned nothing at all)'}
 </your-previous-reply>
 
 Review again and answer properly this time. If that reply already reached a conclusion, keep its
-findings and add the verdict it was missing — do not start over and do not soften anything. End
-with **COMPLIANT** or **NON-COMPLIANT** on its own line.`,
+findings and add the verdict it was missing — do not start over and do not soften anything.
+
+**Your first line must be exactly one word, COMPLIANT or NON-COMPLIANT, alone on the line.** If your
+verdict is COMPLIANT, the word NON-COMPLIANT must not appear on line one at all.`,
     { model: 'opus', label: `gate:${lens.key}#${attempt}-again`, phase: 'Gate', agentType: 'design-gate' })
 
   // Keep whichever reply actually carries a verdict; failing that, keep the longer evidence.
