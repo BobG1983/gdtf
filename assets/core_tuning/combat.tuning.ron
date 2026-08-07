@@ -62,7 +62,9 @@
     // §"What's tunable"): the Time Units the E4.1 posture verbs spend. `set_stance` charges
     // stance_change_tu and `set_facing` charges turn_tu PER 45deg STEP — but ONLY when the
     // stance/facing actually changes (re-asserting the value a ganger already holds is a no-op,
-    // no charge). `set_facing` is a PARTIAL turn: it charges turn_tu for each whole 45deg step it
+    // no charge). A stance change is ALL-OR-NOTHING: a pool that cannot cover stance_change_tu
+    // refuses the change outright — the stance does not move and nothing is charged.
+    // `set_facing` is a PARTIAL turn: it charges turn_tu for each whole 45deg step it
     // can afford and lands partway when the pool runs out (0 affordable steps = no turn, no charge).
     // Toggling the AIM flag (`set_aiming`) is NOT here: the aim cost is the fire-time ×1.5 premium
     // (aim_mode.tu_premium), not a per-toggle charge. STARTING POINTS (tunable).
@@ -72,9 +74,11 @@
     // Shove act TU cost (resolution.md §7 — a context-sensitive pure-displacement melee
     // shove any ganger can take against an adjacent opposing alive target). The deliberate SHOVE
     // act (dispatch_shove) spends this when it resolves — it deals NO wound of its own; the FALL
-    // it may trigger (via the shared fall path) does the harm. The weapon-tag auto-shove
-    // (on a connecting melee strike OR ranged shot) is FREE — bundled into the attack's own TU
-    // charge — so only the deliberate act reads this leaf. STARTING POINT (tunable).
+    // it may trigger (via the shared fall path) does the harm. A pool that cannot cover shove_tu
+    // refuses the deliberate shove outright: nobody moves and nothing is charged. The weapon-tag
+    // auto-shove (on a connecting melee strike OR ranged shot) is FREE — bundled into the attack's
+    // own TU charge — so only the deliberate act reads this leaf, and a 0-TU attacker still lands
+    // it. STARTING POINT (tunable).
     shove_tu:         6,  // TU a ganger spends on a deliberate shove (pure displacement; the fall does the damage)
 
     // Open-door act TU cost: the flat Time Units the deliberate OPEN-DOOR act

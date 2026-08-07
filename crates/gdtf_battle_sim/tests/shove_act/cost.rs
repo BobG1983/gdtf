@@ -3,7 +3,7 @@
 use gdtf_battle_sim::{
     acts::{ShoveActor, ShoveTarget, can_shove, shove_tu_cost},
     ganger::{Faction, LifeState, Position},
-    prelude::{CellLevel, OccupancyGrid},
+    prelude::{CellLevel, OccupancyGrid, Tu},
     surface::SurfaceGrid,
     tuning::{
         CombatTuning, EnterEmplacementTu, ExecuteTu, ExitEmplacementTu, OpenDoorTu, ShoveTu,
@@ -55,6 +55,70 @@ fn deliberate_shove_charges_exactly_the_shove_quote() {
         tu_before - tu_of(&app, shover),
         *quoted,
         "the deliberate shove charged exactly what shove_tu_cost quoted",
+    );
+}
+
+#[test]
+fn a_shove_the_pool_cannot_cover_moves_nobody_and_spends_nothing() {
+    let mut app = shove_app();
+    app.insert_resource(SurfaceGrid::new());
+    app.insert_resource(OccupancyGrid::new());
+    let shover = shove_ganger(app.world_mut(), ground(5, 5), 0);
+    let target = shove_ganger(app.world_mut(), ground(6, 5), 1);
+    app.update();
+
+    let tuning = app
+        .world()
+        .get_resource::<CombatTuning>()
+        .cloned()
+        .unwrap_or_default();
+    let quoted = shove_tu_cost(&tuning);
+    assert!(
+        *quoted > 0,
+        "the shipped shove leaf must cost something, or a below-cost pool proves nothing",
+    );
+    if let Some(mut pool) = app.world_mut().get_mut::<Tu>(shover) {
+        *pool = Tu::new(*quoted - 1);
+    }
+    let (shover_at, target_at) = (pos_of(&app, shover), pos_of(&app, target));
+    let (target_hp, target_wounds) = (hp_of(&app, target), wounds_of(&app, target));
+
+    shove_and_settle(&mut app, shover, target);
+
+    assert_eq!(
+        tu_of(&app, shover),
+        *quoted - 1,
+        "a shover that cannot cover the cost spends nothing",
+    );
+    assert_eq!(
+        pos_of(&app, shover),
+        shover_at,
+        "a refused shove leaves the shover where it stood",
+    );
+    assert_eq!(
+        pos_of(&app, target),
+        target_at,
+        "a refused shove leaves the target where it stood",
+    );
+    assert_eq!(
+        (hp_of(&app, target), wounds_of(&app, target)),
+        (target_hp, target_wounds),
+        "a refused shove does the target no harm",
+    );
+
+    if let Some(mut pool) = app.world_mut().get_mut::<Tu>(shover) {
+        *pool = Tu::new(*quoted);
+    }
+    shove_and_settle(&mut app, shover, target);
+    assert_eq!(
+        tu_of(&app, shover),
+        0,
+        "the same shove from a pool that covers the cost is charged for",
+    );
+    assert_ne!(
+        pos_of(&app, target),
+        target_at,
+        "the same shove from a pool that covers the cost does push the target",
     );
 }
 

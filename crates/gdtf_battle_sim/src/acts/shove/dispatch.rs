@@ -19,7 +19,7 @@ use crate::{
     occupancy::OccupancyGrid,
     rng::{InjuryRng, SeverityRng},
     surface::SurfaceGrid,
-    tu::spend_tu,
+    tu::{can_spend_tu, spend_tu},
     tuning::CombatTuning,
 };
 
@@ -105,7 +105,13 @@ pub fn dispatch_shove(
             let Ok(mut shover_tu) = tu_q.get_mut(request.shover) else {
                 continue;
             };
-            spend_tu(&mut shover_tu, shove_tu_cost(&tuning));
+            let cost = shove_tu_cost(&tuning);
+            if !*can_spend_tu(&shover_tu, cost) {
+                continue;
+            }
+            if spend_tu(&mut shover_tu, cost).is_err() {
+                continue;
+            }
         }
 
         let outcome = resolve_shove(shover_pos, target_pos, request.target, &surface, &occupancy);

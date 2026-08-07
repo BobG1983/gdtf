@@ -106,7 +106,9 @@ pub fn dispatch_enter_emplacement(
         if !*can_enter_emplacement(actor_pos, seat, state, &actor_tu, &tuning) {
             continue;
         }
-        spend_tu(&mut actor_tu, enter_emplacement_tu_cost(&tuning));
+        if spend_tu(&mut actor_tu, enter_emplacement_tu_cost(&tuning)).is_err() {
+            continue;
+        }
         toggles.write(SetEmplacement::occupy(request.emplacement, request.actor));
     }
 }
@@ -132,7 +134,9 @@ pub fn dispatch_exit_emplacement(
         if !*can_exit_emplacement(request.actor, state, occupant, &actor_tu, &tuning) {
             continue;
         }
-        spend_tu(&mut actor_tu, exit_emplacement_tu_cost(&tuning));
+        if spend_tu(&mut actor_tu, exit_emplacement_tu_cost(&tuning)).is_err() {
+            continue;
+        }
         toggles.write(SetEmplacement::vacate(request.emplacement, request.actor));
     }
 }

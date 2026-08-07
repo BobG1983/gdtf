@@ -36,6 +36,57 @@ fn set_stance_dispatch_changes_stance_and_spends_the_tuning_leaf() {
 }
 
 #[test]
+fn set_stance_dispatch_below_the_cost_leaves_the_stance_and_the_pool_alone() {
+    let mut app = headless_app();
+    let Some(cost) = app
+        .world()
+        .get_resource::<CombatTuning>()
+        .map(|tuning| *tuning.stance_change_tu)
+    else {
+        unreachable!("the sim app carries combat tuning");
+    };
+    assert!(
+        cost > 0,
+        "the stance leaf must cost something, or a below-cost pool proves nothing",
+    );
+    let short = app
+        .world_mut()
+        .spawn((Stance::new(StanceKind::Standing), Tu::new(cost - 1)))
+        .id();
+    let flush = app
+        .world_mut()
+        .spawn((Stance::new(StanceKind::Standing), Tu::new(cost)))
+        .id();
+
+    app.world_mut()
+        .write_message(SetStanceRequested::new(short, StanceKind::Prone));
+    app.world_mut()
+        .write_message(SetStanceRequested::new(flush, StanceKind::Prone));
+    app.update();
+
+    assert_eq!(
+        app.world().get::<Stance>(short).map(|s| **s),
+        Some(StanceKind::Standing),
+        "a ganger that cannot afford the change keeps the stance it held",
+    );
+    assert_eq!(
+        app.world().get::<Tu>(short).map(|t| **t),
+        Some(cost - 1),
+        "a refused stance change spends nothing at all",
+    );
+    assert_eq!(
+        app.world().get::<Stance>(flush).map(|s| **s),
+        Some(StanceKind::Prone),
+        "the same request from a pool that covers the cost does change the stance",
+    );
+    assert_eq!(
+        app.world().get::<Tu>(flush).map(|t| **t),
+        Some(0),
+        "the ganger that could afford it paid exactly the pool it had",
+    );
+}
+
+#[test]
 fn set_stance_dispatch_to_same_stance_is_a_no_op_on_tu() {
     let mut app = headless_app();
     let actor = app

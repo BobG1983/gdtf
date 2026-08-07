@@ -31,7 +31,9 @@ pub(super) fn resolve_structure_melee(
     let Ok(mut attacker_tu) = combatants.tu.get_mut(attacker.entity) else {
         return;
     };
-    spend_tu(&mut attacker_tu, attacker.tu_cost);
+    if spend_tu(&mut attacker_tu, attacker.tu_cost).is_err() {
+        return;
+    }
 
     let event = resolve_structural_melee(
         attacker.weapon,
