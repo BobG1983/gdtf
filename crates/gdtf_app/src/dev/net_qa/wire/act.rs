@@ -60,7 +60,8 @@ pub enum ActReply {
         from_seq: ActSeqNet,
         /// Act-log head once the sim had run that frame.
         to_seq:   ActSeqNet,
-        /// False while the actor is still walking the act out.
+        /// False while the actor is still walking the act out. `act.end_turn` has no actor,
+        /// so it always reports true.
         complete: ActCompleteNet,
     },
     /// The call never reached the sim.
