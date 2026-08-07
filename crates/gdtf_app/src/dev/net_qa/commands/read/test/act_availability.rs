@@ -4,7 +4,7 @@ use gdtf_qa_protocol::command::{CommandAvailability, UnavailableCode};
 
 use crate::dev::net_qa::{
     commands::set::GAME_COMMANDS,
-    facts::{BattleModel, GameFacts, PlaybackCatchUp, StepperActivity},
+    facts::{BattleModel, GameFacts, PlaybackCatchUp, StepperActivity, TurnOwner},
     wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet, RunningPhaseNet},
 };
 
@@ -23,7 +23,16 @@ const CLASSIC_ACTS: &[&str] = &[
     "act.end_turn",
 ];
 
+/// A battle whose turn belongs to the player, which is where a classic act is taken.
 fn in_a_battle(battlescape: BattleScapePhaseNet, catch_up: PlaybackCatchUp) -> GameFacts {
+    battle_facts(battlescape, catch_up, TurnOwner::Player)
+}
+
+fn battle_facts(
+    battlescape: BattleScapePhaseNet,
+    catch_up: PlaybackCatchUp,
+    turn_owner: TurnOwner,
+) -> GameFacts {
     GameFacts::new(
         AppPhaseNet::new(
             LifecyclePhaseNet::Running,
@@ -35,6 +44,7 @@ fn in_a_battle(battlescape: BattleScapePhaseNet, catch_up: PlaybackCatchUp) -> G
         BattleModel::Present,
         StepperActivity::NotStepping,
         catch_up,
+        turn_owner,
     )
 }
 
@@ -50,6 +60,7 @@ fn at_the_menu() -> GameFacts {
         BattleModel::Absent,
         StepperActivity::NotStepping,
         PlaybackCatchUp::CaughtUp,
+        TurnOwner::OtherFaction,
     )
 }
 
@@ -107,6 +118,37 @@ fn every_classic_act_refuses_wrong_state_outside_a_running_battle() {
         in_a_battle(BattleScapePhaseNet::AfterMath, PlaybackCatchUp::CaughtUp),
         UnavailableCode::WrongState,
     );
+}
+
+#[test]
+fn act_end_turn_refuses_when_the_turn_is_not_the_players() {
+    let facts = battle_facts(
+        BattleScapePhaseNet::BattleRunning,
+        PlaybackCatchUp::CaughtUp,
+        TurnOwner::OtherFaction,
+    );
+
+    let CommandAvailability::Unavailable { code, note } = availability("act.end_turn", facts)
+    else {
+        unreachable!("`act.end_turn` must refuse while another faction is acting");
+    };
+    assert_eq!(
+        code,
+        UnavailableCode::WrongState,
+        "ending another faction's turn is a state the host is not in, not a replay wait",
+    );
+    assert!(
+        !note.as_str().is_empty(),
+        "`act.end_turn`'s refusal must say the turn belongs to another faction",
+    );
+
+    for name in CLASSIC_ACTS.iter().filter(|name| **name != "act.end_turn") {
+        assert_eq!(
+            availability(name, facts),
+            CommandAvailability::Available,
+            "`{name}` is taken on whoever is selected, so an enemy turn must not refuse it",
+        );
+    }
 }
 
 #[test]

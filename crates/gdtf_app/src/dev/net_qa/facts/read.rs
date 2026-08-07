@@ -1,8 +1,8 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::playback::PlaybackGate;
-use gdtf_battle_sim::prelude::BattleInProgress;
+use gdtf_battle_sim::{battle::PlayerFaction, prelude::BattleInProgress, turn::ActiveFaction};
 
-use super::{BattleModel, GameFacts, PlaybackCatchUp, StepperActivity};
+use super::{BattleModel, GameFacts, PlaybackCatchUp, StepperActivity, TurnOwner};
 use crate::{
     dev::net_qa::wire::{
         AfterMathPhaseNet, AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet,
@@ -24,6 +24,8 @@ crate::support_item! {
         battlescape: Option<Res<'w, State<BattleScapeState>>>,
         aftermath:   Option<Res<'w, State<AfterMathState>>>,
         battle:      Option<Res<'w, BattleInProgress>>,
+        active:      Option<Res<'w, ActiveFaction>>,
+        player:      Option<Res<'w, PlayerFaction>>,
         gate:        PlaybackGate<'w>,
         #[cfg(feature = "dev_tools")]
         stepper:     StepperMarker<'w>,
@@ -62,6 +64,7 @@ impl GameFactsParam<'_> {
                 self.battle_model(),
                 stepper,
                 self.catch_up(),
+                self.turn_owner(),
             )
         }
     }
@@ -70,6 +73,16 @@ impl GameFactsParam<'_> {
         match self.battle {
             Some(_) => BattleModel::Present,
             None => BattleModel::Absent,
+        }
+    }
+
+    fn turn_owner(&self) -> TurnOwner {
+        let acting = self.active.as_ref().map(|active| ***active);
+        let commanded = self.player.as_ref().map(|player| ***player);
+        if acting.is_some() && acting == commanded {
+            TurnOwner::Player
+        } else {
+            TurnOwner::OtherFaction
         }
     }
 
