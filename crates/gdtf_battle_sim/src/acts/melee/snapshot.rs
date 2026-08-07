@@ -2,6 +2,7 @@
 
 use bevy::prelude::Entity;
 
+use super::cost::MeleeAttacker;
 use crate::{
     ganger::{Facing, Faction, Fight, Luck, Position, Stance, Toughness, Tu},
     melee::MeleeWeaponHit,
@@ -29,6 +30,13 @@ pub(super) struct AttackerSnapshot<'a> {
     pub(super) tu_cost:            Tu,
     pub(super) strike_damage_type: DamageType,
     pub(super) shove:              crate::weapon::Shove,
+}
+
+impl AttackerSnapshot<'_> {
+    // Position and faction the reach check needs.
+    pub(super) const fn reach(&self) -> MeleeAttacker {
+        MeleeAttacker::new(self.position, self.faction)
+    }
 }
 
 /// Mutable RNGs for the melee contest and hit fold.

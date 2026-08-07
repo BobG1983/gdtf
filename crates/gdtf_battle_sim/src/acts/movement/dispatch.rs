@@ -3,6 +3,7 @@
 use bevy::prelude::{Commands, MessageReader, MessageWriter, Query};
 
 use super::{
+    cost::{can_move, move_step_tu_costs},
     params::{MovePlanningView, PathfindingGrids, SuppressionGate},
     signals::{MoveRejected, MoveRejection},
 };
@@ -12,7 +13,6 @@ use crate::{
     injuries::{InflictedInjuries, MovementCostFactor},
     metric::CellLevel,
     pathfinder::find_path,
-    tu::can_spend_tu,
 };
 
 /// Pathfind and either reject or insert a walk component.
@@ -53,7 +53,7 @@ pub fn dispatch_move(
             continue;
         }
 
-        if !*can_spend_tu(tu, path.total()) {
+        if !*can_move(tu, &path) {
             rejects.write(MoveRejected::new(
                 request.actor,
                 MoveRejection::Unaffordable,
@@ -65,7 +65,7 @@ pub fn dispatch_move(
         if cells.len() > 1 {
             commands
                 .entity(request.actor)
-                .insert(WalkInProgress::new(&cells[1..], path.steps()));
+                .insert(WalkInProgress::new(&cells[1..], move_step_tu_costs(&path)));
         }
     }
 }

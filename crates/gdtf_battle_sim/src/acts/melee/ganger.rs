@@ -2,11 +2,11 @@ use bevy::prelude::Entity;
 
 use super::{
     MeleeCombatants, MeleeOutcomes, MeleeWorld,
+    cost::{MeleeReach, can_melee},
     emit::emit_connect_signals,
     snapshot::{AttackerSnapshot, DefenderResilience, MeleeStreams},
 };
 use crate::{
-    acts::downed::is_8_adjacent,
     armor::WornArmor,
     ganger::{LifeState, effective_luck, effective_toughness},
     injuries::{InjuryRegistry, InjuryTables},
@@ -33,16 +33,14 @@ pub(super) fn resolve_ganger_melee(
         return;
     };
 
-    if !*is_8_adjacent(attacker.position, tgt_pos) || attacker.faction == tgt_faction {
-        return;
-    }
-
     let Ok((_, _, &tgt_life, _, &tgt_toughness, &tgt_luck, tgt_injuries)) =
         combatants.targets.get(target_entity)
     else {
         return;
     };
-    if !*tgt_life.is_active() {
+
+    let reach = MeleeReach::ganger(tgt_pos, tgt_faction, tgt_life);
+    if !*can_melee(attacker.reach(), reach) {
         return;
     }
     let resilience = match tgt_injuries {

@@ -7,13 +7,11 @@ use bevy::{
 
 use super::{
     apply::{ShoveFallEnv, ShoveFallSignals, ShoveTargetSurfaces, apply_shove},
+    cost::{ShoveActor, ShoveTarget, can_shove, shove_tu_cost},
     verb::resolve_shove,
 };
 use crate::{
-    acts::{
-        downed::is_8_adjacent,
-        request::{ShoveRequested, ShoveSource},
-    },
+    acts::request::{ShoveRequested, ShoveSource},
     armor::WornArmor,
     ganger::{Faction, Hp, LifeState, Luck, Position, Toughness, Tu, Wounds},
     inflicted_wound::InflictedWounds,
@@ -92,16 +90,22 @@ pub fn dispatch_shove(
         };
 
         if request.source == ShoveSource::Deliberate {
-            if !*is_8_adjacent(shover_pos, target_pos)
-                || shover_faction == target_faction
-                || !*target_life.is_active()
-            {
+            let shover = ShoveActor {
+                position: shover_pos,
+                faction:  shover_faction,
+            };
+            let target = ShoveTarget {
+                position: target_pos,
+                faction:  target_faction,
+                life:     target_life,
+            };
+            if !*can_shove(&shover, &target) {
                 continue;
             }
             let Ok(mut shover_tu) = tu_q.get_mut(request.shover) else {
                 continue;
             };
-            spend_tu(&mut shover_tu, Tu::new(*tuning.shove_tu));
+            spend_tu(&mut shover_tu, shove_tu_cost(&tuning));
         }
 
         let outcome = resolve_shove(shover_pos, target_pos, request.target, &surface, &occupancy);

@@ -3,6 +3,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::PathPreview;
 use gdtf_battle_sim::{
+    acts::move_tu_cost,
     floor::FloorCostGrid,
     injuries::{InflictedInjuries, MovementCostFactor},
     pathfinder::{MoveGrids, PlanningView, find_path},
@@ -130,7 +131,7 @@ fn route_for(
         factor,
         &planning,
     ) {
-        Ok(path) => PathPreview::new(path.cells().to_vec(), path.total()),
+        Ok(path) => PathPreview::new(path.cells().to_vec(), move_tu_cost(&path)),
         Err(_blocked) => PathPreview::cleared(),
     }
 }
