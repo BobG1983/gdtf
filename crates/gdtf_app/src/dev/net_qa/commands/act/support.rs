@@ -153,7 +153,7 @@ pub(super) const NO_SHOOTER: ActReply = ActReply::Refused {
 };
 
 /// The living ganger a token names, when the world still holds one under those bits.
-pub(super) fn a_ganger(
+pub(in crate::dev::net_qa::commands) fn a_ganger(
     gangers: &Query<Option<&LifeState>, With<Faction>>,
     token: GangerToken,
 ) -> Option<Entity> {

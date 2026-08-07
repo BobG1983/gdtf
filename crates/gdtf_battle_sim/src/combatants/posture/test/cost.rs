@@ -1,13 +1,22 @@
-//! Stance and turn cost queries agree with what the verbs charge.
+//! What the posture cost queries quote, and what the stance and turn verbs charge for it.
 
 use crate::{
     ganger::{Direction, Facing, RingSteps, Stance, StanceKind, Tu},
     posture::{
-        afforded_turn_steps, afforded_turn_tu_cost, can_set_facing, can_set_stance, set_facing,
-        set_stance, stance_tu_cost, turn_tu_cost,
+        afforded_turn_steps, afforded_turn_tu_cost, can_set_facing, can_set_stance,
+        set_aiming_tu_cost, set_facing, set_stance, stance_tu_cost, turn_tu_cost,
     },
     tuning::{StanceChangeTu, TurnTu},
 };
+
+#[test]
+fn set_aiming_tu_cost_quotes_zero_because_aiming_is_free() {
+    assert_eq!(
+        *set_aiming_tu_cost(),
+        0,
+        "aiming is free, so the quote must be zero TU",
+    );
+}
 
 #[test]
 fn set_stance_charges_exactly_stance_tu_cost() {

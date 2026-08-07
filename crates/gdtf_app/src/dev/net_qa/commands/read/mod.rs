@@ -1,5 +1,6 @@
 pub(crate) mod app_phase;
 pub(in crate::dev::net_qa) mod availability;
+pub(crate) mod battle_cost;
 pub(crate) mod battle_inspect;
 pub(crate) mod battle_offers;
 pub(crate) mod battle_roster;
@@ -17,6 +18,7 @@ pub(crate) mod ui_focus;
 mod test;
 
 pub(crate) use app_phase::AppPhase;
+pub(crate) use battle_cost::BattleCost;
 pub(crate) use battle_inspect::BattleInspect;
 pub(crate) use battle_offers::BattleOffers;
 pub(crate) use battle_roster::BattleRoster;

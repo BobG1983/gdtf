@@ -10,6 +10,7 @@ use crate::dev::net_qa::{
         act::{ActCompleteNet, ActRefusalNet, ActReply, ActSeqNet, NetIntent, SelectReply},
         act_payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet},
         cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet},
+        cost::{CostActNet, CostLegalNet, CostRefusalNet},
         deed::{ActDeedKindNet, MoveRejectionNet},
         inspect::{
             CoverBlockNet, CoverHpNet, HardnessNet, HeightBandNet, InspectShownNet, ProtectionNet,
@@ -144,6 +145,10 @@ fn every_wire_type_traces_a_usable_shape() {
 
     assert_schema_is_usable::<ModeKindNet>("ModeKindNet");
     assert_schema_is_usable::<ViewModeNet>("ViewModeNet");
+
+    assert_schema_is_usable::<CostActNet>("CostActNet");
+    assert_schema_is_usable::<CostLegalNet>("CostLegalNet");
+    assert_schema_is_usable::<CostRefusalNet>("CostRefusalNet");
 
     assert_schema_is_usable::<FireModeIndex>("FireModeIndex");
     assert_schema_is_usable::<SituationRef>("SituationRef");

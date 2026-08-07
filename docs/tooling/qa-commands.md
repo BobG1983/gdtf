@@ -222,10 +222,10 @@ run(host="game", command="battle.start", arguments="(seed: Some(42))")
 run(host="game", command="wait", arguments="(condition: BattleDecided)")
 ```
 
-The game offers forty-eight commands today: `app.phase`, `capture.screenshot`,
+The game offers forty-nine commands today: `app.phase`, `capture.screenshot`,
 `settings.read`, `ui.focus`, `playback.state`, `battle.roster`, `battle.turn`,
 `battle.selection`, `battle.offers`, `battle.inspect`, `battle.sightline`, `battle.visible`,
-`log.read`, `battle.start`, `battle.flee`, `procgen.step`, `wait`, `act.select`,
+`battle.cost`, `log.read`, `battle.start`, `battle.flee`, `procgen.step`, `wait`, `act.select`,
 `act.select_next`, `act.select_prev`, `act.select_clear`, `act.move`, `act.fire`,
 `act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing`, `act.end_turn`,
 `act.melee`, `act.shove`, `act.stabilize`, `act.execute`, `act.throw_grenade`,
@@ -239,7 +239,7 @@ The game offers forty-eight commands today: `app.phase`, `capture.screenshot`,
 `ui.focus` reports the focused widget and the widgets the current screen registered as
 focusable, and `playback.state` reports whether the screen has caught up with the act log.
 
-The eight battle reads are `Immediate` too, and report only what the player can see.
+The nine battle reads are `Immediate` too, and report only what the player can see.
 `battle.roster` lists every player card plus the enemies the squad can currently see, each
 card naming the cell its sprite stands on — the
 reduction is which enemies appear, not which fields a card carries, since the stat block
@@ -250,7 +250,10 @@ lists the contextual buttons the panel is showing with the target each would act
 `battle.inspect` reads one cell exactly as the inspect panel draws it, `battle.sightline`
 answers whether the squad can see a cell and whether the selected shooter could engage it,
 `battle.visible`
-lists the enemies, doors and cover inside the lit area, and `log.read` returns a window of
+lists the enemies, doors and cover inside the lit area, `battle.cost` quotes what one act
+would charge one ganger in TU and whether the sim would allow it — every number is the
+sim's own cost helper and every verdict its own legality check, and nothing in the battle
+moves — and `log.read` returns a window of
 the act log — `since` picks where it starts, `cap` how many lines it keeps, and the reply
 brackets the window with the log's `head` and `oldest` so a caller can page.
 
@@ -269,7 +272,10 @@ has already moved it to, and no read ever reports fog the screen has not drawn y
 rest read live state on purpose, because what they report is not drawn from a shadow:
 `battle.turn` and `battle.offers` report resources the sim and the panel write each frame,
 the `can_engage` half of `battle.sightline` asks the sim's own firing-arc gate,
-`battle.selection` reports the pointer's live selection, and `log.read` reads the act log
+`battle.selection` reports the pointer's live selection, `battle.cost` prices from the live
+tuning, grids, squad fog and ganger state the act itself would be charged against — a quote
+taken while playback is behind is what the sim would charge now, not what the sprite's cell
+suggests — and `log.read` reads the act log
 with no fog filter, matching a combat log that filters none either.
 
 Each read refuses `Unavailable` with code `WrongState` off the battle screen. `log.read`
@@ -277,7 +283,9 @@ is the one whose phase gate leaves a window open — the battlescape is up while
 is still generating, and the act log arrives with the rest of the battle runtime — so a
 call inside that window is refused `MissingModel` rather than answered with an empty log
 that would read as "nothing has happened".
-`battle.sightline` further needs the battle's running phase, and `battle.offers`,
+`battle.sightline` and `battle.cost` further need the battle's running phase — `battle.cost`
+answers `MissingModel` inside that phase whenever the tuning, grids and fog it prices from
+are not loaded — and `battle.offers`,
 `battle.inspect` and `battle.visible` need a running battle whose sim state is loaded —
 without it the offer and inspect systems never run, so answering would report "nothing
 offered" where the truth is "not computed yet". Those three words are pinned command by

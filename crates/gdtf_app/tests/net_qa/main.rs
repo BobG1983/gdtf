@@ -15,6 +15,7 @@ mod act_stance;
 mod act_support;
 mod app_phase_depth;
 mod battle_controls;
+mod battle_cost;
 mod battle_fixture;
 mod battle_flee;
 mod battle_inspect;
