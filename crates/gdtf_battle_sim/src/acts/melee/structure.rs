@@ -1,14 +1,13 @@
 //! Melee against cover / structure cells.
 
-use super::{MeleeCombatants, MeleeOutcomes, MeleeWorld, snapshot::AttackerSnapshot};
+use super::{
+    MeleeCombatants, MeleeOutcomes, MeleeWorld,
+    cost::{MeleeReach, can_melee},
+    snapshot::AttackerSnapshot,
+};
 use crate::{
-    acts::{downed::is_8_adjacent, request::MeleeResolved},
-    cover::CoverEvent,
-    ganger::Position,
-    melee::resolve_structural_melee,
-    metric::CellLevel,
-    occupancy_sync::CoverDestroyed,
-    tu::spend_tu,
+    acts::request::MeleeResolved, cover::CoverEvent, melee::resolve_structural_melee,
+    metric::CellLevel, occupancy_sync::CoverDestroyed, tu::spend_tu,
 };
 
 /// Spend TU and smash adjacent cover/structure.
@@ -19,7 +18,7 @@ pub(super) fn resolve_structure_melee(
     world: &mut MeleeWorld,
     outcomes: &mut MeleeOutcomes,
 ) {
-    if !*is_8_adjacent(attacker.position, Position::new(at)) {
+    if !*can_melee(attacker.reach(), MeleeReach::structure(at)) {
         return;
     }
 

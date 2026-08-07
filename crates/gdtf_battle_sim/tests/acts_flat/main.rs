@@ -2,3 +2,4 @@
 
 mod landed_hit;
 mod open_door_act;
+mod open_door_cost;

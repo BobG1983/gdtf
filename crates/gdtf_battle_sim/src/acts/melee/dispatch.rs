@@ -4,6 +4,7 @@ use bevy::prelude::MessageReader;
 
 use super::{
     MeleeArms, MeleeCombatants, MeleeOutcomes, MeleeRngs, MeleeWorld,
+    cost::melee_tu_cost,
     ganger::resolve_ganger_melee,
     snapshot::{AttackerSnapshot, MeleeStreams},
     structure::resolve_structure_melee,
@@ -11,7 +12,6 @@ use super::{
 use crate::{
     acts::request::{MeleeRequested, MeleeTarget},
     armor::WornArmor,
-    ganger::Tu,
     melee::MeleeWeaponHit,
     weapon::DamageType,
 };
@@ -58,7 +58,7 @@ pub fn dispatch_melee(
             damage_type,
             fatal_bias,
         };
-        let tu_cost = Tu::new(u8::try_from(*fight_mode.primary().tu_cost).unwrap_or(u8::MAX));
+        let tu_cost = melee_tu_cost(fight_mode);
         let strike_damage_type: DamageType = *damage_type;
 
         let attacker = AttackerSnapshot {
