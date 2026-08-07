@@ -24,13 +24,20 @@ pub(in crate::dev::net_qa) const fn battle_is_running(facts: GameFacts) -> Comma
 
 /// Available only when a running battle also has its sim state loaded.
 pub(in crate::dev::net_qa) const fn presenter_is_ready(facts: GameFacts) -> CommandAvailability {
-    match facts.presenter_readiness() {
-        PresenterReadiness::Ready => CommandAvailability::Available,
-        PresenterReadiness::NotReady => refuse(
-            "this reads what the battle panels are showing, and no running battle is loaded for \
-             them to show",
-        ),
-    }
+    ready_or(
+        facts,
+        "this reads what the battle panels are showing, and no running battle is loaded for them \
+         to show",
+    )
+}
+
+/// Available only while a battle is live: running phase, sim state loaded.
+pub(in crate::dev::net_qa) const fn battle_is_live(facts: GameFacts) -> CommandAvailability {
+    ready_or(
+        facts,
+        "this drives the view or the battle controls, and needs a running battle with its sim \
+         state loaded",
+    )
 }
 
 /// Available only in a running battle whose screen has caught up with the act log.
@@ -50,6 +57,13 @@ pub(in crate::dev::net_qa) const fn running_and_caught(facts: GameFacts) -> Comm
                  it has caught up",
             ),
         },
+    }
+}
+
+const fn ready_or(facts: GameFacts, note: &'static str) -> CommandAvailability {
+    match facts.presenter_readiness() {
+        PresenterReadiness::Ready => CommandAvailability::Available,
+        PresenterReadiness::NotReady => refuse(note),
     }
 }
 

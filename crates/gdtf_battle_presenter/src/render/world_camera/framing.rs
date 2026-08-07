@@ -8,6 +8,7 @@ use gdtf_battle_sim::{
 };
 
 use super::{
+    focus::set_camera_focus,
     marker::WorldCamera,
     tuning::{BoundsMarginWorld, PanTuning},
 };
@@ -115,8 +116,7 @@ pub fn frame_camera_on_units(
         return;
     };
     for mut transform in &mut cameras {
-        transform.translation.x = focus.x;
-        transform.translation.y = focus.y;
+        set_camera_focus(&mut transform, focus);
     }
     *already_framed = true;
 }
@@ -140,7 +140,6 @@ pub fn clamp_camera_to_bounds(
         };
         let current = Vec2::new(transform.translation.x, transform.translation.y);
         let clamped = clamp_camera(current, half_viewport, world_min, world_max);
-        transform.translation.x = clamped.x;
-        transform.translation.y = clamped.y;
+        set_camera_focus(&mut transform, clamped);
     }
 }

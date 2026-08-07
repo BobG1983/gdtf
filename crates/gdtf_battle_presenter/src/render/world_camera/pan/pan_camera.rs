@@ -5,6 +5,7 @@ use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
 use super::{
     super::{
         dwell::{PanEdgeDwellState, should_edge_pan_after_dwell},
+        focus::pan_camera_by,
         marker::WorldCamera,
         tuning::{DwellDelaySeconds, PanTuning},
     },
@@ -88,8 +89,6 @@ pub fn pan_camera(
         if velocity == Vec2::ZERO {
             continue;
         }
-        let delta = velocity * time.delta_secs();
-        transform.translation.x += delta.x;
-        transform.translation.y += delta.y;
+        pan_camera_by(&mut transform, velocity * time.delta_secs());
     }
 }

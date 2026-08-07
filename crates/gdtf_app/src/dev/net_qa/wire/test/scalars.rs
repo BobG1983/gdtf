@@ -1,7 +1,7 @@
 //! lost `#[serde(transparent)]`: RON round-trips a non-transparent newtype perfectly well,
 use super::assert_ron_round_trip;
 use crate::dev::net_qa::wire::{
-    misc::{FireModeIndex, FrameDelay, ModeKindNet, RequestId, SeedNet, SituationRef},
+    misc::{FireModeIndex, FrameDelay, ModeKindNet, RequestId, SeedNet, SituationRef, ViewModeNet},
     pointer::{MouseButtonNet, PointerPosNet, PointerXNet, PointerYNet},
     shell::{CaughtUpNet, SoundNet},
     token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
@@ -40,6 +40,17 @@ fn every_fire_mode_kind_round_trips() {
         assert_ron_round_trip(&kind);
     }
     assert_eq!(encoded(&ModeKindNet::Burst), "Burst");
+}
+
+#[test]
+fn every_view_mode_round_trips() {
+    for mode in [ViewModeNet::DownToActive, ViewModeNet::FullView] {
+        match mode {
+            ViewModeNet::DownToActive | ViewModeNet::FullView => {}
+        }
+        assert_ron_round_trip(&mode);
+    }
+    assert_eq!(encoded(&ViewModeNet::FullView), "FullView");
 }
 
 #[test]

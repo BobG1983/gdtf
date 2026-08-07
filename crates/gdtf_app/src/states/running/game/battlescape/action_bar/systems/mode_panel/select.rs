@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
-use gdtf_battle_sim::weapon::{FireMode, FireModeSpec, MeleeWeapon, ModeKind, WieldedBy, Wields};
+use gdtf_battle_input::{SelectedFireMode, SelectedShooter, mode_spec_for};
+use gdtf_battle_sim::weapon::{FireMode, MeleeWeapon, WieldedBy, Wields};
 use gdtf_ui::{ActiveSegment, SegmentSelected, SegmentedControl};
 
 use super::order::{mode_for_index, mode_index};
@@ -40,20 +40,4 @@ pub(in crate::states::running::game::battlescape) fn sync_mode_active_segment(
     for mut active in &mut controls {
         active.set_if_neq(want);
     }
-}
-
-fn mode_spec_for(
-    selected: SelectedShooter,
-    wields: &Query<&Wields>,
-    weapons: &Query<&FireMode, With<WieldedBy>>,
-    melee: &Query<(), With<MeleeWeapon>>,
-    kind: ModeKind,
-) -> Option<FireModeSpec> {
-    let shooter = (*selected)?;
-    let weapon = wields
-        .get(shooter)
-        .ok()
-        .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))?;
-    let fire_mode = weapons.get(weapon).ok()?;
-    fire_mode.iter().find(|spec| spec.kind == kind).copied()
 }

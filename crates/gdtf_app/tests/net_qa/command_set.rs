@@ -24,7 +24,7 @@ fn the_game_command_set_is_conformant() {
 }
 
 #[test]
-fn the_game_offers_the_reads_the_lifecycle_the_classic_and_contextual_acts_and_raw_input() {
+fn the_game_offers_the_reads_the_lifecycle_the_acts_raw_input_and_the_view_and_battle_controls() {
     assert_eq!(
         game_command_names(),
         vec![
@@ -70,6 +70,12 @@ fn the_game_offers_the_reads_the_lifecycle_the_classic_and_contextual_acts_and_r
             CommandName::from_static("input.focus_step"),
             CommandName::from_static("input.activate"),
             CommandName::from_static("input.click_cell"),
+            CommandName::from_static("view.level_up"),
+            CommandName::from_static("view.level_down"),
+            CommandName::from_static("view.toggle_full_view"),
+            CommandName::from_static("view.pan"),
+            CommandName::from_static("view.look_at"),
+            CommandName::from_static("battle.set_fire_mode"),
         ],
         "the published list is part of the wire contract and does not change with the build's \
          features — only `procgen.step`'s availability code does",

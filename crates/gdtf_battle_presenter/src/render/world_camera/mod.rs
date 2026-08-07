@@ -1,4 +1,5 @@
 mod dwell;
+mod focus;
 mod framing;
 mod marker;
 mod pan;
@@ -8,6 +9,7 @@ mod tuning;
 mod test;
 
 pub use dwell::{DwellElapsed, PanEdgeDwellState, should_edge_pan_after_dwell};
+pub use focus::{pan_camera_by, set_camera_focus};
 pub use framing::{camera_focus, clamp_camera, clamp_camera_to_bounds, frame_camera_on_units};
 pub use marker::{WORLD_RENDER_LAYER, WorldCamera, despawn_world_camera, spawn_world_camera};
 pub use pan::{
