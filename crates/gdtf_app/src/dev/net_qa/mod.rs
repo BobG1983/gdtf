@@ -24,5 +24,5 @@ pub use config::{
 #[cfg(feature = "headless_test")]
 pub use facts::{
     BattleActivity, BattleModel, BattleScreen, GameFacts, GameFactsParam, PlaybackCatchUp,
-    PresenterReadiness, StepperActivity,
+    PresenterReadiness, StepperActivity, TurnOwner,
 };

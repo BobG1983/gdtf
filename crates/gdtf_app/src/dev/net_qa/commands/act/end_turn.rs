@@ -15,7 +15,10 @@ use super::{
     support::{ActClaim, ActSettle, NoArgs},
 };
 use crate::dev::net_qa::{
-    commands::{read::availability::running_and_caught, wait::probe::TurnChangeCount},
+    commands::{
+        read::availability::{running_and_caught, turn_is_the_players},
+        wait::probe::TurnChangeCount,
+    },
     facts::GameFacts,
     wire::act::{ActReply, ActSeqNet},
 };
@@ -37,14 +40,19 @@ impl QaCommand for ActEndTurn {
     const DEFERRED_BUDGET: DeferredBudget = DeferredBudget::new(Duration::from_secs(30));
     const NAME: CommandName = CommandName::from_static("act.end_turn");
     const SUMMARY: CommandSummary = CommandSummary::from_static(
-        "End the acting gang's turn, taking the same path the end-turn button does. The reply is \
-         held back until the turn comes round to the player again, so it lands after the enemy \
-         has finished acting, and brackets the act log across everything that happened in between.",
+        "End the acting gang's turn, taking the same path the end-turn button does. It refuses \
+         `WrongState` while another faction is acting, because no player path ends someone \
+         else's turn — wait on `TurnChanged` to get past an enemy turn. The reply is held back \
+         until the turn comes round to the player again, so it lands after the enemy has \
+         finished acting, and brackets the act log across everything that happened in between.",
     );
     const TIMING: CommandTiming = CommandTiming::Deferred;
 
     fn availability(facts: &GameFacts) -> CommandAvailability {
-        running_and_caught(*facts)
+        match running_and_caught(*facts) {
+            CommandAvailability::Available => turn_is_the_players(*facts),
+            refused @ CommandAvailability::Unavailable { .. } => refused,
+        }
     }
 
     fn register_handler(app: &mut App) {

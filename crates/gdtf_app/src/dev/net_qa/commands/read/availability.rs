@@ -3,7 +3,7 @@
 use gdtf_qa_protocol::command::{CommandAvailability, RefusalNote, UnavailableCode};
 
 use crate::dev::net_qa::facts::{
-    BattleActivity, BattleScreen, GameFacts, PlaybackCatchUp, PresenterReadiness,
+    BattleActivity, BattleScreen, GameFacts, PlaybackCatchUp, PresenterReadiness, TurnOwner,
 };
 
 /// Available while the battle screen is up, at any battlescape phase.
@@ -57,6 +57,17 @@ pub(in crate::dev::net_qa) const fn running_and_caught(facts: GameFacts) -> Comm
                  it has caught up",
             ),
         },
+    }
+}
+
+/// Available only while the faction the player commands is the one acting.
+pub(in crate::dev::net_qa) const fn turn_is_the_players(facts: GameFacts) -> CommandAvailability {
+    match facts.turn_owner() {
+        TurnOwner::Player => CommandAvailability::Available,
+        TurnOwner::OtherFaction => refuse(
+            "the turn belongs to another faction, and no player path ends someone else's turn; \
+             wait on `TurnChanged` to get past it",
+        ),
     }
 }
 
