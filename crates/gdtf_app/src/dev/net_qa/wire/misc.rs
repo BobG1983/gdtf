@@ -1,6 +1,7 @@
 //! Misc scalar and command payloads on the wire.
 
 use bevy::prelude::Deref;
+use gdtf_battle_presenter::ViewMode;
 use gdtf_battle_sim::{procgen::ProcgenStage, weapon::ModeKind};
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +24,36 @@ impl ModeKindNet {
             ModeKind::Single => Self::Single,
             ModeKind::Burst => Self::Burst,
             ModeKind::Full => Self::Full,
+        }
+    }
+
+    /// Convert back into the sim's fire-mode kind.
+    #[must_use]
+    pub const fn to_sim(self) -> ModeKind {
+        match self {
+            Self::Single => ModeKind::Single,
+            Self::Burst => ModeKind::Burst,
+            Self::Full => ModeKind::Full,
+        }
+    }
+}
+
+/// Which storeys the battle view is drawing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ViewModeNet {
+    /// Only storeys at or below the active level.
+    DownToActive,
+    /// Every storey, with context treatment.
+    FullView,
+}
+
+impl ViewModeNet {
+    /// Mirror the presenter's view mode.
+    #[must_use]
+    pub const fn from_view(mode: ViewMode) -> Self {
+        match mode {
+            ViewMode::DownToActive => Self::DownToActive,
+            ViewMode::FullView => Self::FullView,
         }
     }
 }

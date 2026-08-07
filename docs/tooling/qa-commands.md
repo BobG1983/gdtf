@@ -222,7 +222,7 @@ run(host="game", command="battle.start", arguments="(seed: Some(42))")
 run(host="game", command="wait", arguments="(condition: BattleDecided)")
 ```
 
-The game offers forty-two commands today: `app.phase`, `capture.screenshot`,
+The game offers forty-eight commands today: `app.phase`, `capture.screenshot`,
 `settings.read`, `ui.focus`, `playback.state`, `battle.roster`, `battle.turn`,
 `battle.selection`, `battle.offers`, `battle.inspect`, `battle.sightline`, `battle.visible`,
 `log.read`, `battle.start`, `battle.flee`, `procgen.step`, `wait`, `act.select`,
@@ -230,8 +230,9 @@ The game offers forty-two commands today: `app.phase`, `capture.screenshot`,
 `act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing`, `act.end_turn`,
 `act.melee`, `act.shove`, `act.stabilize`, `act.execute`, `act.throw_grenade`,
 `act.open_door`, `act.enter_emplacement`, `act.exit_emplacement`, `input.press_key`,
-`input.hover`, `input.set_focus`, `input.focus_step`, `input.activate`
-and `input.click_cell`.
+`input.hover`, `input.set_focus`, `input.focus_step`, `input.activate`,
+`input.click_cell`, `view.level_up`, `view.level_down`, `view.toggle_full_view`,
+`view.pan`, `view.look_at` and `battle.set_fire_mode`.
 
 `settings.read`, `ui.focus` and `playback.state` are the shell reads — they take `()`, are
 `Immediate`, and answer before a battle: `settings.read` reports the Options values,
@@ -485,6 +486,23 @@ door into the sim: an act it decides goes onto the same `PendingActIntent` bus e
 — a click that only selects a ganger or pins a target pushes nothing — it answers the same
 `ActReply` window, and it needs the same `Running` plus `Caught` state the eleven `act.*`
 commands need.
+
+The six view and battle controls all need a running battle with its sim state loaded, and
+each takes the path the matching keyboard or panel control takes. `view.level_up`,
+`view.level_down` and `view.toggle_full_view` push `LevelUp`, `LevelDown` and
+`ToggleFullView` onto the same `PendingActIntent` bus the level and full-view keys push, and
+answer `Immediate` with the storey and view mode the frame settles on — stepping past the
+ground floor or the top storey clamps and the reply reports the unchanged value. Neither
+needs a caught-up screen, because the view moves while the act log is still playing back.
+`view.pan` moves the camera by a signed cell offset and `view.look_at` centres it on a cell;
+both write the transform through the one function every camera mover uses, both are
+`Deferred` until the frame's bounds clamp has run, and both then answer with the cell the
+camera actually ended on — absent when it was left off the grid. `view.pan` is not a second
+way to hold W: the keys move by speed times frame time, while the offset asked for here is
+the offset taken. `battle.set_fire_mode` writes the same `SelectedFireMode` resource the
+action bar's mode panel writes, through the same lookup, and refuses `MissingModel` with a
+note saying which precondition is missing when nothing is selected, the shooter holds no
+gun, or the gun does not offer that mode.
 
 Args, replies and published shapes are all **RON**. `arguments` is a string of compact RON
 shaped by that command's own `schemas.arguments`; a command that takes none is `"()"`. The
