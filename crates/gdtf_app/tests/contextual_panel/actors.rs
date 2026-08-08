@@ -4,8 +4,11 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
+    acts::shove_tu_cost,
     effects::bleed::BleedingOut,
+    ganger::Tu,
     prelude::{Cell, CellLevel, Faction, Level, LifeState, Position, Stance, StanceKind},
+    tuning::CombatTuning,
 };
 
 use super::harness::*;
@@ -14,8 +17,19 @@ pub(crate) fn at(x: i32, y: i32) -> Position {
     Position::new(CellLevel::new(Cell::new(x, y), Level::new(0)))
 }
 
+/// What one shove would charge, taken from the sim's own cost helper against the live tuning.
+pub(crate) fn shove_cost(app: &App) -> Tu {
+    app.world()
+        .get_resource::<CombatTuning>()
+        .map_or_else(|| Tu::new(0), shove_tu_cost)
+}
+
 pub(crate) fn spawn_actor(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
-    let actor = app.world_mut().spawn((at(x, y), Faction::new(gang))).id();
+    let pool = shove_cost(app);
+    let actor = app
+        .world_mut()
+        .spawn((at(x, y), Faction::new(gang), pool))
+        .id();
     app.world_mut().insert_resource(SelectedShooter::new(actor));
     actor
 }

@@ -1,7 +1,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::contextual::{
-    EnterEmplacementAct, ExecuteAct, ExitEmplacementAct, MeleeAct, OpenDoorAct, ShoveAct,
-    StabilizeAct, ThrowGrenadeAct,
+    ContextualAct, EnterEmplacementAct, ExecuteAct, ExitEmplacementAct, MeleeAct, OpenDoorAct,
+    ShoveAct, StabilizeAct, ThrowGrenadeAct,
 };
 use gdtf_battle_sim::acts::MeleeTarget;
 use gdtf_net_qa_transport::PendingQueue;
@@ -18,7 +18,7 @@ use crate::{
         facts::GameFacts,
         wire::{
             cell::CellLevelNet,
-            offer::{ContextualActNet, ContextualOfferNet, OfferTargetNet},
+            offer::{ContextualActNet, ContextualOfferNet, OfferPressableNet, OfferTargetNet},
             token::{DoorToken, EmplacementToken, GangerToken},
         },
     },
@@ -47,8 +47,9 @@ impl QaCommand for BattleOffers {
     const NAME: CommandName = CommandName::from_static("battle.offers");
     const SUMMARY: CommandSummary = CommandSummary::from_static(
         "Read the contextual buttons the panel is offering this frame, each with the target it \
-         would act on. These are the same per-act resources the buttons read, not a second \
-         computation, so an offer here is a button on screen.",
+         would act on and whether the panel shows it as pressable. These are the same per-act \
+         resources the buttons read, not a second computation, so an offer here is a button on \
+         screen, and one that is not pressable is greyed out because the actor cannot afford it.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -87,56 +88,74 @@ impl OfferedActs<'_> {
         push(
             &mut offers,
             ContextualActNet::Execute,
-            self.execute.as_deref().and_then(ganger),
+            self.execute.as_deref(),
+            ganger,
         );
         push(
             &mut offers,
             ContextualActNet::Stabilize,
-            self.stabilize.as_deref().and_then(ganger),
+            self.stabilize.as_deref(),
+            ganger,
         );
         push(
             &mut offers,
             ContextualActNet::Melee,
-            self.melee.as_deref().and_then(melee),
+            self.melee.as_deref(),
+            melee,
         );
         push(
             &mut offers,
             ContextualActNet::Shove,
-            self.shove.as_deref().and_then(ganger),
+            self.shove.as_deref(),
+            ganger,
         );
         push(
             &mut offers,
             ContextualActNet::OpenDoor,
-            self.open_door.as_deref().and_then(door),
+            self.open_door.as_deref(),
+            door,
         );
         push(
             &mut offers,
             ContextualActNet::EnterEmplacement,
-            self.enter_emplacement.as_deref().and_then(emplacement),
+            self.enter_emplacement.as_deref(),
+            emplacement,
         );
         push(
             &mut offers,
             ContextualActNet::ExitEmplacement,
-            self.exit_emplacement.as_deref().and_then(emplacement),
+            self.exit_emplacement.as_deref(),
+            emplacement,
         );
         push(
             &mut offers,
             ContextualActNet::ThrowGrenade,
-            self.throw_grenade.as_deref().and_then(cell),
+            self.throw_grenade.as_deref(),
+            cell,
         );
         offers.sort_unstable_by_key(|offer| offer.act);
         offers
     }
 }
 
-fn push(
+/// Push one act's entry, carrying the target and the pressable state the panel wrote.
+fn push<A: ContextualAct>(
     offers: &mut Vec<ContextualOfferNet>,
     act: ContextualActNet,
-    target: Option<OfferTargetNet>,
+    offer: Option<&ContextualOffer<A>>,
+    as_target: impl Fn(&ContextualOffer<A>) -> Option<OfferTargetNet>,
 ) {
-    if let Some(target) = target {
-        offers.push(ContextualOfferNet::new(act, target));
-    }
+    let Some(offer) = offer else {
+        return;
+    };
+    let Some(target) = as_target(offer) else {
+        return;
+    };
+    offers.push(ContextualOfferNet::new(
+        act,
+        target,
+        OfferPressableNet::new(*offer.pressable()),
+    ));
 }
 
 /// A ganger-targeted offer as the wire names it.

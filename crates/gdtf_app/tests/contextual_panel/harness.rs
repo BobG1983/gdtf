@@ -1,8 +1,22 @@
-use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
+use bevy::{
+    ecs::entity::Entity,
+    input::{
+        ButtonState,
+        keyboard::{Key, KeyboardInput},
+    },
+    prelude::*,
+    state::state::State,
+    ui::BackgroundColor,
+};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
-use gdtf_battle_sim::{injuries::InjuryRegistry, tuning::CombatTuning, weapon::WeaponRegistry};
+use gdtf_battle_sim::{
+    ganger::Tu, injuries::InjuryRegistry, tuning::CombatTuning, weapon::WeaponRegistry,
+};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
-use gdtf_ui::theme::default_theme;
+use gdtf_ui::{
+    DisabledButton,
+    theme::{GdtfTheme, default_theme},
+};
 
 pub(crate) const BUDGET: u32 = 96;
 
@@ -82,4 +96,38 @@ pub(crate) fn visibility<M: Component>(app: &mut App) -> Option<Visibility> {
 
 pub(crate) fn parent_of(app: &App, child: Entity) -> Option<Entity> {
     app.world().get::<ChildOf>(child).map(ChildOf::parent)
+}
+
+pub(crate) fn press_digit(app: &mut App, key_code: KeyCode) {
+    app.world_mut().write_message(KeyboardInput {
+        key_code,
+        logical_key: Key::Character(" ".into()),
+        state: ButtonState::Pressed,
+        text: None,
+        repeat: false,
+        window: Entity::PLACEHOLDER,
+    });
+}
+
+pub(crate) fn set_pool(app: &mut App, actor: Entity, tu: Tu) {
+    if let Ok(mut entity) = app.world_mut().get_entity_mut(actor) {
+        entity.insert(tu);
+    }
+}
+
+pub(crate) fn button_greyed<M: Component>(app: &mut App) -> bool {
+    single_with::<M>(app).is_some_and(|button| app.world().get::<DisabledButton>(button).is_some())
+}
+
+pub(crate) fn button_fill<M: Component>(app: &mut App) -> Option<Color> {
+    let button = single_with::<M>(app)?;
+    app.world()
+        .get::<BackgroundColor>(button)
+        .map(|background| background.0)
+}
+
+/// The theme fill a button carries while greyed out, and the one it carries enabled and idle.
+pub(crate) fn greyed_and_idle_fills(app: &App) -> Option<(Color, Color)> {
+    let theme = app.world().get_resource::<GdtfTheme>()?;
+    Some((*theme.button.disabled, *theme.button.color))
 }

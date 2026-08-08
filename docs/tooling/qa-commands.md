@@ -246,7 +246,9 @@ reduction is which enemies appear, not which fields a card carries, since the st
 already draws a visible enemy's whole card —
 `battle.turn` names the acting gang and the player's, `battle.selection` reports the
 selected shooter, its fire mode and the hovered and pinned inspect cells, `battle.offers`
-lists the contextual buttons the panel is showing with the target each would act on,
+lists the contextual buttons the panel is showing, each with the target it would act on and
+a `pressable` flag that is false when the panel greys the button out because the actor
+cannot afford the act,
 `battle.inspect` reads one cell exactly as the inspect panel draws it, `battle.sightline`
 answers whether the squad can see a cell and whether the selected shooter could engage it,
 `battle.visible`
@@ -408,12 +410,15 @@ and they all take `()`.
 
 **None of them takes a target, because no press does either.** The contextual panel offers
 exactly one target per act family, written by that family's offer scan, and a mouse click or
-a digit slot key pushes whatever the offer holds. A command that took a target could do
+a digit slot key pushes whatever the offer holds — unless the panel has greyed that button
+out, which makes it ignore both. A command that took a target could do
 something no player can. So an agent chooses by moving and selecting and then reading
 `battle.offers` — exactly as a player chooses by moving and looking at the panel. Each
 command pushes the offered target onto the same `PendingContextualIntents` queue the button
 pushes onto, and the sim's own `dispatch_*` is the authoritative gate: nothing on the QA side
-re-checks adjacency, faction, life state or TU.
+re-checks adjacency, faction, life state or TU. `battle.offers` does report the panel's own
+`pressable` bit, but that is the greyed-out state the button already carries, read off the
+same offer resource — not a second legality check living on the QA side.
 
 `act.throw_grenade` is the one that needs more than a selection: its offer scan reads the
 hovered cell, and it only offers while the shooter wields an arcing ranged weapon —
@@ -429,9 +434,15 @@ command refuses `NoOffer`.
 They are `Immediate`, they need the same `Running` plus `Caught` state the classic acts need,
 and they answer `ContextualReply`: `Accepted { from_seq, to_seq, complete, target }`, where
 `target` is the same `OfferTargetNet` `battle.offers` reported, or
-`Refused { reason: NoOffer }` when the family had nothing on offer. There is no unaffordable
-or illegal refusal: every contextual dispatch in the sim rejects by doing nothing and
-emitting nothing, so a call the sim declined comes back with `from_seq` equal to `to_seq`.
+`Refused { reason: NoOffer }` when the family had nothing on offer. There is still no
+unaffordable or illegal refusal on these commands: every contextual dispatch in the sim
+rejects by doing nothing and emitting nothing, so a call the sim declined comes back with
+`from_seq` equal to `to_seq`. Read `battle.offers` first to tell the two apart — an offer
+with `pressable: false` is a button on screen the actor cannot pay for. The panel makes that
+button ignore a click and its digit key; the command does not copy the state, so `act.*`
+pushes the target anyway and the sim declines in silence. Shove and melee are the two
+families that compute it today; the other six report `pressable: true`, which is what their
+buttons show.
 
 **An empty window is not always a decline.** `ActDeed` has no variant for opening a door or
 entering and leaving an emplacement, so `act.open_door`, `act.enter_emplacement` and

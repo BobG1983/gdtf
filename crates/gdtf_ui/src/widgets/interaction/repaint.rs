@@ -1,4 +1,4 @@
-//! Repaint buttons after `ActiveButton` is removed or the theme changes.
+//! Repaint buttons after `ActiveButton` or `DisabledButton` is removed, or the theme changes.
 
 use bevy::{
     prelude::*,
@@ -35,6 +35,25 @@ pub fn repaint_deactivated_buttons(
     };
 
     for entity in deactivated.read() {
+        let Ok((interaction, mut background, mut border)) = buttons.get_mut(entity) else {
+            continue;
+        };
+        background.0 = interaction_fill(&theme, *interaction);
+        *border = UiBorderColor::all(*theme.button.border_color);
+    }
+}
+
+/// Restore interaction colors when `DisabledButton` is removed.
+pub fn repaint_enabled_buttons(
+    theme: Option<Res<GdtfTheme>>,
+    mut enabled: RemovedComponents<DisabledButton>,
+    mut buttons: Query<DeactivationVisuals, DeactivatedButton>,
+) {
+    let Some(theme) = theme else {
+        return;
+    };
+
+    for entity in enabled.read() {
         let Ok((interaction, mut background, mut border)) = buttons.get_mut(entity) else {
             continue;
         };

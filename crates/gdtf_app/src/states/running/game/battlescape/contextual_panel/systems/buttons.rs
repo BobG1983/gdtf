@@ -74,6 +74,23 @@ pub(in crate::states::running::game::battlescape) fn sync_contextual_button_visi
     set_button_shown(&mut buttons, offer.is_offered());
 }
 
+pub(in crate::states::running::game::battlescape) fn sync_contextual_button_disabled<
+    A: ContextualPanelAct,
+>(
+    mut commands: Commands,
+    offer: Res<ContextualOffer<A>>,
+    buttons: Query<(Entity, Has<DisabledButton>), With<A::Marker>>,
+) {
+    let grey_out = !*offer.pressable();
+    for (button, currently) in &buttons {
+        if grey_out && !currently {
+            commands.entity(button).insert(DisabledButton);
+        } else if !grey_out && currently {
+            commands.entity(button).remove::<DisabledButton>();
+        }
+    }
+}
+
 pub(in crate::states::running::game::battlescape) fn press_contextual_button<
     A: ContextualPanelAct,
 >(

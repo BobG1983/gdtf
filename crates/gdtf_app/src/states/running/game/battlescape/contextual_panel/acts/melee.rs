@@ -1,19 +1,21 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::{SelectedShooter, contextual::MeleeAct};
 use gdtf_battle_sim::{
-    acts::{MeleeTarget, downed::is_8_adjacent},
+    acts::{MeleeTarget, downed::is_8_adjacent, melee_tu_cost},
     cover::CoverLedger,
-    ganger::{Facing, Faction, LifeState, Position, Stance, StanceKind},
+    ganger::{Facing, Faction, LifeState, Position, Stance, StanceKind, Tu},
     los::{Observer, PeekOffset, Target, has_los},
     march::MarchGrids,
     prelude::{Cell, CellLevel, OccupancyGrid},
     surface::SurfaceGrid,
+    tu::can_spend_tu,
     tuning::CombatTuning,
+    weapon::{FightMode, MeleeWeapon, Wields},
 };
 use gdtf_ui::ButtonLabel;
 
 use crate::states::running::game::battlescape::contextual_panel::seam::{
-    ContextualOffer, ContextualPanelAct, PanelSlot,
+    ContextualOffer, ContextualPanelAct, OfferPressable, PanelSlot,
 };
 
 crate::support_item! {
@@ -55,11 +57,41 @@ pub(in crate::states::running::game::battlescape) struct LosGrids<'w> {
     tuning:    Option<Res<'w, CombatTuning>>,
 }
 
+/// The TU pool and the wielded melee weapon one strike would be charged against.
+#[derive(SystemParam)]
+pub(in crate::states::running::game::battlescape) struct MeleeStrikeCost<'w, 's> {
+    pools:  Query<'w, 's, &'static Tu>,
+    wields: Query<'w, 's, &'static Wields>,
+    melee:  Query<'w, 's, (), With<MeleeWeapon>>,
+    modes:  Query<'w, 's, &'static FightMode>,
+}
+
+impl MeleeStrikeCost<'_, '_> {
+    /// Whether `actor` can pay for one strike with the melee weapon it wields.
+    fn affords(&self, actor: Entity) -> OfferPressable {
+        let cost = self
+            .wields
+            .get(actor)
+            .ok()
+            .and_then(|wields| wields.melee_weapon(|entity| self.melee.contains(entity)))
+            .and_then(|weapon| self.modes.get(weapon).ok())
+            .map(melee_tu_cost);
+        OfferPressable::new(
+            self.pools
+                .get(actor)
+                .ok()
+                .zip(cost)
+                .is_some_and(|(tu, cost)| *can_spend_tu(tu, cost)),
+        )
+    }
+}
+
 pub(in crate::states::running::game::battlescape) fn offer_melee(
     selected: Res<SelectedShooter>,
     actors: Query<MeleeActorReads>,
     candidates: Query<MeleeCandidates>,
     grids: LosGrids,
+    strike: MeleeStrikeCost,
     mut offer: ResMut<ContextualOffer<MeleeAct>>,
 ) {
     let target = (**selected)
@@ -80,7 +112,8 @@ pub(in crate::states::running::game::battlescape) fn offer_melee(
                 .map(MeleeTarget::Ganger)
                 .or_else(|| scan_melee_structure(*actor_pos, &grids).map(MeleeTarget::Structure))
         });
-    offer.set_if_neq(ContextualOffer::new(target));
+    let pressable = (**selected).map_or(OfferPressable::new(false), |actor| strike.affords(actor));
+    offer.set_if_neq(ContextualOffer::new(target).with_pressable(pressable));
 }
 
 fn scan_melee_target(

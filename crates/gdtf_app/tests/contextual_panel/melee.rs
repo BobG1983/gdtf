@@ -2,13 +2,28 @@ use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::MeleeButton;
 use gdtf_battle_input::{SelectedShooter, contextual::ContextualActSystems};
 use gdtf_battle_sim::{
-    acts::{MeleeRequested, MeleeTarget},
-    ganger::Facing,
+    acts::{MeleeRequested, MeleeTarget, melee_tu_cost},
+    ganger::{Facing, Tu},
     prelude::{Direction, Faction, Position, Stance, StanceKind},
+    weapon::{FightMode, FightModeKind, FightModeSpec, MeleeWeapon, Strikes, TuCost, WieldedBy},
 };
 use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 
 use super::{actors::*, harness::*};
+
+/// One swing mode, so the weapon the actor wields quotes a cost through `melee_tu_cost`.
+fn a_swing() -> FightMode {
+    FightMode::new(vec![FightModeSpec::new(
+        FightModeKind::Swing,
+        TuCost::new(5),
+        Strikes::new(1),
+    )])
+}
+
+/// What one strike with the wielded weapon charges, from the sim's own cost helper.
+fn strike_cost() -> Tu {
+    melee_tu_cost(&a_swing())
+}
 
 fn spawn_melee_actor(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
     let actor = app
@@ -18,8 +33,11 @@ fn spawn_melee_actor(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
             Faction::new(gang),
             Stance::new(StanceKind::Standing),
             Facing::new(Direction::East),
+            strike_cost(),
         ))
         .id();
+    app.world_mut()
+        .spawn((WieldedBy::new(actor), MeleeWeapon, a_swing()));
     app.world_mut().insert_resource(SelectedShooter::new(actor));
     actor
 }
@@ -81,6 +99,107 @@ fn non_adjacent_or_ally_does_not_offer_melee() {
     assert!(
         melee_visible(&mut app),
         "moving the alive enemy into 8-adjacency reveals the Melee button (discriminating)",
+    );
+}
+
+/// An attacker one TU short of a strike, beside a legal target it can see.
+fn an_attacker_one_tu_short() -> (App, Entity) {
+    let mut app = battle_running_app();
+    add_melee_probe(&mut app);
+    let attacker = spawn_melee_actor(&mut app, 5, 5, 0);
+    spawn_alive_enemy(&mut app, 6, 6, 1);
+
+    let cost = strike_cost();
+    assert!(
+        *cost > 0,
+        "a strike must cost something or an unaffordable pool cannot exist",
+    );
+    set_pool(&mut app, attacker, Tu::new(cost.saturating_sub(1)));
+    app.update();
+    (app, attacker)
+}
+
+#[test]
+fn a_pool_below_the_strike_cost_still_offers_the_button_greyed_out() {
+    let (mut app, _attacker) = an_attacker_one_tu_short();
+
+    assert!(
+        melee_visible(&mut app),
+        "an unaffordable strike is still OFFERED — the player sees the act and why it is barred",
+    );
+    assert!(
+        button_greyed::<MeleeButton>(&mut app),
+        "a pool below the wielded weapon's strike cost greys the button out",
+    );
+    let Some((greyed, _idle)) = greyed_and_idle_fills(&app) else {
+        return;
+    };
+    assert_eq!(
+        button_fill::<MeleeButton>(&mut app),
+        Some(greyed),
+        "the greyed button is painted the theme's disabled fill",
+    );
+}
+
+#[test]
+fn neither_a_press_nor_a_slot_key_fires_a_greyed_melee() {
+    let (mut app, _attacker) = an_attacker_one_tu_short();
+    let Some(melee_btn) = single_with::<MeleeButton>(&mut app) else {
+        return;
+    };
+
+    press_ui_button(&mut app, melee_btn);
+    press_digit(&mut app, KeyCode::Digit1);
+    app.update();
+
+    assert!(
+        melees(&app).is_empty(),
+        "a greyed button emits nothing from a mouse press or from its slot key",
+    );
+}
+
+#[test]
+fn raising_the_pool_to_the_cost_re_enables_and_repaints_the_melee_button() {
+    let (mut app, attacker) = an_attacker_one_tu_short();
+    assert!(
+        button_greyed::<MeleeButton>(&mut app),
+        "sanity: the button is greyed before the pool is raised",
+    );
+
+    set_pool(&mut app, attacker, strike_cost());
+    app.update();
+    app.update();
+
+    assert!(
+        melee_visible(&mut app),
+        "a pool that covers the cost keeps the button on screen",
+    );
+    assert!(
+        !button_greyed::<MeleeButton>(&mut app),
+        "a pool that covers the cost drops the disabled marker",
+    );
+    let Some((greyed, idle)) = greyed_and_idle_fills(&app) else {
+        return;
+    };
+    assert_ne!(
+        greyed, idle,
+        "the theme must paint disabled and idle differently or this case cannot discriminate",
+    );
+    assert_eq!(
+        button_fill::<MeleeButton>(&mut app),
+        Some(idle),
+        "re-enabling repaints the button back to its enabled fill",
+    );
+
+    let Some(melee_btn) = single_with::<MeleeButton>(&mut app) else {
+        return;
+    };
+    press_ui_button(&mut app, melee_btn);
+    app.update();
+    assert_eq!(
+        melees(&app).len(),
+        1,
+        "the re-enabled button presses through to exactly one MeleeRequested",
     );
 }
 
