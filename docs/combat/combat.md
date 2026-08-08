@@ -49,7 +49,7 @@ Designed — see [stats.md](stats.md): 7 direct attributes feeding computed comb
 ## Deferred
 
 - Blast radii (square grid is chosen partly to support these later), etc. (Z-levels / verticality is **in scope** — see Arena size above.) Destructible terrain is **in scope** and built (destructible cover + floor/roof slabs — see [resolution.md](resolution.md) §3 / §3.1). **Fall damage is in scope** too: a ganger standing on a slab destroyed under it **falls** and takes damage — see [resolution.md](resolution.md) §3.1 (the *Falls* note).
-- Suppression and other advanced combat effects — **TBD (design)**, sequence after the core loop is proven.
+- Advanced combat effects other than suppression — **TBD (design)**, sequence after the core loop is proven. Suppression itself is built — the pin is in [morale.md](morale.md) §1, and the break-away rule it enforces on movement is [§1.1](morale.md#11-breaking-away-from-suppression).
 
 Note: reaction fire is **not** deferred — it's intrinsic to the Time Units economy (designed, not yet built). Morale/**Bottle** is designed (see [stats.md](stats.md) and [wounds-and-roster.md](wounds-and-roster.md)).
 
@@ -84,5 +84,8 @@ locks nothing in the algorithm.
 
 Routing also excludes never-seen cells; see [visibility.md](visibility.md) for the
 UNSEEN rule, which is a fog constraint rather than a movement one.
+
+A suppressed ganger is refused any walk that does not break away, and that check runs
+before the TU pool is read — see [morale.md §1.1](morale.md#11-breaking-away-from-suppression).
 
 **Code site:** `crates/gdtf_battle_sim/src/perception/pathfinder/`.
