@@ -76,7 +76,7 @@ Two pools, two outcomes: **HP ≤ 0 → Downed**; **Wounds ≤ 0 → Dead**. Bot
 
 ## The psychological mirror (Morale & Bottle)
 
-The psychological track mirrors the physical one (see [stats.md](stats.md)): **Morale** is psychological HP, **Bottle** is psychological Wounds. Losing the psychological fight produces named **nerve effects** and ultimately **Bottled** — out of the fight on the mind track. Suppression stays a separate tactical pin.
+The psychological track mirrors the physical one (see [stats.md](stats.md)): **Morale** is psychological HP, **Bottle** is psychological Wounds. Losing the psychological fight produces named **nerve effects** and ultimately **Bottled** — out of the fight on the mind track. Suppression stays a separate tactical pin — its break-away rule is [morale.md §1.1](morale.md#11-breaking-away-from-suppression).
 
 Full design: [morale.md](morale.md) (accepted). Lasting campaign nerve scars: later.
 

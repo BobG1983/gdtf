@@ -10,7 +10,7 @@ Related:
 
 - Pools and derivation: [stats.md](stats.md) (Morale / Bottle already derived from Grit + Cool; not consumed yet).
 - Physical mirror: [wounds-and-roster.md](wounds-and-roster.md).
-- Suppression (live, separate): fire-radius pin in the sim — see resolution / suppression tests.
+- Suppression (live, separate): fire-radius pin in the sim — the rule it enforces is [§1.1 Breaking away from suppression](#11-breaking-away-from-suppression).
 - Lasting campaign nerve scars: later, not this battlescape slice.
 - Training hooks when live: [post-action.md](../mvp/post-action.md) (morale stress / held their nerve).
 
@@ -24,6 +24,21 @@ Related:
 | **Morale / nerve** | Psychological break: named **nerve effects**, then **Bottled** | Effect duration (below); Bottled until battle end |
 
 Suppression may **deal a small Morale tick** but never *is* a nerve effect. A Cool ganger can be suppressed all fight and never panic.
+
+### 1.1 Breaking away from suppression
+
+A suppressed ganger is pinned where it stands. It may walk only if the walk does **both** of these:
+
+1. **It moves away.** The destination is farther from the suppressor's cell than the start is, measured across x and y (Chebyshev — the larger of |dx| and |dy|).
+2. **It ends behind cover.** The cell one step from the destination toward the suppressor carries cover, **on the destination's own storey**.
+
+One without the other is not enough. A walk that fails either is refused as suppressed before the TU pool is read at all, so a full pool does not buy a way out.
+
+**Height is not distance.** The distance check ignores the storey. Climbing a floor gains no ground on the suppressor, so a suppressed ganger who moves straight up is refused however good the cover is up there. This is the rule, not a gap in it.
+
+**Cover is read on the storey you end on**, never the shooter's. A shooter a storey above or below does not change which cell the check looks at: it stays the cell beside your destination, on your storey.
+
+The same choice governs the **auto-stance drop**. When a ganger is first suppressed, cover in that cell — toward the suppressor, on the ganger's own storey — drops it to Prone behind Low cover and Crouching behind Mid or High cover.
 
 ---
 
