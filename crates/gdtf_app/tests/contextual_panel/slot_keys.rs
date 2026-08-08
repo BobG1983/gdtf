@@ -1,26 +1,9 @@
-use bevy::{
-    input::{
-        ButtonState,
-        keyboard::{Key, KeyboardInput},
-    },
-    prelude::*,
-};
+use bevy::prelude::*;
 use gdtf_battle_input::contextual::ContextualActSystems;
 use gdtf_battle_sim::acts::{ExecuteDownedRequested, ShoveRequested, StabilizeDownedRequested};
 use gdtf_test_utils::{MessageProbe, drain_message_probe, probed};
 
 use super::{actors::*, harness::*};
-
-fn press_digit(app: &mut App, key_code: KeyCode) {
-    app.world_mut().write_message(KeyboardInput {
-        key_code,
-        logical_key: Key::Character(" ".into()),
-        state: ButtonState::Pressed,
-        text: None,
-        repeat: false,
-        window: Entity::PLACEHOLDER,
-    });
-}
 
 fn add_probes(app: &mut App) {
     app.init_resource::<MessageProbe<ExecuteDownedRequested>>();

@@ -29,5 +29,8 @@ pub use widgets::{
         set_segment_sub_line, set_segment_visible, spawn_button, spawn_panel, spawn_pips,
         spawn_progress_bar, spawn_segmented_control, spawn_switch,
     },
-    interaction::{repaint_deactivated_buttons, sync_hover_to_focus, theme_interaction},
+    interaction::{
+        repaint_deactivated_buttons, repaint_enabled_buttons, sync_hover_to_focus,
+        theme_interaction,
+    },
 };

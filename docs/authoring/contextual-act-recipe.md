@@ -68,7 +68,9 @@ the frame it was claimed in, exactly as a press is.
   `ContextualActSystems::Drain` set.
 - The descriptor carries **no per-act keybind field** — but the act is no longer
   button-only. Since a keyboard DIGIT slot-key also activates it: digit N fires
-  the Nth currently-visible contextual button (the binding is per-SLOT, not per-action,
+  the Nth currently-visible contextual button unless that button is greyed out —
+  the ranking counts greyed buttons, so the numbering never shifts (the binding is
+  per-SLOT, not per-action,
   so it needs no descriptor field — the panel ranks the visible buttons and each per-act
   digit-press router resolves its key from that rank via `Keybinds::contextual_slot_key`).
   This reverses the Q8 "button-only" ruling; the keyboard slot-bindings coexist
@@ -83,9 +85,17 @@ the frame it was claimed in, exactly as a press is.
   the column top-to-bottom and must stay unique), and the act's bespoke
   `offer_<act>` system (the scan deciding what to OFFER — advisory only; the sim
   re-gates). Wire the module in `contextual_panel/acts/mod.rs`.
+- **Offer the act even when the actor cannot pay for it.** Geometry, faction, life and line
+  of sight decide whether the button is on screen; affordability decides only whether it is
+  pressable. A scan that prices its act calls the sim's own cost helper and `can_spend_tu`
+  and hands the answer to `ContextualOffer::with_pressable`, which greys the button through
+  `gdtf_ui::DisabledButton` and reports itself on `battle.offers`. A greyed button ignores
+  a click and its digit slot key. Shove and melee do this; the rest leave the offer
+  pressable.
 - **One line** in `contextual_panel/plugin.rs`:
   `.add_contextual_act_button::<<Act>Act, _>(acts::<act>::offer_<act>)`. That stamps
-  the generic button spawn, visibility toggle, and press router over the descriptor.
+  the generic button spawn, visibility toggle, disabled sync, and press router over the
+  descriptor.
 - Never add per-act `Without<>` disjointness filters, per-marker visibility bundles, or
   per-marker press queries — the generic systems hold ONE query each, so none are
   needed (the N-squared filter wall must not come back).

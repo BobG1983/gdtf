@@ -16,8 +16,8 @@ use crate::{
             paint_disabled_buttons, repaint_segments, select_segment_on_press,
         },
         interaction::{
-            repaint_deactivated_buttons, repaint_theme_change, sync_hover_to_focus,
-            theme_interaction,
+            repaint_deactivated_buttons, repaint_enabled_buttons, repaint_theme_change,
+            sync_hover_to_focus, theme_interaction,
         },
     },
 };
@@ -58,6 +58,7 @@ impl Plugin for UiPlugin {
                     paint_disabled_buttons,
                     paint_active_buttons.after(theme_interaction),
                     repaint_deactivated_buttons,
+                    repaint_enabled_buttons,
                     sync_hover_to_focus,
                 )
                     .after(UiSystems::ApplyTheme),
