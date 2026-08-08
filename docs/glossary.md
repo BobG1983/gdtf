@@ -11,6 +11,7 @@ Necromunda vocabulary is the house style. **Code identifiers must follow it** �
 | **Grudge** | Recorded enmity between gangs/fighters with memory. |
 | **Bottle** | (1) Psych life pool (psych Wounds) on a ganger — empty → **Bottled**. (2) Historical Necromunda sense: a side routing from a fight — **gang-wide bottle is not v0**. See [combat/morale.md](combat/morale.md). |
 | **Morale** | Psych HP pool — stress buffer derived from Grit + Cool; damaged by shocks; not the same as suppression. See [combat/morale.md](combat/morale.md). |
+| **Suppressed** | Tactical pin from nearby fire: heads down until the ganger's turn starts. It may only walk if the walk moves away from the suppressor in x/y **and** ends behind cover on the destination's own storey — climbing a floor is not moving away (see [combat/morale.md §1.1](combat/morale.md#11-breaking-away-from-suppression)). Not a nerve effect. |
 | **Bottled** | Ganger terminal psych state: out of this fight (no acts), still on the roster after. Parallel to Downed/Dead on the body track. |
 | **Nerve effect** | Named battle psych condition (hesitant, reckless, …) rolled from data when a shock bites — analogous to an Injury, for the mind. |
 | **Injury** | A lasting named condition rolled (location × severity × source) when a fighter takes a non-graze Wound; docks attributes via the ledger. Rolled **in battle**; post-action carries the ledger (no second table roll for MVP — see [mvp/post-action.md](mvp/post-action.md)). |
