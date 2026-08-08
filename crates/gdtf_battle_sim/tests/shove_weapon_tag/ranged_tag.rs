@@ -1,5 +1,7 @@
 use gdtf_battle_sim::{
-    ganger::Direction,
+    acts::shove_tu_cost,
+    ganger::{Aiming, Direction, TuMax},
+    magazine::mode_tu_cost,
     prelude::Cell,
     test_support::SituationBuilder,
     weapon::{FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
@@ -50,6 +52,63 @@ const fn single_shot_mode() -> FireModeSpec {
         ModeTuPercent::new(0.2),
         ModeShots::new(1),
     )
+}
+
+#[test]
+fn shove_tagged_ranged_knocks_back_from_a_pool_below_the_shove_quote() {
+    let mut app = battle_app(false, true);
+    let situation = SituationBuilder::new()
+        .with_gangers([
+            strong_attacker(ground(5, 5), PLAYER, Direction::East),
+            defenceless_target(ground(6, 5), ENEMY),
+        ])
+        .build_with_gangs();
+    drive_setup(&mut app, situation);
+    let (Some(shooter), Some(target)) = (ganger_of(&mut app, PLAYER), ganger_of(&mut app, ENEMY))
+    else {
+        unreachable!("setup spawns one player + one enemy");
+    };
+
+    let tuning = tuning_of(&app);
+    let quoted = shove_tu_cost(&tuning);
+    assert!(
+        *quoted > 0,
+        "the shove leaf must cost something, or a below-quote pool proves nothing"
+    );
+    let (Some(tu_max), Some(aiming)) = (
+        app.world().get::<TuMax>(shooter).copied(),
+        app.world().get::<Aiming>(shooter).copied(),
+    ) else {
+        unreachable!("a spawned shooter carries a TU pool and an aiming state");
+    };
+    let shot = mode_tu_cost(&single_shot_mode(), &tu_max, &aiming, &tuning);
+    let pool_before = *shot + *quoted - 1;
+    set_tu(&mut app, shooter, pool_before);
+
+    app.world_mut()
+        .write_message(gdtf_battle_sim::acts::FireRequested::new(
+            shooter,
+            single_shot_mode(),
+            Cell::new(6, 5),
+            level0(),
+        ));
+    step(&mut app, 4);
+
+    assert_eq!(
+        pos_of(&app, target),
+        Some(ground(7, 5)),
+        "a `shove`-tagged gun knocks the target back even when the pool left after the shot \
+         cannot cover the shove quote"
+    );
+    assert!(
+        tu_of(&app, shooter) < *quoted,
+        "the pool the shove gate saw was below the shove quote"
+    );
+    assert_eq!(
+        tu_of(&app, shooter),
+        pool_before - *shot,
+        "the weapon-tag shove charged nothing on top of the shot"
+    );
 }
 
 #[test]

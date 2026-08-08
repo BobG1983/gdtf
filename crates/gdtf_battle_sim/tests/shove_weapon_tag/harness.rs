@@ -7,7 +7,7 @@ use bevy::{
 use gdtf_battle_sim::{
     battle::{BattleSimPlugin, SetupBattleRequested},
     ganger::{Cool, Direction, Facing, GangRegistry, Grit, Speed, Strength, Toughness},
-    prelude::{Cell, CellLevel, Faction, Position, Stance, StanceKind},
+    prelude::{Cell, CellLevel, Faction, Position, Stance, StanceKind, Tu},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     test_support::{
@@ -101,6 +101,23 @@ pub(crate) fn ganger_of(app: &mut App, faction: u8) -> Option<Entity> {
 
 pub(crate) fn pos_of(app: &App, entity: Entity) -> Option<CellLevel> {
     app.world().get::<Position>(entity).map(|p| **p)
+}
+
+pub(crate) fn tu_of(app: &App, entity: Entity) -> u8 {
+    *app.world().get::<Tu>(entity).copied().unwrap_or(Tu::new(0))
+}
+
+pub(crate) fn set_tu(app: &mut App, entity: Entity, pool: u8) {
+    if let Some(mut tu) = app.world_mut().get_mut::<Tu>(entity) {
+        *tu = Tu::new(pool);
+    }
+}
+
+pub(crate) fn tuning_of(app: &App) -> CombatTuning {
+    app.world()
+        .get_resource::<CombatTuning>()
+        .cloned()
+        .unwrap_or_default()
 }
 
 pub(crate) fn strong_attacker(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
