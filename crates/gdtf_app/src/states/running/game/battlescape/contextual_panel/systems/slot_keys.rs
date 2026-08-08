@@ -1,9 +1,12 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{Keybinds, SlotRank, contextual::PendingContextualIntents};
+use gdtf_ui::DisabledButton;
 
 use crate::states::running::game::battlescape::contextual_panel::seam::{
     ContextualActButton, ContextualOffer, ContextualPanelAct, PanelSlot, VisibleSlotRank,
 };
+
+type PressableButton<M> = (With<M>, Without<DisabledButton>);
 
 pub(in crate::states::running::game::battlescape) fn rank_visible_contextual_buttons(
     mut buttons: Query<(
@@ -38,7 +41,7 @@ pub(in crate::states::running::game::battlescape) fn press_contextual_button_via
 >(
     keys: Option<Res<ButtonInput<KeyCode>>>,
     offer: Res<ContextualOffer<A>>,
-    ranks: Query<&VisibleSlotRank, With<A::Marker>>,
+    ranks: Query<&VisibleSlotRank, PressableButton<A::Marker>>,
     mut pending: ResMut<PendingContextualIntents<A>>,
 ) {
     let Some(keys) = keys else {

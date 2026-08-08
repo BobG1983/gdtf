@@ -1,7 +1,7 @@
 use super::assert_ron_round_trip;
 use crate::dev::net_qa::wire::{
     cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet},
-    offer::{ContextualActNet, ContextualOfferNet, OfferTargetNet},
+    offer::{ContextualActNet, ContextualOfferNet, OfferPressableNet, OfferTargetNet},
     token::{DoorToken, EmplacementToken, GangerToken},
 };
 
@@ -60,6 +60,21 @@ fn an_offer_round_trips() {
     let offer: ContextualOfferNet = ContextualOfferNet::new(
         ContextualActNet::Melee,
         OfferTargetNet::Ganger(GangerToken::new(9)),
+        OfferPressableNet::new(true),
+    );
+    assert_ron_round_trip(&offer);
+}
+
+#[test]
+fn a_greyed_out_offer_round_trips_as_not_pressable() {
+    let offer = ContextualOfferNet::new(
+        ContextualActNet::Shove,
+        OfferTargetNet::Ganger(GangerToken::new(9)),
+        OfferPressableNet::new(false),
+    );
+    assert!(
+        !*offer.pressable,
+        "an offer the actor cannot afford carries pressable = false",
     );
     assert_ron_round_trip(&offer);
 }

@@ -15,12 +15,15 @@ use crate::{
         commands::read::battle_offers::OfferedActs,
         wire::{
             cell::CellLevelNet,
-            offer::{ContextualActNet, ContextualOfferNet, OfferTargetNet},
+            offer::{ContextualActNet, ContextualOfferNet, OfferPressableNet, OfferTargetNet},
             token::{DoorToken, EmplacementToken, GangerToken},
         },
     },
-    states::running::game::battlescape::contextual_panel::ContextualOffer,
+    states::running::game::battlescape::contextual_panel::{ContextualOffer, seam::OfferPressable},
 };
+
+/// What a button the panel is not greying out reports on the wire.
+const PRESSABLE: OfferPressableNet = OfferPressableNet::new(true);
 
 /// One entity per act, all distinct, so an offer landing under the wrong act is visible.
 fn target(raw: u32) -> Entity {
@@ -57,34 +60,42 @@ fn every_offer() -> Vec<ContextualOfferNet> {
         ContextualOfferNet::new(
             ContextualActNet::Execute,
             OfferTargetNet::Ganger(GangerToken::new(target(11).to_bits())),
+            PRESSABLE,
         ),
         ContextualOfferNet::new(
             ContextualActNet::Stabilize,
             OfferTargetNet::Ganger(GangerToken::new(target(12).to_bits())),
+            PRESSABLE,
         ),
         ContextualOfferNet::new(
             ContextualActNet::Melee,
             OfferTargetNet::Ganger(GangerToken::new(target(13).to_bits())),
+            PRESSABLE,
         ),
         ContextualOfferNet::new(
             ContextualActNet::Shove,
             OfferTargetNet::Ganger(GangerToken::new(target(14).to_bits())),
+            PRESSABLE,
         ),
         ContextualOfferNet::new(
             ContextualActNet::OpenDoor,
             OfferTargetNet::Door(DoorToken::new(target(15).to_bits())),
+            PRESSABLE,
         ),
         ContextualOfferNet::new(
             ContextualActNet::EnterEmplacement,
             OfferTargetNet::Emplacement(EmplacementToken::new(target(16).to_bits())),
+            PRESSABLE,
         ),
         ContextualOfferNet::new(
             ContextualActNet::ExitEmplacement,
             OfferTargetNet::Emplacement(EmplacementToken::new(target(17).to_bits())),
+            PRESSABLE,
         ),
         ContextualOfferNet::new(
             ContextualActNet::ThrowGrenade,
             OfferTargetNet::Cell(CellLevelNet::from_sim(grenade_cell())),
+            PRESSABLE,
         ),
     ]
 }
@@ -123,6 +134,32 @@ fn an_act_the_panel_is_not_offering_has_no_entry() {
     assert_eq!(
         offers, want,
         "withdrawing one offer removes that entry and leaves the other seven alone",
+    );
+}
+
+#[test]
+fn a_greyed_out_offer_still_reaches_the_reply_marked_not_pressable() {
+    let mut world = a_world_offering_every_act();
+    world.insert_resource(
+        ContextualOffer::<ShoveAct>::new(Some(target(14)))
+            .with_pressable(OfferPressable::new(false)),
+    );
+    let offers = offered(&mut world);
+
+    let shove = offers
+        .iter()
+        .find(|offer| offer.act == ContextualActNet::Shove);
+    assert_eq!(
+        shove.map(|offer| offer.pressable),
+        Some(OfferPressableNet::new(false)),
+        "an act the actor cannot afford stays on the list and reports itself as not pressable",
+    );
+    assert!(
+        offers
+            .iter()
+            .filter(|offer| offer.act != ContextualActNet::Shove)
+            .all(|offer| offer.pressable == PRESSABLE),
+        "greying one act leaves the other seven pressable: {offers:?}",
     );
 }
 

@@ -12,7 +12,7 @@ use crate::states::{
         seam::{ContextualOffer, ContextualPanelAct},
         systems::{
             press_contextual_button, press_contextual_button_via_key, spawn_contextual_button,
-            sync_contextual_button_visibility,
+            sync_contextual_button_disabled, sync_contextual_button_visibility,
         },
     },
 };
@@ -23,7 +23,7 @@ crate::support_item! {
     enum ContextualPanelSystems {
         /// Scan for each act family's target and write it to that family's offer.
         Offer,
-        /// Show or hide each button from the offer just written.
+        /// Show, hide, or grey out each button from the offer just written.
         Toggle,
         /// Order the visible buttons into their slots.
         Rank,
@@ -92,7 +92,11 @@ impl ContextualPanelActAppExt for App {
                 Update,
                 (
                     offer.in_set(ContextualPanelSystems::Offer),
-                    sync_contextual_button_visibility::<A>.in_set(ContextualPanelSystems::Toggle),
+                    (
+                        sync_contextual_button_visibility::<A>,
+                        sync_contextual_button_disabled::<A>,
+                    )
+                        .in_set(ContextualPanelSystems::Toggle),
                 )
                     .run_if(resource_exists::<BattleInProgress>),
             )

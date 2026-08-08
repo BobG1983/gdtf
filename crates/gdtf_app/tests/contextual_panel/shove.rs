@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use gdtf_app::test_support::ShoveButton;
 use gdtf_battle_input::contextual::{ContextualActSystems, PendingContextualIntents, ShoveAct};
-use gdtf_battle_sim::{acts::ShoveRequested, prelude::Position};
+use gdtf_battle_sim::{acts::ShoveRequested, ganger::Tu, prelude::Position};
 use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 
 use super::{actors::*, harness::*};
@@ -103,6 +103,108 @@ fn pressing_shove_emits_shove_requested_for_target() {
     assert_eq!(
         emitted[0].target, target,
         "the target is the carried opposing neighbour",
+    );
+}
+
+/// A shover one TU short of the cost, standing beside a legal target.
+fn a_shover_one_tu_short() -> (App, Entity) {
+    let mut app = battle_running_app();
+    add_shove_probe(&mut app);
+    let shover = spawn_actor(&mut app, 5, 5, 0);
+    spawn_alive_enemy(&mut app, 6, 6, 1);
+
+    let cost = shove_cost(&app);
+    assert!(
+        *cost > 0,
+        "a shove must cost something or an unaffordable pool cannot exist",
+    );
+    set_pool(&mut app, shover, Tu::new(cost.saturating_sub(1)));
+    app.update();
+    (app, shover)
+}
+
+#[test]
+fn a_pool_below_the_shove_cost_still_offers_the_button_greyed_out() {
+    let (mut app, _shover) = a_shover_one_tu_short();
+
+    assert!(
+        shove_visible(&mut app),
+        "an unaffordable shove is still OFFERED — the player sees the act and why it is barred",
+    );
+    assert!(
+        button_greyed::<ShoveButton>(&mut app),
+        "a pool below the shove cost greys the button out",
+    );
+    let Some((greyed, _idle)) = greyed_and_idle_fills(&app) else {
+        return;
+    };
+    assert_eq!(
+        button_fill::<ShoveButton>(&mut app),
+        Some(greyed),
+        "the greyed button is painted the theme's disabled fill",
+    );
+}
+
+#[test]
+fn neither_a_press_nor_a_slot_key_fires_a_greyed_shove() {
+    let (mut app, _shover) = a_shover_one_tu_short();
+    let Some(shove_btn) = single_with::<ShoveButton>(&mut app) else {
+        return;
+    };
+
+    press_ui_button(&mut app, shove_btn);
+    press_digit(&mut app, KeyCode::Digit1);
+    app.update();
+
+    assert!(
+        shoves(&app).is_empty(),
+        "a greyed button emits nothing from a mouse press or from its slot key",
+    );
+}
+
+#[test]
+fn raising_the_pool_to_the_cost_re_enables_and_repaints_the_shove_button() {
+    let (mut app, shover) = a_shover_one_tu_short();
+    assert!(
+        button_greyed::<ShoveButton>(&mut app),
+        "sanity: the button is greyed before the pool is raised",
+    );
+
+    let covering = shove_cost(&app);
+    set_pool(&mut app, shover, covering);
+    app.update();
+    app.update();
+
+    assert!(
+        shove_visible(&mut app),
+        "a pool that covers the cost keeps the button on screen",
+    );
+    assert!(
+        !button_greyed::<ShoveButton>(&mut app),
+        "a pool that covers the cost drops the disabled marker",
+    );
+    let Some((greyed, idle)) = greyed_and_idle_fills(&app) else {
+        return;
+    };
+    assert_ne!(
+        greyed, idle,
+        "the theme must paint disabled and idle differently or this case cannot discriminate",
+    );
+    assert_eq!(
+        button_fill::<ShoveButton>(&mut app),
+        Some(idle),
+        "re-enabling repaints the button back to its enabled fill",
+    );
+
+    let Some(shove_btn) = single_with::<ShoveButton>(&mut app) else {
+        return;
+    };
+    press_ui_button(&mut app, shove_btn);
+    app.update();
+    assert_eq!(
+        shoves(&app).len(),
+        1,
+        "the re-enabled button presses through to exactly one ShoveRequested",
     );
 }
 

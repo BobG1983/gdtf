@@ -23,7 +23,7 @@ use crate::dev::net_qa::{
             AutoRunNet, FireModeIndex, FrameDelay, ModeKindNet, ProcgenStageNet, RequestId,
             SeedNet, SituationRef, StepperCommandNet, ViewModeNet,
         },
-        offer::{ContextualActNet, ContextualOfferNet, OfferTargetNet},
+        offer::{ContextualActNet, ContextualOfferNet, OfferPressableNet, OfferTargetNet},
         phase::{
             AfterMathPhaseNet, AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet,
             RunningPhaseNet,
@@ -139,6 +139,7 @@ fn every_wire_type_traces_a_usable_shape() {
 
     assert_schema_is_usable::<ContextualActNet>("ContextualActNet");
     assert_schema_is_usable::<OfferTargetNet>("OfferTargetNet");
+    assert_schema_is_usable::<OfferPressableNet>("OfferPressableNet");
     assert_schema_is_usable::<ContextualOfferNet>("ContextualOfferNet");
 
     assert_schema_is_usable::<CanSeeNet>("CanSeeNet");
