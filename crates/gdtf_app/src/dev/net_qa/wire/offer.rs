@@ -1,5 +1,6 @@
 //! Contextual act offers on the wire.
 
+use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -41,20 +42,43 @@ pub enum OfferTargetNet {
     Cell(CellLevelNet),
 }
 
+/// Whether the panel is showing an offered button as pressable rather than greyed out.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct OfferPressableNet(bool);
+
+impl OfferPressableNet {
+    /// Build from a pressable flag.
+    #[must_use]
+    pub const fn new(pressable: bool) -> Self {
+        Self(pressable)
+    }
+}
+
 /// One contextual button the panel is offering right now.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ContextualOfferNet {
     /// The act on offer.
-    pub act:    ContextualActNet,
+    pub act:       ContextualActNet,
     /// What it would act on.
-    pub target: OfferTargetNet,
+    pub target:    OfferTargetNet,
+    /// False when the panel greys the button out because the actor cannot afford the act.
+    pub pressable: OfferPressableNet,
 }
 
 impl ContextualOfferNet {
-    /// Build from an act and its target.
+    /// Build from an act, its target, and whether its button is pressable.
     #[must_use]
-    pub const fn new(act: ContextualActNet, target: OfferTargetNet) -> Self {
-        Self { act, target }
+    pub const fn new(
+        act: ContextualActNet,
+        target: OfferTargetNet,
+        pressable: OfferPressableNet,
+    ) -> Self {
+        Self {
+            act,
+            target,
+            pressable,
+        }
     }
 }
