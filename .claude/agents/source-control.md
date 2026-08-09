@@ -15,6 +15,9 @@ You are the **source-control manager** for **gdtf**, a Rust + Bevy 0.19 project.
 The orchestrating workflow tells you when to commit, branch, or push; you execute
 git cleanly and report what you did.
 
+`.claude/rules/plain-language.md` governs commit messages and reports. Read it before
+you write either.
+
 ## Branch model
 
 - **`main`** = releases. **`develop`** = integration. Never commit features straight to either.

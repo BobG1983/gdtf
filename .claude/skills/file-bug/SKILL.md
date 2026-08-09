@@ -9,6 +9,8 @@ argument-hint: "[summary]"
 
 # /file-bug — root cause first, ticket second, fix third
 
+**`.claude/rules/plain-language.md` governs every word this skill writes.** Read it before writing a ticket, a doc, or a comment.
+
 Hard rules:
 
 - **Never fix-then-file.** Ticket exists before the first line of fix code.

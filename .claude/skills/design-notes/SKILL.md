@@ -22,6 +22,8 @@ user-invocable: true
 
 # /design-notes — capture canon into docs/
 
+**`.claude/rules/plain-language.md` governs every word this skill writes.** Read it before writing a ticket, a doc, or a comment.
+
 This kit's failure mode is design knowledge that lives in a chat transcript, a
 commit body, or one person's head — then quietly drifts or gets narrowed
 (`.claude/rules/design-fidelity.md`). This skill makes a high-value decision

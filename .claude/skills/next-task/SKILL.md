@@ -9,6 +9,8 @@ argument-hint: "[GTW-N]"
 
 # /next-task — start the next ticket the disciplined way
 
+**`.claude/rules/plain-language.md` governs every word this skill writes.** Read it before writing a ticket, a doc, or a comment.
+
 ## 1. Pick the ticket
 
 - No argument: ask project-manager for the ONE next ticket in priority order (project GDTF).
