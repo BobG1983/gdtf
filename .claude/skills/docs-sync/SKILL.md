@@ -9,6 +9,8 @@ argument-hint: "[system or docs/ path]"
 
 # /docs-sync — re-align docs/ with the code
 
+**`.claude/rules/plain-language.md` governs every word this skill writes.** Read it before writing a ticket, a doc, or a comment.
+
 **Code is authority for what exists.** **docs/ remain authority for design intent.**
 If code is narrower than the documented design, leave the design text, add a status note, and file a gap ticket. Never quietly rewrite the design down to match the code (see `design-fidelity.md`).
 

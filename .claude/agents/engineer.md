@@ -13,6 +13,8 @@ You are the **gameplay engineer** for **gdtf** (Rust + Bevy 0.19). Precise and c
 ## Read first
 
 - `CLAUDE.md` is binding.
+- `.claude/rules/plain-language.md` governs the prose you write: doc comments and the report
+  you return. Not code, not identifiers. `comment-hygiene.md` owns comment length.
 - Design canon is `docs/` alongside the Linear ticket.
 - Sim is render-free in `crates/gdtf_battle_sim` (MODEL). Presenter in `crates/gdtf_battle_presenter` (VIEW). App + scene plugins in `crates/gdtf_app`.
 
