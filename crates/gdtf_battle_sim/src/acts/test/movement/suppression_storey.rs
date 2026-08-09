@@ -92,6 +92,45 @@ fn can_move_refuses_a_move_that_only_climbs_a_storey() {
 }
 
 #[test]
+fn can_move_allows_a_climb_away_when_cover_sits_on_the_destinations_storey() {
+    let (start, dest) = (on(10, 10, 0), on(9, 10, 1));
+    let suppressor = on(20, 10, 0);
+
+    assert_eq!(
+        verdict(start, dest, suppressor, &cover_on(on(10, 10, 1))),
+        MoveVerdict::Allowed,
+        "the mover climbs a storey and gains a cell on its suppressor, so the gate reads the cover \
+         cell on the storey it ends on",
+    );
+}
+
+#[test]
+fn can_move_refuses_a_climb_away_when_cover_sits_only_on_the_starts_storey() {
+    let (start, dest) = (on(10, 10, 0), on(9, 10, 1));
+    let suppressor = on(20, 10, 0);
+
+    assert_eq!(
+        verdict(start, dest, suppressor, &cover_on(on(10, 10, 0))),
+        MoveVerdict::Suppressed,
+        "cover left behind on the storey the mover started from shields nothing, so the gate \
+         refuses the climb",
+    );
+}
+
+#[test]
+fn can_move_refuses_a_two_storey_climb_beside_the_suppressor() {
+    let (start, dest) = (on(10, 10, 0), on(10, 10, 2));
+    let suppressor = on(11, 10, 0);
+
+    assert_eq!(
+        verdict(start, dest, suppressor, &cover_on(on(11, 10, 2))),
+        MoveVerdict::Suppressed,
+        "the mover stays one cell from its suppressor and only gains height, so it is no farther \
+         away and the gate refuses it",
+    );
+}
+
+#[test]
 fn suppressed_move_away_from_a_suppressor_one_storey_above_is_accepted() {
     let mut app = headless_app();
     let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
