@@ -23,6 +23,7 @@ use gdtf_battle_sim::{
 use gdtf_qa_protocol::ports::NetQaPort;
 
 use super::{
+    catch_up::let_the_screen_catch_up,
     expected::{
         ExpectedEnemy, ExpectedFireMode, ExpectedTurn, FLOODED_LOG_LINES, IdlePair,
         LOG_LINES_WRITTEN, LitCover, LiveCard, LoggedActor, PosedShooter, SpawnedDoor, Standing,
@@ -94,7 +95,7 @@ pub(crate) fn battle_with_an_enemy_beside_an_idle_ganger()
         );
     };
     stand_at(&mut app, enemy, next_to, next_to)?;
-    settle(&mut app);
+    let_the_screen_catch_up(&mut app)?;
     Ok((app, port, IdlePair { shooter, enemy }))
 }
 
