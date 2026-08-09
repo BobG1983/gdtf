@@ -1,6 +1,7 @@
 //! Battle fixtures and what they report back.
 
 mod behind;
+mod catch_up;
 mod expected;
 mod fixtures;
 mod map;
@@ -10,8 +11,10 @@ pub(crate) use behind::{
     battle_with_an_occupant_the_screen_has_not_seen, battle_with_remembered_cover,
     hold_the_screen_still,
 };
+pub(crate) use catch_up::{let_the_screen_catch_up, the_screen_has_caught_up};
 pub(crate) use expected::{
-    ExpectedEnemy, FLOODED_LOG_LINES, LOG_LINES_WRITTEN, LoggedActor, SpawnedDoor, Standing,
+    ExpectedEnemy, FLOODED_LOG_LINES, IdlePair, LOG_LINES_WRITTEN, LoggedActor, SpawnedDoor,
+    Standing,
 };
 pub(crate) use fixtures::{
     battle_reporting_a_player_card, battle_reporting_an_enemy, battle_with_a_door,

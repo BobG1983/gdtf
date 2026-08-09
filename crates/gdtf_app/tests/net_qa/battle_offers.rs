@@ -4,13 +4,16 @@ use gdtf_app::qa_wire::{
     token::GangerToken,
 };
 use gdtf_battle_sim::{acts::shove_tu_cost, ganger::Tu, tuning::CombatTuning};
-use gdtf_qa_protocol::command::RunOptions;
+use gdtf_qa_protocol::{command::RunOptions, ports::NetQaPort};
 use serde::Deserialize;
 
 use super::{
-    act_support::{caught_up, decode, next, selected},
+    act_support::{assert_caught_up, caught_up, decode, next, selected},
     battle_reads::{ganger_argument, token_of},
-    battle_setup::battle_with_an_enemy_beside_an_idle_ganger,
+    battle_setup::{
+        IdlePair, battle_with_an_enemy_beside_an_idle_ganger, let_the_screen_catch_up,
+        the_screen_has_caught_up,
+    },
     command_exchange::{
         ACT_SELECT, ACT_SHOVE, BATTLE_OFFERS, WAIT, assert_refused_off_the_battle_screen,
         exchange_expected, exchange_inspecting, run,
@@ -39,7 +42,7 @@ fn offers_beside_an_enemy() -> Result<(OffersBody, Entity), TestError> {
             ]
         })?;
     let mut replies = replies.into_iter();
-    let _caught = next(WAIT, &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let before = decode::<OffersBody>(BATTLE_OFFERS, next(BATTLE_OFFERS, &mut replies)?)?;
     let shooter = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
     let after = decode::<OffersBody>(BATTLE_OFFERS, next(BATTLE_OFFERS, &mut replies)?)?;
@@ -116,23 +119,29 @@ struct ShoveRun {
 /// Frames the shove is given to reach the sim and spend the pool before the case reads it.
 const DISPATCH_FRAMES: u32 = 16;
 
+/// The battle a shove case runs in: the shover's pool written, and the screen level with it.
+fn battle_with_a_pool_for_one_shove(
+    short_by_one: bool,
+) -> Result<(App, NetQaPort, IdlePair), TestError> {
+    let (mut app, port, adjacent) = battle_with_an_enemy_beside_an_idle_ganger()?;
+    let cost = shove_cost(&app)?;
+    let pool = if short_by_one {
+        Tu::new(cost.saturating_sub(1))
+    } else {
+        cost
+    };
+    let Ok(mut row) = app.world_mut().get_entity_mut(adjacent.shooter) else {
+        return Err("the idle ganger the fixture reported must still exist".into());
+    };
+    row.insert(pool);
+    let_the_screen_catch_up(&mut app)?;
+    Ok((app, port, adjacent))
+}
+
 /// Select the idle ganger with `short_by_one` deciding its pool, read the offer, then shove.
 fn a_shove_at_a_pool(short_by_one: bool) -> Result<ShoveRun, TestError> {
     let (mut app, replies, adjacent) = exchange_inspecting(
-        move || {
-            let (mut app, port, adjacent) = battle_with_an_enemy_beside_an_idle_ganger()?;
-            let cost = shove_cost(&app)?;
-            let pool = if short_by_one {
-                Tu::new(cost.saturating_sub(1))
-            } else {
-                cost
-            };
-            let Ok(mut row) = app.world_mut().get_entity_mut(adjacent.shooter) else {
-                return Err("the idle ganger the fixture reported must still exist".into());
-            };
-            row.insert(pool);
-            Ok((app, port, adjacent))
-        },
+        move || battle_with_a_pool_for_one_shove(short_by_one),
         |adjacent| {
             vec![
                 caught_up(),
@@ -147,7 +156,7 @@ fn a_shove_at_a_pool(short_by_one: bool) -> Result<ShoveRun, TestError> {
         },
     )?;
     let mut replies = replies.into_iter();
-    let _caught = next(WAIT, &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let _shooter = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
     let offers = decode::<OffersBody>(BATTLE_OFFERS, next(BATTLE_OFFERS, &mut replies)?)?;
     let _shoved = next(ACT_SHOVE, &mut replies)?;
@@ -223,6 +232,25 @@ fn a_pool_that_covers_the_cost_is_offered_as_pressable_and_the_dispatch_charges_
         (*probe.before).checked_sub(*probe.after),
         Some(*probe.cost),
         "act.shove on an offer the wire called pressable charges exactly the sim's own quote",
+    );
+    Ok(())
+}
+
+#[test]
+fn the_shove_fixture_hands_over_a_screen_the_act_log_cannot_get_ahead_of() -> TestResult {
+    let (mut app, _port, _adjacent) = battle_with_a_pool_for_one_shove(false)?;
+
+    assert!(
+        the_screen_has_caught_up(&app),
+        "the client's first act is admitted against the screen, so the fixture may not hand \
+         over one that is still playing the log back",
+    );
+    app.update();
+    assert!(
+        the_screen_has_caught_up(&app),
+        "the pool the fixture wrote is already logged and played, so the next frame has \
+         nothing left to put the screen behind with — the frame a command arrives on decides \
+         whether it is refused",
     );
     Ok(())
 }
