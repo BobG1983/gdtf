@@ -48,6 +48,21 @@ result landing and never reaching the user.
    status stays Backlog — and then you pick up unblocked work. Waiting is not
    progress, and an answer that lives only in chat does not survive the session.
 
+## What goes in a sub-agent prompt
+
+A prompt carries what the agent cannot find for itself: the user's ruling, the citation, the
+quoted output, the decision already taken. Nothing else.
+
+`plain-language.md` applies to it. A prompt is not private scratch space — the agent writes
+its ticket, comment or report in the register you hand it, so a long chatty prompt produces a
+long chatty artifact. That is the measured cause, not a theory: on 2026-08-08 the user read
+back a run of tickets and found every one verbose, and every one had been written from a
+prompt several times longer than the ticket needed to be.
+
+The test before sending: **would this sentence survive into the artifact?** If not, cut it.
+That kills narration of what you already did, your reasoning about the work, restatements of
+facts the agent can read in the tree, and any sentence about how the prompt is written.
+
 ## How it is enforced
 
 Rule 3 has nothing to decide — every sub-agent is backgrounded, so there is no
