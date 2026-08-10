@@ -1,6 +1,7 @@
 use super::emit::support::{registry_with_fill, size, terrain_defs, theme, theme_registry};
 use crate::{
     ganger::{Faction, GangName, GangerName, LifeState, StanceKind},
+    level::SpawnRole,
     metric::{Cell, CellLevel},
     procgen::{
         Anchor, DeploymentZone, DeploymentZones, Footprint, PackingError, ProcgenTuning,
@@ -173,6 +174,11 @@ fn deploy_fails_closed_when_a_zone_cannot_fit_its_roster() {
             GangerName::new("B".to_owned()),
             Faction::new(0),
         ),
+        RosterMember::new(
+            GangName::new("gang_1".to_owned()),
+            GangerName::new("Enemy".to_owned()),
+            Faction::new(1),
+        ),
     ];
 
     let result = deploy_rosters(
@@ -197,6 +203,78 @@ fn deploy_fails_closed_when_a_zone_cannot_fit_its_roster() {
     assert_eq!(anchor, Anchor::BottomLeft, "the offending zone's anchor");
     assert_eq!(*demand, 2, "demand names the two members");
     assert_eq!(*capacity, 1, "capacity names the single standable cell");
+}
+
+#[test]
+fn deploy_refuses_an_empty_player_side() {
+    let Some((zones, terrain)) = generated(BattleSeed::new(0xE_0001)) else {
+        return;
+    };
+    let rosters = vec![RosterMember::new(
+        GangName::new("gang_1".to_owned()),
+        GangerName::new("Only Enemy".to_owned()),
+        Faction::new(1),
+    )];
+    let result = deploy_rosters(
+        &zones,
+        &terrain,
+        &rosters,
+        Faction::new(0),
+        BattleSeed::new(1),
+    );
+    assert!(
+        matches!(
+            result,
+            Err(PackingError::EmptySide {
+                side: SpawnRole::Player,
+            })
+        ),
+        "empty player roster must refuse with EmptySide::Player, got {result:?}",
+    );
+    let Err(err) = result else {
+        return;
+    };
+    let shown = err.to_string();
+    assert!(
+        shown.contains("Player") && shown.to_ascii_lowercase().contains("empty"),
+        "refusal must name the empty side: {shown}",
+    );
+}
+
+#[test]
+fn deploy_refuses_an_empty_enemy_side() {
+    let Some((zones, terrain)) = generated(BattleSeed::new(0xE_0002)) else {
+        return;
+    };
+    let rosters = vec![RosterMember::new(
+        GangName::new("gang_0".to_owned()),
+        GangerName::new("Only Player".to_owned()),
+        Faction::new(0),
+    )];
+    let result = deploy_rosters(
+        &zones,
+        &terrain,
+        &rosters,
+        Faction::new(0),
+        BattleSeed::new(1),
+    );
+    assert!(
+        matches!(
+            result,
+            Err(PackingError::EmptySide {
+                side: SpawnRole::Enemy,
+            })
+        ),
+        "empty enemy roster must refuse with EmptySide::Enemy, got {result:?}",
+    );
+    let Err(err) = result else {
+        return;
+    };
+    let shown = err.to_string();
+    assert!(
+        shown.contains("Enemy") && shown.to_ascii_lowercase().contains("empty"),
+        "refusal must name the empty side: {shown}",
+    );
 }
 
 fn region_contains(region: RegionRect, cell_level: CellLevel) -> bool {
