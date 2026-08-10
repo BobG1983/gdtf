@@ -65,4 +65,4 @@ Pre-commit does not implement this skip — it always runs its cargo subset. Sco
 
 8. **On violations, repair the code** (not the contract). Max 2 repair rounds, then stop and report.
 
-9. **On full PASS, write `.claude/.gate-pass`** (TICKET, BRANCH, HEAD, FINGERPRINT, **SCOPE**). Move ticket(s) to In Review via Linear MCP. Point at `/docs-sync` then `/land`.
+9. **On full PASS, write `.claude/.gate-pass`** (TICKET, BRANCH, HEAD, FINGERPRINT, **SCOPE**). Compute `FINGERPRINT` with the **one** command in [verification.md → Gate-pass fingerprint](../../rules/verification.md#gate-pass-fingerprint) — never invent a recipe. Move ticket(s) to In Review via Linear MCP. Point at `/docs-sync` then `/land`.

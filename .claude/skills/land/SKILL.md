@@ -15,7 +15,7 @@ Resolve `GTW-N` from argument or branch. Must match the `TICKET=` set in `.claud
 
 ## Preconditions — any failure: refuse, state which, stop
 
-1. **Gate passed for this tree.** `.claude/.gate-pass` exists; `TICKET=` matches; `FINGERPRINT=` equals a fresh recompute of the /gate fingerprint command.
+1. **Gate passed for this tree.** `.claude/.gate-pass` exists; `TICKET=` matches; `BRANCH=` is the current branch; `HEAD=` is an ancestor-or-equal of the current HEAD (same as pre-commit); `FINGERPRINT=` equals a fresh recompute of the **one** command in [verification.md → Gate-pass fingerprint](../../rules/verification.md#gate-pass-fingerprint). Mismatch means the tree moved under you — re-run `/gate`.
 
 2. **Docs-sync done (or confirmed clean).** `/docs-sync` has been run after the gate (or explicitly confirmed no drift). Do not land with drifted docs.
 
