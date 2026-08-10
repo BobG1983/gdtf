@@ -67,6 +67,11 @@ pub enum PackingError {
         /// Standable cells available.
         capacity: ZoneCapacity,
     },
+    /// A combat side has zero roster members — battle setup must refuse.
+    EmptySide {
+        /// Which side had no members (`Player` or `Enemy`).
+        side: SpawnRole,
+    },
 }
 
 impl std::fmt::Display for PackingError {
@@ -106,6 +111,10 @@ impl std::fmt::Display for PackingError {
                 "the {anchor:?} deployment zone has {} standable cells but must stand {} roster \
                  members",
                 **capacity, **demand,
+            ),
+            Self::EmptySide { side } => write!(
+                f,
+                "the {side:?} side roster is empty; battle setup refuses a side with no combatants",
             ),
         }
     }

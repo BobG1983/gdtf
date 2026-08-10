@@ -5,7 +5,7 @@ use bevy::{platform::collections::HashSet, prelude::Deref};
 use super::zone::{DeploymentZone, DeploymentZones};
 use crate::{
     ganger::{Aiming, Facing, Faction, LifeState, Stance, StanceKind},
-    level::GridSize,
+    level::{GridSize, SpawnRole},
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, OccupancyInput, TerrainKind, TerrainPlacement},
     procgen::{PackingError, RosterDemand, ZoneCapacity},
@@ -29,6 +29,7 @@ impl Standable {
 ///
 /// # Errors
 ///
+/// Returns [`PackingError::EmptySide`] when a side has no roster members.
 /// Returns [`PackingError::DeploymentZoneTooSmall`] when a zone has fewer standable cells than roster members for that side.
 pub fn deploy_rosters(
     zones: &DeploymentZones,
@@ -48,6 +49,7 @@ pub fn deploy_rosters(
         .filter(|m| m.faction == player_faction)
         .collect();
     deploy_side(
+        SpawnRole::Player,
         zones.player(),
         &player_members,
         &grid,
@@ -61,6 +63,7 @@ pub fn deploy_rosters(
         .filter(|m| m.faction != player_faction)
         .collect();
     deploy_side(
+        SpawnRole::Enemy,
         zones.enemy(),
         &enemy_members,
         &grid,
@@ -74,6 +77,7 @@ pub fn deploy_rosters(
 }
 
 fn deploy_side(
+    side: SpawnRole,
     zone: DeploymentZone,
     members: &[&RosterMember],
     grid: &OccupancyGrid,
@@ -83,7 +87,7 @@ fn deploy_side(
     placed: &mut Vec<PlacedGanger>,
 ) -> Result<(), PackingError> {
     if members.is_empty() {
-        return Ok(());
+        return Err(PackingError::EmptySide { side });
     }
 
     let origin = zone.region().origin();
