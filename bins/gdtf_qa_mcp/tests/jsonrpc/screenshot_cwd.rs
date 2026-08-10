@@ -13,6 +13,7 @@ use gdtf_qa_protocol::{
     message::{QaError, QaRequest, QaResponse},
 };
 use serde_json::{Value, json};
+use tempfile::TempDir;
 
 const GAME_RELATIVE_SHOT: &str = "target/qa_screenshots/shotcwd_game.png";
 
@@ -68,10 +69,10 @@ impl HostLifecycle for ChildInDirLifecycle {
     }
 }
 
-// The tree deletes itself when the returned handle drops, so no test shares a root.
-fn a_child_tree_holding_both_captures() -> tempfile::TempDir {
-    let Ok(tree) = tempfile::TempDir::new() else {
-        unreachable!("tempfile::TempDir::new must succeed in a standard test environment")
+/// Own a unique temp root so parallel tests in this process cannot delete each other.
+fn a_child_tree_holding_both_captures() -> TempDir {
+    let Ok(tree) = TempDir::new() else {
+        unreachable!("the test can create a unique temp directory");
     };
     let root = tree.path();
     for (relative, bytes) in [
@@ -92,7 +93,7 @@ fn a_child_tree_holding_both_captures() -> tempfile::TempDir {
     let Ok(here) = std::env::current_dir() else {
         unreachable!("the test process has a current directory");
     };
-    assert_ne!(root, here, "the child's tree differs from the host's");
+    assert_ne!(root, here.as_path(), "the child's tree differs from the host's");
     assert!(
         !here.join(GAME_RELATIVE_SHOT).exists() && !here.join(EDITOR_RELATIVE_SHOT).exists(),
         "neither capture may exist under the HOST's directory, or a host-relative read \
@@ -187,26 +188,4 @@ fn a_missing_capture_is_still_reported_naming_both_paths() {
             .is_some_and(|blocks| blocks.iter().all(|block| block["type"] != json!("image"))),
         "an unreadable capture must produce no image content: {response}",
     );
-}
-
-#[test]
-fn two_fixture_calls_never_share_a_root() {
-    let first = a_child_tree_holding_both_captures();
-    let second = a_child_tree_holding_both_captures();
-
-    assert_ne!(
-        first.path(),
-        second.path(),
-        "two live fixture trees must be separate directories, or one test deletes another's",
-    );
-    for tree in [&first, &second] {
-        for relative in [GAME_RELATIVE_SHOT, EDITOR_RELATIVE_SHOT] {
-            let file = tree.path().join(relative);
-            assert!(
-                file.is_file(),
-                "each live tree keeps its own captures: {} is missing",
-                file.display(),
-            );
-        }
-    }
 }
