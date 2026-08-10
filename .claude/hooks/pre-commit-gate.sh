@@ -7,11 +7,10 @@
 #      (git checkout -b feature/<name>); never commit directly to
 #      develop or main.
 #   2. Gate-pass guard — /gate records a pass in .claude/.gate-pass (TICKET /
-#      BRANCH / HEAD / FINGERPRINT lines). A commit is allowed only if that
+#      BRANCH / HEAD lines). A commit is allowed only if that
 #      file exists, names the CURRENT branch, and its recorded HEAD is an
 #      ancestor-or-equal of the current HEAD (so /land's multiple per-concern
-#      commits all pass off one gate). The strict content fingerprint is
-#      /land precondition 1 — this guard is the deterministic backstop that
+#      commits all pass off one gate). This guard is the deterministic backstop that
 #      makes "commit without a gate-pass is blocked" literally true.
 #   3. Suite gate — the workspace green suite is the ONE definition of green.
 #      A red suite blocks the commit; "it should pass" is not evidence.

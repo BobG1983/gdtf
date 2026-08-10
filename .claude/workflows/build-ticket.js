@@ -473,7 +473,7 @@ ${verdicts.map((v, i) => `<gate-lens name="${LENSES[i].key}">\n${v}\n</gate-lens
 
 Steps (see .claude/skills/land/SKILL.md):
 1. Re-run full green suite if develop moved.
-2. Write .claude/.gate-pass (TICKET/BRANCH/HEAD/FINGERPRINT).
+2. Write .claude/.gate-pass (TICKET/BRANCH/HEAD/SCOPE).
 3. Stage explicit files by name. Never git add -A.
 4. Commit: Area: summary (${TICKET}). Confirm subject names the ticket.
 5. From ${REPO}: checkout develop, pull, merge --no-ff ${BRANCH}, push origin develop, delete local feature branch.
