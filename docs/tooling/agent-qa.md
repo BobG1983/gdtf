@@ -24,9 +24,11 @@ control channel. It has three processes and one shared wire contract:
   DTOs, the framing codec, and the values both ends have to agree on — the ports
   and the two timeouts.
 
-The channel is a **dev-only** affordance: it never compiles into a release build,
-and even a `net_qa`-enabled build stays inert until an environment variable opts
-it in.
+The channel is a **dev-only** affordance: QA modules compile under
+`debug_assertions` and always listen in debug builds. There is no `net_qa` cargo
+feature and no environment arming variable. Release builds never contain the
+listener (see [the debug-build gate](#the-debug-build-gate)). Matches
+[verification.md](../../.claude/rules/verification.md).
 
 ## The launch recipe — the game
 
@@ -48,7 +50,7 @@ this launches a `dev_tools` build of a git worktree, with a dev gate set:
 
 ```json
 {"package": "grimdark_turfwar",
- "features": ["dynamic_linking", "net_qa", "dev_tools"],
+ "features": ["dynamic_linking", "dev_tools"],
  "working_dir": "/Users/you/dev/gdtf-some-worktree",
  "env": {"GDTF_BATTLE_SEED": "42"}}
 ```
@@ -59,20 +61,10 @@ QA pass gets reported against code that is not the code under review. A
 `working_dir` that is not an existing directory is rejected, never silently
 dropped.
 
-Whatever the recipe, two environment variables are set on the child LAST, so a
-recipe's own `env` can never displace them:
-
-- `GDTF_NET_QA=1` — read by nothing. A debug build always opens the channel; see
-  [the debug-build gate](#the-debug-build-gate).
-- `GDTF_NET_QA_PORT=<port>` — read by nothing. The game always listens on `7616`.
-
-The host still sets both, and the child ignores both.
-
-The variable names come from the launch recipe's `QaChannel`
-(`bins/gdtf_qa_mcp/src/lifecycle/launch/channel.rs`), which carries one pair per
-host — `GDTF_NET_QA` / `GDTF_NET_QA_PORT` for the game, `GDTF_EDITOR_NET_QA` /
-`GDTF_EDITOR_NET_QA_PORT` for the editor — so the spawner needs no per-host
-branch. BOTH of the child's output streams are piped and drained into one ring by
+The spawner does **not** inject `GDTF_NET_QA` / `GDTF_NET_QA_PORT` (or the
+editor pair) onto the child. Those names remain as historical `QaChannel` labels
+in launch types for host identity only; debug hosts listen on fixed protocol
+ports without arming. BOTH of the child's output streams are piped and drained into one ring by
 `ProcessChild` — the host's own stdout is the JSON-RPC channel, so the child's
 cannot share it. The `logs` tool reads the tail of that ring, and a failed launch
 reports it as the diagnosis. The process is managed by the `HostManager`
@@ -105,14 +97,10 @@ A bare `launch(host="editor")` runs:
 cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher
 ```
 
-in the MCP host's own directory, with `GDTF_EDITOR_NET_QA=1` and
-`GDTF_EDITOR_NET_QA_PORT=7617` set on the child LAST (so a recipe's own `env`
-can never displace them). WHICH two variables a launch sets is part of the
-recipe — the `QaChannel` in
-`bins/gdtf_qa_mcp/src/lifecycle/launch/channel.rs` — which is how one spawner
-serves both hosts with no per-host branch. It is NOT a caller argument: setting
-`GDTF_NET_QA` on an editor child would leave the editor inert with no listener
-on the port the launcher is about to probe.
+in the MCP host's own directory. No arming env vars are set on the child; a
+debug editor always opens its QA channel on `7617`. The historical
+`GDTF_EDITOR_NET_QA` / `GDTF_EDITOR_NET_QA_PORT` names are not read by the
+editor and are not required for launch.
 
 **Warm the build first.** The editor's `dynamic_linking,dev_tools` combination is
 one nothing else in the repo produces — `cargo dbuild` builds the GAME binary,
@@ -351,10 +339,8 @@ handshake string, distinct from the game wire version below.
 
 **Host ↔ child — framed RON over a loopback TCP socket.** For each forwarding
 tool call the host connects to that tool's host over an `Ipv4Addr::LOCALHOST` TCP
-stream — the game on `GDTF_NET_QA_PORT` (default `7616`) or the editor on
-`GDTF_EDITOR_NET_QA_PORT` (default `7617`), resolved by `QaHost::port_from_env`
-in `bins/gdtf_qa_mcp/src/hosts/host.rs` and carried by the `QaClient` in
-`bins/gdtf_qa_mcp/src/link.rs` — and exchanges typed messages using the shared
+stream — the game on port `7616` (`GAME_QA_PORT`) or the editor on `7617`
+(`EDITOR_QA_PORT`) — and exchanges typed messages using the shared
 `gdtf_qa_protocol` crate. That crate is bevy-free — it links only `serde`, `ron`,
 and `bevy_derive` (the `Deref` derive), so neither half pulls in the engine. Its
 shape:

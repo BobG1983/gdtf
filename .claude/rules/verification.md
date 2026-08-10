@@ -57,6 +57,20 @@ Scope is agent judgment in the `/gate` skill (and re-checked by `/land`), not a 
 4. **Report failures verbatim** — paste the assert, compiler, or clippy output.
 5. **`/gate` is the gatekeeper** — this suite plus the design-gate audit. No gate-pass, no commit.
 
+### Gate-pass fingerprint
+
+`.claude/.gate-pass` records what `/gate` certified. Fields: `TICKET`, `BRANCH`, `HEAD`, `FINGERPRINT`, `SCOPE`.
+
+`FINGERPRINT` is a content hash of the **uncommitted tree** (staged + unstaged + untracked names) relative to `HEAD`. It is **not** a hash of `HEAD` itself — `HEAD` is a separate field. Pre-commit only checks `BRANCH` / `HEAD` (ancestor-or-equal after land's per-concern commits). `/land` re-runs this command and requires `FINGERPRINT=` to match, so nothing changed under the agent between gate and land.
+
+**The one command** (run from the repo root — nowhere else invents a recipe):
+
+```bash
+{ git diff HEAD; git ls-files -o --exclude-standard; } | shasum -a 256 | awk '{print $1}'
+```
+
+Write the 64-character hex only, e.g. `FINGERPRINT=a1b2c3…`. Both `/gate` and `/land` cite this section; do not invent a different hash, path list, or tool.
+
 6. **A flaky test is a broken test.** A test that passes only sometimes was never green, and a passing re-run is not evidence — it is the same test disagreeing with itself. Fix the cause so it cannot race: remove the clock, the shared path, the ordering assumption. A wider timeout, a sleep, a retry, or a larger random range makes a collision less likely and is therefore the wrong fix. If you cannot make it deterministic, say so and file it; never re-run until it passes and report green.
 
 7. **Prove it the cheap way first.** An integration test is about as good as a unit test; both beat reading the code; every one of them beats building tooling to demonstrate behaviour. **Read the existing tests before writing anything** — the invariant you are about to prove is often already asserted, and a numeric difference is not a defect until you have grepped the tests for it. Building a harness to show what a test already covers is wasted work, and a clause whose evidence depends on winning a race is a wrong clause.
