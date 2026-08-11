@@ -10,7 +10,10 @@ use super::{
     snapshot::{EnemyTurnGangers, GangerRow, cell_order, ganger_rows},
 };
 use crate::{
-    acts::{EndTurnRequested, FireRequested, MoveRequested, movement::suppressed_move_legal},
+    acts::{
+        EndTurnRequested, FireRequested, MoveRequested,
+        movement::{BreakAwayMover, suppressed_move_legal},
+    },
     battle::PlayerFaction,
     ganger::LifeState,
     magazine::{Magazine, mode_tu_cost},
@@ -57,13 +60,22 @@ fn plan_step(
     all_targets: &[AiTarget],
     omniscient: Option<&OmniscientFog>,
     grids: &AiPlanningGrids,
+    is_dead: &impl Fn(Entity) -> bool,
 ) -> Option<MoveRequested> {
     let goal = pick_nearest(enemy.position.cell(), enemy.position.level(), all_targets)?;
     let dest = plan_reposition(enemy, &goal, rows, omniscient?, grids.routes())?;
-    if let Some(suppressor) = enemy.pinned_by
-        && !*suppressed_move_legal(&enemy.position, &dest, &suppressor, grids.cover())
-    {
-        return None;
+    if let Some(suppressor) = enemy.pinned_by {
+        let mover =
+            BreakAwayMover::new(enemy.entity, &enemy.position, &enemy.stance, &enemy.facing);
+        if !*suppressed_move_legal(
+            &mover,
+            &dest,
+            &suppressor,
+            grids.cover(),
+            &grids.sight(is_dead),
+        ) {
+            return None;
+        }
     }
     Some(MoveRequested::new(enemy.entity, dest))
 }
@@ -123,7 +135,14 @@ pub fn enemy_ai_turn(
             break;
         }
 
-        if let Some(step) = plan_step(enemy, &rows, &all_targets, omniscient.as_deref(), &grids) {
+        if let Some(step) = plan_step(
+            enemy,
+            &rows,
+            &all_targets,
+            omniscient.as_deref(),
+            &grids,
+            is_dead,
+        ) {
             orders.step.write(step);
             acted = true;
             break;

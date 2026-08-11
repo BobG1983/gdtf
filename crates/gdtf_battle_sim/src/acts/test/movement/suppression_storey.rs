@@ -32,11 +32,20 @@ fn verdict(
     let at = Position::new(start);
     let pool = Tu::new(100);
     let pinned = Suppressed::new(SuppressorCell::new(suppressor));
+    let terrain = BareTerrain::new();
     can_move(
-        Mover::new(&at, &pool, Some(&pinned)),
+        Mover::new(
+            UNSPAWNED_MOVER,
+            &at,
+            &pool,
+            &STANDING,
+            &NORTH,
+            Some(&pinned),
+        ),
         &dest,
         &one_step(start, dest),
         cover,
+        &terrain.sight(),
     )
 }
 

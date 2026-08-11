@@ -5,7 +5,7 @@ use crate::{
     acts::{EndTurnRequested, MoveRequested, MovementOccurred},
     battle::{BattleInProgress, BattleRoster, BattleSimPlugin},
     effects::dot::DotTicked,
-    ganger::{Faction, LifeState, Position},
+    ganger::{Direction, Faction, LifeState, Position, StanceKind},
     rng::BattleSeed,
     test_support::{GangerEntityBuilder, full_vision, insert_sim_resources},
     turn::ActiveFaction,
@@ -63,6 +63,8 @@ fn the_boundary_dot_tick_resolves_before_a_same_frame_enemy_act() {
         .hp(start_hp)
         .tu(100)
         .tu_max(100)
+        .stance(StanceKind::Standing)
+        .facing(Direction::North)
         .spawn(app.world_mut());
     app.world_mut().entity_mut(mover).insert(dot(per_turn, 3));
 

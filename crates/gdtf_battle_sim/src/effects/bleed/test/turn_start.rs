@@ -3,7 +3,7 @@ use bevy::prelude::Messages;
 use super::support::{PLAYER, bleed_rate, bleeding_ganger, end_turn, life_of, live_app, wounds_of};
 use crate::{
     acts::{MoveRequested, MovementOccurred},
-    ganger::LifeState,
+    ganger::{Direction, LifeState, StanceKind},
     metric::{Cell, CellLevel, Level},
     test_support::{GangerEntityBuilder, full_vision},
 };
@@ -29,6 +29,8 @@ fn a_mid_turn_act_does_not_tick_the_bleed_clock() {
         .faction(PLAYER)
         .life_state(LifeState::Alive)
         .tu(100)
+        .stance(StanceKind::Standing)
+        .facing(Direction::North)
         .spawn(app.world_mut());
 
     app.update();

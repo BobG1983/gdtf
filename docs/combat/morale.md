@@ -27,14 +27,22 @@ Suppression may **deal a small Morale tick** but never *is* a nerve effect. A Co
 
 ### 1.1 Breaking away from suppression
 
-A suppressed ganger is pinned where it stands. It may walk only if the walk does **both** of these:
+A suppressed ganger is pinned where it stands. It may walk only if the walk **moves away** and then **gets out of the line of fire**:
 
 1. **It moves away.** The destination is farther from the suppressor's cell than the start is, measured across x and y (Chebyshev — the larger of |dx| and |dy|).
-2. **It ends behind cover.** The cell one step from the destination toward the suppressor carries cover, **on the destination's own storey**.
+2. **It gets out of the line of fire**, by either of two routes:
+   - **it ends behind cover** — the cell one step from the destination toward the suppressor carries cover, **on the destination's own storey**; **or**
+   - **it ends out of sight of the shot cell** — from the destination, the mover cannot see the cell the fire came from.
 
-One without the other is not enough. A walk that fails either is refused as suppressed before the TU pool is read at all, so a full pool does not buy a way out.
+Moving away on its own is not enough, and neither route helps a walk that stays as close as it started. A walk that fails the distance test, or passes it and takes neither route out, is refused as suppressed before the TU pool is read at all, so a full pool does not buy a way out.
 
-**Height is not distance.** The distance check ignores the storey. Climbing a floor gains no ground on the suppressor, so a suppressed ganger who moves straight up is refused however good the cover is up there. This is the rule, not a gap in it.
+**The mover is the observer** in the sight test, and the cell the fire came from is the target. The ray is flown from the destination, at the mover's own stance and facing, to that cell — the same line-of-sight probe the shot pipeline uses ([visibility.md](visibility.md)). Sight is directional, so a ganger can break away while whoever fired can still see it. That is intended.
+
+The shot cell records no stance, so the ray aims at it **standing**. That is the strictest choice: a lower aim point ducks behind cover the standing one clears, which would free walks this rule refuses.
+
+The question asked is what the mover would see **standing on the destination**, so the mover's own body — still on the cell it is leaving until the walk runs — never counts as what hides it. Anyone else's does: a living ganger between the destination and the shot cell breaks the line like any other obstruction, and a corpse there does not, because this is the one geometry truth.
+
+**Height is not distance.** The distance check ignores the storey. Climbing a floor gains no ground on the suppressor, so a suppressed ganger who moves straight up is refused however good the cover is up there, and however completely the climb breaks the line back to the shot cell. This is the rule, not a gap in it.
 
 **Cover is read on the storey you end on**, never the shooter's. A shooter a storey above or below does not change which cell the check looks at: it stays the cell beside your destination, on your storey.
 

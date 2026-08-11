@@ -5,7 +5,7 @@ use crate::{
     acts::{EndTurnRequested, MoveRejected, MoveRequested, MovementOccurred},
     armor::{ArmorType, WornBy},
     battle::{BattleInProgress, BattleRoster, BattleSimPlugin},
-    ganger::{Faction, Hp, LifeState, Position},
+    ganger::{Direction, Faction, Hp, LifeState, Position, StanceKind},
     metric::{Cell, CellLevel, Level},
     rng::BattleSeed,
     test_support::{GangerEntityBuilder, full_vision, insert_sim_resources},
@@ -96,6 +96,8 @@ fn the_boundary_field_tick_resolves_before_a_same_frame_enemy_act() {
         .hp(start_hp)
         .tu(100)
         .tu_max(100)
+        .stance(StanceKind::Standing)
+        .facing(Direction::North)
         .spawn(app.world_mut());
     app.world_mut()
         .spawn((ArmorType::Plated, WornBy::new(mover)));

@@ -2,11 +2,11 @@
 
 use bevy::{
     ecs::system::SystemParam,
-    prelude::{MessageWriter, Res},
+    prelude::{Entity, MessageWriter, Res},
 };
 
 use crate::{
-    acts::{EndTurnRequested, FireRequested, MoveRequested},
+    acts::{EndTurnRequested, FireRequested, MoveRequested, SightWorld},
     cover::CoverLedger,
     march::MarchGrids,
     occupancy::OccupancyGrid,
@@ -56,6 +56,11 @@ impl AiPlanningGrids<'_> {
     /// The cover a suppressed mover has to end behind to break away.
     pub(super) fn cover(&self) -> &CoverLedger {
         &self.cover
+    }
+
+    /// The grids and tuning a break-away sight probe is flown through.
+    pub(super) fn sight<F: Fn(Entity) -> bool>(&self, is_dead: F) -> SightWorld<'_, F> {
+        SightWorld::new(&self.occupancy, &self.surface, &self.tuning, is_dead)
     }
 }
 

@@ -1,7 +1,9 @@
 //! What a route costs: the sim's own pathfinder, planned through the squad's fog.
 
+use bevy::prelude::Entity;
 use gdtf_battle_sim::{
-    acts::{MoveVerdict, Mover, can_move, move_tu_cost},
+    acts::{MoveVerdict, Mover, SightWorld, can_move, move_tu_cost},
+    ganger::LifeState,
     injuries::{InflictedInjuries, MovementCostFactor},
     pathfinder::{PlanningView, find_path},
     visibility::FactionRelation,
@@ -17,6 +19,7 @@ use crate::dev::net_qa::{
 pub(super) fn move_quote(
     world: &LoadedWorld,
     rows: &CostRows,
+    actor: Entity,
     row: &ActorRowItem<'_, '_>,
     dest: CellLevelNet,
 ) -> Quote {
@@ -33,10 +36,22 @@ pub(super) fn move_quote(
     let Ok(path) = find_path(**row.position, to, world.grids, factor, &planning) else {
         return Quote::refused(CostRefusalNet::NoPathToCell);
     };
-    let mover = Mover::new(row.position, row.tu, row.pinned);
+    let mover = Mover::new(
+        actor,
+        row.position,
+        row.tu,
+        row.stance,
+        row.facing,
+        row.pinned,
+    );
+    let sight = SightWorld::new(world.grids.occupancy, world.surface, world.tuning, |dead| {
+        rows.targets
+            .get(dead)
+            .is_ok_and(|(_, _, life)| *life == LifeState::Dead)
+    });
     Quote::quoted(
         move_tu_cost(&path),
-        refused_by(can_move(mover, &to, &path, world.cover)),
+        refused_by(can_move(mover, &to, &path, world.cover, &sight)),
     )
 }
 
