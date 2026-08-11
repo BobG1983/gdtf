@@ -44,6 +44,29 @@ pub fn stance_tu_cost(cost: &StanceChangeTu) -> Tu {
     Tu::new(**cost)
 }
 
+/// Why the sim will not change stance.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StanceRefusal {
+    /// The actor already holds that stance.
+    AlreadyHeld,
+    /// The actor cannot afford the change.
+    Unaffordable,
+}
+
+/// The first rule this stance change breaks, or nothing when it is allowed.
+#[must_use]
+pub fn stance_refusal(
+    stance: &Stance,
+    to: StanceKind,
+    tu: &Tu,
+    cost: &StanceChangeTu,
+) -> Option<StanceRefusal> {
+    if **stance == to {
+        return Some(StanceRefusal::AlreadyHeld);
+    }
+    (!*can_spend_tu(tu, stance_tu_cost(cost))).then_some(StanceRefusal::Unaffordable)
+}
+
 /// Stance differs from the one held and the pool covers the change.
 #[must_use]
 pub fn can_set_stance(
@@ -52,7 +75,7 @@ pub fn can_set_stance(
     tu: &Tu,
     cost: &StanceChangeTu,
 ) -> CanSetStance {
-    CanSetStance::new(**stance != to && *can_spend_tu(tu, stance_tu_cost(cost)))
+    CanSetStance::new(stance_refusal(stance, to, tu, cost).is_none())
 }
 
 /// TU charged for turning `steps` ring steps.
@@ -75,8 +98,31 @@ pub fn afforded_turn_tu_cost(from: Direction, to: Direction, tu: &Tu, cost: &Tur
     turn_tu_cost(afforded_turn_steps(from, to, tu, cost), cost)
 }
 
+/// Why the sim will not turn the actor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FacingRefusal {
+    /// The actor already faces that way.
+    AlreadyFacing,
+    /// The pool cannot pay for even one ring step.
+    Unaffordable,
+}
+
+/// The first rule this turn breaks, or nothing when it is allowed.
+#[must_use]
+pub fn facing_refusal(
+    from: Direction,
+    to: Direction,
+    tu: &Tu,
+    cost: &TurnTu,
+) -> Option<FacingRefusal> {
+    if *from.steps_to(to) == 0 {
+        return Some(FacingRefusal::AlreadyFacing);
+    }
+    (*afforded_turn_steps(from, to, tu, cost) == 0).then_some(FacingRefusal::Unaffordable)
+}
+
 /// The turn changes facing and the pool covers at least one ring step.
 #[must_use]
 pub fn can_set_facing(from: Direction, to: Direction, tu: &Tu, cost: &TurnTu) -> CanSetFacing {
-    CanSetFacing::new(*afforded_turn_steps(from, to, tu, cost) > 0)
+    CanSetFacing::new(facing_refusal(from, to, tu, cost).is_none())
 }

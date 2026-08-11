@@ -1,10 +1,14 @@
 //! Clicks over a real socket: one selects a player ganger, one pins the cell an enemy stands on.
 
-use gdtf_app::qa_wire::{cell::CellLevelNet, token::GangerToken};
+use gdtf_app::qa_wire::{
+    cell::CellLevelNet,
+    click::{ClickDecisionNet, ClickReply},
+    token::GangerToken,
+};
 use gdtf_qa_protocol::command::RunOptions;
 
 use super::{
-    act_support::{accepted, battle_app_reporting, caught_up, decode, next},
+    act_support::{battle_app_reporting, caught_up, decode, next},
     battle_reads::{
         an_enemy_ganger_at, an_unreachable_cell, an_unselected_player_ganger, cell_argument,
         cell_of, token_of,
@@ -57,7 +61,7 @@ fn a_click_on_a_player_ganger_selects_it() -> TestResult {
     )?;
     let mut replies = replies.into_iter();
     let _waited = next(WAIT, &mut replies)?;
-    let clicked = accepted(INPUT_CLICK_CELL, next(INPUT_CLICK_CELL, &mut replies)?)?;
+    let clicked = decode::<ClickReply>(INPUT_CLICK_CELL, next(INPUT_CLICK_CELL, &mut replies)?)?;
     let selection =
         decode::<ClickedSelectionBody>(BATTLE_SELECTION, next(BATTLE_SELECTION, &mut replies)?)?;
 
@@ -66,6 +70,15 @@ fn a_click_on_a_player_ganger_selects_it() -> TestResult {
         Some(target.token),
         "the click ran the game's own left-click decision on that cell, which selects the player \
          ganger standing on it — {clicked:?}",
+    );
+    assert_eq!(
+        clicked,
+        ClickReply {
+            decision: ClickDecisionNet::Select,
+            act:      None,
+        },
+        "the reply names the decision the game made, and a click that only selects pushes no act \
+         to report on",
     );
     Ok(())
 }
@@ -84,7 +97,7 @@ fn a_click_on_an_enemy_pins_the_cell_it_stands_on() -> TestResult {
     )?;
     let mut replies = replies.into_iter();
     let _waited = next(WAIT, &mut replies)?;
-    let clicked = accepted(INPUT_CLICK_CELL, next(INPUT_CLICK_CELL, &mut replies)?)?;
+    let clicked = decode::<ClickReply>(INPUT_CLICK_CELL, next(INPUT_CLICK_CELL, &mut replies)?)?;
     let selection =
         decode::<ClickedSelectionBody>(BATTLE_SELECTION, next(BATTLE_SELECTION, &mut replies)?)?;
 
@@ -93,6 +106,11 @@ fn a_click_on_an_enemy_pins_the_cell_it_stands_on() -> TestResult {
         Some(at),
         "the same click also runs the pin decision, which pins the cell a ganger the player does \
          not command stands on — that pin is what the inspect panel then reads: {clicked:?}",
+    );
+    assert_eq!(
+        clicked.act.is_some(),
+        clicked.decision == ClickDecisionNet::Fire || clicked.decision == ClickDecisionNet::Move,
+        "the reply carries an act reply exactly when the decision pushed an act: {clicked:?}",
     );
     Ok(())
 }

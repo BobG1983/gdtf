@@ -16,6 +16,7 @@ use gdtf_qa_protocol::{
 use serde::Deserialize;
 
 use super::{
+    battle_setup::let_the_screen_catch_up,
     command_exchange::{WAIT, ran_body, run},
     socket_support::{TestError, battle_app_listening},
 };
@@ -47,6 +48,19 @@ pub(crate) fn battle_app_reporting<T>(
     move || {
         let (app, port) = battle_app_listening()?;
         let chosen = read(&app).ok_or_else(|| TestError::from(missing))?;
+        Ok((app, port, chosen))
+    }
+}
+
+/// A running-battle socket fixture that writes the live world, then lets the screen catch up.
+pub(crate) fn battle_app_prepared<T>(
+    prepare: impl FnOnce(&mut App) -> Option<T>,
+    missing: &'static str,
+) -> impl FnOnce() -> Result<(App, NetQaPort, T), TestError> {
+    move || {
+        let (mut app, port) = battle_app_listening()?;
+        let chosen = prepare(&mut app).ok_or_else(|| TestError::from(missing))?;
+        let_the_screen_catch_up(&mut app)?;
         Ok((app, port, chosen))
     }
 }
@@ -93,6 +107,15 @@ impl LogBody {
             .map(|entry| entry.kind)
             .collect()
     }
+
+    /// Every deed one actor logged, whichever window it fell in.
+    pub(crate) fn deeds_from(&self, actor: GangerToken) -> Vec<ActDeedKindNet> {
+        self.entries
+            .iter()
+            .filter(|entry| entry.actor == actor)
+            .map(|entry| entry.kind)
+            .collect()
+    }
 }
 
 /// The act window a reply carries, or a failure naming the refusal that came back instead.
@@ -100,10 +123,20 @@ pub(crate) fn accepted(name: &'static str, reply: QaResponse) -> Result<ActReply
     let decoded = decode::<ActReply>(name, reply)?;
     match decoded {
         ActReply::Accepted { .. } => Ok(decoded),
-        ActReply::Refused { reason } => {
-            Err(format!("`{name}` must be accepted here, it was refused: {reason:?}").into())
+        ActReply::Refused { .. }
+        | ActReply::FireRefused { .. }
+        | ActReply::ReloadRefused { .. }
+        | ActReply::MoveRefused { .. }
+        | ActReply::StanceRefused { .. }
+        | ActReply::FacingRefused { .. } => {
+            Err(format!("`{name}` must be accepted here, it was refused: {decoded:?}").into())
         }
     }
+}
+
+/// The reply an act answered, whichever shape it took.
+pub(crate) fn answered(name: &'static str, reply: QaResponse) -> Result<ActReply, TestError> {
+    decode::<ActReply>(name, reply)
 }
 
 /// The `from_seq..to_seq` bounds of an accepted act.
@@ -112,7 +145,12 @@ pub(crate) const fn window(reply: ActReply) -> Option<(ActSeqNet, ActSeqNet)> {
         ActReply::Accepted {
             from_seq, to_seq, ..
         } => Some((from_seq, to_seq)),
-        ActReply::Refused { .. } => None,
+        ActReply::Refused { .. }
+        | ActReply::FireRefused { .. }
+        | ActReply::ReloadRefused { .. }
+        | ActReply::MoveRefused { .. }
+        | ActReply::StanceRefused { .. }
+        | ActReply::FacingRefused { .. } => None,
     }
 }
 
@@ -120,7 +158,12 @@ pub(crate) const fn window(reply: ActReply) -> Option<(ActSeqNet, ActSeqNet)> {
 pub(crate) const fn complete(reply: ActReply) -> Option<ActCompleteNet> {
     match reply {
         ActReply::Accepted { complete, .. } => Some(complete),
-        ActReply::Refused { .. } => None,
+        ActReply::Refused { .. }
+        | ActReply::FireRefused { .. }
+        | ActReply::ReloadRefused { .. }
+        | ActReply::MoveRefused { .. }
+        | ActReply::StanceRefused { .. }
+        | ActReply::FacingRefused { .. } => None,
     }
 }
 

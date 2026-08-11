@@ -2,7 +2,10 @@ use std::sync::mpsc::Receiver;
 
 use bevy::prelude::*;
 use gdtf_battle_input::{PendingActIntent, SelectedFireMode, SelectedShooter};
-use gdtf_battle_sim::tuning::CombatTuning;
+use gdtf_battle_sim::{
+    ganger::{Aiming, LifeState, Tu, TuMax},
+    tuning::CombatTuning,
+};
 use gdtf_net_qa_transport::{PendingQueue, Responder};
 use gdtf_qa_command::{
     command::QaCommand,
@@ -14,7 +17,10 @@ use gdtf_qa_protocol::{
 };
 
 use super::super::{fire::ActFire, sets::ActCommandSystems};
-use crate::dev::net_qa::{commands::act::fire::ActFireArgs, wire::act::ActReply};
+use crate::dev::net_qa::{
+    commands::act::fire::ActFireArgs,
+    wire::{act::ActReply, refusal::ShotRefusalNet},
+};
 
 /// One cell to shoot at, written in `act.fire`'s own argument shape.
 const AT: &str = "(at:(cell:(x:1,y:1),level:0))";
@@ -44,7 +50,15 @@ fn fire_app(loaded: Loaded) -> App {
         ActCommandSystems::Settle.after(ActCommandSystems::Claim),
     );
     ActFire::register_handler(&mut app);
-    let shooter = app.world_mut().spawn_empty().id();
+    let shooter = app
+        .world_mut()
+        .spawn((
+            LifeState::Alive,
+            Tu::new(10),
+            TuMax::new(10),
+            Aiming::new(false),
+        ))
+        .id();
     app.insert_resource(SelectedShooter::new(shooter));
     app
 }
@@ -113,7 +127,7 @@ fn a_shot_with_no_combat_tuning_loaded_refuses_missing_model_naming_it() {
 }
 
 #[test]
-fn a_declined_shot_on_a_loaded_host_still_answers_an_empty_window() {
+fn a_shooter_with_no_weapon_answers_the_no_firing_weapon_reason() {
     let mut app = fire_app(Loaded {
         mode:   true,
         tuning: true,
@@ -128,18 +142,12 @@ fn a_declined_shot_on_a_loaded_host_still_answers_an_empty_window() {
     let Ok(decoded) = ron::de::from_str::<ActReply>(body.as_str()) else {
         unreachable!("`act.fire` must answer its declared reply shape, got {body:?}");
     };
-    let ActReply::Accepted {
-        from_seq, to_seq, ..
-    } = decoded
-    else {
-        unreachable!(
-            "a shooter with no weapon is declined by the sim, not by the QA layer, so the reply \
-             is still an accepted window: {decoded:?}"
-        );
-    };
     assert_eq!(
-        from_seq, to_seq,
-        "a shot the sim declines logs nothing, so its window is empty — this is the answer the \
-         missing-resource refusal must stay distinguishable from",
+        decoded,
+        ActReply::FireRefused {
+            reason: ShotRefusalNet::NoFiringWeapon,
+        },
+        "a shooter holding nothing that fires never reaches the sim, so the reply names that \
+         reason — this is the answer the missing-resource refusal must stay distinguishable from",
     );
 }

@@ -1,5 +1,10 @@
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::ActIntent;
+use gdtf_battle_sim::{
+    ganger::{Stance, StanceKind, Tu},
+    posture::{StanceRefusal, stance_refusal},
+    tuning::CombatTuning,
+};
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
     command::QaCommand,
@@ -15,7 +20,7 @@ use super::{
 use crate::dev::net_qa::{
     commands::read::availability::running_and_caught,
     facts::GameFacts,
-    wire::{act::ActReply, act_payload::StanceNet},
+    wire::{act::ActReply, act_payload::StanceNet, refusal::StanceRefusalNet},
 };
 
 #[derive(Debug, Deserialize)]
@@ -36,8 +41,9 @@ impl QaCommand for ActSetStance {
     const NAME: CommandName = CommandName::from_static("act.set_stance");
     const SUMMARY: CommandSummary = CommandSummary::from_static(
         "Put the selected shooter in a named posture, rather than cycling the way the keybind \
-         does, so the same call twice leaves the same stance. The reply brackets the act log with \
-         the head before and after the frame.",
+         does, so the same call twice leaves the same stance. A change the sim would not make \
+         answers StanceRefused naming AlreadyHeld or Unaffordable; one it would make brackets the \
+         act log with the head before and after the frame.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -56,10 +62,27 @@ impl QaCommand for ActSetStance {
     }
 }
 
+/// The pose and pool the sim's own stance guard is asked about.
+#[derive(SystemParam)]
+struct StanceGuard<'w, 's> {
+    posers: Query<'w, 's, (&'static Stance, &'static Tu)>,
+    tuning: Option<Res<'w, CombatTuning>>,
+}
+
+impl StanceGuard<'_, '_> {
+    /// The sim's own reason for turning this change down, when it has one to give.
+    fn refusal(&self, actor: Entity, to: StanceKind) -> Option<StanceRefusal> {
+        let (stance, tu) = self.posers.get(actor).ok()?;
+        let tuning = self.tuning.as_deref()?;
+        stance_refusal(stance, to, tu, &tuning.stance_change_tu)
+    }
+}
+
 fn claim_act_set_stance(
     mut queue: ResMut<PendingQueue<CommandCall<ActSetStance>>>,
     mut deferred: ResMut<DeferredReplies<ActSetStance>>,
     mut claim: ActClaim,
+    guard: StanceGuard,
 ) {
     if queue.is_empty() {
         return;
@@ -70,7 +93,14 @@ fn claim_act_set_stance(
             responder.answer(&NO_SHOOTER);
             continue;
         };
-        claim.push(ActIntent::SetStance(args.stance.to_sim()));
+        let stance = args.stance.to_sim();
+        if let Some(refusal) = guard.refusal(actor, stance) {
+            responder.answer(&ActReply::StanceRefused {
+                reason: StanceRefusalNet::from_sim(refusal),
+            });
+            continue;
+        }
+        claim.push(ActIntent::SetStance(stance));
         deferred.park(responder, ActTicket::new(from, Some(actor)));
     }
 }

@@ -6,9 +6,11 @@ use serde::{Deserialize, Serialize};
 use super::{
     act_payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet},
     cell::CellLevelNet,
+    deed::MoveRejectionNet,
     key::KeyPressNet,
     misc::FireModeIndex,
     pointer::PointerPosNet,
+    refusal::{FacingRefusalNet, ReloadRefusalNet, ShotRefusalNet, StanceRefusalNet},
     token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
 };
 
@@ -68,6 +70,31 @@ pub enum ActReply {
     Refused {
         /// Why it was turned away.
         reason: ActRefusalNet,
+    },
+    /// The shot was turned down; nothing was declared.
+    FireRefused {
+        /// The game's own reason for not taking the shot.
+        reason: ShotRefusalNet,
+    },
+    /// The reload was turned down; the magazine is unchanged.
+    ReloadRefused {
+        /// The sim's own reason for not reloading.
+        reason: ReloadRefusalNet,
+    },
+    /// The move was turned down; the actor has not stepped.
+    MoveRefused {
+        /// The sim's own reason for not moving.
+        reason: MoveRejectionNet,
+    },
+    /// The stance change was turned down; the pose is unchanged.
+    StanceRefused {
+        /// The sim's own reason for not changing stance.
+        reason: StanceRefusalNet,
+    },
+    /// The turn was turned down; the facing is unchanged.
+    FacingRefused {
+        /// The sim's own reason for not turning.
+        reason: FacingRefusalNet,
     },
 }
 

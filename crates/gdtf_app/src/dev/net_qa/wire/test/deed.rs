@@ -22,7 +22,7 @@ use gdtf_battle_sim::{
 };
 
 use super::assert_ron_round_trip;
-use crate::dev::net_qa::wire::deed::{ActDeedKindNet, MoveRejectionNet};
+use crate::dev::net_qa::wire::deed::{ActDeedKindNet, MoveRejectionNet, ReloadOutcomeNet};
 
 const KINDS: [ActDeedKindNet; 26] = [
     ActDeedKindNet::TurnBegan,
@@ -34,7 +34,9 @@ const KINDS: [ActDeedKindNet; 26] = [
     },
     ActDeedKindNet::Fired,
     ActDeedKindNet::RoundResolved,
-    ActDeedKindNet::Reloaded,
+    ActDeedKindNet::Reloaded {
+        outcome: ReloadOutcomeNet::AlreadyFull,
+    },
     ActDeedKindNet::MagazineChanged,
     ActDeedKindNet::Injured,
     ActDeedKindNet::VitalsChanged,
@@ -108,6 +110,15 @@ const fn a_sim_rejection(reason: MoveRejectionNet) -> MoveRejection {
     }
 }
 
+/// The sim outcome a wire outcome came from. Exhaustive, so a crossed arm shows here.
+const fn a_sim_outcome(outcome: ReloadOutcomeNet) -> ReloadOutcome {
+    match outcome {
+        ReloadOutcomeNet::Reloaded => ReloadOutcome::Reloaded,
+        ReloadOutcomeNet::AlreadyFull => ReloadOutcome::AlreadyFull,
+        ReloadOutcomeNet::NoTu => ReloadOutcome::NoTu,
+    }
+}
+
 /// One sim deed per wire kind. Exhaustive, so a new kind needs a witness before this compiles.
 fn a_deed_for(kind: ActDeedKindNet) -> ActDeed {
     match kind {
@@ -141,8 +152,8 @@ fn a_deed_for(kind: ActDeedKindNet) -> ActDeed {
         ActDeedKindNet::RoundResolved => ActDeed::RoundResolved {
             shot: Box::new(a_shot()),
         },
-        ActDeedKindNet::Reloaded => ActDeed::Reloaded {
-            outcome: ReloadOutcome::Reloaded,
+        ActDeedKindNet::Reloaded { outcome } => ActDeed::Reloaded {
+            outcome: a_sim_outcome(outcome),
         },
         ActDeedKindNet::MagazineChanged => ActDeed::MagazineChanged {
             magazine: MagazineFacts::new(Magazine::loaded(MagazineSize::new(12), ReloadTu::new(4))),
@@ -246,6 +257,30 @@ fn every_sim_deed_mirrors_onto_the_kind_of_the_same_name() {
             variant_name(&format!("{kind:?}")),
             variant_name(&format!("{deed:?}")),
             "each kind carries its sim deed's own name, so a crossed arm shows here",
+        );
+    }
+}
+
+#[test]
+fn every_reload_outcome_round_trips_and_mirrors_its_sim_outcome() {
+    for outcome in [
+        ReloadOutcomeNet::Reloaded,
+        ReloadOutcomeNet::AlreadyFull,
+        ReloadOutcomeNet::NoTu,
+    ] {
+        assert_ron_round_trip(&outcome);
+        assert_eq!(
+            ReloadOutcomeNet::from_sim(a_sim_outcome(outcome)),
+            outcome,
+            "a logged reload carries the sim's outcome, so the mirror is lossless both ways",
+        );
+        assert_eq!(
+            ActDeedKindNet::from_deed(&ActDeed::Reloaded {
+                outcome: a_sim_outcome(outcome),
+            }),
+            ActDeedKindNet::Reloaded { outcome },
+            "the sim logs a reload it declined and one it made alike, so the kind has to carry \
+             the outcome for a client to tell them apart",
         );
     }
 }

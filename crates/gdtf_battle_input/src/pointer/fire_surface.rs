@@ -6,7 +6,7 @@ use gdtf_battle_sim::{
     fire::{MeleeQuery, MountedQuery},
     ganger::{Aiming, TuMax},
     injuries::{HandsAvailable, InflictedInjuries},
-    magazine::{FireActor, Magazine, can_fire},
+    magazine::{FireActor, FireRefusal, Magazine, fire_refusal},
     prelude::{CellLevel, LifeState, Tu},
     tuning::CombatTuning,
     weapon::{Handedness, WieldedBy, Wields},
@@ -57,19 +57,56 @@ impl ShooterArms<'_, '_> {
     }
 }
 
-/// The fire request this shooter can take at `target`, or nothing when the sim declines.
-#[must_use]
+/// Why no shot could be built for this shooter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ShotRefusal {
+    /// The entity holds none of the parts a shooter needs.
+    NotAShooter,
+    /// The shooter wields no weapon that fires.
+    NoFiringWeapon,
+    /// The shooter is not alive.
+    NotAlive,
+    /// The shooter cannot afford the fire mode's time units.
+    Unaffordable,
+    /// The magazine holds no rounds.
+    MagazineEmpty,
+    /// The target cell-level is off the battle grid.
+    OutOfBounds,
+    /// Too few hands are free for the weapon.
+    NotEnoughHands,
+}
+
+impl ShotRefusal {
+    /// Mirror the sim's own reason.
+    #[must_use]
+    pub const fn from_sim(refusal: FireRefusal) -> Self {
+        match refusal {
+            FireRefusal::NotAlive => Self::NotAlive,
+            FireRefusal::Unaffordable => Self::Unaffordable,
+            FireRefusal::MagazineEmpty => Self::MagazineEmpty,
+            FireRefusal::OutOfBounds => Self::OutOfBounds,
+            FireRefusal::NotEnoughHands => Self::NotEnoughHands,
+        }
+    }
+}
+
+/// The fire request this shooter can take at `target`, or the reason it cannot.
+///
+/// # Errors
+/// Answers the sim's own reason when the shot is not allowed.
 pub fn try_fire_request(
     shooter: Entity,
     target: CellLevel,
     fire_mode: &SelectedFireMode,
     tuning: &CombatTuning,
     arms: &ShooterArms,
-) -> Option<FireRequested> {
+) -> Result<FireRequested, ShotRefusal> {
     let Ok((life, tu, tu_max, aiming, injuries)) = arms.shooters.get(shooter) else {
-        return None;
+        return Err(ShotRefusal::NotAShooter);
     };
-    let (magazine, handedness) = arms.firing_weapon(shooter)?;
+    let Some((magazine, handedness)) = arms.firing_weapon(shooter) else {
+        return Err(ShotRefusal::NoFiringWeapon);
+    };
     let hands_available =
         injuries.map_or_else(HandsAvailable::default, InflictedInjuries::hands_available);
     let actor = FireActor {
@@ -83,11 +120,11 @@ pub fn try_fire_request(
     };
     let (target_cell, target_level) = target.split();
 
-    if !*can_fire(&actor, fire_mode, target_cell, target_level, tuning) {
-        return None;
+    if let Some(refusal) = fire_refusal(&actor, fire_mode, target_cell, target_level, tuning) {
+        return Err(ShotRefusal::from_sim(refusal));
     }
 
-    Some(FireRequested::new(
+    Ok(FireRequested::new(
         shooter,
         **fire_mode,
         target_cell,

@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use gdtf_battle_input::ActIntent;
+use gdtf_battle_sim::act_log::ActDeed;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
     command::QaCommand,
@@ -9,10 +10,12 @@ use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary
 
 use super::{
     sets::ActCommandSystems,
-    support::{ActClaim, ActSettle, ActTicket, NO_SHOOTER, NoArgs, settle_acts},
+    support::{ActClaim, ActSettle, ActTicket, NO_SHOOTER, NoArgs, settle_acts_with},
 };
 use crate::dev::net_qa::{
-    commands::read::availability::running_and_caught, facts::GameFacts, wire::act::ActReply,
+    commands::read::availability::running_and_caught,
+    facts::GameFacts,
+    wire::{act::ActReply, refusal::ReloadRefusalNet},
 };
 
 pub(crate) struct ActReload;
@@ -26,8 +29,9 @@ impl QaCommand for ActReload {
     const NAME: CommandName = CommandName::from_static("act.reload");
     const SUMMARY: CommandSummary = CommandSummary::from_static(
         "Reload the selected shooter's weapon, taking the same path the reload keybind does. The \
-         reply brackets the act log with the head before and after the frame; a reload the sim \
-         declines logs nothing, so `from_seq` comes back equal to `to_seq`.",
+         sim records every reload it hears, whatever came of it: a refill answers an accepted \
+         window bracketing the act log, and a reload the sim declines answers ReloadRefused \
+         naming AlreadyFull or NoTu.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -66,5 +70,19 @@ fn claim_act_reload(
 }
 
 fn settle_act_reload(settle: ActSettle, mut deferred: ResMut<DeferredReplies<ActReload>>) {
-    settle_acts::<ActReload>(&settle, &mut deferred);
+    settle_acts_with::<ActReload>(&mut deferred, |ticket| reload_reply(&settle, ticket));
+}
+
+/// The refusal the sim recorded for this reload, or the window it opened.
+fn reload_reply(settle: &ActSettle, ticket: &ActTicket) -> ActReply {
+    let refused = settle.deeds_of(ticket).find_map(|deed| {
+        let ActDeed::Reloaded { outcome } = deed else {
+            return None;
+        };
+        ReloadRefusalNet::from_sim(*outcome)
+    });
+    match refused {
+        Some(reason) => ActReply::ReloadRefused { reason },
+        None => settle.window_of(ticket),
+    }
 }
