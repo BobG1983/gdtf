@@ -444,8 +444,10 @@ pushes onto, and the sim's own `dispatch_*` is the authoritative gate: nothing o
 re-checks adjacency, faction, life state or TU. `battle.offers` does report the panel's own
 `pressable` bit, but that is the greyed-out state the button already carries, read off the
 same offer resource — not a second legality check living on the QA side. Six of the eight
-scans compute it from the sim's own cost helper and `can_spend_tu`; Execute and Stabilize ask
-`can_execute` / `can_stabilize`, which fold that same cost check in. Either way the bit is
+scans ask a predicate that folds the cost check in — `can_execute`, `can_stabilize`,
+`can_open_door`, `can_throw_grenade`, `can_enter_emplacement`, `can_exit_emplacement`. Melee
+and Shove have TU-blind predicates, so they price the act with the sim's own cost helper and
+ask `can_spend_tu`. Either way the bit is
 the sim's answer about affordability, shown on a button — and, for melee, its answer about
 whether the actor wields a melee weapon to price a strike with at all.
 
@@ -469,9 +471,9 @@ rejects by doing nothing and emitting nothing, so a call the sim declined comes 
 `from_seq` equal to `to_seq`. Read `battle.offers` first to tell the two apart — an offer
 with `pressable: false` is a button on screen the panel has greyed out. The panel makes that
 button ignore a click and its digit key; the command does not copy the state, so `act.*`
-pushes the target anyway and the sim declines in silence. All eight families compute the
-flag from their own sim cost helper — six call `can_spend_tu` on it, Execute and Stabilize
-take it from `can_execute` / `can_stabilize`. Melee has a second way to go false:
+pushes the target anyway and the sim declines in silence. All eight families take the flag
+from the sim — six from a predicate that folds the cost check in, Melee and Shove from
+`can_spend_tu` on their own sim cost helper. Melee has a second way to go false:
 an actor wielding no melee weapon has no strike to price, so its button greys out too.
 
 All eight grey out on a cost the sim charges. `act.execute` and `act.stabilize` are quoted

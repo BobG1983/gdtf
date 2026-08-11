@@ -1,7 +1,7 @@
 # Architecture
 
-The two structural rules everything else is built on. Both are checkable against the
-tree, which is why they live here rather than in a decision record: if the code stops
+The three structural rules everything else is built on. All three are checkable against
+the tree, which is why they live here rather than in a decision record: if the code stops
 matching this page, the page is wrong and gets fixed.
 
 ## The model/view split
@@ -27,6 +27,45 @@ battle that replays differently gives no error.
 
 **Code sites:** the crate boundaries themselves enforce direction, since
 `gdtf_battle_sim`'s manifest does not depend on the presenter.
+
+## The sim answers whether an act may happen
+
+**A gate function in `gdtf_battle_sim` is the one answer to whether an act may happen.
+Every consumer calls it. Nobody keeps a second copy of the checks.**
+
+The sim exports two shapes of gate, and which one to call depends on what the caller
+needs back:
+
+- **`can_*` returns yes or no.** `can_shove`, `can_melee`, `can_open_door`,
+  `can_enter_emplacement`, `can_exit_emplacement`, `can_throw_grenade`, `can_execute`,
+  `can_stabilize`, `can_fire`, `can_engage`, `can_move`, `can_reload`, `can_see`,
+  `can_set_stance`, `can_set_facing`, `can_spend_tu`.
+- **`*_refusal` returns the reason.** `stance_refusal`, `facing_refusal`, `fire_refusal`.
+  Each `can_*` over one of them is a thin wrapper, so a caller that has to show or send
+  the reason asks the refusal function instead of rebuilding it from a boolean.
+
+**What this forbids:** a panel, a QA command, or a `run_if` that restates a predicate's
+terms — the adjacency, the faction, the life state, the magazine, the TU — instead of
+calling it. It also forbids answering only part of a predicate: an offer that checks the
+target side and skips the actor side has still made up its own gate.
+
+Some acts are offered while they cannot be paid for, greyed rather than hidden. That does
+not license a private affordability check. Where the predicate folds TU in, ask it twice:
+once with the act's own cost as the pool, which holds the affordability term true so the
+rest picks the target, then again with the real pool to decide whether the button is
+pressable. Where the predicate is TU-blind — `can_shove`, `can_melee` — ask it for the
+target and ask `can_spend_tu` for the pool. Either way both answers come from the sim.
+
+**Why it is load-bearing:** a copy starts out agreeing and stops agreeing on the next
+change to the sim, and it fails quietly — the player is offered an act the sim then
+refuses, or is denied one it would have allowed. Nothing errors either way.
+
+**Code sites:** the predicates live beside the act they gate, under
+`crates/gdtf_battle_sim/src/acts/`, `.../combatants/`, `.../equipment/magazine/` and
+`.../perception/los/` (`can_see`). Consumers:
+`crates/gdtf_app/src/states/running/game/battlescape/contextual_panel/acts/`,
+`crates/gdtf_app/src/dev/net_qa/commands/`, and
+`crates/gdtf_battle_input/src/pointer/fire_surface.rs`.
 
 ## The UI boundary
 

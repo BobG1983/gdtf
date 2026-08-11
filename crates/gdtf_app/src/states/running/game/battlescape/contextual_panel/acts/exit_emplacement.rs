@@ -1,10 +1,9 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::ExitEmplacementAct};
 use gdtf_battle_sim::{
-    acts::exit_emplacement_tu_cost,
+    acts::{can_exit_emplacement, exit_emplacement_tu_cost},
     emplacement::{EmplacementOccupant, EmplacementState},
     ganger::{Faction, Position, Tu},
-    tu::can_spend_tu,
     tuning::CombatTuning,
 };
 use gdtf_ui::ButtonLabel;
@@ -31,25 +30,48 @@ impl ContextualPanelAct for ExitEmplacementAct {
 
 type ExitEmplacementActorFilter = (With<Position>, With<Faction>);
 
+type ExitEmplacementReads = (
+    Entity,
+    &'static EmplacementState,
+    &'static EmplacementOccupant,
+);
+
 pub(in crate::states::running::game::battlescape) fn offer_exit_emplacement(
     selected: Res<SelectedShooter>,
     actors: Query<Option<&Tu>, ExitEmplacementActorFilter>,
-    emplacements: Query<(Entity, &EmplacementOccupant), With<EmplacementState>>,
+    emplacements: Query<ExitEmplacementReads>,
     tuning: Option<Res<CombatTuning>>,
     mut offer: ResMut<ContextualOffer<ExitEmplacementAct>>,
 ) {
-    let actor = (**selected).and_then(|actor| actors.get(actor).ok().map(|tu| (actor, tu)));
-    let target = actor.and_then(|(actor, _)| {
-        emplacements
-            .iter()
-            .find(|(_, occupant)| ***occupant == actor)
-            .map(|(entity, _)| entity)
-    });
-    let pressable = OfferPressable::new(
-        actor
-            .and_then(|(_, tu)| tu)
-            .zip(tuning.as_deref())
-            .is_some_and(|(tu, tuning)| *can_spend_tu(tu, exit_emplacement_tu_cost(tuning))),
-    );
+    let scanned = (**selected)
+        .and_then(|actor| actors.get(actor).ok().map(|tu| (actor, tu)))
+        .zip(tuning.as_deref())
+        .and_then(|((actor, pool), tuning)| {
+            scan_exit_emplacement(actor, pool, &emplacements, tuning)
+        });
+    let (target, pressable) = scanned
+        .map_or((None, OfferPressable::new(false)), |(entity, pressable)| {
+            (Some(entity), pressable)
+        });
     offer.set_if_neq(ContextualOffer::new(target).with_pressable(pressable));
+}
+
+fn scan_exit_emplacement(
+    actor: Entity,
+    pool: Option<&Tu>,
+    emplacements: &Query<ExitEmplacementReads>,
+    tuning: &CombatTuning,
+) -> Option<(Entity, OfferPressable)> {
+    let allowed = |state: &EmplacementState, occupant: &EmplacementOccupant, tu: &Tu| {
+        *can_exit_emplacement(actor, state, occupant, tu, tuning)
+    };
+    // Asking with the cost as the pool holds affordability true, so the other terms pick the target.
+    let cost = exit_emplacement_tu_cost(tuning);
+    let (entity, state, occupant) = emplacements
+        .iter()
+        .find(|&(_, state, occupant)| allowed(state, occupant, &cost))?;
+    Some((
+        entity,
+        OfferPressable::new(pool.is_some_and(|tu| allowed(state, occupant, tu))),
+    ))
 }

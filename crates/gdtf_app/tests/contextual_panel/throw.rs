@@ -26,12 +26,24 @@ fn spawn_throw_actor(
     gang: u8,
     trajectory: TrajectoryStyle,
 ) -> Entity {
+    spawn_throw_actor_with_rounds(app, x, y, gang, trajectory, 1)
+}
+
+fn spawn_throw_actor_with_rounds(
+    app: &mut App,
+    x: i32,
+    y: i32,
+    gang: u8,
+    trajectory: TrajectoryStyle,
+    rounds: u16,
+) -> Entity {
     let pool = throw_cost(app);
     let actor = app
         .world_mut()
         .spawn((at(x, y), Faction::new(gang), pool))
         .id();
-    app.world_mut().spawn((WieldedBy::new(actor), trajectory));
+    app.world_mut()
+        .spawn((WieldedBy::new(actor), trajectory, magazine_of(rounds)));
     app.world_mut().insert_resource(SelectedShooter::new(actor));
     actor
 }
@@ -110,6 +122,32 @@ fn straight_weapon_or_no_hover_does_not_offer_throw() {
     assert!(
         throw_visible(&mut app),
         "an Arc weapon + a hovered cell reveals the Throw button (discriminating)",
+    );
+}
+
+#[test]
+fn an_empty_magazine_does_not_offer_throw() {
+    let mut app = battle_running_app();
+    spawn_throw_actor_with_rounds(&mut app, 5, 5, 0, TrajectoryStyle::Arc, 0);
+    hover_cell(&mut app, 15, 15);
+    app.update();
+
+    assert!(
+        !throw_visible(&mut app),
+        "an EMPTY magazine offers NO throw — the sim refuses it, so the panel must not carry it",
+    );
+
+    let Some(weapon) = single_with::<TrajectoryStyle>(&mut app) else {
+        return;
+    };
+    if let Ok(mut entity) = app.world_mut().get_entity_mut(weapon) {
+        entity.insert(magazine_of(1));
+    }
+    hover_cell(&mut app, 15, 15);
+    app.update();
+    assert!(
+        throw_visible(&mut app),
+        "loading one round into the same weapon reveals the Throw button (discriminating)",
     );
 }
 

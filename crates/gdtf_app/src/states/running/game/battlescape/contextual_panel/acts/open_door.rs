@@ -1,11 +1,10 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::OpenDoorAct};
 use gdtf_battle_sim::{
-    acts::{downed::is_8_adjacent, open_door_tu_cost},
+    acts::{can_open_door, open_door_tu_cost},
     entity::TerrainCell,
     ganger::{Faction, Position, Tu},
     openable::OpenState,
-    tu::can_spend_tu,
     tuning::CombatTuning,
 };
 use gdtf_ui::ButtonLabel;
@@ -41,20 +40,34 @@ pub(in crate::states::running::game::battlescape) fn offer_open_door(
     tuning: Option<Res<CombatTuning>>,
     mut offer: ResMut<ContextualOffer<OpenDoorAct>>,
 ) {
-    let actor = (**selected).and_then(|actor| actors.get(actor).ok());
-    let target = actor.and_then(|(actor_pos, _)| {
-        doors
-            .iter()
-            .find(|(_, open_state, door_cell)| {
-                !*open_state.is_open() && *is_8_adjacent(*actor_pos, Position::new(***door_cell))
-            })
-            .map(|(entity, ..)| entity)
-    });
-    let pressable = OfferPressable::new(
-        actor
-            .and_then(|(_, tu)| tu)
-            .zip(tuning.as_deref())
-            .is_some_and(|(tu, tuning)| *can_spend_tu(tu, open_door_tu_cost(tuning))),
-    );
+    let scanned = (**selected)
+        .and_then(|actor| actors.get(actor).ok())
+        .zip(tuning.as_deref())
+        .and_then(|((actor_pos, pool), tuning)| scan_open_door(*actor_pos, pool, &doors, tuning));
+    let (target, pressable) = scanned
+        .map_or((None, OfferPressable::new(false)), |(entity, pressable)| {
+            (Some(entity), pressable)
+        });
     offer.set_if_neq(ContextualOffer::new(target).with_pressable(pressable));
+}
+
+fn scan_open_door(
+    actor: Position,
+    pool: Option<&Tu>,
+    doors: &Query<DoorReads>,
+    tuning: &CombatTuning,
+) -> Option<(Entity, OfferPressable)> {
+    let allowed = |door: Position, open_state: OpenState, tu: &Tu| {
+        *can_open_door(actor, door, open_state, tu, tuning)
+    };
+    // Asking with the cost as the pool holds affordability true, so the other terms pick the target.
+    let cost = open_door_tu_cost(tuning);
+    let (entity, door, open_state) = doors
+        .iter()
+        .map(|(entity, open_state, cell)| (entity, Position::new(**cell), *open_state))
+        .find(|&(_, door, open_state)| allowed(door, open_state, &cost))?;
+    Some((
+        entity,
+        OfferPressable::new(pool.is_some_and(|tu| allowed(door, open_state, tu))),
+    ))
 }

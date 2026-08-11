@@ -1,7 +1,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::{SelectedShooter, contextual::MeleeAct};
 use gdtf_battle_sim::{
-    acts::{MeleeTarget, downed::is_8_adjacent, melee_tu_cost},
+    acts::{MeleeAttacker, MeleeReach, MeleeTarget, can_melee, melee_tu_cost},
     cover::CoverLedger,
     ganger::{Facing, Faction, LifeState, Position, Stance, StanceKind, Tu},
     los::{Observer, PeekOffset, Target, has_los},
@@ -97,28 +97,23 @@ pub(in crate::states::running::game::battlescape) fn offer_melee(
     let target = (**selected)
         .and_then(|actor| actors.get(actor).ok())
         .and_then(|(actor_pos, actor_faction, actor_stance, actor_facing)| {
+            let attacker = MeleeAttacker::new(*actor_pos, *actor_faction);
             let ganger = match (actor_stance, actor_facing) {
-                (Some(actor_stance), Some(actor_facing)) => scan_melee_target(
-                    *actor_pos,
-                    *actor_faction,
-                    *actor_stance,
-                    *actor_facing,
-                    &candidates,
-                    &grids,
-                ),
+                (Some(actor_stance), Some(actor_facing)) => {
+                    scan_melee_target(attacker, *actor_stance, *actor_facing, &candidates, &grids)
+                }
                 _ => None,
             };
             ganger
                 .map(MeleeTarget::Ganger)
-                .or_else(|| scan_melee_structure(*actor_pos, &grids).map(MeleeTarget::Structure))
+                .or_else(|| scan_melee_structure(attacker, &grids).map(MeleeTarget::Structure))
         });
     let pressable = (**selected).map_or(OfferPressable::new(false), |actor| strike.affords(actor));
     offer.set_if_neq(ContextualOffer::new(target).with_pressable(pressable));
 }
 
 fn scan_melee_target(
-    actor_pos: Position,
-    actor_faction: Faction,
+    attacker: MeleeAttacker,
     actor_stance: Stance,
     actor_facing: Facing,
     candidates: &Query<MeleeCandidates>,
@@ -140,8 +135,9 @@ fn scan_melee_target(
     };
 
     let standing = Stance::new(StanceKind::Standing);
+    let actor_pos = attacker.position;
     for (entity, pos, life, faction, stance) in candidates {
-        if !*life.is_active() || *faction == actor_faction || !*is_8_adjacent(actor_pos, *pos) {
+        if !*can_melee(attacker, MeleeReach::ganger(*pos, *faction, *life)) {
             continue;
         }
         let observer = Observer {
@@ -172,18 +168,18 @@ fn scan_melee_target(
     None
 }
 
-fn scan_melee_structure(actor_pos: Position, grids: &LosGrids) -> Option<CellLevel> {
+fn scan_melee_structure(attacker: MeleeAttacker, grids: &LosGrids) -> Option<CellLevel> {
     let cover = grids.cover.as_ref()?;
 
-    let key = *actor_pos;
+    let key = *attacker.position;
     let level = key.level();
 
     for dy in -1..=1 {
         for dx in -1..=1 {
-            if dx == 0 && dy == 0 {
+            let at = CellLevel::new(Cell::new(key.x + dx, key.y + dy), level);
+            if !*can_melee(attacker, MeleeReach::structure(at)) {
                 continue;
             }
-            let at = CellLevel::new(Cell::new(key.x + dx, key.y + dy), level);
             if let Some(entry) = cover.peek(&at)
                 && !*entry.destroyed
             {

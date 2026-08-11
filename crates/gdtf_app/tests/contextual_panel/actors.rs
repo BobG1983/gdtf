@@ -10,8 +10,10 @@ use gdtf_battle_sim::{
     },
     effects::bleed::BleedingOut,
     ganger::Tu,
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     prelude::{Cell, CellLevel, Faction, Level, LifeState, Position, Stance, StanceKind},
     tuning::CombatTuning,
+    weapon::MagazineSize,
 };
 
 use super::harness::*;
@@ -39,6 +41,15 @@ pub(crate) fn stabilize_cost(app: &App) -> Tu {
     app.world()
         .get_resource::<CombatTuning>()
         .map_or_else(|| Tu::new(0), stabilize_tu_cost)
+}
+
+/// A magazine holding `rounds` of a two-round capacity.
+pub(crate) const fn magazine_of(rounds: u16) -> Magazine {
+    Magazine::new(
+        LoadedRounds::new(rounds),
+        MagazineSize::new(2),
+        ReloadTu::new(1),
+    )
 }
 
 pub(crate) fn spawn_actor(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
