@@ -471,8 +471,17 @@ ${verifyOut}
 ## GATE VERDICTS (final round ${attempt})
 ${verdicts.map((v, i) => `<gate-lens name="${LENSES[i].key}">\n${v}\n</gate-lens>`).join('\n')}
 
+Run every command in the foreground and read its exit code in the same turn.
+Never start the suite in the background and end your turn waiting on it — that
+is how the previous attempt at this step died without committing. There is no
+monitor coming to report your exit codes.
+
+${GREEN}
+
 Steps (see .claude/skills/land/SKILL.md):
-1. Re-run full green suite if develop moved.
+1. Re-run the full green suite. Docs-sync runs after the gate, so the tree you
+   are about to commit is not the tree the verify report above certified. The
+   build cache makes the run cheap when nothing has actually changed.
 2. Write .claude/.gate-pass (TICKET/BRANCH/HEAD/FINGERPRINT/SCOPE). FINGERPRINT is the hex from the one command in .claude/rules/verification.md (Gate-pass fingerprint) — do not invent a recipe.
 3. Stage explicit files by name. Never git add -A.
 4. Commit: Area: summary (${TICKET}). Confirm subject names the ticket.

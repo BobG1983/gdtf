@@ -15,16 +15,35 @@ Backgrounding was never the problem — not relaying the result is. Spawn
 everything in the background and keep working; the failure to guard against is a
 result landing and never reaching the user.
 
+## Scope — the main session, not sub-agents
+
+The main session is re-invoked when a background job or sub-agent finishes. That
+callback is what makes everything in this file safe, including the paragraph
+above this heading.
+
+**A sub-agent gets no callback.** Ending your turn ends the agent, and anything
+left running in the background dies unread. Inside a sub-agent, run the command
+in the foreground and read its exit code in the same turn. Several commands, one
+at a time. Nothing will come back to tell you how it went.
+
+On 2026-08-11 a land agent started the six-command suite with
+`run_in_background`, checked its log twice, then ended its turn with "I'll wait
+for the suite to finish — the monitor will report the exit codes." Nothing was
+monitoring it. Every other phase of that build had passed, and the work sat
+uncommitted until the run was resumed by hand.
+
 ## Rules
 
 1. **Never poll for work the harness tracks.** A background job or sub-agent
-   re-invokes the session when it finishes. A loop that sleeps and checks on it
-   burns turns to learn what the notification was going to say anyway. This
-   covers "just one quick check on how far along it is".
+   re-invokes the **main session** when it finishes. A loop that sleeps and
+   checks on it burns turns to learn what the notification was going to say
+   anyway. This covers "just one quick check on how far along it is".
 2. **To wait on something the harness cannot see** — an external process, a file
    another machine writes — use the `Monitor` tool, or one background command
    that exits when its condition becomes true. One command that waits, never
-   repeated turns that check.
+   repeated turns that check. Both routes belong to the main session; a
+   sub-agent that reaches for either is about to end its turn waiting on
+   nothing.
 3. **Always run sub-agents in the background.** Every one, including the one
    whose answer you want most. A synchronous agent blocks the session for as
    long as it runs, which is the same idling this rule exists to stop. Spawn it,

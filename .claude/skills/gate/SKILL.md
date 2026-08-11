@@ -33,7 +33,7 @@ Decide scope from **changed paths** (staged, committed on the branch vs `develop
 
 **DOCS means:** do not run cargo. State that scope was DOCS and which paths you used.
 
-**FULL means:** run the full suite from [`.claude/rules/verification.md`](../../rules/verification.md). All eight must exit 0. Use the aliases. Red → fail immediately.
+**FULL means:** run the full suite from [`.claude/rules/verification.md`](../../rules/verification.md). All six must exit 0. Use the aliases. Red → fail immediately.
 
 Pre-commit does not implement this skip — it always runs its cargo subset. Scope is agent judgment in this skill and in `/land`.
 
