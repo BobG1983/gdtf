@@ -11,4 +11,5 @@ mod refusals;
 mod scope;
 mod support;
 mod suppression;
+mod suppression_sight;
 mod turning;

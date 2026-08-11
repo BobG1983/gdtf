@@ -29,13 +29,22 @@ fn can_move_refuses_a_suppressed_step_toward_the_suppressor() {
     let at = Position::new(start);
     let pool = Tu::new(100);
     let pinned = Suppressed::new(SuppressorCell::new(ground(20, 10)));
+    let terrain = BareTerrain::new();
 
     assert_eq!(
         can_move(
-            Mover::new(&at, &pool, Some(&pinned)),
+            Mover::new(
+                UNSPAWNED_MOVER,
+                &at,
+                &pool,
+                &STANDING,
+                &NORTH,
+                Some(&pinned)
+            ),
             &dest,
             &one_step(start, dest),
             &cover_at(12, 10),
+            &terrain.sight(),
         ),
         MoveVerdict::Suppressed,
         "the gate the dispatch and battle.cost share must refuse a step toward the suppressor, \
@@ -49,13 +58,22 @@ fn can_move_allows_a_suppressed_step_that_breaks_away_behind_cover() {
     let at = Position::new(start);
     let pool = Tu::new(100);
     let pinned = Suppressed::new(SuppressorCell::new(ground(20, 10)));
+    let terrain = BareTerrain::new();
 
     assert_eq!(
         can_move(
-            Mover::new(&at, &pool, Some(&pinned)),
+            Mover::new(
+                UNSPAWNED_MOVER,
+                &at,
+                &pool,
+                &STANDING,
+                &NORTH,
+                Some(&pinned)
+            ),
             &dest,
             &one_step(start, dest),
             &cover_at(10, 10),
+            &terrain.sight(),
         ),
         MoveVerdict::Allowed,
         "the same gate must allow a step that ends farther away and behind cover",
@@ -68,13 +86,22 @@ fn can_move_names_suppression_when_an_empty_pool_would_also_refuse() {
     let at = Position::new(start);
     let empty = Tu::new(0);
     let pinned = Suppressed::new(SuppressorCell::new(ground(20, 10)));
+    let terrain = BareTerrain::new();
 
     assert_eq!(
         can_move(
-            Mover::new(&at, &empty, Some(&pinned)),
+            Mover::new(
+                UNSPAWNED_MOVER,
+                &at,
+                &empty,
+                &STANDING,
+                &NORTH,
+                Some(&pinned)
+            ),
             &dest,
             &one_step(start, dest),
             &cover_at(12, 10),
+            &terrain.sight(),
         ),
         MoveVerdict::Suppressed,
         "suppression is judged before the pool: a mover who is both suppressed and short of TU \

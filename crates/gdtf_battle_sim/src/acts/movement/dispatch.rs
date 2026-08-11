@@ -4,12 +4,11 @@ use bevy::prelude::{Commands, MessageReader, MessageWriter, Query};
 
 use super::{
     cost::{MoveVerdict, Mover, can_move, move_step_tu_costs},
-    params::{MovePlanningView, PathfindingGrids, SuppressionGate},
+    params::{MovePlanningView, MoverRow, PathfindingGrids, SuppressionGate},
     signals::{MoveRejected, MoveRejection},
 };
 use crate::{
     acts::{movement::WalkInProgress, request::MoveRequested},
-    ganger::{Faction, Position, Tu},
     injuries::{InflictedInjuries, MovementCostFactor},
     metric::CellLevel,
     pathfinder::find_path,
@@ -18,12 +17,7 @@ use crate::{
 /// Pathfind and either reject or insert a walk component.
 pub fn dispatch_move(
     mut requests: MessageReader<MoveRequested>,
-    actors: Query<(
-        &'static Position,
-        &'static Tu,
-        &'static Faction,
-        Option<&'static InflictedInjuries>,
-    )>,
+    actors: Query<MoverRow>,
     grids: PathfindingGrids,
     view: MovePlanningView,
     gate: SuppressionGate,
@@ -31,25 +25,32 @@ pub fn dispatch_move(
     mut commands: Commands,
 ) {
     for request in requests.read() {
-        let Ok((position, tu, &mover_faction, injuries)) = actors.get(request.actor) else {
+        let Ok(actor) = actors.get(request.actor) else {
             continue;
         };
 
-        let factor = injuries.map_or(
+        let factor = actor.injuries.map_or(
             MovementCostFactor::IDENTITY,
             InflictedInjuries::movement_cost_factor,
         );
 
-        let start: CellLevel = **position;
-        let planning = view.of(mover_faction);
+        let start: CellLevel = **actor.position;
+        let planning = view.of(*actor.faction);
 
         let Ok(path) = find_path(start, request.dest, grids.grids(), factor, &planning) else {
             rejects.write(MoveRejected::new(request.actor, MoveRejection::Unreachable));
             continue;
         };
 
-        let mover = Mover::new(position, tu, gate.on(request.actor));
-        match can_move(mover, &request.dest, &path, gate.cover()) {
+        let mover = Mover::new(
+            request.actor,
+            actor.position,
+            actor.tu,
+            actor.stance,
+            actor.facing,
+            gate.on(request.actor),
+        );
+        match can_move(mover, &request.dest, &path, gate.cover(), &gate.sight()) {
             MoveVerdict::Suppressed => {
                 rejects.write(MoveRejected::new(request.actor, MoveRejection::Suppressed));
                 continue;

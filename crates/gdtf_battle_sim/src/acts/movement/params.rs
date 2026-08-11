@@ -1,21 +1,35 @@
 //! System params for move dispatch: pathfinding grids, planning fog, suppression.
 
 use bevy::{
-    ecs::system::SystemParam,
+    ecs::{query::QueryData, system::SystemParam},
     prelude::{Entity, Query, Res},
 };
 
+use super::sight::SightWorld;
 use crate::{
     battle::PlayerFaction,
     cover::CoverLedger,
-    ganger::{Faction, Suppressed},
+    ganger::{Facing, Faction, LifeState, Position, Stance, Suppressed, Tu},
+    injuries::InflictedInjuries,
     occupancy::OccupancyGrid,
     pathfinder::{MoveGrids, PlanningView},
+    surface::SurfaceGrid,
     terrain::floor::FloorCostGrid,
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
     visibility::{FactionRelation, OmniscientFog, SquadVisibility, move_fog},
 };
+
+/// What move dispatch reads off the actor whose walk it is routing.
+#[derive(QueryData)]
+pub struct MoverRow {
+    pub(super) position: &'static Position,
+    pub(super) tu:       &'static Tu,
+    pub(super) stance:   &'static Stance,
+    pub(super) facing:   &'static Facing,
+    pub(super) faction:  &'static Faction,
+    pub(super) injuries: Option<&'static InflictedInjuries>,
+}
 
 /// Occupancy, vertical links, floor costs, and tuning a route is planned against.
 #[derive(SystemParam)]
@@ -64,11 +78,15 @@ impl MovePlanningView<'_, '_> {
     }
 }
 
-/// The suppression markers and the cover a break-away step is judged against.
+/// The suppression markers, the cover and the sight a break-away step is judged against.
 #[derive(SystemParam)]
 pub struct SuppressionGate<'w, 's> {
     suppressed: Query<'w, 's, &'static Suppressed>,
+    lives:      Query<'w, 's, &'static LifeState>,
     cover:      Res<'w, CoverLedger>,
+    occupancy:  Res<'w, OccupancyGrid>,
+    surface:    Res<'w, SurfaceGrid>,
+    tuning:     Res<'w, CombatTuning>,
 }
 
 impl SuppressionGate<'_, '_> {
@@ -80,5 +98,14 @@ impl SuppressionGate<'_, '_> {
     /// The cover a suppressed mover may break away behind.
     pub(super) fn cover(&self) -> &CoverLedger {
         &self.cover
+    }
+
+    /// The grids and tuning a break-away sight probe is flown through.
+    pub(super) fn sight(&self) -> SightWorld<'_, impl Fn(Entity) -> bool> {
+        SightWorld::new(&self.occupancy, &self.surface, &self.tuning, |entity| {
+            self.lives
+                .get(entity)
+                .is_ok_and(|life| *life == LifeState::Dead)
+        })
     }
 }

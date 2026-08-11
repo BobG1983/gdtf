@@ -104,18 +104,33 @@ fn can_move_and_the_dispatch_refuse_the_same_pool() {
 
     let at = Position::new(ground(10, 10));
     let empty = CoverLedger::new();
+    let terrain = BareTerrain::new();
     let broke = Tu::new(quoted.saturating_sub(1));
     assert_eq!(
-        can_move(Mover::new(&at, &broke, None), &dest, &path, &empty),
+        can_move(
+            Mover::new(UNSPAWNED_MOVER, &at, &broke, &STANDING, &NORTH, None),
+            &dest,
+            &path,
+            &empty,
+            &terrain.sight(),
+        ),
         MoveVerdict::Unaffordable,
         "can_move must refuse a pool one TU below the quote",
     );
     assert_eq!(
         can_move(
-            Mover::new(&at, &Tu::new(quoted), None),
+            Mover::new(
+                UNSPAWNED_MOVER,
+                &at,
+                &Tu::new(quoted),
+                &STANDING,
+                &NORTH,
+                None
+            ),
             &dest,
             &path,
             &empty,
+            &terrain.sight(),
         ),
         MoveVerdict::Allowed,
         "can_move must allow a pool that exactly covers the quote",

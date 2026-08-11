@@ -14,8 +14,8 @@ use crate::{
         throw_grenade::dispatch_throw_grenade,
     },
     equipment::attachments::apply_pending_attachments,
-    occupancy::project_path_blocking,
-    occupancy_sync::{SimSystems, sync_destroyed_cover},
+    occupancy::{project_path_blocking, project_vision_blocking},
+    occupancy_sync::{SimSystems, sync_accrued_ground, sync_destroyed_cover, sync_destroyed_slab},
 };
 
 pub(super) fn wire_acts(app: &mut App) {
@@ -41,6 +41,9 @@ pub(super) fn wire_acts(app: &mut App) {
         dispatch_move
             .after(sync_destroyed_cover)
             .after(project_path_blocking)
+            .after(project_vision_blocking)
+            .after(sync_destroyed_slab)
+            .after(sync_accrued_ground)
             .in_set(SimSystems::Simulate),
     );
     app.add_systems(

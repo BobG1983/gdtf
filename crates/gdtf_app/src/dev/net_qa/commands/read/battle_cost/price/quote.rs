@@ -79,7 +79,7 @@ fn priced(
 ) -> Quote {
     let tuning = world.tuning;
     match act {
-        CostActNet::Move { dest } => walk::move_quote(world, rows, row, dest),
+        CostActNet::Move { dest } => walk::move_quote(world, rows, actor, row, dest),
         CostActNet::Fire { target, mode } => {
             gear::fire_quote(rows, tuning, actor, row, target, mode)
         }
