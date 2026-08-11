@@ -1,7 +1,7 @@
 //! Running a fixture's battle on until the screen has played back everything it wrote.
 
-use bevy::app::App;
-use gdtf_battle_presenter::PlaybackCursor;
+use bevy::{app::App, ecs::system::RunSystemOnce};
+use gdtf_battle_presenter::{PlaybackCursor, playback_caught_up};
 use gdtf_battle_sim::act_log::{ActLog, ActSeq};
 
 use crate::socket_support::TestError;
@@ -9,15 +9,16 @@ use crate::socket_support::TestError;
 /// Frames a fixture may spend on playback before it gives up and fails the case.
 const CATCH_UP_BUDGET: u32 = 4096;
 
-/// Whether the screen has played the act log to its head and is not holding on an entry.
-pub(crate) fn the_screen_has_caught_up(app: &App) -> bool {
-    let (Some(log), Some(cursor)) = (
-        app.world().get_resource::<ActLog>(),
-        app.world().get_resource::<PlaybackCursor>(),
-    ) else {
+/// Whether the game's own playback gate is open, with a battle that never started counting as no.
+pub(crate) fn the_screen_has_caught_up(app: &mut App) -> bool {
+    let world = app.world();
+    if world.get_resource::<ActLog>().is_none() || world.get_resource::<PlaybackCursor>().is_none()
+    {
         return false;
-    };
-    !cursor.is_holding() && cursor.shown() >= log.head()
+    }
+    app.world_mut()
+        .run_system_once(playback_caught_up)
+        .unwrap_or(false)
 }
 
 /// Run frames until the act log has stopped growing and the screen has played all of it.

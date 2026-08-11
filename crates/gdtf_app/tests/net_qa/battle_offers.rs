@@ -116,9 +116,6 @@ struct ShoveRun {
     after:     Tu,
 }
 
-/// Frames the shove is given to reach the sim and spend the pool before the case reads it.
-const DISPATCH_FRAMES: u32 = 16;
-
 /// The battle a shove case runs in: the shover's pool written, and the screen level with it.
 fn battle_with_a_pool_for_one_shove(
     short_by_one: bool,
@@ -160,9 +157,7 @@ fn a_shove_at_a_pool(short_by_one: bool) -> Result<ShoveRun, TestError> {
     let _shooter = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
     let offers = decode::<OffersBody>(BATTLE_OFFERS, next(BATTLE_OFFERS, &mut replies)?)?;
     let _shoved = next(ACT_SHOVE, &mut replies)?;
-    for _ in 0..DISPATCH_FRAMES {
-        app.update();
-    }
+    let_the_screen_catch_up(&mut app)?;
 
     let cost = shove_cost(&app)?;
     let Some(shove) = offers
@@ -241,13 +236,13 @@ fn the_shove_fixture_hands_over_a_screen_the_act_log_cannot_get_ahead_of() -> Te
     let (mut app, _port, _adjacent) = battle_with_a_pool_for_one_shove(false)?;
 
     assert!(
-        the_screen_has_caught_up(&app),
+        the_screen_has_caught_up(&mut app),
         "the client's first act is admitted against the screen, so the fixture may not hand \
          over one that is still playing the log back",
     );
     app.update();
     assert!(
-        the_screen_has_caught_up(&app),
+        the_screen_has_caught_up(&mut app),
         "the pool the fixture wrote is already logged and played, so the next frame has \
          nothing left to put the screen behind with — the frame a command arrives on decides \
          whether it is refused",
