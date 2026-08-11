@@ -3,6 +3,7 @@
 
 use bevy::ecs::entity::Entity;
 use gdtf_app::qa_wire::{
+    act::ActReply,
     cell::CellLevelNet,
     deed::{ActDeedKindNet, MoveRejectionNet},
 };
@@ -10,8 +11,8 @@ use gdtf_qa_protocol::command::RunOptions;
 
 use super::{
     act_support::{
-        LogBody, RosterBody, accepted, battle_app_reporting, card_of, complete, decode, next,
-        selected, walk_complete, window,
+        LogBody, RosterBody, accepted, answered, battle_app_reporting, card_of, complete, decode,
+        next, selected, walk_complete, window,
     },
     battle_reads::{
         a_player_ganger, an_unreachable_cell, cell_argument, ganger_argument, one_step_from,
@@ -179,20 +180,26 @@ fn a_move_the_sim_refuses_carries_the_sim_reason_into_the_log() -> TestResult {
     )?;
     let mut replies = replies.into_iter();
     let _shooter = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
-    let refused = accepted(ACT_MOVE, next(ACT_MOVE, &mut replies)?)?;
+    let refused = answered(ACT_MOVE, next(ACT_MOVE, &mut replies)?)?;
     let log = decode::<LogBody>(LOG_READ, next(LOG_READ, &mut replies)?)?;
 
     let actor = token_of(walk.ganger);
-    let Some(window) = window(refused) else {
-        unreachable!("a move the sim turns down is still an accepted call");
-    };
-    let deeds = log.deeds_by(actor, window);
+    assert_eq!(
+        refused,
+        ActReply::MoveRefused {
+            reason: MoveRejectionNet::Unreachable,
+        },
+        "the QA layer invents no refusal of its own: the reply carries the sim's own reason for \
+         turning the move down: {:?}",
+        log.entries,
+    );
+    let deeds = log.deeds_from(actor);
     assert!(
         deeds.contains(&ActDeedKindNet::MoveRefused {
             reason: MoveRejectionNet::Unreachable,
         }),
-        "the QA layer invents no refusal of its own: the sim's reason for turning a move down is \
-         read out of the window the call opened: {window:?} logged {deeds:?} in {:?}",
+        "the refused move is still logged with that same reason, so a client reading the log sees \
+         what the reply said: {deeds:?} in {:?}",
         log.entries,
     );
     Ok(())

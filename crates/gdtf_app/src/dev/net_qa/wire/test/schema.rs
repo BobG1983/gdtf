@@ -12,8 +12,9 @@ use crate::dev::net_qa::{
         act::{ActCompleteNet, ActRefusalNet, ActReply, ActSeqNet, NetIntent, SelectReply},
         act_payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet},
         cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet},
+        click::{ClickDecisionNet, ClickReply},
         cost::{CostActNet, CostLegalNet, CostRefusalNet},
-        deed::{ActDeedKindNet, MoveRejectionNet},
+        deed::{ActDeedKindNet, MoveRejectionNet, ReloadOutcomeNet},
         inspect::{
             CoverBlockNet, CoverHpNet, HardnessNet, HeightBandNet, InspectShownNet, ProtectionNet,
         },
@@ -29,6 +30,7 @@ use crate::dev::net_qa::{
             RunningPhaseNet,
         },
         pointer::{MouseButtonNet, PointerPosNet, PointerXNet, PointerYNet},
+        refusal::{FacingRefusalNet, ReloadRefusalNet, ShotRefusalNet, StanceRefusalNet},
         roster::{FactionNet, GangerCardNet, GangerNameNet},
         shell::{CaughtUpNet, SoundNet},
         sight::{CanEngageNet, CanSeeNet, SightlineNet},
@@ -89,7 +91,13 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<ActSeqNet>("ActSeqNet");
     assert_schema_is_usable::<ActCompleteNet>("ActCompleteNet");
     assert_schema_is_usable::<ActRefusalNet>("ActRefusalNet");
+    assert_schema_is_usable::<ShotRefusalNet>("ShotRefusalNet");
+    assert_schema_is_usable::<ReloadRefusalNet>("ReloadRefusalNet");
+    assert_schema_is_usable::<StanceRefusalNet>("StanceRefusalNet");
+    assert_schema_is_usable::<FacingRefusalNet>("FacingRefusalNet");
     assert_schema_is_usable::<ActReply>("ActReply");
+    assert_schema_is_usable::<ClickDecisionNet>("ClickDecisionNet");
+    assert_schema_is_usable::<ClickReply>("ClickReply");
     assert_schema_is_usable::<SelectReply>("SelectReply");
     assert_schema_is_usable::<StanceNet>("StanceNet");
     assert_schema_is_usable::<AimNet>("AimNet");
@@ -105,6 +113,7 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<LogReadCap>("LogReadCap");
     assert_schema_is_usable::<LogDroppedCount>("LogDroppedCount");
     assert_schema_is_usable::<MoveRejectionNet>("MoveRejectionNet");
+    assert_schema_is_usable::<ReloadOutcomeNet>("ReloadOutcomeNet");
     assert_schema_is_usable::<ActDeedKindNet>("ActDeedKindNet");
     assert_schema_is_usable::<LogEntryNet>("LogEntryNet");
 

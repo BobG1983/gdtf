@@ -18,7 +18,7 @@ use super::{
 use crate::dev::net_qa::{
     commands::read::availability::running_and_caught,
     facts::GameFacts,
-    wire::{act::ActReply, cell::CellLevelNet},
+    wire::{act::ActReply, cell::CellLevelNet, refusal::ShotRefusalNet},
 };
 
 /// Why a shot answers nothing while the fire mode it would use is not loaded.
@@ -49,11 +49,10 @@ impl QaCommand for ActFire {
     const SUMMARY: CommandSummary = CommandSummary::from_static(
         "Fire the selected shooter's live fire mode at a cell, building the request the pointer \
          builds. The mode is whatever battle.selection reports; this command does not change it. \
-         A shot the sim declines is never declared, so the reply comes back with `from_seq` equal \
-         to `to_seq` and the shooter logging nothing in that window. A host that holds no \
-         SelectedFireMode or no CombatTuning cannot build the shot at all, and refuses \
-         MissingModel naming the absent one rather than answering an empty window a caller would \
-         read as a declined shot.",
+         A shot the game turns down never reaches the sim, and answers FireRefused naming the \
+         reason — an empty magazine, a target off the grid, too little TU, and so on — rather \
+         than an accepted window. A host that holds no SelectedFireMode or no CombatTuning cannot \
+         build the shot at all, and refuses MissingModel naming the absent one.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -97,10 +96,15 @@ fn claim_act_fire(
             responder.answer(&NO_SHOOTER);
             continue;
         };
-        if let Some(request) = try_fire_request(actor, args.at.to_sim(), mode, tuning, &arms) {
-            claim.push(ActIntent::Fire(request));
+        match try_fire_request(actor, args.at.to_sim(), mode, tuning, &arms) {
+            Ok(request) => {
+                claim.push(ActIntent::Fire(request));
+                deferred.park(responder, ActTicket::new(from_seq, Some(actor)));
+            }
+            Err(refusal) => responder.answer(&ActReply::FireRefused {
+                reason: ShotRefusalNet::from_sim(refusal),
+            }),
         }
-        deferred.park(responder, ActTicket::new(from_seq, Some(actor)));
     }
 }
 

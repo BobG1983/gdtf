@@ -1,10 +1,12 @@
 //! Stance over a real socket: the stance the command names is the stance the roster draws.
 
-use gdtf_app::qa_wire::act_payload::StanceNet;
+use gdtf_app::qa_wire::{act::ActReply, act_payload::StanceNet, refusal::StanceRefusalNet};
 use gdtf_qa_protocol::command::RunOptions;
 
 use super::{
-    act_support::{RosterBody, accepted, card_of, caught_up, complete, decode, next, selected},
+    act_support::{
+        RosterBody, accepted, answered, card_of, caught_up, complete, decode, next, selected,
+    },
     command_exchange::{
         ACT_SELECT_NEXT, ACT_SET_STANCE, BATTLE_ROSTER, WAIT, assert_refused_off_the_battle_screen,
         exchange_all, run,
@@ -62,7 +64,7 @@ fn setting_the_same_stance_twice_leaves_the_same_stance() -> TestResult {
     let shooter = selected(ACT_SELECT_NEXT, next(ACT_SELECT_NEXT, &mut replies)?)?;
     let _once = accepted(ACT_SET_STANCE, next(ACT_SET_STANCE, &mut replies)?)?;
     let _settled = next(WAIT, &mut replies)?;
-    let _twice = accepted(ACT_SET_STANCE, next(ACT_SET_STANCE, &mut replies)?)?;
+    let twice = answered(ACT_SET_STANCE, next(ACT_SET_STANCE, &mut replies)?)?;
     let roster = decode::<RosterBody>(BATTLE_ROSTER, next(BATTLE_ROSTER, &mut replies)?)?;
 
     let Some(shooter) = shooter else {
@@ -75,6 +77,14 @@ fn setting_the_same_stance_twice_leaves_the_same_stance() -> TestResult {
         card.stance,
         StanceNet::Crouching,
         "an absolute stance is idempotent, unlike the cycle keybind: {card:?}",
+    );
+    assert_eq!(
+        twice,
+        ActReply::StanceRefused {
+            reason: StanceRefusalNet::AlreadyHeld,
+        },
+        "the sim will not change a stance the actor already holds, so the second call answers \
+         that reason rather than a window that claims it did something",
     );
     Ok(())
 }

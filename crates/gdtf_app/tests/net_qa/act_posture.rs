@@ -2,16 +2,18 @@
 
 use bevy::ecs::entity::Entity;
 use gdtf_app::qa_wire::{
-    act::ActSeqNet,
+    act::{ActReply, ActSeqNet},
     act_payload::{AimNet, FacingNet},
     deed::ActDeedKindNet,
+    refusal::FacingRefusalNet,
     token::GangerToken,
 };
 use gdtf_qa_protocol::command::RunOptions;
 
 use super::{
     act_support::{
-        LogBody, accepted, battle_app_reporting, caught_up, decode, next, selected, window,
+        LogBody, accepted, answered, battle_app_reporting, caught_up, decode, next, selected,
+        window,
     },
     battle_reads::{a_player_ganger, aiming_of, facing_of, ganger_argument, token_of},
     command_exchange::{
@@ -185,15 +187,13 @@ fn facing_turns_to_the_direction_named_rather_than_cycling() -> TestResult {
     let _selected = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
     let turned = accepted(ACT_SET_FACING, next(ACT_SET_FACING, &mut replies)?)?;
     let _first = next(WAIT, &mut replies)?;
-    let again = accepted(ACT_SET_FACING, next(ACT_SET_FACING, &mut replies)?)?;
+    let again = answered(ACT_SET_FACING, next(ACT_SET_FACING, &mut replies)?)?;
     let _second = next(WAIT, &mut replies)?;
     let further = accepted(ACT_SET_FACING, next(ACT_SET_FACING, &mut replies)?)?;
     let log = decode::<LogBody>(LOG_READ, next(LOG_READ, &mut replies)?)?;
 
     let actor = token_of(poser.ganger);
-    let (Some(turned), Some(again), Some(further)) =
-        (window(turned), window(again), window(further))
-    else {
+    let (Some(turned), Some(further)) = (window(turned), window(further)) else {
         unreachable!("every accepted act carries its window");
     };
     assert!(
@@ -202,10 +202,13 @@ fn facing_turns_to_the_direction_named_rather_than_cycling() -> TestResult {
          {:?}",
         log.entries,
     );
-    assert!(
-        !posture_changed(&log, actor, again),
-        "the same direction twice is idempotent, so that frame logs no pose at all: {again:?} in \
-         {:?}",
+    assert_eq!(
+        again,
+        ActReply::FacingRefused {
+            reason: FacingRefusalNet::AlreadyFacing,
+        },
+        "the same direction twice is idempotent, so the second call answers the reason the sim \
+         would not turn rather than a window that claims it did: {:?}",
         log.entries,
     );
     assert!(

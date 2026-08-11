@@ -6,6 +6,8 @@ pub mod act;
 pub mod act_payload;
 /// Cell and cell-level coordinates.
 pub mod cell;
+/// What a left click decided and what it started.
+pub mod click;
 /// Act, legality and refusal payloads for a TU cost preview.
 pub mod cost;
 /// Act-log deed kinds.
@@ -23,6 +25,8 @@ pub mod offer;
 pub(crate) mod phase;
 /// Pointer position and mouse buttons.
 pub mod pointer;
+/// Why the sim turned an act down, one reason type per act.
+pub mod refusal;
 /// Roster cards.
 pub mod roster;
 /// Menu and shell read payloads.

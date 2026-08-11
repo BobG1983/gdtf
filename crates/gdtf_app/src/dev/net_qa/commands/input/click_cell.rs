@@ -19,7 +19,7 @@ use crate::dev::net_qa::{
     commands::{
         act::{
             ActCommandSystems,
-            support::{ActSettle, ActTicket, head_of, settle_acts},
+            support::{ActSettle, ActTicket, head_of, move_reply},
         },
         read::availability::running_and_caught,
     },
@@ -27,6 +27,7 @@ use crate::dev::net_qa::{
     wire::{
         act::{ActReply, ActSeqNet},
         cell::CellLevelNet,
+        click::{ClickDecisionNet, ClickReply},
     },
 };
 
@@ -42,8 +43,8 @@ pub(crate) struct InputClickCell;
 impl QaCommand for InputClickCell {
     type Args = InputClickCellArgs;
     type Facts = GameFacts;
-    type Parked = ActTicket;
-    type Reply = ActReply;
+    type Parked = ClickTicket;
+    type Reply = ClickReply;
 
     const NAME: CommandName = CommandName::from_static("input.click_cell");
     const SUMMARY: CommandSummary = CommandSummary::from_static(
@@ -51,8 +52,9 @@ impl QaCommand for InputClickCell {
          take: the cell becomes the hovered inspect target, the click decision runs on it, and \
          both the selection and the inspect pin are updated from the result. So one click may \
          select a ganger, pin a move target, confirm the move, or fire — the decision is the \
-         game's, not the caller's. The reply brackets the act log the way every act.* command \
-         does; read the resulting selection and pin with battle.selection.",
+         game's, not the caller's. The reply names that decision, and carries the act reply for \
+         the two decisions that push an act; read the resulting selection and pin with \
+         battle.selection.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -98,9 +100,19 @@ struct ClickPointer<'w, 's> {
     selection: PointerSelection<'w>,
 }
 
+/// What one clicked call needs to report: the decision, and the act it started.
+pub(crate) struct ClickTicket {
+    act:      ActTicket,
+    decision: ClickDecisionNet,
+}
+
 impl ClickPointer<'_, '_> {
-    /// Click `at`, answering the actor whose walk the reply must wait on.
-    fn click(&mut self, at: CellLevel, pending: &mut ResMut<PendingActIntent>) -> Option<Entity> {
+    /// Click `at`, answering what the game decided and whose walk the reply waits on.
+    fn click(
+        &mut self,
+        at: CellLevel,
+        pending: &mut ResMut<PendingActIntent>,
+    ) -> (ClickDecisionNet, Option<Entity>) {
         if self.selection.inspect().hovered() != Some(at) {
             self.selection.inspect_mut().set_hovered(Some(at));
         }
@@ -111,14 +123,24 @@ impl ClickPointer<'_, '_> {
             &self.lifes,
             &self.arms,
         );
-        let walker = match &outcome {
-            LeftClickOutcome::Move(request) => Some(request.actor),
-            _ => None,
-        };
+        let decision = ClickDecisionNet::from_game(&outcome);
+        let actor = actor_of(&outcome);
         let pin = decide_pin(&self.reads, self.selection.inspect(), &self.factions);
         apply_left_click(outcome, &mut self.selection, pending);
         apply_pin(pin, &mut self.selection);
-        walker
+        (decision, actor)
+    }
+}
+
+/// The actor whose act the click started, when it started one.
+const fn actor_of(outcome: &LeftClickOutcome) -> Option<Entity> {
+    match outcome {
+        LeftClickOutcome::Fire(request) => Some(request.shooter),
+        LeftClickOutcome::Move(request) => Some(request.actor),
+        LeftClickOutcome::Select(_)
+        | LeftClickOutcome::SetMoveTarget(_)
+        | LeftClickOutcome::NoOp
+        | LeftClickOutcome::Clear => None,
     }
 }
 
@@ -133,8 +155,14 @@ fn claim_input_click_cell(
     }
     let from = claim.head();
     for (args, responder) in take_calls::<InputClickCell>(&mut queue) {
-        let walker = pointer.click(args.at.to_sim(), &mut claim.pending);
-        deferred.park(responder, ActTicket::new(from, walker));
+        let (decision, actor) = pointer.click(args.at.to_sim(), &mut claim.pending);
+        deferred.park(
+            responder,
+            ClickTicket {
+                act: ActTicket::new(from, actor),
+                decision,
+            },
+        );
     }
 }
 
@@ -142,5 +170,30 @@ fn settle_input_click_cell(
     settle: ActSettle,
     mut deferred: ResMut<DeferredReplies<InputClickCell>>,
 ) {
-    settle_acts::<InputClickCell>(&settle, &mut deferred);
+    if deferred.is_empty() {
+        return;
+    }
+    let delivered = deferred.answer_resolved(|ticket| {
+        Some(ClickReply {
+            decision: ticket.decision,
+            act:      click_act(&settle, ticket),
+        })
+    });
+    debug!(
+        command = InputClickCell::NAME.as_str(),
+        delivered = *delivered,
+        "net_qa: a click reported what it decided"
+    );
+}
+
+/// The act reply the click's own decision earned, absent when it pushed no act.
+fn click_act(settle: &ActSettle, ticket: &ClickTicket) -> Option<ActReply> {
+    match ticket.decision {
+        ClickDecisionNet::Fire => Some(settle.window_of(&ticket.act)),
+        ClickDecisionNet::Move => Some(move_reply(settle, &ticket.act)),
+        ClickDecisionNet::Select
+        | ClickDecisionNet::SetMoveTarget
+        | ClickDecisionNet::NoOp
+        | ClickDecisionNet::Clear => None,
+    }
 }

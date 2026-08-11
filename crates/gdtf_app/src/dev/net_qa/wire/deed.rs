@@ -1,7 +1,33 @@
 //! What kind of act a log line records, on the wire.
 
-use gdtf_battle_sim::{act_log::ActDeed, acts::MoveRejection};
+use gdtf_battle_sim::{
+    act_log::ActDeed,
+    acts::{MoveRejection, ReloadOutcome},
+};
 use serde::{Deserialize, Serialize};
+
+/// How a reload the sim heard turned out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ReloadOutcomeNet {
+    /// The magazine was refilled.
+    Reloaded,
+    /// The magazine was already full.
+    AlreadyFull,
+    /// The actor could not afford the reload.
+    NoTu,
+}
+
+impl ReloadOutcomeNet {
+    /// Mirror the sim's own outcome.
+    #[must_use]
+    pub const fn from_sim(outcome: ReloadOutcome) -> Self {
+        match outcome {
+            ReloadOutcome::Reloaded => Self::Reloaded,
+            ReloadOutcome::AlreadyFull => Self::AlreadyFull,
+            ReloadOutcome::NoTu => Self::NoTu,
+        }
+    }
+}
 
 /// Why the sim turned a move down.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -26,7 +52,7 @@ impl MoveRejectionNet {
     }
 }
 
-/// Kind of a logged act, one variant per sim deed.
+/// Kind of a logged act, one variant per sim deed, carrying what a refusal needs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ActDeedKindNet {
     /// A faction's turn began.
@@ -46,8 +72,11 @@ pub enum ActDeedKindNet {
     Fired,
     /// A single round resolved.
     RoundResolved,
-    /// Reload finished.
-    Reloaded,
+    /// Reload finished, carrying how it turned out.
+    Reloaded {
+        /// What the sim did with the reload.
+        outcome: ReloadOutcomeNet,
+    },
     /// Magazine contents changed.
     MagazineChanged,
     /// Injury applied.
@@ -87,7 +116,7 @@ pub enum ActDeedKindNet {
 }
 
 impl ActDeedKindNet {
-    /// Mirror the sim's deed as a kind, keeping only a refused move's reason.
+    /// Mirror the sim's deed as a kind, keeping only what a refusal needs.
     #[must_use]
     pub const fn from_deed(deed: &ActDeed) -> Self {
         match deed {
@@ -100,7 +129,9 @@ impl ActDeedKindNet {
             },
             ActDeed::Fired { .. } => Self::Fired,
             ActDeed::RoundResolved { .. } => Self::RoundResolved,
-            ActDeed::Reloaded { .. } => Self::Reloaded,
+            ActDeed::Reloaded { outcome } => Self::Reloaded {
+                outcome: ReloadOutcomeNet::from_sim(*outcome),
+            },
             ActDeed::MagazineChanged { .. } => Self::MagazineChanged,
             ActDeed::Injured { .. } => Self::Injured,
             ActDeed::VitalsChanged { .. } => Self::VitalsChanged,

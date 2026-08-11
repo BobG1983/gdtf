@@ -278,9 +278,12 @@ Notes an agent relies on:
   `act.throw_grenade`, `act.open_door`, `act.enter_emplacement`,
   `act.exit_emplacement`, `act.stabilize` and `act.execute` — and none of them
   takes a target: the panel offers exactly one target per family, so each acts on
-  the offer standing or refuses `NoOffer`. Each pushes onto the same intent bus
-  the keybinds and the pointer push onto, so the sim keeps deciding legality;
-  each answers the act-log window it opened, which `log.read` then explains.
+  the offer standing or refuses `NoOffer`. Each takes the same intent bus the
+  keybinds and the pointer push onto, so the sim keeps deciding legality; each
+  answers the act-log window it opened, which `log.read` then explains.
+  `act.fire`, `act.move`, `act.reload`, `act.set_stance` and `act.set_facing`
+  answer the sim's own typed reason instead when it turns the act down;
+  [`qa-commands.md`](qa-commands.md) lists the reasons per act.
   Name the actor with `act.select` before every act: the game re-selects the
   first living player
   ganger as soon as nothing is selected, so `act.select_clear` is undone on the
@@ -292,7 +295,8 @@ Notes an agent relies on:
   projection to the picking system, `input.set_focus`, `input.focus_step` and
   `input.activate` are the focus bridge the menu and the Options screen are
   driven with, and `input.click_cell` takes the game's own left-click decision
-  on a cell. Five `view.*` commands aim the battle view: `view.pan` and
+  on a cell and names that decision in the reply. Five `view.*` commands aim the
+  battle view: `view.pan` and
   `view.look_at` move the camera through the one function every camera mover
   writes the transform with, and `view.level_up`, `view.level_down` and
   `view.toggle_full_view` pick the storey it draws down to by the same path the

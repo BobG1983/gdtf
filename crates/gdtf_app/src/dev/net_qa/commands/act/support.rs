@@ -3,7 +3,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedShooter};
 use gdtf_battle_sim::{
-    act_log::ActLog,
+    act_log::{ActDeed, ActEntry, ActLog, ActSeq},
     acts::movement::WalkInProgress,
     prelude::{Faction, LifeState},
 };
@@ -12,6 +12,7 @@ use serde::Deserialize;
 
 use crate::dev::net_qa::wire::{
     act::{ActCompleteNet, ActRefusalNet, ActReply, ActSeqNet, SelectReply},
+    deed::MoveRejectionNet,
     token::GangerToken,
 };
 
@@ -104,6 +105,42 @@ impl ActSettle<'_, '_> {
             complete: self.completed(actor),
         }
     }
+
+    /// The window one parked ticket opened, closed at this frame's log head.
+    pub(in crate::dev::net_qa::commands) fn window_of(&self, ticket: &ActTicket) -> ActReply {
+        self.window(ticket.from, ticket.actor)
+    }
+
+    /// What the ticket's actor recorded from the call's own log head onwards.
+    pub(in crate::dev::net_qa::commands) fn deeds_of<'a>(
+        &'a self,
+        ticket: &'a ActTicket,
+    ) -> impl Iterator<Item = &'a ActDeed> {
+        let actor = ticket.actor;
+        self.log
+            .as_deref()
+            .into_iter()
+            .flat_map(move |log| log.since(ActSeq::new(*ticket.from)))
+            .filter(move |entry| actor.is_none_or(|actor| entry.actor() == actor))
+            .map(ActEntry::deed)
+    }
+}
+
+/// The refusal the sim recorded for this move, or the window the call opened.
+pub(in crate::dev::net_qa::commands) fn move_reply(
+    settle: &ActSettle,
+    ticket: &ActTicket,
+) -> ActReply {
+    let refused = settle.deeds_of(ticket).find_map(|deed| {
+        let ActDeed::MoveRefused { reason } = deed else {
+            return None;
+        };
+        Some(MoveRejectionNet::from_sim(*reason))
+    });
+    match refused {
+        Some(reason) => ActReply::MoveRefused { reason },
+        None => settle.window_of(ticket),
+    }
 }
 
 /// Answer every act call parked this frame with the window the sim just closed.
@@ -113,11 +150,20 @@ pub(in crate::dev::net_qa::commands) fn settle_acts<C>(
 ) where
     C: QaCommand<Parked = ActTicket, Reply = ActReply>,
 {
+    settle_acts_with::<C>(deferred, |ticket| settle.window_of(ticket));
+}
+
+/// Answer every act call parked this frame with the reply `reply` reads out of the frame.
+pub(in crate::dev::net_qa::commands) fn settle_acts_with<C>(
+    deferred: &mut DeferredReplies<C>,
+    mut reply: impl FnMut(&ActTicket) -> ActReply,
+) where
+    C: QaCommand<Parked = ActTicket, Reply = ActReply>,
+{
     if deferred.is_empty() {
         return;
     }
-    let delivered =
-        deferred.answer_resolved(|ticket| Some(settle.window(ticket.from, ticket.actor)));
+    let delivered = deferred.answer_resolved(|ticket| Some(reply(ticket)));
     debug!(
         command = C::NAME.as_str(),
         delivered = *delivered,

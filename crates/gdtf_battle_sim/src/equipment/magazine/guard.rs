@@ -81,6 +81,49 @@ pub struct FireActor<'a> {
     pub hands_available: HandsAvailable,
 }
 
+/// Why the sim will not take a shot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FireRefusal {
+    /// The shooter is not alive.
+    NotAlive,
+    /// The shooter cannot afford the fire mode's time units.
+    Unaffordable,
+    /// The magazine holds no rounds.
+    MagazineEmpty,
+    /// The target cell-level is off the battle grid.
+    OutOfBounds,
+    /// Too few hands are free for the weapon.
+    NotEnoughHands,
+}
+
+/// The first rule this shot breaks, or nothing when it is allowed.
+#[must_use]
+pub fn fire_refusal(
+    actor: &FireActor,
+    mode: &FireModeSpec,
+    target_cell: Cell,
+    target_level: Level,
+    tuning: &CombatTuning,
+) -> Option<FireRefusal> {
+    if *actor.life != LifeState::Alive {
+        return Some(FireRefusal::NotAlive);
+    }
+    if !*can_spend_tu(
+        actor.tu,
+        mode_tu_cost(mode, actor.tu_max, actor.aiming, tuning),
+    ) {
+        return Some(FireRefusal::Unaffordable);
+    }
+    if *actor.magazine.is_empty() {
+        return Some(FireRefusal::MagazineEmpty);
+    }
+    if !*in_bounds(target_cell, target_level) {
+        return Some(FireRefusal::OutOfBounds);
+    }
+    (!*has_enough_hands(actor.handedness, actor.hands_available))
+        .then_some(FireRefusal::NotEnoughHands)
+}
+
 /// Alive, can afford TU, has ammo, target in bounds, enough hands.
 #[must_use]
 pub fn can_fire(
@@ -90,16 +133,7 @@ pub fn can_fire(
     target_level: Level,
     tuning: &CombatTuning,
 ) -> CanFire {
-    CanFire(
-        *actor.life == LifeState::Alive
-            && *can_spend_tu(
-                actor.tu,
-                mode_tu_cost(mode, actor.tu_max, actor.aiming, tuning),
-            )
-            && !*actor.magazine.is_empty()
-            && *in_bounds(target_cell, target_level)
-            && *has_enough_hands(actor.handedness, actor.hands_available),
-    )
+    CanFire(fire_refusal(actor, mode, target_cell, target_level, tuning).is_none())
 }
 
 /// Whether fire is allowed.

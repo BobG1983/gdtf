@@ -343,12 +343,15 @@ Eleven of the nineteen `act.*` commands are the classic acts a player takes with
 and the
 pointer: `act.select`, `act.select_next`, `act.select_prev`, `act.select_clear`, `act.move`,
 `act.fire`, `act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing` and
-`act.end_turn`. Each pushes an `ActIntent` onto
+`act.end_turn`. An act that goes ahead pushes an `ActIntent` onto
 [`PendingActIntent`](../../crates/gdtf_battle_input/src/act_bus/intent/seam/queue.rs), the
 same bus the keybinds and the pointer push onto, and `dispatch_act_intents` writes the sim
 message. **No act command writes to the sim itself**, so legality stays where it already
-lives: a shot the sim declines is never declared, and a move it refuses is logged as
-`MoveRefused` with the sim's own reason.
+lives: the game's own guards decide, and the reply names their reason. There are two shapes.
+`act.fire`, `act.set_stance` and `act.set_facing` ask the sim's own guard first and answer the
+reason without pushing anything. `act.move` and `act.reload` always push and read the reason
+back out of the act log, so a refused move answers `MoveRefused` and is logged as `MoveRefused`
+with that same reason.
 
 The three `set_*` commands take an absolute value rather than cycling the way the keybind
 does, so the same call twice leaves the same state — that is what makes them driveable
@@ -358,9 +361,24 @@ Ten of the eleven are `Immediate`. The claim system pushes the intent and record
 log's head, and a settle system ordered after `SimSystems::Record` answers in the same frame
 with `ActReply::Accepted { from_seq, to_seq, complete }`: `from_seq..to_seq` is the half-open
 act-log window the call opened, and `complete` is false while the actor is still walking the
-act out. Read the window with `log.read` to see what the sim actually did — the deed kinds
-inside it are the evidence, and a call the sim declined comes back with `from_seq` equal to
-`to_seq`. The four selection commands answer `SelectReply` instead, which names who is
+act out. `Accepted` means the intent reached the sim; read the window with `log.read` to see
+what it did.
+
+**An act the game turns down answers a typed reason instead**, one variant per act, so a
+client never has to read the log to tell a decline from a success:
+
+| Act | Refusal | Reasons |
+| --- | --- | --- |
+| `act.fire` | `FireRefused` | `NotAShooter`, `NoFiringWeapon`, `NotAlive`, `Unaffordable`, `MagazineEmpty`, `OutOfBounds`, `NotEnoughHands` |
+| `act.reload` | `ReloadRefused` | `AlreadyFull`, `NoTu` |
+| `act.move` | `MoveRefused` | `Unreachable`, `Unaffordable`, `Suppressed` |
+| `act.set_stance` | `StanceRefused` | `AlreadyHeld`, `Unaffordable` |
+| `act.set_facing` | `FacingRefused` | `AlreadyFacing`, `Unaffordable` |
+
+Each reason mirrors the game's own guard — the fire surface's `ShotRefusal`, which is the
+sim's `fire_refusal` plus the two cases where no request can be built at all, and the sim's
+`ReloadOutcome`, `MoveRejection`, `stance_refusal` and `facing_refusal` — so the QA layer
+invents nothing. The four selection commands answer `SelectReply` instead, which names who is
 selected and carries no sequence numbers.
 
 **A cleared selection does not stay cleared.** The game always hands the player someone to
@@ -444,17 +462,17 @@ pushes the target anyway and the sim declines in silence. Shove and melee are th
 families that compute it today; the other six report `pressable: true`, which is what their
 buttons show.
 
-**An empty window is not always a decline.** `ActDeed` has no variant for opening a door or
-entering and leaving an emplacement, so `act.open_door`, `act.enter_emplacement` and
-`act.exit_emplacement` answer an empty window even when they worked. Read the world for those
-three — the door's open state, the emplacement's occupancy — not the log.
+**An empty window still is not proof of a decline for the contextual acts.** `ActDeed` has no
+variant for opening a door or entering and leaving an emplacement, so `act.open_door`,
+`act.enter_emplacement` and `act.exit_emplacement` answer an empty window even when they
+worked. Read the world for those three — the door's open state, the emplacement's occupancy —
+not the log.
 
 `act.fire` is the one act that needs more than the selection to build its request: the live
 `SelectedFireMode` and `CombatTuning`. A host holding neither cannot consider the shot at
 all, so it refuses `MissingModel` naming the absent resource — the same call `log.read`
-makes when the act log has not arrived. Without that refusal the reply would be an empty
-window, which is exactly what a shot the sim declined answers, and a caller could not tell
-a real sim decision from a host that was not loaded.
+makes when the act log has not arrived. That refusal says the host was never loaded, which is
+a different answer from the `FireRefused` a shot the game turned down carries.
 
 The six `input.*` commands drive the raw input paths, for the screens and the moments where a
 named act is not enough. Each one writes what the real device writes and lets the game decide
@@ -516,10 +534,15 @@ the real keyboard bridge runs in, so the screen has acted by the time the reply 
 then runs the game's own decide-then-apply pair — `decide_left_click`, `decide_pin`,
 `apply_left_click`, `apply_pin` — so one click may select a ganger, pin a move target, confirm
 the move or fire, and the decision is the game's rather than the caller's. It is not a side
-door into the sim: an act it decides goes onto the same `PendingActIntent` bus every act does
-— a click that only selects a ganger or pins a target pushes nothing — it answers the same
-`ActReply` window, and it needs the same `Running` plus `Caught` state every classic act
-needs. It carries no turn-owner check of its own: that one is `act.end_turn`'s alone.
+door into the sim: an act it decides goes onto the same `PendingActIntent` bus every act does,
+and it needs the same `Running` plus `Caught` state every classic act needs. It answers
+`ClickReply { decision, act }`: `decision` is which of `Fire`, `Select`, `SetMoveTarget`,
+`Move`, `NoOp` and `Clear` the game chose, and `act` is the `ActReply` that decision earned —
+the window, or the sim's typed refusal. Only `Fire` and `Move` push an act; `Select`,
+`SetMoveTarget`, `NoOp` and `Clear` push nothing, so their `act` is absent. A shot the game
+would not take is never decided as `Fire` in the first place — the click falls to another
+decision rather than answering `FireRefused`. It carries no turn-owner check of its own: that
+one is `act.end_turn`'s alone.
 
 The six view and battle controls all need a running battle with its sim state loaded, and
 each takes the path the matching keyboard or panel control takes. `view.level_up`,
