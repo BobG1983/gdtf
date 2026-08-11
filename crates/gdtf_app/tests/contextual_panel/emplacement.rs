@@ -2,10 +2,12 @@ use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::{EnterEmplacementButton, ExitEmplacementButton};
 use gdtf_battle_input::{SelectedShooter, contextual::ContextualActSystems};
 use gdtf_battle_sim::{
-    acts::ExitEmplacementRequested,
+    acts::{ExitEmplacementRequested, enter_emplacement_tu_cost},
     emplacement::{EmplacementOccupant, EmplacementState},
     entity::TerrainCell,
+    ganger::Tu,
     prelude::{Cell, CellLevel, Faction, Level, Position},
+    tuning::CombatTuning,
 };
 use gdtf_test_utils::{MessageProbe, advance_until, drain_message_probe, press_ui_button, probed};
 
@@ -138,6 +140,67 @@ fn exit_offered_only_to_the_occupant() {
     assert!(
         !exit_emplacement_visible(&mut app),
         "an emplacement occupied by SOMEONE ELSE offers the selection no Exit (occupant-only)",
+    );
+}
+
+#[test]
+fn a_vacant_seat_still_naming_the_actor_as_occupant_offers_no_exit() {
+    let mut app = battle_running_app();
+    let actor = spawn_emplacement_actor(&mut app, 5, 5, 0);
+    let emplacement = spawn_emplacement(&mut app, 5, 5, EmplacementState::Vacant, Some(actor));
+    app.update();
+
+    assert!(
+        !exit_emplacement_visible(&mut app),
+        "a VACANT seat is nobody's to leave, whatever occupant it still names -> no Exit",
+    );
+
+    if let Ok(mut entity) = app.world_mut().get_entity_mut(emplacement) {
+        entity.insert(EmplacementState::Occupied);
+    }
+    app.update();
+    assert!(
+        exit_emplacement_visible(&mut app),
+        "flipping the same seat to OCCUPIED reveals the Exit button (discriminating)",
+    );
+}
+
+/// What taking one emplacement would charge, taken from the sim's own cost helper.
+fn enter_cost(app: &App) -> Tu {
+    app.world()
+        .get_resource::<CombatTuning>()
+        .map_or_else(|| Tu::new(0), enter_emplacement_tu_cost)
+}
+
+#[test]
+fn a_pool_below_the_enter_cost_still_offers_the_button_greyed_out() {
+    let mut app = battle_running_app();
+    let actor = spawn_emplacement_actor(&mut app, 5, 5, 0);
+    spawn_emplacement(&mut app, 6, 6, EmplacementState::Vacant, None);
+
+    let cost = enter_cost(&app);
+    assert!(
+        *cost > 0,
+        "entering must cost something or an unaffordable pool cannot exist",
+    );
+    set_pool(&mut app, actor, Tu::new(cost.saturating_sub(1)));
+    app.update();
+
+    assert!(
+        enter_emplacement_visible(&mut app),
+        "an unaffordable enter is still OFFERED — the player sees the act and why it is barred",
+    );
+    assert!(
+        button_greyed::<EnterEmplacementButton>(&mut app),
+        "a pool below the enter cost greys the button out",
+    );
+
+    set_pool(&mut app, actor, cost);
+    app.update();
+    app.update();
+    assert!(
+        !button_greyed::<EnterEmplacementButton>(&mut app),
+        "a pool that covers the cost drops the disabled marker (discriminating)",
     );
 }
 

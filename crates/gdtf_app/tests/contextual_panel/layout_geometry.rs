@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
 };
 
 use super::{
-    actors::at,
+    actors::{at, magazine_of},
     harness::{battle_running_app, parent_of, single_with},
     real_layout_harness::real_layout_battle_running_app,
 };
@@ -22,7 +22,7 @@ const EPSILON_PX: f32 = 1.0;
 fn spawn_throw_actor(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
     let actor = app.world_mut().spawn((at(x, y), Faction::new(gang))).id();
     app.world_mut()
-        .spawn((WieldedBy::new(actor), TrajectoryStyle::Arc));
+        .spawn((WieldedBy::new(actor), TrajectoryStyle::Arc, magazine_of(1)));
     app.world_mut().insert_resource(SelectedShooter::new(actor));
     actor
 }

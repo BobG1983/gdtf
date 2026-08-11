@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::ShoveAct};
 use gdtf_battle_sim::{
-    acts::{downed::is_8_adjacent, shove_tu_cost},
+    acts::{ShoveActor, ShoveTarget, can_shove, shove_tu_cost},
     ganger::{Faction, LifeState, Position, Tu},
     tu::can_spend_tu,
     tuning::CombatTuning,
@@ -46,15 +46,26 @@ pub(in crate::states::running::game::battlescape) fn offer_shove(
 ) {
     let actor = (**selected).and_then(|actor| actors.get(actor).ok());
     let target = actor.and_then(|(actor_pos, actor_faction, _)| {
+        let shover = ShoveActor {
+            position: *actor_pos,
+            faction:  *actor_faction,
+        };
         candidates
             .iter()
-            .find(|(_, pos, life, faction)| {
-                **life == LifeState::Alive
-                    && **faction != *actor_faction
-                    && *is_8_adjacent(*actor_pos, **pos)
+            .map(|(entity, pos, life, faction)| {
+                (
+                    entity,
+                    ShoveTarget {
+                        position: *pos,
+                        faction:  *faction,
+                        life:     *life,
+                    },
+                )
             })
-            .map(|(entity, ..)| entity)
+            .find(|(_, target)| *can_shove(&shover, target))
+            .map(|(entity, _)| entity)
     });
+    // A shove has no affordability term of its own, so the pool is asked about separately.
     let pressable = OfferPressable::new(
         actor
             .and_then(|(_, _, tu)| tu)

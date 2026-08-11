@@ -1,11 +1,10 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::EnterEmplacementAct};
 use gdtf_battle_sim::{
-    acts::{downed::is_8_adjacent, enter_emplacement_tu_cost},
+    acts::{can_enter_emplacement, enter_emplacement_tu_cost},
     emplacement::EmplacementState,
     entity::TerrainCell,
     ganger::{Faction, Position, Tu},
-    tu::can_spend_tu,
     tuning::CombatTuning,
 };
 use gdtf_ui::ButtonLabel;
@@ -41,21 +40,36 @@ pub(in crate::states::running::game::battlescape) fn offer_enter_emplacement(
     tuning: Option<Res<CombatTuning>>,
     mut offer: ResMut<ContextualOffer<EnterEmplacementAct>>,
 ) {
-    let actor = (**selected).and_then(|actor| actors.get(actor).ok());
-    let target = actor.and_then(|(actor_pos, _)| {
-        emplacements
-            .iter()
-            .find(|(_, state, emplacement_cell)| {
-                !*state.is_occupied()
-                    && *is_8_adjacent(*actor_pos, Position::new(***emplacement_cell))
-            })
-            .map(|(entity, ..)| entity)
-    });
-    let pressable = OfferPressable::new(
-        actor
-            .and_then(|(_, tu)| tu)
-            .zip(tuning.as_deref())
-            .is_some_and(|(tu, tuning)| *can_spend_tu(tu, enter_emplacement_tu_cost(tuning))),
-    );
+    let scanned = (**selected)
+        .and_then(|actor| actors.get(actor).ok())
+        .zip(tuning.as_deref())
+        .and_then(|((actor_pos, pool), tuning)| {
+            scan_enter_emplacement(*actor_pos, pool, &emplacements, tuning)
+        });
+    let (target, pressable) = scanned
+        .map_or((None, OfferPressable::new(false)), |(entity, pressable)| {
+            (Some(entity), pressable)
+        });
     offer.set_if_neq(ContextualOffer::new(target).with_pressable(pressable));
+}
+
+fn scan_enter_emplacement(
+    actor: Position,
+    pool: Option<&Tu>,
+    emplacements: &Query<EnterEmplacementReads>,
+    tuning: &CombatTuning,
+) -> Option<(Entity, OfferPressable)> {
+    let allowed = |seat: Position, state: &EmplacementState, tu: &Tu| {
+        *can_enter_emplacement(actor, seat, state, tu, tuning)
+    };
+    // Asking with the cost as the pool holds affordability true, so the other terms pick the target.
+    let cost = enter_emplacement_tu_cost(tuning);
+    let (entity, seat, state) = emplacements
+        .iter()
+        .map(|(entity, state, cell)| (entity, Position::new(**cell), state))
+        .find(|&(_, seat, state)| allowed(seat, state, &cost))?;
+    Some((
+        entity,
+        OfferPressable::new(pool.is_some_and(|tu| allowed(seat, state, tu))),
+    ))
 }

@@ -2,10 +2,13 @@ use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::OpenDoorButton;
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
+    acts::open_door_tu_cost,
     cover::HeightBand,
     entity::TerrainCell,
+    ganger::Tu,
     openable::{OpenState, OpenableBlocking},
     prelude::{Cell, CellLevel, Faction, Level, Position},
+    tuning::CombatTuning,
 };
 use gdtf_test_utils::{advance_until, press_ui_button};
 
@@ -100,6 +103,45 @@ fn open_or_non_adjacent_door_does_not_offer_open_door() {
     assert!(
         open_door_visible(&mut app),
         "moving the actor next to the CLOSED door reveals the Open Door button (discriminating)",
+    );
+}
+
+/// What opening one door would charge, taken from the sim's own cost helper.
+fn open_door_cost(app: &App) -> Tu {
+    app.world()
+        .get_resource::<CombatTuning>()
+        .map_or_else(|| Tu::new(0), open_door_tu_cost)
+}
+
+#[test]
+fn a_pool_below_the_open_door_cost_still_offers_the_button_greyed_out() {
+    let mut app = battle_running_app();
+    let actor = spawn_door_actor(&mut app, 5, 5, 0);
+    spawn_door(&mut app, 6, 6, OpenState::Closed);
+
+    let cost = open_door_cost(&app);
+    assert!(
+        *cost > 0,
+        "opening a door must cost something or an unaffordable pool cannot exist",
+    );
+    set_pool(&mut app, actor, Tu::new(cost.saturating_sub(1)));
+    app.update();
+
+    assert!(
+        open_door_visible(&mut app),
+        "an unaffordable open is still OFFERED — the player sees the act and why it is barred",
+    );
+    assert!(
+        button_greyed::<OpenDoorButton>(&mut app),
+        "a pool below the open cost greys the button out",
+    );
+
+    set_pool(&mut app, actor, cost);
+    app.update();
+    app.update();
+    assert!(
+        !button_greyed::<OpenDoorButton>(&mut app),
+        "a pool that covers the cost drops the disabled marker (discriminating)",
     );
 }
 
