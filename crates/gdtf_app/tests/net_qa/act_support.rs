@@ -26,18 +26,22 @@ pub(crate) fn caught_up() -> QaRequest {
     run(WAIT, "(condition:CaughtUp)", RunOptions::default())
 }
 
-/// Fail unless the catch-up wait ran and named the condition it was held for, rather than
-/// giving up.
-pub(crate) fn assert_caught_up(reply: QaResponse) -> Result<(), TestError> {
+/// Fail unless the wait ran and named the condition it was held for, rather than giving up.
+pub(crate) fn assert_waited_for(condition: &str, reply: QaResponse) -> Result<(), TestError> {
     let body = ran_body(WAIT, reply)?;
-    if !body.contains("CaughtUp") {
+    if !body.contains(condition) {
         return Err(format!(
-            "`{WAIT}` answers with the condition that came true, and the acts after it are only \
-             worth reading once that was `CaughtUp`: {body}"
+            "`{WAIT}` answers with the condition that came true, and the commands after it are \
+             only worth reading once that was `{condition}`: {body}"
         )
         .into());
     }
     Ok(())
+}
+
+/// Fail unless the catch-up wait ran and named `CaughtUp`, rather than giving up.
+pub(crate) fn assert_caught_up(reply: QaResponse) -> Result<(), TestError> {
+    assert_waited_for("CaughtUp", reply)
 }
 
 /// A running-battle socket fixture that also reports what `read` picked out of the live world.

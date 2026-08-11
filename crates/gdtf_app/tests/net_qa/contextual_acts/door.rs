@@ -8,9 +8,9 @@ use gdtf_test_utils::advance_until;
 
 use super::{
     super::{
-        act_support::{caught_up, next},
+        act_support::{assert_caught_up, caught_up, next},
         command_exchange::{
-            ACT_OPEN_DOOR, assert_refused_off_the_battle_screen, exchange_inspecting, run,
+            ACT_OPEN_DOOR, WAIT, assert_refused_off_the_battle_screen, exchange_inspecting, run,
         },
         socket_support::{TestError, TestResult, battle_app_listening, game_app_listening},
     },
@@ -47,7 +47,7 @@ fn open_the_offered_door<T>(
         vec![caught_up(), run(ACT_OPEN_DOOR, "()", RunOptions::default())]
     })?;
     let mut replies = replies.into_iter();
-    let _caught = next("wait", &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let opened = accepted(ACT_OPEN_DOOR, next(ACT_OPEN_DOOR, &mut replies)?)?;
     Ok((app, opened, carried))
 }
@@ -81,7 +81,7 @@ fn open_door_refuses_with_no_offer_until_a_door_stands_beside_the_shooter() -> T
         vec![caught_up(), run(ACT_OPEN_DOOR, "()", RunOptions::default())]
     })?;
     let mut replies = replies.into_iter();
-    let _caught = next("wait", &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let reason = refused(ACT_OPEN_DOOR, next(ACT_OPEN_DOOR, &mut replies)?)?;
     assert_eq!(
         reason,

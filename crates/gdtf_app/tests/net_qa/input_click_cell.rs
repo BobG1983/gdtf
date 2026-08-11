@@ -8,7 +8,7 @@ use gdtf_app::qa_wire::{
 use gdtf_qa_protocol::command::RunOptions;
 
 use super::{
-    act_support::{battle_app_reporting, caught_up, decode, next},
+    act_support::{assert_caught_up, battle_app_reporting, caught_up, decode, next},
     battle_reads::{
         an_enemy_ganger_at, an_unreachable_cell, an_unselected_player_ganger, cell_argument,
         cell_of, token_of,
@@ -60,7 +60,7 @@ fn a_click_on_a_player_ganger_selects_it() -> TestResult {
         },
     )?;
     let mut replies = replies.into_iter();
-    let _waited = next(WAIT, &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let clicked = decode::<ClickReply>(INPUT_CLICK_CELL, next(INPUT_CLICK_CELL, &mut replies)?)?;
     let selection =
         decode::<ClickedSelectionBody>(BATTLE_SELECTION, next(BATTLE_SELECTION, &mut replies)?)?;
@@ -96,7 +96,7 @@ fn a_click_on_an_enemy_pins_the_cell_it_stands_on() -> TestResult {
         },
     )?;
     let mut replies = replies.into_iter();
-    let _waited = next(WAIT, &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let clicked = decode::<ClickReply>(INPUT_CLICK_CELL, next(INPUT_CLICK_CELL, &mut replies)?)?;
     let selection =
         decode::<ClickedSelectionBody>(BATTLE_SELECTION, next(BATTLE_SELECTION, &mut replies)?)?;

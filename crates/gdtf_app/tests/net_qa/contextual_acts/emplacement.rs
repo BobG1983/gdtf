@@ -14,9 +14,11 @@ use gdtf_test_utils::advance_until;
 
 use super::{
     super::{
-        act_support::{caught_up, next},
+        act_support::{assert_caught_up, caught_up, next},
         battle_reads::clear_cells_away_from,
-        command_exchange::{ACT_ENTER_EMPLACEMENT, ACT_EXIT_EMPLACEMENT, exchange_inspecting, run},
+        command_exchange::{
+            ACT_ENTER_EMPLACEMENT, ACT_EXIT_EMPLACEMENT, WAIT, exchange_inspecting, run,
+        },
         socket_support::{TestError, TestResult, battle_app_listening},
     },
     scene::{SETTLE_BUDGET, a_neighbour, accepted, select_a_player_ganger, settle},
@@ -112,7 +114,7 @@ fn entering_the_offered_emplacement_names_it_and_mans_it_in_the_world() -> TestR
             ]
         })?;
     let mut replies = replies.into_iter();
-    let _caught = next("wait", &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let entered = accepted(
         ACT_ENTER_EMPLACEMENT,
         next(ACT_ENTER_EMPLACEMENT, &mut replies)?,
@@ -149,7 +151,7 @@ fn exiting_the_manned_emplacement_names_it_and_leaves_it_vacant() -> TestResult 
             ]
         })?;
     let mut replies = replies.into_iter();
-    let _caught = next("wait", &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let exited = accepted(
         ACT_EXIT_EMPLACEMENT,
         next(ACT_EXIT_EMPLACEMENT, &mut replies)?,

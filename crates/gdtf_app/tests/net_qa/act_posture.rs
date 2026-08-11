@@ -12,8 +12,8 @@ use gdtf_qa_protocol::command::RunOptions;
 
 use super::{
     act_support::{
-        LogBody, accepted, answered, battle_app_reporting, caught_up, decode, next, selected,
-        window,
+        LogBody, accepted, answered, assert_caught_up, battle_app_reporting, caught_up, decode,
+        next, selected, window,
     },
     battle_reads::{a_player_ganger, aiming_of, facing_of, ganger_argument, token_of},
     command_exchange::{
@@ -99,11 +99,11 @@ fn aiming_is_the_value_asked_for_rather_than_a_toggle() -> TestResult {
     let mut replies = replies.into_iter();
     let _selected = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
     let _lowered = accepted(ACT_SET_AIMING, next(ACT_SET_AIMING, &mut replies)?)?;
-    let _first = next(WAIT, &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let raised = accepted(ACT_SET_AIMING, next(ACT_SET_AIMING, &mut replies)?)?;
-    let _second = next(WAIT, &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let again = accepted(ACT_SET_AIMING, next(ACT_SET_AIMING, &mut replies)?)?;
-    let _third = next(WAIT, &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let lowered = accepted(ACT_SET_AIMING, next(ACT_SET_AIMING, &mut replies)?)?;
     let log = decode::<LogBody>(LOG_READ, next(LOG_READ, &mut replies)?)?;
 
@@ -186,9 +186,9 @@ fn facing_turns_to_the_direction_named_rather_than_cycling() -> TestResult {
     let mut replies = replies.into_iter();
     let _selected = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
     let turned = accepted(ACT_SET_FACING, next(ACT_SET_FACING, &mut replies)?)?;
-    let _first = next(WAIT, &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let again = answered(ACT_SET_FACING, next(ACT_SET_FACING, &mut replies)?)?;
-    let _second = next(WAIT, &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let further = accepted(ACT_SET_FACING, next(ACT_SET_FACING, &mut replies)?)?;
     let log = decode::<LogBody>(LOG_READ, next(LOG_READ, &mut replies)?)?;
 
