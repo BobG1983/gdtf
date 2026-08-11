@@ -42,7 +42,7 @@ The two **life pools** derive from their damage pools (a second derivation level
 
 ## Action economy — Time Units (UFO: Enemy Unknown)
 
-A **TU pool** per turn, now DERIVED from Speed at setup (`tu_base + Speed·tu_per_speed` — the `tu_base` / `tu_per_speed` live in `stat.tuning.ron`; the over-encumbrance Strength reduction is **not yet built**). Every action — step, turn in place, snap / aimed / auto shot, kneel, etc. — costs TUs, and **unspent TUs fuel reaction fire** on the enemy turn (gated by Reactions — **reaction fire not yet built**). Live today: moves, shots (aimed pays the premium, base × 1.5) and stance changes spend TU on the model. Deepest tactical texture; the heaviest to tune. (Worth a decision-log entry via `/log-decision`.)
+A **TU pool** per turn, now DERIVED from Speed at setup (`tu_base + Speed·tu_per_speed` — the `tu_base` / `tu_per_speed` live in `stat.tuning.ron`; the over-encumbrance Strength reduction is **not yet built**). Every action — step, turn in place, snap / aimed / auto shot, kneel, etc. — costs TUs, and **unspent TUs fuel reaction fire** on the enemy turn (gated by Reactions — **reaction fire not yet built**). Live today: moves, shots (aimed pays the premium, base × 1.5), turns, stance changes, reload, melee, shove, grenade throws, opening a door, entering / leaving an emplacement, and execute / stabilize all spend TU on the model. Deepest tactical texture; the heaviest to tune. (Worth a decision-log entry via `/log-decision`.)
 
 ## Damage model — HP and Wounds
 

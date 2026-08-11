@@ -37,19 +37,20 @@ the frame it was claimed in, exactly as a press is.
   `Result<(), TuShortfall>` and never clamps, so a shortfall is a case the dispatch has to
   handle: skip the request, change nothing, spend nothing. The usual shape is to fold
   `can_spend_tu(tu, <act>_tu_cost(…))` into `can_<act>` itself — Open Door, Reload, Throw
-  Grenade, Enter / Exit Emplacement and `can_set_stance` all do, so the dispatch gets one
-  verdict rather than a second copy of the rule. Where the predicate is deliberately
-  TU-blind (`can_shove`, `can_melee`), the dispatch calls `can_spend_tu` itself before
-  touching anything, and the guarded `spend_tu` is the backstop. The one exception is
+  Grenade, Enter / Exit Emplacement, Execute, Stabilize and `can_set_stance` all do, so the
+  dispatch gets one verdict rather than a second copy of the rule. Where the predicate is
+  deliberately TU-blind (`can_shove`, `can_melee`), the dispatch calls `can_spend_tu` itself
+  before touching anything, and the guarded `spend_tu` is the backstop. The one exception is
   `set_facing`: a turn is divisible, so it charges the whole 45deg steps the pool affords
   and lands partway.
 - **Sim owns the TU number.** Whoever needs it — dispatch, HUD, cursor preview, AI, a QA
   command — calls `<act>_tu_cost`; never a second copy of the math. Re-export the pair from
-  `acts/mod.rs` so callers outside the sim can reach it. Execute and Stabilize still do not
-  match. `execute_tu_cost` and `stabilize_tu_cost` exist now, but they are re-exported from
-  `acts/downed/mod.rs` rather than `acts/mod.rs`, their verbs (`execute_downed` /
-  `stabilize_downed`) still return the cost as well, and their dispatch charges nothing — so
-  the panel greys those two buttons on a cost the sim never debits. Do not copy that shape.
+  `acts/mod.rs` so callers outside the sim can reach it. Execute and Stabilize charge that
+  quote now — both predicates fold `can_spend_tu` in, and both dispatches debit the actor's
+  pool by it — but only the cost half reaches `acts/mod.rs`; `can_execute` and
+  `can_stabilize` stop at `acts/downed/mod.rs`, so an outside caller still goes through
+  `acts::downed` for the verdict. Their verbs (`execute_downed` / `stabilize_downed`) also
+  hand the cost back as a return value — a leftover, not a shape to copy.
 - **Registration lines** in `crates/gdtf_battle_sim/src/acts/plugin/` (`SimActsPlugin`):
   `.add_message::<<Act>Requested>()` in `register_messages` and the dispatch system
   `.in_set(SimSystems::Simulate)` in `wire_acts` (with explicit `.before`/`.after`

@@ -1,6 +1,6 @@
 use super::support::{
-    CombatTuning, ExecuteTu, LifeState, StabilizeTu, execute_downed, execute_pass, run_stabilize,
-    stabilize_pass,
+    CombatTuning, ExecuteTu, LifeState, StabilizeTu, execute_downed, execute_pass, funded,
+    run_stabilize, stabilize_pass,
 };
 
 #[test]
@@ -12,7 +12,7 @@ fn acts_return_the_tu_cost_read_from_tuning() {
     };
 
     let (a, t) = stabilize_pass();
-    let (stab_cost, _) = run_stabilize(&a, &t, &tuning);
+    let (stab_cost, _) = run_stabilize(&a, &t, funded(), &tuning);
     assert_eq!(
         stab_cost,
         Some(tuning.stabilize_tu),
@@ -21,7 +21,7 @@ fn acts_return_the_tu_cost_read_from_tuning() {
 
     let (ea, et) = execute_pass();
     let mut life = LifeState::Downed;
-    let exec_cost = execute_downed(&ea, &et, &mut life, &tuning);
+    let exec_cost = execute_downed(&ea, &et, &mut life, &funded(), &tuning);
     assert_eq!(
         exec_cost,
         Some(tuning.execute_tu),

@@ -47,19 +47,19 @@
     // number of Wounds (the life pool) each un-stabilized DOWNED ganger loses every full round
     // it stays down (tick_bleed) — the stack count = turns down = total Wounds lost, a clock you
     // can read. Wounds hitting 0 = Dead via the same terminal gate. A STARTING POINT (tunable);
-    // the TU economy it sits inside (when the tick fires, execute/stabilize TU costs) is E4.
+    // the two acts that end the clock charge the TU costs just below.
     bleed_rate: 1,  // Wounds drained per round each un-stabilized Downed ganger stays down
 
     // Downed-act TU costs (resolution.md §9): the flat Time Units the two from-Downed
     // verbs cost. `stabilize_downed` (an 8-adjacent ALIVE ally) halts the bleed clock;
     // `execute_downed` (an 8-adjacent ALIVE enemy) finishes a Downed ganger outright.
-    // STARTING POINTS (tunable). NOTE: this slice only READS these costs to wire the
-    // leaf — the TU economy that DEBITS a Tu pool / checks can-afford is E4, not here.
-    stabilize_tu: 4,  // TU an adjacent ally spends to stabilize a Downed ganger (read-only; debit is E4)
-    execute_tu:   6,  // TU an adjacent enemy spends to execute a Downed ganger (read-only; debit is E4)
+    // STARTING POINTS (tunable). Both dispatches gate on the actor affording the cost and
+    // then DEBIT its Tu pool; a pool one short refuses the act whole and spends nothing.
+    stabilize_tu: 4,  // TU an adjacent ally spends to stabilize a Downed ganger
+    execute_tu:   6,  // TU an adjacent enemy spends to execute a Downed ganger
 
     // Posture / orientation TU costs (combat.md L34: "kneel" + "turn" cost TUs; resolution.md
-    // §"What's tunable"): the Time Units the E4.1 posture verbs spend. `set_stance` charges
+    // §"What's tunable"): the Time Units the posture verbs spend. `set_stance` charges
     // stance_change_tu and `set_facing` charges turn_tu PER 45deg STEP — but ONLY when the
     // stance/facing actually changes (re-asserting the value a ganger already holds is a no-op,
     // no charge). A stance change is ALL-OR-NOTHING: a pool that cannot cover stance_change_tu
