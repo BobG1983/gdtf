@@ -98,11 +98,23 @@ pub(super) fn fire_scenario() -> (App, Entity, Entity) {
 }
 
 pub(super) fn spawn_downed_actor(world: &mut World, x: i32, y: i32, faction: u8) -> Entity {
+    spawn_downed_actor_with_pool(world, x, y, faction, Tu::new(100))
+}
+
+pub(super) fn spawn_downed_actor_with_pool(
+    world: &mut World,
+    x: i32,
+    y: i32,
+    faction: u8,
+    tu: Tu,
+) -> Entity {
     world
         .spawn((
             Position::new(CellLevel::new(Cell::new(x, y), Level::new(0))),
             LifeState::Alive,
             Faction::new(faction),
+            tu,
+            TuMax::new(100),
         ))
         .id()
 }

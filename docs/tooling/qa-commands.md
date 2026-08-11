@@ -472,10 +472,9 @@ pushes the target anyway and the sim declines in silence. All eight families com
 flag from their own sim cost helper and `can_spend_tu`. Melee has a second way to go false:
 an actor wielding no melee weapon has no strike to price, so its button greys out too.
 
-Two of the eight grey out ahead of the sim. `act.execute` and `act.stabilize` are quoted
-from `execute_tu_cost` and `stabilize_tu_cost`, but the sim's dispatch for those two debits
-no pool yet, so a greyed Execute names an act the sim would still carry out for free if the
-command pushed it.
+All eight grey out on a cost the sim charges. `act.execute` and `act.stabilize` are quoted
+from `execute_tu_cost` and `stabilize_tu_cost`, and their dispatches debit the actor's pool
+by that same quote, so a greyed Execute names an act the sim would decline.
 
 **An empty window still is not proof of a decline for the contextual acts.** `ActDeed` has no
 variant for opening a door or entering and leaving an emplacement, so `act.open_door`,

@@ -17,7 +17,9 @@ mod throw_grenade;
 #[cfg(test)]
 mod test;
 
-pub use downed::{dispatch_execute_downed, dispatch_stabilize_downed};
+pub use downed::{
+    dispatch_execute_downed, dispatch_stabilize_downed, execute_tu_cost, stabilize_tu_cost,
+};
 pub use enter_emplacement::{
     CanEnterEmplacement, CanExitEmplacement, can_enter_emplacement, can_exit_emplacement,
     dispatch_enter_emplacement, dispatch_exit_emplacement, enter_emplacement_tu_cost,
