@@ -1,10 +1,9 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::StabilizeAct};
 use gdtf_battle_sim::{
-    acts::downed::{is_8_adjacent, stabilize_tu_cost},
+    acts::downed::{Actor, DownedTarget, can_stabilize, stabilize_tu_cost},
     effects::bleed::BleedingOut,
     ganger::{Faction, LifeState, Position, Tu},
-    tu::can_spend_tu,
     tuning::CombatTuning,
 };
 use gdtf_ui::ButtonLabel;
@@ -37,7 +36,12 @@ type StabilizeCandidates = (
     Option<&'static BleedingOut>,
 );
 
-type StabilizeActorReads = (&'static Position, &'static Faction, Option<&'static Tu>);
+type StabilizeActorReads = (
+    &'static Position,
+    &'static LifeState,
+    &'static Faction,
+    Option<&'static Tu>,
+);
 
 pub(in crate::states::running::game::battlescape) fn offer_stabilize(
     selected: Res<SelectedShooter>,
@@ -46,23 +50,49 @@ pub(in crate::states::running::game::battlescape) fn offer_stabilize(
     tuning: Option<Res<CombatTuning>>,
     mut offer: ResMut<ContextualOffer<StabilizeAct>>,
 ) {
-    let actor = (**selected).and_then(|actor| actors.get(actor).ok());
-    let target = actor.and_then(|(actor_pos, actor_faction, _)| {
-        candidates
-            .iter()
-            .find(|(_, pos, life, faction, bleeding_out)| {
-                **life == LifeState::Downed
-                    && **faction == *actor_faction
-                    && bleeding_out.is_some()
-                    && *is_8_adjacent(*actor_pos, **pos)
-            })
-            .map(|(entity, ..)| entity)
-    });
-    let pressable = OfferPressable::new(
-        actor
-            .and_then(|(_, _, tu)| tu)
-            .zip(tuning.as_deref())
-            .is_some_and(|(tu, tuning)| *can_spend_tu(tu, stabilize_tu_cost(tuning))),
-    );
+    let scanned = (**selected)
+        .and_then(|entity| actors.get(entity).ok())
+        .zip(tuning.as_deref())
+        .and_then(|((pos, life, faction, pool), tuning)| {
+            let actor = Actor {
+                pos:     *pos,
+                life:    *life,
+                faction: *faction,
+            };
+            scan_stabilize(&actor, pool, &candidates, tuning)
+        });
+    let (target, pressable) = scanned
+        .map_or((None, OfferPressable::new(false)), |(entity, pressable)| {
+            (Some(entity), pressable)
+        });
     offer.set_if_neq(ContextualOffer::new(target).with_pressable(pressable));
+}
+
+fn scan_stabilize(
+    actor: &Actor,
+    pool: Option<&Tu>,
+    candidates: &Query<StabilizeCandidates>,
+    tuning: &CombatTuning,
+) -> Option<(Entity, OfferPressable)> {
+    let allowed = |target: &DownedTarget, tu: &Tu| *can_stabilize(actor, target, tu, tuning);
+    // Asking with the cost as the pool holds affordability true, so the other terms pick the target.
+    let cost = stabilize_tu_cost(tuning);
+    let (entity, target) = candidates
+        .iter()
+        .map(|(entity, pos, life, faction, bleeding_out)| {
+            (
+                entity,
+                DownedTarget {
+                    pos:          *pos,
+                    life:         *life,
+                    faction:      *faction,
+                    bleeding_out: bleeding_out.copied(),
+                },
+            )
+        })
+        .find(|(_, target)| allowed(target, &cost))?;
+    Some((
+        entity,
+        OfferPressable::new(pool.is_some_and(|tu| allowed(&target, tu))),
+    ))
 }

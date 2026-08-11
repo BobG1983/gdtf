@@ -443,10 +443,11 @@ command pushes the offered target onto the same `PendingContextualIntents` queue
 pushes onto, and the sim's own `dispatch_*` is the authoritative gate: nothing on the QA side
 re-checks adjacency, faction, life state or TU. `battle.offers` does report the panel's own
 `pressable` bit, but that is the greyed-out state the button already carries, read off the
-same offer resource — not a second legality check living on the QA side. The panel computes
-it from the sim's own cost helper and `can_spend_tu`, so the bit is the sim's answer about
-affordability, shown on a button — and, for melee, its answer about whether the actor wields
-a melee weapon to price a strike with at all.
+same offer resource — not a second legality check living on the QA side. Six of the eight
+scans compute it from the sim's own cost helper and `can_spend_tu`; Execute and Stabilize ask
+`can_execute` / `can_stabilize`, which fold that same cost check in. Either way the bit is
+the sim's answer about affordability, shown on a button — and, for melee, its answer about
+whether the actor wields a melee weapon to price a strike with at all.
 
 `act.throw_grenade` is the one that needs more than a selection: its offer scan reads the
 hovered cell, and it only offers while the shooter wields an arcing ranged weapon —
@@ -469,12 +470,15 @@ rejects by doing nothing and emitting nothing, so a call the sim declined comes 
 with `pressable: false` is a button on screen the panel has greyed out. The panel makes that
 button ignore a click and its digit key; the command does not copy the state, so `act.*`
 pushes the target anyway and the sim declines in silence. All eight families compute the
-flag from their own sim cost helper and `can_spend_tu`. Melee has a second way to go false:
+flag from their own sim cost helper — six call `can_spend_tu` on it, Execute and Stabilize
+take it from `can_execute` / `can_stabilize`. Melee has a second way to go false:
 an actor wielding no melee weapon has no strike to price, so its button greys out too.
 
 All eight grey out on a cost the sim charges. `act.execute` and `act.stabilize` are quoted
 from `execute_tu_cost` and `stabilize_tu_cost`, and their dispatches debit the actor's pool
-by that same quote, so a greyed Execute names an act the sim would decline.
+by that same quote, so a greyed Execute names an act the sim would decline. Those two also
+offer nothing at all while the selected ganger is downed or dead, because the predicate they
+call reads the actor's life state as well as the target's.
 
 **An empty window still is not proof of a decline for the contextual acts.** `ActDeed` has no
 variant for opening a door or entering and leaving an emplacement, so `act.open_door`,

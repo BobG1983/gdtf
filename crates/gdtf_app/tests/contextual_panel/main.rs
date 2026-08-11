@@ -3,6 +3,7 @@
 mod actors;
 mod door;
 mod downed_acts;
+mod downed_guards;
 mod emplacement;
 mod harness;
 mod layout_geometry;
