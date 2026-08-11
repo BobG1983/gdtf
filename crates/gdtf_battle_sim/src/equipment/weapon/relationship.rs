@@ -1,8 +1,8 @@
 //! Bevy relationships between wielder and weapon entities.
 
 use bevy::{
-    ecs::relationship::RelationshipTarget,
-    prelude::{Component, Entity},
+    ecs::{relationship::RelationshipTarget, system::SystemParam},
+    prelude::{Changed, Component, Entity, Query, RemovedComponents},
 };
 
 /// Weapon → wielder (`relationship_target = Wields`).
@@ -54,7 +54,7 @@ impl Wields {
         self.iter().find(|&entity| is_mounted(entity))
     }
 
-    /// Prefer mounted, else ranged (for opportunity / reaction fire).
+    /// The weapon that fires: the mounted one if there is one, else the ranged one.
     #[must_use]
     pub fn firing_weapon(
         &self,
@@ -63,5 +63,21 @@ impl Wields {
     ) -> Option<Entity> {
         self.mounted_weapon(is_mounted)
             .or_else(|| self.ranged_weapon(is_melee))
+    }
+}
+
+/// Whether any wielder picked up or lost a weapon since the reading system last ran.
+#[derive(SystemParam)]
+pub struct WieldsChanged<'w, 's> {
+    wielded:   Query<'w, 's, (), Changed<Wields>>,
+    unwielded: RemovedComponents<'w, 's, WieldedBy>,
+}
+
+impl WieldsChanged<'_, '_> {
+    /// Whether a weapon was wielded or unwielded since the last read. Drains what it reads.
+    pub fn any(&mut self) -> bool {
+        // Drain first: the reader's cursor only advances on read, so a skipped read repeats.
+        let unwielded = self.unwielded.read().count() > 0;
+        unwielded || !self.wielded.is_empty()
     }
 }

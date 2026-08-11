@@ -1,7 +1,7 @@
 //! What the acts priced off the actor's own weapons cost: fire, reload, throw, melee.
 
 use bevy::prelude::*;
-use gdtf_battle_input::ranged_weapon_of;
+use gdtf_battle_input::{firing_weapon_of, ranged_weapon_of};
 use gdtf_battle_sim::{
     acts::{
         MeleeAttacker, MeleeReach, can_melee, can_reload, can_throw_grenade, fire_arc_tu_cost,
@@ -26,7 +26,7 @@ use crate::dev::net_qa::{
     },
 };
 
-/// Price one shot at `target` in `mode`, with the gun the actor is holding.
+/// Price one shot at `target` in `mode`, with the weapon the actor fires.
 pub(super) fn fire_quote(
     rows: &CostRows,
     tuning: &CombatTuning,
@@ -35,7 +35,7 @@ pub(super) fn fire_quote(
     target: CellLevelNet,
     mode: ModeKindNet,
 ) -> Quote {
-    let Some(gun) = ranged_weapon_of(actor, &rows.wields, &rows.melee)
+    let Some(gun) = firing_weapon_of(actor, &rows.wields, &rows.mounted, &rows.melee)
         .and_then(|weapon| rows.guns.get(weapon).ok())
     else {
         return Quote::refused(CostRefusalNet::ActNotAllowed);

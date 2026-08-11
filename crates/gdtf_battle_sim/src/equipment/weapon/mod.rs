@@ -32,7 +32,7 @@ pub use melee::{
     MeleeWeaponBundle, MeleeWeaponRegistry, MeleeWeaponSpec, Reach, Strikes, TuCost,
 };
 pub use registry::WeaponRegistry;
-pub use relationship::{WieldedBy, Wields};
+pub use relationship::{WieldedBy, Wields, WieldsChanged};
 pub use silenced::{ShotSilenced, shooter_weapon_silenced};
 pub use spec::{PendingAttachments, WeaponSpawnSiblings, WeaponSpec};
 pub use trajectory::{Lobbed, TrajectoryStyle};

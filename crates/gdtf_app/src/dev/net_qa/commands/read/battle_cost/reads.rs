@@ -19,7 +19,10 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
     visibility::SquadVisibility,
-    weapon::{FightMode, FireMode, Handedness, MeleeWeapon, TrajectoryStyle, WieldedBy, Wields},
+    weapon::{
+        FightMode, FireMode, Handedness, MeleeWeapon, MountedWeapon, TrajectoryStyle, WieldedBy,
+        Wields,
+    },
 };
 
 /// Everything a cost reads off the acting ganger.
@@ -112,6 +115,7 @@ pub(super) struct CostRows<'w, 's> {
     pub(super) guns:         Query<'w, 's, GunRow, With<WieldedBy>>,
     pub(super) fights:       Query<'w, 's, &'static FightMode, With<WieldedBy>>,
     pub(super) melee:        Query<'w, 's, (), With<MeleeWeapon>>,
+    pub(super) mounted:      Query<'w, 's, (), With<MountedWeapon>>,
     pub(super) doors:        Query<'w, 's, (&'static OpenState, &'static TerrainCell)>,
     pub(super) emplacements: Query<'w, 's, EmplacementRow>,
 }

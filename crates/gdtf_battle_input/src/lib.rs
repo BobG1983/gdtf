@@ -34,7 +34,10 @@ pub use act_bus::{
 pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin, battle_act_gate};
 pub use pointer::{
     fire_mode,
-    fire_mode::{SelectedFireMode, mode_spec_for, ranged_weapon_of, sync_fire_mode_on_select},
+    fire_mode::{
+        FiredWeaponModes, SelectedFireMode, firing_weapon_of, mode_spec_for, ranged_weapon_of,
+        sync_fire_mode_on_select,
+    },
     fire_surface,
     fire_surface::{ShooterArms, try_fire_request},
     gamepad,

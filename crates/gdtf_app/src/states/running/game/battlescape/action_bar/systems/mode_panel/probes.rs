@@ -1,18 +1,19 @@
 //! Reads behind the mode panel: what the shooter offers and what the segments show.
 
 use bevy::{ecs::system::SystemParam, prelude::*};
-use gdtf_battle_sim::weapon::{FireMode, MeleeWeapon, ModeKind, WieldedBy, Wields};
+use gdtf_battle_sim::weapon::{FireMode, MeleeWeapon, ModeKind, MountedWeapon, WieldedBy, Wields};
 use gdtf_ui::{Segment, SegmentIndex, set_segment_visible};
 
-/// The fire modes a shooter's wielded ranged weapon offers.
+/// The fire modes the weapon a shooter fires offers.
 #[derive(SystemParam)]
 pub(in crate::states::running::game::battlescape) struct OfferedFireModes<'w, 's> {
     wields:  Query<'w, 's, &'static Wields>,
     weapons: Query<'w, 's, &'static FireMode, With<WieldedBy>>,
+    mounted: Query<'w, 's, (), With<MountedWeapon>>,
     melee:   Query<'w, 's, (), With<MeleeWeapon>>,
 }
 
-/// Whether a shooter's wielded ranged weapon offers one fire mode.
+/// Whether the weapon a shooter fires offers one fire mode.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct ModeOffered(bool);
 
@@ -24,7 +25,7 @@ impl ModeOffered {
 }
 
 impl OfferedFireModes<'_, '_> {
-    /// Whether the shooter's ranged weapon offers this mode.
+    /// Whether the weapon the shooter fires offers this mode.
     pub(super) fn offers(&self, shooter: Option<Entity>, kind: ModeKind) -> ModeOffered {
         ModeOffered::new(
             self.of(shooter)
@@ -32,11 +33,16 @@ impl OfferedFireModes<'_, '_> {
         )
     }
 
-    /// The modes on the shooter's ranged weapon, if one is wielded.
+    /// The modes on the weapon the shooter fires, if it has one.
     fn of(&self, shooter: Option<Entity>) -> Option<&FireMode> {
         shooter
             .and_then(|shooter| self.wields.get(shooter).ok())
-            .and_then(|wields| wields.ranged_weapon(|entity| self.melee.get(entity).is_ok()))
+            .and_then(|wields| {
+                wields.firing_weapon(
+                    |entity| self.mounted.get(entity).is_ok(),
+                    |entity| self.melee.get(entity).is_ok(),
+                )
+            })
             .and_then(|weapon| self.weapons.get(weapon).ok())
     }
 }

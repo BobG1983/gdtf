@@ -534,9 +534,11 @@ both write the transform through the one function every camera mover uses, both 
 camera actually ended on — absent when it was left off the grid. `view.pan` is not a second
 way to hold W: the keys move by speed times frame time, while the offset asked for here is
 the offset taken. `battle.set_fire_mode` writes the same `SelectedFireMode` resource the
-action bar's mode panel writes, through the same lookup, and refuses `MissingModel` with a
-note saying which precondition is missing when nothing is selected, the shooter holds no
-gun, or the gun does not offer that mode.
+action bar's mode panel writes, through the same lookup — the weapon the shooter fires,
+which is the mounted one while they man an emplacement and the gun in their hands
+otherwise. It refuses `MissingModel` with a note saying which precondition is missing when
+nothing is selected, the shooter has no weapon to fire, or that weapon does not offer the
+mode.
 
 Args, replies and published shapes are all **RON**. `arguments` is a string of compact RON
 shaped by that command's own `schemas.arguments`; a command that takes none is `"()"`. The

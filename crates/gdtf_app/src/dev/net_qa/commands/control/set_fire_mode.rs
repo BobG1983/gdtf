@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use gdtf_battle_input::{SelectedFireMode, SelectedShooter, mode_spec_for, ranged_weapon_of};
-use gdtf_battle_sim::weapon::{FireMode, MeleeWeapon, WieldedBy, Wields};
+use gdtf_battle_input::{SelectedFireMode, SelectedShooter, firing_weapon_of, mode_spec_for};
+use gdtf_battle_sim::weapon::{FireMode, MeleeWeapon, MountedWeapon, WieldedBy, Wields};
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
     command::QaCommand,
@@ -27,12 +27,12 @@ const NO_SHOOTER: RefusalNote = RefusalNote::from_static(
 
 /// The refusal a call gets when the selected shooter has no gun.
 const NO_WEAPON: RefusalNote = RefusalNote::from_static(
-    "the selected shooter wields no ranged weapon, so there is no fire mode to pick from",
+    "the selected shooter has no weapon to fire, so there is no fire mode to pick from",
 );
 
 /// The refusal a call gets when the gun does not offer the mode asked for.
 const NO_SUCH_MODE: RefusalNote = RefusalNote::from_static(
-    "the selected shooter's ranged weapon does not offer that fire mode — read the modes it does \
+    "the weapon the selected shooter fires does not offer that fire mode — read the modes it does \
      offer off its weapon spec",
 );
 
@@ -59,11 +59,11 @@ impl QaCommand for BattleSetFireMode {
 
     const NAME: CommandName = CommandName::from_static("battle.set_fire_mode");
     const SUMMARY: CommandSummary = CommandSummary::from_static(
-        "Select a fire mode on the selected shooter's ranged weapon, writing the same resource \
-         the action bar's mode panel writes through the same lookup. Needs a running battle with \
-         its sim state loaded, a selected shooter, a ranged weapon in its hands, and that weapon \
-         to offer the mode asked for; each missing piece is refused MissingModel with a note \
-         naming which.",
+        "Select a fire mode on the weapon the selected shooter fires — the mounted gun while it \
+         mans an emplacement, else the gun in its hands — writing the same resource the action \
+         bar's mode panel writes through the same lookup. Needs a running battle with its sim \
+         state loaded, a selected shooter, a weapon it fires, and that weapon to offer the mode \
+         asked for; each missing piece is refused MissingModel with a note naming which.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -85,6 +85,7 @@ fn handle_battle_set_fire_mode(
     fire_mode: Option<ResMut<SelectedFireMode>>,
     wields: Query<&Wields>,
     weapons: Query<&FireMode, With<WieldedBy>>,
+    mounted: Query<(), With<MountedWeapon>>,
     melee: Query<(), With<MeleeWeapon>>,
 ) {
     if queue.is_empty() {
@@ -101,12 +102,18 @@ fn handle_battle_set_fire_mode(
             responder.unavailable(UnavailableCode::MissingModel, NO_SHOOTER);
             continue;
         };
-        if ranged_weapon_of(shooter, &wields, &melee).is_none() {
+        if firing_weapon_of(shooter, &wields, &mounted, &melee).is_none() {
             responder.unavailable(UnavailableCode::MissingModel, NO_WEAPON);
             continue;
         }
-        let Some(spec) = mode_spec_for(*selected, &wields, &weapons, &melee, args.mode.to_sim())
-        else {
+        let Some(spec) = mode_spec_for(
+            *selected,
+            &wields,
+            &weapons,
+            &mounted,
+            &melee,
+            args.mode.to_sim(),
+        ) else {
             responder.unavailable(UnavailableCode::MissingModel, NO_SUCH_MODE);
             continue;
         };
