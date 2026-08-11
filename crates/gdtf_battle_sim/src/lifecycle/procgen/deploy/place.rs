@@ -49,9 +49,11 @@ pub fn deploy_rosters(
         .filter(|m| m.faction == player_faction)
         .collect();
     deploy_side(
-        SpawnRole::Player,
-        zones.player(),
-        &player_members,
+        SideDeployment {
+            side:    SpawnRole::Player,
+            zone:    zones.player(),
+            members: &player_members,
+        },
         &grid,
         grid_size,
         &mut occupied,
@@ -63,9 +65,11 @@ pub fn deploy_rosters(
         .filter(|m| m.faction != player_faction)
         .collect();
     deploy_side(
-        SpawnRole::Enemy,
-        zones.enemy(),
-        &enemy_members,
+        SideDeployment {
+            side:    SpawnRole::Enemy,
+            zone:    zones.enemy(),
+            members: &enemy_members,
+        },
         &grid,
         grid_size,
         &mut occupied,
@@ -76,16 +80,27 @@ pub fn deploy_rosters(
     Ok(placed)
 }
 
+// The one side going down this call: which role it takes, where, and who is in it.
+struct SideDeployment<'a> {
+    side:    SpawnRole,
+    zone:    DeploymentZone,
+    members: &'a [&'a RosterMember],
+}
+
 fn deploy_side(
-    side: SpawnRole,
-    zone: DeploymentZone,
-    members: &[&RosterMember],
+    deployment: SideDeployment<'_>,
     grid: &OccupancyGrid,
     grid_size: GridSize,
     occupied: &mut HashSet<CellLevel>,
     rng: &mut DeploymentRng,
     placed: &mut Vec<PlacedGanger>,
 ) -> Result<(), PackingError> {
+    let SideDeployment {
+        side,
+        zone,
+        members,
+    } = deployment;
+
     if members.is_empty() {
         return Err(PackingError::EmptySide { side });
     }

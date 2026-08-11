@@ -21,7 +21,7 @@ use gdtf_battle_sim::{
         test_weapon_registry,
     },
     tuning::{CombatTuning, GangerStatTuning},
-    weapon::{FireMode, MeleeWeapon, WieldedBy, Wields},
+    weapon::{FireMode, MeleeWeapon, MountedWeapon, WieldedBy, Wields},
 };
 use gdtf_net_qa_transport::{IncomingRequest, Responder};
 use gdtf_qa_protocol::{
@@ -207,6 +207,16 @@ pub(crate) fn arm_selected_with_modes(app: &mut App, modes: FireMode) -> Entity 
         }
         None => app.world_mut().spawn((WieldedBy::new(shooter), modes)).id(),
     }
+}
+
+/// Wield a mounted weapon offering `modes` on the auto-selected shooter.
+///
+/// This is the state manning an emplacement leaves behind: a mount held on top of the own gun.
+pub(crate) fn mount_on_selected(app: &mut App, modes: FireMode) -> Entity {
+    let shooter = selected_shooter(app);
+    app.world_mut()
+        .spawn((WieldedBy::new(shooter), modes, MountedWeapon))
+        .id()
 }
 
 /// Take every ranged weapon off the auto-selected shooter, leaving it holding no gun.

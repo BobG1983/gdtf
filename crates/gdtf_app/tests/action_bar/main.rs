@@ -6,5 +6,6 @@ mod harness;
 mod level_buttons;
 mod mode_costs;
 mod mode_picker;
+mod mounted_modes;
 mod probes;
 mod stance_panel;

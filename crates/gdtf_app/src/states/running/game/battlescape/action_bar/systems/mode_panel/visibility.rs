@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use gdtf_battle_input::SelectedShooter;
-use gdtf_battle_sim::weapon::ModeKind;
+use gdtf_battle_sim::weapon::{ModeKind, WieldsChanged};
 
 use super::{
     order::MODE_ORDER,
@@ -16,12 +16,14 @@ pub(in crate::states::running::game::battlescape) fn rebuild_mode_segments(
     selected: Res<SelectedShooter>,
     offered: OfferedFireModes,
     added_controls: Query<(), Added<ModeControl>>,
+    mut wields_changed: WieldsChanged,
     mut segments: ControlSegments,
     controls: Query<ModeControlChildren, With<ModeControl>>,
     mut panels: Query<&mut Visibility, With<ModePanelRoot>>,
 ) {
     let control_just_spawned = added_controls.iter().next().is_some();
-    if !selected.is_changed() && !control_just_spawned {
+    let armament_moved = wields_changed.any();
+    if !selected.is_changed() && !control_just_spawned && !armament_moved {
         return;
     }
 

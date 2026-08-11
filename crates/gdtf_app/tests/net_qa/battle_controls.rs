@@ -18,7 +18,7 @@ use serde::Deserialize;
 use super::{
     battle_fixture::{
         arm_selected_with_modes, decoded, disarm_selected, down_the_players_gang,
-        drive_into_battle_running, menu_app_with_net_qa, run_one_frame,
+        drive_into_battle_running, menu_app_with_net_qa, mount_on_selected, run_one_frame,
     },
     command_exchange::BATTLE_SET_FIRE_MODE,
 };
@@ -45,6 +45,16 @@ fn single_and_burst() -> FireMode {
             ModeShots::new(3),
         ),
     ])
+}
+
+/// A gun that offers full alone, which neither the shipped test weapon nor the carried one does.
+fn full_only() -> FireMode {
+    FireMode::new(vec![FireModeSpec::new(
+        ModeKind::Full,
+        ModeConeMult::new(2.0),
+        ModeTuPercent::new(0.9),
+        ModeShots::new(6),
+    )])
 }
 
 fn selected_mode(app: &App) -> ModeKindNet {
@@ -188,8 +198,55 @@ fn a_shooter_holding_no_gun_is_refused_and_the_note_names_the_missing_weapon() {
         "a battle is live and a shooter is selected; what is missing is the gun — {note:?}",
     );
     assert!(
-        note.as_str().contains("wields no ranged weapon"),
+        note.as_str().contains("no weapon to fire"),
         "the note has to name the weapon as the missing piece, not the mode, or a client that \
          armed nothing is told to go and read a weapon spec that does not exist — {note:?}",
+    );
+}
+
+#[test]
+fn a_manned_mount_is_what_a_mode_is_set_on_not_the_gun_in_the_hands() {
+    let (mut app, tx) = menu_app_with_net_qa();
+    drive_into_battle_running(&mut app);
+    let _carried = arm_selected_with_modes(&mut app, single_and_burst());
+    let _mount = mount_on_selected(&mut app, full_only());
+    app.update();
+
+    let body: FireModeBody = decoded(
+        BATTLE_SET_FIRE_MODE,
+        run_one_frame(
+            &mut app,
+            &tx,
+            BATTLE_SET_FIRE_MODE,
+            &mode_argument(ModeKindNet::Full),
+        ),
+    );
+    assert_eq!(
+        body.mode,
+        ModeKindNet::Full,
+        "Full is offered by the MOUNT alone, and the mount is what the shooter fires: {body:?}",
+    );
+    assert_eq!(
+        selected_mode(&app),
+        ModeKindNet::Full,
+        "the command writes SelectedFireMode, so the world's own resource says the mount's mode \
+         was taken",
+    );
+
+    let (code, note) = refusal(run_one_frame(
+        &mut app,
+        &tx,
+        BATTLE_SET_FIRE_MODE,
+        &mode_argument(ModeKindNet::Burst),
+    ));
+    assert_eq!(
+        code,
+        UnavailableCode::MissingModel,
+        "Burst is offered by the CARRIED gun alone, which is not the weapon that fires — {note:?}",
+    );
+    assert_eq!(
+        selected_mode(&app),
+        ModeKindNet::Full,
+        "a refused call writes nothing, so the shooter is still on the mount's mode",
     );
 }

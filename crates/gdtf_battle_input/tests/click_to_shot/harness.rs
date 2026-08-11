@@ -6,6 +6,7 @@ use bevy::{
         primitives::Frustum,
     },
     input::ButtonInput,
+    platform::collections::HashSet,
     prelude::*,
     transform::components::GlobalTransform,
     window::{PrimaryWindow, Window, WindowResolution},
@@ -29,8 +30,9 @@ use gdtf_battle_sim::{
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FightMode, FightModeKind,
         FightModeSpec, FireMode, Handedness, HandlingProfile, Kickback, MagazineSize,
-        MeleeDamageProfile, MeleeWeaponBundle, Reach, Shove, Stable, Strikes, TuCost, WeaponBundle,
-        WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
+        MeleeDamageProfile, MeleeWeapon, MeleeWeaponBundle, MountedWeapon, Reach, Shove, Stable,
+        Strikes, TuCost, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        WieldedBy, Wields,
     },
 };
 
@@ -105,14 +107,10 @@ pub(crate) fn spawn_armed_shooter_melee_first(
     spawn_armed_shooter_inner(app, cell, facing, true)
 }
 
-pub(crate) fn spawn_armed_shooter_inner(
-    app: &mut App,
-    cell: CellLevel,
-    facing: Direction,
-    melee_first: bool,
-) -> Entity {
-    let bundle = WeaponBundle::new(
-        WeaponName::new("probe-weapon".to_owned()),
+/// A one-mode probe gun named `name`, holding `rounds` in a magazine that takes thirty.
+pub(crate) fn probe_gun(name: &str, rounds: u16) -> WeaponBundle {
+    WeaponBundle::new(
+        WeaponName::new(name.to_owned()),
         BaseSpread::new(0.05),
         Accuracy::new(2.0),
         Kickback::new(0.2),
@@ -125,7 +123,7 @@ pub(crate) fn spawn_armed_shooter_inner(
         ),
         HandlingProfile::new(
             Magazine::new(
-                LoadedRounds::new(10),
+                LoadedRounds::new(rounds),
                 MagazineSize::new(30),
                 ReloadTu::new(12),
             ),
@@ -134,7 +132,60 @@ pub(crate) fn spawn_armed_shooter_inner(
             Shove::new(false),
             Handedness::OneHanded,
         ),
-    );
+    )
+}
+
+/// Wield a mounted weapon holding `rounds` on `shooter`, as manning an emplacement does.
+pub(crate) fn mount_turret(app: &mut App, shooter: Entity, rounds: u16) -> Entity {
+    app.world_mut()
+        .spawn((
+            WieldedBy::new(shooter),
+            probe_gun("probe-turret", rounds),
+            MountedWeapon,
+        ))
+        .id()
+}
+
+/// The gun in the shooter's hands: the wielded weapon that is neither melee nor mounted.
+pub(crate) fn carried_gun(app: &mut App, shooter: Entity) -> Option<Entity> {
+    let mut carried = app
+        .world_mut()
+        .query_filtered::<Entity, (Without<MeleeWeapon>, Without<MountedWeapon>)>();
+    let ranged: HashSet<Entity> = carried.iter(app.world()).collect();
+    app.world()
+        .get::<Wields>(shooter)?
+        .iter()
+        .find(|weapon| ranged.contains(weapon))
+}
+
+/// Rounds left in a weapon's magazine.
+pub(crate) fn magazine_rounds(app: &App, weapon: Entity) -> Option<u16> {
+    app.world().get::<Magazine>(weapon).map(|m| *m.rounds())
+}
+
+/// Spend every round in a weapon's magazine.
+pub(crate) fn empty_magazine(app: &mut App, weapon: Entity) {
+    if let Some(mut magazine) = app.world_mut().get_mut::<Magazine>(weapon) {
+        while *magazine.rounds() > 0 {
+            magazine.spend_round();
+        }
+    }
+}
+
+/// Fill a weapon's magazine to capacity.
+pub(crate) fn refill_magazine(app: &mut App, weapon: Entity) {
+    if let Some(mut magazine) = app.world_mut().get_mut::<Magazine>(weapon) {
+        magazine.refill();
+    }
+}
+
+pub(crate) fn spawn_armed_shooter_inner(
+    app: &mut App,
+    cell: CellLevel,
+    facing: Direction,
+    melee_first: bool,
+) -> Entity {
+    let bundle = probe_gun("probe-weapon", 10);
     let shooter = app
         .world_mut()
         .spawn((

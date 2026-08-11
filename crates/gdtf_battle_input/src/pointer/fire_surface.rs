@@ -3,7 +3,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::{
     acts::FireRequested,
-    fire::MeleeQuery,
+    fire::{MeleeQuery, MountedQuery},
     ganger::{Aiming, TuMax},
     injuries::{HandsAvailable, InflictedInjuries},
     magazine::{FireActor, Magazine, can_fire},
@@ -26,7 +26,7 @@ pub type ShooterFireData<'a> = (
 /// Magazine and handedness on a wielded weapon entity.
 pub type WeaponMagazine<'a> = (&'a Magazine, &'a Handedness);
 
-/// A shooter's firing state and the ranged weapon they wield.
+/// A shooter's firing state and the weapon they fire.
 #[derive(SystemParam)]
 pub struct ShooterArms<'w, 's> {
     /// Life, time units, aiming, and injuries of the shooter.
@@ -37,15 +37,22 @@ pub struct ShooterArms<'w, 's> {
     weapons:  Query<'w, 's, WeaponMagazine<'static>, With<WieldedBy>>,
     /// Melee probe used to skip melee weapons when picking the ranged one.
     melee:    MeleeQuery<'w, 's>,
+    /// Mounted probe used to prefer a manned mount over the carried gun.
+    mounted:  MountedQuery<'w, 's>,
 }
 
 impl ShooterArms<'_, '_> {
-    /// The shooter's ranged weapon magazine and handedness, if they hold one.
-    fn ranged_weapon(&self, shooter: Entity) -> Option<(&Magazine, &Handedness)> {
+    /// The magazine and handedness of the weapon this shooter fires, if it has one.
+    fn firing_weapon(&self, shooter: Entity) -> Option<(&Magazine, &Handedness)> {
         self.wields
             .get(shooter)
             .ok()
-            .and_then(|wields| wields.ranged_weapon(|entity| self.melee.get(entity).is_ok()))
+            .and_then(|wields| {
+                wields.firing_weapon(
+                    |entity| self.mounted.get(entity).is_ok(),
+                    |entity| self.melee.get(entity).is_ok(),
+                )
+            })
             .and_then(|weapon| self.weapons.get(weapon).ok())
     }
 }
@@ -62,7 +69,7 @@ pub fn try_fire_request(
     let Ok((life, tu, tu_max, aiming, injuries)) = arms.shooters.get(shooter) else {
         return None;
     };
-    let (magazine, handedness) = arms.ranged_weapon(shooter)?;
+    let (magazine, handedness) = arms.firing_weapon(shooter)?;
     let hands_available =
         injuries.map_or_else(HandsAvailable::default, InflictedInjuries::hands_available);
     let actor = FireActor {

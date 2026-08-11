@@ -4,7 +4,7 @@ use gdtf_battle_sim::{
     ganger::{Aiming, TuMax},
     magazine::mode_tu_cost,
     tuning::CombatTuning,
-    weapon::{FireMode, MeleeWeapon, WieldedBy, Wields},
+    weapon::{FireMode, MeleeWeapon, MountedWeapon, WieldedBy, Wields, WieldsChanged},
 };
 use gdtf_ui::{
     Segment, SegmentColors, SegmentIndex, SegmentSubLabel, SegmentSubText, set_segment_sub_line,
@@ -26,14 +26,16 @@ pub(in crate::states::running::game::battlescape) struct ModeCostInputs<'w, 's> 
     shooters:       Query<'w, 's, CostShooter>,
     wields:         Query<'w, 's, &'static Wields>,
     weapons:        Query<'w, 's, CostWeapon, With<WieldedBy>>,
+    mounted:        Query<'w, 's, (), With<MountedWeapon>>,
     melee:          Query<'w, 's, (), With<MeleeWeapon>>,
     aim_changed:    Query<'w, 's, (), Changed<Aiming>>,
     added_controls: Query<'w, 's, (), Added<ModeControl>>,
+    wields_changed: WieldsChanged<'w, 's>,
 }
 
 pub(in crate::states::running::game::battlescape) fn sync_mode_tu_cost_lines(
     mut commands: Commands,
-    inputs: ModeCostInputs,
+    mut inputs: ModeCostInputs,
     mode_controls: Query<Entity, With<ModeControl>>,
     controls: Query<(&Children, &SegmentColors)>,
     segments: Query<ModeSegment, With<Segment>>,
@@ -41,7 +43,8 @@ pub(in crate::states::running::game::battlescape) fn sync_mode_tu_cost_lines(
 ) {
     let control_just_spawned = inputs.added_controls.iter().next().is_some();
     let aim_flipped = inputs.aim_changed.iter().next().is_some();
-    if !inputs.selected.is_changed() && !aim_flipped && !control_just_spawned {
+    let armament_moved = inputs.wields_changed.any();
+    if !inputs.selected.is_changed() && !aim_flipped && !control_just_spawned && !armament_moved {
         return;
     }
 
@@ -49,7 +52,12 @@ pub(in crate::states::running::game::battlescape) fn sync_mode_tu_cost_lines(
     let shooter_inputs = ganger.and_then(|shooter| inputs.shooters.get(shooter).ok());
     let weapon_mode = ganger
         .and_then(|shooter| inputs.wields.get(shooter).ok())
-        .and_then(|w| w.ranged_weapon(|entity| inputs.melee.get(entity).is_ok()))
+        .and_then(|w| {
+            w.firing_weapon(
+                |entity| inputs.mounted.get(entity).is_ok(),
+                |entity| inputs.melee.get(entity).is_ok(),
+            )
+        })
         .and_then(|weapon| inputs.weapons.get(weapon).ok());
 
     for control in &mode_controls {

@@ -1,18 +1,25 @@
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter, mode_spec_for};
-use gdtf_battle_sim::weapon::{FireMode, MeleeWeapon, WieldedBy, Wields};
+use gdtf_battle_sim::weapon::{FireMode, MeleeWeapon, MountedWeapon, WieldedBy, Wields};
 use gdtf_ui::{ActiveSegment, SegmentSelected, SegmentedControl};
 
 use super::order::{mode_for_index, mode_index};
 use crate::states::running::game::battlescape::action_bar::components::ModeControl;
 
+/// The lookups a clicked mode segment resolves its spec against.
+#[derive(SystemParam)]
+pub(in crate::states::running::game::battlescape) struct ClickedModeWeapon<'w, 's> {
+    wields:  Query<'w, 's, &'static Wields>,
+    weapons: Query<'w, 's, &'static FireMode, With<WieldedBy>>,
+    mounted: Query<'w, 's, (), With<MountedWeapon>>,
+    melee:   Query<'w, 's, (), With<MeleeWeapon>>,
+}
+
 pub(in crate::states::running::game::battlescape) fn mode_segment_write(
     mut chosen: MessageReader<SegmentSelected>,
     mut fire_mode: ResMut<SelectedFireMode>,
     selected: Res<SelectedShooter>,
-    wields: Query<&Wields>,
-    weapons: Query<&FireMode, With<WieldedBy>>,
-    melee: Query<(), With<MeleeWeapon>>,
+    arms: ClickedModeWeapon,
     mode_controls: Query<(), With<ModeControl>>,
 ) {
     for event in chosen.read() {
@@ -22,7 +29,14 @@ pub(in crate::states::running::game::battlescape) fn mode_segment_write(
         let Some(kind) = mode_for_index(*event.index) else {
             continue;
         };
-        let Some(spec) = mode_spec_for(*selected, &wields, &weapons, &melee, kind) else {
+        let Some(spec) = mode_spec_for(
+            *selected,
+            &arms.wields,
+            &arms.weapons,
+            &arms.mounted,
+            &arms.melee,
+            kind,
+        ) else {
             continue;
         };
         let next = SelectedFireMode::new(spec);
