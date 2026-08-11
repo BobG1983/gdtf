@@ -4,7 +4,7 @@ use bevy::prelude::Deref;
 
 use super::reach::{Actor, DownedTarget, is_8_adjacent};
 use crate::{
-    ganger::LifeState,
+    ganger::{LifeState, Tu},
     tuning::{CombatTuning, ExecuteTu},
 };
 
@@ -18,6 +18,12 @@ impl CanExecute {
     pub const fn new(allowed: bool) -> Self {
         Self(allowed)
     }
+}
+
+/// TU charged for executing one downed ganger.
+#[must_use]
+pub fn execute_tu_cost(tuning: &CombatTuning) -> Tu {
+    Tu::new(*tuning.execute_tu)
 }
 
 /// Alive actor, adjacent, enemy, and target is downed.

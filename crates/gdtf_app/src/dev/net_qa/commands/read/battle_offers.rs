@@ -49,7 +49,9 @@ impl QaCommand for BattleOffers {
         "Read the contextual buttons the panel is offering this frame, each with the target it \
          would act on and whether the panel shows it as pressable. These are the same per-act \
          resources the buttons read, not a second computation, so an offer here is a button on \
-         screen, and one that is not pressable is greyed out because the actor cannot afford it.",
+         screen. One that is not pressable is greyed out because the actor's TU pool cannot cover \
+         the act's cost — or, for melee, because the actor wields no melee weapon to price a \
+         strike with.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 

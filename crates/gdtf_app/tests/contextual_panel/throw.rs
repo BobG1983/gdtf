@@ -2,13 +2,22 @@ use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::ThrowGrenadeButton;
 use gdtf_battle_input::{InspectTarget, SelectedShooter, contextual::ContextualActSystems};
 use gdtf_battle_sim::{
-    acts::ThrowGrenadeRequested,
+    acts::{ThrowGrenadeRequested, throw_grenade_tu_cost},
+    ganger::Tu,
     prelude::{Cell, CellLevel, Faction, Level},
+    tuning::CombatTuning,
     weapon::{TrajectoryStyle, WieldedBy},
 };
 use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 
 use super::{actors::*, harness::*};
+
+/// What one throw would charge, taken from the sim's own cost helper against the live tuning.
+fn throw_cost(app: &App) -> Tu {
+    app.world()
+        .get_resource::<CombatTuning>()
+        .map_or_else(|| Tu::new(0), throw_grenade_tu_cost)
+}
 
 fn spawn_throw_actor(
     app: &mut App,
@@ -17,7 +26,11 @@ fn spawn_throw_actor(
     gang: u8,
     trajectory: TrajectoryStyle,
 ) -> Entity {
-    let actor = app.world_mut().spawn((at(x, y), Faction::new(gang))).id();
+    let pool = throw_cost(app);
+    let actor = app
+        .world_mut()
+        .spawn((at(x, y), Faction::new(gang), pool))
+        .id();
     app.world_mut().spawn((WieldedBy::new(actor), trajectory));
     app.world_mut().insert_resource(SelectedShooter::new(actor));
     actor

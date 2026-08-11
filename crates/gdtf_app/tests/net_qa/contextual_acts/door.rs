@@ -21,7 +21,7 @@ use super::{
 };
 
 /// A live battle whose selected shooter has exactly one closed door beside it: ours.
-fn door_beside_the_shooter() -> Result<(App, NetQaPort, Entity), TestError> {
+pub(super) fn door_beside_the_shooter() -> Result<(App, NetQaPort, Entity), TestError> {
     let (mut app, port) = battle_app_listening()?;
     let (_shooter, at) = select_a_player_ganger(&mut app)?;
     clear_doors_around(&mut app, at)?;
