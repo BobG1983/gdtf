@@ -11,8 +11,8 @@ use gdtf_qa_protocol::command::RunOptions;
 
 use super::{
     act_support::{
-        LogBody, RosterBody, accepted, answered, battle_app_reporting, card_of, complete, decode,
-        next, selected, walk_complete, window,
+        LogBody, RosterBody, accepted, answered, assert_waited_for, battle_app_reporting, card_of,
+        complete, decode, next, selected, walk_complete, window,
     },
     battle_reads::{
         a_player_ganger, an_unreachable_cell, cell_argument, ganger_argument, one_step_from,
@@ -73,7 +73,7 @@ fn one_move_walks_the_selected_ganger_onto_the_cell_it_named() -> TestResult {
     let mut replies = replies.into_iter();
     let shooter = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
     let moved = accepted(ACT_MOVE, next(ACT_MOVE, &mut replies)?)?;
-    let _walked = next(WAIT, &mut replies)?;
+    assert_waited_for("WalkComplete", next(WAIT, &mut replies)?)?;
     let log = decode::<LogBody>(LOG_READ, next(LOG_READ, &mut replies)?)?;
     let roster = decode::<RosterBody>(BATTLE_ROSTER, next(BATTLE_ROSTER, &mut replies)?)?;
 

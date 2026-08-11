@@ -13,9 +13,9 @@ use gdtf_test_utils::advance_until;
 
 use super::{
     super::{
-        act_support::{caught_up, next},
+        act_support::{assert_caught_up, caught_up, next},
         battle_reads::{an_enemy_ganger, an_unselected_player_ganger},
-        command_exchange::{ACT_EXECUTE, ACT_SHOVE, ACT_STABILIZE, exchange_inspecting, run},
+        command_exchange::{ACT_EXECUTE, ACT_SHOVE, ACT_STABILIZE, WAIT, exchange_inspecting, run},
         socket_support::{TestError, TestResult, battle_app_listening},
     },
     scene::{
@@ -108,7 +108,7 @@ fn shoving_the_offered_neighbour_names_it_and_pushes_it_off_its_cell() -> TestRe
             vec![caught_up(), run(ACT_SHOVE, "()", RunOptions::default())]
         })?;
     let mut replies = replies.into_iter();
-    let _caught = next("wait", &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let shoved = accepted(ACT_SHOVE, next(ACT_SHOVE, &mut replies)?)?;
 
     assert_eq!(
@@ -144,7 +144,7 @@ fn executing_the_offered_downed_enemy_kills_it_in_the_world() -> TestResult {
             vec![caught_up(), run(ACT_EXECUTE, "()", RunOptions::default())]
         })?;
     let mut replies = replies.into_iter();
-    let _caught = next("wait", &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let executed = accepted(ACT_EXECUTE, next(ACT_EXECUTE, &mut replies)?)?;
 
     assert_eq!(
@@ -172,7 +172,7 @@ fn stabilizing_the_offered_gang_mate_stops_its_bleed_rather_than_finishing_it() 
             vec![caught_up(), run(ACT_STABILIZE, "()", RunOptions::default())]
         })?;
     let mut replies = replies.into_iter();
-    let _caught = next("wait", &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let stabilized = accepted(ACT_STABILIZE, next(ACT_STABILIZE, &mut replies)?)?;
 
     assert_eq!(

@@ -6,8 +6,8 @@ use gdtf_qa_protocol::{command::RunOptions, ports::NetQaPort};
 
 use super::{
     super::{
-        act_support::{caught_up, next},
-        command_exchange::{ACT_THROW_GRENADE, exchange_inspecting, run},
+        act_support::{assert_caught_up, caught_up, next},
+        command_exchange::{ACT_THROW_GRENADE, WAIT, exchange_inspecting, run},
         socket_support::{TestError, TestResult, battle_app_listening},
     },
     scene::{refused, select_a_player_ganger, settle},
@@ -30,7 +30,7 @@ fn throwing_a_grenade_refuses_with_no_offer_while_no_cell_is_hovered() -> TestRe
         ]
     })?;
     let mut replies = replies.into_iter();
-    let _caught = next("wait", &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let reason = refused(ACT_THROW_GRENADE, next(ACT_THROW_GRENADE, &mut replies)?)?;
     assert_eq!(
         reason,

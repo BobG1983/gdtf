@@ -5,7 +5,8 @@ use gdtf_qa_protocol::command::RunOptions;
 
 use super::{
     act_support::{
-        RosterBody, accepted, answered, card_of, caught_up, complete, decode, next, selected,
+        RosterBody, accepted, answered, assert_caught_up, card_of, caught_up, complete, decode,
+        next, selected,
     },
     command_exchange::{
         ACT_SELECT_NEXT, ACT_SET_STANCE, BATTLE_ROSTER, WAIT, assert_refused_off_the_battle_screen,
@@ -63,7 +64,7 @@ fn setting_the_same_stance_twice_leaves_the_same_stance() -> TestResult {
     let mut replies = replies.into_iter();
     let shooter = selected(ACT_SELECT_NEXT, next(ACT_SELECT_NEXT, &mut replies)?)?;
     let _once = accepted(ACT_SET_STANCE, next(ACT_SET_STANCE, &mut replies)?)?;
-    let _settled = next(WAIT, &mut replies)?;
+    assert_caught_up(next(WAIT, &mut replies)?)?;
     let twice = answered(ACT_SET_STANCE, next(ACT_SET_STANCE, &mut replies)?)?;
     let roster = decode::<RosterBody>(BATTLE_ROSTER, next(BATTLE_ROSTER, &mut replies)?)?;
 
