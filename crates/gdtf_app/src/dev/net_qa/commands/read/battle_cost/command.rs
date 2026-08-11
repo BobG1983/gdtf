@@ -71,8 +71,8 @@ impl QaCommand for BattleCost {
          taking it. Every number is the sim's own cost helper and every verdict its own legality \
          check, so what this quotes is what the act charges. It reads only — nothing in the \
          battle moves. A refusal names why: an unknown token, a ganger the player does not \
-         command, a cell with no route, suppression the walk does not break away from, a pool \
-         that cannot pay, or an act the sim rejects.",
+         command, a cell with no route, suppression the walk does not break away from, cover \
+         between a striker and its target, a pool that cannot pay, or an act the sim rejects.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 

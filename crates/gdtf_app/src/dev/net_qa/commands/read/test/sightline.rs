@@ -3,13 +3,12 @@
 use bevy::{ecs::system::RunSystemOnce as _, prelude::*};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    ganger::{Aiming, Direction, Facing, Position, Tu, TuMax},
-    prelude::{Cell, CellLevel, Faction, Level},
+    ganger::{Aiming, Direction, Facing, LifeState, Position, Tu, TuMax},
+    prelude::{Cell, CellLevel, Level},
 };
 
 use crate::dev::net_qa::{
-    commands::read::battle_sightline::{ShooterRow, SightlineReads},
-    wire::sight::SightlineNet,
+    commands::read::battle_sightline::SightlineReads, wire::sight::SightlineNet,
 };
 
 fn a_cell() -> CellLevel {
@@ -18,11 +17,7 @@ fn a_cell() -> CellLevel {
 
 /// Ask the handler's own decision, through the real system param.
 fn answer(world: &mut World) -> SightlineNet {
-    let asked = world.run_system_once(
-        |reads: SightlineReads, factions: Query<&Faction>, shooters: Query<ShooterRow>| {
-            reads.sightline(a_cell(), &factions, &shooters)
-        },
-    );
+    let asked = world.run_system_once(|reads: SightlineReads| reads.sightline(a_cell()));
     match asked {
         Ok(sightline) => sightline,
         Err(fault) => unreachable!("the sightline read is a plain read-only system: {fault:?}"),
@@ -64,6 +59,7 @@ fn a_battle_with_a_shooter_selected_answers_both_halves() {
             Tu::new(30),
             TuMax::new(60),
             Aiming::default(),
+            LifeState::Alive,
         ))
         .id();
     world.insert_resource(SelectedShooter::new(shooter));

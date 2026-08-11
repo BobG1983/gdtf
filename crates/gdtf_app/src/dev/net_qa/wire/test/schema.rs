@@ -203,6 +203,22 @@ fn the_published_refusal_shape_names_the_suppressed_variant() {
 }
 
 #[test]
+fn the_published_refusal_shape_names_the_no_line_of_sight_variant() {
+    let Ok(doc) = shape_trace::<CostRefusalNet>() else {
+        unreachable!("`CostRefusalNet`'s shape must trace out of its own Deserialize impl")
+    };
+    let Some(ShapeBody::Choice(variants)) = doc.root_body() else {
+        unreachable!("`CostRefusalNet` publishes a choice of variants: {doc:?}")
+    };
+    assert!(
+        variants
+            .iter()
+            .any(|variant| variant.name().as_str() == "NoLineOfSight"),
+        "a client reading the published shape must find the NoLineOfSight refusal: {variants:?}",
+    );
+}
+
+#[test]
 fn every_registered_command_traces_both_of_its_own_types() {
     assert!(
         shape_trace::<AppPhaseArgs>().is_ok(),

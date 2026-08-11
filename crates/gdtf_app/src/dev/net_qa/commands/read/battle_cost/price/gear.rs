@@ -7,8 +7,11 @@ use gdtf_battle_sim::{
         MeleeAttacker, MeleeReach, can_melee, can_reload, can_throw_grenade, fire_arc_tu_cost,
         melee_tu_cost, reload_tu_cost, throw_grenade_tu_cost,
     },
+    ganger::{LifeState, Stance, StanceKind},
     injuries::{HandsAvailable, InflictedInjuries},
+    los::{Observer, PeekOffset, Sighted, Target, has_los},
     magazine::{FireActor, can_fire, mode_tu_cost},
+    march::MarchGrids,
     tuning::CombatTuning,
 };
 
@@ -16,7 +19,7 @@ use super::quote::{Quote, afforded};
 use crate::dev::net_qa::{
     commands::{
         act::support::a_ganger,
-        read::battle_cost::reads::{ActorRowItem, CostRows},
+        read::battle_cost::reads::{ActorRowItem, CostRows, LoadedWorld},
     },
     wire::{
         act_payload::MeleeTargetNet,
@@ -102,6 +105,7 @@ pub(super) fn throw_quote(
 
 /// Price one strike with the melee weapon the actor is holding.
 pub(super) fn melee_quote(
+    world: &LoadedWorld,
     rows: &CostRows,
     actor: Entity,
     row: &ActorRowItem<'_, '_>,
@@ -121,7 +125,56 @@ pub(super) fn melee_quote(
     };
     let cost = melee_tu_cost(fight);
     let allowed = can_melee(MeleeAttacker::new(*row.position, *row.faction), reach);
-    afforded(*row.tu, cost, CostLegalNet::new(*allowed))
+    let quote = afforded(*row.tu, cost, CostLegalNet::new(*allowed));
+    if quote.refusal().is_some() || *melee_sighted(world, rows, row, target) {
+        return quote;
+    }
+    Quote::quoted(cost, Some(CostRefusalNet::NoLineOfSight))
+}
+
+// The sim runs its line-of-sight probe before a strike on a ganger lands; a structure has none.
+fn melee_sighted(
+    world: &LoadedWorld,
+    rows: &CostRows,
+    row: &ActorRowItem<'_, '_>,
+    target: MeleeTargetNet,
+) -> Sighted {
+    let MeleeTargetNet::Ganger(token) = target else {
+        return Sighted::new(true);
+    };
+    let Some(entity) = a_ganger(&rows.tokens, token) else {
+        return Sighted::new(false);
+    };
+    let Ok((position, ..)) = rows.targets.get(entity) else {
+        return Sighted::new(false);
+    };
+    let standing = Stance::new(StanceKind::Standing);
+    let observer = Observer {
+        position:         row.position,
+        stance:           row.stance,
+        facing:           row.facing,
+        stair_eye_offset: world.grids.occupancy.stair_eye_offset_at(row.position),
+        peek_offset:      PeekOffset::default(),
+    };
+    let struck = Target {
+        position,
+        stance: rows.stances.get(entity).unwrap_or(&standing),
+    };
+    has_los(
+        &observer,
+        &struck,
+        MarchGrids {
+            occupancy: world.grids.occupancy,
+            surface:   world.surface,
+            cover:     world.cover,
+        },
+        world.tuning,
+        |dead| {
+            rows.targets
+                .get(dead)
+                .is_ok_and(|(_, _, life)| *life == LifeState::Dead)
+        },
+    )
 }
 
 fn melee_reach(rows: &CostRows, target: MeleeTargetNet) -> Option<MeleeReach> {

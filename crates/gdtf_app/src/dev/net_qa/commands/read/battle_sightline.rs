@@ -1,12 +1,17 @@
-use bevy::{ecs::system::SystemParam, prelude::*};
-use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
+use bevy::{
+    ecs::{query::QueryData, system::SystemParam},
+    prelude::*,
+};
+use gdtf_battle_input::{SelectedFireMode, SelectedShooter, firing_weapon_of};
 use gdtf_battle_presenter::PresenterSystems;
 use gdtf_battle_sim::{
     acts::can_engage,
-    ganger::{Aiming, Facing, Position, TuMax},
-    magazine::mode_tu_cost,
+    ganger::{Aiming, Facing, LifeState, Position, TuMax},
+    injuries::{HandsAvailable, InflictedInjuries},
+    magazine::{FireActor, Magazine, can_fire, mode_tu_cost},
     prelude::{CellLevel, Faction, Tu},
     tuning::CombatTuning,
+    weapon::{Handedness, MeleeWeapon, MountedWeapon, WieldedBy, Wields},
 };
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
@@ -58,7 +63,9 @@ impl QaCommand for BattleSightline {
         "Ask whether the squad can see a cell and whether the selected shooter could fire at it \
          this turn. Seeing reads the playback-gated fog the screen draws, so it agrees with \
          battle.visible and battle.inspect; engaging is the sim's own firing-arc gate priced \
-         with the selected fire mode. With nothing selected it answers NoShooter.",
+         with the selected fire mode, and its own fire-readiness gate, which needs the shooter \
+         alive with a loaded gun, free hands and the time to shoot. With nothing selected it \
+         answers NoShooter.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -78,24 +85,41 @@ impl QaCommand for BattleSightline {
     }
 }
 
-/// What the sightline answer is read from: the screen's view plus the sim's firing gate.
+/// What the sightline answer is read from: the screen's view plus the sim's firing gates.
 #[derive(SystemParam)]
-pub(super) struct SightlineReads<'w> {
+pub(super) struct SightlineReads<'w, 's> {
     shown:     ShownBattleReads<'w>,
     selected:  Option<Res<'w, SelectedShooter>>,
     fire_mode: Option<Res<'w, SelectedFireMode>>,
     tuning:    Option<Res<'w, CombatTuning>>,
+    factions:  Query<'w, 's, &'static Faction>,
+    shooters:  Query<'w, 's, ShooterRow>,
+    wields:    Query<'w, 's, &'static Wields>,
+    guns:      Query<'w, 's, GunRow, With<WieldedBy>>,
+    mounted:   Query<'w, 's, (), With<MountedWeapon>>,
+    melee:     Query<'w, 's, (), With<MeleeWeapon>>,
 }
 
-pub(super) type ShooterRow = (
-    &'static Position,
-    &'static Facing,
-    &'static Tu,
-    &'static TuMax,
-    &'static Aiming,
-);
+/// Pose, pool and body the two firing gates read off the selected shooter.
+#[derive(QueryData)]
+pub(super) struct ShooterRow {
+    position: &'static Position,
+    facing:   &'static Facing,
+    tu:       &'static Tu,
+    tu_max:   &'static TuMax,
+    aiming:   &'static Aiming,
+    life:     &'static LifeState,
+    injuries: Option<&'static InflictedInjuries>,
+}
 
-impl SightlineReads<'_> {
+/// What fire readiness reads off the gun the shooter fires.
+#[derive(QueryData)]
+pub(super) struct GunRow {
+    magazine:   &'static Magazine,
+    handedness: &'static Handedness,
+}
+
+impl SightlineReads<'_, '_> {
     /// The selected shooter, absent when nothing is selected.
     #[must_use]
     pub(super) fn shooter(&self) -> Option<Entity> {
@@ -104,27 +128,22 @@ impl SightlineReads<'_> {
 
     /// Both halves of the answer, or the refusal when nothing is selected.
     #[must_use]
-    pub(super) fn sightline(
-        &self,
-        at: CellLevel,
-        factions: &Query<&Faction>,
-        shooters: &Query<ShooterRow>,
-    ) -> SightlineNet {
+    pub(super) fn sightline(&self, at: CellLevel) -> SightlineNet {
         match self.shooter() {
             Some(entity) => SightlineNet::Answered {
-                can_see:    self.can_see(at, factions),
-                can_engage: self.can_engage(entity, at, shooters),
+                can_see:    self.can_see(at),
+                can_engage: self.can_engage(entity, at),
             },
             None => SightlineNet::NoShooter,
         }
     }
 
-    fn can_see(&self, at: CellLevel, factions: &Query<&Faction>) -> CanSeeNet {
+    fn can_see(&self, at: CellLevel) -> CanSeeNet {
         let shown = self.shown.shown();
         let occupant = shown
             .grid()
             .and_then(|grid| grid.occupant(&at))
-            .and_then(|occupant| factions.get(occupant).ok().copied());
+            .and_then(|occupant| self.factions.get(occupant).ok().copied());
         let seen = match occupant {
             Some(faction) => shown.ganger_visible(at, faction),
             None => shown.cell_visible(at),
@@ -132,35 +151,46 @@ impl SightlineReads<'_> {
         CanSeeNet::new(seen.is_squad_visible())
     }
 
-    fn can_engage(
-        &self,
-        shooter: Entity,
-        at: CellLevel,
-        shooters: &Query<ShooterRow>,
-    ) -> CanEngageNet {
+    fn can_engage(&self, shooter: Entity, at: CellLevel) -> CanEngageNet {
         let (Some(fire_mode), Some(tuning)) = (self.fire_mode.as_deref(), self.tuning.as_deref())
         else {
             return CanEngageNet::new(false);
         };
-        let Ok((position, facing, tu, tu_max, aiming)) = shooters.get(shooter) else {
+        let Ok(row) = self.shooters.get(shooter) else {
             return CanEngageNet::new(false);
         };
-        let cost = mode_tu_cost(fire_mode, tu_max, aiming, tuning);
-        CanEngageNet::new(*can_engage(
-            **facing,
-            position.cell(),
+        let Some(gun) = firing_weapon_of(shooter, &self.wields, &self.mounted, &self.melee)
+            .and_then(|weapon| self.guns.get(weapon).ok())
+        else {
+            return CanEngageNet::new(false);
+        };
+        let cost = mode_tu_cost(fire_mode, row.tu_max, row.aiming, tuning);
+        let in_arc = can_engage(
+            **row.facing,
+            row.position.cell(),
             at.cell(),
-            *tu,
+            *row.tu,
             cost,
             tuning,
-        ))
+        );
+        let shot = FireActor {
+            life:            row.life,
+            tu:              row.tu,
+            tu_max:          row.tu_max,
+            aiming:          row.aiming,
+            magazine:        gun.magazine,
+            handedness:      *gun.handedness,
+            hands_available: row
+                .injuries
+                .map_or_else(HandsAvailable::default, InflictedInjuries::hands_available),
+        };
+        let ready = can_fire(&shot, fire_mode, at.cell(), at.level(), tuning);
+        CanEngageNet::new(*in_arc && *ready)
     }
 }
 
 fn handle_battle_sightline(
     reads: SightlineReads,
-    factions: Query<&Faction>,
-    shooters: Query<ShooterRow>,
     mut queue: ResMut<PendingQueue<CommandCall<BattleSightline>>>,
 ) {
     if queue.is_empty() {
@@ -173,7 +203,7 @@ fn handle_battle_sightline(
         responder.answer(&BattleSightlineReply {
             at:        args.at,
             shooter:   token,
-            sightline: reads.sightline(args.at.to_sim(), &factions, &shooters),
+            sightline: reads.sightline(args.at.to_sim()),
         });
     }
 }

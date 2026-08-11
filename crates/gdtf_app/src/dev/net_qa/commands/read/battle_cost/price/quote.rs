@@ -96,7 +96,7 @@ fn priced(
             reach::exit_quote(rows, tuning, actor, row, target)
         }
         CostActNet::ThrowGrenade { .. } => gear::throw_quote(rows, tuning, actor, row),
-        CostActNet::Melee { target } => gear::melee_quote(rows, actor, row, target),
+        CostActNet::Melee { target } => gear::melee_quote(world, rows, actor, row, target),
     }
 }
 

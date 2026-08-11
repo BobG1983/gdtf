@@ -104,6 +104,8 @@ pub enum CostRefusalNet {
     NoPathToCell,
     /// Suppression holds the mover and the route does not break away from it.
     Suppressed,
+    /// Cover blocks the attacker's line of sight to the target.
+    NoLineOfSight,
     /// The actor cannot pay the cost.
     CannotAfford,
     /// The act's own sim legality check said no.
