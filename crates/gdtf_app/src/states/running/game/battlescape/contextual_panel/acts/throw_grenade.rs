@@ -1,14 +1,17 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::{InspectTarget, SelectedShooter, contextual::ThrowGrenadeAct};
 use gdtf_battle_sim::{
-    ganger::{Faction, Position},
+    acts::throw_grenade_tu_cost,
+    ganger::{Faction, Position, Tu},
     prelude::CellLevel,
+    tu::can_spend_tu,
+    tuning::CombatTuning,
     weapon::{MeleeWeapon, TrajectoryStyle, Wields},
 };
 use gdtf_ui::ButtonLabel;
 
 use crate::states::running::game::battlescape::contextual_panel::seam::{
-    ContextualOffer, ContextualPanelAct, PanelSlot,
+    ContextualOffer, ContextualPanelAct, OfferPressable, PanelSlot,
 };
 
 crate::support_item! {
@@ -45,14 +48,22 @@ impl ThrowReads<'_, '_> {
     }
 }
 
+type ThrowActorFilter = (With<Position>, With<Faction>);
+
 pub(in crate::states::running::game::battlescape) fn offer_throw_grenade(
     selected: Res<SelectedShooter>,
-    actors: Query<(), (With<Position>, With<Faction>)>,
+    actors: Query<Option<&Tu>, ThrowActorFilter>,
     throw: ThrowReads,
+    tuning: Option<Res<CombatTuning>>,
     mut offer: ResMut<ContextualOffer<ThrowGrenadeAct>>,
 ) {
-    let target = (**selected)
-        .filter(|actor| actors.get(*actor).is_ok())
-        .and_then(|actor| throw.throw_target(actor));
-    offer.set_if_neq(ContextualOffer::new(target));
+    let actor = (**selected).and_then(|actor| actors.get(actor).ok().map(|tu| (actor, tu)));
+    let target = actor.and_then(|(actor, _)| throw.throw_target(actor));
+    let pressable = OfferPressable::new(
+        actor
+            .and_then(|(_, tu)| tu)
+            .zip(tuning.as_deref())
+            .is_some_and(|(tu, tuning)| *can_spend_tu(tu, throw_grenade_tu_cost(tuning))),
+    );
+    offer.set_if_neq(ContextualOffer::new(target).with_pressable(pressable));
 }

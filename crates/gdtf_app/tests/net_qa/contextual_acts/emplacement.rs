@@ -68,7 +68,8 @@ fn clear_emplacements_around(app: &mut App, at: CellLevel) -> Result<(), TestErr
 }
 
 /// A live battle whose selected shooter has exactly one vacant emplacement beside it: ours.
-fn emplacement_beside_the_shooter() -> Result<(App, NetQaPort, (Entity, Entity)), TestError> {
+pub(super) fn emplacement_beside_the_shooter()
+-> Result<(App, NetQaPort, (Entity, Entity)), TestError> {
     let (mut app, port) = battle_app_listening()?;
     let (shooter, at) = select_a_player_ganger(&mut app)?;
     clear_emplacements_around(&mut app, at)?;
@@ -82,7 +83,8 @@ fn emplacement_beside_the_shooter() -> Result<(App, NetQaPort, (Entity, Entity))
 }
 
 /// The same battle with the shooter already manning that emplacement, through the sim's toggle.
-fn manned_emplacement_under_the_shooter() -> Result<(App, NetQaPort, (Entity, Entity)), TestError> {
+pub(super) fn manned_emplacement_under_the_shooter()
+-> Result<(App, NetQaPort, (Entity, Entity)), TestError> {
     let (mut app, port, (shooter, emplacement)) = emplacement_beside_the_shooter()?;
     app.world_mut()
         .write_message(SetEmplacement::occupy(emplacement, shooter));

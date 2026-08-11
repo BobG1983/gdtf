@@ -2,5 +2,6 @@
 mod door;
 mod emplacement;
 mod neighbour;
+mod pressable;
 mod scene;
 mod throw;

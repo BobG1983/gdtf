@@ -5,7 +5,7 @@ use bevy::prelude::{Commands, Deref, Entity};
 use super::reach::{Actor, DownedTarget, is_8_adjacent};
 use crate::{
     effects::bleed::BleedingOut,
-    ganger::LifeState,
+    ganger::{LifeState, Tu},
     tuning::{CombatTuning, StabilizeTu},
 };
 
@@ -19,6 +19,12 @@ impl CanStabilize {
     pub const fn new(allowed: bool) -> Self {
         Self(allowed)
     }
+}
+
+/// TU charged for stabilizing one bleeding ganger.
+#[must_use]
+pub fn stabilize_tu_cost(tuning: &CombatTuning) -> Tu {
+    Tu::new(*tuning.stabilize_tu)
 }
 
 /// Alive actor, adjacent, same faction, target downed and bleeding.

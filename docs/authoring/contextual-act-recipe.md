@@ -45,10 +45,11 @@ the frame it was claimed in, exactly as a press is.
   and lands partway.
 - **Sim owns the TU number.** Whoever needs it — dispatch, HUD, cursor preview, AI, a QA
   command — calls `<act>_tu_cost`; never a second copy of the math. Re-export the pair from
-  `acts/mod.rs` so callers outside the sim can reach it. Execute and Stabilize are the two
-  acts that do not match yet: they carry `can_execute` / `can_stabilize` but return their
-  cost from the verb (`execute_downed` / `stabilize_downed`) rather than a standalone
-  `*_tu_cost`. Do not copy that shape.
+  `acts/mod.rs` so callers outside the sim can reach it. Execute and Stabilize still do not
+  match. `execute_tu_cost` and `stabilize_tu_cost` exist now, but they are re-exported from
+  `acts/downed/mod.rs` rather than `acts/mod.rs`, their verbs (`execute_downed` /
+  `stabilize_downed`) still return the cost as well, and their dispatch charges nothing — so
+  the panel greys those two buttons on a cost the sim never debits. Do not copy that shape.
 - **Registration lines** in `crates/gdtf_battle_sim/src/acts/plugin/` (`SimActsPlugin`):
   `.add_message::<<Act>Requested>()` in `register_messages` and the dispatch system
   `.in_set(SimSystems::Simulate)` in `wire_acts` (with explicit `.before`/`.after`
@@ -87,11 +88,11 @@ the frame it was claimed in, exactly as a press is.
   re-gates). Wire the module in `contextual_panel/acts/mod.rs`.
 - **Offer the act even when the actor cannot pay for it.** Geometry, faction, life and line
   of sight decide whether the button is on screen; affordability decides only whether it is
-  pressable. A scan that prices its act calls the sim's own cost helper and `can_spend_tu`
-  and hands the answer to `ContextualOffer::with_pressable`, which greys the button through
-  `gdtf_ui::DisabledButton` and reports itself on `battle.offers`. A greyed button ignores
-  a click and its digit slot key. Shove and melee do this; the rest leave the offer
-  pressable.
+  pressable. All eight scans price their act with the sim's own cost helper and
+  `can_spend_tu` and hand the answer to `ContextualOffer::with_pressable`, which greys the
+  button through `gdtf_ui::DisabledButton` and reports itself on `battle.offers`. A greyed
+  button ignores a click and its digit slot key. Melee also greys out when the actor wields
+  no melee weapon, because there is no strike to price.
 - **One line** in `contextual_panel/plugin.rs`:
   `.add_contextual_act_button::<<Act>Act, _>(acts::<act>::offer_<act>)`. That stamps
   the generic button spawn, visibility toggle, disabled sync, and press router over the

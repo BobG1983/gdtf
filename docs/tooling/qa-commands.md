@@ -247,8 +247,9 @@ already draws a visible enemy's whole card —
 `battle.turn` names the acting gang and the player's, `battle.selection` reports the
 selected shooter, its fire mode and the hovered and pinned inspect cells, `battle.offers`
 lists the contextual buttons the panel is showing, each with the target it would act on and
-a `pressable` flag that is false when the panel greys the button out because the actor
-cannot afford the act,
+a `pressable` flag that is false when the panel greys the button out — the actor's TU pool
+cannot cover the act's cost, or for melee the actor wields no melee weapon to price a strike
+with,
 `battle.inspect` reads one cell exactly as the inspect panel draws it, `battle.sightline`
 answers whether the squad can see a cell and whether the selected shooter could engage it,
 `battle.visible`
@@ -442,7 +443,10 @@ command pushes the offered target onto the same `PendingContextualIntents` queue
 pushes onto, and the sim's own `dispatch_*` is the authoritative gate: nothing on the QA side
 re-checks adjacency, faction, life state or TU. `battle.offers` does report the panel's own
 `pressable` bit, but that is the greyed-out state the button already carries, read off the
-same offer resource — not a second legality check living on the QA side.
+same offer resource — not a second legality check living on the QA side. The panel computes
+it from the sim's own cost helper and `can_spend_tu`, so the bit is the sim's answer about
+affordability, shown on a button — and, for melee, its answer about whether the actor wields
+a melee weapon to price a strike with at all.
 
 `act.throw_grenade` is the one that needs more than a selection: its offer scan reads the
 hovered cell, and it only offers while the shooter wields an arcing ranged weapon —
@@ -462,11 +466,16 @@ and they answer `ContextualReply`: `Accepted { from_seq, to_seq, complete, targe
 unaffordable or illegal refusal on these commands: every contextual dispatch in the sim
 rejects by doing nothing and emitting nothing, so a call the sim declined comes back with
 `from_seq` equal to `to_seq`. Read `battle.offers` first to tell the two apart — an offer
-with `pressable: false` is a button on screen the actor cannot pay for. The panel makes that
+with `pressable: false` is a button on screen the panel has greyed out. The panel makes that
 button ignore a click and its digit key; the command does not copy the state, so `act.*`
-pushes the target anyway and the sim declines in silence. Shove and melee are the two
-families that compute it today; the other six report `pressable: true`, which is what their
-buttons show.
+pushes the target anyway and the sim declines in silence. All eight families compute the
+flag from their own sim cost helper and `can_spend_tu`. Melee has a second way to go false:
+an actor wielding no melee weapon has no strike to price, so its button greys out too.
+
+Two of the eight grey out ahead of the sim. `act.execute` and `act.stabilize` are quoted
+from `execute_tu_cost` and `stabilize_tu_cost`, but the sim's dispatch for those two debits
+no pool yet, so a greyed Execute names an act the sim would still carry out for free if the
+command pushed it.
 
 **An empty window still is not proof of a decline for the contextual acts.** `ActDeed` has no
 variant for opening a door or entering and leaving an emplacement, so `act.open_door`,

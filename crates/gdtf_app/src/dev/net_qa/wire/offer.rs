@@ -63,7 +63,8 @@ pub struct ContextualOfferNet {
     pub act:       ContextualActNet,
     /// What it would act on.
     pub target:    OfferTargetNet,
-    /// False when the panel greys the button out because the actor cannot afford the act.
+    /// False when the panel greys the button out: the pool cannot pay the act's cost, or,
+    /// for melee, the actor wields no melee weapon.
     pub pressable: OfferPressableNet,
 }
 

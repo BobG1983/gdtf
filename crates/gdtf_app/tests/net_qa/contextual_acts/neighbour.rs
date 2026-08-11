@@ -25,7 +25,8 @@ use super::{
 };
 
 /// A live battle with one living enemy beside the shooter and clear ground behind it.
-fn enemy_beside_the_shooter() -> Result<(App, NetQaPort, (Entity, CellLevel)), TestError> {
+pub(super) fn enemy_beside_the_shooter() -> Result<(App, NetQaPort, (Entity, CellLevel)), TestError>
+{
     let (mut app, port) = battle_app_listening()?;
     let (_shooter, at) = select_a_player_ganger(&mut app)?;
     let Some(enemy) = an_enemy_ganger(&app) else {
@@ -39,7 +40,7 @@ fn enemy_beside_the_shooter() -> Result<(App, NetQaPort, (Entity, CellLevel)), T
 }
 
 /// A live battle with one downed enemy beside the shooter and no other enemy in reach.
-fn downed_enemy_beside_the_shooter() -> Result<(App, NetQaPort, Entity), TestError> {
+pub(super) fn downed_enemy_beside_the_shooter() -> Result<(App, NetQaPort, Entity), TestError> {
     let (mut app, port) = battle_app_listening()?;
     let (_shooter, at) = select_a_player_ganger(&mut app)?;
     let Some(enemy) = an_enemy_ganger(&app) else {
@@ -74,7 +75,7 @@ fn bleeding_gang_mates_beside(app: &App, at: CellLevel, gang: Faction) -> Vec<En
 }
 
 /// A live battle with one downed, bleeding gang mate beside the shooter and no other.
-fn bleeding_mate_beside_the_shooter() -> Result<(App, NetQaPort, Entity), TestError> {
+pub(super) fn bleeding_mate_beside_the_shooter() -> Result<(App, NetQaPort, Entity), TestError> {
     let (mut app, port) = battle_app_listening()?;
     let (shooter, at) = select_a_player_ganger(&mut app)?;
     let Some(gang) = app.world().get::<Faction>(shooter).copied() else {
