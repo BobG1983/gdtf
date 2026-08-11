@@ -89,9 +89,14 @@ the frame it was claimed in, exactly as a press is.
   re-gates). Wire the module in `contextual_panel/acts/mod.rs`.
 - **Offer the act even when the actor cannot pay for it.** Geometry, faction, life and line
   of sight decide whether the button is on screen; affordability decides only whether it is
-  pressable. All eight scans price their act with the sim's own cost helper and
-  `can_spend_tu` and hand the answer to `ContextualOffer::with_pressable`, which greys the
-  button through `gdtf_ui::DisabledButton` and reports itself on `battle.offers`. A greyed
+  pressable. Execute and Stabilize take the whole answer from the sim's predicate: the scan
+  calls `can_execute` / `can_stabilize` twice — once with the cost itself as the pool, which
+  holds the TU term true so the remaining terms pick the target, then with the actor's real
+  pool for the pressable bit — and writes no adjacency, faction, life or bleeding test of its
+  own. The other six price their act with the sim's cost helper and `can_spend_tu` and still
+  keep their own copy of the target test; a new scan calls the predicate instead. Either way
+  the answer goes to `ContextualOffer::with_pressable`, which greys the button through
+  `gdtf_ui::DisabledButton` and reports itself on `battle.offers`. A greyed
   button ignores a click and its digit slot key. Melee also greys out when the actor wields
   no melee weapon, because there is no strike to price.
 - **One line** in `contextual_panel/plugin.rs`:
