@@ -3,6 +3,8 @@
 mod affordability;
 mod cases;
 mod fire;
+mod fire_agreement;
+mod line_of_sight;
 mod mounted;
 mod quotes;
 mod refusals;

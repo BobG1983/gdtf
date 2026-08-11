@@ -26,7 +26,8 @@ use super::{
     catch_up::let_the_screen_catch_up,
     expected::{
         ExpectedEnemy, ExpectedFireMode, ExpectedTurn, FLOODED_LOG_LINES, IdlePair,
-        LOG_LINES_WRITTEN, LitCover, LiveCard, LoggedActor, PosedShooter, SpawnedDoor, Standing,
+        LOG_LINES_WRITTEN, LitCover, LiveCard, LoggedActor, MagazineLoad, PosedShooter,
+        SpawnedDoor, Standing,
     },
     map::{a_free_open_cell, a_free_open_cell_beside, a_lit_cover_cell, settle},
 };
@@ -35,6 +36,7 @@ use crate::{
         a_player_ganger, an_enemy_faction, an_enemy_ganger, an_enemy_ganger_at,
         an_unselected_player_ganger, cell_of,
     },
+    magazine_support::{empty_the_magazine, fill_the_magazine},
     socket_support::{TestError, battle_app_listening},
 };
 
@@ -216,9 +218,10 @@ fn battle_with_a_log_of(lines: u32) -> Result<(App, NetQaPort, LoggedActor), Tes
     Ok((app, port, LoggedActor { actor }))
 }
 
-/// A live battle whose selected shooter faces north holding `tu` time units.
+/// A live battle whose selected shooter faces north holding `tu` time units and `load` rounds.
 pub(crate) fn battle_with_a_shooter_facing_north(
     tu: Tu,
+    load: MagazineLoad,
 ) -> Result<(App, NetQaPort, PosedShooter), TestError> {
     let (mut app, port) = battle_app_listening()?;
     let Some((shooter, at)) = a_player_ganger(&app) else {
@@ -226,6 +229,13 @@ pub(crate) fn battle_with_a_shooter_facing_north(
     };
     app.world_mut()
         .insert_resource(SelectedShooter::new(shooter));
+    let rounds = match load {
+        MagazineLoad::Loaded => fill_the_magazine(&mut app, shooter),
+        MagazineLoad::Empty => empty_the_magazine(&mut app, shooter),
+    };
+    if rounds.is_none() {
+        return Err("the posed shooter must hold a ranged weapon with a magazine".into());
+    }
     let Ok(mut row) = app.world_mut().get_entity_mut(shooter) else {
         return Err("the ganger the world just answered with must still exist".into());
     };

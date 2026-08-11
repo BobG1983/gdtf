@@ -13,8 +13,8 @@ pub(crate) use behind::{
 };
 pub(crate) use catch_up::{let_the_screen_catch_up, the_screen_has_caught_up};
 pub(crate) use expected::{
-    ExpectedEnemy, FLOODED_LOG_LINES, IdlePair, LOG_LINES_WRITTEN, LoggedActor, SpawnedDoor,
-    Standing,
+    ExpectedEnemy, FLOODED_LOG_LINES, IdlePair, LOG_LINES_WRITTEN, LoggedActor, MagazineLoad,
+    SpawnedDoor, Standing,
 };
 pub(crate) use fixtures::{
     battle_reporting_a_player_card, battle_reporting_an_enemy, battle_with_a_door,

@@ -131,6 +131,34 @@ pub(crate) fn one_step_from(app: &App, at: CellLevelNet) -> Option<CellLevelNet>
     })
 }
 
+/// A clear cell one diagonal step from `at`, when the map offers one.
+///
+/// The two cells sharing that diagonal's corners come back with it, which is where a wall has
+/// to stand to block the line between them.
+pub(crate) fn a_clear_diagonal_from(app: &App, at: CellLevelNet) -> Option<DiagonalStep> {
+    let grid = app.world().get_resource::<OccupancyGrid>()?;
+    let map: HashSet<CellLevel> = grid.all_cells().collect();
+    let (cell, level) = at.to_sim().split();
+    [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+        .iter()
+        .find_map(|(east, north)| {
+            let step = CellLevel::new(Cell::new(cell.x + east, cell.y + north), level);
+            let corners = [
+                CellLevel::new(Cell::new(cell.x + east, cell.y), level),
+                CellLevel::new(Cell::new(cell.x, cell.y + north), level),
+            ];
+            (is_clear(grid, &map, &step) && corners.iter().all(|corner| map.contains(corner)))
+                .then_some(DiagonalStep { step, corners })
+        })
+}
+
+/// A diagonal neighbour of a cell, with the two cells its line of sight is squeezed between.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct DiagonalStep {
+    pub(crate) step:    CellLevel,
+    pub(crate) corners: [CellLevel; 2],
+}
+
 /// A cell two clear steps from `at` along one straight line, when the map offers one.
 pub(crate) fn two_steps_from(app: &App, at: CellLevelNet) -> Option<CellLevelNet> {
     let grid = app.world().get_resource::<OccupancyGrid>()?;

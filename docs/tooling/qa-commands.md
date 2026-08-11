@@ -254,7 +254,10 @@ answers whether the squad can see a cell and whether the selected shooter could 
 `battle.visible`
 lists the enemies, doors and cover inside the lit area, `battle.cost` quotes what one act
 would charge one ganger in TU and whether the sim would allow it — every number is the
-sim's own cost helper and every verdict its own legality check, and nothing in the battle
+sim's own cost helper and every verdict its own legality check, so a melee quote on a
+ganger runs the sim's line-of-sight probe as well as its reach check and refuses
+`NoLineOfSight` for a target behind cover (a strike on a structure gets no probe, because
+the sim runs none either), and nothing in the battle
 moves — and `log.read` returns a window of
 the act log — `since` picks where it starts, `cap` how many lines it keeps, and the reply
 brackets the window with the log's `head` and `oldest` so a caller can page.
@@ -273,7 +276,10 @@ sprite stands on, and counts as seen or hidden from that cell, not from the one 
 has already moved it to, and no read ever reports fog the screen has not drawn yet. The
 rest read live state on purpose, because what they report is not drawn from a shadow:
 `battle.turn` and `battle.offers` report resources the sim and the panel write each frame,
-the `can_engage` half of `battle.sightline` asks the sim's own firing-arc gate,
+the `can_engage` half of `battle.sightline` asks the sim's own firing-arc gate and, on the
+gun the shooter fires, the sim's own fire-readiness gate — alive, a round in the magazine,
+hands free, the time to shoot, and the cell on the grid — so it and `battle.cost {Fire}`
+answer alike about one shot,
 `battle.selection` reports the pointer's live selection, `battle.cost` prices from the live
 tuning, grids, squad fog, cover and ganger state the act itself would be charged against —
 a quote taken while playback is behind is what the sim would charge now, not what the

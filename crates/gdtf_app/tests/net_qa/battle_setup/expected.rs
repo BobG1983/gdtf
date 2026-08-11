@@ -34,6 +34,15 @@ impl Standing {
     }
 }
 
+/// Whether a fixture fills the shooter's magazine or empties it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MagazineLoad {
+    /// Filled to capacity.
+    Loaded,
+    /// Emptied of every round.
+    Empty,
+}
+
 /// An enemy the sim and the screen disagree about, with both cells.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SplitEnemy {

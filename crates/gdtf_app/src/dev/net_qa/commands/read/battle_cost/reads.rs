@@ -16,6 +16,7 @@ use gdtf_battle_sim::{
     occupancy::OccupancyGrid,
     openable::OpenState,
     pathfinder::MoveGrids,
+    surface::SurfaceGrid,
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
     visibility::SquadVisibility,
@@ -62,15 +63,17 @@ pub(super) type EmplacementRow = (
 /// The battle resources every priced act needs, once all of them are loaded.
 pub(super) struct LoadedWorld<'a> {
     /// Tuning every TU cost is priced from.
-    pub(super) tuning: &'a CombatTuning,
+    pub(super) tuning:  &'a CombatTuning,
     /// The faction the player commands.
-    pub(super) player: Faction,
+    pub(super) player:  Faction,
     /// Occupancy, links, floor costs and tuning a route is costed against.
-    pub(super) grids:  MoveGrids<'a>,
+    pub(super) grids:   MoveGrids<'a>,
     /// The squad fog a player route is planned through.
-    pub(super) squad:  &'a SquadVisibility,
+    pub(super) squad:   &'a SquadVisibility,
     /// The cover a suppressed mover would have to break away behind.
-    pub(super) cover:  &'a CoverLedger,
+    pub(super) cover:   &'a CoverLedger,
+    /// Floor and slab heights a line-of-sight probe is marched over.
+    pub(super) surface: &'a SurfaceGrid,
 }
 
 /// The sim resources a cost preview reads, each absent until a battle is loaded.
@@ -83,6 +86,7 @@ pub(super) struct CostWorld<'w> {
     floor_costs: Option<Res<'w, FloorCostGrid>>,
     squad:       Option<Res<'w, SquadVisibility>>,
     cover:       Option<Res<'w, CoverLedger>>,
+    surface:     Option<Res<'w, SurfaceGrid>>,
 }
 
 impl CostWorld<'_> {
@@ -100,6 +104,7 @@ impl CostWorld<'_> {
             },
             squad: self.squad.as_deref()?,
             cover: self.cover.as_deref()?,
+            surface: self.surface.as_deref()?,
         })
     }
 }
@@ -111,6 +116,7 @@ pub(super) struct CostRows<'w, 's> {
     pub(super) tokens:       Query<'w, 's, Option<&'static LifeState>, With<Faction>>,
     pub(super) factions:     Query<'w, 's, &'static Faction>,
     pub(super) targets:      Query<'w, 's, TargetRow>,
+    pub(super) stances:      Query<'w, 's, &'static Stance>,
     pub(super) wields:       Query<'w, 's, &'static Wields>,
     pub(super) guns:         Query<'w, 's, GunRow, With<WieldedBy>>,
     pub(super) fights:       Query<'w, 's, &'static FightMode, With<WieldedBy>>,
