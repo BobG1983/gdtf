@@ -93,7 +93,11 @@ fn a_child_tree_holding_both_captures() -> TempDir {
     let Ok(here) = std::env::current_dir() else {
         unreachable!("the test process has a current directory");
     };
-    assert_ne!(root, here.as_path(), "the child's tree differs from the host's");
+    assert_ne!(
+        root,
+        here.as_path(),
+        "the child's tree differs from the host's"
+    );
     assert!(
         !here.join(GAME_RELATIVE_SHOT).exists() && !here.join(EDITOR_RELATIVE_SHOT).exists(),
         "neither capture may exist under the HOST's directory, or a host-relative read \
