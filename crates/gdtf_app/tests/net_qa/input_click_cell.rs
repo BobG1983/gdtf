@@ -1,6 +1,8 @@
-//! Clicks over a real socket: one selects a player ganger, one pins the cell an enemy stands on.
+//! Clicks over a real socket: one selects, one pins an enemy's cell, two in a row walk a ganger.
 
+use bevy::ecs::entity::Entity;
 use gdtf_app::qa_wire::{
+    act::ActReply,
     cell::CellLevelNet,
     click::{ClickDecisionNet, ClickReply},
     token::GangerToken,
@@ -8,13 +10,13 @@ use gdtf_app::qa_wire::{
 use gdtf_qa_protocol::command::RunOptions;
 
 use super::{
-    act_support::{assert_caught_up, battle_app_reporting, caught_up, decode, next},
+    act_support::{assert_caught_up, battle_app_reporting, caught_up, decode, next, selected},
     battle_reads::{
-        an_enemy_ganger_at, an_unreachable_cell, an_unselected_player_ganger, cell_argument,
-        cell_of, token_of,
+        a_player_ganger, an_enemy_ganger_at, an_unreachable_cell, an_unselected_player_ganger,
+        cell_argument, cell_of, ganger_argument, one_step_from_without_a_link, token_of,
     },
     command_exchange::{
-        BATTLE_SELECTION, INPUT_CLICK_CELL, WAIT, assert_refused_off_the_battle_screen,
+        ACT_SELECT, BATTLE_SELECTION, INPUT_CLICK_CELL, WAIT, assert_refused_off_the_battle_screen,
         exchange_expected, run,
     },
     input_support::ClickedSelectionBody,
@@ -28,10 +30,20 @@ const NO_UNSELECTED: &str =
 /// Why the fixture cannot host the pinning case.
 const NO_ENEMY: &str = "the fixture must hold a living enemy ganger to click on";
 
+/// Why the fixture cannot host the walking case.
+const NO_STEP: &str =
+    "the generated map must offer one clear step off the ganger with no vertical link on it";
+
 /// The ganger a click case picks, and the cell its sprite stands on.
 struct ClickTarget {
     token: GangerToken,
     at:    CellLevelNet,
+}
+
+/// The ganger the two-click case walks, and the cell both clicks land on.
+struct ClickWalk {
+    ganger: Entity,
+    step:   CellLevelNet,
 }
 
 #[test]
@@ -111,6 +123,75 @@ fn a_click_on_an_enemy_pins_the_cell_it_stands_on() -> TestResult {
         clicked.act.is_some(),
         clicked.decision == ClickDecisionNet::Fire || clicked.decision == ClickDecisionNet::Move,
         "the reply carries an act reply exactly when the decision pushed an act: {clicked:?}",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_second_click_on_the_pinned_cell_moves_the_ganger_and_reports_the_move_it_ran() -> TestResult {
+    let (replies, walk) = exchange_expected(
+        battle_app_reporting(
+            |app| {
+                let (ganger, at) = a_player_ganger(app)?;
+                Some(ClickWalk {
+                    ganger,
+                    step: one_step_from_without_a_link(app, at)?,
+                })
+            },
+            NO_STEP,
+        ),
+        |walk| {
+            vec![
+                caught_up(),
+                run(
+                    ACT_SELECT,
+                    &ganger_argument(walk.ganger),
+                    RunOptions::default(),
+                ),
+                run(
+                    INPUT_CLICK_CELL,
+                    &cell_argument(walk.step),
+                    RunOptions::default(),
+                ),
+                run(
+                    INPUT_CLICK_CELL,
+                    &cell_argument(walk.step),
+                    RunOptions::default(),
+                ),
+            ]
+        },
+    )?;
+    let mut replies = replies.into_iter();
+    assert_caught_up(next(WAIT, &mut replies)?)?;
+    let shooter = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
+    let pinned = decode::<ClickReply>(INPUT_CLICK_CELL, next(INPUT_CLICK_CELL, &mut replies)?)?;
+    let walked = decode::<ClickReply>(INPUT_CLICK_CELL, next(INPUT_CLICK_CELL, &mut replies)?)?;
+
+    assert_eq!(
+        shooter,
+        Some(token_of(walk.ganger)),
+        "the walk comes from the ganger the token named, so selection must have taken first",
+    );
+    assert_eq!(
+        pinned.decision,
+        ClickDecisionNet::SetMoveTarget,
+        "the first click on a clear step pins it as the move target rather than walking it: \
+         {pinned:?}",
+    );
+    assert_eq!(
+        pinned.act, None,
+        "pinning a target pushes no act, so there is nothing for the reply to report on: \
+         {pinned:?}",
+    );
+    assert_eq!(
+        walked.decision,
+        ClickDecisionNet::Move,
+        "the second click on the same cell confirms the pinned move: {walked:?}",
+    );
+    assert!(
+        matches!(walked.act, Some(ActReply::Accepted { .. })),
+        "a click the game decided as Move pushes the move act, and the reply carries what that \
+         act answered rather than leaving the caller to read the log: {walked:?}",
     );
     Ok(())
 }

@@ -13,6 +13,7 @@ use gdtf_battle_sim::{
     ganger::{Aiming, Facing, Faction, LifeState, Position},
     occupancy::TerrainKind,
     prelude::{Cell, CellLevel, Level, OccupancyGrid},
+    vertical::VerticalLinkGraph,
 };
 
 /// The first player-faction ganger the live world holds, with where it stands.
@@ -128,6 +129,20 @@ pub(crate) fn one_step_from(app: &App, at: CellLevelNet) -> Option<CellLevelNet>
     AROUND.iter().find_map(|(east, north)| {
         let step = CellLevel::new(Cell::new(cell.x + east, cell.y + north), level);
         is_clear(grid, &map, &step).then_some(CellLevelNet::from_sim(step))
+    })
+}
+
+/// A cell one clear step from `at` that no vertical link leads off, when the map offers one.
+/// The game's left-click decision does nothing on a cell a ladder or a drop starts from.
+pub(crate) fn one_step_from_without_a_link(app: &App, at: CellLevelNet) -> Option<CellLevelNet> {
+    let grid = app.world().get_resource::<OccupancyGrid>()?;
+    let links = app.world().get_resource::<VerticalLinkGraph>()?;
+    let map: HashSet<CellLevel> = grid.all_cells().collect();
+    let (cell, level) = at.to_sim().split();
+    AROUND.iter().find_map(|(east, north)| {
+        let step = CellLevel::new(Cell::new(cell.x + east, cell.y + north), level);
+        (is_clear(grid, &map, &step) && links.links_from(&step).next().is_none())
+            .then_some(CellLevelNet::from_sim(step))
     })
 }
 

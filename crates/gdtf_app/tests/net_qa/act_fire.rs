@@ -1,8 +1,12 @@
 //! One shot over a real socket, aimed at a cell an enemy is standing on.
 
-use bevy::ecs::entity::Entity;
+use bevy::{app::App, ecs::entity::Entity};
 use gdtf_app::qa_wire::{
     act::ActReply, cell::CellLevelNet, deed::ActDeedKindNet, refusal::ShotRefusalNet,
+};
+use gdtf_battle_sim::{
+    ganger::{Aiming, LifeState, Tu, TuMax},
+    magazine::LoadedRounds,
 };
 use gdtf_qa_protocol::command::RunOptions;
 
@@ -19,7 +23,7 @@ use super::{
         ACT_FIRE, ACT_SELECT, LOG_READ, assert_refused_off_the_battle_screen, exchange_expected,
         run,
     },
-    magazine_support::empty_the_magazine,
+    magazine_support::{empty_the_magazine, fill_the_magazine},
     socket_support::{TestResult, game_app_listening},
 };
 
@@ -29,8 +33,9 @@ const SHOT_DEEDS: [ActDeedKindNet; 2] = [ActDeedKindNet::Fired, ActDeedKindNet::
 /// Why the fixture cannot host this case.
 const NO_PAIR: &str = "the fixture must hold a player ganger and a living enemy to shoot at";
 
-/// Why the fixture cannot host a case that only needs someone to pull the trigger.
-const NO_SHOOTER: &str = "the fixture must hold a player ganger to shoot with";
+/// Why the fixture cannot host a case that needs a shooter every earlier reason is ruled out for.
+const NO_LOADED_GUN: &str =
+    "the fixture must hold a player ganger wielding a ranged weapon whose magazine takes rounds";
 
 /// Why the fixture cannot host the dry-gun case.
 const NO_MAGAZINE: &str =
@@ -40,6 +45,20 @@ const NO_MAGAZINE: &str =
 struct Shot {
     shooter: Entity,
     target:  CellLevelNet,
+}
+
+/// Rule out every reason the sim ranks ahead of bounds: alive, armed, loaded, and able to pay.
+/// Answers `None` unless the ganger holds a ranged weapon whose magazine took rounds.
+fn ready_to_fire(app: &mut App, shooter: Entity) -> Option<LoadedRounds> {
+    let rounds = fill_the_magazine(app, shooter)?;
+    let mut row = app.world_mut().get_entity_mut(shooter).ok()?;
+    row.insert((
+        LifeState::Alive,
+        TuMax::new(u8::MAX),
+        Tu::new(u8::MAX),
+        Aiming::new(false),
+    ));
+    (*rounds > 0).then_some(rounds)
 }
 
 #[test]
@@ -96,15 +115,16 @@ fn one_shot_at_an_enemy_is_declared_in_the_window_it_opened() -> TestResult {
 #[test]
 fn a_shot_at_a_cell_off_the_grid_answers_the_out_of_bounds_reason() -> TestResult {
     let (replies, _shot) = exchange_expected(
-        battle_app_reporting(
+        battle_app_prepared(
             |app| {
                 let (shooter, _) = a_player_ganger(app)?;
+                ready_to_fire(app, shooter)?;
                 Some(Shot {
                     shooter,
                     target: an_unreachable_cell(),
                 })
             },
-            NO_SHOOTER,
+            NO_LOADED_GUN,
         ),
         |shot| {
             vec![
@@ -128,8 +148,9 @@ fn a_shot_at_a_cell_off_the_grid_answers_the_out_of_bounds_reason() -> TestResul
         ActReply::FireRefused {
             reason: ShotRefusalNet::OutOfBounds,
         },
-        "a target off the battle grid is a shot the game turns down, and the reply must name that \
-         reason rather than an accepted window: {:?}",
+        "the setup left this shooter alive, armed, loaded and able to pay, so bounds is the only \
+         rule left for it to break — any other reason means the fixture's own loadout decided \
+         this, not the target cell: {:?}",
         log.entries,
     );
     Ok(())

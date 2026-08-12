@@ -47,7 +47,7 @@ fn gun_of(app: &App, actor: Entity) -> Option<Entity> {
 }
 
 /// A live battle whose shooter wields an arcing weapon and is holding a hover beside itself.
-fn an_arcing_weapon_over_a_hovered_cell() -> Result<(App, NetQaPort, ()), TestError> {
+pub(super) fn an_arcing_weapon_over_a_hovered_cell() -> Result<(App, NetQaPort, ()), TestError> {
     let (mut app, port) = battle_app_listening()?;
     let (shooter, at) = select_a_player_ganger(&mut app)?;
     let beside = a_neighbour(&app, at)?;

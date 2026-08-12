@@ -2,6 +2,7 @@
 
 use bevy::app::App;
 use gdtf_app::qa_wire::{
+    WaitConditionNet,
     act::{ActCompleteNet, ActReply, ActSeqNet, SelectReply},
     deed::ActDeedKindNet,
     log::LogEntryNet,
@@ -26,22 +27,31 @@ pub(crate) fn caught_up() -> QaRequest {
     run(WAIT, "(condition:CaughtUp)", RunOptions::default())
 }
 
+/// The part of a `wait` reply these cases read: the condition that came true.
+#[derive(Debug, Deserialize)]
+struct WaitedBody {
+    condition: WaitConditionNet,
+}
+
 /// Fail unless the wait ran and named the condition it was held for, rather than giving up.
-pub(crate) fn assert_waited_for(condition: &str, reply: QaResponse) -> Result<(), TestError> {
-    let body = ran_body(WAIT, reply)?;
-    if !body.contains(condition) {
-        return Err(format!(
-            "`{WAIT}` answers with the condition that came true, and the commands after it are \
-             only worth reading once that was `{condition}`: {body}"
-        )
-        .into());
+pub(crate) fn assert_waited_for(
+    condition: WaitConditionNet,
+    reply: QaResponse,
+) -> Result<(), TestError> {
+    let answered = decode::<WaitedBody>(WAIT, reply)?;
+    if answered.condition == condition {
+        return Ok(());
     }
-    Ok(())
+    Err(format!(
+        "`{WAIT}` answers with the condition that came true, and the commands after it are only \
+         worth reading once that was `{condition:?}`: {answered:?}"
+    )
+    .into())
 }
 
 /// Fail unless the catch-up wait ran and named `CaughtUp`, rather than giving up.
 pub(crate) fn assert_caught_up(reply: QaResponse) -> Result<(), TestError> {
-    assert_waited_for("CaughtUp", reply)
+    assert_waited_for(WaitConditionNet::CaughtUp, reply)
 }
 
 /// A running-battle socket fixture that also reports what `read` picked out of the live world.
