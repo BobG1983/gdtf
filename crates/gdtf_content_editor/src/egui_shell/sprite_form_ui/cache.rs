@@ -1,8 +1,6 @@
 //! `RailUiState` precedent): both maps are CONTENT-KEYED on the authored
-use std::path::Path;
-
 use bevy::{asset::AssetServer, image::Image, platform::collections::HashMap, prelude::Handle};
-use gdtf_assets::WORKSPACE_ASSETS_ROOT;
+use gdtf_assets::workspace_assets_root;
 use gdtf_content_families::sprites::SpriteImagePath;
 
 #[derive(Default)]
@@ -25,9 +23,7 @@ impl SpritePreviewCache {
 
     pub(super) fn path_exists(&mut self, path: &SpriteImagePath) -> bool {
         *self.path_exists.entry(path.clone()).or_insert_with(|| {
-            Path::new(WORKSPACE_ASSETS_ROOT)
-                .join(path.as_str())
-                .is_file()
+            workspace_assets_root().is_some_and(|root| root.join(path.as_str()).is_file())
         })
     }
 }

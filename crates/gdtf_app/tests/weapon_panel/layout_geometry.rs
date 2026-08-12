@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use bevy::{
     ecs::{entity::Entity, query::With},
     math::Vec2,
@@ -23,13 +21,10 @@ const RANGED_WEAPON_EXTENSION: &str = ".weapon.ron";
 const EPSILON_PX: f32 = 1.0;
 
 fn longest_shipped_ranged_weapon_name() -> String {
-    let weapons_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("assets")
-        .join("content")
-        .join("weapons")
-        .join("ranged");
+    let Some(assets) = gdtf_assets::workspace_assets_root() else {
+        unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
+    };
+    let weapons_dir = assets.join("content").join("weapons").join("ranged");
     let mut longest = String::new();
     let Ok(entries) = std::fs::read_dir(&weapons_dir) else {
         return longest;

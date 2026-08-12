@@ -2,7 +2,7 @@
 
 use bevy::{asset::AssetPlugin, prelude::*};
 use bevy_egui::EguiPlugin;
-use gdtf_assets::WORKSPACE_ASSETS_ROOT;
+use gdtf_assets::workspace_assets_root;
 
 use crate::plugin::MapEditorPlugin;
 
@@ -14,10 +14,20 @@ impl MapEditorApp {
     #[must_use]
     pub fn new() -> Self {
         let mut app = App::new();
+        let assets = workspace_assets_root();
         app.add_plugins(DefaultPlugins.set(AssetPlugin {
-            file_path: WORKSPACE_ASSETS_ROOT.to_owned(),
+            file_path: assets.as_ref().map_or_else(
+                || AssetPlugin::default().file_path,
+                |root| root.to_string_lossy().into_owned(),
+            ),
             ..default()
         }));
+        if assets.is_none() {
+            error!(
+                "found no `Cargo.lock` or `[workspace]` manifest above the crate — keeping Bevy's \
+                 default asset path"
+            );
+        }
         app.add_plugins(EguiPlugin::default());
         app.add_plugins(MapEditorPlugin);
         #[cfg(debug_assertions)]

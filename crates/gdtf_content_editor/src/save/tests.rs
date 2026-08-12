@@ -130,14 +130,17 @@ fn sanitize_name_folds_to_stem() {
 
 #[test]
 fn save_path_is_themed_sized_and_dot_prefab_ron() {
-    use std::path::Path;
-
-    use gdtf_assets::WORKSPACE_ASSETS_ROOT;
+    use gdtf_assets::workspace_assets_root;
     use gdtf_content_families::prefabs::PREFABS_FOLDER;
 
-    let path = prefab_save_path("Industrial Hive", size(), "entry_room");
+    let Some(assets) = workspace_assets_root() else {
+        unreachable!("this repo has a Cargo.lock above every crate");
+    };
+    let Some(path) = prefab_save_path("Industrial Hive", size(), "entry_room") else {
+        unreachable!("the same search just answered above");
+    };
     assert!(
-        path.starts_with(Path::new(WORKSPACE_ASSETS_ROOT).join(PREFABS_FOLDER)),
+        path.starts_with(assets.join(PREFABS_FOLDER)),
         "under the ONE shared assets root + prefab folder: {path:?}",
     );
     let tail: Vec<_> = path

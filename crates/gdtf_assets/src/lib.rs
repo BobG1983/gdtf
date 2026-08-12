@@ -30,4 +30,4 @@ pub use loader::RonAssetLoader;
 #[cfg(debug_assertions)]
 pub use save::write_ron_pretty;
 pub use save::{FileStem, RonSaveError, sanitize_file_stem, serialize_ron_pretty};
-pub use workspace::WORKSPACE_ASSETS_ROOT;
+pub use workspace::{workspace_assets_root, workspace_root, workspace_root_from};

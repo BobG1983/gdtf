@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use gdtf_assets::{FileStem, WORKSPACE_ASSETS_ROOT, sanitize_file_stem, serialize_ron_pretty};
+use gdtf_assets::{FileStem, sanitize_file_stem, serialize_ron_pretty, workspace_assets_root};
 use gdtf_battle_sim::{
     level::{GridSize, PrefabSpec, TerrainPlacementEntry, ThemeUuid},
     terrain::def::TerrainDefRegistry,
@@ -37,10 +37,10 @@ pub fn prefab_save_path_in(
         .join(format!("{stem}.{PREFAB_EXTENSION}"))
 }
 
-/// Full path for a prefab under the workspace assets root.
+/// Full path for a prefab under the workspace assets root, or `None` when the search finds no root.
 #[must_use]
-pub fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) -> PathBuf {
-    prefab_save_path_in(Path::new(WORKSPACE_ASSETS_ROOT), theme_display, size, stem)
+pub fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) -> Option<PathBuf> {
+    workspace_assets_root().map(|root| prefab_save_path_in(&root, theme_display, size, stem))
 }
 
 /// Build a prefab spec from the painted map and session.
@@ -111,7 +111,7 @@ pub fn write_prefab_in(
 ///
 /// # Errors
 ///
-/// Returns [`SavePrefabError`] on empty name, illegal cells, or write failure.
+/// Returns [`SavePrefabError`] on a failed root search, empty name, illegal cells, or write failure.
 #[cfg(debug_assertions)]
 pub fn write_prefab(
     map: &EditorMap,
@@ -120,12 +120,8 @@ pub fn write_prefab(
     theme_display: &str,
     raw_name: &str,
 ) -> Result<PathBuf, SavePrefabError> {
-    write_prefab_in(
-        Path::new(WORKSPACE_ASSETS_ROOT),
-        map,
-        registry,
-        session,
-        theme_display,
-        raw_name,
-    )
+    let Some(root) = workspace_assets_root() else {
+        return Err(SavePrefabError::NoWorkspaceRoot);
+    };
+    write_prefab_in(&root, map, registry, session, theme_display, raw_name)
 }

@@ -21,10 +21,10 @@ use gdtf_battle_sim::prelude::{BattleInProgress, Cell, CellLevel, Level, Tu};
 const MAX_UPDATES: u32 = 16;
 
 fn workspace_assets_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("assets")
+    let Some(root) = gdtf_assets::workspace_assets_root() else {
+        unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
+    };
+    root
 }
 
 fn fire_target_app() -> App {

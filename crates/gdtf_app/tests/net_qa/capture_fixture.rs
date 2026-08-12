@@ -51,10 +51,10 @@ pub(crate) fn headless_shot_dir() -> ShotDir {
 }
 
 fn workspace_assets_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("assets")
+    let Some(root) = gdtf_assets::workspace_assets_root() else {
+        unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
+    };
+    root
 }
 
 fn stand_in_shot_name() -> String {

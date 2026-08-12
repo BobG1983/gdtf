@@ -4,12 +4,10 @@ use std::path::PathBuf;
 use super::TileRole;
 
 fn shipped_sprites_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("assets")
-        .join("content")
-        .join("sprites")
+    let Some(root) = gdtf_assets::workspace_assets_root() else {
+        unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
+    };
+    root.join("content").join("sprites")
 }
 
 #[test]

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use gdtf_assets::sanitize_file_stem;
 #[cfg(debug_assertions)]
-use gdtf_assets::{RonSaveError, WORKSPACE_ASSETS_ROOT, write_ron_pretty};
+use gdtf_assets::{RonSaveError, workspace_assets_root, write_ron_pretty};
 use gdtf_battle_sim::{
     armor::InjuryCategory,
     injuries::{DamageContext, InjuryDef, InjuryName, InjuryWeighting},
@@ -93,10 +93,13 @@ pub fn write_injury_in(
 ///
 /// # Errors
 ///
-/// Returns [`RonSaveError`] if the path cannot be written.
+/// Returns [`RonSaveError`] if the workspace root search fails or the path cannot be written.
 #[cfg(debug_assertions)]
 pub fn write_injury(key: &InjuryName, def: &InjuryDef) -> Result<PathBuf, RonSaveError> {
-    write_injury_in(Path::new(WORKSPACE_ASSETS_ROOT), key, def)
+    let Some(root) = workspace_assets_root() else {
+        return Err(RonSaveError::NoWorkspaceRoot);
+    };
+    write_injury_in(&root, key, def)
 }
 
 /// Write weighting RON under `root`.
@@ -118,8 +121,11 @@ pub fn write_weighting_in(
 ///
 /// # Errors
 ///
-/// Returns [`RonSaveError`] if the path cannot be written.
+/// Returns [`RonSaveError`] if the workspace root search fails or the path cannot be written.
 #[cfg(debug_assertions)]
 pub fn write_weighting(weighting: &InjuryWeighting) -> Result<PathBuf, RonSaveError> {
-    write_weighting_in(Path::new(WORKSPACE_ASSETS_ROOT), weighting)
+    let Some(root) = workspace_assets_root() else {
+        return Err(RonSaveError::NoWorkspaceRoot);
+    };
+    write_weighting_in(&root, weighting)
 }

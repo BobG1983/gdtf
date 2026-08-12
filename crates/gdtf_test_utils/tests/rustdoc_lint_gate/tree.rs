@@ -7,10 +7,13 @@ use std::{
 pub(crate) const MEMBER_DIRS: [&str; 2] = ["crates", "bins"];
 
 pub(crate) fn repo_root() -> PathBuf {
-    std::env::var_os("GDTF_RUSTDOC_GATE_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        PathBuf::from,
-    )
+    if let Some(override_root) = std::env::var_os("GDTF_RUSTDOC_GATE_ROOT") {
+        return PathBuf::from(override_root);
+    }
+    let Some(root) = gdtf_assets::workspace_root() else {
+        unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
+    };
+    root
 }
 
 fn git_tracked(root: &Path, dir: &str) -> Option<Vec<String>> {

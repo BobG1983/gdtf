@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
+gdtf_assets = { path = "../gdtf_assets" }
 image = { version = "0.25", default-features = false, features = ["png"] }
 
 [dev-dependencies]

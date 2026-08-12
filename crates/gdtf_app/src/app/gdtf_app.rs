@@ -1,7 +1,7 @@
 //! Bevy app wrapper for the GDTF game binary.
 
 use bevy::{asset::AssetPlugin, prelude::*};
-use gdtf_assets::WORKSPACE_ASSETS_ROOT;
+use gdtf_assets::workspace_assets_root;
 use gdtf_ui::UiPlugin;
 
 use crate::states::{AppState, ScenesPlugin};
@@ -25,10 +25,20 @@ impl GdtfApp {
 
     #[must_use]
     fn add_bevy_plugins(mut self) -> Self {
+        let assets = workspace_assets_root();
         self.0.add_plugins(DefaultPlugins.set(AssetPlugin {
-            file_path: WORKSPACE_ASSETS_ROOT.to_owned(),
+            file_path: assets.as_ref().map_or_else(
+                || AssetPlugin::default().file_path,
+                |root| root.to_string_lossy().into_owned(),
+            ),
             ..default()
         }));
+        if assets.is_none() {
+            error!(
+                "found no `Cargo.lock` or `[workspace]` manifest above the crate — keeping Bevy's \
+                 default asset path"
+            );
+        }
         self
     }
 

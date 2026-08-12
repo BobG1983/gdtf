@@ -112,6 +112,8 @@ pub enum SaveThemeError {
     DefaultFloorNotInTerrain,
     /// Underlying RON write failed.
     Save(gdtf_assets::RonSaveError),
+    /// The workspace root search found no marker.
+    NoWorkspaceRoot,
 }
 
 impl From<gdtf_assets::RonSaveError> for SaveThemeError {
@@ -135,6 +137,7 @@ impl std::fmt::Display for SaveThemeError {
                 )
             }
             Self::Save(err) => write!(f, "{err}"),
+            Self::NoWorkspaceRoot => write!(f, "no workspace root found — nowhere to save"),
         }
     }
 }

@@ -69,8 +69,12 @@ everywhere else — a writer's spelling can never drift from the loader's read
 (the bug class: a save-side extension drift made saved gangs silently
 invisible to the loader):
 
-- The workspace assets root: `gdtf_assets::WORKSPACE_ASSETS_ROOT`
-  (`crates/gdtf_assets/src/workspace.rs`).
+- The workspace assets root: `gdtf_assets::workspace_assets_root()`
+  (`crates/gdtf_assets/src/workspace/root.rs`). It searches upward for a
+  `Cargo.lock`, then for a `[workspace]` manifest, and returns `None` when
+  neither is above the crate. No caller re-spells the root on a miss: the
+  editor's savers return a save error, and the game and editor apps log it and
+  keep Bevy's default asset path.
 - Generic families: `<Family>::FOLDER` / `<Family>::EXTENSION` — the assoc consts
   on each marker impl in `crates/gdtf_content_families/src/`.
 - The two bespoke (non-generic) families, which have no `ContentFamily` impl to

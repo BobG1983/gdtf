@@ -7,10 +7,10 @@ use std::{
 };
 
 pub(crate) fn repo_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()
-        .unwrap_or_else(|_| Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+    let Some(root) = gdtf_assets::workspace_root() else {
+        unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
+    };
+    root.canonicalize().unwrap_or(root)
 }
 
 // Every `*.rs` file sitting directly in a `crates/<name>/tests/` or

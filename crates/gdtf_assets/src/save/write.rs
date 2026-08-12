@@ -10,6 +10,8 @@ pub enum RonSaveError {
     Serialize(String),
     /// Filesystem write or directory create failed.
     Write(String),
+    /// The workspace root search found no marker, so there is no assets root to write under.
+    NoWorkspaceRoot,
 }
 
 impl std::fmt::Display for RonSaveError {
@@ -17,6 +19,11 @@ impl std::fmt::Display for RonSaveError {
         match self {
             Self::Serialize(err) => write!(f, "failed to serialize the RON payload: {err}"),
             Self::Write(err) => write!(f, "failed to write the RON file: {err}"),
+            Self::NoWorkspaceRoot => write!(
+                f,
+                "found no `Cargo.lock` or `[workspace]` manifest above the crate, so there is no \
+                 assets root to write under"
+            ),
         }
     }
 }

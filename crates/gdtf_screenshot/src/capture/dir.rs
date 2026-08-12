@@ -51,26 +51,9 @@ impl Default for ShotDir {
 
 // A temp directory when the search fails, so a miss never writes inside the repo.
 fn workspace_target() -> PathBuf {
-    workspace_root_from(Path::new(env!("CARGO_MANIFEST_DIR")))
+    gdtf_assets::workspace_root()
         .unwrap_or_else(std::env::temp_dir)
         .join("target")
-}
-
-// Climbs for `Cargo.lock`, then for a `[workspace]` manifest. Both sit only at the root.
-pub(super) fn workspace_root_from(start: &Path) -> Option<PathBuf> {
-    start
-        .ancestors()
-        .find(|dir| dir.join("Cargo.lock").is_file())
-        .or_else(|| start.ancestors().find(|dir| holds_workspace_manifest(dir)))
-        .map(Path::to_path_buf)
-}
-
-fn holds_workspace_manifest(dir: &Path) -> bool {
-    std::fs::read_to_string(dir.join("Cargo.toml")).is_ok_and(|manifest| {
-        manifest
-            .lines()
-            .any(|line| line.trim_start().starts_with("[workspace]"))
-    })
 }
 
 /// Counter that keeps repeated stems on distinct files.

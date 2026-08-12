@@ -1,17 +1,17 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{fs, path::PathBuf};
 
 pub(crate) const GUIDE: &str = "docs/tooling/qa-commands.md";
 
 pub(crate) const WORKED_EXAMPLE: &str = "crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs";
 
 pub(crate) fn repo_root() -> PathBuf {
-    std::env::var_os("GDTF_QA_COMMANDS_DOC_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        PathBuf::from,
-    )
+    if let Some(override_root) = std::env::var_os("GDTF_QA_COMMANDS_DOC_ROOT") {
+        return PathBuf::from(override_root);
+    }
+    let Some(root) = gdtf_assets::workspace_root() else {
+        unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
+    };
+    root
 }
 
 pub(crate) fn read(relative: &str) -> String {

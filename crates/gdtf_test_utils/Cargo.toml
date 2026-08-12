@@ -6,6 +6,9 @@ edition = "2024"
 [dependencies]
 bevy = { workspace = true }
 gdtf_app = { path = "../gdtf_app", features = ["headless_test"] }
+# In [dependencies], not [dev-dependencies], so the guard test binaries under tests/ can
+# name it as well as the harnesses under src/.
+gdtf_assets = { path = "../gdtf_assets" }
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 gdtf_ui = { path = "../gdtf_ui" }
 wgpu = "=29.0.3"
