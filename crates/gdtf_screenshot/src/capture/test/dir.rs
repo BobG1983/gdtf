@@ -1,23 +1,18 @@
-use std::path::{Path, PathBuf};
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 
 use crate::{
     capture::{
         ShotDir, ShotDirName, ShotStem,
-        dir::{DEFAULT_STEM, ShotSequence, next_capture_path},
+        dir::{DEFAULT_STEM, ShotSequence, next_capture_path, workspace_root_from},
     },
     path::CapturePath,
 };
 
 fn test_dir() -> ShotDir {
     ShotDir::new(PathBuf::from("target/test_shots"))
-}
-
-fn workspace_root() -> PathBuf {
-    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let Some(root) = manifest.ancestors().nth(2) else {
-        unreachable!("this crate sits two directories under the workspace root");
-    };
-    root.to_path_buf()
 }
 
 fn assert_no_parent_hop(path: &Path) {
@@ -38,11 +33,99 @@ fn the_default_shot_directory_is_absolute_and_under_the_workspace_target() {
         dir.display(),
     );
     assert_no_parent_hop(dir.as_path());
-    assert!(
-        dir.starts_with(workspace_root().join("target")),
-        "the default must sit under the workspace `target/`, which the root `.gitignore` covers; \
+    let target = dir.parent();
+    assert_eq!(
+        dir.file_name(),
+        Some(OsStr::new("qa_screenshots")),
+        "the default keeps its own name as the last component; got {}",
+        dir.display(),
+    );
+    assert_eq!(
+        target.and_then(Path::file_name),
+        Some(OsStr::new("target")),
+        "the default must sit directly under a `target/`, which the root `.gitignore` covers; \
          got {}",
         dir.display(),
+    );
+    assert!(
+        target
+            .and_then(Path::parent)
+            .is_some_and(|root| root.join("Cargo.lock").is_file()),
+        "that `target/` must hang off the workspace root, the only directory holding a \
+         `Cargo.lock`; got {}",
+        dir.display(),
+    );
+}
+
+#[test]
+fn the_workspace_root_search_finds_the_same_top_from_any_depth() {
+    let Ok(shallow) = tempfile::TempDir::new() else {
+        unreachable!("a temp directory is available");
+    };
+    let Ok(deep) = tempfile::TempDir::new() else {
+        unreachable!("a temp directory is available");
+    };
+    for (tree, below) in [(&shallow, "crates/a"), (&deep, "libs/group/nested/a")] {
+        let root = tree.path();
+        assert!(
+            std::fs::write(root.join("Cargo.lock"), "").is_ok(),
+            "the test tree needs a lock file at {}",
+            root.display(),
+        );
+        let start = root.join(below);
+        assert!(
+            std::fs::create_dir_all(&start).is_ok(),
+            "the test tree needs a start directory at {}",
+            start.display(),
+        );
+        assert_eq!(
+            workspace_root_from(&start).as_deref(),
+            Some(root),
+            "the search must land on the `Cargo.lock` holder whatever the depth below it",
+        );
+    }
+}
+
+#[test]
+fn the_workspace_root_search_finds_a_workspace_manifest_without_a_lock_file() {
+    let Ok(tree) = tempfile::TempDir::new() else {
+        unreachable!("a temp directory is available");
+    };
+    let root = tree.path();
+    assert!(
+        std::fs::write(root.join("Cargo.toml"), "[workspace]\nmembers = []\n").is_ok(),
+        "the test tree needs a workspace manifest at {}",
+        root.display(),
+    );
+    let start = root.join("crates/a");
+    assert!(
+        std::fs::create_dir_all(&start).is_ok(),
+        "the test tree needs a start directory at {}",
+        start.display(),
+    );
+    assert_eq!(
+        workspace_root_from(&start).as_deref(),
+        Some(root),
+        "with no lock file the search falls back to the `[workspace]` manifest",
+    );
+}
+
+#[test]
+fn the_workspace_root_search_fails_when_neither_marker_is_above_the_start() {
+    let Ok(tree) = tempfile::TempDir::new() else {
+        unreachable!("a temp directory is available");
+    };
+    let start = tree.path().join("crates/a");
+    assert!(
+        std::fs::create_dir_all(&start).is_ok(),
+        "the test tree needs a start directory at {}",
+        start.display(),
+    );
+    assert_eq!(
+        workspace_root_from(&start),
+        None,
+        "no `Cargo.lock` and no `[workspace]` manifest above {} means no root",
+        start.display(),
     );
 }
 
