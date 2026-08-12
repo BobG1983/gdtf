@@ -11,6 +11,8 @@ argument-hint: "[GTW-N]"
 
 **`.claude/rules/plain-language.md` governs every word this skill writes.** Read it before writing a ticket, a doc, or a comment.
 
+**[`.claude/rules/clause-writing.md`](../../rules/clause-writing.md) governs the clauses.** Every one says what changes, where, and what goes red if it is wrong.
+
 ## 1. Pick the ticket
 
 - No argument: ask project-manager for the ONE next ticket in priority order (project GDTF).

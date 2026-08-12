@@ -31,6 +31,7 @@ Short files under `.claude/rules/` — read and follow them:
 - [`verification.md`](.claude/rules/verification.md) — **the one definition of green**.
 - [`git-workflow.md`](.claude/rules/git-workflow.md) — branch per ticket, gate-pass commits, explicit staging, land = finish + push.
 - [`linear-discipline.md`](.claude/rules/linear-discipline.md) — every change has a GTW-* ticket; statuses move with the work; labels defined there.
+- [`clause-writing.md`](.claude/rules/clause-writing.md) — a clause says what changes, where, and what goes red if it is wrong.
 - [`no-bare-types.md`](.claude/rules/no-bare-types.md) — no bare Rust/std type for a domain value; named newtype that `Deref`s.
 - [`module-layout.md`](.claude/rules/module-layout.md) — module is a directory; mod.rs is wiring-only; size limits.
 - [`plain-language.md`](.claude/rules/plain-language.md) — plain wording and length; name the real mechanism.

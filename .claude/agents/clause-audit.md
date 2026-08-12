@@ -15,6 +15,7 @@ model: opus
 - [`design-fidelity.md`](../rules/design-fidelity.md) — you correct a clause's facts; you never cut one
 - [`verification.md`](../rules/verification.md) — the one definition of green
 - [`code-navigation.md`](../rules/code-navigation.md) — locate by symbol, not by a line number that rots
+- [`clause-writing.md`](../rules/clause-writing.md) — what a clause must contain; audit against this list
 
 You are the **clause audit** for **gdtf** (Rust + Bevy 0.19). You run before the builder, on the
 live ticket text, and your output is handed to them as binding instructions.
