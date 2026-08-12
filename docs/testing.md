@@ -30,11 +30,10 @@ Two homes, standard Cargo, placed per the module-layout test convention ([module
 - **In-crate unit tests** — a sibling `test/` directory (or `test.rs` leaf) next to the module under test (an inline `#[cfg(test)] mod test` only while tiny), for white-box coverage of private helpers and tight math. This is where most `gdtf_battle_sim` coverage lives.
 - **Integration tests** — `crates/<crate>/tests/`, one file per system or focused concern (`tests/<suite>/main.rs` dir-form once a suite outgrows one file), exercising the crate's public surface as a downstream user would (e.g. constructing a battle and driving a volley through the public verbs).
 
-Six repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
+Five repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
 
 - **`module_layout`** — the clause-7 module-layout conformance guard: wiring-only `mod.rs`, the warn>300 / block>400 line bands, and the exemption registry.
 - **`assets_tree_clean`** — the tracked `assets/` tree must be git-clean when the suite runs, so a test that mutates shipped authored content is caught loudly instead of silently corrupting authored work.
-- **`no_stray_files`** — the whole checkout carries no untracked files, so a test that writes into the tree is caught instead of leaving a stray directory behind. Only the root `/target` is ignored, so a crate-local `crates/<name>/target/` is a stray. It names every offending path, and staged files pass — `git add` your own new work before running the suite.
 - **`no_flat_integration_tests`** — every crate's and bin's `tests/` holds dir-form suites (`<suite>/main.rs`), never flat `tests/*.rs` binaries.
 - **`rustdoc_lint_gate`** — the workspace denies the whole rustdoc lint group and every member opts into the workspace lints.
 - **`qa_commands_doc`** — [tooling/qa-commands.md](tooling/qa-commands.md) names every command the game publishes and none it does not, and every path it links to exists.
