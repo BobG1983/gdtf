@@ -150,10 +150,15 @@ impl QaCommand for AppPhase {
   the queue, so a handler that ran earlier would answer every call a frame late. A handler
   that WRITES a resource the game also writes needs an edge against each of those systems
   too. Without one the built schedule picks the winner, and the reply can name a value that
-  another system overwrote later in the same frame. `battle.set_fire_mode` writes
-  `SelectedFireMode` `.after(sync_fire_mode_on_select)` and
-  `.before(reset_move_target_on_fire_mode_change)` — the same two edges the action bar's
-  mode panel takes.
+  another system overwrote later in the same frame. Where more than two systems write one
+  resource, a `SystemSet` per writer costs less than an edge per pair.
+  `SelectedFireMode` is the worked example: `FireModeSystems` (in `gdtf_battle_input`) holds
+  `Sync`, then `Panel`, then `Command`, all three inside `FireModeSystems::Write`. The
+  selection sync, the action bar's mode panel and `battle.set_fire_mode` each join one of
+  them, so a QA call and a panel press on the same frame settle in a fixed order — the call
+  last — instead of whichever way the build happened to sort them. A reader takes
+  `.after(FireModeSystems::Write)` and needs no edge per writer: `act.fire`,
+  `battle.selection`, the panel's active-segment sync and the fire-target population all do.
 
 ### The handler
 
@@ -292,6 +297,13 @@ tuning, grids, squad fog, cover and ganger state the act itself would be charged
 a quote taken while playback is behind is what the sim would charge now, not what the
 sprite's cell suggests — and `log.read` reads the act log
 with no fog filter, matching a combat log that filters none either.
+
+`battle.sightline` and `battle.cost {Fire}` agree about one shot because they price one spec,
+not one kind. `SelectedFireMode` names the mode; each finds the gun's own `FireMode` entry of
+that kind and prices and gates from it. A resource left holding a spec the gun no longer
+offers cannot make them disagree, and a gun with no entry of that kind — including one carrying no
+`FireMode` at all — is refused by both: `ActNotAllowed` from the quote, `can_engage: false`
+from the sightline.
 
 Each read refuses `Unavailable` with code `WrongState` off the battle screen. `log.read`
 is the one whose phase gate leaves a window open — the battlescape is up while the battle
@@ -585,10 +597,11 @@ way to hold W: the keys move by speed times frame time, while the offset asked f
 the offset taken. `battle.set_fire_mode` writes the same `SelectedFireMode` resource the
 action bar's mode panel writes, through the same lookup — the weapon the shooter fires,
 which is the mounted one while they man an emplacement and the gun in their hands
-otherwise. Its write lands after the frame's selection sync and before the move-target
-reset, so the mode in the reply is the mode the next `battle.cost`, `battle.sightline` or
-`act.fire` prices — the sync cannot put the weapon back on single after the reply went
-out. It refuses `MissingModel` with a note saying which precondition is missing when
+otherwise. Its write is the last of the three, landing after the frame's selection sync and
+after a panel press on that same frame, and before the move-target reset. So the mode in the
+reply is the mode `battle.cost`, `battle.sightline` and `act.fire` price, on that frame and
+after it — neither the sync nor a press can put the weapon back on single once the reply has
+gone out. It refuses `MissingModel` with a note saying which precondition is missing when
 nothing is selected, the shooter has no weapon to fire, or that weapon does not offer the
 mode.
 

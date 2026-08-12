@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use gdtf_battle_input::{InspectTarget, SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::{FireModeSystems, InspectTarget, SelectedFireMode, SelectedShooter};
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
     command::QaCommand,
@@ -49,7 +49,9 @@ impl QaCommand for BattleSelection {
     fn register_handler(app: &mut App) {
         app.add_systems(
             Update,
-            handle_battle_selection.after(QaCommandSystems::Claim),
+            handle_battle_selection
+                .after(QaCommandSystems::Claim)
+                .after(FireModeSystems::Write),
         );
     }
 }

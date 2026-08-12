@@ -7,7 +7,7 @@ use gdtf_battle_sim::{
 
 use super::build::battle_act_gate;
 use crate::{
-    InputSystems,
+    FireModeSystems, InputSystems,
     fire_mode::sync_fire_mode_on_select,
     intent::dispatch_act_intents,
     picking::{emit_highlight_request, pick_hovered_cell},
@@ -52,6 +52,7 @@ pub(super) fn register_hover_and_selection(app: &mut App) {
         Update,
         sync_fire_mode_on_select
             .in_set(InputSystems::Gather)
+            .in_set(FireModeSystems::Sync)
             .after(left_click_act)
             .run_if(resource_exists::<BattleInProgress>),
     );

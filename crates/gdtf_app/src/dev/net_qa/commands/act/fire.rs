@@ -1,5 +1,7 @@
 use bevy::prelude::*;
-use gdtf_battle_input::{ActIntent, SelectedFireMode, ShooterArms, try_fire_request};
+use gdtf_battle_input::{
+    ActIntent, FireModeSystems, SelectedFireMode, ShooterArms, try_fire_request,
+};
 use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
@@ -64,7 +66,9 @@ impl QaCommand for ActFire {
         app.add_systems(
             Update,
             (
-                claim_act_fire.in_set(ActCommandSystems::Claim),
+                claim_act_fire
+                    .in_set(ActCommandSystems::Claim)
+                    .after(FireModeSystems::Write),
                 settle_act_fire.in_set(ActCommandSystems::Settle),
             ),
         );

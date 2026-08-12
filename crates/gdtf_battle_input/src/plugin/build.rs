@@ -23,7 +23,7 @@ use super::{
     surface_reg::{register_contextual_acts, register_gamepad_systems},
 };
 use crate::{
-    InputSystems,
+    FireModeSystems, InputSystems,
     fire_mode::SelectedFireMode,
     gamepad::{ActivePointer, GamepadCursor},
     intent::PendingActIntent,
@@ -56,6 +56,18 @@ impl Plugin for GdtfBattleInputPlugin {
             InputSystems::Gather
                 .before(SimSystems::Simulate)
                 .after(setup_battle_on_request),
+        )
+        .configure_sets(
+            Update,
+            (
+                FireModeSystems::Sync.in_set(FireModeSystems::Write),
+                FireModeSystems::Panel
+                    .in_set(FireModeSystems::Write)
+                    .after(FireModeSystems::Sync),
+                FireModeSystems::Command
+                    .in_set(FireModeSystems::Write)
+                    .after(FireModeSystems::Panel),
+            ),
         )
         .insert_resource(GdtfBattleInputActive)
         .init_resource::<InspectTarget>()

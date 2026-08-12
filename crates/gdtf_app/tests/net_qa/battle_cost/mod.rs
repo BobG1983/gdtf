@@ -4,6 +4,7 @@ mod affordability;
 mod cases;
 mod fire;
 mod fire_agreement;
+mod fire_one_spec;
 mod line_of_sight;
 mod mounted;
 mod quotes;

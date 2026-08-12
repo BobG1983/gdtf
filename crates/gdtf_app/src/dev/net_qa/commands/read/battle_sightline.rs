@@ -11,7 +11,7 @@ use gdtf_battle_sim::{
     magazine::{FireActor, Magazine, can_fire, mode_tu_cost},
     prelude::{CellLevel, Faction, Tu},
     tuning::CombatTuning,
-    weapon::{Handedness, MeleeWeapon, MountedWeapon, WieldedBy, Wields},
+    weapon::{FireMode, Handedness, MeleeWeapon, MountedWeapon, WieldedBy, Wields},
 };
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
@@ -63,9 +63,10 @@ impl QaCommand for BattleSightline {
         "Ask whether the squad can see a cell and whether the selected shooter could fire at it \
          this turn. Seeing reads the playback-gated fog the screen draws, so it agrees with \
          battle.visible and battle.inspect; engaging is the sim's own firing-arc gate priced \
-         with the selected fire mode, and its own fire-readiness gate, which needs the shooter \
-         alive with a loaded gun, free hands and the time to shoot. With nothing selected it \
-         answers NoShooter.",
+         with the fired gun's own entry for the selected mode — the spec battle.cost prices — \
+         and its own fire-readiness gate, which needs the shooter alive with a loaded gun that \
+         offers that mode, free hands and the time to shoot. With nothing selected it answers \
+         NoShooter.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -112,9 +113,10 @@ pub(super) struct ShooterRow {
     injuries: Option<&'static InflictedInjuries>,
 }
 
-/// What fire readiness reads off the gun the shooter fires.
+/// What the two firing gates read off the gun the shooter fires.
 #[derive(QueryData)]
 pub(super) struct GunRow {
+    modes:      &'static FireMode,
     magazine:   &'static Magazine,
     handedness: &'static Handedness,
 }
@@ -164,7 +166,15 @@ impl SightlineReads<'_, '_> {
         else {
             return CanEngageNet::new(false);
         };
-        let cost = mode_tu_cost(fire_mode, row.tu_max, row.aiming, tuning);
+        let Some(spec) = gun
+            .modes
+            .iter()
+            .find(|spec| spec.kind == fire_mode.kind)
+            .copied()
+        else {
+            return CanEngageNet::new(false);
+        };
+        let cost = mode_tu_cost(&spec, row.tu_max, row.aiming, tuning);
         let in_arc = can_engage(
             **row.facing,
             row.position.cell(),
@@ -184,7 +194,7 @@ impl SightlineReads<'_, '_> {
                 .injuries
                 .map_or_else(HandsAvailable::default, InflictedInjuries::hands_available),
         };
-        let ready = can_fire(&shot, fire_mode, at.cell(), at.level(), tuning);
+        let ready = can_fire(&shot, &spec, at.cell(), at.level(), tuning);
         CanEngageNet::new(*in_arc && *ready)
     }
 }

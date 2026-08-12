@@ -16,7 +16,7 @@ use gdtf_battle_sim::{
 #[cfg(debug_assertions)]
 use crate::selection::populate_reachable_overlay;
 use crate::{
-    InputSystems,
+    FireModeSystems, InputSystems,
     fire_mode::sync_fire_mode_on_select,
     picking::pick_hovered_cell,
     selection::{
@@ -60,6 +60,7 @@ pub(super) fn register_fire_target_population(app: &mut App) {
             .in_set(InputSystems::Gather)
             .after(left_click_act)
             .after(auto_select_first_player_ganger)
+            .after(FireModeSystems::Write)
             .before(pick_hovered_cell)
             .run_if(
                 resource_exists::<BattleInProgress>
