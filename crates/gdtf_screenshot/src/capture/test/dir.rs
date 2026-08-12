@@ -1,8 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{
     capture::{
-        ShotDir, ShotStem,
+        ShotDir, ShotDirName, ShotStem,
         dir::{DEFAULT_STEM, ShotSequence, next_capture_path},
     },
     path::CapturePath,
@@ -10,6 +10,78 @@ use crate::{
 
 fn test_dir() -> ShotDir {
     ShotDir::new(PathBuf::from("target/test_shots"))
+}
+
+fn workspace_root() -> PathBuf {
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let Some(root) = manifest.ancestors().nth(2) else {
+        unreachable!("this crate sits two directories under the workspace root");
+    };
+    root.to_path_buf()
+}
+
+fn assert_no_parent_hop(path: &Path) {
+    assert!(
+        !path.components().any(|part| part.as_os_str() == ".."),
+        "a shot path must not carry a `..` segment: {}",
+        path.display(),
+    );
+}
+
+#[test]
+fn the_default_shot_directory_is_absolute_and_under_the_workspace_target() {
+    let dir = ShotDir::default();
+    assert!(
+        dir.is_absolute(),
+        "a relative default writes a stray `target/` under whatever directory the process runs \
+         from; got {}",
+        dir.display(),
+    );
+    assert_no_parent_hop(dir.as_path());
+    assert!(
+        dir.starts_with(workspace_root().join("target")),
+        "the default must sit under the workspace `target/`, which the root `.gitignore` covers; \
+         got {}",
+        dir.display(),
+    );
+}
+
+#[test]
+fn a_named_shot_directory_sits_beside_the_default_under_one_target() {
+    let named = ShotDir::under_workspace_target(&ShotDirName::new("qa_screenshot_gpu_1"));
+    let default = ShotDir::default();
+    assert!(
+        named.is_absolute(),
+        "a named shot directory must be absolute, got {}",
+        named.display(),
+    );
+    assert_no_parent_hop(named.as_path());
+    assert_eq!(
+        named.parent(),
+        default.parent(),
+        "every named shot directory shares the workspace `target/` with the default",
+    );
+}
+
+#[test]
+fn a_capture_under_the_default_directory_is_written_outside_this_crate() {
+    let dir = ShotDir::default();
+    let path = next_capture_path(
+        &dir,
+        Some(&ShotStem::new("shot")),
+        &mut ShotSequence::default(),
+    );
+    assert!(
+        path.is_absolute(),
+        "a capture path must be absolute, got {}",
+        path.display(),
+    );
+    assert_no_parent_hop(path.as_path());
+    assert!(
+        !path.starts_with(env!("CARGO_MANIFEST_DIR")),
+        "a capture must not land inside this crate's own directory: {}",
+        path.display(),
+    );
 }
 
 #[test]

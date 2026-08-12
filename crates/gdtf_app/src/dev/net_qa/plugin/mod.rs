@@ -4,4 +4,7 @@ mod register_consumers;
 mod register_present;
 mod register_transport;
 
+#[cfg(test)]
+mod test;
+
 crate::support_use!(net_qa_plugin::NetQaPlugin;);

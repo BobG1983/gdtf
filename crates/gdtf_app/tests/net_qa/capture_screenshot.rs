@@ -1,9 +1,10 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use gdtf_qa_protocol::{
     command::{AttachmentKind, CommandOutcome, ReplyAttachment, RunOptions},
     message::{QaError, QaResponse},
 };
+use gdtf_screenshot::ShotDir;
 use gdtf_test_utils::gpu_probe::gpu_adapter_probe;
 
 use super::{
@@ -28,7 +29,7 @@ fn attachment_of(reply: &QaResponse) -> Result<&ReplyAttachment, TestError> {
         .ok_or_else(|| format!("a landed capture must carry an attachment: {reply:?}").into())
 }
 
-fn assert_png_under(attachment: &ReplyAttachment, dir: &Path, stem: &str) -> PathBuf {
+fn assert_png_under(attachment: &ReplyAttachment, dir: &ShotDir, stem: &str) -> PathBuf {
     assert_eq!(
         attachment.kind,
         AttachmentKind::Png,
@@ -36,7 +37,7 @@ fn assert_png_under(attachment: &ReplyAttachment, dir: &Path, stem: &str) -> Pat
     );
     let png = PathBuf::from(attachment.path.as_str());
     assert!(
-        png.starts_with(dir),
+        png.starts_with(dir.as_path()),
         "the capture must land inside the shot directory {}, not at {}",
         dir.display(),
         png.display(),
@@ -68,7 +69,7 @@ fn a_landed_capture_over_the_socket_attaches_a_png_inside_the_shot_directory() -
 
     let attachment = attachment_of(&reply)?;
     assert_png_under(attachment, &headless_shot_dir(), HEADLESS_SHOT_NAME);
-    drop(std::fs::remove_dir_all(headless_shot_dir()));
+    drop(std::fs::remove_dir_all(headless_shot_dir().as_path()));
     Ok(())
 }
 
@@ -150,7 +151,7 @@ fn a_real_capture_over_the_socket_decodes_and_is_not_a_black_frame() -> TestResu
         decoded.width(),
         decoded.height(),
     );
-    drop(std::fs::remove_dir_all(gpu_shot_dir()));
+    drop(std::fs::remove_dir_all(gpu_shot_dir().as_path()));
     Ok(())
 }
 

@@ -7,7 +7,8 @@ pub mod settle;
 
 pub use capture::{
     CaptureAim, CaptureAimDetail, CaptureCompletion, CaptureCompletions, CaptureOutcome,
-    CapturePipelinePlugin, CaptureQueue, CaptureSource, CaptureSystems, ShotDir, ShotStem, aims_at,
+    CapturePipelinePlugin, CaptureQueue, CaptureSource, CaptureSystems, ShotDir, ShotDirName,
+    ShotStem, aims_at,
 };
 pub use path::CapturePath;
 pub use present::{

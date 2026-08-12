@@ -11,7 +11,7 @@ use bevy::{
 };
 use gdtf_app::test_support::{self, AppState, NetQaPlugin, RunningState};
 use gdtf_qa_protocol::ports::NetQaPort;
-use gdtf_screenshot::{CaptureSystems, PollCap, SettleFrames, ShotDir};
+use gdtf_screenshot::{CaptureSystems, PollCap, SettleFrames, ShotDir, ShotDirName};
 use gdtf_test_utils::advance_until;
 
 use super::socket_support::{TestError, capture_app_listening};
@@ -35,13 +35,19 @@ const HEADLESS_POLL_BUDGET: u32 = 16;
 const DRIVE_BUDGET: u32 = 512;
 
 /// Where the windowed capture writes.
-pub(crate) fn gpu_shot_dir() -> PathBuf {
-    PathBuf::from("target").join(format!("qa_screenshot_gpu_{}", std::process::id()))
+pub(crate) fn gpu_shot_dir() -> ShotDir {
+    ShotDir::under_workspace_target(&ShotDirName::new(format!(
+        "qa_screenshot_gpu_{}",
+        std::process::id()
+    )))
 }
 
 /// Where the windowless capture writes.
-pub(crate) fn headless_shot_dir() -> PathBuf {
-    PathBuf::from("target").join(format!("qa_screenshot_headless_{}", std::process::id()))
+pub(crate) fn headless_shot_dir() -> ShotDir {
+    ShotDir::under_workspace_target(&ShotDirName::new(format!(
+        "qa_screenshot_headless_{}",
+        std::process::id()
+    )))
 }
 
 fn workspace_assets_root() -> PathBuf {
@@ -72,9 +78,9 @@ fn stand_in_for_the_renderer(dir: Res<ShotDir>) {
 /// The headless menu app, listening, with a PNG arriving at the path the pump picked.
 pub(crate) fn landing_capture_app_listening() -> Result<(App, NetQaPort), TestError> {
     let dir = headless_shot_dir();
-    drop(std::fs::remove_dir_all(&dir));
+    drop(std::fs::remove_dir_all(dir.as_path()));
     let (mut app, port) = capture_app_listening()?;
-    app.insert_resource(ShotDir::new(dir));
+    app.insert_resource(dir);
     app.insert_resource(SettleFrames::new(HEADLESS_SETTLE));
     app.insert_resource(PollCap::new(HEADLESS_POLL_BUDGET));
     app.add_systems(Update, stand_in_for_the_renderer.after(CaptureSystems));
@@ -84,7 +90,7 @@ pub(crate) fn landing_capture_app_listening() -> Result<(App, NetQaPort), TestEr
 /// A real-render windowed game app on the menu, listening, writing into [`gpu_shot_dir`].
 pub(crate) fn gpu_game_app_listening() -> Result<(App, NetQaPort), TestError> {
     let dir = gpu_shot_dir();
-    drop(std::fs::remove_dir_all(&dir));
+    drop(std::fs::remove_dir_all(dir.as_path()));
     let (plugin, port) = NetQaPlugin::listening(NetQaPort::new(0))?;
     let mut window = Window {
         resolution: WindowResolution::new(GPU_WINDOW_PX.x, GPU_WINDOW_PX.y),
@@ -114,7 +120,7 @@ pub(crate) fn gpu_game_app_listening() -> Result<(App, NetQaPort), TestError> {
     app.set_error_handler(bevy::ecs::error::warn);
     test_support::register_scenes_with_default_plugins(&mut app);
     app.add_plugins(plugin);
-    app.insert_resource(ShotDir::new(dir));
+    app.insert_resource(dir);
     app.insert_resource(SettleFrames::new(GPU_SETTLE));
     app.insert_resource(PollCap::new(GPU_POLL_BUDGET));
     app.world_mut()

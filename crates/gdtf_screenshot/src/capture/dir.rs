@@ -10,6 +10,21 @@ use crate::path::CapturePath;
 /// Stem used when a caller names none.
 pub(super) const DEFAULT_STEM: &str = "qa_shot";
 
+/// Directory captures land in when nothing names another.
+const DEFAULT_SHOT_DIR: &str = "qa_screenshots";
+
+/// Name of one directory under the workspace `target/`.
+#[derive(Clone, Debug, Deref)]
+pub struct ShotDirName(String);
+
+impl ShotDirName {
+    /// Wrap a directory name.
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+}
+
 /// Directory every stem-named capture is written into.
 #[derive(Resource, Clone, Debug, Deref)]
 pub struct ShotDir(PathBuf);
@@ -20,12 +35,27 @@ impl ShotDir {
     pub const fn new(dir: PathBuf) -> Self {
         Self(dir)
     }
+
+    /// Point stem-named captures at a named directory under the workspace `target/`.
+    #[must_use]
+    pub fn under_workspace_target(name: &ShotDirName) -> Self {
+        Self(workspace_target().join(&**name))
+    }
 }
 
 impl Default for ShotDir {
     fn default() -> Self {
-        Self(PathBuf::from("target/qa_screenshots"))
+        Self::under_workspace_target(&ShotDirName::new(DEFAULT_SHOT_DIR))
     }
+}
+
+// Two pops off this crate's manifest directory reach the workspace root.
+fn workspace_target() -> PathBuf {
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let Some(root) = manifest.ancestors().nth(2) else {
+        return manifest.join("target");
+    };
+    root.join("target")
 }
 
 /// Counter that keeps repeated stems on distinct files.
