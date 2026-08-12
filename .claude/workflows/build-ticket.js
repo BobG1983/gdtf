@@ -108,19 +108,66 @@ const SUITE_ROWS = {
   },
 }
 
+// Everything the run has to check later is a field. Prose in `report` cannot be asserted against,
+// and the two things that went wrong most — a correction nobody answered and a quiet narrowing
+// reported as success — both hid in prose.
 const WORK_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['filesChanged', 'suite', 'report'],
+  required: ['filesChanged', 'suite', 'clauses', 'corrections', 'tests', 'deviations', 'foreignDirtyFiles', 'outOfScope', 'report'],
   properties: {
     filesChanged: { type: 'array', items: { type: 'string' }, description: 'Every path you created or edited, by name, exactly as git reports it. Empty only if you truly changed nothing.' },
     suite: SUITE_ROWS,
-    report: { type: 'string', description: 'Clause-by-clause evidence. Failures quoted whole.' },
+    clauses: {
+      type: 'array', description: 'One row per clause in the contract, none omitted.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['clause', 'status', 'symbols', 'evidence'],
+        properties: {
+          clause: { type: 'string', description: 'The clause number as the contract numbers it.' },
+          status: { type: 'string', enum: ['built', 'already-true', 'blocked'], description: 'already-true means the tree satisfied it before you touched it. Say that rather than claiming work you did not do.' },
+          symbols: { type: 'array', items: { type: 'string' }, description: 'Symbols you added or changed for this clause, each with the file holding it.' },
+          evidence: { type: 'string', description: 'What shows the clause holds. A blocked clause states what stopped you.' },
+        },
+      },
+    },
+    corrections: {
+      type: 'array', description: 'One row per correction the clause audit handed you — every one, including corrections that needed no work.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['clause', 'applied', 'how'],
+        properties: {
+          clause: { type: 'string' },
+          applied: { type: 'boolean' },
+          how: { type: 'string', description: 'Where it landed, or why it needed nothing.' },
+        },
+      },
+    },
+    tests: {
+      type: 'array', description: 'Tests you added or changed.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['name', 'file', 'clause', 'catches'],
+        properties: {
+          name: { type: 'string' },
+          file: { type: 'string' },
+          clause: { type: 'string', description: 'The clause this test proves.' },
+          catches: { type: 'string', description: 'The mutation this test turns red. A test with no answer here does not discriminate, so do not write it.' },
+        },
+      },
+    },
+    deviations: {
+      type: 'array', description: 'Anything built differently from the contract. Empty is the expected value — design-fidelity.md makes a silent deviation a defect.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['clause', 'built', 'why'],
+        properties: { clause: { type: 'string' }, built: { type: 'string' }, why: { type: 'string' } },
+      },
+    },
+    foreignDirtyFiles: { type: 'array', items: { type: 'string' }, description: 'Files dirty in the tree that are not this ticket\'s work. You left them alone; naming them is what stops land from staging them.' },
+    outOfScope: { type: 'array', items: { type: 'string' }, description: 'Ticket-worthy findings outside this contract. You cannot file them; the orchestrator does.' },
+    report: { type: 'string', description: 'Only what the rows do not carry.' },
   },
 }
 
 const VERIFY_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['verdict', 'suite', 'clauses', 'reportMatchesTree', 'report'],
+  required: ['verdict', 'suite', 'clauses', 'reportMatchesTree', 'unansweredCorrections', 'undeclaredDeviations', 'report'],
   properties: {
     verdict: { type: 'string', enum: ['GREEN', 'RED'], description: 'GREEN only when every suite command exited 0 after the final edit AND every evidence clause reproduced.' },
     suite: SUITE_ROWS,
@@ -136,6 +183,17 @@ const VERIFY_RESULT = {
       },
     },
     reportMatchesTree: { type: 'boolean', description: 'Did the implementer\'s filesChanged list match `git status --porcelain`? False if it named files it did not touch, or missed files it did.' },
+    unansweredCorrections: {
+      type: 'array', items: { type: 'string' },
+      description: 'Clause numbers whose audit correction the implementer left out of its corrections rows, or claimed applied where the tree says otherwise. Empty when every correction is honestly accounted for.',
+    },
+    undeclaredDeviations: {
+      type: 'array', description: 'Places the code differs from the contract that the implementer did not declare. A declared deviation belongs to the gate; an undeclared one is what this field exists to catch.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['clause', 'differs'],
+        properties: { clause: { type: 'string' }, differs: { type: 'string', description: 'What the contract asks and what the code does, with the symbol.' } },
+      },
+    },
     report: { type: 'string', description: 'Everything the rows do not carry.' },
   },
 }
@@ -164,13 +222,35 @@ const LENS_RESULT = {
   },
 }
 
+// The claims it checked and found correct are the only evidence of coverage, so they are rows too.
+// `conflicts` exists because design-fidelity.md rule 4 forbids picking a side when code and docs
+// disagree — without a field for it, "I stopped and it needs a ruling" has nowhere to go.
 const DOCS_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['drifted', 'filesChanged', 'report'],
+  required: ['scope', 'claims', 'conflicts', 'filesChanged', 'report'],
   properties: {
-    drifted: { type: 'boolean', description: 'Did any doc claim disagree with the code' },
+    scope: { type: 'array', items: { type: 'string' }, description: 'Docs you judged in range for this change, by path — including any you opened and found untouched by it.' },
+    claims: {
+      type: 'array', description: 'One row per written claim you checked against the code. Rows for claims that already matched are what shows the sweep happened.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['doc', 'claim', 'verdict', 'evidence'],
+        properties: {
+          doc: { type: 'string', description: 'Path of the doc holding the claim.' },
+          claim: { type: 'string', description: 'The written claim, quoted.' },
+          verdict: { type: 'string', enum: ['matches', 'fixed', 'conflict'], description: 'matches: the code agrees. fixed: you rewrote the doc. conflict: code and docs disagree on design intent and you stopped.' },
+          evidence: { type: 'string', description: 'The symbol or code that settles it, and what you rewrote if anything.' },
+        },
+      },
+    },
+    conflicts: {
+      type: 'array', description: 'Code and docs disagreeing on intent, which you must not resolve yourself. Empty is the usual value.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['doc', 'docSays', 'codeDoes'],
+        properties: { doc: { type: 'string' }, docSays: { type: 'string' }, codeDoes: { type: 'string' } },
+      },
+    },
     filesChanged: { type: 'array', items: { type: 'string' }, description: 'Docs you edited, by name. Empty when nothing drifted.' },
-    report: { type: 'string', description: 'Each claim you checked, the code that settled it, and what you rewrote.' },
+    report: { type: 'string', description: 'Only what the rows do not carry.' },
   },
 }
 
@@ -178,24 +258,56 @@ const DOCS_RESULT = {
 // proven by the confirm step and a first-hand git check, never by this report.
 const LAND_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['committed', 'commitSha', 'pushedRange', 'filesStaged', 'suite', 'findings'],
+  required: ['committed', 'commitSha', 'pushedRange', 'filesStaged', 'filesLeftUnstaged',
+             'carriedCommits', 'rebase', 'conflictedFiles', 'developBefore', 'developAfter',
+             'gatePass', 'branchDeleted', 'suite', 'findings'],
   properties: {
     committed: { type: 'boolean', description: 'Did the commit and push actually run' },
-    commitSha: { type: 'string', description: 'Feature commit sha, or empty if none' },
+    commitSha: { type: 'string', description: 'Feature commit sha, or empty if none. Empty with committed true is a contradiction the run rejects.' },
     pushedRange: { type: 'string', description: 'Exactly what git push printed, or empty' },
     filesStaged: { type: 'array', items: { type: 'string' }, description: 'Every path staged, by name. Never a glob or a count.' },
-    suite: { type: 'array', description: 'One row per suite command, with the exit code you read yourself.',
-      items: { type: 'object', additionalProperties: false, required: ['command', 'exit'],
-        properties: { command: { type: 'string' }, exit: { type: 'integer' } } } },
-    findings: { type: 'array', items: { type: 'string' }, description: 'Anything outside this ticket worth a look. Not ticket status — you cannot see the board.' },
+    filesLeftUnstaged: { type: 'array', items: { type: 'string' }, description: 'Paths dirty in the tree you deliberately did not stage. "I left them alone" is checkable only if you name them.' },
+    carriedCommits: {
+      type: 'array', description: 'Commits in `develop..branch` whose subject does not name this ticket — read from git log, not from memory. They reach develop with this land whether or not they belong to it.',
+      items: { type: 'object', additionalProperties: false, required: ['sha', 'subject'], properties: { sha: { type: 'string' }, subject: { type: 'string' } } },
+    },
+    rebase: { type: 'string', enum: ['clean', 'conflicts-resolved', 'stopped', 'not-needed'], description: 'What the rebase onto origin/develop actually did.' },
+    conflictedFiles: { type: 'array', items: { type: 'string' }, description: 'Files you resolved during the rebase. Empty unless rebase is conflicts-resolved.' },
+    developBefore: { type: 'string', description: 'develop sha before the fast-forward.' },
+    developAfter: { type: 'string', description: 'develop sha after the push. The pair proves the fast-forward.' },
+    gatePass: {
+      type: 'object', additionalProperties: false, required: ['fingerprint', 'scope', 'head'],
+      description: 'What you wrote into .claude/.gate-pass, so the file and this report can be compared.',
+      properties: { fingerprint: { type: 'string' }, scope: { type: 'string' }, head: { type: 'string' } },
+    },
+    branchDeleted: { type: 'boolean', description: 'Was the local feature branch deleted. A stale branch is what the next tick reads as live work.' },
+    suite: SUITE_ROWS,
+    findings: {
+      type: 'array', description: 'Anything outside this ticket worth a look. Not ticket status — you cannot see the board.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['kind', 'detail'],
+        properties: {
+          kind: { type: 'string', enum: ['out-of-scope', 'process-violation', 'risk'], description: 'process-violation is a rule this land broke or could not honour; it must not arrive looking like a note.' },
+          detail: { type: 'string' },
+        },
+      },
+    },
   },
 }
 
+// The only agent in the run that fetches origin, so it is also the cheapest place to ask what else
+// came with the push. On GTW-1159 two unrelated commits rode in and nobody asked.
 const CONFIRM_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['landedSha'],
+  required: ['landedSha', 'subject', 'developSha', 'extraCommits'],
   properties: {
     landedSha: { type: 'string', description: 'The sha on origin/develop whose subject names this ticket, or the empty string if there is none.' },
+    subject: { type: 'string', description: 'That commit\'s subject line, so the sha is checkable against the ticket rather than assumed.' },
+    developSha: { type: 'string', description: 'origin/develop head after the fetch.' },
+    extraCommits: {
+      type: 'array', description: 'Commits pushed in the same range whose subject does not name this ticket. Empty is the expected value.',
+      items: { type: 'object', additionalProperties: false, required: ['sha', 'subject'], properties: { sha: { type: 'string' }, subject: { type: 'string' } } },
+    },
   },
 }
 
@@ -204,10 +316,12 @@ const CONFIRM_RESULT = {
 // schema is discarded when the run ends.
 const CLOSE_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['closed', 'ticketState', 'summary', 'boardEffects', 'report'],
+  required: ['closed', 'ticketState', 'commentId', 'labelsAfter', 'summary', 'boardEffects', 'report'],
   properties: {
     closed: { type: 'boolean', description: 'Is the ticket Done on the board now' },
     ticketState: { type: 'string', description: 'The state name the board shows for this ticket now, whatever it is.' },
+    commentId: { type: 'string', description: 'Id the board returned for the evidence comment. Empty means no comment exists — say so rather than describing one.' },
+    labelsAfter: { type: 'array', items: { type: 'string' }, description: 'Labels on the ticket after the close. A process flag left on — Needs User Input, Needs Splitting — is visible here and nowhere else.' },
     summary: { type: 'string', description: 'Two or three plain sentences a person can read without opening anything: what shipped and what it changes. Not a list of files. plain-language.md applies.' },
     boardEffects: {
       type: 'array', items: { type: 'string' },
@@ -445,7 +559,26 @@ ${GREEN}
 
 Run the suite yourself before reporting. Do NOT commit.
 
-\`filesChanged\` must match \`git status --porcelain\` exactly. Verify checks it against the tree.`,
+## Reporting
+
+\`filesChanged\` must match \`git status --porcelain\` exactly. Verify checks it against the tree.
+
+One \`clauses\` row per clause, none omitted. A clause the tree already satisfied is \`already-true\`
+— say that rather than claiming work you did not do.
+
+One \`corrections\` row per correction the audit handed you, including the ones that needed no work.
+Verify checks these against the tree, so a row claiming applied where nothing changed is worse than
+an honest false.
+
+Every test you add or change gets a \`tests\` row naming the mutation it turns red. If you cannot
+name one, the test does not discriminate — do not write it.
+
+\`deviations\` is expected to be empty. A clause you could not build as written goes there with the
+reason, and the run treats it as a blocker; leaving it out and reporting success is a defect under
+design-fidelity.md.
+
+Dirty files that are not this ticket's work go in \`foreignDirtyFiles\`. Anything ticket-worthy you
+noticed outside this contract goes in \`outOfScope\` — you cannot file it, the orchestrator does.`,
   { model: 'opus', label: `build:${TICKET}`, phase: 'Build', agentType: 'engineer', schema: WORK_RESULT })
 
 if (!built) throw new Error(`build agent died on ${TICKET}`)
@@ -506,6 +639,22 @@ ${work.report}
 ${work.filesChanged.join('\n') || '(claimed none)'}
 </implementer-files-changed>
 
+<implementer-clause-claims>
+${(work.clauses ?? []).map(c => `${c.clause} [${c.status}] ${c.symbols?.join(', ') || '(no symbol named)'} — ${c.evidence}`).join('\n') || '(none claimed)'}
+</implementer-clause-claims>
+
+<implementer-corrections-answered>
+${(work.corrections ?? []).map(c => `${c.clause} applied=${c.applied} — ${c.how}`).join('\n') || '(none answered)'}
+</implementer-corrections-answered>
+
+<implementer-tests>
+${(work.tests ?? []).map(t => `${t.name} (${t.file}) clause ${t.clause} — catches: ${t.catches}`).join('\n') || '(no tests added or changed)'}
+</implementer-tests>
+
+<implementer-deviations>
+${(work.deviations ?? []).map(d => `clause ${d.clause}: built ${d.built} — ${d.why}`).join('\n') || '(none declared)'}
+</implementer-deviations>
+
 ${GREEN}
 
 Fill \`suite\` with one row per command in verification.md and the exit code you read yourself —
@@ -519,6 +668,17 @@ Run \`git -C ${REPO} status --porcelain\` and compare it against the claimed fil
 \`reportMatchesTree\` false if the implementer named a file it did not touch or missed one it did,
 and say which in your report. An implementer has reported doing nothing while its branch held six
 edited files, so this is a real check, not a formality.
+
+Check the two claim lists against the tree, not against the prose:
+
+- Every correction in the CLAUSE AUDIT section must have a row above. Put in
+  \`unansweredCorrections\` the clause number of any correction with no row, and of any row claiming
+  \`applied\` where the code says otherwise. Open the file and look — an honest \`applied: false\`
+  is not a finding, a false \`true\` is.
+- Put in \`undeclaredDeviations\` anything the code does differently from the contract that the
+  implementer did not declare. A deviation it declared is the gate's business, not this field's.
+
+A GREEN verdict with either array non-empty is a contradiction; the run reads it as RED.
 
 ${HOUSE_RULES}`,
     { model: 'opus', label: `verify:${TICKET}#${attempt}`, phase: 'Verify', schema: VERIFY_RESULT })
@@ -564,7 +724,11 @@ let verdicts = await parallel(LENSES.map(l => () => runLens(l, verifyOut, attemp
 // Both checks are fail-closed: a verdict is believed only when the rows behind it agree. A GREEN
 // with a missing or non-zero suite row, or a COMPLIANT carrying findings, is a disagreement with
 // itself and counts as the failing reading.
-const green = () => verifyOut?.verdict === 'GREEN' && suiteGreen(verifyOut.suite)
+const green = () => verifyOut?.verdict === 'GREEN'
+  && suiteGreen(verifyOut.suite)
+  && (verifyOut.unansweredCorrections?.length ?? 0) === 0
+  && (verifyOut.undeclaredDeviations?.length ?? 0) === 0
+  && (work?.deviations?.length ?? 0) === 0
 const compliant = (v) => v?.verdict === 'COMPLIANT' && (v.findings?.length ?? 0) === 0
 const allPass = () => green() && verdicts.every(compliant)
 const reviewersHeardFrom = () => (verifyOut ? 1 : 0) + verdicts.filter(Boolean).length
@@ -578,6 +742,17 @@ while (!allPass() && attempt < 5) {
 
   const failedCommands = (verifyOut?.suite ?? []).filter(r => r.exit !== 0)
   const unmetClauses = (verifyOut?.clauses ?? []).filter(c => !c.met)
+  const contractGaps = [
+    (verifyOut?.unansweredCorrections ?? []).length
+      ? `audit corrections with no honest answer: ${verifyOut.unansweredCorrections.join(', ')} — apply each one, or say plainly in \`corrections\` that it needed nothing and why.`
+      : null,
+    (verifyOut?.undeclaredDeviations ?? []).length
+      ? `undeclared deviations:\n${verifyOut.undeclaredDeviations.map(d => `- clause ${d.clause}: ${d.differs}`).join('\n')}`
+      : null,
+    (work?.deviations ?? []).length
+      ? `deviations you declared last round, which block the land until the code matches the contract:\n${work.deviations.map(d => `- clause ${d.clause}: built ${d.built} — ${d.why}`).join('\n')}`
+      : null,
+  ].filter(Boolean).join('\n\n')
 
   const problems = [
     green() ? null : verifyOut
@@ -588,6 +763,7 @@ unmet clauses: ${unmetClauses.map(c => `${c.clause} — ${c.evidence}`).join('\n
 ${verifyOut.report}
 </verify-report>`
       : `<verify-report>\n(died — nothing to act on)\n</verify-report>`,
+    contractGaps ? `<contract-gaps>\n${contractGaps}\n</contract-gaps>` : null,
     ...verdicts.map((v, i) => compliant(v) ? null : renderFindings(v, LENSES[i].key)),
   ].filter(Boolean).join('\n\n')
 
@@ -610,7 +786,13 @@ them and do not revert them. A repair round has discarded an unrelated edit befo
 ${HOUSE_RULES}
 ${GREEN}
 
-Re-run the suite. Do NOT commit. \`filesChanged\` must match \`git status --porcelain\`.`,
+Re-run the suite. Do NOT commit.
+
+Report on the same terms as the build: \`filesChanged\` matching \`git status --porcelain\`, one
+\`clauses\` row per clause, one \`corrections\` row per audit correction, a \`tests\` row naming the
+mutation each test turns red, \`deviations\` empty unless you truly could not build a clause as
+written, dirty files that are not this ticket's in \`foreignDirtyFiles\`, and anything ticket-worthy
+outside the contract in \`outOfScope\`.`,
     { model: 'opus', label: `fix:${TICKET}#${attempt}`, phase: 'Fix', schema: WORK_RESULT })
 
   if (!work) throw new Error(`fix agent died on ${TICKET} round ${attempt}`)
@@ -638,11 +820,18 @@ if (!allPass()) {
 
 phase('Docs-sync')
 
-await agent(`Docs-sync posture for ${TICKET} in ${REPO}.
+const docs = await agent(`Docs-sync posture for ${TICKET} in ${REPO}.
 
 If the change touched behaviour described in docs/, verify each claim against the code and fix the
-drift. Code is authority for what exists; docs/ remain authority for design intent. If nothing
-drifted, say so and stop.
+drift. Code is authority for what exists; docs/ remain authority for design intent.
+
+Return a \`claims\` row for every written claim you checked, including the ones that already matched
+— those rows are the only evidence the sweep happened, and "nothing drifted" with no rows is
+indistinguishable from not looking. \`scope\` names the docs you judged in range, including any you
+opened and found untouched.
+
+Where the code and a doc disagree about design intent, do NOT pick a side: give it a \`conflicts\`
+row and leave both alone (\`.claude/rules/design-fidelity.md\` rule 4).
 
 Files dirty in the tree that are not this ticket's work stay exactly as they are.
 
@@ -662,6 +851,11 @@ ${verifyOut.report}
 
 ## GATE VERDICTS (final round ${attempt})
 ${verdicts.map((v, i) => `<gate-lens name="${LENSES[i].key}" verdict="${v?.verdict ?? 'MISSING'}">\n${v?.report ?? '(died)'}\n</gate-lens>`).join('\n')}
+
+## FILES THAT ARE NOT THIS TICKET'S
+${(work.foreignDirtyFiles ?? []).length ? work.foreignDirtyFiles.map(f => `- ${f}`).join('\n') : '(none reported)'}
+
+Never stage or revert those. They belong to someone else and a repair round has discarded one before.
 
 Run every command in the foreground and read its exit code in the same turn. Never start the suite
 in the background and end your turn waiting on it — that is how a previous attempt at this step died
@@ -688,7 +882,24 @@ If the rebase conflicts, resolve it, stage the resolved files, and continue with
 develop.
 
 Never --no-verify. Report what git said. Do not claim landing is proven — a separate confirm step
-checks origin/develop.`,
+checks origin/develop.
+
+## Reporting
+
+Every field is something git printed this run, not something you remember.
+
+- \`carriedCommits\`: run \`git -C ${REPO} log --oneline origin/develop..${BRANCH}\` BEFORE the
+  fast-forward and list every commit whose subject does not name ${TICKET}. They reach develop with
+  this land whether they belong to it or not. Do not delete them and do not rewrite history — report
+  them.
+- \`rebase\` and \`conflictedFiles\`: say what the rebase did. If you resolved a conflict, name every
+  file you resolved — a quiet revert of someone else's work hides exactly there.
+- \`developBefore\` and \`developAfter\`: the two shas around the fast-forward.
+- \`gatePass\`: the fingerprint, scope and head you wrote into the file.
+- \`filesLeftUnstaged\`: the dirty paths you deliberately did not stage.
+- \`branchDeleted\`: whether the local feature branch is gone.
+- \`findings\`: each one typed. A rule this land broke or could not honour is \`process-violation\`,
+  not a note.`,
   { model: 'opus', label: `land:${TICKET}`, phase: 'Land', schema: LAND_RESULT })
 
 const confirm = await agent(`Confirm landing of ${TICKET}.
@@ -699,11 +910,33 @@ Main repo: ${REPO}
 2. Find the commit on origin/develop whose subject contains ${TICKET} (most recent if several).
 3. \`git -C ${REPO} merge-base --is-ancestor <sha> origin/develop\`
 
-Return that sha in \`landedSha\` only if step 3 exits 0. Otherwise return the empty string.
-Check nothing else and change nothing.`,
+Return that sha in \`landedSha\` only if step 3 exits 0. Otherwise return the empty string. Return
+its subject line too, so the sha can be checked against the ticket rather than assumed, and
+origin/develop's head in \`developSha\`.
+
+4. \`git -C ${REPO} log --oneline ${landed?.developBefore || 'origin/develop@{1}'}..origin/develop\`
+
+Every commit in that range whose subject does not name ${TICKET} goes in \`extraCommits\`. You are
+the only step that fetches origin, so this is the only place the question gets asked. Report them;
+never try to remove one.
+
+Change nothing.`,
   { model: 'opus', label: `confirm-land:${TICKET}`, phase: 'Land', schema: CONFIRM_RESULT })
 
 const landedSha = /^[0-9a-f]{7,40}$/i.test(confirm?.landedSha ?? '') ? confirm.landedSha : null
+
+// Contradictions inside one report are read as the failing side, never the convenient one.
+if (landed?.committed && !landed.commitSha) {
+  log(`${TICKET}: land reported committed with no sha — treating the land as unproven`)
+}
+
+const carried = [...(landed?.carriedCommits ?? []), ...(confirm?.extraCommits ?? [])]
+if (carried.length) {
+  log(`${TICKET}: ${carried.length} commit(s) reached develop that do not name this ticket — ${carried.map(c => c.sha).join(', ')}`)
+}
+if (landed?.rebase === 'conflicts-resolved' && landed.conflictedFiles?.length) {
+  log(`${TICKET}: rebase resolved conflicts in ${landed.conflictedFiles.join(', ')} — check none of it was someone else's work`)
+}
 
 const closed = landedSha
   ? await agent(`Close ${TICKET} in Linear with evidence.
@@ -718,6 +951,10 @@ reliable, so report in \`boardEffects\` anything that moved besides this ticket.
 
 This is the last step of the run. Your \`summary\` is what the orchestrator reports to the user,
 so write it for someone who has read none of the below.
+
+Return the board's own id for the comment you post in \`commentId\`, and the ticket's labels after
+the close in \`labelsAfter\` — a process flag left on, like Needs User Input or Needs Splitting, is
+visible nowhere else.
 
 <land-result>
 ${JSON.stringify(landed, null, 2)}
@@ -747,6 +984,21 @@ return {
   suite: landed?.suite ?? [],
   verifySuite: verifyOut.suite ?? [],
   corrections: audit.corrections ?? [],
+  correctionsAnswered: work.corrections ?? [],
+  outOfScope: work.outOfScope ?? [],
+  foreignDirtyFiles: work.foreignDirtyFiles ?? [],
+  docsConflicts: docs?.conflicts ?? [],
+  docsChanged: docs?.filesChanged ?? [],
+  commentId: closed?.commentId ?? null,
+  labelsAfter: closed?.labelsAfter ?? [],
+  carriedCommits: carried,
+  rebase: landed?.rebase ?? null,
+  conflictedFiles: landed?.conflictedFiles ?? [],
+  developBefore: landed?.developBefore ?? null,
+  developAfter: landed?.developAfter ?? null,
+  gatePass: landed?.gatePass ?? null,
+  branchDeleted: landed?.branchDeleted ?? null,
+  filesLeftUnstaged: landed?.filesLeftUnstaged ?? [],
   verify: verifyOut.report,
   close: closed?.report ?? null,
 }
