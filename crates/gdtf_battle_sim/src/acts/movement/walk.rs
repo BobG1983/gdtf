@@ -1,4 +1,4 @@
-//! Multi-step walk: remaining route, reveal stop, reaction interrupt.
+//! Multi-step walk: one step per frame until the route ends or something stops it.
 
 use bevy::{
     ecs::{query::QueryData, system::ParamSet},
@@ -164,7 +164,11 @@ pub(super) type WalkWorld<'world, 'state> = ParamSet<
     ),
 >;
 
-/// Advance one step per frame for each walking ganger; stop on block, reveal, or interrupt.
+/// Advance one step per frame for each walking ganger.
+///
+/// The walk stops when the mover is no longer alive, a reaction shot interrupts it, the step
+/// reveals a new enemy, the route runs out, the next cell is blocked or occupied, the pool
+/// cannot pay for the step, or the walk completes.
 pub fn advance_walk(
     mut world: WalkWorld,
     grid: Res<OccupancyGrid>,

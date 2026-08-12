@@ -5,7 +5,7 @@ outside: launch a child process, read the list of commands that host publishes,
 run one, read what the child printed, and stop it. WHAT a host can be asked to do
 is that published list, read at run time — not a fixed tool set. See
 [qa-commands.md](qa-commands.md) for how a command is added. This is the QA
-control channel. It has three processes and one shared wire contract:
+control channel. It has these processes and one shared wire contract:
 
 - **The game**, in debug builds, opens a loopback TCP listener
   that publishes its own command list and runs a named command against the live
@@ -18,7 +18,7 @@ control channel. It has three processes and one shared wire contract:
   the editor over that loopback socket. ONE host binary manages BOTH children:
   it holds a link and a lifecycle manager per host, so a game on
   `7616` and an editor on `7617` can be up and driven at the same time.
-- **`gdtf_qa_protocol`** is the bevy-free crate all three link — `crates/gdtf_app`
+- **`gdtf_qa_protocol`** is the bevy-free crate they all link — `crates/gdtf_app`
   for the game, `crates/gdtf_content_editor` for the editor, and `bins/gdtf_qa_mcp`
   for the host. It carries the typed request/response message shapes, the command
   DTOs, the framing codec, and the values both ends have to agree on — the ports
@@ -36,7 +36,7 @@ The MCP host launches the game as a child process when the harness calls the
 `launch` tool. The launch is owned by the `CargoSpawner` in
 `bins/gdtf_qa_mcp/src/lifecycle/spawn.rs` (behind the `ChildSpawner` trait, so
 tests can substitute a stub). WHAT it launches is the call's own recipe — a
-`LaunchSpec` (`bins/gdtf_qa_mcp/src/lifecycle/launch/`) of four typed values:
+`LaunchSpec` (`bins/gdtf_qa_mcp/src/lifecycle/launch/`) of these typed values:
 package, features, working directory, environment overrides. Each one
 the call omits falls back to the default game recipe, so a bare `launch`
 still runs:
@@ -90,7 +90,7 @@ is missing, that is a defect to file, not a reason to bypass the host.
 ## The launch recipe — the content editor
 
 `launch(host="editor")` is the editor's launch: the same host, the same
-`CargoSpawner`, the same five recipe arguments — with the editor's own defaults.
+`CargoSpawner`, the same recipe arguments — with the editor's own defaults.
 A bare `launch(host="editor")` runs:
 
 ```bash
@@ -204,9 +204,9 @@ socket.
 
 ## The tool vocabulary
 
-The MCP host exposes FIVE tools, enumerated once by the `ToolName` enum in
-`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`. Three drive a child process — `launch`,
-`stop`, `logs` — and two carry that child's own command layer: `commands` and
+The MCP host's tools are enumerated once by the `ToolName` enum in
+`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`. Some drive a child process — `launch`,
+`stop`, `logs` — and the rest carry that child's own command layer: `commands` and
 `run`. Every one takes the same optional `host` argument (`"game"` — the default
 — or `"editor"`), so which child a call reaches is the CALL's to say rather than
 the tool's. `resolve_host` in `bins/gdtf_qa_mcp/src/mcp/courier/handle.rs`
@@ -224,7 +224,7 @@ rebuild, and needs no MCP reconnect. That is the whole point of the design; see
 | `launch` | host-local | — (starts the child via that host's `HostManager`) | all optional: `host`, `port`, `package`, `features` (array or comma-separated string), `working_dir`, `env` |
 | `stop` | host-local | — (stops the child via that host's `HostManager`) | optional `host` |
 | `logs` | host-local | — (reads the child's captured output) | optional `host`, `max_lines` (trailing lines to return) |
-| `commands` | forward | `QaRequest::Catalogue` | optional `host`, `command` (name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the two published RON shapes) |
+| `commands` | forward | `QaRequest::Catalogue` | optional `host`, `command` (name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the published RON shapes) |
 | `run` | forward | `QaRequest::Run` | `command` (required, from `commands`), `arguments` (optional string of compact RON, default `"()"`), optional `host`, `await_ready` (whole seconds), `capture` (`true` or a file stem) |
 
 Notes an agent relies on:
@@ -242,22 +242,22 @@ Notes an agent relies on:
   cannot disagree with what it accepts. `arguments` is then a string of compact
   RON shaped by that command's own `schemas.arguments`; a command that takes none
   is `"()"`.
-- **`run`'s three refusals each self-correct in one round trip.** A name the host
+- **`run`'s refusals each self-correct in one round trip.** A name the host
   does not know comes back `Unknown` listing every name it does offer; arguments
   it will not decode come back `BadArguments` carrying the shape they failed
   against and naming the field that broke; a command that cannot run in this state
   comes back `Unavailable` with the precondition named.
-- **`run`'s two riders** are `await_ready` (keep re-testing admission for that
+- **`run`'s riders** are `await_ready` (keep re-testing admission for that
   many seconds instead of deciding once) and `capture` (take a screenshot after
   the command has run). Neither is built yet: a call carrying either comes back
   `Unavailable { code: NotBuilt }` rather than running the command with the rider
   silently dropped.
-- **What the channel answers today.** The GAME host publishes forty-nine commands.
+- **What the channel answers today.** The GAME host publishes the commands its catalogue lists.
   `app.phase` reports where the app is at every level of its state machine.
   `capture.screenshot` writes a PNG of what the game is showing and attaches it
-  to the reply. Three shell reads answer before a battle: `settings.read` (the
+  to the reply. The shell reads answer before a battle: `settings.read` (the
   Options values), `ui.focus` (the focused widget and the focusable set) and
-  `playback.state` (whether the screen has caught up with the act log). Nine
+  `playback.state` (whether the screen has caught up with the act log). The
   battle reads answer inside a battle and report only what the player can see:
   `battle.roster`, `battle.turn`, `battle.selection`, `battle.offers`,
   `battle.inspect`, `battle.sightline`, `battle.visible`, `battle.cost` and
@@ -265,15 +265,15 @@ Notes an agent relies on:
   what it would charge in TU and whether the sim would allow it, with nothing in
   the battle moving. Each one's precondition and reply shape is in
   [`qa-commands.md`](qa-commands.md).
-  `battle.start` and `battle.flee` are the two ends of a battle, each taking the
+  `battle.start` and `battle.flee` start and end a battle, each taking the
   same path its button does. `procgen.step` advances staged generation by one
   stage when the procgen stepper owns it. `wait` holds its reply until one of
-  seven named conditions comes true, so an agent can stop polling — the channel
+  named conditions comes true, so an agent can stop polling — the channel
   serves one caller at a time, so a parked `wait` holds it until it answers.
-  Nineteen `act.*` commands give the orders a player gives. Eleven are the
+  The `act.*` commands give the orders a player gives. Some are the
   direct orders: `act.select`, `act.select_next`, `act.select_prev`,
   `act.select_clear`, `act.move`, `act.fire`, `act.reload`, `act.set_stance`,
-  `act.set_aiming`, `act.set_facing` and `act.end_turn`. The other eight are the
+  `act.set_aiming`, `act.set_facing` and `act.end_turn`. The rest are the
   contextual acts the panel offers — `act.melee`, `act.shove`,
   `act.throw_grenade`, `act.open_door`, `act.enter_emplacement`,
   `act.exit_emplacement`, `act.stabilize` and `act.execute` — and none of them
@@ -288,14 +288,14 @@ Notes an agent relies on:
   first living player
   ganger as soon as nothing is selected, so `act.select_clear` is undone on the
   next frame and an act after a clear runs through whoever the game re-picked.
-  Six `input.*` commands drive the raw input paths for the screens and the
+  The `input.*` commands drive the raw input paths for the screens and the
   moments a named act cannot reach: `input.press_key` writes the same keyboard
   message winit writes and resolves a named action through the live keybind
   table, `input.hover` moves the pointer to a pixel and leaves the pixel-to-cell
   projection to the picking system, `input.set_focus`, `input.focus_step` and
   `input.activate` are the focus bridge the menu and the Options screen are
   driven with, and `input.click_cell` takes the game's own left-click decision
-  on a cell and names that decision in the reply. Five `view.*` commands aim the
+  on a cell and names that decision in the reply. The `view.*` commands aim the
   battle view: `view.pan` and
   `view.look_at` move the camera through the one function every camera mover
   writes the transform with, and `view.level_up`, `view.level_down` and
@@ -350,8 +350,8 @@ and `bevy_derive` (the `Deref` derive), so neither half pulls in the engine. Its
 shape:
 
 - **The message** — `QaRequest` and `QaResponse` in
-  `crates/gdtf_qa_protocol/src/message/` (`request.rs` / `response.rs`). Three
-  requests, four responses, five errors, and that is the whole wire. One
+  `crates/gdtf_qa_protocol/src/message/` (`request.rs` / `response.rs`). The
+  requests, the responses and the errors are the whole wire. One
   request in, one response out. A session opens with a `Hello(ProtocolVersion)`
   handshake; the server replies `HelloOk(HelloFacts)` on a version match or a
   `VersionMismatch` error otherwise. The handshake is REQUIRED, not optional:
@@ -390,7 +390,7 @@ identically, proven by the crate's per-module round-trip tests.
 ## The smoke sequence
 
 The sequence an agent runs against either child. Every step is a real call
-against the shipped five-tool surface:
+against the shipped tool surface:
 
 1. `launch` — start the child and wait for its QA channel to answer. Add
    `host: "editor"` for the editor.
@@ -403,15 +403,15 @@ against the shipped five-tool surface:
 5. `logs` — if a step surprised you, read what the child printed.
 6. `stop` — stop the child and release the port.
 
-On the game host today step 4 is one of forty-nine. `run { command: "app.phase",
-arguments: "()" }` answers the five-level state tuple (`app`, `running`, `game`,
-`battlescape`, `aftermath`, the nested four `None` where they are not live).
+On the game host today step 4 is one of the commands its catalogue lists. `run { command: "app.phase",
+arguments: "()" }` answers the state tuple (`app`, `running`, `game`,
+`battlescape`, `aftermath`, the nested `None` where they are not live).
 `run { command: "capture.screenshot", arguments: "(name: Some(\"menu\"))" }`
-writes a PNG and answers with it attached; the `name` is optional. The three
+writes a PNG and answers with it attached; the `name` is optional. The
 shell reads all take `()`: `settings.read` answers whether sound is on,
 `ui.focus` answers the focused widget and the focusable set as opaque entity
 tokens, and `playback.state` answers `(caught_up: true)` wherever no battle is
-playing. The nine battle reads refuse `Unavailable { code: WrongState }` off
+playing. The battle reads refuse `Unavailable { code: WrongState }` off
 the battle screen. `run { command: "battle.start", arguments: "(seed: Some(42))" }`
 leaves the menu and answers once generation has finished, carrying the seed the
 battle used; omit the seed and the game resolves its own and reports that.

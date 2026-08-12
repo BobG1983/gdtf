@@ -8,17 +8,17 @@ description: How to add a command to a QA host — a file, one line in that host
 A QA command is how an agent drives or reads a running GDTF process. Adding one is **a
 file, one line in a host's list, and a test**. It moves no protocol version, adds no wire
 variant, and changes nothing in the MCP courier — because a command is DATA carried inside
-two frozen envelope variants rather than a variant of its own
+frozen envelope variants rather than a variant of its own
 (see [Why the shape is what it is](#why-the-shape-is-what-it-is) below).
 
 Everything below is written from the simplest command the game publishes,
 [`crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs).
 Read that file alongside this one: every shape shown here is in it, at that path. Nothing
 here describes a command nobody has written. The game's other reads — `settings.read`,
-`ui.focus` and `playback.state`, beside it under `commands/read/` — are the same four items
+`ui.focus` and `playback.state`, beside it under `commands/read/` — are the same items
 reading a different resource, and
 [`commands/capture/screenshot.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs)
-is the same four items with a `Deferred` handler — see [Calling it](#calling-it).
+is the same items with a `Deferred` handler — see [Calling it](#calling-it).
 
 ## What the QA channel is for
 
@@ -46,7 +46,7 @@ answers the one question it names; if a reply could run to pages, the command is
 broad — split it the way a player's perception is split: which screen, what has focus,
 what is in view.
 
-## The three edits
+## The edits
 
 1. **A file** under the host's `commands/` directory — one command per file, grouped by
    what it does (`read/` for a command that answers from the world without changing it).
@@ -59,7 +59,7 @@ what is in view.
 
 ## The file
 
-Four items: the argument type, the reply type, the unit struct, and the handler.
+The pieces: the argument type, the reply type, the unit struct, and the handler.
 
 ### The argument type
 
@@ -94,7 +94,7 @@ runs and says no does so inside its own declared reply type, whose shape the cat
 publishes.
 
 Anything the reply embeds must derive `Deserialize` too — that is the impl the published
-shape is read out of. The game's five state enums do not, and deliberately are not made to:
+shape is read out of. The game's state enums do not, and deliberately are not made to:
 `crates/gdtf_app/src/states/` stays free of wire derives, and
 [`commands/../wire/phase.rs`](../../crates/gdtf_app/src/dev/net_qa/wire/phase.rs) mints wire
 MIRRORS of them instead, with a wildcard-free `from_state` per level so a new state variant
@@ -140,7 +140,7 @@ impl QaCommand for AppPhase {
   leaves the rest parked.
 - **`availability`** is a PURE function of the frame's facts — no `App`, no queries — so it
   is unit-testable on its own, and the SAME call decides both what the catalogue advertises
-  and whether a `Run` is admitted. The two cannot disagree. `app.phase` is always
+  and whether a `Run` is admitted. They cannot disagree. `app.phase` is always
   `Available` because a command that reports where the app is has to be answerable wherever
   the app is; a command with a precondition returns
   `CommandAvailability::Unavailable { code, note }`, naming the missing thing in words a
@@ -153,7 +153,7 @@ impl QaCommand for AppPhase {
   another system overwrote later in the same frame. Where more than two systems write one
   resource, a `SystemSet` per writer costs less than an edge per pair.
   `SelectedFireMode` is the worked example: `FireModeSystems` (in `gdtf_battle_input`) holds
-  `Sync`, then `Panel`, then `Command`, all three inside `FireModeSystems::Write`. The
+  `Sync`, then `Panel`, then `Command`, all inside `FireModeSystems::Write`. The
   selection sync, the action bar's mode panel and `battle.set_fire_mode` each join one of
   them, so a QA call and a panel press on the same frame settle in a fixed order — the call
   last — instead of whichever way the build happened to sort them. A reader takes
@@ -200,7 +200,7 @@ frame has nothing to drain.
 
 ## Testing it
 
-Two layers, both cheap:
+Both layers are cheap:
 
 - **The set.** `assert_game_command_set_is_conformant()` runs the per-host assertions —
   unique names, parseable shapes, one body per type name, and a deferral budget that expires
@@ -222,7 +222,7 @@ Two layers, both cheap:
 
 ## Calling it
 
-From an MCP client, two tools and no more:
+From an MCP client, these tools and no more:
 
 ```text
 commands(host="game")                                    # what can I call?
@@ -233,7 +233,7 @@ run(host="game", command="battle.start", arguments="(seed: Some(42))")
 run(host="game", command="wait", arguments="(condition: BattleDecided)")
 ```
 
-The game offers forty-nine commands today: `app.phase`, `capture.screenshot`,
+The game offers these commands today: `app.phase`, `capture.screenshot`,
 `settings.read`, `ui.focus`, `playback.state`, `battle.roster`, `battle.turn`,
 `battle.selection`, `battle.offers`, `battle.inspect`, `battle.sightline`, `battle.visible`,
 `battle.cost`, `log.read`, `battle.start`, `battle.flee`, `procgen.step`, `wait`, `act.select`,
@@ -250,7 +250,7 @@ The game offers forty-nine commands today: `app.phase`, `capture.screenshot`,
 `ui.focus` reports the focused widget and the widgets the current screen registered as
 focusable, and `playback.state` reports whether the screen has caught up with the act log.
 
-The nine battle reads are `Immediate` too, and report only what the player can see.
+The battle reads are `Immediate` too, and report only what the player can see.
 `battle.roster` lists every player card plus the enemies the squad can currently see, each
 card naming the cell its sprite stands on — the
 reduction is which enemies appear, not which fields a card carries, since the stat block
@@ -315,7 +315,7 @@ answers `MissingModel` inside that phase whenever the tuning, grids, fog and cov
 prices from are not loaded — and `battle.offers`,
 `battle.inspect` and `battle.visible` need a running battle whose sim state is loaded —
 without it the offer and inspect systems never run, so answering would report "nothing
-offered" where the truth is "not computed yet". Those three words are pinned command by
+offered" where the truth is "not computed yet". Those words are pinned command by
 command in
 [`commands/read/test/availability_words.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/read/test/availability_words.rs).
 
@@ -329,7 +329,7 @@ hosts; the command in
 [`crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs)
 only maps its `CaptureOutcome` onto the wire.
 
-`battle.start` and `battle.flee` are the two ends of a battle, and each takes the same path
+`battle.start` and `battle.flee` start and end a battle, and each takes the same path
 the button does — `battle.start` writes the message the Battlescape button writes, and
 `battle.flee` inserts the same marker the Flee button inserts. Both are `Deferred`.
 `battle.start` needs the Menu; its only argument is the seed, which is optional. Omit it and
@@ -349,22 +349,22 @@ name.
 `wait` holds its reply until one named condition becomes true, so an agent can stop polling.
 It is `Deferred` with a two-minute budget, and answers `Timeout` — never a refusal — when the
 condition never comes. The channel serves one caller at a time, so a parked `wait` holds it
-until it answers and any other connection meanwhile is told `Busy`. The seven conditions are
+until it answers and any other connection meanwhile is told `Busy`. The conditions are
 `CaughtUp` (the playback gate is open),
 `Phase` (the live phase matches every level the caller named; levels left out are wildcards,
 so `(condition: Phase((game: Some(BattleScape))))` waits for the battle map whatever the
 battle is doing), `LogAtLeast` (the act log holds at least N entries), `WalkComplete` (nobody
 is part-way through a walk), `TurnChanged` (a turn hand-off after the call was admitted),
 `BattleDecided` (the battle has been decided — by an outcome or by fleeing) and
-`GenerationComplete` (the situation has finished generating). The last two read markers the
+`GenerationComplete` (the situation has finished generating). Those last conditions read markers the
 app clears as it leaves the phase that set them, so ask for them while that phase is still
 live: a `BattleDecided` asked once the battle has moved on to the aftermath answers `Timeout`,
 and so does a `GenerationComplete` asked once the battle map is up. A name that is not one of
-those seven fails to deserialize and comes back as `BadArguments` with `wait`'s own argument
+those fails to deserialize and comes back as `BadArguments` with `wait`'s own argument
 shape attached. The conditions and what each resolves against live in
 [`crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs).
 
-Eleven of the nineteen `act.*` commands are the classic acts a player takes with the keyboard
+Some of the `act.*` commands are the classic acts a player takes with the keyboard
 and the
 pointer: `act.select`, `act.select_next`, `act.select_prev`, `act.select_clear`, `act.move`,
 `act.fire`, `act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing` and
@@ -372,17 +372,17 @@ pointer: `act.select`, `act.select_next`, `act.select_prev`, `act.select_clear`,
 [`PendingActIntent`](../../crates/gdtf_battle_input/src/act_bus/intent/seam/queue.rs), the
 same bus the keybinds and the pointer push onto, and `dispatch_act_intents` writes the sim
 message. **No act command writes to the sim itself**, so legality stays where it already
-lives: the game's own guards decide, and the reply names their reason. There are two shapes.
+lives: the game's own guards decide, and the reply names their reason. There are two shapes, below.
 `act.fire`, `act.set_stance` and `act.set_facing` ask the sim's own guard first and answer the
 reason without pushing anything. `act.move` and `act.reload` always push and read the reason
 back out of the act log, so a refused move answers `MoveRefused` and is logged as `MoveRefused`
 with that same reason.
 
-The three `set_*` commands take an absolute value rather than cycling the way the keybind
+The `set_*` commands take an absolute value rather than cycling the way the keybind
 does, so the same call twice leaves the same state — that is what makes them driveable
 without reading the current value first.
 
-Ten of the eleven are `Immediate`. The claim system pushes the intent and records the act
+All but one are `Immediate`. The claim system pushes the intent and records the act
 log's head, and a settle system ordered after `SimSystems::Record` answers in the same frame
 with `ActReply::Accepted { from_seq, to_seq, complete }`: `from_seq..to_seq` is the half-open
 act-log window the call opened, and `complete` is false while the actor is still walking the
@@ -401,9 +401,9 @@ client never has to read the log to tell a decline from a success:
 | `act.set_facing` | `FacingRefused` | `AlreadyFacing`, `Unaffordable` |
 
 Each reason mirrors the game's own guard — the fire surface's `ShotRefusal`, which is the
-sim's `fire_refusal` plus the two cases where no request can be built at all, and the sim's
+sim's `fire_refusal` plus the cases where no request can be built at all, and the sim's
 `ReloadOutcome`, `MoveRejection`, `stance_refusal` and `facing_refusal` — so the QA layer
-invents nothing. The four selection commands answer `SelectReply` instead, which names who is
+invents nothing. The selection commands answer `SelectReply` instead, which names who is
 selected and carries no sequence numbers.
 
 **A cleared selection does not stay cleared.** The game always hands the player someone to
@@ -423,14 +423,14 @@ is always true, and carries no information: the command names no actor, so the s
 nobody's walk. It is not a claim that every walk has finished. Do not branch on it — branch on
 the window, or wait on `WalkComplete` if a walk is what you are waiting for.
 
-The QA layer invents no refusal vocabulary of its own: `ActRefusalNet` has exactly three
+The QA layer invents no refusal vocabulary of its own: `ActRefusalNet` has exactly these
 variants, `UnknownToken` (a `GangerToken` naming no living ganger), `NoShooter` (the act
 needs a selection and there is none) and `NoOffer` (the contextual panel is offering nothing
-for that act family). All three are conditions the QA layer can see before the sim is
+for that act family). All of them are conditions the QA layer can see before the sim is
 involved. Everything else the sim decides, and the act log reports.
 
-All eleven need a running battle whose screen has caught up with the act log — `Running` plus
-`Caught`. Outside a running battle they refuse `WrongState`. Ten of them ask for nothing more:
+They all need a running battle whose screen has caught up with the act log — `Running` plus
+`Caught`. Outside a running battle they refuse `WrongState`. All but one ask for nothing more:
 while the screen is still replaying they refuse `Replaying`, because the act bus drops an
 intent whose gate is shut. `act.end_turn` also needs the turn to belong to the player: no player
 path ends someone else's turn — there is no button and no key for it — so allowing it over the
@@ -442,10 +442,10 @@ refuses `WrongState` whether or not the screen is behind, and answers `Replaying
 turn is the player's own. The broader refusal wins: waiting for the screen to catch up cannot
 make the call work while the enemy is acting, so `Replaying` there would only buy the caller a
 retry that refuses again. Outside a running battle it still refuses `WrongState` with the same
-"no battle is running" reason the other ten give — the turn-owner check sits inside the running
+"no battle is running" reason the others give — the turn-owner check sits inside the running
 battle, not in front of it.
 
-The other eight `act.*` commands are the contextual acts — `act.melee`, `act.shove`,
+The remaining `act.*` commands are the contextual acts — `act.melee`, `act.shove`,
 `act.stabilize`, `act.execute`, `act.throw_grenade`, `act.open_door`,
 `act.enter_emplacement` and `act.exit_emplacement`. They live in
 [`crates/gdtf_app/src/dev/net_qa/commands/act/contextual/`](../../crates/gdtf_app/src/dev/net_qa/commands/act/contextual)
@@ -461,7 +461,7 @@ command pushes the offered target onto the same `PendingContextualIntents` queue
 pushes onto, and the sim's own `dispatch_*` is the authoritative gate: nothing on the QA side
 re-checks adjacency, faction, life state or TU. `battle.offers` does report the panel's own
 `pressable` bit, but that is the greyed-out state the button already carries, read off the
-same offer resource — not a second legality check living on the QA side. Six of the eight
+same offer resource — not a second legality check living on the QA side. Most of them
 scans ask a predicate that folds the cost check in — `can_execute`, `can_stabilize`,
 `can_open_door`, `can_throw_grenade`, `can_enter_emplacement`, `can_exit_emplacement`. Melee
 and Shove have TU-blind predicates, so they price the act with the sim's own cost helper and
@@ -486,24 +486,24 @@ and they answer `ContextualReply`: `Accepted { from_seq, to_seq, complete, targe
 `Refused { reason: NoOffer }` when the family had nothing on offer. There is still no
 unaffordable or illegal refusal on these commands: every contextual dispatch in the sim
 rejects by doing nothing and emitting nothing, so a call the sim declined comes back with
-`from_seq` equal to `to_seq`. Read `battle.offers` first to tell the two apart — an offer
+`from_seq` equal to `to_seq`. Read `battle.offers` first to tell them apart — an offer
 with `pressable: false` is a button on screen the panel has greyed out. The panel makes that
 button ignore a click and its digit key; the command does not copy the state, so `act.*`
-pushes the target anyway and the sim declines in silence. All eight families take the flag
-from the sim — six from a predicate that folds the cost check in, Melee and Shove from
+pushes the target anyway and the sim declines in silence. Every family takes the flag
+from the sim — most from a predicate that folds the cost check in, Melee and Shove from
 `can_spend_tu` on their own sim cost helper. Melee has a second way to go false:
 an actor wielding no melee weapon has no strike to price, so its button greys out too.
 
-All eight grey out on a cost the sim charges. `act.execute` and `act.stabilize` are quoted
+They all grey out on a cost the sim charges. `act.execute` and `act.stabilize` are quoted
 from `execute_tu_cost` and `stabilize_tu_cost`, and their dispatches debit the actor's pool
-by that same quote, so a greyed Execute names an act the sim would decline. Those two also
+by that same quote, so a greyed Execute names an act the sim would decline. Those also
 offer nothing at all while the selected ganger is downed or dead, because the predicate they
 call reads the actor's life state as well as the target's.
 
 **An empty window still is not proof of a decline for the contextual acts.** `ActDeed` has no
 variant for opening a door or entering and leaving an emplacement, so `act.open_door`,
 `act.enter_emplacement` and `act.exit_emplacement` answer an empty window even when they
-worked. Read the world for those three — the door's open state, the emplacement's occupancy —
+worked. Read the world for those — the door's open state, the emplacement's occupancy —
 not the log.
 
 `act.fire` is the one act that needs more than the selection to build its request: the live
@@ -512,7 +512,7 @@ all, so it refuses `MissingModel` naming the absent resource — the same call `
 makes when the act log has not arrived. That refusal says the host was never loaded, which is
 a different answer from the `FireRefused` a shot the game turned down carries.
 
-The six `input.*` commands drive the raw input paths, for the screens and the moments where a
+The `input.*` commands drive the raw input paths, for the screens and the moments where a
 named act is not enough. Each one writes what the real device writes and lets the game decide
 what that means.
 
@@ -521,7 +521,7 @@ what that means.
 sees the press on the next frame, keybinds and focus bridge alike. It takes either a physical
 key or a named action; a named action is resolved through the live `Keybinds` resource, so a
 rebind is honoured and the reply names the physical key that was actually pressed. It is the
-one `Deferred` command of the six: the reply is held until the matching release has been
+the one `Deferred` command among them: the reply is held until the matching release has been
 written, so the caller's next command sees a settled keyboard rather than a key stuck down. A
 named action asked for before the keybind table has loaded is refused `MissingModel`.
 
@@ -535,11 +535,11 @@ Whether that pixel becomes a cell is `pick_hovered_cell`'s call, and it resolves
 `WorldCamera` and a primary window are both there, the cursor sits off the UI and inside the
 viewport, and the pixel lands on the grid.
 [`crates/gdtf_battle_input/tests/picking/resolve.rs`](../../crates/gdtf_battle_input/tests/picking/resolve.rs)
-asserts the projection and four of those refusals: no cursor position, an off-grid pixel, no
+asserts the projection and these refusals: no cursor position, an off-grid pixel, no
 `WorldCamera`, and no primary window. That last one resolves a cell first and then despawns the
 window, so it also catches a pick that holds the cell it last resolved instead of dropping it.
 [`crates/gdtf_battle_input/tests/picking/viewport.rs`](../../crates/gdtf_battle_input/tests/picking/viewport.rs)
-asserts the other two, a cursor outside the viewport rect and a cursor over a HUD panel.
+asserts the rest, a cursor outside the viewport rect and a cursor over a HUD panel.
 `input.click_cell` is no substitute: it
 writes the hovered cell directly and runs before that same pick, which overwrites it inside the
 frame, so only the cell it pins survives.
@@ -565,7 +565,7 @@ are the down and up edges, `Left` and `Right` the west and east ones; a step wit
 that way is swallowed exactly as the real one is, so compare the focus the reply reports
 against the focus before the call. `activate` writes the activation message Enter and the
 gamepad's south button write, always on whatever holds focus and never on a caller-named
-target, and refuses `WrongState` when nothing is focused. All three run in the same frame band
+target, and refuses `WrongState` when nothing is focused. They all run in the same frame band
 the real keyboard bridge runs in, so the screen has acted by the time the reply lands.
 
 `input.click_cell` is the left click. It makes the named cell the hovered inspect target and
@@ -582,7 +582,7 @@ would not take is never decided as `Fire` in the first place — the click falls
 decision rather than answering `FireRefused`. It carries no turn-owner check of its own: that
 one is `act.end_turn`'s alone.
 
-The six view and battle controls all need a running battle with its sim state loaded, and
+The view and battle controls all need a running battle with its sim state loaded, and
 each takes the path the matching keyboard or panel control takes. `view.level_up`,
 `view.level_down` and `view.toggle_full_view` push `LevelUp`, `LevelDown` and
 `ToggleFullView` onto the same `PendingActIntent` bus the level and full-view keys push, and
@@ -597,7 +597,7 @@ way to hold W: the keys move by speed times frame time, while the offset asked f
 the offset taken. `battle.set_fire_mode` writes the same `SelectedFireMode` resource the
 action bar's mode panel writes, through the same lookup — the weapon the shooter fires,
 which is the mounted one while they man an emplacement and the gun in their hands
-otherwise. Its write is the last of the three, landing after the frame's selection sync and
+otherwise. Its write is the last of them, landing after the frame's selection sync and
 after a panel press on that same frame, and before the move-target reset. So the mode in the
 reply is the mode `battle.cost`, `battle.sightline` and `act.fire` price, on that frame and
 after it — neither the sync nor a press can put the weapon back on single once the reply has
@@ -610,7 +610,7 @@ shaped by that command's own `schemas.arguments`; a command that takes none is `
 MCP envelope itself stays JSON-RPC — the RON is opaque text riding inside it.
 
 `commands` reads the catalogue from the RUNNING host, so its `availability` column is the
-live answer rather than a static claim. Four things can go wrong, and each tells you how to
+live answer rather than a static claim. Each of these can go wrong, and each tells you how to
 fix it in one round trip: `Unknown` lists every name the host does offer, `BadArguments`
 carries the schema your body failed against, `Unavailable` names the precondition that is
 missing, and a rider this build has not implemented (`await_ready`, `capture`) is refused
@@ -619,7 +619,7 @@ offending field in its `detail`, which is what `deny_unknown_fields` really buys
 
 ## Why the shape is what it is
 
-**A host publishes ONE list of typed commands, and the wire carries any command in two
+**A host publishes ONE list of typed commands, and the wire carries any command in
 variants that never change.**
 
 - A command is a unit struct implementing `QaCommand` (`crates/gdtf_qa_command`): two
@@ -631,10 +631,10 @@ variants that never change.**
   `crates/gdtf_app/src/dev/net_qa/commands/set.rs`. The catalogue walk, the admission scan
   and the registration walk all read that same slice, so **a command cannot be advertised
   without being admissible and wired**.
-- The wire surface is exactly two request variants (`Catalogue`, `Run`) and two response
+- The wire surface is exactly these request variants (`Catalogue`, `Run`) and these response
   variants (`Catalogue`, `Outcome`). A command is *data* inside them, so adding one moves
   no protocol version and adds no variant.
-- The MCP courier exposes exactly two tools, `commands` and `run`. **Neither names a
+- The MCP courier exposes exactly these tools, `commands` and `run`. **Neither names a
   command**, in its schema or its description. A client discovers what it can call by
   calling `commands` against the running host, and reads the RON shapes the host traced
   from its own Rust types — one notation end to end, since the value it writes back is RON

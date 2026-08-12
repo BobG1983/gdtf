@@ -87,9 +87,9 @@ Every `.terrain_def.ron` deserializes into `TerrainDef`
 Kind variants are **struct variants**, so RON uses the single-paren named-field
 form: `Slab(hp: 120, …)` — never the double-paren `Slab((…))` tuple form.
 
-### 1c. `sim_kind:` — the four structural kinds
+### 1c. `sim_kind:` — the structural kinds
 
-`TerrainSimKind` (`crates/gdtf_battle_sim/src/terrain/def/kind.rs`) has FOUR
+`TerrainSimKind` (`crates/gdtf_battle_sim/src/terrain/def/kind.rs`) lists the
 variants. There is **no `Floor` kind** (a theme nominates a def as its
 `default_floor` instead — see 1f) and **no `Scatter` kind** (loose debris is a
 low `Cover`):

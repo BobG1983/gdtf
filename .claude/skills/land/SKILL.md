@@ -1,9 +1,9 @@
 ---
 name: land
 description: >-
-  Commit gated work, merge the feature branch into develop, push, and close the
-  Linear ticket(s) with evidence. Only after /gate and /docs-sync pass this
-  session — refuses to land otherwise.
+  Commit gated work, rebase the feature branch onto develop, fast-forward, push,
+  and close the Linear ticket(s) with evidence. Only after /gate and /docs-sync
+  pass this session — refuses to land otherwise.
 argument-hint: "[GTW-N ...]"
 ---
 
@@ -38,18 +38,20 @@ Resolve `GTW-N` from argument or branch. It is the ticket `/gate` passed, and th
 
 1. Write `.claude/.gate-pass` for the tree you just ran the suite on: `TICKET=`, `BRANCH=` (current branch), `HEAD=` (current HEAD), `FINGERPRINT=` from the **one** command in [verification.md → Gate-pass fingerprint](../../rules/verification.md#gate-pass-fingerprint), `SCOPE=` from precondition 3. It records what you are committing and is what the pre-commit hook reads. You are its only writer.
 2. Stage explicit files by name — never `git add -A`, `-u`, or `.`.
-3. Commit: subject `Area: summary (GTW-N)`, body what changed and why. Match `git log --oneline -15` voice. Pre-commit hook re-checks gate-pass; do not use `--no-verify`.
+3. Commit: subject `Area: summary (GTW-N)`, body what changed and why. Match `git log --oneline -15` voice. The body ends the message — no session URL, no `Co-Authored-By`, nothing after it. Pre-commit hook re-checks gate-pass; do not use `--no-verify`.
 4. `OLD=$(git rev-parse origin/develop)`.
-5. Finish:
+5. Finish. Rebase then fast-forward, so the ticket lands as one commit with no merge commit:
 
    ```bash
+   git fetch origin develop
+   git rebase origin/develop          # still on feature/gtw-N-slug
    git checkout develop
    git pull origin develop
-   git merge --no-ff feature/gtw-N-slug
+   git merge --ff-only feature/gtw-N-slug
    git push origin develop
    git branch -d feature/gtw-N-slug
    ```
 
-   Stop on conflicts.
+   Stop on conflicts. `--ff-only` fails instead of making a merge commit, so if the rebase did not leave the branch ahead of develop, stop and report rather than working around it.
 6. Move ticket(s) to **Done** via Linear MCP with evidence: merge SHA, suite result, pushed range.
 7. Report `git log --oneline OLD..develop`, then delete `.claude/.gate-pass`.

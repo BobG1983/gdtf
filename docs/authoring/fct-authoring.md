@@ -84,7 +84,7 @@ combat-log source in the same crate
 ([combat-log-authoring.md](combat-log-authoring.md)). That rustdoc is the
 source of truth; do not duplicate it here.
 
-The seven shipped families (`crates/gdtf_battle_presenter/src/actors/fx/fct/families/`):
+The shipped families (`crates/gdtf_battle_presenter/src/actors/fx/fct/families/`):
 `BleedingFct`, `ArmorBrokenFct`, `InjuryFct` (severity-ramp color),
 `SuppressionFct`, `DotFct`, `FieldFct`, and `OnDeathFct` (the one BOLD
 family — the "BOOM" marker).

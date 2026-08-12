@@ -32,17 +32,25 @@ Branch model: **`main`** = releases, **`develop`** = integration.
 4. Stage files EXPLICITLY by name. Never `git add -A`, never `git add .` —
    you must be able to say why every staged file is in the commit.
 5. Commit style: `Area: summary (GTW-N)` subject plus a wrapped body saying
-   what changed and why. Match the voice of `git log --oneline -15`.
-6. Land via `/land`:
+   what changed and why. Match the voice of `git log --oneline -15`. The body
+   ends the message — nothing after it. No session URL, no `Co-Authored-By`.
+   The user's settings already turn both off; your own tool instructions do not
+   override that.
+6. Land via `/land`. Rebase the branch onto develop, then fast-forward, so each
+   ticket is one commit and no merge commit is created:
 
    ```bash
+   git fetch origin develop
+   git rebase origin/develop          # on feature/gtw-N-slug; stop on conflicts
    git checkout develop && git pull origin develop
-   git merge --no-ff feature/gtw-N-slug
+   git merge --ff-only feature/gtw-N-slug
    git push origin develop
    git branch -d feature/gtw-N-slug
    ```
 
-   Landing is the only way work reaches `develop`.
+   `--ff-only` fails rather than making a merge commit, so a branch that did not
+   rebase cleanly stops here instead of adding one. Landing is the only way work
+   reaches `develop`.
 7. When a workflow spawns a sub-agent to run git plumbing, the same rules
    apply to it — explicit staging, gate-gated commits, ticket-tagged subjects.
 

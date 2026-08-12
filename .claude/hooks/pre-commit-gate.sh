@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # pre-commit-gate.sh — PreToolUse hook (matcher: "Bash") for gdtf.
 #
-# WHY THIS EXISTS: to make three failure modes impossible at the tool boundary,
+# WHY THIS EXISTS: to make these failure modes impossible at the tool boundary,
 # before git runs:
 #   1. Branch guard — features branch off develop
 #      (git checkout -b feature/<name>); never commit directly to
@@ -134,8 +134,8 @@ fi
 # --- (3) Suite gate: pre-commit always runs the fast FULL subset. ---
 # Docs-only skip is an agent decision in /gate and /land (skill prose), not
 # automated here. This hook stays fail-closed: always cargo.
-# Full green is the six aliases in verification.md via /gate.
-# Pre-commit subset: fmt, dclippy, dtest, dbuild (four alias steps).
+# Full green is every alias listed in verification.md, via /gate.
+# Pre-commit subset: fmt, dclippy, dtest, dbuild.
 # Use `.cargo/config.toml` aliases — never hand-typed feature lists.
 SUITE_CMD="${PRE_COMMIT_GATE_SUITE_CMD:-cargo fmt --check && cargo dclippy -- -D warnings && cargo dtest && cargo dbuild}"
 SUITE_OUTPUT="$(cd "$REPO_DIR" && bash -c "$SUITE_CMD" 2>&1)"

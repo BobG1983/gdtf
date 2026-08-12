@@ -32,7 +32,7 @@ Decide scope from **changed paths** (staged, committed on the branch vs `develop
 
 **DOCS means:** do not run cargo. State that scope was DOCS and which paths you used.
 
-**FULL means:** run the full suite from [`.claude/rules/verification.md`](../../rules/verification.md). All six must exit 0. Use the aliases. Red → fail immediately.
+**FULL means:** run the full suite from [`.claude/rules/verification.md`](../../rules/verification.md). Every command it lists must exit 0. Use the aliases. Red → fail immediately.
 
 Pre-commit does not implement this skip — it always runs its cargo subset. Scope is agent judgment in this skill and in `/land`.
 
@@ -58,7 +58,7 @@ Pre-commit does not implement this skip — it always runs its cargo subset. Sco
    - **4c Size** — warn >300 / block >400 lines unless cohesive and ticket-sanctioned.
    - **4d Hygiene** — no `GTW-` strings, no banned jargon, short doc comments.
 
-6. **Design-gate fan-out.** Spawn three parallel read-only design-gate sub-agents (fidelity / tests / structure+Bevy). Pass the contract, diff, and instruction to verify first-hand. Merge any-non-compliant-blocks.
+6. **Design-gate fan-out.** Spawn the parallel read-only design-gate sub-agents, one per lens — clauses, tests, rules. Pass the contract, diff, and instruction to verify first-hand. Merge any-non-compliant-blocks.
 
 7. **Relay the verdict.** Per-clause PASS / VIOLATION with evidence.
 

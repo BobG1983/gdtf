@@ -54,7 +54,7 @@ Bevy ECS gotchas (system ordering, change detection, schedules, state transition
 ## Git workflow
 
 - New work: `git checkout develop && git pull && git checkout -b feature/gtw-N-slug`
-- Finish: merge `--no-ff` into `develop`, push, delete feature branch (see `/land`)
+- Finish: rebase onto `develop`, `merge --ff-only`, push, delete feature branch (see `/land`)
 - Commit only when asked. Keep feature branches local until shared.
 
 ## Run it

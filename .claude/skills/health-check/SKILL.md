@@ -23,7 +23,7 @@ Evidence rules: [`.claude/rules/verification.md`](../../rules/verification.md). 
 
 2. **Fan out the sweep** — three parallel read-only sub-agents:
    - **Dead code.** Only after full reference sweep (compiler warnings, cargo machete/udeps, name greps, Bevy indirection: `add_systems`/`add_plugins`/`init_resource`/`register_type`/`run_if`, asset/string paths). A hit or skipped check = not dead.
-   - **Bugs.** Trace real scenarios end-to-end. Cite file:line + concrete scenario. No smells or style notes.
+   - **Bugs.** Trace real scenarios end-to-end. Name the symbol, quote the line, give a concrete scenario. No smells or style notes.
    - **Test gaps.** Grade public surface COVERED / WEAK / UNCOVERED. Happy-path-only = WEAK. Highest-risk first.
 
 3. **Refutation pass (mandatory).** For every finding, independent adversarial sub-agent: "REFUTE this. Hunt hidden references, guards, existing tests." CONFIRMED or REFUTED with evidence. Uncertain = REFUTED.

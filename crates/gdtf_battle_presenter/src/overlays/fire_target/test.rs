@@ -39,7 +39,7 @@ fn new_highlight_holds_cell_and_cost() {
     assert_eq!(
         highlight.cost(),
         Some(Tu::new(14)),
-        "the highlight exposes the fire TU cost (mode_tu_cost) unchanged",
+        "the highlight exposes the fire TU cost (fire_arc_tu_cost) unchanged",
     );
 }
 

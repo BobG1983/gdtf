@@ -2,7 +2,7 @@
 name: file-bug
 description: >-
   File a defect with root-cause evidence, then fix it through the standard loop:
-  investigate to file:line FIRST, file the Linear bug, THEN branch, failing
+  investigate to the symbol FIRST, file the Linear bug, THEN branch, failing
   regression test, fix, /gate → /docs-sync → /land.
 argument-hint: "[summary]"
 ---
@@ -20,14 +20,14 @@ A silently narrowed design is a defect even if the suite is green (`design-fidel
 
 ## 1. Investigate root cause FIRST
 
-Reproduce (failing assert or `cargo drun`). Cite **file:line**. Find the shipped ticket via `git log -S` / `git blame`. If narrowed design, cite the `docs/` source.
+Reproduce (failing assert or `cargo drun`). Name the **symbol** and quote the line — a bare line number rots, see `linear-discipline.md`. Find the shipped ticket via `git log -S` / `git blame`. If narrowed design, cite the `docs/` source.
 
 ## 2. File the Linear bug
 
 Via project-manager, create in project GDTF with four sections:
 
 - **Shipped claim vs actual**
-- **Root cause** (file:line)
+- **Root cause** (the symbol, and the line quoted)
 - **Fix contract** (clause-numbered C1, C2, …)
 - **Test plan** (regression tests that fail before, pass after, real path)
 

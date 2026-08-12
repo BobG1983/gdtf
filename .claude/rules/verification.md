@@ -11,7 +11,7 @@ Done means the suite was observed green in **this** session, after the final edi
 
 **This file is the only authority.** Skills, agents, workflows, and `CLAUDE.md` point here. Do not invent a shorter or longer suite.
 
-Run from the repo root. Green = all six exit 0. Use the `.cargo/config.toml` **aliases** — never hand-type the expanded feature lists.
+Run from the repo root. Green means every command below exits 0. Use the `.cargo/config.toml` **aliases** — never hand-type the expanded feature lists.
 
 ```bash
 cargo fmt
@@ -43,11 +43,11 @@ Release binary builds are packaging-time only (not a CI gate).
 
 ### Pre-commit subset
 
-`.claude/hooks/pre-commit-gate.sh` runs a **fast subset** (`fmt`, `dclippy`, `dtest`, `dbuild`) as a deterministic backstop. Full green is still the six commands above via `/gate`.
+`.claude/hooks/pre-commit-gate.sh` runs a **fast subset** (`fmt`, `dclippy`, `dtest`, `dbuild`) as a deterministic backstop. Full green is still every command above, via `/gate`.
 
 ### Suite scope (docs-only skip)
 
-Scope is agent judgment in the `/gate` skill (and re-checked by `/land`), not a script. Default **FULL**. **DOCS** only when every changed path is allowlisted markdown under `docs/`, `.claude/`, or the repo root — except this file, which always forces FULL. Pre-commit always runs its cargo subset. This does not change the six-command list above.
+Scope is agent judgment in the `/gate` skill (and re-checked by `/land`), not a script. Default **FULL**. **DOCS** only when every changed path is allowlisted markdown under `docs/`, `.claude/`, or the repo root — except this file, which always forces FULL. Pre-commit always runs its cargo subset. This does not change the list above.
 
 ## Rules
 

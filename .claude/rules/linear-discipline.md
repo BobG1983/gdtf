@@ -31,6 +31,53 @@ never a hand-tracked TODO list, never a persistent PM agent.
 5. "Done" on the board is a claim, not proof — audit the code before relying
    on it (see `design-fidelity.md`, rule 3).
 
+## Every comment an agent writes says which agent wrote it
+
+The MCP posts as the account owner, so the author field cannot tell an agent's note from the
+user's ruling. **Open every comment with a source line and nothing above it:**
+
+```
+**[clause-audit]**
+```
+
+Use the agent's own name — `[project-manager]`, `[clause-audit]`, `[design-gate]` — or the step
+when a workflow posts as itself, e.g. `[build-ticket / land]`.
+
+There is no `[user]`. Everything written through the MCP is an agent. A comment the user made is
+one they typed into Linear themselves, and it never passes through this tool — so an unheadered
+comment is theirs. That only holds for comments written from here on; every existing one is
+unheadered and still ambiguous.
+
+A ruling still needs its provenance in the body — "user ruling, given directly in conversation,
+YYYY-MM-DD" — because the header says who typed it, not who decided it.
+
+New ticket descriptions do not carry a header; a description is understood to be agent-written.
+
+## Point at a symbol or quote the text — never a bare line number
+
+A ticket outlives the line numbers in it. Locate things the way a reader can still
+find them after the file moves:
+
+- **The symbol.** `sync_fire_mode_on_select` in `gdtf_battle_input::pointer::fire_mode`.
+  The `LSP` tool finds it wherever it went.
+- **The text.** Quote the line of code or prose you mean. A quote survives an edit
+  above it, a rename, and a file split.
+
+A line number may ride along as a hint — `fire_mode.rs:100` after the symbol — but it
+is never the only locator, and never the thing a clause is written against.
+
+This is measured, not cautious. GTW-1148's verify report quoted two failures at
+`fire_one_spec.rs:208` and `:240` while the final file held them at `:212` and `:244` —
+four lines had been inserted above them between the run and the report.
+
+What makes it worse is that you cannot tell by looking. An edit that replaces text within
+a line moves nothing; an edit that adds one line moves everything below it. So a citation
+is neither trustworthy nor obviously broken — it has to be re-resolved, every time, which
+is the cost a symbol or a quote does not have.
+
+The same holds for a `docs/` citation, and for any file:line an agent hands back in a
+report that is about to become a clause.
+
 ## Linear queries omit silently — an empty field may mean you did not ask
 
 Three of them, all the same shape: the call succeeds, reports no error, and leaves data

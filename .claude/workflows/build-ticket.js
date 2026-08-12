@@ -9,14 +9,17 @@ export const meta = {
     { title: 'Gate', detail: '3 read-only lenses, any-non-compliant blocks (/gate skill)' },
     { title: 'Fix', detail: 'bounded repair loop on a red verdict' },
     { title: 'Docs-sync', detail: 're-align docs/ if the change drifted design claims (/docs-sync skill)' },
-    { title: 'Land', detail: 'commit, merge to develop, push, close with evidence (/land skill)' },
+    { title: 'Land', detail: 'commit, rebase onto develop, fast-forward, push, close (/land skill)' },
   ],
 }
 
 // Green suite: ALWAYS the aliases from .claude/rules/verification.md.
 // Skills /gate, /docs-sync, /land are the source of truth for process.
+//
+// Every agent answers through a schema. Nothing here reads a verdict out of prose —
+// that cost repair rounds on correct code when a report opened "NON-COMPLIANT? No — COMPLIANT".
 
-// args: { ticket: "GTW-123", slug: "editor-net-qa-passthrough" }
+// args: { ticket: "GTW-123", slug: "gtw-123-some-slug" }
 // Accept either a real object or a JSON-encoded string — the harness may deliver either.
 let A = args
 if (typeof A === 'string') {
@@ -30,143 +33,201 @@ if (!TICKET || !SLUG) throw new Error(`args must supply { ticket, slug }; got ${
 const REPO = (typeof process !== 'undefined' && process.cwd && process.cwd()) || '.'
 const BRANCH = `feature/${SLUG}`
 
+// --- Schemas ---------------------------------------------------------------
+
+const TICKET_TEXT = {
+  type: 'object', additionalProperties: false,
+  required: ['text'],
+  properties: {
+    text: { type: 'string', description: 'Full description and every comment, verbatim, plus labels, parent and blocking relationships.' },
+  },
+}
+
+const AUDIT_RESULT = {
+  type: 'object', additionalProperties: false,
+  required: ['verdict', 'report'],
+  properties: {
+    verdict: { type: 'string', enum: ['AUDIT_OK', 'AUDIT_BLOCK'], description: 'AUDIT_BLOCK only for a product decision the code cannot answer.' },
+    report: { type: 'string', description: 'Every word of the audit, with the CORRECTIONS section in full. The builder builds from this.' },
+  },
+}
+
+const WORK_RESULT = {
+  type: 'object', additionalProperties: false,
+  required: ['filesChanged', 'suite', 'report'],
+  properties: {
+    filesChanged: { type: 'array', items: { type: 'string' }, description: 'Every path you created or edited, by name, exactly as git reports it. Empty only if you truly changed nothing.' },
+    suite: { type: 'array', description: 'One row per suite command, with the exit code you read yourself.',
+      items: { type: 'object', additionalProperties: false, required: ['command', 'exit'],
+        properties: { command: { type: 'string' }, exit: { type: 'integer' } } } },
+    report: { type: 'string', description: 'Clause-by-clause evidence. Failures quoted whole.' },
+  },
+}
+
+const VERIFY_RESULT = {
+  type: 'object', additionalProperties: false,
+  required: ['verdict', 'report', 'reportMatchesTree'],
+  properties: {
+    verdict: { type: 'string', enum: ['GREEN', 'RED'], description: 'GREEN only when every suite command exited 0 after the final edit AND every evidence clause reproduced.' },
+    reportMatchesTree: { type: 'boolean', description: 'Did the implementer\'s filesChanged list match `git status --porcelain`? False if it named files it did not touch, or missed files it did.' },
+    report: { type: 'string', description: 'Every word of the verification: the suite table, each clause reproduced, failures quoted whole.' },
+  },
+}
+
+const LENS_RESULT = {
+  type: 'object', additionalProperties: false,
+  required: ['verdict', 'report'],
+  properties: {
+    verdict: { type: 'string', enum: ['COMPLIANT', 'NON-COMPLIANT'], description: 'NON-COMPLIANT only for a clause you can show is unmet.' },
+    report: { type: 'string', description: 'Every word of the review: per-clause findings, each naming the symbol and quoting the line. Write it for the agent that has to repair the code.' },
+  },
+}
+
+const DOCS_RESULT = {
+  type: 'object', additionalProperties: false,
+  required: ['drifted', 'filesChanged', 'report'],
+  properties: {
+    drifted: { type: 'boolean', description: 'Did any doc claim disagree with the code' },
+    filesChanged: { type: 'array', items: { type: 'string' }, description: 'Docs you edited, by name. Empty when nothing drifted.' },
+    report: { type: 'string' },
+  },
+}
+
+// The land agent holds no Linear tools, so it has no field to guess with. Landing is
+// proven by the confirm step and a first-hand git check, never by this report.
+const LAND_RESULT = {
+  type: 'object', additionalProperties: false,
+  required: ['committed', 'commitSha', 'pushedRange', 'filesStaged', 'suite', 'findings'],
+  properties: {
+    committed: { type: 'boolean', description: 'Did the commit and push actually run' },
+    commitSha: { type: 'string', description: 'Feature commit sha, or empty if none' },
+    pushedRange: { type: 'string', description: 'Exactly what git push printed, or empty' },
+    filesStaged: { type: 'array', items: { type: 'string' }, description: 'Every path staged, by name. Never a glob or a count.' },
+    suite: { type: 'array', description: 'One row per suite command, with the exit code you read yourself.',
+      items: { type: 'object', additionalProperties: false, required: ['command', 'exit'],
+        properties: { command: { type: 'string' }, exit: { type: 'integer' } } } },
+    findings: { type: 'array', items: { type: 'string' }, description: 'Anything outside this ticket worth a look. Not ticket status — you cannot see the board.' },
+  },
+}
+
+const CONFIRM_RESULT = {
+  type: 'object', additionalProperties: false,
+  required: ['landedSha'],
+  properties: {
+    landedSha: { type: 'string', description: 'The sha on origin/develop whose subject names this ticket, or the empty string if there is none.' },
+  },
+}
+
+// The last agent in the run, and the only one that can see the board. Whatever the
+// orchestrator needs to report to the user comes from here — anything left out of this
+// schema is discarded when the run ends.
+const CLOSE_RESULT = {
+  type: 'object', additionalProperties: false,
+  required: ['closed', 'ticketState', 'summary', 'boardEffects', 'report'],
+  properties: {
+    closed: { type: 'boolean', description: 'Is the ticket Done on the board now' },
+    ticketState: { type: 'string', description: 'The state name the board shows for this ticket now, whatever it is.' },
+    summary: { type: 'string', description: 'Two or three plain sentences a person can read without opening anything: what shipped and what it changes. Not a list of files. plain-language.md applies.' },
+    boardEffects: {
+      type: 'array', items: { type: 'string' },
+      description: 'Anything the close changed beyond this ticket — a child auto-completed, a parent auto-cancelled, a relation that vanished. Empty if none. Check children before and after.',
+    },
+    report: { type: 'string', description: 'What you posted and what the board said back.' },
+  },
+}
+
+// --- Prompt fragments ------------------------------------------------------
+
 const HOUSE_RULES = `
-## Standing rules — these override convenience and they are not negotiable
+## Standing rules — not negotiable
 
-1. **NEVER drive the app with a script.** Drive the app ONLY through the \`mcp__gdtf-qa__*\` tools.
-   If a tool is missing: STOP AND REPORT. Do NOT kill the resident process or rebuild gdtf_qa_mcp by hand.
-
-2. **Pick the CHEAPEST SUFFICIENT evidence**: integration test ≈ unit test > reading the code >> building MCP tooling.
-
-3. **Prove behaviour against the REAL binary.** MinimalPlugins + hand-inserted resources prove nothing.
-
-4. **No unwrap/expect/panic/todo/unimplemented.** Doc every pub item. Typed domain values (no-bare-types.md).
-   Files: warn >300 / block >400. mod.rs is wiring only.
-
-5. **Comments.** See comment-hygiene.md — short docs, no ticket ids, no design rationale in comments.
-
-6. **Symbols and bulk edits.** See code-navigation.md — the LSP tool answers every symbol
-   question, \`rust-analyzer ssr\` makes the same change at many sites, and no script
-   (Python, sed, awk, perl) ever edits Rust source.
-
-7. **Plain language.** See plain-language.md — short plain wording; quoted failures stay whole.
-
-8. **Report failures verbatim.** Never summarise a failure away.
-
-9. **Nobody in this workflow can write to Linear except the project-manager steps.** The engineer,
-   verify and the three gate lenses have no Linear tools — not held back, not granted. So
-   "did not file a ticket", "did not comment on the ticket" and "should have raised this on the
-   board" are NEVER valid findings against a build. They demand something the agent being judged
-   cannot do, and a round spent on one is a round wasted.
-
-   If your work uncovers something that needs a ticket or a board comment, **put it in your return
-   text under a heading naming it as out of scope**. The orchestrator reads every report and files
-   it. That is the whole procedure.
-
-10. **A designed behaviour is not a gap.** Before reporting that two numbers disagree, check whether
-    a test already asserts the disagreement on purpose. Example: \`battle.cost\` quotes a Move's whole
-    path, and a walk stopped by a block, a reveal or a reaction interrupt charges only the steps
-    taken. That is deliberate — \`acts/test/movement/cost.rs\` asserts a *completed* walk charges
-    exactly the quote, and \`acts/movement/walk.rs\` documents all three stop conditions. Grep the
-    tests for the invariant before calling a difference a defect.
+1. Drive the app ONLY through the \`mcp__gdtf-qa__*\` tools. Never a script, never a socket.
+   A missing tool is a STOP-and-report, not a reason to rebuild or kill anything by hand.
+2. Cheapest sufficient evidence: integration test ≈ unit test > reading the code >> building tooling.
+3. Prove behaviour against the REAL binary. MinimalPlugins with hand-inserted resources proves nothing.
+4. No unwrap/expect/panic/todo/unimplemented. Doc every pub item. Typed domain values (no-bare-types.md).
+   Files: warn >300, block >400. mod.rs is wiring only.
+5. Comments: comment-hygiene.md. Symbols and bulk edits: code-navigation.md — the LSP answers every
+   symbol question, and no script ever edits Rust source.
+6. plain-language.md governs everything you write. Quote failures whole; never summarise one away.
+7. Only the project-manager steps can write to Linear. "Did not file a ticket" is never a valid
+   finding against a build. Put anything ticket-worthy in your report under an out-of-scope heading;
+   the orchestrator files it.
+8. A designed behaviour is not a gap. Before reporting that two numbers disagree, grep the tests for
+   an assertion that they disagree on purpose.
 `
 
 const GREEN = `
 ## Green
 
-READ \`${REPO}/.claude/rules/verification.md\` AND RUN THE SUITE IT LISTS. That file is the
-only authority — this workflow does not restate the commands, because a copy here goes stale
-the moment the rule changes. Do not run a suite from memory.
+READ \`${REPO}/.claude/rules/verification.md\` AND RUN THE SUITE IT LISTS. That file is the only
+authority; a copy here would go stale. Use the \`.cargo/config.toml\` aliases exactly as written.
 
-Use the \`.cargo/config.toml\` aliases exactly as written there. Never hand-type an expanded
-feature list.
+Run them SEQUENTIALLY, one command per tool call, and read each exit code on its own. Pin the
+directory on every cargo call (\`cd ${REPO} && ...\`) — the Bash tool cwd resets between calls.
 
-Run them SEQUENTIALLY, one command per tool call, and read each exit code on its own. PIN THE
-DIRECTORY on every cargo call (\`cd ${REPO} && ...\`) — the Bash tool cwd resets between calls.
-
-NEVER pipe a cargo command into \`tail\`/\`head\`/\`grep\` inside an \`&&\` chain. The pipeline's
-exit code is the filter's, which always succeeds, so a failing step reports green. That exact
-mistake produced a false all-green while \`cargo doc\` was exiting 101.
+NEVER pipe cargo into \`tail\`/\`head\`/\`grep\` inside an \`&&\` chain. The pipeline's exit code is
+the filter's, which always succeeds, so a failing step reports green. That produced a false
+all-green while \`cargo doc\` was exiting 101.
 
 Green means every command in that file exited 0, after your final edit.
 `
 
 // --- Phase 0: clause audit (GTW-962) — BEFORE In Progress ---
 // Never audit a summary argument. Only live Linear description + comments.
-// Findings: orchestrator log only — no Linear comments.
-// Example of a catch (GTW-882): report claimed verbatim acceptance while tree
-// had a different reworded sentence; file list understated. Contradictory
-// clauses in one ticket must be reported as a set, not reconciled silently.
 phase('Clause-audit')
 
-const liveTicket = await agent(`Read-only Linear fetch for ${TICKET} in project GDTF.
+const live = await agent(`Read-only Linear fetch for ${TICKET} in project GDTF.
 
-1. Fetch FULL description AND complete comment thread, verbatim.
-2. Do NOT change status.
-3. Report description and every comment verbatim.
+Fetch the FULL description AND the complete comment thread. Do NOT change status.
+Return them verbatim in \`text\`, together with labels, parent and blocking relationships.`,
+  { model: 'opus', label: `fetch:${TICKET}`, phase: 'Clause-audit', agentType: 'project-manager', schema: TICKET_TEXT })
 
-Also report: labels, parent, blocking relationships.`,
-  { model: 'opus', label: `fetch:${TICKET}`, phase: 'Clause-audit', agentType: 'project-manager' })
+if (!live) throw new Error(`could not fetch ${TICKET} for clause audit`)
 
-if (!liveTicket) throw new Error(`could not fetch ${TICKET} for clause audit`)
-
-log(`${TICKET}: clause-audit input (live ticket text):\n${liveTicket}`)
-
-const auditOut = await agent(`Clause audit for ${TICKET}.
+const audit = await agent(`Clause audit for ${TICKET}.
 
 <live-ticket id="${TICKET}">
-${liveTicket}
+${live.text}
 </live-ticket>`,
-  { model: 'opus', label: `clause-audit:${TICKET}`, phase: 'Clause-audit', agentType: 'clause-audit' })
+  { model: 'opus', label: `clause-audit:${TICKET}`, phase: 'Clause-audit', agentType: 'clause-audit', schema: AUDIT_RESULT })
 
-if (!auditOut) throw new Error(`${TICKET}: clause audit produced no report (empty reviewer) — abort`)
+if (!audit) throw new Error(`${TICKET}: clause audit died — abort`)
 
-log(`${TICKET}: clause-audit findings:\n${auditOut}`)
+log(`${TICKET}: clause audit ${audit.verdict}`)
 
-const auditOk = (() => {
-  const m = /\b(AUDIT_OK|AUDIT_BLOCK)\b/i.exec(auditOut)
-  return !!m && m[1].toUpperCase() === 'AUDIT_OK'
-})()
-
-if (!auditOk) {
-  return {
-    ticket: TICKET,
-    landed: false,
-    reason: 'clause audit blocked before In Progress',
-    audit: auditOut,
-  }
+if (audit.verdict !== 'AUDIT_OK') {
+  return { ticket: TICKET, landed: false, reason: 'clause audit blocked before In Progress', audit: audit.report }
 }
-
-const NOTES = typeof A?.notes === 'string' && A.notes.trim() ? `
-## ORCHESTRATOR NOTES — from a prior clause audit
-
-These are readings of clauses the audit found easy to get wrong. They do not add scope. If one
-appears to contradict the ticket text above, the TICKET wins — and say so in your report.
-
-${A.notes.trim()}
-` : `
-## CLAUSE AUDIT (this run) — the CORRECTIONS section is BINDING
-
-The audit opened the files the ticket cites and checked them against the tree. Where a clause was
-wrong it wrote a corrected one. **Build the corrected clauses, not the original text**, wherever the
-two differ — the corrections are later and were checked against the code. Everything the audit did
-not correct stands as the ticket wrote it.
-
-${auditOut}
-`
 
 phase('Open')
 
-const ticketText = await agent(`Linear status only for ${TICKET}.
+// The audit's corrections are what the builder builds to, and they live nowhere but this run.
+// Post them so a reader of the ticket can see what was actually built against, and so a run that
+// dies after the audit does not take them with it.
+const opened = await agent(`Linear status and one comment for ${TICKET}.
 
-1. Move ${TICKET} to **In Progress** NOW.
-2. Re-fetch FULL description and complete comment thread, verbatim (status change may race with board edits).
-3. Report description and every comment verbatim.
+1. Post the comment below FIRST, before any status change.
+2. Move ${TICKET} to **In Progress**.
+3. Re-fetch the FULL description and complete comment thread (the status change may race with board edits).
+4. Return them verbatim in \`text\`, with labels, parent and blocking relationships.
 
-Also report: labels, parent, blocking relationships.`,
-  { model: 'opus', label: `open:${TICKET}`, phase: 'Open', agentType: 'project-manager' })
+The comment is the clause audit's corrections, posted verbatim under a source line so nobody reads
+them as the owner's. Per \`.claude/rules/linear-discipline.md\` it opens with the source line and
+nothing above it. Post exactly this, changing nothing inside it:
 
-if (!ticketText) throw new Error(`could not open ${TICKET}`)
+---
+**[clause-audit]**
+
+Corrections applied to this ticket's clauses for the build starting now. These are the audit's
+readings, not a ruling by the owner. The build was made against them wherever they differ from the
+description above.
+
+${audit.report}
+---`,
+  { model: 'opus', label: `open:${TICKET}`, phase: 'Open', agentType: 'project-manager', schema: TICKET_TEXT })
+
+if (!opened) throw new Error(`could not open ${TICKET}`)
 
 phase('Build')
 
@@ -174,165 +235,111 @@ const built = await agent(`Implement ${TICKET} in the MAIN repo at ${REPO}.
 
 ## Set up — RESUMABLE
 
-All work happens directly in ${REPO}, on ${BRANCH}. Never commit on develop; the
-pre-commit hook blocks it.
+All work happens in ${REPO}, on ${BRANCH}. Never commit on develop; the pre-commit hook blocks it.
 
-FIRST check what is already checked out:
-\`\`\`
-git -C ${REPO} branch --show-current
-git -C ${REPO} status --short
-\`\`\`
+Check what is already checked out (\`git -C ${REPO} branch --show-current\`, \`git -C ${REPO} status --short\`):
 
-- If ${BRANCH} is already checked out: adopt it. Never reset or discard unlanded work.
-- If it exists but is not checked out: \`git -C ${REPO} checkout ${BRANCH}\`
-- Otherwise, from a clean tree on develop:
-  \`git -C ${REPO} checkout develop && git -C ${REPO} checkout -b ${BRANCH}\`
+- ${BRANCH} already checked out: adopt it. Never reset or discard unlanded work.
+- Exists but not checked out: \`git -C ${REPO} checkout ${BRANCH}\`
+- Otherwise, from a clean tree on develop: \`git -C ${REPO} checkout develop && git -C ${REPO} checkout -b ${BRANCH}\`
 
-If the tree is dirty with work that is not this ticket's, STOP and report — do not
-stash it and do not build on top of it.
-
-One ticket at a time in this repo.
+If the tree is dirty with work that is not this ticket's, leave those files exactly as they are —
+do not stage them, do not revert them, and do not build on top of them. Name them in your report.
 
 ## THE CONTRACT — build exactly this
 
 <ticket id="${TICKET}">
-${ticketText}
+${opened.text}
 </ticket>
 
+## CLAUSE AUDIT — the CORRECTIONS section is BINDING
+
+The audit opened every file the ticket cites and checked it against the tree. Where a clause was
+wrong it wrote a corrected one. **Build the corrected clauses** wherever the two differ; everything
+it did not correct stands as the ticket wrote it.
+
+${audit.report}
+
 Build every clause. Do not narrow. If a clause is impossible, STOP and report.
-${NOTES}
 
-## BEFORE YOU WRITE ANY CODE — bootstrap check
-
-If a clause demands live evidence for a capability THIS TICKET is adding (courier change or protocol version bump), that clause is unsatisfiable. STOP and report.
+If a clause demands live evidence for a capability THIS ticket is adding — a change to the MCP
+server (\`gdtf_qa_mcp\`) or a protocol version bump — that clause cannot be met. STOP and report.
 
 ${HOUSE_RULES}
-
 ${GREEN}
 
 Run the suite yourself before reporting. Do NOT commit.
 
-Report: files changed, suite result, clause-by-clause evidence.`,
-  { model: 'opus', label: `build:${TICKET}`, phase: 'Build', agentType: 'engineer' })
+\`filesChanged\` must match \`git status --porcelain\` exactly. Verify checks it against the tree.`,
+  { model: 'opus', label: `build:${TICKET}`, phase: 'Build', agentType: 'engineer', schema: WORK_RESULT })
 
 if (!built) throw new Error(`build agent died on ${TICKET}`)
-
-const fresh = await agent(`Re-fetch ${TICKET} from Linear. READ-ONLY. Return CURRENT full description and complete comment thread, verbatim.`,
-  { model: 'opus', label: `refetch:${TICKET}`, phase: 'Verify', agentType: 'project-manager' })
 
 // The contract everyone downstream judges against: the live ticket text PLUS the audit's
 // corrections. The corrections are never written back to Linear, so a re-fetch alone loses them —
 // and then the builder builds to one contract while verify and the lenses judge another. On
-// GTW-1012 that cost five gate rounds and a non-landing: the audit had replaced clause 2 in full,
-// the engineer built the replacement, and a lens failed it for not implementing the struck-out
-// sentence. The audit goes LAST so it wins on any conflict.
-const contract = `${fresh || ticketText}
+// GTW-1012 that cost five gate rounds and a non-landing. The audit goes LAST so it wins on conflict.
+const fresh = await agent(`Re-fetch ${TICKET} from Linear. READ-ONLY. Return the CURRENT full
+description and complete comment thread, verbatim, in \`text\`.`,
+  { model: 'opus', label: `refetch:${TICKET}`, phase: 'Verify', agentType: 'project-manager', schema: TICKET_TEXT })
+
+const contract = `${fresh?.text || opened.text}
 
 ## CLAUSE AUDIT (this run) — the CORRECTIONS section is BINDING and OVERRIDES the text above
 
-The audit ran before the build, opened every citation, and corrected the ticket's facts. Its
-corrections were NOT written back to Linear, so the ticket text above is the uncorrected original.
-Where the two differ, the corrections win — the implementer built to them. Do NOT report a
-violation for failing to do something a correction struck out, and do NOT report one for doing
-what a correction requires. Judge the build against the corrected contract.
+The corrections were NOT written back to Linear, so the text above is the uncorrected original.
+Where they differ, the corrections win — the implementer built to them. Do NOT report a violation
+for failing to do something a correction struck out, nor for doing what a correction requires.
 
-${auditOut}`
-if (fresh && fresh !== ticketText) {
-  log(`${TICKET}: contract re-fetched — verifying against the CURRENT ticket text plus the audit corrections`)
-}
+${audit.report}`
 
-// The verdict verify reported, or null when it reported none.
-const suiteVerdict = (out) => {
-  if (!out) return null
-  const m = /\b(GREEN|RED)\b/i.exec(out)
-  return m ? m[1].toUpperCase() : null
-}
+// --- Verify and gate -------------------------------------------------------
 
-// Verify, asked a second time if it answered without a verdict. Same reasoning as the gate lenses:
-// a run that reproduced the evidence and forgot to write GREEN is not a red suite, and reading it
-// as one costs a fix round on work that may already be done.
-async function verify(attempt) {
-  const brief = `Independently verify ${TICKET} in ${REPO}. Trust NOTHING the implementer reported.
+// One lens per question, and each owns its own failure modes. They used to share a checklist in
+// the agent definition, which is how three reviews came back saying the same thing.
+const LENSES = [
+  { key: 'clauses', focus: `Is every clause true of the code? Open each one and trace it — "the report says so" is not evidence.
+Hunt quiet narrowing: a clause half-built reads as built. Reject hedge markers — TODO, FIXME, "for now",
+"placeholder", "stub", "simplified". Reject any system, plugin or resource the ticket claims runs that
+nothing registers. Check docs/ against the same clauses.` },
+  { key: 'tests', focus: `Is the behaviour actually proven? Every behavioural clause needs a real-path,
+assertion-bearing test that discriminates — name the mutation that would slip past each one. A clause with
+no test is NON-COMPLIANT, not a note. Reject MinimalPlugins stand-ins where the claim is about the real app,
+and reject exact-magnitude asserts on tunable data. Run ZERO cargo.` },
+  { key: 'rules', focus: `Does it obey the house? no-bare-types, module-layout (including files over 400 lines
+with mixed responsibilities), bevy-systems scheduling and ordering, plain-language, comment-hygiene.
+Cite the rule you are applying, never a preference. Run ZERO cargo.` },
+]
+
+async function verify(work, attempt) {
+  return await agent(`Independently verify ${TICKET} in ${REPO}. Trust NOTHING the implementer reported.
 
 <ticket id="${TICKET}">
 ${contract}
 </ticket>
 
 <implementer-report attempt="${attempt}">
-${built}
+${work.report}
 </implementer-report>
+
+<implementer-files-changed>
+${work.filesChanged.join('\n') || '(claimed none)'}
+</implementer-files-changed>
 
 ${GREEN}
 
-Reproduce every evidence clause yourself. Start with GREEN or RED on its own line.
+Reproduce every evidence clause yourself.
 
-${HOUSE_RULES}`
+Run \`git -C ${REPO} status --porcelain\` and compare it against the claimed file list above. Set
+\`reportMatchesTree\` false if the implementer named a file it did not touch or missed one it did,
+and say which in your report. An implementer has reported doing nothing while its branch held six
+edited files, so this is a real check, not a formality.
 
-  const first = await agent(brief,
-    { model: 'opus', label: `verify:${TICKET}#${attempt}`, phase: 'Verify' })
-
-  if (suiteVerdict(first)) return first
-
-  log(`${TICKET}: verify answered without a verdict — asking it again`)
-
-  const again = await agent(`${brief}
-
-## YOUR LAST REPLY CARRIED NO VERDICT
-
-You were asked before and your reply contained neither GREEN nor RED, so nothing could be read from
-it. Here it is in full:
-
-<your-previous-reply>
-${first || '(you returned nothing at all)'}
-</your-previous-reply>
-
-Answer properly this time. If that reply already ran the suite and reached a conclusion, keep its
-findings and the command output verbatim and add the verdict it was missing — do not re-run what
-you already ran, and do not soften anything. If it never ran the suite, run it now. Start with
-GREEN or RED on its own line.`,
-    { model: 'opus', label: `verify:${TICKET}#${attempt}-again`, phase: 'Verify' })
-
-  if (suiteVerdict(again)) return again
-  return again || first
+${HOUSE_RULES}`,
+    { model: 'opus', label: `verify:${TICKET}#${attempt}`, phase: 'Verify', schema: VERIFY_RESULT })
 }
 
-phase('Verify')
-let verifyOut = await verify(1)
-
-const readVerdict = (out) => suiteVerdict(out) === 'GREEN'
-
-const LENSES = [
-  { key: 'fidelity', focus: `Does the diff implement EVERY clause exactly as written? Hunt silent narrowing. Check docs/ too.` },
-  { key: 'tests', focus: `Do the tests exercise the REAL code path? Reject MinimalPlugins stand-ins. Name mutations that would slip past. Run ZERO cargo.` },
-  { key: 'structure', focus: `Module layout, no bare types, no unwrap/todo, Bevy schedule/ordering. Run ZERO cargo.` },
-]
-
-// A lens answers through a schema, so the verdict is a field and nothing is read out of prose.
-// Parsing the first line failed three passing builds on openings like "NON-COMPLIANT? No —
-// COMPLIANT", and each one cost a repair round on code that was already correct.
-const LENS_RESULT = {
-  type:                 'object',
-  additionalProperties: false,
-  required:             ['verdict', 'report'],
-  properties:           {
-    verdict: {
-      type:        'string',
-      enum:        ['COMPLIANT', 'NON-COMPLIANT'],
-      description: 'NON-COMPLIANT only for a clause you can show is unmet.',
-    },
-    report: {
-      type:        'string',
-      description: 'Every word of the review: per-clause findings with file:line citations. Write it for the agent that has to repair the code.',
-    },
-  },
-}
-
-// The verdict a lens reported, or null when the agent died.
-const verdictOf = (out) => out?.verdict ?? null
-
-// One lens. The schema forces a verdict, so there is no second ask — a review that reached a
-// conclusion can no longer forget to write the word.
-async function runLens(lens, attempt) {
+async function runLens(lens, verifyOut, attempt) {
   return await agent(`Adversarial read-only review of ${TICKET} in ${REPO}.
 
 <ticket id="${TICKET}">
@@ -343,31 +350,31 @@ ${contract}
 ${lens.focus}
 
 ## VERIFICATION EVIDENCE
-<verify-report>
-${verifyOut || '(verify died — treat cargo claims as UNPROVEN)'}
+<verify-report verdict="${verifyOut?.verdict ?? 'MISSING'}">
+${verifyOut?.report ?? '(verify died — treat cargo claims as UNPROVEN)'}
 </verify-report>
 
 ${HOUSE_RULES}
 
-Run ZERO cargo. Cite file:line.
+Run ZERO cargo. Name the symbol and quote the line.
 
-Answer through the schema. Say NON-COMPLIANT only for a clause you can show is unmet, and cite the
-line that shows it. Put every word of your reasoning in \`report\` — it is what the repair agent
-reads, so a finding you leave out is a finding nobody fixes.`,
+Say NON-COMPLIANT only for a clause you can show is unmet, and cite the line that shows it. Put
+every word of your reasoning in \`report\` — the repair agent reads it, so a finding you leave out
+is a finding nobody fixes.`,
     { model: 'opus', label: `gate:${lens.key}#${attempt}`, phase: 'Gate', agentType: 'design-gate', schema: LENS_RESULT })
 }
 
-async function gate(attempt) {
-  return await parallel(LENSES.map(l => () => runLens(l, attempt)))
-}
+phase('Verify')
+let work = built
+let verifyOut = await verify(work, 1)
 
 phase('Gate')
 let attempt = 1
-let verdicts = await gate(attempt)
+let verdicts = await parallel(LENSES.map(l => () => runLens(l, verifyOut, attempt)))
 
-const compliant = (out) => verdictOf(out) === 'COMPLIANT'
-
-const allPass = () => readVerdict(verifyOut) && verdicts.every(compliant)
+const green = () => verifyOut?.verdict === 'GREEN'
+const compliant = (v) => v?.verdict === 'COMPLIANT'
+const allPass = () => green() && verdicts.every(compliant)
 const reviewersHeardFrom = () => (verifyOut ? 1 : 0) + verdicts.filter(Boolean).length
 
 while (!allPass() && attempt < 5) {
@@ -376,13 +383,11 @@ while (!allPass() && attempt < 5) {
   }
   attempt++
   phase('Fix')
+
   const problems = [
-    readVerdict(verifyOut)
-      ? null
-      : verifyOut
-        // Asked twice and still no verdict: say so, or the fix agent reads this as a red suite.
-        ? `<verify-verdict${suiteVerdict(verifyOut) ? '' : ' verdict="MISSING — verify was asked twice and never gave one; judge its findings on their own merits"'}>\n${verifyOut}\n</verify-verdict>`
-        : `<verify-verdict>\n(died — nothing to act on)\n</verify-verdict>`,
+    green() ? null : verifyOut
+      ? `<verify-report verdict="${verifyOut.verdict}"${verifyOut.reportMatchesTree ? '' : ' files-claimed-do-not-match-the-tree="true"'}>\n${verifyOut.report}\n</verify-report>`
+      : `<verify-report>\n(died — nothing to act on)\n</verify-report>`,
     ...verdicts.map((v, i) => {
       if (compliant(v)) return null
       if (!v) return `<gate-lens name="${LENSES[i].key}">\n(died — nothing to act on)\n</gate-lens>`
@@ -392,7 +397,7 @@ while (!allPass() && attempt < 5) {
 
   log(`${TICKET}: round ${attempt} — repairing`)
 
-  const fixed = await agent(`Repair ${TICKET} in ${REPO}.
+  work = await agent(`Repair ${TICKET} in ${REPO}.
 
 <ticket id="${TICKET}">
 ${contract}
@@ -400,174 +405,143 @@ ${contract}
 
 ## WHAT BLOCKED IT
 ${problems}
-${NOTES}
 
-Fix at root. Do NOT weaken tests or edit the gate. ${HOUSE_RULES}
+Fix at root. Do NOT weaken tests and do NOT edit the gate.
+
+Files dirty in the tree that are not this ticket's work stay exactly as they are — do not stage
+them and do not revert them. A repair round has discarded an unrelated edit before.
+
+${HOUSE_RULES}
 ${GREEN}
 
-Re-run the suite. Do NOT commit.`,
-    { model: 'opus', label: `fix:${TICKET}#${attempt}`, phase: 'Fix' })
+Re-run the suite. Do NOT commit. \`filesChanged\` must match \`git status --porcelain\`.`,
+    { model: 'opus', label: `fix:${TICKET}#${attempt}`, phase: 'Fix', schema: WORK_RESULT })
 
-  if (!fixed) throw new Error(`fix agent died on ${TICKET} round ${attempt}`)
+  if (!work) throw new Error(`fix agent died on ${TICKET} round ${attempt}`)
 
   phase('Verify')
-  verifyOut = await verify(attempt)
+  verifyOut = await verify(work, attempt)
   phase('Gate')
-  verdicts = await gate(attempt)
+  verdicts = await parallel(LENSES.map(l => () => runLens(l, verifyOut, attempt)))
 }
 
 if (!allPass()) {
-  return { ticket: TICKET, landed: false, reason: `still blocked after ${attempt} rounds`, verify: verifyOut, gate: verdicts }
+  return {
+    ticket: TICKET, landed: false, reason: `still blocked after ${attempt} rounds`,
+    verify: verifyOut?.report ?? null,
+    gate: verdicts.map((v, i) => ({ lens: LENSES[i].key, verdict: v?.verdict ?? 'MISSING', report: v?.report ?? null })),
+  }
 }
 
 phase('Docs-sync')
 
 await agent(`Docs-sync posture for ${TICKET} in ${REPO}.
 
-If the change touched behavior described in docs/, verify claims against the code and fix drift.
-Code is authority for what exists; docs/ remain authority for design intent.
-If nothing in docs/ drifted, say so explicitly and stop.
+If the change touched behaviour described in docs/, verify each claim against the code and fix the
+drift. Code is authority for what exists; docs/ remain authority for design intent. If nothing
+drifted, say so and stop.
+
+Files dirty in the tree that are not this ticket's work stay exactly as they are.
+
 Do NOT commit — /land owns the commit.`,
-  { model: 'opus', label: `docs-sync:${TICKET}`, phase: 'Docs-sync' })
+  { model: 'opus', label: `docs-sync:${TICKET}`, phase: 'Docs-sync', schema: DOCS_RESULT })
 
 phase('Land')
 
-// The land agent holds no Linear tools, so it has no field to guess with. Landing is
-// proven by the confirm step and a first-hand git check, never by this report.
-const LAND_RESULT = {
-  type:                 'object',
-  additionalProperties: false,
-  required:             ['committed', 'commitSha', 'mergeSha', 'pushedRange', 'filesStaged', 'suite', 'findings'],
-  properties:           {
-    committed:   { type: 'boolean', description: 'Did the commit and merge actually run' },
-    commitSha:   { type: 'string', description: 'Feature commit sha, or empty if none' },
-    mergeSha:    { type: 'string', description: 'Merge commit sha, or empty if none' },
-    pushedRange: { type: 'string', description: 'Exactly what git push printed, or empty' },
-    filesStaged: {
-      type:        'array',
-      items:       { type: 'string' },
-      description: 'Every path staged, by name. Never a glob or a count.',
-    },
-    suite: {
-      type:  'array',
-      items: {
-        type:                 'object',
-        additionalProperties: false,
-        required:             ['command', 'exit'],
-        properties:           {
-          command: { type: 'string' },
-          exit:    { type: 'integer' },
-        },
-      },
-      description: 'One row per suite command, with the exit code you read yourself',
-    },
-    findings: {
-      type:        'array',
-      items:       { type: 'string' },
-      description: 'Anything you noticed that is outside this ticket and worth a look. Not ticket status, not what the caller should do next — you cannot see the board.',
-    },
-  },
-}
-
 const landed = await agent(`Land ${TICKET} following the /land skill.
 
-Repo: ${REPO} — no worktree; the work is on ${BRANCH} in the main tree
-Branch: ${BRANCH}
+Repo: ${REPO} — no worktree; the work is on ${BRANCH} in the main tree.
 
 ## VERIFICATION EVIDENCE
-<verify-report>
-${verifyOut}
+<verify-report verdict="${verifyOut.verdict}">
+${verifyOut.report}
 </verify-report>
 
 ## GATE VERDICTS (final round ${attempt})
 ${verdicts.map((v, i) => `<gate-lens name="${LENSES[i].key}" verdict="${v?.verdict ?? 'MISSING'}">\n${v?.report ?? '(died)'}\n</gate-lens>`).join('\n')}
 
-Run every command in the foreground and read its exit code in the same turn.
-Never start the suite in the background and end your turn waiting on it — that
-is how the previous attempt at this step died without committing. There is no
-monitor coming to report your exit codes.
+Run every command in the foreground and read its exit code in the same turn. Never start the suite
+in the background and end your turn waiting on it — that is how a previous attempt at this step died
+without committing. There is no monitor coming to report your exit codes.
 
 ${GREEN}
 
 Steps (see .claude/skills/land/SKILL.md):
-1. Re-run the full green suite. Docs-sync runs after the gate, so the tree you
-   are about to commit is not the tree the verify report above certified. The
-   build cache makes the run cheap when nothing has actually changed.
-2. Write .claude/.gate-pass (TICKET/BRANCH/HEAD/FINGERPRINT/SCOPE). FINGERPRINT is the hex from the one command in .claude/rules/verification.md (Gate-pass fingerprint) — do not invent a recipe.
-3. Stage explicit files by name. Never git add -A.
-4. Commit: Area: summary (${TICKET}). Confirm subject names the ticket.
-5. From ${REPO}: checkout develop, pull, merge --no-ff ${BRANCH}, push origin develop, delete local feature branch.
-6. Leave ${REPO} on develop with a clean tree.
+1. Re-run the full green suite. Docs-sync runs after the gate, so the tree you are about to commit
+   is not the tree the verify report certified. The build cache makes it cheap when nothing changed.
+2. Write .claude/.gate-pass (TICKET/BRANCH/HEAD/FINGERPRINT/SCOPE). FINGERPRINT is the hex from the
+   one command in .claude/rules/verification.md — do not invent a recipe.
+3. Stage explicit files by name. Never git add -A. Files dirty in the tree that are not this
+   ticket's work are left alone — not staged, not reverted.
+4. Commit: \`Area: summary (${TICKET})\`. The body ends the message — no session URL, no
+   Co-Authored-By, nothing after it.
+5. From ${REPO}: fetch origin develop, rebase ${BRANCH} onto origin/develop, checkout develop, pull,
+   \`git merge --ff-only ${BRANCH}\`, push origin develop, delete the local feature branch. There is
+   no merge commit. If --ff-only fails, STOP and report — never fall back to a merge commit.
+6. Leave ${REPO} on develop.
 
-If the merge conflicts, resolve it, stage the resolved files, and finish with
-\`git merge --continue\` — never the commit subcommand. The pre-commit hook blocks
-every commit on develop, including the one that concludes a conflicted merge.
+If the rebase conflicts, resolve it, stage the resolved files, and continue with
+\`git rebase --continue\` — never the commit subcommand. The pre-commit hook blocks every commit on
+develop.
 
-Never --no-verify. Report what git said. Do not claim landing is proven —
-a separate confirm step will check origin/develop.`,
+Never --no-verify. Report what git said. Do not claim landing is proven — a separate confirm step
+checks origin/develop.`,
   { model: 'opus', label: `land:${TICKET}`, phase: 'Land', schema: LAND_RESULT })
 
-function parseLandedCommit(text) {
-  if (typeof text !== 'string' || !text.trim()) return null
-  const hits = []
-  for (const line of text.split(/\r?\n/)) {
-    const m = line.trim().match(/^LANDED_COMMIT=([0-9a-f]{7,40}|NO)$/i)
-    if (m) hits.push(m[1])
-  }
-  if (hits.length !== 1) return null
-  if (hits[0].toUpperCase() === 'NO') return null
-  return hits[0]
-}
-
-const confirmOut = await agent(`Confirm landing of ${TICKET}. Your ENTIRE reply must be exactly one line.
+const confirm = await agent(`Confirm landing of ${TICKET}.
 
 Main repo: ${REPO}
-Ticket: ${TICKET}
 
-Do this and nothing else:
-1. git -C ${REPO} fetch origin develop
+1. \`git -C ${REPO} fetch origin develop\`
 2. Find the commit on origin/develop whose subject contains ${TICKET} (most recent if several).
-   If none, reply exactly: LANDED_COMMIT=NO
-3. Run: git -C ${REPO} merge-base --is-ancestor <sha> origin/develop
-4. Run: git -C ${REPO} ls-remote origin refs/heads/develop
-5. If merge-base exits 0 and the SHA is reachable on origin/develop, reply exactly:
-   LANDED_COMMIT=<sha>
-   Otherwise reply exactly:
-   LANDED_COMMIT=NO
+3. \`git -C ${REPO} merge-base --is-ancestor <sha> origin/develop\`
 
-No other text. No markdown. No log. One line only.`,
-  { model: 'opus', label: `confirm-land:${TICKET}`, phase: 'Land' })
+Return that sha in \`landedSha\` only if step 3 exits 0. Otherwise return the empty string.
+Check nothing else and change nothing.`,
+  { model: 'opus', label: `confirm-land:${TICKET}`, phase: 'Land', schema: CONFIRM_RESULT })
 
-const landedSha = parseLandedCommit(confirmOut)
-const landedOk = !!landedSha
+const landedSha = /^[0-9a-f]{7,40}$/i.test(confirm?.landedSha ?? '') ? confirm.landedSha : null
 
-if (landedOk) {
-  await agent(`Close ${TICKET} in Linear with evidence.
+const closed = landedSha
+  ? await agent(`Close ${TICKET} in Linear with evidence.
 
-Move In Review then Done. Comment BEFORE status change with: landing SHA ${landedSha}, suite result, evidence clauses satisfied.
+Move to In Review then Done. Comment BEFORE the status change — an archived issue rejects a
+comment and there is no un-archive. The comment opens with the source line \`**[build-ticket / land]**\`
+and nothing above it, per \`.claude/rules/linear-discipline.md\`, then carries: landing sha ${landedSha},
+the suite result, and which evidence clauses were satisfied.
 
-<confirm-report>
-${confirmOut}
-</confirm-report>
+Check the ticket's children before AND after the close. Cascades run both ways and are not
+reliable, so report in \`boardEffects\` anything that moved besides this ticket.
+
+This is the last step of the run. Your \`summary\` is what the orchestrator reports to the user,
+so write it for someone who has read none of the below.
 
 <land-result>
 ${JSON.stringify(landed, null, 2)}
 </land-result>
 
-<verify-report>
-${verifyOut}
-</verify-report>`,
-    { model: 'opus', label: `close:${TICKET}`, phase: 'Land', agentType: 'project-manager' })
-}
+<verify-report verdict="${verifyOut.verdict}">
+${verifyOut.report}
+</verify-report>
+
+<gate-verdicts rounds="${attempt}">
+${verdicts.map((v, i) => `<gate-lens name="${LENSES[i].key}" verdict="${v?.verdict ?? 'MISSING'}"/>`).join('\n')}
+</gate-verdicts>`,
+    { model: 'opus', label: `close:${TICKET}`, phase: 'Land', agentType: 'project-manager', schema: CLOSE_RESULT })
+  : null
 
 return {
-  ticket:     TICKET,
-  landed:     landedOk,
-  landedSha:  landedSha || null,
-  rounds:     attempt,
-  confirm:    confirmOut,
-  verify:     verifyOut,
+  ticket: TICKET,
+  landed: !!landedSha,
+  landedSha,
+  rounds: attempt,
+  summary: closed?.summary ?? null,
+  ticketState: closed?.ticketState ?? 'not closed — landing was not confirmed',
+  boardEffects: closed?.boardEffects ?? [],
+  findings: landed?.findings ?? [],
+  reportMatchedTree: verifyOut.reportMatchesTree,
   filesStaged: landed?.filesStaged ?? [],
-  suite:      landed?.suite ?? [],
-  findings:   landed?.findings ?? [],
+  suite: landed?.suite ?? [],
+  verify: verifyOut.report,
+  close: closed?.report ?? null,
 }

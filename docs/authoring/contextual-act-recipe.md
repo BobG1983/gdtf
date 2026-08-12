@@ -90,7 +90,7 @@ the frame it was claimed in, exactly as a press is.
 - **Offer the act even when the actor cannot pay for it.** Geometry, faction, life and line
   of sight decide whether the button is on screen; affordability decides only whether it is
   pressable. Every scan takes its target test from the sim's predicate and writes no
-  adjacency, faction, life or bleeding test of its own. The six whose predicate folds TU in
+  adjacency, faction, life or bleeding test of its own. Those whose predicate folds TU in
   — Execute, Stabilize, Open Door, Throw Grenade, Enter and Exit Emplacement — call it
   twice: once with the cost itself as the pool, which holds the TU term true so the
   remaining terms pick the target, then with the actor's real pool for the pressable bit.
@@ -116,7 +116,7 @@ reload-when-landed** — the brain (`crates/gdtf_battle_sim/src/ai/`) writes onl
 new act must EITHER add a brain arm that can emit its `*Requested`, OR record here (and
 on the ticket) why the AI does not use it yet.
 
-Why-not record for the eight existing contextual acts: they are player-affordance
+Why-not record for the existing contextual acts: they are player-affordance
 surfaces pending the AI-acts expansion; none has a brain arm today.
 
 ### 5. QA command (one file + one line + one socket case)

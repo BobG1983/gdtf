@@ -11,7 +11,7 @@ covers its own schema.
 
 ## Part 1 — The one-line contract
 
-A new folder-loaded family costs exactly three things:
+A new folder-loaded family costs exactly this:
 
 1. **One marker impl** of the `ContentFamily` trait
    (`crates/gdtf_assets/src/family/def.rs`) in the glue crate
