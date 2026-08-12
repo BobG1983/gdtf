@@ -145,9 +145,15 @@ impl QaCommand for AppPhase {
   the app is; a command with a precondition returns
   `CommandAvailability::Unavailable { code, note }`, naming the missing thing in words a
   caller can act on.
-- **`register_handler`** puts the handler in whatever schedule band its work belongs to. The
-  only requirement is `.after(QaCommandSystems::Claim)` — that is where the decode step fills
-  the queue, so a handler that ran earlier would answer every call a frame late.
+- **`register_handler`** puts the handler wherever in the schedule its work belongs.
+  `.after(QaCommandSystems::Claim)` is the floor — that is where the decode step fills
+  the queue, so a handler that ran earlier would answer every call a frame late. A handler
+  that WRITES a resource the game also writes needs an edge against each of those systems
+  too. Without one the built schedule picks the winner, and the reply can name a value that
+  another system overwrote later in the same frame. `battle.set_fire_mode` writes
+  `SelectedFireMode` `.after(sync_fire_mode_on_select)` and
+  `.before(reset_move_target_on_fire_mode_change)` — the same two edges the action bar's
+  mode panel takes.
 
 ### The handler
 
@@ -579,7 +585,10 @@ way to hold W: the keys move by speed times frame time, while the offset asked f
 the offset taken. `battle.set_fire_mode` writes the same `SelectedFireMode` resource the
 action bar's mode panel writes, through the same lookup — the weapon the shooter fires,
 which is the mounted one while they man an emplacement and the gun in their hands
-otherwise. It refuses `MissingModel` with a note saying which precondition is missing when
+otherwise. Its write lands after the frame's selection sync and before the move-target
+reset, so the mode in the reply is the mode the next `battle.cost`, `battle.sightline` or
+`act.fire` prices — the sync cannot put the weapon back on single after the reply went
+out. It refuses `MissingModel` with a note saying which precondition is missing when
 nothing is selected, the shooter has no weapon to fire, or that weapon does not offer the
 mode.
 
