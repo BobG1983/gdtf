@@ -13,7 +13,7 @@ use gdtf_battle_sim::{
 
 use super::{
     actors::{at, magazine_of},
-    harness::{battle_running_app, parent_of, single_with},
+    harness::{battle_running_app, parent_of, single_with, the_only},
     real_layout_harness::real_layout_battle_running_app,
 };
 
@@ -62,7 +62,8 @@ impl PixelRect {
     }
 }
 
-fn pixel_rect_of<M: Component>(app: &mut App) -> Option<PixelRect> {
+/// The one laid-out rect of `M`, failing on `claim` when the marker resolves to any other count.
+fn pixel_rect_of<M: Component>(app: &mut App, claim: &str) -> PixelRect {
     let mut query = app
         .world_mut()
         .query_filtered::<(&ComputedNode, &UiGlobalTransform), With<M>>();
@@ -70,11 +71,11 @@ fn pixel_rect_of<M: Component>(app: &mut App) -> Option<PixelRect> {
         .iter(app.world())
         .map(|(node, transform)| PixelRect::from_node(node, transform))
         .collect();
-    if results.len() == 1 {
-        results.pop()
-    } else {
-        None
-    }
+    assert_eq!(results.len(), 1, "{claim}; found {} instead", results.len());
+    let Some(rect) = results.pop() else {
+        unreachable!("the count assertion above leaves exactly one rect")
+    };
+    rect
 }
 
 #[test]
@@ -84,7 +85,9 @@ fn contextual_panel_is_contained_inside_the_bottom_bar() {
         app_opt.is_some(),
         "the real-layout harness must reach BattleScapeState::BattleRunning with its font loaded",
     );
-    let Some(mut app) = app_opt else { return };
+    let Some(mut app) = app_opt else {
+        unreachable!("the assertion above leaves the app present")
+    };
 
     spawn_throw_actor(&mut app, 5, 5, 0);
     for _ in 0..8 {
@@ -92,15 +95,12 @@ fn contextual_panel_is_contained_inside_the_bottom_bar() {
         app.update();
     }
 
-    let root = single_with::<ContextualPanelRoot>(&mut app);
-    let bar = single_with::<BottomBarRoot>(&mut app);
-    assert!(
-        root.is_some() && bar.is_some(),
-        "both the contextual panel root and the bottom bar must exist in the live battle",
+    let root = the_only::<ContextualPanelRoot>(
+        &mut app,
+        "the contextual panel root must exist in the live battle",
     );
-    let (Some(root), Some(bar_entity)) = (root, bar) else {
-        return;
-    };
+    let bar_entity =
+        the_only::<BottomBarRoot>(&mut app, "the bottom bar must exist in the live battle");
     assert_eq!(
         parent_of(&app, root),
         Some(bar_entity),
@@ -113,15 +113,12 @@ fn contextual_panel_is_contained_inside_the_bottom_bar() {
         "an offered Throw must reveal the panel root so its geometry is meaningful",
     );
 
-    let panel_rect = pixel_rect_of::<ContextualPanelRoot>(&mut app);
-    let bar_rect = pixel_rect_of::<BottomBarRoot>(&mut app);
-    assert!(
-        panel_rect.is_some() && bar_rect.is_some(),
-        "both the panel root and the bottom bar must have real computed geometry",
+    let panel_rect = pixel_rect_of::<ContextualPanelRoot>(
+        &mut app,
+        "the panel root must have real computed geometry",
     );
-    let (Some(panel_rect), Some(bar_rect)) = (panel_rect, bar_rect) else {
-        return;
-    };
+    let bar_rect =
+        pixel_rect_of::<BottomBarRoot>(&mut app, "the bottom bar must have real computed geometry");
     assert!(
         panel_rect.contained_in(&bar_rect),
         "the contextual panel root ({:?}..{:?}) must be CONTAINED inside the bottom bar \
@@ -144,15 +141,14 @@ fn contextual_panel_updates_mutate_in_place() {
 
     hover_cell(&mut app, 15, 15);
     app.update();
-    let root = single_with::<ContextualPanelRoot>(&mut app);
-    let button = single_with::<ThrowGrenadeButton>(&mut app);
-    assert!(
-        root.is_some() && button.is_some(),
-        "the panel root + Throw button must exist once offered",
+    let root = the_only::<ContextualPanelRoot>(
+        &mut app,
+        "the panel root must exist once an act is offered",
     );
-    let (Some(root), Some(button)) = (root, button) else {
-        return;
-    };
+    let button = the_only::<ThrowGrenadeButton>(
+        &mut app,
+        "the Throw button must exist once an act is offered",
+    );
     assert_eq!(
         app.world().get::<Visibility>(button).copied(),
         Some(Visibility::Visible),

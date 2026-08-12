@@ -137,9 +137,11 @@ fn an_empty_magazine_does_not_offer_throw() {
         "an EMPTY magazine offers NO throw — the sim refuses it, so the panel must not carry it",
     );
 
-    let Some(weapon) = single_with::<TrajectoryStyle>(&mut app) else {
-        return;
-    };
+    let weapon = the_only::<TrajectoryStyle>(
+        &mut app,
+        "exactly one weapon must carry a TrajectoryStyle, or the round this case loads goes into \
+         a weapon the offer never reads and the reload half proves nothing",
+    );
     if let Ok(mut entity) = app.world_mut().get_entity_mut(weapon) {
         entity.insert(magazine_of(1));
     }
@@ -164,9 +166,10 @@ fn pressing_throw_emits_throw_grenade_requested_for_hovered_cell() {
         throw_visible(&mut app),
         "sanity: the Throw button is offered before the press",
     );
-    let Some(throw_btn) = single_with::<ThrowGrenadeButton>(&mut app) else {
-        return;
-    };
+    let throw_btn = the_only::<ThrowGrenadeButton>(
+        &mut app,
+        "the panel must offer exactly one Throw button to press",
+    );
 
     hover_cell(&mut app, 15, 15);
     press_ui_button(&mut app, throw_btn);

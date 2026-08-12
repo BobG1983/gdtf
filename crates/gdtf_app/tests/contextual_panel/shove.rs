@@ -83,9 +83,10 @@ fn pressing_shove_emits_shove_requested_for_target() {
         shove_visible(&mut app),
         "sanity: the Shove button is offered before the press",
     );
-    let Some(shove_btn) = single_with::<ShoveButton>(&mut app) else {
-        return;
-    };
+    let shove_btn = the_only::<ShoveButton>(
+        &mut app,
+        "the panel must offer exactly one Shove button to press",
+    );
 
     press_ui_button(&mut app, shove_btn);
     app.update();
@@ -135,9 +136,7 @@ fn a_pool_below_the_shove_cost_still_offers_the_button_greyed_out() {
         button_greyed::<ShoveButton>(&mut app),
         "a pool below the shove cost greys the button out",
     );
-    let Some((greyed, _idle)) = greyed_and_idle_fills(&app) else {
-        return;
-    };
+    let (greyed, _idle) = greyed_and_idle_fills(&app);
     assert_eq!(
         button_fill::<ShoveButton>(&mut app),
         Some(greyed),
@@ -148,9 +147,11 @@ fn a_pool_below_the_shove_cost_still_offers_the_button_greyed_out() {
 #[test]
 fn neither_a_press_nor_a_slot_key_fires_a_greyed_shove() {
     let (mut app, _shover) = a_shover_one_tu_short();
-    let Some(shove_btn) = single_with::<ShoveButton>(&mut app) else {
-        return;
-    };
+    let shove_btn = the_only::<ShoveButton>(
+        &mut app,
+        "the panel must still offer exactly one Shove button while it is greyed out, or there is \
+         nothing for this case to press",
+    );
 
     press_ui_button(&mut app, shove_btn);
     press_digit(&mut app, KeyCode::Digit1);
@@ -183,9 +184,7 @@ fn raising_the_pool_to_the_cost_re_enables_and_repaints_the_shove_button() {
         !button_greyed::<ShoveButton>(&mut app),
         "a pool that covers the cost drops the disabled marker",
     );
-    let Some((greyed, idle)) = greyed_and_idle_fills(&app) else {
-        return;
-    };
+    let (greyed, idle) = greyed_and_idle_fills(&app);
     assert_ne!(
         greyed, idle,
         "the theme must paint disabled and idle differently or this case cannot discriminate",
@@ -196,9 +195,10 @@ fn raising_the_pool_to_the_cost_re_enables_and_repaints_the_shove_button() {
         "re-enabling repaints the button back to its enabled fill",
     );
 
-    let Some(shove_btn) = single_with::<ShoveButton>(&mut app) else {
-        return;
-    };
+    let shove_btn = the_only::<ShoveButton>(
+        &mut app,
+        "the panel must offer exactly one Shove button once the pool covers the cost",
+    );
     press_ui_button(&mut app, shove_btn);
     app.update();
     assert_eq!(
@@ -220,9 +220,10 @@ fn contextual_press_drains_the_same_update_it_was_queued() {
         shove_visible(&mut app),
         "sanity: the Shove button is offered before the press",
     );
-    let Some(shove_btn) = single_with::<ShoveButton>(&mut app) else {
-        return;
-    };
+    let shove_btn = the_only::<ShoveButton>(
+        &mut app,
+        "the panel must offer exactly one Shove button to press",
+    );
 
     press_ui_button(&mut app, shove_btn);
     app.update();

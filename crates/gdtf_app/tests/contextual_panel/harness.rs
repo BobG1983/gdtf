@@ -89,6 +89,16 @@ pub(crate) fn single_with<M: Component>(app: &mut App) -> Option<Entity> {
     }
 }
 
+/// The one entity carrying `M`, failing on `claim` when the marker resolves to any other count.
+pub(crate) fn the_only<M: Component>(app: &mut App, claim: &str) -> Entity {
+    let found = all_with::<M>(app);
+    assert_eq!(found.len(), 1, "{claim}; found {} instead", found.len());
+    let [one] = found.as_slice() else {
+        unreachable!("the count assertion above leaves exactly one entity")
+    };
+    *one
+}
+
 pub(crate) fn visibility<M: Component>(app: &mut App) -> Option<Visibility> {
     let entity = single_with::<M>(app)?;
     app.world().get::<Visibility>(entity).copied()
@@ -127,7 +137,15 @@ pub(crate) fn button_fill<M: Component>(app: &mut App) -> Option<Color> {
 }
 
 /// The theme fill a button carries while greyed out, and the one it carries enabled and idle.
-pub(crate) fn greyed_and_idle_fills(app: &App) -> Option<(Color, Color)> {
-    let theme = app.world().get_resource::<GdtfTheme>()?;
-    Some((*theme.button.disabled, *theme.button.color))
+pub(crate) fn greyed_and_idle_fills(app: &App) -> (Color, Color) {
+    let theme = app.world().get_resource::<GdtfTheme>();
+    assert!(
+        theme.is_some(),
+        "the battle app must carry a GdtfTheme, or a button's fill has nothing to be checked \
+         against",
+    );
+    let Some(theme) = theme else {
+        unreachable!("the assertion above leaves the theme present")
+    };
+    (*theme.button.disabled, *theme.button.color)
 }

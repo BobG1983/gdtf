@@ -159,9 +159,10 @@ fn pressing_execute_emits_execute_downed_requested_for_target() {
         execute_visible(&mut app),
         "sanity: the Execute button is offered before the press",
     );
-    let Some(execute_btn) = single_with::<ExecuteButton>(&mut app) else {
-        return;
-    };
+    let execute_btn = the_only::<ExecuteButton>(
+        &mut app,
+        "the panel must offer exactly one Execute button to press",
+    );
 
     press_ui_button(&mut app, execute_btn);
     app.update();
@@ -191,9 +192,10 @@ fn pressing_stabilize_emits_stabilize_downed_requested_for_target() {
         stabilize_visible(&mut app),
         "sanity: the Stabilize button is offered before the press",
     );
-    let Some(stabilize_btn) = single_with::<StabilizeButton>(&mut app) else {
-        return;
-    };
+    let stabilize_btn = the_only::<StabilizeButton>(
+        &mut app,
+        "the panel must offer exactly one Stabilize button to press",
+    );
 
     press_ui_button(&mut app, stabilize_btn);
     app.update();

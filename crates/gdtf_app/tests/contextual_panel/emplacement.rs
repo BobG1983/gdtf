@@ -220,9 +220,10 @@ fn pressing_enter_mans_the_emplacement() {
         Some(EmplacementState::Vacant),
         "sanity: the emplacement is VACANT before the press",
     );
-    let Some(enter_btn) = single_with::<EnterEmplacementButton>(&mut app) else {
-        return;
-    };
+    let enter_btn = the_only::<EnterEmplacementButton>(
+        &mut app,
+        "the panel must offer exactly one Enter button to press",
+    );
 
     press_ui_button(&mut app, enter_btn);
     let manned = advance_until(
@@ -275,9 +276,10 @@ fn pressing_exit_emits_exit_emplacement_requested_for_manned_mount() {
         exit_emplacement_visible(&mut app),
         "sanity: the Exit button is offered before the press",
     );
-    let Some(exit_btn) = single_with::<ExitEmplacementButton>(&mut app) else {
-        return;
-    };
+    let exit_btn = the_only::<ExitEmplacementButton>(
+        &mut app,
+        "the panel must offer exactly one Exit button to press",
+    );
 
     press_ui_button(&mut app, exit_btn);
     app.update();

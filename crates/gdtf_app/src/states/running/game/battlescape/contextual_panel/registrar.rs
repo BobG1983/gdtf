@@ -2,7 +2,9 @@ use bevy::{
     ecs::{schedule::IntoScheduleConfigs, system::ScheduleSystem},
     prelude::*,
 };
-use gdtf_battle_input::{contextual::ContextualActSystems, pick_hovered_cell};
+use gdtf_battle_input::{
+    clear_downed_selection, contextual::ContextualActSystems, pick_hovered_cell,
+};
 use gdtf_battle_presenter::playback_caught_up;
 use gdtf_battle_sim::prelude::BattleInProgress;
 
@@ -55,6 +57,11 @@ pub(in crate::states::running::game::battlescape) fn configure_contextual_panel_
     .configure_sets(
         Update,
         ContextualPanelSystems::Offer.before(pick_hovered_cell),
+    )
+    // The scan reads the selection the frame started with, not the one the clear leaves.
+    .configure_sets(
+        Update,
+        ContextualPanelSystems::Offer.before(clear_downed_selection),
     )
     .configure_sets(
         Update,

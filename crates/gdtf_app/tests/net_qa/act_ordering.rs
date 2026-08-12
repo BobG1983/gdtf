@@ -4,7 +4,8 @@
 use bevy::ecs::schedule::{IntoSystemSet, NodeId};
 use gdtf_app::test_support::{ActCommandSystems, ContextualPanelSystems, count_turn_changes};
 use gdtf_battle_input::{
-    InputSystems, auto_select_first_player_ganger, contextual::ContextualActSystems,
+    InputSystems, auto_select_first_player_ganger, clear_downed_selection,
+    contextual::ContextualActSystems,
 };
 use gdtf_battle_sim::occupancy_sync::SimSystems;
 use gdtf_qa_command::dispatch::QaCommandSystems;
@@ -240,6 +241,42 @@ fn every_command_claims_after_the_game_has_settled_its_selection() -> TestResult
         ordered_before(graph, set_node(graph, QaCommandSystems::Claim)?, act_claim),
         "the act claim band must be ordered after the command claim band, which is what carries \
          the auto-select edge on to the acts",
+    );
+    Ok(())
+}
+
+#[test]
+fn the_panel_scans_its_offers_before_the_game_clears_a_downed_selection() -> TestResult {
+    let (mut app, _port) = battle_app_listening()?;
+    app.update();
+    let update = update_schedule(&app)?;
+    let graph = update.graph();
+
+    let clear = a_system_named(update, "clear_downed_selection")?;
+    assert!(
+        covers(
+            graph,
+            set_node(graph, clear_downed_selection.into_system_set())?,
+            clear
+        ),
+        "the app must register clear_downed_selection, or ordering against it orders against \
+         nothing",
+    );
+    let scans = members(graph, ContextualPanelSystems::Offer)?;
+    assert!(
+        !scans.is_empty(),
+        "the panel must register an offer scan per contextual act family, or ordering against \
+         ContextualPanelSystems::Offer orders against nothing",
+    );
+    assert!(
+        ordered_before(
+            graph,
+            set_node(graph, ContextualPanelSystems::Offer)?,
+            clear
+        ),
+        "the offer scan reads the selection and the clear writes it, so the scan must be ordered \
+         first; unordered, a downed selection can be cleared and re-picked before the scan runs \
+         and every act's alive-actor term is asked about a different ganger",
     );
     Ok(())
 }

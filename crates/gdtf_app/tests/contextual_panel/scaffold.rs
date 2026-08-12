@@ -11,9 +11,8 @@ use super::harness::*;
 fn contextual_panel_spawns_hidden_in_battle() {
     let mut app = battle_running_app();
 
-    let root = single_with::<ContextualPanelRoot>(&mut app);
-    assert!(
-        root.is_some(),
+    let root = the_only::<ContextualPanelRoot>(
+        &mut app,
         "exactly one contextual panel root is spawned in BattleRunning",
     );
     assert!(
@@ -33,17 +32,13 @@ fn contextual_panel_spawns_hidden_in_battle() {
         "the Open Door button exists exactly once in BattleRunning",
     );
 
-    let Some(root) = root else {
-        return;
-    };
-    let bar = single_with::<BottomBarRoot>(&mut app);
-    assert!(
-        bar.is_some(),
+    let bar = the_only::<BottomBarRoot>(
+        &mut app,
         "the bottom bar must exist so the contextual panel can parent under it",
     );
     assert_eq!(
         parent_of(&app, root),
-        bar,
+        Some(bar),
         "the contextual panel root must be a CHILD of the bottom bar, not a free-floating top-level overlay",
     );
 

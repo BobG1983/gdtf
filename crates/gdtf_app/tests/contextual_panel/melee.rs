@@ -131,9 +131,7 @@ fn a_pool_below_the_strike_cost_still_offers_the_button_greyed_out() {
         button_greyed::<MeleeButton>(&mut app),
         "a pool below the wielded weapon's strike cost greys the button out",
     );
-    let Some((greyed, _idle)) = greyed_and_idle_fills(&app) else {
-        return;
-    };
+    let (greyed, _idle) = greyed_and_idle_fills(&app);
     assert_eq!(
         button_fill::<MeleeButton>(&mut app),
         Some(greyed),
@@ -144,9 +142,11 @@ fn a_pool_below_the_strike_cost_still_offers_the_button_greyed_out() {
 #[test]
 fn neither_a_press_nor_a_slot_key_fires_a_greyed_melee() {
     let (mut app, _attacker) = an_attacker_one_tu_short();
-    let Some(melee_btn) = single_with::<MeleeButton>(&mut app) else {
-        return;
-    };
+    let melee_btn = the_only::<MeleeButton>(
+        &mut app,
+        "the panel must still offer exactly one Melee button while it is greyed out, or there is \
+         nothing for this case to press",
+    );
 
     press_ui_button(&mut app, melee_btn);
     press_digit(&mut app, KeyCode::Digit1);
@@ -178,9 +178,7 @@ fn raising_the_pool_to_the_cost_re_enables_and_repaints_the_melee_button() {
         !button_greyed::<MeleeButton>(&mut app),
         "a pool that covers the cost drops the disabled marker",
     );
-    let Some((greyed, idle)) = greyed_and_idle_fills(&app) else {
-        return;
-    };
+    let (greyed, idle) = greyed_and_idle_fills(&app);
     assert_ne!(
         greyed, idle,
         "the theme must paint disabled and idle differently or this case cannot discriminate",
@@ -191,9 +189,10 @@ fn raising_the_pool_to_the_cost_re_enables_and_repaints_the_melee_button() {
         "re-enabling repaints the button back to its enabled fill",
     );
 
-    let Some(melee_btn) = single_with::<MeleeButton>(&mut app) else {
-        return;
-    };
+    let melee_btn = the_only::<MeleeButton>(
+        &mut app,
+        "the panel must offer exactly one Melee button once the pool covers the cost",
+    );
     press_ui_button(&mut app, melee_btn);
     app.update();
     assert_eq!(
@@ -215,9 +214,10 @@ fn pressing_melee_emits_melee_requested_for_target() {
         melee_visible(&mut app),
         "sanity: the Melee button is offered before the press",
     );
-    let Some(melee_btn) = single_with::<MeleeButton>(&mut app) else {
-        return;
-    };
+    let melee_btn = the_only::<MeleeButton>(
+        &mut app,
+        "the panel must offer exactly one Melee button to press",
+    );
 
     press_ui_button(&mut app, melee_btn);
     app.update();

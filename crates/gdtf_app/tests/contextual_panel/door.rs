@@ -161,9 +161,10 @@ fn pressing_open_door_toggles_the_door_open() {
         Some(OpenState::Closed),
         "sanity: the door is CLOSED before the press",
     );
-    let Some(open_door_btn) = single_with::<OpenDoorButton>(&mut app) else {
-        return;
-    };
+    let open_door_btn = the_only::<OpenDoorButton>(
+        &mut app,
+        "the panel must offer exactly one Open Door button to press",
+    );
 
     press_ui_button(&mut app, open_door_btn);
     let opened = advance_until(
