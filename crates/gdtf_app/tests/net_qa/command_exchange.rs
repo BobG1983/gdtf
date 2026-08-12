@@ -1,5 +1,3 @@
-use std::{sync::mpsc, thread};
-
 use bevy::app::App;
 use gdtf_app::test_support::NET_QA_PROTOCOL_VERSION;
 use gdtf_qa_protocol::{
@@ -8,9 +6,7 @@ use gdtf_qa_protocol::{
     ports::NetQaPort,
 };
 
-use super::socket_support::{
-    Client, SocketFixture, TestError, battle_app_listening, drive_until_reported,
-};
+use super::socket_support::{Client, SocketFixture, TestError, battle_app_listening};
 
 pub(crate) const APP_PHASE: &str = "app.phase";
 
@@ -218,31 +214,16 @@ fn exchange_over(
     port: NetQaPort,
     requests: Vec<QaRequest>,
 ) -> Result<Vec<QaResponse>, TestError> {
-    let rx = client_thread(port, requests);
-    drive_until_reported(app, &rx)
-}
-
-fn client_thread(
-    port: NetQaPort,
-    requests: Vec<QaRequest>,
-) -> mpsc::Receiver<Result<Vec<QaResponse>, TestError>> {
-    let (tx, rx) = mpsc::channel();
-    thread::spawn(move || {
-        let collected = (|| -> Result<Vec<QaResponse>, TestError> {
-            let mut client = Client::connect(port)?;
-            let hello = client.exchange(&QaRequest::Hello(NET_QA_PROTOCOL_VERSION))?;
-            if !matches!(hello, QaResponse::HelloOk(_)) {
-                return Err(format!("the handshake must succeed first, got {hello:?}").into());
-            }
-            let mut replies = Vec::with_capacity(requests.len());
-            for request in &requests {
-                replies.push(client.exchange(request)?);
-            }
-            Ok(replies)
-        })();
-        let _sent = tx.send(collected);
-    });
-    rx
+    let mut client = Client::connect(port)?;
+    let hello = client.exchange(app, &QaRequest::Hello(NET_QA_PROTOCOL_VERSION))?;
+    if !matches!(hello, QaResponse::HelloOk(_)) {
+        return Err(format!("the handshake must succeed first, got {hello:?}").into());
+    }
+    let mut replies = Vec::with_capacity(requests.len());
+    for request in &requests {
+        replies.push(client.exchange(app, request)?);
+    }
+    Ok(replies)
 }
 
 pub(crate) fn exchange_all(

@@ -3,12 +3,9 @@
 
 mod assertions;
 mod client;
-mod drive;
 mod harness;
 mod load_case;
 mod support;
-
-use std::{sync::mpsc, thread};
 
 use gdtf_qa_protocol::message::{ProtocolVersion, QaRequest};
 
@@ -17,7 +14,6 @@ use crate::{
         assert_editor_catalogue, assert_hello_ok, assert_unknown_command, assert_version_mismatch,
     },
     client::{exchange_while_editing, wrong_version},
-    drive::drive_until_batched,
     harness::{advance_to_editing, editor_app_listening},
     load_case::reply_answered_during_load,
     support::TestResult,
@@ -28,12 +24,7 @@ fn hello_negotiates_over_the_real_editor_listener() -> TestResult {
     let (mut app, port) = editor_app_listening()?;
     advance_to_editing(&mut app);
 
-    let (tx, rx) = mpsc::channel();
-    thread::spawn(move || {
-        let _sent = tx.send(exchange_while_editing(port));
-    });
-
-    let [hello, mismatch, unknown] = drive_until_batched(&mut app, &rx)?;
+    let [hello, mismatch, unknown] = exchange_while_editing(&mut app, port)?;
     assert_hello_ok(&hello);
     assert_version_mismatch(&mismatch);
     assert_unknown_command(&unknown);

@@ -1,8 +1,7 @@
 use std::{
     error::Error,
-    io::{Read as _, Write as _},
+    io::{self, ErrorKind, Read as _, Write as _},
     net::{Ipv4Addr, TcpStream},
-    sync::mpsc::{Receiver, RecvTimeoutError},
     time::Duration,
 };
 
@@ -27,11 +26,12 @@ pub(crate) type TestResult = Result<(), TestError>;
 /// Builds a listening app and returns it with the port its listener bound.
 pub(crate) type SocketFixture = fn() -> Result<(App, NetQaPort), TestError>;
 
-const READ_TIMEOUT: Duration = Duration::from_secs(10);
+/// How long one look at the socket waits before the game gets another frame.
+/// Its expiry is the pause between frames, never a failure.
+const READ_POLL: Duration = Duration::from_millis(10);
 
-const POLL_STEP: Duration = Duration::from_millis(10);
-
-const MAX_UPDATES: u32 = 400;
+/// Frames the game may take to answer one request. A deferred act waits out a whole enemy turn.
+const REPLY_BUDGET: u32 = 1024;
 
 const DRIVE_BUDGET: u32 = 512;
 
@@ -46,31 +46,49 @@ pub(crate) struct Client {
 impl Client {
     pub(crate) fn connect(port: NetQaPort) -> Result<Self, TestError> {
         let stream = TcpStream::connect((Ipv4Addr::LOCALHOST, *port))?;
-        stream.set_read_timeout(Some(READ_TIMEOUT))?;
+        stream.set_read_timeout(Some(READ_POLL))?;
         Ok(Self {
             stream,
             decoder: FrameDecoder::new(),
         })
     }
 
-    pub(crate) fn read(&mut self) -> Result<QaResponse, TestError> {
+    /// Send `request`, then run frames until the game answers it.
+    /// The wait is counted in frames, so a busy machine makes a case slower and never red.
+    pub(crate) fn exchange(
+        &mut self,
+        app: &mut App,
+        request: &QaRequest,
+    ) -> Result<QaResponse, TestError> {
+        self.stream.write_all(&encode(request)?)?;
+        self.answer(app, request)
+    }
+
+    fn answer(&mut self, app: &mut App, request: &QaRequest) -> Result<QaResponse, TestError> {
         let mut buf = [0u8; 512];
-        loop {
+        for _ in 0..REPLY_BUDGET {
+            app.update();
+            match self.stream.read(&mut buf) {
+                Ok(0) => {
+                    return Err(
+                        "the game closed the connection before a full response arrived".into(),
+                    );
+                }
+                Ok(read) => self.decoder.push(&buf[..read]),
+                Err(quiet) if nothing_yet(&quiet) => {}
+                Err(failed) => return Err(failed.into()),
+            }
             if let Some(frame) = self.decoder.next_frame()? {
                 return Ok(frame.decode::<QaResponse>()?);
             }
-            let read = self.stream.read(&mut buf)?;
-            if read == 0 {
-                return Err("the game closed the connection before a full response arrived".into());
-            }
-            self.decoder.push(&buf[..read]);
         }
+        Err(format!("the game never answered {request:?} within {REPLY_BUDGET} frames").into())
     }
+}
 
-    pub(crate) fn exchange(&mut self, request: &QaRequest) -> Result<QaResponse, TestError> {
-        self.stream.write_all(&encode(request)?)?;
-        self.read()
-    }
+// The socket had nothing to hand over this poll, rather than a connection that broke.
+fn nothing_yet(fault: &io::Error) -> bool {
+    matches!(fault.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut)
 }
 
 fn running_state(app: &App) -> Option<RunningState> {
@@ -110,7 +128,7 @@ pub(crate) fn game_app_listening() -> Result<(App, NetQaPort), TestError> {
     listening_menu_app()
 }
 
-/// The menu app with both capture tunables small enough for a reply inside `MAX_UPDATES`.
+/// The menu app with both capture tunables small enough for a reply inside `REPLY_BUDGET`.
 pub(crate) fn capture_app_listening() -> Result<(App, NetQaPort), TestError> {
     let (mut app, port) = listening_menu_app()?;
     app.insert_resource(SettleFrames::new(2));
@@ -137,19 +155,4 @@ pub(crate) fn battle_app_listening() -> Result<(App, NetQaPort), TestError> {
         .into());
     }
     Ok((app, port))
-}
-
-pub(crate) fn drive_until_reported<T>(
-    app: &mut App,
-    rx: &Receiver<Result<T, TestError>>,
-) -> Result<T, TestError> {
-    for _ in 0..MAX_UPDATES {
-        app.update();
-        match rx.recv_timeout(POLL_STEP) {
-            Ok(reported) => return reported,
-            Err(RecvTimeoutError::Timeout) => {}
-            Err(RecvTimeoutError::Disconnected) => break,
-        }
-    }
-    Err("the client thread never reported its reply".into())
 }
