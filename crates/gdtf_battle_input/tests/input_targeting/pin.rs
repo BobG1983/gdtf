@@ -1,8 +1,6 @@
 //! Pin: inspect/pin selection against fire mode and shooter state.
 use bevy::{input::ButtonInput, prelude::*};
-use gdtf_battle_input::{
-    GdtfBattleInputPlugin, InspectMode, InspectTarget, SelectedFireMode, SelectedShooter,
-};
+use gdtf_battle_input::{GdtfBattleInputPlugin, InspectMode, InspectTarget, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
@@ -110,11 +108,6 @@ fn set_hovered(app: &mut App, cell: Option<CellLevel>) {
 fn set_selection(app: &mut App, entity: Entity) {
     app.world_mut()
         .insert_resource(SelectedShooter::new(entity));
-}
-
-fn set_fire_mode(app: &mut App) {
-    app.world_mut()
-        .insert_resource(SelectedFireMode::new(spec()));
 }
 
 fn pinned(app: &App) -> Option<CellLevel> {
@@ -232,7 +225,6 @@ fn clicking_own_ganger_selects_and_keeps_the_pin() {
 #[test]
 fn clicking_to_fire_keeps_the_pin() {
     let mut app = pin_app();
-    set_fire_mode(&mut app);
 
     let shooter_cell = CellLevel::new(Cell::new(5, 5), LEVEL);
     let shooter = spawn_player_shooter(&mut app, shooter_cell);

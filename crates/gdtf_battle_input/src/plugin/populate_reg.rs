@@ -17,7 +17,6 @@ use gdtf_battle_sim::{
 use crate::selection::populate_reachable_overlay;
 use crate::{
     FireModeSystems, InputSystems,
-    fire_mode::sync_fire_mode_on_select,
     picking::pick_hovered_cell,
     selection::{
         auto_select_first_player_ganger, left_click_act, populate_fire_target,
@@ -32,7 +31,7 @@ pub(super) fn register_path_preview_population(app: &mut App) {
             .in_set(InputSystems::Gather)
             .after(left_click_act)
             .after(auto_select_first_player_ganger)
-            .after(sync_fire_mode_on_select)
+            .after(FireModeSystems::Write)
             .before(populate_path_preview)
             .run_if(resource_exists::<BattleInProgress>),
     )

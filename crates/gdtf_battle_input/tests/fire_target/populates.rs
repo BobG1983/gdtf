@@ -1,9 +1,9 @@
-use gdtf_battle_input::SelectedFireMode;
 use gdtf_battle_sim::{
     acts::fire_arc_tu_cost,
     magazine::mode_tu_cost,
     prelude::{Cell, CellLevel, Tu},
     tuning::CombatTuning,
+    weapon::FireMode,
 };
 
 use super::harness::*;
@@ -55,7 +55,9 @@ fn fireable_enemy_cost_resolves_off_weapon_and_is_nonzero() {
     place_enemy(&mut app, enemy_cell);
     set_hovered(&mut app, Some(enemy_cell));
 
-    let resolved_mode = **app.world().resource::<SelectedFireMode>();
+    let Some(resolved_mode) = resolved_mode(&app) else {
+        unreachable!("the shooter has been armed, so its gun resolves to a mode");
+    };
     let tuning = app.world().resource::<CombatTuning>();
     let expected_cost = fire_arc_tu_cost(
         *SHOOTER_FACING,
@@ -76,12 +78,69 @@ fn fireable_enemy_cost_resolves_off_weapon_and_is_nonzero() {
     assert_eq!(
         h.cost(),
         Some(expected_cost),
-        "the highlight cost EXACTLY equals fire_arc_tu_cost over the resolved SelectedFireMode",
+        "the highlight cost EXACTLY equals fire_arc_tu_cost over the mode the gun resolves to",
     );
     assert!(
         h.cost().is_some_and(|cost| *cost > 0),
         "the resolved fire cost is strictly positive for a normal weapon/mode (not 0 TU); got {:?}",
         h.cost(),
+    );
+}
+
+#[test]
+fn a_gun_rewritten_in_place_is_what_the_highlight_prices() {
+    let mut app = fire_target_app();
+    let shooter_cell = CellLevel::new(Cell::new(10, 10), LEVEL);
+    let enemy_cell = CellLevel::new(Cell::new(13, 11), LEVEL);
+
+    let (_shooter, tu_max, aiming) = spawn_and_select_shooter(&mut app, shooter_cell);
+    place_enemy(&mut app, enemy_cell);
+    set_fire_mode(&mut app, spec(0.2));
+    set_hovered(&mut app, Some(enemy_cell));
+    app.update();
+
+    // Same kind, new price, written straight onto the gun the shooter fires.
+    let rewritten = spec(0.6);
+    let Some(gun) = selected_gun(&app) else {
+        unreachable!("the selected shooter holds the gun the harness armed it with");
+    };
+    app.world_mut()
+        .entity_mut(gun)
+        .insert(FireMode::new(vec![rewritten]));
+
+    let tuning = app.world().resource::<CombatTuning>();
+    let expected_cost = fire_arc_tu_cost(
+        *SHOOTER_FACING,
+        shooter_cell.cell(),
+        enemy_cell.cell(),
+        mode_tu_cost(&rewritten, &tu_max, &aiming, tuning),
+        tuning,
+    );
+    let stale_cost = fire_arc_tu_cost(
+        *SHOOTER_FACING,
+        shooter_cell.cell(),
+        enemy_cell.cell(),
+        mode_tu_cost(&spec(0.2), &tu_max, &aiming, tuning),
+        tuning,
+    );
+    assert_ne!(
+        expected_cost, stale_cost,
+        "the rewrite has to change the price, or the case cannot tell which entry was read",
+    );
+    assert_eq!(
+        highlight(&app).cost(),
+        Some(stale_cost),
+        "the highlight was drawn at the armed price before the rewrite",
+    );
+
+    set_hovered(&mut app, Some(enemy_cell));
+    app.update();
+
+    assert_eq!(
+        highlight(&app).cost(),
+        Some(expected_cost),
+        "the highlight prices the gun's own entry, so the old price here means it was read off a \
+         copy taken before the rewrite",
     );
 }
 

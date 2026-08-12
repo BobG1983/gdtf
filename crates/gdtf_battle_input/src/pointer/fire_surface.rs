@@ -9,10 +9,10 @@ use gdtf_battle_sim::{
     magazine::{FireActor, FireRefusal, Magazine, fire_refusal},
     prelude::{CellLevel, LifeState, Tu},
     tuning::CombatTuning,
-    weapon::{Handedness, WieldedBy, Wields},
+    weapon::{FireMode, FireModeSpec, Handedness, WieldedBy, Wields},
 };
 
-use crate::SelectedFireMode;
+use crate::fire_mode::{ChosenFireMode, chosen_spec};
 
 /// Query data needed to decide whether a shooter can fire.
 pub type ShooterFireData<'a> = (
@@ -26,6 +26,9 @@ pub type ShooterFireData<'a> = (
 /// Magazine and handedness on a wielded weapon entity.
 pub type WeaponMagazine<'a> = (&'a Magazine, &'a Handedness);
 
+/// Fire-mode list and chosen kind on a wielded weapon entity.
+pub type WeaponModes<'a> = (&'a FireMode, Option<&'a ChosenFireMode>);
+
 /// A shooter's firing state and the weapon they fire.
 #[derive(SystemParam)]
 pub struct ShooterArms<'w, 's> {
@@ -35,6 +38,8 @@ pub struct ShooterArms<'w, 's> {
     wields:   Query<'w, 's, &'static Wields>,
     /// Magazine and handedness of a wielded weapon.
     weapons:  Query<'w, 's, WeaponMagazine<'static>, With<WieldedBy>>,
+    /// Fire modes and chosen kind of a wielded weapon.
+    modes:    Query<'w, 's, WeaponModes<'static>, With<WieldedBy>>,
     /// Melee probe used to skip melee weapons when picking the ranged one.
     melee:    MeleeQuery<'w, 's>,
     /// Mounted probe used to prefer a manned mount over the carried gun.
@@ -42,18 +47,28 @@ pub struct ShooterArms<'w, 's> {
 }
 
 impl ShooterArms<'_, '_> {
+    /// The weapon this shooter fires, if it holds one.
+    fn fired_weapon(&self, shooter: Entity) -> Option<Entity> {
+        self.wields.get(shooter).ok().and_then(|wields| {
+            wields.firing_weapon(
+                |entity| self.mounted.get(entity).is_ok(),
+                |entity| self.melee.get(entity).is_ok(),
+            )
+        })
+    }
+
     /// The magazine and handedness of the weapon this shooter fires, if it has one.
     fn firing_weapon(&self, shooter: Entity) -> Option<(&Magazine, &Handedness)> {
-        self.wields
-            .get(shooter)
-            .ok()
-            .and_then(|wields| {
-                wields.firing_weapon(
-                    |entity| self.mounted.get(entity).is_ok(),
-                    |entity| self.melee.get(entity).is_ok(),
-                )
-            })
+        self.fired_weapon(shooter)
             .and_then(|weapon| self.weapons.get(weapon).ok())
+    }
+
+    /// The spec the weapon this shooter fires is set to, if it resolves.
+    #[must_use]
+    pub fn chosen_spec(&self, shooter: Entity) -> Option<FireModeSpec> {
+        let weapon = self.fired_weapon(shooter)?;
+        let (modes, chosen) = self.modes.get(weapon).ok()?;
+        chosen_spec(modes, chosen)
     }
 }
 
@@ -97,7 +112,7 @@ impl ShotRefusal {
 pub fn try_fire_request(
     shooter: Entity,
     target: CellLevel,
-    fire_mode: &SelectedFireMode,
+    fire_mode: FireModeSpec,
     tuning: &CombatTuning,
     arms: &ShooterArms,
 ) -> Result<FireRequested, ShotRefusal> {
@@ -120,13 +135,13 @@ pub fn try_fire_request(
     };
     let (target_cell, target_level) = target.split();
 
-    if let Some(refusal) = fire_refusal(&actor, fire_mode, target_cell, target_level, tuning) {
+    if let Some(refusal) = fire_refusal(&actor, &fire_mode, target_cell, target_level, tuning) {
         return Err(ShotRefusal::from_sim(refusal));
     }
 
     Ok(FireRequested::new(
         shooter,
-        **fire_mode,
+        fire_mode,
         target_cell,
         target_level,
     ))

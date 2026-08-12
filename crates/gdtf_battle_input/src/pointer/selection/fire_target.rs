@@ -13,15 +13,16 @@ use gdtf_battle_sim::{
     prelude::{CellLevel, Faction, OccupancyGrid, Position, Tu},
     tuning::CombatTuning,
     visibility::{FactionRelation, SquadVisibility},
+    weapon::FireModeSpec,
 };
 
-use crate::{InspectTarget, SelectedFireMode, selection::resources::SelectedShooter};
+use crate::{InspectTarget, fire_mode::FiredWeaponModes, selection::resources::SelectedShooter};
 
 /// Resources read when resolving the fire-target highlight.
 #[derive(SystemParam)]
-pub struct FireTargetReads<'w> {
+pub struct FireTargetReads<'w, 's> {
     selected:  Res<'w, SelectedShooter>,
-    fire_mode: Res<'w, SelectedFireMode>,
+    arms:      FiredWeaponModes<'w, 's>,
     inspect:   Res<'w, InspectTarget>,
     occupancy: Res<'w, OccupancyGrid>,
     player:    Res<'w, PlayerFaction>,
@@ -71,7 +72,10 @@ fn resolve_fire_target(
     if !cell_is_fireable_target(reads, factions, &cell, player) {
         return FireTargetHighlight::cleared();
     }
-    match fire_cost(shooter, &cell, reads, shooters) {
+    let Some(spec) = reads.arms.spec_of(shooter) else {
+        return FireTargetHighlight::cleared();
+    };
+    match fire_cost(shooter, &cell, spec, reads, shooters) {
         Some(cost) => FireTargetHighlight::new(cell, cost),
         None => FireTargetHighlight::cleared(),
     }
@@ -104,11 +108,12 @@ fn cell_is_fireable_target(
 fn fire_cost(
     shooter: Entity,
     target: &CellLevel,
+    spec: FireModeSpec,
     reads: &FireTargetReads,
     shooters: &Query<ShooterPricing>,
 ) -> Option<Tu> {
     let row = shooters.get(shooter).ok()?;
-    let shot = mode_tu_cost(&reads.fire_mode, row.tu_max, row.aiming, &reads.tuning);
+    let shot = mode_tu_cost(&spec, row.tu_max, row.aiming, &reads.tuning);
     Some(fire_arc_tu_cost(
         **row.facing,
         row.position.cell(),

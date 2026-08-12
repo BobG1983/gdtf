@@ -68,8 +68,8 @@ pub fn decide_left_click(
     if let (Some(shooter), Some(enemy_faction)) = (**selected, occupant_faction)
         && selection_is_player
         && enemy_faction != player
-        && let Ok(request) =
-            try_fire_request(shooter, target, &reads.fire_mode, &reads.tuning, arms)
+        && let Some(spec) = arms.chosen_spec(shooter)
+        && let Ok(request) = try_fire_request(shooter, target, spec, &reads.tuning, arms)
     {
         return LeftClickOutcome::Fire(request);
     }
@@ -79,8 +79,8 @@ pub fn decide_left_click(
         && occupant.is_none()
         && *reads.occupancy.is_blocked(&target)
         && cell_squad_visible(reads.squad_visibility.as_deref(), &target, None).is_squad_visible()
-        && let Ok(request) =
-            try_fire_request(shooter, target, &reads.fire_mode, &reads.tuning, arms)
+        && let Some(spec) = arms.chosen_spec(shooter)
+        && let Ok(request) = try_fire_request(shooter, target, spec, &reads.tuning, arms)
     {
         return LeftClickOutcome::Fire(request);
     }

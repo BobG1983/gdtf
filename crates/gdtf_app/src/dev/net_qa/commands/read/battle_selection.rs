@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use gdtf_battle_input::{FireModeSystems, InspectTarget, SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::{FireModeSystems, FiredWeaponModes, InspectTarget, SelectedShooter};
+use gdtf_battle_sim::weapon::ModeKind;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
     command::QaCommand,
@@ -58,34 +59,34 @@ impl QaCommand for BattleSelection {
 
 fn handle_battle_selection(
     selected: Option<Res<SelectedShooter>>,
-    fire_mode: Option<Res<SelectedFireMode>>,
+    arms: FiredWeaponModes,
     inspect: Option<Res<InspectTarget>>,
     mut queue: ResMut<PendingQueue<CommandCall<BattleSelection>>>,
 ) {
     if queue.is_empty() {
         return;
     }
-    let reply = selection_reply(
-        selected.as_deref(),
-        fire_mode.as_deref(),
-        inspect.as_deref(),
-    );
+    let kind = selected
+        .as_deref()
+        .and_then(|selected| arms.spec_of_selected(*selected))
+        .map(|spec| spec.kind);
+    let reply = selection_reply(selected.as_deref(), kind, inspect.as_deref());
     for (_args, responder) in take_calls::<BattleSelection>(&mut queue) {
         responder.answer(&reply);
     }
 }
 
-/// Read the live selection resources into the reply that goes out.
+/// Read the live selection into the reply that goes out.
 pub(super) fn selection_reply(
     selected: Option<&SelectedShooter>,
-    fire_mode: Option<&SelectedFireMode>,
+    fire_mode: Option<ModeKind>,
     inspect: Option<&InspectTarget>,
 ) -> BattleSelectionReply {
     BattleSelectionReply {
         shooter:   selected
             .and_then(|selected| **selected)
             .map(|entity| GangerToken::new(entity.to_bits())),
-        fire_mode: fire_mode.map(|mode| ModeKindNet::from_sim(mode.kind)),
+        fire_mode: fire_mode.map(ModeKindNet::from_sim),
         hovered:   inspect
             .and_then(InspectTarget::hovered)
             .map(CellLevelNet::from_sim),

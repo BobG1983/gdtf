@@ -104,8 +104,8 @@ fn the_selection_names_the_fire_mode_the_shooter_is_actually_on() -> TestResult 
     assert_eq!(
         selection.fire_mode,
         Some(mode.kind),
-        "the reply reads the live fire mode: this battle was switched off the default \
-         before the command ran: {selection:?}",
+        "the reply reads the kind the gun is set to: this battle switched the gun off its own \
+         single before the command ran: {selection:?}",
     );
     Ok(())
 }

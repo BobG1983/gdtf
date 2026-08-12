@@ -1,6 +1,6 @@
 //! Click cover to fire: shot depletes and frees the cell.
 use bevy::{input::ButtonInput, platform::collections::HashSet, prelude::*, scene::ScenePlugin};
-use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight, ViewMode};
 use gdtf_battle_sim::{
     acts::SimActsPlugin,
@@ -139,8 +139,6 @@ fn clicking_cover_fires_and_the_sim_depletes_it() {
     let shooter = spawn_shooter(&mut app);
     app.world_mut()
         .insert_resource(SelectedShooter::new(shooter));
-    app.world_mut()
-        .insert_resource(SelectedFireMode::new(single_mode(0.2, 1)));
     mark_visible(&mut app, cover_cell());
 
     {

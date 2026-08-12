@@ -1,7 +1,7 @@
 use std::sync::mpsc::Receiver;
 
 use bevy::prelude::*;
-use gdtf_battle_input::{PendingActIntent, SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::{PendingActIntent, SelectedShooter};
 use gdtf_battle_sim::{
     ganger::{Aiming, LifeState, Tu, TuMax},
     tuning::CombatTuning,
@@ -25,10 +25,9 @@ use crate::dev::net_qa::{
 /// One cell to shoot at, written in `act.fire`'s own argument shape.
 const AT: &str = "(at:(cell:(x:1,y:1),level:0))";
 
-/// Which resources a case leaves out of the world before the shot is claimed.
+/// Whether the case leaves the tuning in the world before the shot is claimed.
 #[derive(Clone, Copy)]
 struct Loaded {
-    mode:   bool,
     tuning: bool,
 }
 
@@ -39,9 +38,6 @@ fn fire_app(loaded: Loaded) -> App {
     app.init_resource::<PendingQueue<CommandCall<ActFire>>>();
     app.init_resource::<DeferredReplies<ActFire>>();
     app.init_resource::<PendingActIntent>();
-    if loaded.mode {
-        app.init_resource::<SelectedFireMode>();
-    }
     if loaded.tuning {
         app.init_resource::<CombatTuning>();
     }
@@ -85,32 +81,8 @@ fn refusal(reply: Option<&QaResponse>) -> Option<(UnavailableCode, String)> {
 }
 
 #[test]
-fn a_shot_with_no_fire_mode_loaded_refuses_missing_model_naming_it() {
-    let mut app = fire_app(Loaded {
-        mode:   false,
-        tuning: true,
-    });
-
-    let reply_rx = fire_once(&mut app);
-
-    let reply = reply_rx.try_recv().ok();
-    assert_eq!(
-        refusal(reply.as_ref())
-            .as_ref()
-            .map(|(code, note)| (*code, note.contains("SelectedFireMode"))),
-        Some((UnavailableCode::MissingModel, true)),
-        "a host with no SelectedFireMode cannot build the shot, so it must refuse MissingModel \
-         naming that resource — never an accepted window, which reads as a shot the sim declined; \
-         got {reply:?}",
-    );
-}
-
-#[test]
 fn a_shot_with_no_combat_tuning_loaded_refuses_missing_model_naming_it() {
-    let mut app = fire_app(Loaded {
-        mode:   true,
-        tuning: false,
-    });
+    let mut app = fire_app(Loaded { tuning: false });
 
     let reply_rx = fire_once(&mut app);
 
@@ -128,10 +100,7 @@ fn a_shot_with_no_combat_tuning_loaded_refuses_missing_model_naming_it() {
 
 #[test]
 fn a_shooter_with_no_weapon_answers_the_no_firing_weapon_reason() {
-    let mut app = fire_app(Loaded {
-        mode:   true,
-        tuning: true,
-    });
+    let mut app = fire_app(Loaded { tuning: true });
 
     let reply_rx = fire_once(&mut app);
 

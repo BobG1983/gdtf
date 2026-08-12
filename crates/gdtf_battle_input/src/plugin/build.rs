@@ -24,7 +24,6 @@ use super::{
 };
 use crate::{
     FireModeSystems, InputSystems,
-    fire_mode::SelectedFireMode,
     gamepad::{ActivePointer, GamepadCursor},
     intent::PendingActIntent,
     keybinds::register_keybinds_hot_ron,
@@ -60,10 +59,7 @@ impl Plugin for GdtfBattleInputPlugin {
         .configure_sets(
             Update,
             (
-                FireModeSystems::Sync.in_set(FireModeSystems::Write),
-                FireModeSystems::Panel
-                    .in_set(FireModeSystems::Write)
-                    .after(FireModeSystems::Sync),
+                FireModeSystems::Panel.in_set(FireModeSystems::Write),
                 FireModeSystems::Command
                     .in_set(FireModeSystems::Write)
                     .after(FireModeSystems::Panel),
@@ -72,7 +68,6 @@ impl Plugin for GdtfBattleInputPlugin {
         .insert_resource(GdtfBattleInputActive)
         .init_resource::<InspectTarget>()
         .init_resource::<SelectedShooter>()
-        .init_resource::<SelectedFireMode>()
         .init_resource::<PathPreviewTarget>()
         .init_resource::<PendingActIntent>()
         .init_resource::<GamepadCursor>()

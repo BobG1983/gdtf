@@ -1,10 +1,11 @@
-use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::{ChosenFireMode, SelectedShooter};
 use gdtf_battle_presenter::FireTargetHighlight;
 use gdtf_battle_sim::{
     magazine::mode_tu_cost,
     occupancy::TerrainKind,
     prelude::{Cell, CellLevel, OccupancyGrid, Tu},
     tuning::CombatTuning,
+    weapon::ModeKind,
 };
 
 use super::harness::*;
@@ -16,7 +17,9 @@ fn fog_enemy_writes_no_highlight_even_when_armed() {
     let enemy_cell = CellLevel::new(Cell::new(30, 30), LEVEL);
 
     let (_shooter, tu_max, aiming, _) = spawn_select_then_arm_late(&mut app, shooter_cell, 0.3);
-    let resolved_mode = **app.world().resource::<SelectedFireMode>();
+    let Some(resolved_mode) = resolved_mode(&app) else {
+        unreachable!("the shooter has been armed, so its gun resolves to a mode");
+    };
     let tuning = app.world().resource::<CombatTuning>();
     assert!(
         *mode_tu_cost(&resolved_mode, &tu_max, &aiming, tuning) > 0,
@@ -33,6 +36,45 @@ fn fog_enemy_writes_no_highlight_even_when_armed() {
     assert!(
         highlight(&app).is_empty(),
         "hovering an armed shooter's target on a NON-VISIBLE cell writes NO highlight (fog gate, fail-closed)",
+    );
+}
+
+#[test]
+fn a_chosen_kind_the_gun_does_not_offer_clears_the_highlight() {
+    let mut app = fire_target_app();
+    let shooter_cell = CellLevel::new(Cell::new(10, 10), LEVEL);
+    let enemy_cell = CellLevel::new(Cell::new(13, 11), LEVEL);
+
+    spawn_and_select_shooter(&mut app, shooter_cell);
+    place_enemy(&mut app, enemy_cell);
+    set_hovered(&mut app, Some(enemy_cell));
+    app.update();
+
+    assert!(
+        !highlight(&app).is_empty(),
+        "this enemy is fireable while the gun is on a kind it offers, or the case below cannot \
+         tell the mismatch from a target that was never shootable",
+    );
+
+    let Some(gun) = selected_gun(&app) else {
+        unreachable!("the selected shooter holds the gun the harness armed it with");
+    };
+    app.world_mut()
+        .entity_mut(gun)
+        .insert(ChosenFireMode::new(ModeKind::Burst));
+    assert_eq!(
+        resolved_mode(&app),
+        None,
+        "the gun offers single alone, so a chosen burst is a kind it has no entry for",
+    );
+
+    set_hovered(&mut app, Some(enemy_cell));
+    app.update();
+
+    assert!(
+        highlight(&app).is_empty(),
+        "a gun set to a kind it does not offer resolves to no spec, so there is no price to draw \
+         and the highlight must not fall back to the gun's single",
     );
 }
 

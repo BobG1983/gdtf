@@ -27,7 +27,6 @@ fn left_click_enemy_with_fire_mode_fires_and_is_mutually_exclusive() {
     let shooter_cell = CellLevel::new(Cell::new(2, 2), LEVEL);
     let ganger = spawn_player_shooter(&mut app, shooter_cell);
     set_selection(&mut app, ganger);
-    set_fire_mode(&mut app, spec(0.2, 1));
 
     let target = CellLevel::new(Cell::new(6, 2), LEVEL);
     let _enemy = place_enemy(&mut app, target);
@@ -65,7 +64,6 @@ fn left_click_cover_with_fire_mode_fires_at_the_cover_cell() {
     let shooter_cell = CellLevel::new(Cell::new(2, 2), LEVEL);
     let ganger = spawn_player_shooter(&mut app, shooter_cell);
     set_selection(&mut app, ganger);
-    set_fire_mode(&mut app, spec(0.2, 1));
 
     let cover = CellLevel::new(Cell::new(6, 2), LEVEL);
     place_cover(&mut app, cover);
@@ -108,7 +106,6 @@ fn empty_with_fire_mode_falls_through_to_two_click_move() {
     let shooter_cell = CellLevel::new(Cell::new(10, 10), LEVEL);
     let ganger = spawn_player_shooter(&mut app, shooter_cell);
     set_selection(&mut app, ganger);
-    set_fire_mode(&mut app, spec(0.2, 1));
 
     let dest = CellLevel::new(Cell::new(11, 10), LEVEL);
     set_hovered(&mut app, Some(dest));

@@ -301,8 +301,8 @@ Notes an agent relies on:
   writes the transform with, and `view.level_up`, `view.level_down` and
   `view.toggle_full_view` pick the storey it draws down to by the same path the
   level keys and the action bar's level buttons take. `battle.set_fire_mode`
-  picks a fire mode on the selected shooter, writing the same resource the mode
-  panel writes through the same lookup.
+  picks a fire mode on the weapon the selected shooter fires, the same weapon the
+  action bar's mode panel sets it on, through the same lookup.
   The EDITOR host publishes none yet and answers every
   `run` `Unknown`. That is the expected state mid-epic, not a regression: the
   surface that used to sit here was deleted before the commands that replace it

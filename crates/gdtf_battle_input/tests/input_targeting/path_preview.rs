@@ -5,7 +5,7 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_input::{
-    GdtfBattleInputPlugin, PathPreviewTarget, SelectedFireMode, SelectedShooter,
+    ChosenFireMode, GdtfBattleInputPlugin, PathPreviewTarget, SelectedShooter,
 };
 use gdtf_battle_presenter::{ActiveLevel, PathPreview, ViewMode};
 use gdtf_battle_sim::{
@@ -18,7 +18,7 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
     visibility::{FactionRelation, SquadVisibility},
-    weapon::{FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
+    weapon::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, WieldedBy},
 };
 use gdtf_test_utils::advance_until;
 
@@ -65,15 +65,38 @@ fn preview_app() -> App {
     app
 }
 
-fn select_and_target(app: &mut App, start: CellLevel, goal: CellLevel) {
+/// A gun offering both kinds, so a case can switch the ganger from one to the other.
+fn two_mode_gun() -> FireMode {
+    FireMode::new(vec![
+        mode(ModeKind::Single, 0.2),
+        mode(ModeKind::Burst, 0.5),
+    ])
+}
+
+const fn mode(kind: ModeKind, tu_percent: f32) -> FireModeSpec {
+    FireModeSpec::new(
+        kind,
+        ModeConeMult::new(1.0),
+        ModeTuPercent::new(tu_percent),
+        ModeShots::new(1),
+    )
+}
+
+/// Select an armed ganger standing at `start` and pin `goal` as its move target, answering its gun.
+fn select_and_target(app: &mut App, start: CellLevel, goal: CellLevel) -> Entity {
     let ganger = app
         .world_mut()
         .spawn((Position::new(start), BUDGET, PLAYER_FACTION))
+        .id();
+    let gun = app
+        .world_mut()
+        .spawn((WieldedBy::new(ganger), two_mode_gun()))
         .id();
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
     app.world_mut()
         .insert_resource(PathPreviewTarget::new(goal));
+    gun
 }
 
 fn expected_route(app: &App, start: CellLevel, goal: CellLevel) -> Option<(Vec<CellLevel>, Tu)> {
@@ -105,7 +128,7 @@ fn populates_route_cells_and_cost_matching_find_path() {
 
     let start = CellLevel::new(Cell::new(10, 10), Level::new(0));
     let goal = CellLevel::new(Cell::new(14, 12), Level::new(0));
-    select_and_target(&mut app, start, goal);
+    let _gun = select_and_target(&mut app, start, goal);
 
     let expected = expected_route(&app, start, goal);
     assert!(
@@ -180,7 +203,7 @@ fn unreachable_target_yields_empty_preview() {
             }
         }
     }
-    select_and_target(&mut app, start, goal);
+    let _gun = select_and_target(&mut app, start, goal);
 
     let grid = app.world().resource::<OccupancyGrid>();
     let links = app.world().resource::<VerticalLinkGraph>();
@@ -218,7 +241,7 @@ fn does_not_push_selection_or_target_into_sim() {
     let mut app = preview_app();
     let start = CellLevel::new(Cell::new(9, 9), Level::new(0));
     let goal = CellLevel::new(Cell::new(12, 9), Level::new(0));
-    select_and_target(&mut app, start, goal);
+    let _gun = select_and_target(&mut app, start, goal);
     app.update();
 
     assert_eq!(
@@ -232,22 +255,13 @@ fn does_not_push_selection_or_target_into_sim() {
     );
 }
 
-const fn distinct_fire_mode() -> SelectedFireMode {
-    SelectedFireMode::new(FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(0.5),
-        ModeShots::new(1),
-    ))
-}
-
 #[test]
 fn fire_mode_switch_hides_and_resets_stale_move_path() {
     let mut app = preview_app();
 
     let start = CellLevel::new(Cell::new(10, 10), Level::new(0));
     let goal = CellLevel::new(Cell::new(14, 12), Level::new(0));
-    select_and_target(&mut app, start, goal);
+    let gun = select_and_target(&mut app, start, goal);
 
     assert!(
         advance_until(
@@ -263,7 +277,9 @@ fn fire_mode_switch_hides_and_resets_stale_move_path() {
         "the move target is set before the switch",
     );
 
-    app.world_mut().insert_resource(distinct_fire_mode());
+    app.world_mut()
+        .entity_mut(gun)
+        .insert(ChosenFireMode::new(ModeKind::Burst));
     app.update();
 
     assert_eq!(

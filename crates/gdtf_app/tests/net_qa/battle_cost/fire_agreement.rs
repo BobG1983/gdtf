@@ -3,7 +3,7 @@
 
 use bevy::{app::App, ecs::entity::Entity};
 use gdtf_app::qa_wire::{cell::CellLevelNet, cost::CostActNet, misc::ModeKindNet};
-use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     ganger::{Direction, Facing, Tu},
     weapon::ModeKind,
@@ -90,7 +90,7 @@ fn pose(app: &mut App, case: Case) -> Option<Asked> {
     }
     let standing = cell_of(app, shooter)?;
     let at = one_step_from(app, standing)?;
-    let mode = *app.world().get_resource::<SelectedFireMode>()?;
+    let mode = crate::fire_mode_support::selected_mode(app)?;
     let (from, to) = (standing.to_sim().cell(), at.to_sim().cell());
     let facing = match case.arc {
         Arc::Toward => Direction::from_cells(from, to)?,
@@ -164,12 +164,10 @@ fn assert_one_shot_was_asked_about(app: &App, asked: &Asked, case: Case) {
          commands were reading different shooters",
     );
     assert_eq!(
-        world
-            .get_resource::<SelectedFireMode>()
-            .map(|mode| mode.kind),
+        crate::fire_mode_support::selected_mode(app).map(|mode| mode.kind),
         Some(asked.mode),
-        "{case:?}: the selected mode must still be the one the quote named, or the two commands \
-         were pricing different shots",
+        "{case:?}: the mode the gun is on must still be the one the quote named, or the two \
+         commands were pricing different shots",
     );
 }
 

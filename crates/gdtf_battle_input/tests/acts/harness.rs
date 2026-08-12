@@ -8,7 +8,9 @@ use bevy::{
     transform::components::GlobalTransform,
     window::{PrimaryWindow, Window, WindowResolution},
 };
-use gdtf_battle_input::{BoundKey, GdtfBattleInputPlugin, InspectTarget, Keybinds};
+use gdtf_battle_input::{
+    BoundKey, ChosenFireMode, GdtfBattleInputPlugin, InspectTarget, Keybinds, chosen_spec,
+};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode, WorldCamera};
 use gdtf_battle_sim::{
     acts::{
@@ -25,8 +27,8 @@ use gdtf_battle_sim::{
     rng::BattleSeed,
     test_support::{GangerEntityBuilder, TEST_SEED, fight_rng, insert_sim_resources, wield},
     weapon::{
-        FireMode, FireModeSpec, Handedness, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent,
+        FireMode, FireModeSpec, Handedness, MagazineSize, MeleeWeapon, ModeConeMult, ModeKind,
+        ModeShots, ModeTuPercent, Wields,
     },
 };
 use gdtf_test_utils::{MessageProbePlugin, clear_mouse, press_left, probed};
@@ -154,6 +156,33 @@ pub(crate) fn armed_ganger(
     ganger
 }
 
+/// The ranged weapon `ganger` holds, which every armed fixture here gives it exactly one of.
+pub(crate) fn gun_of(app: &App, ganger: Entity) -> Option<Entity> {
+    let wields = app.world().get::<Wields>(ganger)?;
+    wields.ranged_weapon(|weapon| {
+        app.world()
+            .get_entity(weapon)
+            .is_ok_and(|row| row.contains::<MeleeWeapon>())
+    })
+}
+
+/// Pick `kind` for `ganger`, the way the mode panel picks it: on the gun it holds.
+pub(crate) fn pick_mode(app: &mut App, ganger: Entity, kind: ModeKind) {
+    let Some(weapon) = gun_of(app, ganger) else {
+        return;
+    };
+    app.world_mut()
+        .entity_mut(weapon)
+        .insert(ChosenFireMode::new(kind));
+}
+
+/// The mode `ganger`'s gun is set to.
+pub(crate) fn mode_of(app: &App, ganger: Entity) -> Option<FireModeSpec> {
+    let weapon = gun_of(app, ganger)?;
+    let modes = app.world().get::<FireMode>(weapon)?;
+    chosen_spec(modes, app.world().get::<ChosenFireMode>(weapon))
+}
+
 pub(crate) fn hover_at(app: &mut App, offset: Vec2) -> CellLevel {
     set_cursor(app, Some(TARGET_SIZE * 0.5 + offset));
     app.update();
@@ -171,7 +200,12 @@ pub(crate) fn set_cursor(app: &mut App, position: Option<Vec2>) {
 }
 
 pub(crate) fn select_ganger(app: &mut App, ganger: Entity) -> CellLevel {
-    let shooter_cell = hover_at(app, SHOOTER_CURSOR_OFFSET);
+    select_ganger_at(app, ganger, SHOOTER_CURSOR_OFFSET)
+}
+
+/// Stand `ganger` under the cursor at `offset` and click it, the way the player selects.
+pub(crate) fn select_ganger_at(app: &mut App, ganger: Entity, offset: Vec2) -> CellLevel {
+    let shooter_cell = hover_at(app, offset);
     app.world_mut()
         .resource_mut::<OccupancyGrid>()
         .set_occupant(shooter_cell, Some(ganger));

@@ -6,7 +6,7 @@ use gdtf_app::qa_wire::{
     token::GangerToken,
     vitals::TuNet,
 };
-use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     floor::FloorCostGrid,
     ganger::{Aiming, Facing, Faction, Position, Stance, Tu, TuMax},
@@ -43,7 +43,7 @@ pub(crate) struct CostBody {
     pub(crate) refusal: Option<CostRefusalNet>,
 }
 
-/// The actor pose and selection resources a cost call must leave exactly as it found them.
+/// The actor pose, the selection and the gun's mode a cost call must leave as it found them.
 #[derive(Debug, PartialEq)]
 pub(crate) struct Pose {
     tu:        Tu,
@@ -52,7 +52,7 @@ pub(crate) struct Pose {
     aiming:    Aiming,
     position:  Position,
     shooter:   Option<Entity>,
-    fire_mode: Option<SelectedFireMode>,
+    fire_mode: Option<FireModeSpec>,
 }
 
 /// Run the app far enough that the systems writing around this point have finished.
@@ -96,7 +96,7 @@ pub(crate) fn cost_body(reply: QaResponse) -> Result<CostBody, TestError> {
     })
 }
 
-/// The actor's pose and the two selection resources, as the live world holds them.
+/// The actor's pose, the selection and the gun's mode, as the live world holds them.
 pub(crate) fn pose(app: &App, actor: Entity) -> Option<Pose> {
     let world = app.world();
     let row = world.get_entity(actor).ok()?;
@@ -109,7 +109,7 @@ pub(crate) fn pose(app: &App, actor: Entity) -> Option<Pose> {
         shooter:   world
             .get_resource::<SelectedShooter>()
             .and_then(|selected| **selected),
-        fire_mode: world.get_resource::<SelectedFireMode>().copied(),
+        fire_mode: crate::fire_mode_support::selected_mode(app),
     })
 }
 

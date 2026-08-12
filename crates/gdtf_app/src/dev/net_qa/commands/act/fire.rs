@@ -1,7 +1,5 @@
 use bevy::prelude::*;
-use gdtf_battle_input::{
-    ActIntent, FireModeSystems, SelectedFireMode, ShooterArms, try_fire_request,
-};
+use gdtf_battle_input::{ActIntent, FireModeSystems, ShooterArms, try_fire_request};
 use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
@@ -22,10 +20,6 @@ use crate::dev::net_qa::{
     facts::GameFacts,
     wire::{act::ActReply, cell::CellLevelNet, refusal::ShotRefusalNet},
 };
-
-/// Why a shot answers nothing while the fire mode it would use is not loaded.
-const NO_FIRE_MODE: RefusalNote =
-    RefusalNote::from_static("the fire mode this shot would use is not loaded: SelectedFireMode");
 
 /// Why a shot answers nothing while the tuning it would be costed against is not loaded.
 const NO_COMBAT_TUNING: RefusalNote = RefusalNote::from_static(
@@ -53,8 +47,8 @@ impl QaCommand for ActFire {
          builds. The mode is whatever battle.selection reports; this command does not change it. \
          A shot the game turns down never reaches the sim, and answers FireRefused naming the \
          reason — an empty magazine, a target off the grid, too little TU, and so on — rather \
-         than an accepted window. A host that holds no SelectedFireMode or no CombatTuning cannot \
-         build the shot at all, and refuses MissingModel naming the absent one.",
+         than an accepted window. A host that holds no CombatTuning cannot cost the shot at all, \
+         and refuses MissingModel naming it.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -79,7 +73,6 @@ fn claim_act_fire(
     mut queue: ResMut<PendingQueue<CommandCall<ActFire>>>,
     mut deferred: ResMut<DeferredReplies<ActFire>>,
     mut claim: ActClaim,
-    mode: Option<Res<SelectedFireMode>>,
     tuning: Option<Res<CombatTuning>>,
     arms: ShooterArms,
 ) {
@@ -88,16 +81,18 @@ fn claim_act_fire(
     }
     let from_seq = claim.head();
     for (args, responder) in take_calls::<ActFire>(&mut queue) {
-        let Some(mode) = mode.as_deref() else {
-            responder.unavailable(UnavailableCode::MissingModel, NO_FIRE_MODE);
-            continue;
-        };
         let Some(tuning) = tuning.as_deref() else {
             responder.unavailable(UnavailableCode::MissingModel, NO_COMBAT_TUNING);
             continue;
         };
         let Some(actor) = claim.shooter() else {
             responder.answer(&NO_SHOOTER);
+            continue;
+        };
+        let Some(mode) = arms.chosen_spec(actor) else {
+            responder.answer(&ActReply::FireRefused {
+                reason: ShotRefusalNet::NoFiringWeapon,
+            });
             continue;
         };
         match try_fire_request(actor, args.at.to_sim(), mode, tuning, &arms) {

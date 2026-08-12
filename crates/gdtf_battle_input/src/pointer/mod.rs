@@ -1,6 +1,6 @@
 //! Pointer, selection, fire mode, and gamepad cursor.
 
-/// Selected fire mode resource and sync.
+/// The fire mode a weapon is set to, and the lookups that resolve it.
 pub mod fire_mode;
 /// Fire surface helpers.
 pub mod fire_surface;

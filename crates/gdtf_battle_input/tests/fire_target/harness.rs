@@ -1,7 +1,9 @@
 //! authoring, and the highlight probe.
 
 use bevy::{input::ButtonInput, platform::collections::HashSet, prelude::*};
-use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::{
+    ChosenFireMode, GdtfBattleInputPlugin, InspectTarget, SelectedShooter, chosen_spec,
+};
 use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight, ViewMode};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
@@ -16,8 +18,8 @@ use gdtf_battle_sim::{
     vertical::VerticalLinkGraph,
     visibility::SquadVisibility,
     weapon::{
-        FireMode, FireModeSpec, Handedness, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, WieldedBy,
+        FireMode, FireModeSpec, Handedness, MagazineSize, MeleeWeapon, ModeConeMult, ModeKind,
+        ModeShots, ModeTuPercent, MountedWeapon, WieldedBy, Wields,
     },
 };
 
@@ -25,6 +27,9 @@ pub(crate) const PLAYER_FACTION: Faction = Faction::new(0);
 pub(crate) const ENEMY_FACTION: Faction = Faction::new(1);
 pub(crate) const LEVEL: Level = Level::new(0);
 pub(crate) const SHOOTER_FACING: Facing = Facing::new(Direction::East);
+
+/// What the gun a shooter is spawned holding charges, until a case rewrites it.
+pub(crate) const ARMED_TU_PERCENT: f32 = 0.2;
 
 pub(crate) const fn spec(tu_percent: f32) -> FireModeSpec {
     FireModeSpec::new(
@@ -74,6 +79,7 @@ pub(crate) fn spawn_and_select_shooter(app: &mut App, cell: CellLevel) -> (Entit
         .id();
     app.world_mut().spawn((
         WieldedBy::new(ganger),
+        FireMode::new(vec![spec(ARMED_TU_PERCENT)]),
         Magazine::new(
             LoadedRounds::new(10),
             MagazineSize::new(30),
@@ -167,8 +173,42 @@ pub(crate) fn set_hovered(app: &mut App, cell: Option<CellLevel>) {
     app.world_mut().insert_resource(InspectTarget::new(cell));
 }
 
+/// The weapon the selected shooter fires, if anything is selected and holds one.
+pub(crate) fn selected_gun(app: &App) -> Option<Entity> {
+    let shooter = app
+        .world()
+        .get_resource::<SelectedShooter>()
+        .and_then(|selected| **selected)?;
+    let wields = app.world().get::<Wields>(shooter)?;
+    wields.firing_weapon(
+        |weapon| {
+            app.world()
+                .get_entity(weapon)
+                .is_ok_and(|row| row.contains::<MountedWeapon>())
+        },
+        |weapon| {
+            app.world()
+                .get_entity(weapon)
+                .is_ok_and(|row| row.contains::<MeleeWeapon>())
+        },
+    )
+}
+
+/// Put `mode` on the gun the selected shooter fires and pick it. A no-op when it holds none.
 pub(crate) fn set_fire_mode(app: &mut App, mode: FireModeSpec) {
-    app.world_mut().insert_resource(SelectedFireMode::new(mode));
+    let Some(weapon) = selected_gun(app) else {
+        return;
+    };
+    app.world_mut()
+        .entity_mut(weapon)
+        .insert((FireMode::new(vec![mode]), ChosenFireMode::new(mode.kind)));
+}
+
+/// The spec the gun the selected shooter fires is set to.
+pub(crate) fn resolved_mode(app: &App) -> Option<FireModeSpec> {
+    let weapon = selected_gun(app)?;
+    let modes = app.world().get::<FireMode>(weapon)?;
+    chosen_spec(modes, app.world().get::<ChosenFireMode>(weapon))
 }
 
 pub(crate) fn highlight(app: &App) -> FireTargetHighlight {

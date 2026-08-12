@@ -1,7 +1,11 @@
 //! Selecting a fire mode on the shooter the mode panel would write it for.
 
 use gdtf_app::qa_wire::misc::ModeKindNet;
-use gdtf_battle_sim::weapon::FireMode;
+use gdtf_battle_input::PathPreviewTarget;
+use gdtf_battle_sim::{
+    prelude::{Cell, CellLevel, Level},
+    weapon::FireMode,
+};
 use gdtf_qa_protocol::{
     command::{CommandOutcome, RefusalNote, UnavailableCode},
     message::QaResponse,
@@ -33,7 +37,7 @@ fn refusal(answer: QaResponse) -> (UnavailableCode, RefusalNote) {
 }
 
 #[test]
-fn setting_burst_writes_the_resource_the_mode_panel_writes() {
+fn setting_burst_puts_the_gun_where_the_mode_panel_would() {
     let (mut app, tx) = battle_with_a_burst_capable_gun();
 
     let body: FireModeBody = decoded(
@@ -54,8 +58,56 @@ fn setting_burst_writes_the_resource_the_mode_panel_writes() {
     assert_eq!(
         selected_mode(&app),
         Some(BURST),
-        "the command writes SelectedFireMode itself, so the world's own resource is what says the \
-         mode panel and a QA client end in the same place",
+        "the command sets the mode on the gun itself, so the gun is what says the mode panel and \
+         a QA client end in the same place",
+    );
+}
+
+#[test]
+fn setting_the_mode_the_shooter_is_already_on_leaves_the_move_target_alone() {
+    let (mut app, tx) = battle_with_a_burst_capable_gun();
+    let goal = CellLevel::new(Cell::new(14, 12), Level::new(0));
+    app.world_mut()
+        .insert_resource(PathPreviewTarget::new(goal));
+
+    let body: FireModeBody = decoded(
+        BATTLE_SET_FIRE_MODE,
+        run_one_frame(
+            &mut app,
+            &tx,
+            BATTLE_SET_FIRE_MODE,
+            &mode_argument(ModeKindNet::Single),
+        ),
+    );
+
+    assert_eq!(
+        body.mode,
+        ModeKindNet::Single,
+        "the fixture starts on the gun's single, so this call asks for the mode the shooter is \
+         already on: {body:?}",
+    );
+    assert_eq!(
+        **app.world().resource::<PathPreviewTarget>(),
+        Some(goal),
+        "a call that named the mode the shooter was already on changed no mode, so the move \
+         target the player pinned has to still be pinned",
+    );
+
+    let _switched: FireModeBody = decoded(
+        BATTLE_SET_FIRE_MODE,
+        run_one_frame(
+            &mut app,
+            &tx,
+            BATTLE_SET_FIRE_MODE,
+            &mode_argument(ModeKindNet::Burst),
+        ),
+    );
+
+    assert_eq!(
+        **app.world().resource::<PathPreviewTarget>(),
+        None,
+        "switching to a mode the shooter was NOT on clears the move target, so the case above is \
+         reading a live reset and not a system that never runs here",
     );
 }
 
@@ -167,8 +219,7 @@ fn a_manned_mount_is_what_a_mode_is_set_on_not_the_gun_in_the_hands() {
     assert_eq!(
         selected_mode(&app),
         Some(FULL),
-        "the command writes SelectedFireMode, so the world's own resource says the mount's mode \
-         was taken",
+        "the command sets the mode on the mount, so the mount is what says its mode was taken",
     );
 
     let (code, note) = refusal(run_one_frame(

@@ -6,7 +6,7 @@ use gdtf_battle_sim::{
     vertical::VerticalLinkGraph, visibility::SquadVisibility,
 };
 
-use crate::{InspectTarget, SelectedFireMode, selection::SelectedShooter};
+use crate::{InspectTarget, selection::SelectedShooter};
 
 /// Resources read by left-click decision and systems.
 #[derive(bevy::ecs::system::SystemParam)]
@@ -15,8 +15,6 @@ pub struct LeftClickReads<'w> {
     pub(in crate::pointer::selection) mouse: Res<'w, ButtonInput<MouseButton>>,
     /// Occupancy grid.
     pub(super) occupancy:                    Res<'w, OccupancyGrid>,
-    /// Selected fire mode.
-    pub(super) fire_mode:                    Res<'w, SelectedFireMode>,
     /// Combat tuning.
     pub(super) tuning:                       Res<'w, CombatTuning>,
     /// Player faction.

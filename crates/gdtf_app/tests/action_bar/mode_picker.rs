@@ -55,7 +55,8 @@ fn mode_panel_spawns_only_offered_modes_and_marks_active() {
 
     assert!(
         segment_is_active::<ModeSingleButton>(&mut app),
-        "the active mode segment must be the live SelectedFireMode (single() default)",
+        "the active mode segment must be the mode the gun is on, which with none picked is its \
+         own single()",
     );
     assert!(
         !segment_is_active::<ModeBurstButton>(&mut app),
@@ -93,7 +94,7 @@ fn clicking_burst_toggle_sets_mode_and_moves_active_mark() {
     assert_eq!(
         selected_mode(&app),
         Some(burst),
-        "selecting the Burst segment sets SelectedFireMode to the weapon's burst spec \
+        "selecting the Burst segment puts the weapon's own burst spec on the gun \
          (read-back, not fabricated)",
     );
     assert!(

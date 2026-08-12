@@ -1,11 +1,11 @@
 use bevy::{ecs::entity::Entity, prelude::*};
-use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::{ChosenFireMode, SelectedShooter, chosen_spec};
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
     acts::{EndTurnRequested, SetAimingRequested, SetStanceRequested},
     ganger::{Aiming, Facing, TuMax},
     prelude::{Direction, Level, Stance, StanceKind},
-    weapon::{FireMode, FireModeSpec, WieldedBy},
+    weapon::{FireMode, FireModeSpec, MeleeWeapon, MountedWeapon, WieldedBy, Wields},
 };
 use gdtf_test_utils::{MessageProbe, MessageProbePlugin, drain_message_probe, probed};
 use gdtf_ui::{DisabledButton, SegmentSubText};
@@ -122,6 +122,25 @@ pub(crate) fn set_active_level(app: &mut App, storey: u8) {
     app.update();
 }
 
+/// The spec the gun the selected shooter fires is set to.
 pub(crate) fn selected_mode(app: &App) -> Option<FireModeSpec> {
-    app.world().get_resource::<SelectedFireMode>().map(|m| **m)
+    let shooter = app
+        .world()
+        .get_resource::<SelectedShooter>()
+        .and_then(|selected| **selected)?;
+    let wields = app.world().get::<Wields>(shooter)?;
+    let weapon = wields.firing_weapon(
+        |weapon| {
+            app.world()
+                .get_entity(weapon)
+                .is_ok_and(|row| row.contains::<MountedWeapon>())
+        },
+        |weapon| {
+            app.world()
+                .get_entity(weapon)
+                .is_ok_and(|row| row.contains::<MeleeWeapon>())
+        },
+    )?;
+    let modes = app.world().get::<FireMode>(weapon)?;
+    chosen_spec(modes, app.world().get::<ChosenFireMode>(weapon))
 }

@@ -148,15 +148,16 @@ impl QaCommand for AppPhase {
 - **`register_handler`** puts the handler wherever in the schedule its work belongs.
   `.after(QaCommandSystems::Claim)` is the floor — that is where the decode step fills
   the queue, so a handler that ran earlier would answer every call a frame late. A handler
-  that WRITES a resource the game also writes needs an edge against each of those systems
+  that WRITES something the game also writes needs an edge against each of those systems
   too. Without one the built schedule picks the winner, and the reply can name a value that
-  another system overwrote later in the same frame. Where more than two systems write one
-  resource, a `SystemSet` per writer costs less than an edge per pair.
-  `SelectedFireMode` is the worked example: `FireModeSystems` (in `gdtf_battle_input`) holds
-  `Sync`, then `Panel`, then `Command`, all inside `FireModeSystems::Write`. The
-  selection sync, the action bar's mode panel and `battle.set_fire_mode` each join one of
-  them, so a QA call and a panel press on the same frame settle in a fixed order — the call
-  last — instead of whichever way the build happened to sort them. A reader takes
+  another system overwrote later in the same frame. Where one value has several writers and
+  several readers, a `SystemSet` per writer, all inside one set the readers order against,
+  costs less than an edge per pair.
+  A weapon's chosen fire mode is the worked example: `FireModeSystems` (in
+  `gdtf_battle_input`) holds `Panel`, then `Command`, both inside `FireModeSystems::Write`.
+  The action bar's mode panel and `battle.set_fire_mode` each join one of them, so a QA call
+  and a panel press on the same frame settle in a fixed order — the call last — instead of
+  whichever way the build happened to sort them. A reader takes
   `.after(FireModeSystems::Write)` and needs no edge per writer: `act.fire`,
   `battle.selection`, the panel's active-segment sync and the fire-target population all do.
 
@@ -299,11 +300,12 @@ sprite's cell suggests — and `log.read` reads the act log
 with no fog filter, matching a combat log that filters none either.
 
 `battle.sightline` and `battle.cost {Fire}` agree about one shot because they price one spec,
-not one kind. `SelectedFireMode` names the mode; each finds the gun's own `FireMode` entry of
-that kind and prices and gates from it. A resource left holding a spec the gun no longer
-offers cannot make them disagree, and a gun with no entry of that kind — including one carrying no
-`FireMode` at all — is refused by both: `ActNotAllowed` from the quote, `can_engage: false`
-from the sightline.
+not one kind. `battle.sightline` takes the kind the gun the shooter fires is set to — a weapon
+nothing has been picked for reads as its own single — and `battle.cost {Fire}` takes the kind
+named in the call. Each then finds the gun's own `FireMode` entry of that kind and prices and
+gates from it, so a call naming the mode the gun is on gets one answer from both. A gun with no
+entry of that kind — including one carrying no `FireMode` at all — is refused by both:
+`ActNotAllowed` from the quote, `can_engage: false` from the sightline.
 
 Each read refuses `Unavailable` with code `WrongState` off the battle screen. `log.read`
 is the one whose phase gate leaves a window open — the battlescape is up while the battle
@@ -506,11 +508,11 @@ variant for opening a door or entering and leaving an emplacement, so `act.open_
 worked. Read the world for those — the door's open state, the emplacement's occupancy —
 not the log.
 
-`act.fire` is the one act that needs more than the selection to build its request: the live
-`SelectedFireMode` and `CombatTuning`. A host holding neither cannot consider the shot at
-all, so it refuses `MissingModel` naming the absent resource — the same call `log.read`
-makes when the act log has not arrived. That refusal says the host was never loaded, which is
-a different answer from the `FireRefused` a shot the game turned down carries.
+`act.fire` is the one act that needs more than the selection to build its request: it costs the
+shot against the live `CombatTuning`. A host holding none cannot consider the shot at all, so it
+refuses `MissingModel` naming that resource — the same call `log.read` makes when the act log has
+not arrived. That refusal says the host was never loaded, which is a different answer from the
+`FireRefused` a shot the game turned down carries.
 
 The `input.*` commands drive the raw input paths, for the screens and the moments where a
 named act is not enough. Each one writes what the real device writes and lets the game decide
@@ -594,16 +596,15 @@ both write the transform through the one function every camera mover uses, both 
 `Deferred` until the frame's bounds clamp has run, and both then answer with the cell the
 camera actually ended on — absent when it was left off the grid. `view.pan` is not a second
 way to hold W: the keys move by speed times frame time, while the offset asked for here is
-the offset taken. `battle.set_fire_mode` writes the same `SelectedFireMode` resource the
-action bar's mode panel writes, through the same lookup — the weapon the shooter fires,
-which is the mounted one while they man an emplacement and the gun in their hands
-otherwise. Its write is the last of them, landing after the frame's selection sync and
-after a panel press on that same frame, and before the move-target reset. So the mode in the
-reply is the mode `battle.cost`, `battle.sightline` and `act.fire` price, on that frame and
-after it — neither the sync nor a press can put the weapon back on single once the reply has
-gone out. It refuses `MissingModel` with a note saying which precondition is missing when
-nothing is selected, the shooter has no weapon to fire, or that weapon does not offer the
-mode.
+the offset taken. `battle.set_fire_mode` sets the mode on the same weapon the action bar's mode
+panel sets it on, through the same lookup — the weapon the shooter fires, which is the mounted
+one while they man an emplacement and the gun in their hands otherwise. Its write is the last of
+them, landing after a panel press on that same frame and before the move-target reset. So the
+mode in the reply is the mode `act.fire` and `battle.selection` read on that frame — both order
+after `FireModeSystems::Write` — and the one every other reader sees after it. A press cannot
+put the weapon back on single once the reply has gone out. It refuses `MissingModel` with a
+note saying which precondition is missing when nothing is selected, the shooter has no weapon
+to fire, or that weapon does not offer the mode.
 
 Args, replies and published shapes are all **RON**. `arguments` is a string of compact RON
 shaped by that command's own `schemas.arguments`; a command that takes none is `"()"`. The

@@ -11,10 +11,9 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
     visibility::{FactionRelation, SquadVisibility},
-    weapon::FireMode,
 };
 
-use crate::{SelectedFireMode, selection::resources::SelectedShooter};
+use crate::{fire_mode::ChosenFireMode, selection::resources::SelectedShooter};
 
 /// Goal cell for the move path preview, if any.
 #[derive(Resource, Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -34,15 +33,12 @@ impl PathPreviewTarget {
     }
 }
 
-/// Clear the path preview target when the fire mode changes (not on select).
+/// Clear the path preview target when a gun's chosen fire mode changes.
 pub fn reset_move_target_on_fire_mode_change(
-    fire_mode: Res<SelectedFireMode>,
-    selected: Res<SelectedShooter>,
-    weapon_just_armed: Query<(), Added<FireMode>>,
+    mode_changed: Query<(), Changed<ChosenFireMode>>,
     mut target: ResMut<PathPreviewTarget>,
 ) {
-    let weapon_arrived = weapon_just_armed.iter().next().is_some();
-    if !fire_mode.is_changed() || selected.is_changed() || weapon_arrived {
+    if mode_changed.iter().next().is_none() {
         return;
     }
     let cleared = PathPreviewTarget::cleared();

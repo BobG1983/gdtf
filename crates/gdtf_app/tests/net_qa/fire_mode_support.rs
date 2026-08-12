@@ -4,9 +4,10 @@ use std::sync::mpsc;
 
 use bevy::{app::App, ecs::entity::Entity, prelude::*};
 use gdtf_app::qa_wire::misc::ModeKindNet;
-use gdtf_battle_input::SelectedFireMode;
+use gdtf_battle_input::{ChosenFireMode, SelectedShooter, chosen_spec};
 use gdtf_battle_sim::weapon::{
-    FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    FireMode, FireModeSpec, MeleeWeapon, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    MountedWeapon, Wields,
 };
 use gdtf_net_qa_transport::IncomingRequest;
 use gdtf_ui::{ActiveSegment, SegmentIndex};
@@ -22,7 +23,7 @@ pub(crate) struct FireModeBody {
     pub(crate) mode: ModeKindNet,
 }
 
-/// The single these cases' gun offers, which is not what `SelectedFireMode` defaults to.
+/// The single these cases' gun offers.
 pub(crate) const SINGLE: FireModeSpec = FireModeSpec::new(
     ModeKind::Single,
     ModeConeMult::new(1.0),
@@ -56,11 +57,32 @@ pub(crate) fn single_burst_and_full() -> FireMode {
     FireMode::new(vec![SINGLE, BURST, FULL])
 }
 
-/// The whole spec the world itself is holding, which a kind alone cannot tell apart.
+/// The weapon the selected shooter fires, if anything is selected and holds one.
+pub(crate) fn fired_gun(app: &App) -> Option<Entity> {
+    let shooter = app
+        .world()
+        .get_resource::<SelectedShooter>()
+        .and_then(|selected| **selected)?;
+    let wields = app.world().get::<Wields>(shooter)?;
+    wields.firing_weapon(
+        |weapon| {
+            app.world()
+                .get_entity(weapon)
+                .is_ok_and(|row| row.contains::<MountedWeapon>())
+        },
+        |weapon| {
+            app.world()
+                .get_entity(weapon)
+                .is_ok_and(|row| row.contains::<MeleeWeapon>())
+        },
+    )
+}
+
+/// The whole spec the gun is set to, which a kind alone cannot tell apart.
 pub(crate) fn selected_mode(app: &App) -> Option<FireModeSpec> {
-    app.world()
-        .get_resource::<SelectedFireMode>()
-        .map(|mode| **mode)
+    let weapon = fired_gun(app)?;
+    let modes = app.world().get::<FireMode>(weapon)?;
+    chosen_spec(modes, app.world().get::<ChosenFireMode>(weapon))
 }
 
 /// The one mode segment carrying `M`, which a running battle always spawns.
@@ -119,9 +141,8 @@ pub(crate) fn battle_with_a_gun(modes: FireMode) -> (App, mpsc::Sender<IncomingR
     assert_eq!(
         selected_mode(&app),
         Some(SINGLE),
-        "the frame after arming lets the selection sync settle, so the case starts on the gun's \
-         own single spec — which is not the resource's default — and a later mode cannot be the \
-         value it was already holding",
+        "a gun with no mode picked for it reads as its own single spec, so the case starts there \
+         and a later mode cannot be the value it was already on",
     );
     (app, tx)
 }

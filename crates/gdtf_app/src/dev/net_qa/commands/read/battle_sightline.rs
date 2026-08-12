@@ -2,7 +2,7 @@ use bevy::{
     ecs::{query::QueryData, system::SystemParam},
     prelude::*,
 };
-use gdtf_battle_input::{SelectedFireMode, SelectedShooter, firing_weapon_of};
+use gdtf_battle_input::{ChosenFireMode, SelectedShooter, chosen_spec, firing_weapon_of};
 use gdtf_battle_presenter::PresenterSystems;
 use gdtf_battle_sim::{
     acts::can_engage,
@@ -89,16 +89,15 @@ impl QaCommand for BattleSightline {
 /// What the sightline answer is read from: the screen's view plus the sim's firing gates.
 #[derive(SystemParam)]
 pub(super) struct SightlineReads<'w, 's> {
-    shown:     ShownBattleReads<'w>,
-    selected:  Option<Res<'w, SelectedShooter>>,
-    fire_mode: Option<Res<'w, SelectedFireMode>>,
-    tuning:    Option<Res<'w, CombatTuning>>,
-    factions:  Query<'w, 's, &'static Faction>,
-    shooters:  Query<'w, 's, ShooterRow>,
-    wields:    Query<'w, 's, &'static Wields>,
-    guns:      Query<'w, 's, GunRow, With<WieldedBy>>,
-    mounted:   Query<'w, 's, (), With<MountedWeapon>>,
-    melee:     Query<'w, 's, (), With<MeleeWeapon>>,
+    shown:    ShownBattleReads<'w>,
+    selected: Option<Res<'w, SelectedShooter>>,
+    tuning:   Option<Res<'w, CombatTuning>>,
+    factions: Query<'w, 's, &'static Faction>,
+    shooters: Query<'w, 's, ShooterRow>,
+    wields:   Query<'w, 's, &'static Wields>,
+    guns:     Query<'w, 's, GunRow, With<WieldedBy>>,
+    mounted:  Query<'w, 's, (), With<MountedWeapon>>,
+    melee:    Query<'w, 's, (), With<MeleeWeapon>>,
 }
 
 /// Pose, pool and body the two firing gates read off the selected shooter.
@@ -117,6 +116,7 @@ pub(super) struct ShooterRow {
 #[derive(QueryData)]
 pub(super) struct GunRow {
     modes:      &'static FireMode,
+    chosen:     Option<&'static ChosenFireMode>,
     magazine:   &'static Magazine,
     handedness: &'static Handedness,
 }
@@ -154,8 +154,7 @@ impl SightlineReads<'_, '_> {
     }
 
     fn can_engage(&self, shooter: Entity, at: CellLevel) -> CanEngageNet {
-        let (Some(fire_mode), Some(tuning)) = (self.fire_mode.as_deref(), self.tuning.as_deref())
-        else {
+        let Some(tuning) = self.tuning.as_deref() else {
             return CanEngageNet::new(false);
         };
         let Ok(row) = self.shooters.get(shooter) else {
@@ -166,12 +165,7 @@ impl SightlineReads<'_, '_> {
         else {
             return CanEngageNet::new(false);
         };
-        let Some(spec) = gun
-            .modes
-            .iter()
-            .find(|spec| spec.kind == fire_mode.kind)
-            .copied()
-        else {
+        let Some(spec) = chosen_spec(gun.modes, gun.chosen) else {
             return CanEngageNet::new(false);
         };
         let cost = mode_tu_cost(&spec, row.tu_max, row.aiming, tuning);

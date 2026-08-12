@@ -1,5 +1,8 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
-use gdtf_battle_input::{SelectedFireMode, SelectedShooter, mode_spec_for};
+use gdtf_battle_input::{
+    ChosenFireMode, FiredWeaponModes, SelectedShooter, firing_weapon_of, mode_spec_for,
+    set_chosen_mode,
+};
 use gdtf_battle_sim::weapon::{FireMode, MeleeWeapon, MountedWeapon, WieldedBy, Wields};
 use gdtf_ui::{ActiveSegment, SegmentSelected, SegmentedControl};
 
@@ -16,41 +19,49 @@ pub(in crate::states::running::game::battlescape) struct ClickedModeWeapon<'w, '
 }
 
 pub(in crate::states::running::game::battlescape) fn mode_segment_write(
-    mut chosen: MessageReader<SegmentSelected>,
-    mut fire_mode: ResMut<SelectedFireMode>,
+    mut picked: MessageReader<SegmentSelected>,
     selected: Res<SelectedShooter>,
     arms: ClickedModeWeapon,
     mode_controls: Query<(), With<ModeControl>>,
+    mut chosen: Query<&mut ChosenFireMode>,
+    mut commands: Commands,
 ) {
-    for event in chosen.read() {
+    for event in picked.read() {
         if mode_controls.get(event.control).is_err() {
             continue;
         }
-        let Some(kind) = mode_for_index(*event.index) else {
+        let (Some(shooter), Some(kind)) = (**selected, mode_for_index(*event.index)) else {
             continue;
         };
-        let Some(spec) = mode_spec_for(
+        let Some(weapon) = firing_weapon_of(shooter, &arms.wields, &arms.mounted, &arms.melee)
+        else {
+            continue;
+        };
+        if mode_spec_for(
             *selected,
             &arms.wields,
             &arms.weapons,
             &arms.mounted,
             &arms.melee,
             kind,
-        ) else {
+        )
+        .is_none()
+        {
             continue;
-        };
-        let next = SelectedFireMode::new(spec);
-        if *fire_mode != next {
-            *fire_mode = next;
         }
+        set_chosen_mode(weapon, kind, &arms.weapons, &mut chosen, &mut commands);
     }
 }
 
 pub(in crate::states::running::game::battlescape) fn sync_mode_active_segment(
-    fire_mode: Res<SelectedFireMode>,
+    selected: Res<SelectedShooter>,
+    arms: FiredWeaponModes,
     mut controls: Query<&mut ActiveSegment, (With<ModeControl>, With<SegmentedControl>)>,
 ) {
-    let want = ActiveSegment::new(mode_index(fire_mode.kind));
+    let Some(spec) = arms.spec_of_selected(*selected) else {
+        return;
+    };
+    let want = ActiveSegment::new(mode_index(spec.kind));
     for mut active in &mut controls {
         active.set_if_neq(want);
     }

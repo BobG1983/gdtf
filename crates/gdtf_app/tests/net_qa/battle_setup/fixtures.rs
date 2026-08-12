@@ -8,7 +8,7 @@ use gdtf_app::qa_wire::{
     token::GangerToken,
     vitals::{HpMaxNet, TuMaxNet},
 };
-use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::{ChosenFireMode, SelectedShooter};
 use gdtf_battle_presenter::DrawnPosition;
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActLog, ActProvenance, RecordedAct},
@@ -18,7 +18,7 @@ use gdtf_battle_sim::{
     openable::OpenState,
     prelude::{Cell, CellLevel},
     turn::ActiveFaction,
-    weapon::{FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
+    weapon::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
 };
 use gdtf_qa_protocol::ports::NetQaPort;
 
@@ -32,6 +32,7 @@ use super::{
     map::{a_free_open_cell, a_free_open_cell_beside, a_lit_cover_cell, settle},
 };
 use crate::{
+    battle_fixture::arm_selected_with_modes,
     battle_reads::{
         a_player_ganger, an_enemy_faction, an_enemy_ganger, an_enemy_ganger_at,
         an_unselected_player_ganger, cell_of,
@@ -134,20 +135,33 @@ pub(crate) fn battle_with_a_door(
     Ok((app, port, SpawnedDoor { entity, at }))
 }
 
-/// A live battle whose selected shooter has been switched to full auto.
+/// A live battle whose selected shooter's gun offers single and full, and is set to full.
 pub(crate) fn battle_with_a_selected_fire_mode()
 -> Result<(App, NetQaPort, ExpectedFireMode), TestError> {
     let (mut app, port) = battle_app_listening()?;
     settle(&mut app);
-    app.world_mut()
-        .insert_resource(SelectedFireMode::new(FireModeSpec::new(
-            ModeKind::Full,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.0),
-            ModeShots::new(1),
-        )));
+    let modes = FireMode::new(vec![
+        one_mode(ModeKind::Single, 0.2),
+        one_mode(ModeKind::Full, 0.9),
+    ]);
+    let weapon = arm_selected_with_modes(&mut app, modes);
+    let Ok(mut gun) = app.world_mut().get_entity_mut(weapon) else {
+        return Err("the weapon the fixture just armed must still exist".into());
+    };
+    gun.insert(ChosenFireMode::new(ModeKind::Full));
+    settle(&mut app);
     let kind = ModeKindNet::from_sim(ModeKind::Full);
     Ok((app, port, ExpectedFireMode { kind }))
+}
+
+/// One fire-mode entry, at the kind and price the fixture gives it.
+const fn one_mode(kind: ModeKind, tu_percent: f32) -> FireModeSpec {
+    FireModeSpec::new(
+        kind,
+        ModeConeMult::new(1.0),
+        ModeTuPercent::new(tu_percent),
+        ModeShots::new(1),
+    )
 }
 
 /// A live battle, reporting one player ganger's identity as the world holds it.

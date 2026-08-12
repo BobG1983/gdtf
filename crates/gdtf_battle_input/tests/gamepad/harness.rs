@@ -5,7 +5,8 @@ use bevy::{
     prelude::*,
 };
 use gdtf_battle_input::{
-    GdtfBattleInputPlugin, LeftClickOutcome, SelectedFireMode, ShooterArms, decide_left_click,
+    ChosenFireMode, GdtfBattleInputPlugin, LeftClickOutcome, SelectedShooter, ShooterArms,
+    chosen_spec, decide_left_click,
     selection::{LeftClickReads, PointerSelection},
 };
 use gdtf_battle_sim::{
@@ -17,8 +18,8 @@ use gdtf_battle_sim::{
     vertical::VerticalLinkGraph,
     visibility::SquadVisibility,
     weapon::{
-        FireMode, FireModeSpec, Handedness, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, WieldedBy,
+        FireMode, FireModeSpec, Handedness, MagazineSize, MeleeWeapon, ModeConeMult, ModeKind,
+        ModeShots, ModeTuPercent, WieldedBy, Wields,
     },
 };
 
@@ -41,8 +42,6 @@ pub(crate) fn decision_app() -> App {
     app.add_plugins(MinimalPlugins)
         .add_plugins(GdtfBattleInputPlugin);
     app.world_mut().insert_resource(OccupancyGrid::default());
-    app.world_mut()
-        .insert_resource(SelectedFireMode::new(spec(0.2, 1)));
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));
@@ -80,6 +79,22 @@ pub(crate) fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
         .resource_mut::<OccupancyGrid>()
         .set_occupant(cell, Some(ganger));
     ganger
+}
+
+/// The spec the gun the selected shooter fires is set to.
+pub(crate) fn selected_mode(app: &App) -> Option<FireModeSpec> {
+    let shooter = app
+        .world()
+        .get_resource::<SelectedShooter>()
+        .and_then(|selected| **selected)?;
+    let wields = app.world().get::<Wields>(shooter)?;
+    let weapon = wields.ranged_weapon(|weapon| {
+        app.world()
+            .get_entity(weapon)
+            .is_ok_and(|row| row.contains::<MeleeWeapon>())
+    })?;
+    let modes = app.world().get::<FireMode>(weapon)?;
+    chosen_spec(modes, app.world().get::<ChosenFireMode>(weapon))
 }
 
 pub(crate) fn place_enemy(app: &mut App, cell: CellLevel) -> Entity {

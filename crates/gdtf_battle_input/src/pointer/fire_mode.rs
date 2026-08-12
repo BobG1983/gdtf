@@ -1,32 +1,53 @@
-//! Selected fire mode resource and sync on selection change.
+//! The fire mode a weapon is set to, and the lookups that resolve it.
 
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::weapon::{
-    FireMode, FireModeSpec, MeleeWeapon, ModeKind, MountedWeapon, WieldedBy, Wields, WieldsChanged,
+    FireMode, FireModeSpec, MeleeWeapon, ModeKind, MountedWeapon, WieldedBy, Wields,
 };
 
 use crate::SelectedShooter;
 
-/// Currently selected fire mode for the active shooter.
-#[derive(Resource, Deref, Debug, Clone, Copy, PartialEq)]
-pub struct SelectedFireMode(FireModeSpec);
+/// The fire mode a weapon is set to, held on the weapon entity.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ChosenFireMode(ModeKind);
 
-impl SelectedFireMode {
-    /// Wrap a fire mode spec.
+impl ChosenFireMode {
+    /// Wrap the kind picked for this weapon.
     #[must_use]
-    pub const fn new(spec: FireModeSpec) -> Self {
-        Self(spec)
+    pub const fn new(kind: ModeKind) -> Self {
+        Self(kind)
     }
 }
 
-impl Default for SelectedFireMode {
-    fn default() -> Self {
-        Self(FireModeSpec::new(
-            gdtf_battle_sim::weapon::ModeKind::Single,
-            gdtf_battle_sim::weapon::ModeConeMult::new(1.0),
-            gdtf_battle_sim::weapon::ModeTuPercent::new(0.0),
-            gdtf_battle_sim::weapon::ModeShots::new(1),
-        ))
+/// The spec a weapon fires: its chosen kind's entry, else its own single.
+/// Answers nothing when the chosen kind is not on its own list.
+#[must_use]
+pub fn chosen_spec(modes: &FireMode, chosen: Option<&ChosenFireMode>) -> Option<FireModeSpec> {
+    match chosen {
+        Some(chosen) => modes.iter().find(|spec| spec.kind == **chosen).copied(),
+        None => Some(modes.single()),
+    }
+}
+
+/// Set `weapon`'s chosen mode, writing only when the mode it fires actually changes.
+pub fn set_chosen_mode(
+    weapon: Entity,
+    kind: ModeKind,
+    weapons: &Query<&FireMode, With<WieldedBy>>,
+    chosen: &mut Query<&mut ChosenFireMode>,
+    commands: &mut Commands,
+) {
+    let next = ChosenFireMode::new(kind);
+    if let Ok(mut current) = chosen.get_mut(weapon) {
+        if *current != next {
+            *current = next;
+        }
+    } else {
+        // With nothing picked the weapon already reads as its own single.
+        let unset = weapons.get(weapon).ok().map(|modes| modes.single().kind);
+        if unset != Some(kind) {
+            commands.entity(weapon).insert(next);
+        }
     }
 }
 
@@ -75,13 +96,13 @@ pub fn mode_spec_for(
     fire_mode.iter().find(|spec| spec.kind == kind).copied()
 }
 
-/// The lookups the fire-mode sync resolves the fired weapon against.
+/// The lookups a reader resolves the fired weapon's mode against.
 #[derive(SystemParam)]
 pub struct FiredWeaponModes<'w, 's> {
     /// Weapons each shooter holds.
     wields:  Query<'w, 's, &'static Wields>,
-    /// Fire modes of a wielded weapon.
-    weapons: Query<'w, 's, &'static FireMode, With<WieldedBy>>,
+    /// Fire modes and chosen kind of a wielded weapon.
+    weapons: Query<'w, 's, (&'static FireMode, Option<&'static ChosenFireMode>), With<WieldedBy>>,
     /// Mounted probe used to prefer a manned mount over the carried gun.
     mounted: Query<'w, 's, (), With<MountedWeapon>>,
     /// Melee probe used to skip melee weapons when picking the ranged one.
@@ -89,34 +110,17 @@ pub struct FiredWeaponModes<'w, 's> {
 }
 
 impl FiredWeaponModes<'_, '_> {
-    /// The fire modes of the weapon this shooter fires, if it has one.
-    fn of(&self, shooter: Entity) -> Option<&FireMode> {
-        firing_weapon_of(shooter, &self.wields, &self.mounted, &self.melee)
-            .and_then(|weapon| self.weapons.get(weapon).ok())
+    /// The spec the weapon this shooter fires is set to, if it resolves.
+    #[must_use]
+    pub fn spec_of(&self, shooter: Entity) -> Option<FireModeSpec> {
+        let weapon = firing_weapon_of(shooter, &self.wields, &self.mounted, &self.melee)?;
+        let (modes, chosen) = self.weapons.get(weapon).ok()?;
+        chosen_spec(modes, chosen)
     }
-}
 
-/// Copy the fire mode of the weapon the selected shooter fires into the resource.
-pub fn sync_fire_mode_on_select(
-    selected: Res<SelectedShooter>,
-    arms: FiredWeaponModes,
-    weapon_just_armed: Query<(), Added<FireMode>>,
-    mut wields_changed: WieldsChanged,
-    mut fire_mode: ResMut<SelectedFireMode>,
-) {
-    let weapon_arrived = weapon_just_armed.iter().next().is_some();
-    let armament_moved = wields_changed.any();
-    if !selected.is_changed() && !weapon_arrived && !armament_moved {
-        return;
-    }
-    let Some(shooter) = **selected else {
-        return;
-    };
-    let Some(weapon) = arms.of(shooter) else {
-        return;
-    };
-    let next = SelectedFireMode::new(weapon.single());
-    if *fire_mode != next {
-        *fire_mode = next;
+    /// The spec the selected shooter's weapon is set to, if anything is selected.
+    #[must_use]
+    pub fn spec_of_selected(&self, selected: SelectedShooter) -> Option<FireModeSpec> {
+        self.spec_of((*selected)?)
     }
 }

@@ -1,6 +1,6 @@
 //! Shared control fixture: the headless control app, fixture authoring, and
 use bevy::{input::ButtonInput, prelude::*};
-use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
     acts::{FireRequested, MoveRequested, SetFacingRequested},
@@ -108,10 +108,6 @@ pub(crate) fn set_hovered(app: &mut App, cell: Option<CellLevel>) {
 pub(crate) fn set_selection(app: &mut App, entity: Entity) {
     app.world_mut()
         .insert_resource(SelectedShooter::new(entity));
-}
-
-pub(crate) fn set_fire_mode(app: &mut App, mode: FireModeSpec) {
-    app.world_mut().insert_resource(SelectedFireMode::new(mode));
 }
 
 pub(crate) fn move_target(app: &App) -> Option<CellLevel> {

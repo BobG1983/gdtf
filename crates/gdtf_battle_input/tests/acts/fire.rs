@@ -1,12 +1,12 @@
 use bevy::prelude::*;
-use gdtf_battle_input::{InspectTarget, SelectedFireMode};
+use gdtf_battle_input::InspectTarget;
 use gdtf_battle_sim::{
     ganger::{Aiming, TuMax},
     magazine::{LoadedRounds, Magazine, ReloadTu},
     prelude::{CellLevel, Direction, Level, LifeState, OccupancyGrid, StanceKind, Tu},
     tuning::CombatTuning,
     visibility::SquadVisibility,
-    weapon::{FireModeSpec, MagazineSize},
+    weapon::{FireMode, MagazineSize, ModeKind},
 };
 use gdtf_test_utils::press_left;
 
@@ -44,8 +44,51 @@ fn place_enemy(app: &mut App, cell: CellLevel) -> Entity {
     enemy
 }
 
-fn fire_mode(app: &App) -> Option<FireModeSpec> {
-    app.world().get_resource::<SelectedFireMode>().map(|m| **m)
+/// Rewrite `ganger`'s gun with `modes`, leaving everything else on it alone.
+fn rewrite_gun(app: &mut App, ganger: Entity, modes: FireMode) {
+    let Some(weapon) = gun_of(app, ganger) else {
+        return;
+    };
+    app.world_mut().entity_mut(weapon).insert(modes);
+}
+
+#[test]
+fn a_ganger_keeps_the_mode_picked_for_it_across_a_reselect() {
+    let mut app = acts_app();
+    let first = armed_ganger(
+        &mut app,
+        sbf_selector(),
+        StanceKind::Standing,
+        Direction::North,
+    );
+    let second = armed_ganger(
+        &mut app,
+        sbf_selector(),
+        StanceKind::Standing,
+        Direction::North,
+    );
+    let burst = spec(ModeKind::Burst, 0.4, 3);
+
+    select_ganger_at(&mut app, first, SHOOTER_CURSOR_OFFSET);
+    pick_mode(&mut app, first, ModeKind::Burst);
+    app.update();
+    assert_eq!(
+        mode_of(&app, first),
+        Some(burst),
+        "the pick has to land before the case can ask whether it survives",
+    );
+
+    select_ganger_at(&mut app, second, TARGET_CURSOR_OFFSET);
+    app.update();
+    select_ganger_at(&mut app, first, SHOOTER_CURSOR_OFFSET);
+    app.update();
+
+    assert_eq!(
+        mode_of(&app, first),
+        Some(burst),
+        "the mode lives on the gun the ganger holds, so selecting away and back leaves it on \
+         Burst; the gun's single here means something put it back",
+    );
 }
 
 #[test]
@@ -62,9 +105,9 @@ fn selecting_armed_ganger_defaults_fire_mode_to_single() {
     select_ganger(&mut app, ganger);
 
     assert_eq!(
-        fire_mode(&app),
+        mode_of(&app, ganger),
         Some(selector.single()),
-        "selecting an armed ganger must default SelectedFireMode to its FireMode::single()",
+        "a gun with no mode picked for it reads as its own FireMode::single()",
     );
 }
 
@@ -97,7 +140,11 @@ fn left_click_emits_one_fire_requested() {
     );
     let msg = &emitted[0];
     assert_eq!(msg.shooter, ganger, "shooter = *SelectedShooter");
-    assert_eq!(msg.mode, selector.single(), "mode = *SelectedFireMode");
+    assert_eq!(
+        msg.mode,
+        selector.single(),
+        "mode = the spec the gun the shooter fires is set to",
+    );
     assert_eq!(
         msg.target_cell, target_cell,
         "target cell from the hovered cell"
@@ -105,6 +152,44 @@ fn left_click_emits_one_fire_requested() {
     assert_eq!(
         msg.target_level, target_level,
         "target level from the hovered cell"
+    );
+}
+
+#[test]
+fn a_fire_request_carries_the_spec_the_gun_holds_now() {
+    let mut app = acts_app();
+    add_probes(&mut app);
+    let ganger = armed_ganger(
+        &mut app,
+        sbf_selector(),
+        StanceKind::Standing,
+        Direction::North,
+    );
+
+    select_ganger(&mut app, ganger);
+    let target = hover_at(&mut app, TARGET_CURSOR_OFFSET);
+    place_enemy(&mut app, target);
+    let rewritten = spec(ModeKind::Single, 0.35, 1);
+    rewrite_gun(&mut app, ganger, FireMode::new(vec![rewritten]));
+    assert_ne!(
+        rewritten,
+        sbf_selector().single(),
+        "the rewrite has to change the spec, or the case cannot tell which one was carried",
+    );
+
+    press_left(&mut app);
+    app.update();
+
+    let emitted = fires(&app);
+    assert_eq!(
+        emitted.len(),
+        1,
+        "exactly one FireRequested must be emitted by a left-click on an in-bounds target",
+    );
+    assert_eq!(
+        emitted[0].mode, rewritten,
+        "the request carries the entry the gun holds now, so the spec it was armed with here \
+         means the shot was built from a copy taken earlier",
     );
 }
 

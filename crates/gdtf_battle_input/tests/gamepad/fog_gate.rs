@@ -1,5 +1,5 @@
 use bevy::{ecs::system::SystemState, prelude::*};
-use gdtf_battle_input::{InspectTarget, LeftClickOutcome, SelectedFireMode, SelectedShooter};
+use gdtf_battle_input::{InspectTarget, LeftClickOutcome, SelectedShooter};
 use gdtf_battle_sim::{
     magazine::Magazine,
     prelude::{Cell, CellLevel, Tu},
@@ -96,7 +96,7 @@ fn apply_and_assert_inert(
 ) {
     use gdtf_battle_input::{PendingActIntent, PointerSelection, apply_left_click};
 
-    let fire_mode_before = *app.world().resource::<SelectedFireMode>();
+    let fire_mode_before = selected_mode(app);
     let selected_before = *app.world().resource::<SelectedShooter>();
     {
         let world = app.world_mut();
@@ -115,7 +115,7 @@ fn apply_and_assert_inert(
         "the selection must be UNCHANGED by a refused fire commit (targeting stays armed)",
     );
     assert_eq!(
-        *app.world().resource::<SelectedFireMode>(),
+        selected_mode(app),
         fire_mode_before,
         "the fire mode must be UNCHANGED by a refused fire commit",
     );
