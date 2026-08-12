@@ -11,17 +11,19 @@ argument-hint: "[GTW-N ...]"
 
 Binding background: `.claude/rules/git-workflow.md`, `.claude/rules/linear-discipline.md`.
 
-Resolve `GTW-N` from argument or branch. Must match the `TICKET=` set in `.claude/.gate-pass`.
+Resolve `GTW-N` from argument or branch. It is the ticket `/gate` passed, and the `TICKET=` you write into `.claude/.gate-pass` in step 1.
 
 ## Preconditions — any failure: refuse, state which, stop
 
-1. **Gate passed for this tree.** `.claude/.gate-pass` exists; `TICKET=` matches; `BRANCH=` is the current branch; `HEAD=` is an ancestor-or-equal of the current HEAD (same as pre-commit); `FINGERPRINT=` equals a fresh recompute of the **one** command in [verification.md → Gate-pass fingerprint](../../rules/verification.md#gate-pass-fingerprint). Mismatch means the tree moved under you — re-run `/gate`.
+1. **Gate passed for this ticket, this session.** `/gate` reported full PASS on this branch, for this ticket, in this session. No gate report, a different ticket, a different branch, or a report from an earlier session — refuse and re-run `/gate`. The report need not carry a `SCOPE=` line: you derive scope yourself in precondition 3, for the tree you commit.
+
+   You write `.claude/.gate-pass` yourself, in step 1 of **Steps**; `/gate` does not. So there is no file to check here, and no fingerprint comparison: `/docs-sync` runs between `/gate` and `/land` and normally moves the tree, so any such comparison would either fail on a legitimate docs edit or pass against your own fresh recompute. What replaces it is precondition 3 — you re-run the suite on the exact tree you commit.
 
 2. **Docs-sync done (or confirmed clean).** `/docs-sync` has been run after the gate (or explicitly confirmed no drift). Do not land with drifted docs.
 
-3. **Suite green now.** Re-apply the **Suite scope** rules in `/gate` (same path allowlist; default FULL).
-   - If gate-pass has `SCOPE=DOCS` and the current tree is still docs-only under those rules, cargo is not required.
-   - If the tree is now FULL (any non-allowlisted path, or the two force-full files), refuse and re-run `/gate`.
+3. **Suite green now.** Re-apply the **Suite scope** rules in `/gate` to the tree you are about to commit (same path allowlist; default FULL). This is the check that the tree is still good after `/docs-sync`.
+   - If the gate reported `SCOPE=DOCS` and the tree is still docs-only under those rules, cargo is not required.
+   - If the gate reported `SCOPE=DOCS` and the tree is now FULL (any non-allowlisted path, or `.claude/rules/verification.md`), refuse and re-run `/gate` — the gate audited a docs-only tree.
    - Otherwise run the full suite from [`.claude/rules/verification.md`](../../rules/verification.md). Any non-zero → refuse.
 
 4. **On a `feature/*` branch** for this ticket. Not `develop` / `main`.
@@ -34,10 +36,11 @@ Resolve `GTW-N` from argument or branch. Must match the `TICKET=` set in `.claud
 
 ## Steps
 
-1. Stage explicit files by name — never `git add -A`, `-u`, or `.`.
-2. Commit: subject `Area: summary (GTW-N)`, body what changed and why. Match `git log --oneline -15` voice. Pre-commit hook re-checks gate-pass; do not use `--no-verify`.
-3. `OLD=$(git rev-parse origin/develop)`.
-4. Finish:
+1. Write `.claude/.gate-pass` for the tree you just ran the suite on: `TICKET=`, `BRANCH=` (current branch), `HEAD=` (current HEAD), `FINGERPRINT=` from the **one** command in [verification.md → Gate-pass fingerprint](../../rules/verification.md#gate-pass-fingerprint), `SCOPE=` from precondition 3. It records what you are committing and is what the pre-commit hook reads. You are its only writer.
+2. Stage explicit files by name — never `git add -A`, `-u`, or `.`.
+3. Commit: subject `Area: summary (GTW-N)`, body what changed and why. Match `git log --oneline -15` voice. Pre-commit hook re-checks gate-pass; do not use `--no-verify`.
+4. `OLD=$(git rev-parse origin/develop)`.
+5. Finish:
 
    ```bash
    git checkout develop
@@ -48,5 +51,5 @@ Resolve `GTW-N` from argument or branch. Must match the `TICKET=` set in `.claud
    ```
 
    Stop on conflicts.
-5. Move ticket(s) to **Done** via Linear MCP with evidence: merge SHA, suite result, pushed range.
-6. Report `git log --oneline OLD..develop`, then delete `.claude/.gate-pass`.
+6. Move ticket(s) to **Done** via Linear MCP with evidence: merge SHA, suite result, pushed range.
+7. Report `git log --oneline OLD..develop`, then delete `.claude/.gate-pass`.

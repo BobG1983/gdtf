@@ -23,11 +23,12 @@ Branch model: **`main`** = releases, **`develop`** = integration.
    Never code directly on `develop` or `main`.
 2. Never build a multi-ticket tree. One ticket's changes per working tree;
    finish (or stash and file a ticket) before starting the next.
-3. Commit only on gate-pass: `/gate` must be green first. The
-   `.claude/hooks/pre-commit-gate.sh` hook enforces it — no
+3. Commit only on gate-pass: `/gate` must be green first. `/land` writes
+   `.claude/.gate-pass` for the tree it commits — `/gate` does not write it.
+   The `.claude/hooks/pre-commit-gate.sh` hook enforces it — no
    `.claude/.gate-pass` matching the current branch/HEAD, a develop/main
-   branch, or a red suite all block the commit. `/land`'s content fingerprint
-   check is the strict layer.
+   branch, or a red suite all block the commit. The strict layer is `/land`
+   re-running the full suite on the exact tree it is about to commit.
 4. Stage files EXPLICITLY by name. Never `git add -A`, never `git add .` —
    you must be able to say why every staged file is in the commit.
 5. Commit style: `Area: summary (GTW-N)` subject plus a wrapped body saying

@@ -6,14 +6,14 @@
 #   1. Branch guard — features branch off develop
 #      (git checkout -b feature/<name>); never commit directly to
 #      develop or main.
-#   2. Gate-pass guard — /gate records a pass in .claude/.gate-pass (TICKET /
-#      BRANCH / HEAD / FINGERPRINT / SCOPE lines). A commit is allowed only if
-#      that file exists, names the CURRENT branch, and its recorded HEAD is an
-#      ancestor-or-equal of the current HEAD (so /land's multiple per-concern
-#      commits all pass off one gate). This hook does NOT recompute FINGERPRINT
-#      — /land does, via the command in .claude/rules/verification.md. This
-#      guard is the deterministic backstop that makes "commit without a
-#      gate-pass is blocked" literally true.
+#   2. Gate-pass guard — /land records the tree it is committing in
+#      .claude/.gate-pass (TICKET / BRANCH / HEAD / FINGERPRINT / SCOPE lines).
+#      /gate does not write that file. A commit is allowed only if it exists,
+#      names the CURRENT branch, and its recorded HEAD is an ancestor-or-equal
+#      of the current HEAD (so /land's multiple per-concern commits all pass off
+#      one gate). This hook does NOT read FINGERPRINT. This guard is the
+#      deterministic backstop that makes "commit without a gate-pass is blocked"
+#      literally true.
 #   3. Suite gate — the workspace green suite is the ONE definition of green.
 #      A red suite blocks the commit; "it should pass" is not evidence.
 #
