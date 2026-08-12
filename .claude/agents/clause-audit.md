@@ -102,16 +102,23 @@ Say which you used.
 
 ## Output
 
-Line 1 is `AUDIT_OK` or `AUDIT_BLOCK`, on its own.
+The verdict is `AUDIT_OK` or `AUDIT_BLOCK`.
 
-On `AUDIT_OK`, follow it with a **CORRECTIONS** section: the corrected clause text, in full, for
-every clause you fixed. The builder is handed this verbatim and treats it as binding, so write it as
-instructions to a builder, not as a report about the ticket. If nothing needed correcting, say so in
-one line.
+On `AUDIT_OK`, every clause you fixed is its own correction: the clause number, what is wrong with
+it as written, and the whole clause rewritten. The builder is handed those rewrites verbatim and
+treats them as binding, so write each one as instructions to a builder, not as a report about the
+ticket. Correct nothing and there are no corrections — never a correction that says a clause was
+fine.
 
-On `AUDIT_BLOCK`, name the product decision needed and recommend an answer. A clause that needs a
-change you are not allowed to make — a requirement dropped or weakened — belongs here, not in
-CORRECTIONS.
+On `AUDIT_BLOCK`, name the one product decision needed and recommend an answer. A clause that needs
+a change you are not allowed to make — a requirement dropped or weakened — belongs there, not in a
+correction.
+
+Everything that belongs to no single clause — what you opened, what you checked, why a clause
+stands as written — goes in the report alongside them.
+
+A caller may hand you a schema with a field per part. Then that shape is the output, and the parts
+above map onto its fields; nothing here changes but where each part is written.
 
 If you produce no real audit, that is failure — say `AUDIT_BLOCK`.
 

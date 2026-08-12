@@ -35,20 +35,76 @@ const BRANCH = `feature/${SLUG}`
 
 // --- Schemas ---------------------------------------------------------------
 
-const TICKET_TEXT = {
+// A comment written through the Linear MCP wears the account owner's name, so authorship is
+// readable only from the `**[agent]**` source line linear-discipline.md requires. An unheadered
+// comment is one the owner typed into Linear themselves — the only kind that can carry a ruling.
+const TICKET_SNAPSHOT = {
   type: 'object', additionalProperties: false,
-  required: ['text'],
+  required: ['description', 'comments', 'userNotes', 'labels', 'state', 'parent', 'relations'],
   properties: {
-    text: { type: 'string', description: 'Full description and every comment, verbatim, plus labels, parent and blocking relationships.' },
+    description: { type: 'string', description: 'The full description, verbatim. Never a summary.' },
+    comments: {
+      type: 'array', description: 'Every comment, oldest first, verbatim and none omitted.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['source', 'body'],
+        properties: {
+          source: { type: 'string', description: 'The `**[name]**` source line without brackets — clause-audit, project-manager, build-ticket / land. Exactly "owner" when the comment has no source line.' },
+          body: { type: 'string', description: 'The comment verbatim, minus the source line.' },
+        },
+      },
+    },
+    userNotes: {
+      type: 'array', items: { type: 'string' },
+      description: 'Bodies of the comments whose source is "owner", repeated here because these are the only ones that can hold a ruling. Empty if none.',
+    },
+    labels: { type: 'array', items: { type: 'string' }, description: 'Label names as the board shows them.' },
+    state: { type: 'string', description: 'The workflow state name right now.' },
+    parent: { type: 'string', description: 'Parent as `GTW-n title`, or empty if none.' },
+    relations: {
+      type: 'array', description: 'Fetched with includeRelations: true — without it the board returns none and a ticket with edges looks like one without.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['kind', 'ticket', 'title'],
+        properties: {
+          kind: { type: 'string', enum: ['blocks', 'blocked-by', 'related-to', 'duplicate-of', 'duplicated-by', 'other'] },
+          ticket: { type: 'string', description: 'GTW-n' },
+          title: { type: 'string' },
+        },
+      },
+    },
   },
 }
 
+// The corrections are the reason phase 0 exists. As prose they can be skimmed past or half-applied
+// and nothing downstream can tell which; as rows the builder gets a list it must answer one by one.
 const AUDIT_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['verdict', 'report'],
+  required: ['verdict', 'corrections', 'blockingQuestion', 'report'],
   properties: {
     verdict: { type: 'string', enum: ['AUDIT_OK', 'AUDIT_BLOCK'], description: 'AUDIT_BLOCK only for a product decision the code cannot answer.' },
-    report: { type: 'string', description: 'Every word of the audit, with the CORRECTIONS section in full. The builder builds from this.' },
+    corrections: {
+      type: 'array', description: 'One row per clause you corrected. Empty when the ticket needed none — never a row saying a clause was fine.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['clause', 'problem', 'replacementText'],
+        properties: {
+          clause: { type: 'string', description: 'The clause number as the ticket numbers it, e.g. "5".' },
+          problem: { type: 'string', description: 'What is wrong with it as written — the missing symbol, the deleted guard, the evidence that cannot be produced.' },
+          replacementText: { type: 'string', description: 'The clause rewritten in full, ready to build against. Corrects facts; never cuts a requirement.' },
+        },
+      },
+    },
+    blockingQuestion: { type: 'string', description: 'On AUDIT_BLOCK, the one product decision to put to the owner. Empty on AUDIT_OK.' },
+    report: { type: 'string', description: 'Everything the rows do not carry: what you opened, what you checked, why a clause stands as written.' },
+  },
+}
+
+// One row per suite command, shared so the implementer and the verifier report exit codes the
+// same way — the verifier is the one that must be machine-checkable, since its whole job is to
+// distrust the implementer.
+const SUITE_ROWS = {
+  type: 'array', description: 'One row per suite command, with the exit code you read yourself. Every command in verification.md, none omitted.',
+  items: {
+    type: 'object', additionalProperties: false, required: ['command', 'exit'],
+    properties: { command: { type: 'string' }, exit: { type: 'integer' } },
   },
 }
 
@@ -57,29 +113,54 @@ const WORK_RESULT = {
   required: ['filesChanged', 'suite', 'report'],
   properties: {
     filesChanged: { type: 'array', items: { type: 'string' }, description: 'Every path you created or edited, by name, exactly as git reports it. Empty only if you truly changed nothing.' },
-    suite: { type: 'array', description: 'One row per suite command, with the exit code you read yourself.',
-      items: { type: 'object', additionalProperties: false, required: ['command', 'exit'],
-        properties: { command: { type: 'string' }, exit: { type: 'integer' } } } },
+    suite: SUITE_ROWS,
     report: { type: 'string', description: 'Clause-by-clause evidence. Failures quoted whole.' },
   },
 }
 
 const VERIFY_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['verdict', 'report', 'reportMatchesTree'],
+  required: ['verdict', 'suite', 'clauses', 'reportMatchesTree', 'report'],
   properties: {
     verdict: { type: 'string', enum: ['GREEN', 'RED'], description: 'GREEN only when every suite command exited 0 after the final edit AND every evidence clause reproduced.' },
+    suite: SUITE_ROWS,
+    clauses: {
+      type: 'array', description: 'One row per clause you reproduced. A clause you could not reach is met: false with the reason as evidence.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['clause', 'met', 'evidence'],
+        properties: {
+          clause: { type: 'string', description: 'The clause number as the ticket numbers it.' },
+          met: { type: 'boolean' },
+          evidence: { type: 'string', description: 'What you ran or read, and what it showed. A failure is quoted whole, never summarised.' },
+        },
+      },
+    },
     reportMatchesTree: { type: 'boolean', description: 'Did the implementer\'s filesChanged list match `git status --porcelain`? False if it named files it did not touch, or missed files it did.' },
-    report: { type: 'string', description: 'Every word of the verification: the suite table, each clause reproduced, failures quoted whole.' },
+    report: { type: 'string', description: 'Everything the rows do not carry.' },
   },
 }
 
+// verdict and findings are cross-checked: a COMPLIANT verdict carrying findings is treated as
+// NON-COMPLIANT. A review that says both cannot be read as the safer one by accident.
 const LENS_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['verdict', 'report'],
+  required: ['verdict', 'findings', 'report'],
   properties: {
-    verdict: { type: 'string', enum: ['COMPLIANT', 'NON-COMPLIANT'], description: 'NON-COMPLIANT only for a clause you can show is unmet.' },
-    report: { type: 'string', description: 'Every word of the review: per-clause findings, each naming the symbol and quoting the line. Write it for the agent that has to repair the code.' },
+    verdict: { type: 'string', enum: ['COMPLIANT', 'NON-COMPLIANT'], description: 'NON-COMPLIANT only for a clause you can show is unmet. Must be NON-COMPLIANT whenever findings is non-empty.' },
+    findings: {
+      type: 'array', description: 'One row per unmet clause. Empty on COMPLIANT. Not a place for notes, preferences, or work outside this ticket.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['clause', 'symbol', 'file', 'quote', 'why'],
+        properties: {
+          clause: { type: 'string', description: 'The clause number this violates.' },
+          symbol: { type: 'string', description: 'The function, type or test the repair agent must open. Never a bare line number.' },
+          file: { type: 'string', description: 'Path holding that symbol.' },
+          quote: { type: 'string', description: 'The line of code or docs that shows the violation, copied exactly.' },
+          why: { type: 'string', description: 'Why that line fails that clause, and what would satisfy it. Write it for the agent that has to repair the code.' },
+        },
+      },
+    },
+    report: { type: 'string', description: 'What you opened and traced to reach the verdict, including the clauses you found met.' },
   },
 }
 
@@ -89,7 +170,7 @@ const DOCS_RESULT = {
   properties: {
     drifted: { type: 'boolean', description: 'Did any doc claim disagree with the code' },
     filesChanged: { type: 'array', items: { type: 'string' }, description: 'Docs you edited, by name. Empty when nothing drifted.' },
-    report: { type: 'string' },
+    report: { type: 'string', description: 'Each claim you checked, the code that settled it, and what you rewrote.' },
   },
 }
 
@@ -136,6 +217,74 @@ const CLOSE_RESULT = {
   },
 }
 
+// --- Rendering -------------------------------------------------------------
+// The agents downstream read prose, so the structured rows are rendered back into text at the
+// point of use. Structure earns its keep before that: the board's fields arrive as fields, a
+// correction cannot be half-quoted, and a verdict can be checked against the rows behind it.
+
+function renderTicket(snap) {
+  if (!snap) return '(ticket text unavailable)'
+  const rel = snap.relations?.length
+    ? snap.relations.map(r => `- ${r.kind}: ${r.ticket} ${r.title}`).join('\n')
+    : '- none'
+  const notes = snap.userNotes?.length
+    ? snap.userNotes.map(n => `> ${n.replace(/\n/g, '\n> ')}`).join('\n\n')
+    : '(none — nothing on this ticket is a ruling by the owner)'
+  const comments = snap.comments?.length
+    ? snap.comments.map(c => `### comment [${c.source}]\n\n${c.body}`).join('\n\n')
+    : '(no comments)'
+  return `## Description
+
+${snap.description}
+
+## Board
+
+- state: ${snap.state || '(unknown)'}
+- labels: ${snap.labels?.join(', ') || '(none)'}
+- parent: ${snap.parent || '(none)'}
+
+Relations:
+${rel}
+
+## Owner notes — written by the owner in Linear, so these are rulings
+
+${notes}
+
+## Comments, oldest first
+
+${comments}`
+}
+
+// Every comment written through the MCP wears the owner's name, so a source line of "owner" is the
+// only mark of a real ruling. Rendered separately above so a builder cannot mistake an agent's own
+// note for one.
+function renderCorrections(a) {
+  if (!a?.corrections?.length) return '(the audit corrected no clause; build the ticket exactly as written)'
+  return a.corrections.map(c => `### Clause ${c.clause}
+
+**Wrong as written:** ${c.problem}
+
+**Build this instead:**
+
+${c.replacementText}`).join('\n\n')
+}
+
+function renderFindings(v, lensKey) {
+  if (!v) return `<gate-lens name="${lensKey}">\n(died — nothing to act on)\n</gate-lens>`
+  const rows = v.findings?.length
+    ? v.findings.map(f => `- clause ${f.clause} — \`${f.symbol}\` in ${f.file}\n  quoted: ${f.quote}\n  why: ${f.why}`).join('\n')
+    : '(verdict NON-COMPLIANT with no findings row — treat the report as the finding)'
+  return `<gate-lens name="${lensKey}" verdict="${v.verdict}">
+${rows}
+
+${v.report}
+</gate-lens>`
+}
+
+// A suite row set is green only if it is non-empty and every row exited 0. Empty means the agent
+// ran nothing, which is not a pass.
+const suiteGreen = (rows) => Array.isArray(rows) && rows.length > 0 && rows.every(r => r.exit === 0)
+
 // --- Prompt fragments ------------------------------------------------------
 
 const HOUSE_RULES = `
@@ -180,15 +329,28 @@ phase('Clause-audit')
 const live = await agent(`Read-only Linear fetch for ${TICKET} in project GDTF.
 
 Fetch the FULL description AND the complete comment thread. Do NOT change status.
-Return them verbatim in \`text\`, together with labels, parent and blocking relationships.`,
-  { model: 'opus', label: `fetch:${TICKET}`, phase: 'Clause-audit', agentType: 'project-manager', schema: TICKET_TEXT })
+
+Fill every field of the schema:
+
+- \`description\` and each \`comments[].body\` verbatim — never a summary, nothing omitted.
+- \`comments[].source\` is the \`**[name]**\` line the comment opens with, brackets stripped. A
+  comment with no such line was typed into Linear by the owner: its source is exactly \`owner\`,
+  and its body goes in \`userNotes\` as well.
+- \`relations\` needs \`includeRelations: true\`. Without it the board returns none, and a ticket
+  with edges is indistinguishable from one without.`,
+  { model: 'opus', label: `fetch:${TICKET}`, phase: 'Clause-audit', agentType: 'project-manager', schema: TICKET_SNAPSHOT })
 
 if (!live) throw new Error(`could not fetch ${TICKET} for clause audit`)
 
 const audit = await agent(`Clause audit for ${TICKET}.
 
+Return one \`corrections\` row per clause you correct: the clause number, what is wrong with it as
+written, and the whole clause rewritten ready to build against. A correction fixes facts and never
+cuts a requirement, so a row that shrinks scope is a wrong row. Correct nothing and the array is
+empty. Reasoning that belongs to no single clause goes in \`report\`.
+
 <live-ticket id="${TICKET}">
-${live.text}
+${renderTicket(live)}
 </live-ticket>`,
   { model: 'opus', label: `clause-audit:${TICKET}`, phase: 'Clause-audit', agentType: 'clause-audit', schema: AUDIT_RESULT })
 
@@ -197,7 +359,12 @@ if (!audit) throw new Error(`${TICKET}: clause audit died — abort`)
 log(`${TICKET}: clause audit ${audit.verdict}`)
 
 if (audit.verdict !== 'AUDIT_OK') {
-  return { ticket: TICKET, landed: false, reason: 'clause audit blocked before In Progress', audit: audit.report }
+  return {
+    ticket: TICKET, landed: false, reason: 'clause audit blocked before In Progress',
+    blockingQuestion: audit.blockingQuestion || '(none stated — read the audit)',
+    corrections: audit.corrections ?? [],
+    audit: audit.report,
+  }
 }
 
 phase('Open')
@@ -210,7 +377,10 @@ const opened = await agent(`Linear status and one comment for ${TICKET}.
 1. Post the comment below FIRST, before any status change.
 2. Move ${TICKET} to **In Progress**.
 3. Re-fetch the FULL description and complete comment thread (the status change may race with board edits).
-4. Return them verbatim in \`text\`, with labels, parent and blocking relationships.
+4. Fill every schema field from that re-fetch, on the same terms as the first fetch: verbatim
+   bodies, \`source\` taken from the \`**[name]**\` line or exactly \`owner\` when there is none,
+   owner-written bodies repeated in \`userNotes\`, and \`relations\` with \`includeRelations: true\`.
+   The comment you just posted is part of the thread you return.
 
 The comment is the clause audit's corrections, posted verbatim under a source line so nobody reads
 them as the owner's. Per \`.claude/rules/linear-discipline.md\` it opens with the source line and
@@ -223,9 +393,11 @@ Corrections applied to this ticket's clauses for the build starting now. These a
 readings, not a ruling by the owner. The build was made against them wherever they differ from the
 description above.
 
+${renderCorrections(audit)}
+
 ${audit.report}
 ---`,
-  { model: 'opus', label: `open:${TICKET}`, phase: 'Open', agentType: 'project-manager', schema: TICKET_TEXT })
+  { model: 'opus', label: `open:${TICKET}`, phase: 'Open', agentType: 'project-manager', schema: TICKET_SNAPSHOT })
 
 if (!opened) throw new Error(`could not open ${TICKET}`)
 
@@ -249,14 +421,17 @@ do not stage them, do not revert them, and do not build on top of them. Name the
 ## THE CONTRACT — build exactly this
 
 <ticket id="${TICKET}">
-${opened.text}
+${renderTicket(opened)}
 </ticket>
 
-## CLAUSE AUDIT — the CORRECTIONS section is BINDING
+## CLAUSE AUDIT — every correction below is BINDING
 
 The audit opened every file the ticket cites and checked it against the tree. Where a clause was
 wrong it wrote a corrected one. **Build the corrected clauses** wherever the two differ; everything
-it did not correct stands as the ticket wrote it.
+it did not correct stands as the ticket wrote it. Answer each correction in your report by clause
+number — a correction you neither built nor named is the failure this section exists to stop.
+
+${renderCorrections(audit)}
 
 ${audit.report}
 
@@ -279,17 +454,22 @@ if (!built) throw new Error(`build agent died on ${TICKET}`)
 // corrections. The corrections are never written back to Linear, so a re-fetch alone loses them —
 // and then the builder builds to one contract while verify and the lenses judge another. On
 // GTW-1012 that cost five gate rounds and a non-landing. The audit goes LAST so it wins on conflict.
-const fresh = await agent(`Re-fetch ${TICKET} from Linear. READ-ONLY. Return the CURRENT full
-description and complete comment thread, verbatim, in \`text\`.`,
-  { model: 'opus', label: `refetch:${TICKET}`, phase: 'Verify', agentType: 'project-manager', schema: TICKET_TEXT })
+const fresh = await agent(`Re-fetch ${TICKET} from Linear. READ-ONLY.
 
-const contract = `${fresh?.text || opened.text}
+Return the CURRENT state of every schema field: description and comment bodies verbatim, \`source\`
+from each comment's \`**[name]**\` line or exactly \`owner\` where there is none, owner-written
+bodies repeated in \`userNotes\`, and \`relations\` fetched with \`includeRelations: true\`.`,
+  { model: 'opus', label: `refetch:${TICKET}`, phase: 'Verify', agentType: 'project-manager', schema: TICKET_SNAPSHOT })
 
-## CLAUSE AUDIT (this run) — the CORRECTIONS section is BINDING and OVERRIDES the text above
+const contract = `${renderTicket(fresh || opened)}
+
+## CLAUSE AUDIT (this run) — every correction below is BINDING and OVERRIDES the text above
 
 The corrections were NOT written back to Linear, so the text above is the uncorrected original.
 Where they differ, the corrections win — the implementer built to them. Do NOT report a violation
 for failing to do something a correction struck out, nor for doing what a correction requires.
+
+${renderCorrections(audit)}
 
 ${audit.report}`
 
@@ -328,7 +508,12 @@ ${work.filesChanged.join('\n') || '(claimed none)'}
 
 ${GREEN}
 
-Reproduce every evidence clause yourself.
+Fill \`suite\` with one row per command in verification.md and the exit code you read yourself —
+that array is what the run checks, not your prose. Omitting a command is a RED verdict, not a
+shorter suite.
+
+Reproduce every evidence clause yourself and give each one a \`clauses\` row. A clause you could not
+reach is \`met: false\` with the reason as its evidence, never a missing row.
 
 Run \`git -C ${REPO} status --porcelain\` and compare it against the claimed file list above. Set
 \`reportMatchesTree\` false if the implementer named a file it did not touch or missed one it did,
@@ -356,11 +541,15 @@ ${verifyOut?.report ?? '(verify died — treat cargo claims as UNPROVEN)'}
 
 ${HOUSE_RULES}
 
-Run ZERO cargo. Name the symbol and quote the line.
+Run ZERO cargo.
 
-Say NON-COMPLIANT only for a clause you can show is unmet, and cite the line that shows it. Put
-every word of your reasoning in \`report\` — the repair agent reads it, so a finding you leave out
-is a finding nobody fixes.`,
+Say NON-COMPLIANT only for a clause you can show is unmet, and give it a \`findings\` row: the
+clause number, the symbol the repair agent must open, the file holding it, the line quoted exactly,
+and why that line fails that clause. Never a bare line number — code-navigation.md.
+
+The rows ARE the review. A finding described only in \`report\` is a finding nobody fixes, and a
+COMPLIANT verdict carrying rows is read as NON-COMPLIANT. \`report\` carries what you opened and
+traced, including the clauses you found met.`,
     { model: 'opus', label: `gate:${lens.key}#${attempt}`, phase: 'Gate', agentType: 'design-gate', schema: LENS_RESULT })
 }
 
@@ -372,8 +561,11 @@ phase('Gate')
 let attempt = 1
 let verdicts = await parallel(LENSES.map(l => () => runLens(l, verifyOut, attempt)))
 
-const green = () => verifyOut?.verdict === 'GREEN'
-const compliant = (v) => v?.verdict === 'COMPLIANT'
+// Both checks are fail-closed: a verdict is believed only when the rows behind it agree. A GREEN
+// with a missing or non-zero suite row, or a COMPLIANT carrying findings, is a disagreement with
+// itself and counts as the failing reading.
+const green = () => verifyOut?.verdict === 'GREEN' && suiteGreen(verifyOut.suite)
+const compliant = (v) => v?.verdict === 'COMPLIANT' && (v.findings?.length ?? 0) === 0
 const allPass = () => green() && verdicts.every(compliant)
 const reviewersHeardFrom = () => (verifyOut ? 1 : 0) + verdicts.filter(Boolean).length
 
@@ -384,15 +576,19 @@ while (!allPass() && attempt < 5) {
   attempt++
   phase('Fix')
 
+  const failedCommands = (verifyOut?.suite ?? []).filter(r => r.exit !== 0)
+  const unmetClauses = (verifyOut?.clauses ?? []).filter(c => !c.met)
+
   const problems = [
     green() ? null : verifyOut
-      ? `<verify-report verdict="${verifyOut.verdict}"${verifyOut.reportMatchesTree ? '' : ' files-claimed-do-not-match-the-tree="true"'}>\n${verifyOut.report}\n</verify-report>`
+      ? `<verify-report verdict="${verifyOut.verdict}"${verifyOut.reportMatchesTree ? '' : ' files-claimed-do-not-match-the-tree="true"'}>
+failing suite commands: ${failedCommands.map(r => `${r.command} (exit ${r.exit})`).join(', ') || '(none reported — the suite rows are missing or incomplete)'}
+unmet clauses: ${unmetClauses.map(c => `${c.clause} — ${c.evidence}`).join('\n') || '(none reported)'}
+
+${verifyOut.report}
+</verify-report>`
       : `<verify-report>\n(died — nothing to act on)\n</verify-report>`,
-    ...verdicts.map((v, i) => {
-      if (compliant(v)) return null
-      if (!v) return `<gate-lens name="${LENSES[i].key}">\n(died — nothing to act on)\n</gate-lens>`
-      return `<gate-lens name="${LENSES[i].key}" verdict="${v.verdict}">\n${v.report}\n</gate-lens>`
-    }),
+    ...verdicts.map((v, i) => compliant(v) ? null : renderFindings(v, LENSES[i].key)),
   ].filter(Boolean).join('\n\n')
 
   log(`${TICKET}: round ${attempt} — repairing`)
@@ -429,7 +625,14 @@ if (!allPass()) {
   return {
     ticket: TICKET, landed: false, reason: `still blocked after ${attempt} rounds`,
     verify: verifyOut?.report ?? null,
-    gate: verdicts.map((v, i) => ({ lens: LENSES[i].key, verdict: v?.verdict ?? 'MISSING', report: v?.report ?? null })),
+    verifySuite: verifyOut?.suite ?? [],
+    unmetClauses: (verifyOut?.clauses ?? []).filter(c => !c.met),
+    gate: verdicts.map((v, i) => ({
+      lens: LENSES[i].key,
+      verdict: v?.verdict ?? 'MISSING',
+      findings: v?.findings ?? [],
+      report: v?.report ?? null,
+    })),
   }
 }
 
@@ -542,6 +745,8 @@ return {
   reportMatchedTree: verifyOut.reportMatchesTree,
   filesStaged: landed?.filesStaged ?? [],
   suite: landed?.suite ?? [],
+  verifySuite: verifyOut.suite ?? [],
+  corrections: audit.corrections ?? [],
   verify: verifyOut.report,
   close: closed?.report ?? null,
 }

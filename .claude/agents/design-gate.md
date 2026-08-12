@@ -62,7 +62,11 @@ Green suite, read-only git, and measurement only. Never mutate the tree.
 
 ## Reporting
 
-Per clause: **PASS** (with evidence) or **VIOLATION** (the symbol and the quoted line, what the contract requires, what the code does). End with overall **COMPLIANT / NON-COMPLIANT** and the verbatim suite result.
+Per clause: **PASS** (with evidence) or **VIOLATION** (the symbol, the file, the quoted line, what the contract requires, what the code does). End with overall **COMPLIANT / NON-COMPLIANT** and the verbatim suite result.
+
+A caller may hand you a schema with one finding per violation. Then every violation is a row — the
+repair agent reads the rows, so a violation left in prose is one nobody fixes, and a COMPLIANT
+verdict carrying rows is read as NON-COMPLIANT.
 
 ## Spawning your own agents
 
