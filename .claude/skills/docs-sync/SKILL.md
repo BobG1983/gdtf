@@ -34,4 +34,4 @@ Evidence rules: [`.claude/rules/verification.md`](../../rules/verification.md).
 
 6. **Design-gate review.** Hand the doc diff + verified code files to a read-only design-gate sub-agent. Fix anything it rejects.
 
-7. **Ready for land.** When clean, point at `/land`. Do not commit yourself between gate and land — that invalidates the fingerprint.
+7. **Ready for land.** When clean, point at `/land`. Do not commit yourself between gate and land — `/land` owns the commit, and it is the only writer of `.claude/.gate-pass`, so a commit here has no gate-pass and the pre-commit hook blocks it.

@@ -47,7 +47,7 @@ Release binary builds are packaging-time only (not a CI gate).
 
 ### Suite scope (docs-only skip)
 
-Scope is agent judgment in the `/gate` skill (and re-checked by `/land`), not a script. Default **FULL**. **DOCS** only when every changed path is allowlisted markdown under `docs/`, `.claude/`, or the repo root — except `docs/tooling/qa-commands.md` and this file, which always force FULL. Pre-commit always runs its cargo subset. This does not change the six-command list above.
+Scope is agent judgment in the `/gate` skill (and re-checked by `/land`), not a script. Default **FULL**. **DOCS** only when every changed path is allowlisted markdown under `docs/`, `.claude/`, or the repo root — except this file, which always forces FULL. Pre-commit always runs its cargo subset. This does not change the six-command list above.
 
 ## Rules
 
@@ -65,9 +65,9 @@ Scope is agent judgment in the `/gate` skill (and re-checked by `/land`), not a 
 
 ### Gate-pass fingerprint
 
-`.claude/.gate-pass` records what `/gate` certified. Fields: `TICKET`, `BRANCH`, `HEAD`, `FINGERPRINT`, `SCOPE`.
+`.claude/.gate-pass` records the tree `/land` is committing. **`/land` writes it; `/gate` does not.** Fields: `TICKET`, `BRANCH`, `HEAD`, `FINGERPRINT`, `SCOPE`.
 
-`FINGERPRINT` is a content hash of the **uncommitted tree** (staged + unstaged + untracked names) relative to `HEAD`. It is **not** a hash of `HEAD` itself — `HEAD` is a separate field. Pre-commit only checks `BRANCH` / `HEAD` (ancestor-or-equal after land's per-concern commits). `/land` re-runs this command and requires `FINGERPRINT=` to match, so nothing changed under the agent between gate and land.
+`FINGERPRINT` is a content hash of the **uncommitted tree** (staged + unstaged + untracked names) relative to `HEAD`. It is **not** a hash of `HEAD` itself — `HEAD` is a separate field. Pre-commit only checks `BRANCH` / `HEAD` (ancestor-or-equal after land's per-concern commits). `/land` runs this command on the tree it is about to commit and writes the result, so the file says what was committed. Nothing re-checks it: `/docs-sync` runs between `/gate` and `/land` and normally moves the tree. The check that the committed tree is good is `/land` re-running the full suite on it.
 
 **The one command** (run from the repo root — nowhere else invents a recipe):
 
@@ -75,4 +75,4 @@ Scope is agent judgment in the `/gate` skill (and re-checked by `/land`), not a 
 { git diff HEAD; git ls-files -o --exclude-standard; } | shasum -a 256 | awk '{print $1}'
 ```
 
-Write the 64-character hex only, e.g. `FINGERPRINT=a1b2c3…`. Both `/gate` and `/land` cite this section; do not invent a different hash, path list, or tool.
+Write the 64-character hex only, e.g. `FINGERPRINT=a1b2c3…`. `/land` cites this section; do not invent a different hash, path list, or tool.

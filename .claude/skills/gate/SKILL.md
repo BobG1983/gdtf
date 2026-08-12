@@ -14,7 +14,7 @@ Binding background: `.claude/rules/design-fidelity.md`, `.claude/rules/verificat
 
 ## Suite scope (docs-only skip)
 
-Decide scope from **changed paths** (staged, committed on the branch vs `develop`, and untracked). Not from the ticket title. Record `SCOPE=FULL` or `SCOPE=DOCS` in the gate report and in `.claude/.gate-pass`.
+Decide scope from **changed paths** (staged, committed on the branch vs `develop`, and untracked). Not from the ticket title. Record `SCOPE=FULL` or `SCOPE=DOCS` in the gate report. `/land` re-derives scope for the tree it commits and writes the `SCOPE=` line into `.claude/.gate-pass`.
 
 **Default is FULL.** When unsure, FULL.
 
@@ -26,8 +26,7 @@ Decide scope from **changed paths** (staged, committed on the branch vs `develop
 
 **Always FULL** (even if markdown) when the set includes:
 
-- `docs/tooling/qa-commands.md`
-- `.claude/rules/verification.md`
+- `.claude/rules/verification.md` — the scope rule itself lives in that file.
 
 **Always FULL** for mixed diffs, renames that touch a non-markdown path, empty path sets, or anything you cannot classify.
 
@@ -65,4 +64,4 @@ Pre-commit does not implement this skip — it always runs its cargo subset. Sco
 
 8. **On violations, repair the code** (not the contract). Max 2 repair rounds, then stop and report.
 
-9. **On full PASS, write `.claude/.gate-pass`** (TICKET, BRANCH, HEAD, FINGERPRINT, **SCOPE**). Compute `FINGERPRINT` with the **one** command in [verification.md → Gate-pass fingerprint](../../rules/verification.md#gate-pass-fingerprint) — never invent a recipe. Move ticket(s) to In Review via Linear MCP. Point at `/docs-sync` then `/land`.
+9. **On full PASS, report the pass and hand off.** State `SCOPE=` and the ticket. Move ticket(s) to In Review via Linear MCP. Point at `/docs-sync` then `/land`. **Do not write `.claude/.gate-pass`** — `/land` writes it, from the tree it is about to commit. `/docs-sync` runs between the two and moves that tree, so a file written here would describe a tree nobody commits.
