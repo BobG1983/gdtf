@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
@@ -21,12 +19,10 @@ use gdtf_ui::theme::default_theme;
 use super::harness::BUDGET;
 
 fn workspace_assets_root() -> String {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("assets")
-        .to_string_lossy()
-        .into_owned()
+    let Some(root) = gdtf_assets::workspace_assets_root() else {
+        unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
+    };
+    root.to_string_lossy().into_owned()
 }
 
 const REFERENCE_WIDTH: u32 = 1280;

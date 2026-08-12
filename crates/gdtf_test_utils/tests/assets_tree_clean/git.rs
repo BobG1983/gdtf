@@ -4,10 +4,13 @@ use std::{
 };
 
 pub(crate) fn repo_root() -> PathBuf {
-    std::env::var_os("GDTF_ASSETS_CLEAN_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        PathBuf::from,
-    )
+    if let Some(override_root) = std::env::var_os("GDTF_ASSETS_CLEAN_ROOT") {
+        return PathBuf::from(override_root);
+    }
+    let Some(root) = gdtf_assets::workspace_root() else {
+        unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
+    };
+    root
 }
 
 pub(crate) enum GitRead {

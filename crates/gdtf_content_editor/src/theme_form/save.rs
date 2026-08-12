@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use gdtf_assets::serialize_ron_pretty;
 #[cfg(debug_assertions)]
-use gdtf_assets::{ContentFamily, FileStem, WORKSPACE_ASSETS_ROOT};
+use gdtf_assets::{ContentFamily, FileStem, workspace_assets_root};
 use gdtf_battle_sim::level::{ThemeDisplayName, ThemeUuid, UuidThemeDef};
 #[cfg(debug_assertions)]
 use gdtf_content_families::ThemeDefsFamily;
@@ -95,5 +95,8 @@ pub fn write_theme_in(
 /// Returns [`SaveThemeError`] on validation or write failure.
 #[cfg(debug_assertions)]
 pub fn write_theme(draft: &ThemeDraft, key: ThemeUuid) -> Result<PathBuf, SaveThemeError> {
-    write_theme_in(Path::new(WORKSPACE_ASSETS_ROOT), draft, key)
+    let Some(root) = workspace_assets_root() else {
+        return Err(SaveThemeError::NoWorkspaceRoot);
+    };
+    write_theme_in(&root, draft, key)
 }

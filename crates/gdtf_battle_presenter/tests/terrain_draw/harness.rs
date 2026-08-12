@@ -37,10 +37,10 @@ use gdtf_test_utils::advance_until_resource_exists;
 pub(crate) const LOAD_SAFETY_NET: u32 = 10_000;
 
 pub(crate) fn workspace_assets_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("assets")
+    let Some(root) = gdtf_assets::workspace_assets_root() else {
+        unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
+    };
+    root
 }
 
 pub(crate) fn headless_renderer_app_at(assets_root: &std::path::Path) -> App {

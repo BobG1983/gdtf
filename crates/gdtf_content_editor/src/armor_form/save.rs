@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use gdtf_assets::{ContentFamily, sanitize_file_stem};
 #[cfg(debug_assertions)]
-use gdtf_assets::{RonSaveError, WORKSPACE_ASSETS_ROOT, write_ron_pretty};
+use gdtf_assets::{RonSaveError, workspace_assets_root, write_ron_pretty};
 use gdtf_battle_sim::armor::{ArmorName, ArmorSpec};
 use gdtf_content_families::ArmorFamily;
 
@@ -55,8 +55,11 @@ pub fn write_armor_in(
 ///
 /// # Errors
 ///
-/// Returns [`RonSaveError`] if the path cannot be written.
+/// Returns [`RonSaveError`] if the workspace root search fails or the path cannot be written.
 #[cfg(debug_assertions)]
 pub fn write_armor(name: &ArmorName, spec: &ArmorSpec) -> Result<PathBuf, RonSaveError> {
-    write_armor_in(Path::new(WORKSPACE_ASSETS_ROOT), name, spec)
+    let Some(root) = workspace_assets_root() else {
+        return Err(RonSaveError::NoWorkspaceRoot);
+    };
+    write_armor_in(&root, name, spec)
 }

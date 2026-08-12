@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use gdtf_assets::serialize_ron_pretty;
 #[cfg(debug_assertions)]
-use gdtf_assets::{ContentFamily, FileStem, WORKSPACE_ASSETS_ROOT};
+use gdtf_assets::{ContentFamily, FileStem, workspace_assets_root};
 use gdtf_battle_sim::terrain::{
     def::{
         BlocksPathingOverride, TerrainDef, TerrainDisplayName, TerrainPresenterKind,
@@ -139,5 +139,8 @@ pub fn write_terrain(
     uuid: TerrainUuid,
     theme_display: &str,
 ) -> Result<PathBuf, SaveTerrainError> {
-    write_terrain_in(Path::new(WORKSPACE_ASSETS_ROOT), draft, uuid, theme_display)
+    let Some(root) = workspace_assets_root() else {
+        return Err(SaveTerrainError::NoWorkspaceRoot);
+    };
+    write_terrain_in(&root, draft, uuid, theme_display)
 }

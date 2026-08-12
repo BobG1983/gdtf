@@ -1,7 +1,5 @@
 //! EVERY ganger without an authored melee weapon falls back to, so the form must load
-use std::path::Path;
-
-use gdtf_assets::{ContentFamily, WORKSPACE_ASSETS_ROOT};
+use gdtf_assets::{ContentFamily, workspace_assets_root};
 use gdtf_battle_sim::weapon::{FISTS_KEY, MeleeWeaponRegistry, WeaponName};
 use gdtf_content_editor::{MeleeWeaponDraft, draft_to_melee_weapon_spec, write_melee_weapon_in};
 use gdtf_content_families::MeleeWeaponsFamily;
@@ -14,7 +12,10 @@ fn fists_file_name() -> String {
 
 #[test]
 fn shipped_fists_shape_round_trips_through_the_form_without_drift() {
-    let shipped = Path::new(WORKSPACE_ASSETS_ROOT)
+    let Some(assets) = workspace_assets_root() else {
+        unreachable!("this repo has a Cargo.lock above every crate");
+    };
+    let shipped = assets
         .join(MeleeWeaponsFamily::FOLDER)
         .join(fists_file_name());
     let bytes = std::fs::read(&shipped);

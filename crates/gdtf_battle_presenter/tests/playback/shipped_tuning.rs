@@ -1,6 +1,6 @@
-use std::{fs, path::Path, time::Duration};
+use std::{fs, time::Duration};
 
-use gdtf_assets::WORKSPACE_ASSETS_ROOT;
+use gdtf_assets::workspace_assets_root;
 use gdtf_battle_presenter::PlaybackTuning;
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActProvenance},
@@ -11,7 +11,10 @@ use super::harness::*;
 
 #[test]
 fn shipped_playback_tuning_loads_and_drives_the_cursor() {
-    let path = Path::new(WORKSPACE_ASSETS_ROOT).join("core_tuning/playback.tuning.ron");
+    let Some(assets) = workspace_assets_root() else {
+        unreachable!("this repo has a Cargo.lock above every crate");
+    };
+    let path = assets.join("core_tuning/playback.tuning.ron");
     let read = fs::read_to_string(&path);
     assert!(
         read.is_ok(),

@@ -2971,6 +2971,7 @@ name = "gdtf_screenshot"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "gdtf_assets",
  "gdtf_test_utils",
  "image",
  "tempfile",
@@ -2989,6 +2990,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "gdtf_app",
+ "gdtf_assets",
  "gdtf_battle_sim",
  "gdtf_ui",
  "toml_edit",

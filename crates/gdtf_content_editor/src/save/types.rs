@@ -17,6 +17,8 @@ pub enum SavePrefabError {
     IllegalCell(CellLevel),
     /// Underlying RON write failed.
     Save(RonSaveError),
+    /// The workspace root search found no marker.
+    NoWorkspaceRoot,
 }
 
 impl From<RonSaveError> for SavePrefabError {
@@ -36,6 +38,7 @@ impl std::fmt::Display for SavePrefabError {
                 )
             }
             Self::Save(err) => write!(f, "{err}"),
+            Self::NoWorkspaceRoot => write!(f, "no workspace root found — nowhere to save"),
         }
     }
 }

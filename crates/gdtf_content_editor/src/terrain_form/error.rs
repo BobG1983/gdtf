@@ -9,6 +9,8 @@ pub enum SaveTerrainError {
     MissingMountedWeapon,
     /// Underlying RON write failed.
     Save(gdtf_assets::RonSaveError),
+    /// The workspace root search found no marker.
+    NoWorkspaceRoot,
 }
 
 impl From<gdtf_assets::RonSaveError> for SaveTerrainError {
@@ -26,6 +28,7 @@ impl std::fmt::Display for SaveTerrainError {
                 "no mounted weapon selected — an Emplacement terrain requires one"
             ),
             Self::Save(err) => write!(f, "{err}"),
+            Self::NoWorkspaceRoot => write!(f, "no workspace root found — nowhere to save"),
         }
     }
 }
