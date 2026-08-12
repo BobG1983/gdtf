@@ -19,12 +19,13 @@ use super::{
     socket_support::{TestError, TestResult, battle_app_listening, game_app_listening},
 };
 
+/// The reply shape `battle.selection` publishes, decoded the way a client decodes it.
 #[derive(Debug, Deserialize)]
-struct SelectionBody {
-    shooter:   Option<GangerToken>,
-    fire_mode: Option<ModeKindNet>,
-    hovered:   Option<CellLevelNet>,
-    pinned:    Option<CellLevelNet>,
+pub(crate) struct SelectionBody {
+    pub(crate) shooter:   Option<GangerToken>,
+    pub(crate) fire_mode: Option<ModeKindNet>,
+    pub(crate) hovered:   Option<CellLevelNet>,
+    pub(crate) pinned:    Option<CellLevelNet>,
 }
 
 #[derive(Debug, Deserialize)]

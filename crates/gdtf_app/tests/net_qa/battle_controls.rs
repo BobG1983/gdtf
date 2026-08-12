@@ -1,9 +1,7 @@
 //! Selecting a fire mode on the shooter the mode panel would write it for.
 
 use gdtf_app::qa_wire::misc::ModeKindNet;
-use gdtf_battle_sim::weapon::{
-    FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-};
+use gdtf_battle_sim::weapon::FireMode;
 use gdtf_qa_protocol::{
     command::{CommandOutcome, RefusalNote, UnavailableCode},
     message::QaResponse,
@@ -16,19 +14,14 @@ use super::{
     },
     command_exchange::BATTLE_SET_FIRE_MODE,
     fire_mode_support::{
-        FireModeBody, battle_with_a_burst_capable_gun, mode_argument, selected_mode,
-        single_and_burst,
+        BURST, FULL, FireModeBody, SINGLE, battle_with_a_burst_capable_gun, mode_argument,
+        selected_mode, single_and_burst,
     },
 };
 
 /// A gun that offers full alone, which neither the shipped test weapon nor the carried one does.
 fn full_only() -> FireMode {
-    FireMode::new(vec![FireModeSpec::new(
-        ModeKind::Full,
-        ModeConeMult::new(2.0),
-        ModeTuPercent::new(0.9),
-        ModeShots::new(6),
-    )])
+    FireMode::new(vec![FULL])
 }
 
 /// The code and note a refused call carries.
@@ -60,7 +53,7 @@ fn setting_burst_writes_the_resource_the_mode_panel_writes() {
     );
     assert_eq!(
         selected_mode(&app),
-        ModeKindNet::Burst,
+        Some(BURST),
         "the command writes SelectedFireMode itself, so the world's own resource is what says the \
          mode panel and a QA client end in the same place",
     );
@@ -90,7 +83,7 @@ fn a_mode_the_gun_does_not_offer_is_refused_and_leaves_the_selection_alone() {
     );
     assert_eq!(
         selected_mode(&app),
-        ModeKindNet::Single,
+        Some(SINGLE),
         "a refused call writes nothing, so the shooter is still on the mode it was holding",
     );
 }
@@ -173,7 +166,7 @@ fn a_manned_mount_is_what_a_mode_is_set_on_not_the_gun_in_the_hands() {
     );
     assert_eq!(
         selected_mode(&app),
-        ModeKindNet::Full,
+        Some(FULL),
         "the command writes SelectedFireMode, so the world's own resource says the mount's mode \
          was taken",
     );
@@ -191,7 +184,7 @@ fn a_manned_mount_is_what_a_mode_is_set_on_not_the_gun_in_the_hands() {
     );
     assert_eq!(
         selected_mode(&app),
-        ModeKindNet::Full,
+        Some(FULL),
         "a refused call writes nothing, so the shooter is still on the mount's mode",
     );
 }

@@ -29,7 +29,7 @@ pub use act_bus::{
     keyboard,
     keyboard::{cycle_selection_keys, full_view_key, level_keys, posture_keys, select_clear_key},
     sets,
-    sets::InputSystems,
+    sets::{FireModeSystems, InputSystems},
 };
 pub use plugin::{GdtfBattleInputActive, GdtfBattleInputPlugin, battle_act_gate};
 pub use pointer::{

@@ -44,6 +44,7 @@ mod commands;
 mod contextual_acts;
 mod deadline;
 mod facts_probe;
+mod fire_mode_readers;
 mod fire_mode_support;
 mod hello_socket;
 mod input_click_cell;
