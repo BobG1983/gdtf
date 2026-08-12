@@ -8,7 +8,7 @@ use crate::{
     overlays::pool::draw_pool,
 };
 
-/// Current fire-target cell and shot cost, if any.
+/// Current fire-target cell and TU cost, if any.
 #[derive(Resource, Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct FireTargetHighlight {
     target: Option<(CellLevel, Tu)>,
@@ -38,7 +38,7 @@ impl FireTargetHighlight {
         }
     }
 
-    /// Shot cost for the selected cell, if any.
+    /// TU cost for the selected cell, if any.
     #[must_use]
     pub const fn cost(&self) -> Option<Tu> {
         match self.target {
