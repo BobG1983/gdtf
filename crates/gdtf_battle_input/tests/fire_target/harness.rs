@@ -5,11 +5,12 @@ use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, 
 use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight, ViewMode};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
-    ganger::{Aiming, TuMax},
+    ganger::{Aiming, Facing, TuMax},
     magazine::{LoadedRounds, Magazine, ReloadTu},
     occupancy::TerrainKind,
     prelude::{
-        BattleInProgress, CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Tu,
+        BattleInProgress, CellLevel, Direction, Faction, Level, LifeState, OccupancyGrid, Position,
+        Tu,
     },
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
@@ -23,6 +24,7 @@ use gdtf_battle_sim::{
 pub(crate) const PLAYER_FACTION: Faction = Faction::new(0);
 pub(crate) const ENEMY_FACTION: Faction = Faction::new(1);
 pub(crate) const LEVEL: Level = Level::new(0);
+pub(crate) const SHOOTER_FACING: Facing = Facing::new(Direction::East);
 
 pub(crate) const fn spec(tu_percent: f32) -> FireModeSpec {
     FireModeSpec::new(
@@ -63,6 +65,7 @@ pub(crate) fn spawn_and_select_shooter(app: &mut App, cell: CellLevel) -> (Entit
         .spawn((
             PLAYER_FACTION,
             Position::new(cell),
+            SHOOTER_FACING,
             aiming,
             LifeState::Alive,
             Tu::new(255),
@@ -98,6 +101,7 @@ pub(crate) fn spawn_select_then_arm_late(
         .spawn((
             PLAYER_FACTION,
             Position::new(cell),
+            SHOOTER_FACING,
             aiming,
             LifeState::Alive,
             Tu::new(255),

@@ -1,12 +1,16 @@
 //! Fire-target highlight for a fireable hover cell.
 
-use bevy::{ecs::system::SystemParam, prelude::*};
+use bevy::{
+    ecs::{query::QueryData, system::SystemParam},
+    prelude::*,
+};
 use gdtf_battle_presenter::{FireTargetHighlight, cell_squad_visible};
 use gdtf_battle_sim::{
+    acts::fire_arc_tu_cost,
     battle::PlayerFaction,
-    ganger::{Aiming, TuMax},
+    ganger::{Aiming, Facing, TuMax},
     magazine::mode_tu_cost,
-    prelude::{CellLevel, Faction, OccupancyGrid, Tu},
+    prelude::{CellLevel, Faction, OccupancyGrid, Position, Tu},
     tuning::CombatTuning,
     visibility::{FactionRelation, SquadVisibility},
 };
@@ -25,11 +29,20 @@ pub struct FireTargetReads<'w> {
     squad:     Option<Res<'w, SquadVisibility>>,
 }
 
+/// One shooter's row: what pricing a shot from where it stands needs.
+#[derive(QueryData)]
+pub struct ShooterPricing {
+    tu_max:   &'static TuMax,
+    aiming:   &'static Aiming,
+    facing:   &'static Facing,
+    position: &'static Position,
+}
+
 /// Update the fire-target highlight from hover and selection.
 pub fn populate_fire_target(
     reads: FireTargetReads,
     factions: Query<&Faction>,
-    shooters: Query<(&TuMax, &Aiming)>,
+    shooters: Query<ShooterPricing>,
     mut highlight: ResMut<FireTargetHighlight>,
 ) {
     let next = resolve_fire_target(&reads, &factions, &shooters);
@@ -42,7 +55,7 @@ pub fn populate_fire_target(
 fn resolve_fire_target(
     reads: &FireTargetReads,
     factions: &Query<&Faction>,
-    shooters: &Query<(&TuMax, &Aiming)>,
+    shooters: &Query<ShooterPricing>,
 ) -> FireTargetHighlight {
     let player: Faction = **reads.player;
     let Some(cell) = reads.inspect.hovered() else {
@@ -58,7 +71,7 @@ fn resolve_fire_target(
     if !cell_is_fireable_target(reads, factions, &cell, player) {
         return FireTargetHighlight::cleared();
     }
-    match fire_cost(shooter, &reads.fire_mode, &reads.tuning, shooters) {
+    match fire_cost(shooter, &cell, reads, shooters) {
         Some(cost) => FireTargetHighlight::new(cell, cost),
         None => FireTargetHighlight::cleared(),
     }
@@ -87,12 +100,20 @@ fn cell_is_fireable_target(
     }
 }
 
+// The shot plus any turn it needs to face the target.
 fn fire_cost(
     shooter: Entity,
-    fire_mode: &SelectedFireMode,
-    tuning: &CombatTuning,
-    shooters: &Query<(&TuMax, &Aiming)>,
+    target: &CellLevel,
+    reads: &FireTargetReads,
+    shooters: &Query<ShooterPricing>,
 ) -> Option<Tu> {
-    let (tu_max, aiming) = shooters.get(shooter).ok()?;
-    Some(mode_tu_cost(fire_mode, tu_max, aiming, tuning))
+    let row = shooters.get(shooter).ok()?;
+    let shot = mode_tu_cost(&reads.fire_mode, row.tu_max, row.aiming, &reads.tuning);
+    Some(fire_arc_tu_cost(
+        **row.facing,
+        row.position.cell(),
+        target.cell(),
+        shot,
+        &reads.tuning,
+    ))
 }
