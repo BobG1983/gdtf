@@ -30,13 +30,12 @@ Two homes, standard Cargo, placed per the module-layout test convention ([module
 - **In-crate unit tests** — a sibling `test/` directory (or `test.rs` leaf) next to the module under test (an inline `#[cfg(test)] mod test` only while tiny), for white-box coverage of private helpers and tight math. This is where most `gdtf_battle_sim` coverage lives.
 - **Integration tests** — `crates/<crate>/tests/`, one file per system or focused concern (`tests/<suite>/main.rs` dir-form once a suite outgrows one file), exercising the crate's public surface as a downstream user would (e.g. constructing a battle and driving a volley through the public verbs).
 
-Five repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
+Four repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
 
 - **`module_layout`** — the clause-7 module-layout conformance guard: wiring-only `mod.rs`, the warn>300 / block>400 line bands, and the exemption registry.
 - **`assets_tree_clean`** — the tracked `assets/` tree must be git-clean when the suite runs, so a test that mutates shipped authored content is caught loudly instead of silently corrupting authored work.
 - **`no_flat_integration_tests`** — every crate's and bin's `tests/` holds dir-form suites (`<suite>/main.rs`), never flat `tests/*.rs` binaries.
 - **`rustdoc_lint_gate`** — the workspace denies the whole rustdoc lint group and every member opts into the workspace lints.
-- **`qa_commands_doc`** — [tooling/qa-commands.md](tooling/qa-commands.md) names every command the game publishes and none it does not, and every path it links to exists.
 
 ## Conventions
 
@@ -61,9 +60,8 @@ the workspace. The request vocabulary is three commands — `Hello`, `Catalogue`
 the game can be asked to do is its command list, read at run time. That list is being rebuilt
 one command at a time and today spans the app phase, screenshots, the shell reads, the battle
 reads, the two ends of a battle, the procgen step, `wait`, the acts, the raw input paths and
-the view controls. Read the names off [tooling/qa-commands.md](tooling/qa-commands.md), which
-the `qa_commands_doc` guard holds to what the game publishes — a second copy here would only
-rot. That guide is also how a command is added, and driving it is
+the view controls. Read the names off [tooling/qa-commands.md](tooling/qa-commands.md) — a
+second copy here would only rot. That guide is also how a command is added, and driving it is
 [tooling/agent-qa.md](tooling/agent-qa.md). Census command (run from the repo root; re-run it
 when adding a flag and keep this table in step):
 
