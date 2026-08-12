@@ -52,7 +52,7 @@ nearest to being worked and say in a line beneath that the rest are on the board
 **Step 6 — Gotchas This Run.** Did anything this run behave in a way that cost time and would cost
 it again? If not, leave the section alone. If it did, check whether the list already holds that
 gotcha: if so, increment its count and move it to the top; if not, add it at the top as
-`While working on GTW-n, <what happened>. The solution was: <what to do>. This gotcha has been seen 1 time.`
+`While working on GTW-n, <what happened>. The solution was: <what to do>. This gotcha has been seen 1 time.` one single, short, concise, sentence following the plain language rule.
 Then two trims, in this order. If any entry now reads more than 5 times, take it out of the list and
 either file it as a bug, if it is a defect in the code, the rules or the workflow, or write it to
 memory if it is not. If the list is longer than 10, delete the oldest entry showing 1 time.
