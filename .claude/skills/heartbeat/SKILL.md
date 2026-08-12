@@ -31,6 +31,7 @@ leave it alone.
 
 ## Tick order
 
+0. Read .claude/rules/plain-language.md
 1. Check if .claude/run-state.md exists and is readable. If it does not exist or is unreadable, say so and stop. Do not start a build, and do not recreate the file from memory.
 2. **Check the cron; recreate it if missing.** An empty `CronList` after a restart is the
    normal case, not a surprise.

@@ -307,23 +307,33 @@ const LENSES = [
   { key: 'structure', focus: `Module layout, no bare types, no unwrap/todo, Bevy schedule/ordering. Run ZERO cargo.` },
 ]
 
-// The verdict a lens reported, or null when it reported none.
-// A verdict followed by '?' is rhetorical, not a verdict. A lens once opened with
-// "NON-COMPLIANT? No — **COMPLIANT** on this lens." and the first-match read failed a build the
-// lens had passed, costing a fix round that then reported nothing needed repairing.
-// This does not close the hole: "NON-COMPLIANT check: none found" defeats it too. The real fix is
-// a schema on the lens agent so the verdict is typed and nothing is parsed out of prose.
-const verdictOf = (out) => {
-  if (!out) return null
-  const m = /\b(NON-COMPLIANT|COMPLIANT)\b(?!\s*\?)/i.exec(out)
-  return m ? m[1].toUpperCase() : null
+// A lens answers through a schema, so the verdict is a field and nothing is read out of prose.
+// Parsing the first line failed three passing builds on openings like "NON-COMPLIANT? No —
+// COMPLIANT", and each one cost a repair round on code that was already correct.
+const LENS_RESULT = {
+  type:                 'object',
+  additionalProperties: false,
+  required:             ['verdict', 'report'],
+  properties:           {
+    verdict: {
+      type:        'string',
+      enum:        ['COMPLIANT', 'NON-COMPLIANT'],
+      description: 'NON-COMPLIANT only for a clause you can show is unmet.',
+    },
+    report: {
+      type:        'string',
+      description: 'Every word of the review: per-clause findings with file:line citations. Write it for the agent that has to repair the code.',
+    },
+  },
 }
 
-// One lens, asked a second time if it answered without a verdict. A review that reached a
-// conclusion and forgot to write the word is not a violation, and reading it as one costs a fix
-// round, a re-verify and a whole re-gate on work that may already be compliant.
+// The verdict a lens reported, or null when the agent died.
+const verdictOf = (out) => out?.verdict ?? null
+
+// One lens. The schema forces a verdict, so there is no second ask — a review that reached a
+// conclusion can no longer forget to write the word.
 async function runLens(lens, attempt) {
-  const brief = `Adversarial read-only review of ${TICKET} in ${REPO}.
+  return await agent(`Adversarial read-only review of ${TICKET} in ${REPO}.
 
 <ticket id="${TICKET}">
 ${contract}
@@ -341,44 +351,10 @@ ${HOUSE_RULES}
 
 Run ZERO cargo. Cite file:line.
 
-## Your first line is read by a machine
-
-It must be **exactly one word — COMPLIANT or NON-COMPLIANT — alone on the line.** No punctuation
-after it, no lens name, no rhetorical opening. Put every word of your reasoning on the lines below.
-
-This is not a formatting preference. Three passing builds have been failed by a first line like
-"NON-COMPLIANT? No — COMPLIANT", "NON-COMPLIANT — no. COMPLIANT." or "NON-COMPLIANT check: none
-found on this lens." Each cost a repair round on code that was already correct. If your verdict is
-COMPLIANT, the word NON-COMPLIANT must not appear on line one at all.`
-
-  const first = await agent(brief,
-    { model: 'opus', label: `gate:${lens.key}#${attempt}`, phase: 'Gate', agentType: 'design-gate' })
-
-  if (verdictOf(first)) return first
-
-  log(`${TICKET}: gate lens ${lens.key} answered without a verdict — asking it again`)
-
-  const again = await agent(`${brief}
-
-## YOUR LAST REPLY CARRIED NO VERDICT
-
-You were asked before and your reply contained neither COMPLIANT nor NON-COMPLIANT, so nothing
-could be read from it. Here it is in full:
-
-<your-previous-reply>
-${first || '(you returned nothing at all)'}
-</your-previous-reply>
-
-Review again and answer properly this time. If that reply already reached a conclusion, keep its
-findings and add the verdict it was missing — do not start over and do not soften anything.
-
-**Your first line must be exactly one word, COMPLIANT or NON-COMPLIANT, alone on the line.** If your
-verdict is COMPLIANT, the word NON-COMPLIANT must not appear on line one at all.`,
-    { model: 'opus', label: `gate:${lens.key}#${attempt}-again`, phase: 'Gate', agentType: 'design-gate' })
-
-  // Keep whichever reply actually carries a verdict; failing that, keep the longer evidence.
-  if (verdictOf(again)) return again
-  return again || first
+Answer through the schema. Say NON-COMPLIANT only for a clause you can show is unmet, and cite the
+line that shows it. Put every word of your reasoning in \`report\` — it is what the repair agent
+reads, so a finding you leave out is a finding nobody fixes.`,
+    { model: 'opus', label: `gate:${lens.key}#${attempt}`, phase: 'Gate', agentType: 'design-gate', schema: LENS_RESULT })
 }
 
 async function gate(attempt) {
@@ -410,9 +386,7 @@ while (!allPass() && attempt < 5) {
     ...verdicts.map((v, i) => {
       if (compliant(v)) return null
       if (!v) return `<gate-lens name="${LENSES[i].key}">\n(died — nothing to act on)\n</gate-lens>`
-      // Asked twice and still no verdict: say so, or the fix agent reads the text as a violation list.
-      const note = verdictOf(v) ? '' : ' verdict="MISSING — this lens was asked twice and never gave one; judge its findings on their own merits"'
-      return `<gate-lens name="${LENSES[i].key}"${note}>\n${v}\n</gate-lens>`
+      return `<gate-lens name="${LENSES[i].key}" verdict="${v.verdict}">\n${v.report}\n</gate-lens>`
     }),
   ].filter(Boolean).join('\n\n')
 
@@ -458,6 +432,43 @@ Do NOT commit — /land owns the commit.`,
 
 phase('Land')
 
+// The land agent holds no Linear tools, so it has no field to guess with. Landing is
+// proven by the confirm step and a first-hand git check, never by this report.
+const LAND_RESULT = {
+  type:                 'object',
+  additionalProperties: false,
+  required:             ['committed', 'commitSha', 'mergeSha', 'pushedRange', 'filesStaged', 'suite', 'findings'],
+  properties:           {
+    committed:   { type: 'boolean', description: 'Did the commit and merge actually run' },
+    commitSha:   { type: 'string', description: 'Feature commit sha, or empty if none' },
+    mergeSha:    { type: 'string', description: 'Merge commit sha, or empty if none' },
+    pushedRange: { type: 'string', description: 'Exactly what git push printed, or empty' },
+    filesStaged: {
+      type:        'array',
+      items:       { type: 'string' },
+      description: 'Every path staged, by name. Never a glob or a count.',
+    },
+    suite: {
+      type:  'array',
+      items: {
+        type:                 'object',
+        additionalProperties: false,
+        required:             ['command', 'exit'],
+        properties:           {
+          command: { type: 'string' },
+          exit:    { type: 'integer' },
+        },
+      },
+      description: 'One row per suite command, with the exit code you read yourself',
+    },
+    findings: {
+      type:        'array',
+      items:       { type: 'string' },
+      description: 'Anything you noticed that is outside this ticket and worth a look. Not ticket status, not what the caller should do next — you cannot see the board.',
+    },
+  },
+}
+
 const landed = await agent(`Land ${TICKET} following the /land skill.
 
 Repo: ${REPO} — no worktree; the work is on ${BRANCH} in the main tree
@@ -469,7 +480,7 @@ ${verifyOut}
 </verify-report>
 
 ## GATE VERDICTS (final round ${attempt})
-${verdicts.map((v, i) => `<gate-lens name="${LENSES[i].key}">\n${v}\n</gate-lens>`).join('\n')}
+${verdicts.map((v, i) => `<gate-lens name="${LENSES[i].key}" verdict="${v?.verdict ?? 'MISSING'}">\n${v?.report ?? '(died)'}\n</gate-lens>`).join('\n')}
 
 Run every command in the foreground and read its exit code in the same turn.
 Never start the suite in the background and end your turn waiting on it — that
@@ -494,7 +505,7 @@ every commit on develop, including the one that concludes a conflicted merge.
 
 Never --no-verify. Report what git said. Do not claim landing is proven —
 a separate confirm step will check origin/develop.`,
-  { model: 'opus', label: `land:${TICKET}`, phase: 'Land' })
+  { model: 'opus', label: `land:${TICKET}`, phase: 'Land', schema: LAND_RESULT })
 
 function parseLandedCommit(text) {
   if (typeof text !== 'string' || !text.trim()) return null
@@ -539,9 +550,9 @@ Move In Review then Done. Comment BEFORE status change with: landing SHA ${lande
 ${confirmOut}
 </confirm-report>
 
-<land-report>
-${landed}
-</land-report>
+<land-result>
+${JSON.stringify(landed, null, 2)}
+</land-result>
 
 <verify-report>
 ${verifyOut}
@@ -549,4 +560,14 @@ ${verifyOut}
     { model: 'opus', label: `close:${TICKET}`, phase: 'Land', agentType: 'project-manager' })
 }
 
-return { ticket: TICKET, landed: landedOk, landedSha: landedSha || null, rounds: attempt, land: landed, confirm: confirmOut, verify: verifyOut }
+return {
+  ticket:     TICKET,
+  landed:     landedOk,
+  landedSha:  landedSha || null,
+  rounds:     attempt,
+  confirm:    confirmOut,
+  verify:     verifyOut,
+  filesStaged: landed?.filesStaged ?? [],
+  suite:      landed?.suite ?? [],
+  findings:   landed?.findings ?? [],
+}

@@ -3,6 +3,7 @@
 
 use bevy::ecs::entity::Entity;
 use gdtf_app::qa_wire::{
+    WaitConditionNet,
     act::ActReply,
     cell::CellLevelNet,
     deed::{ActDeedKindNet, MoveRejectionNet},
@@ -73,7 +74,7 @@ fn one_move_walks_the_selected_ganger_onto_the_cell_it_named() -> TestResult {
     let mut replies = replies.into_iter();
     let shooter = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
     let moved = accepted(ACT_MOVE, next(ACT_MOVE, &mut replies)?)?;
-    assert_waited_for("WalkComplete", next(WAIT, &mut replies)?)?;
+    assert_waited_for(WaitConditionNet::WalkComplete, next(WAIT, &mut replies)?)?;
     let log = decode::<LogBody>(LOG_READ, next(LOG_READ, &mut replies)?)?;
     let roster = decode::<RosterBody>(BATTLE_ROSTER, next(BATTLE_ROSTER, &mut replies)?)?;
 
