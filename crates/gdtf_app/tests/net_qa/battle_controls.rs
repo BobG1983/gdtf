@@ -1,19 +1,13 @@
 //! Selecting a fire mode on the shooter the mode panel would write it for.
 
-use std::sync::mpsc;
-
-use bevy::app::App;
 use gdtf_app::qa_wire::misc::ModeKindNet;
-use gdtf_battle_input::SelectedFireMode;
 use gdtf_battle_sim::weapon::{
     FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
 };
-use gdtf_net_qa_transport::IncomingRequest;
 use gdtf_qa_protocol::{
     command::{CommandOutcome, RefusalNote, UnavailableCode},
     message::QaResponse,
 };
-use serde::Deserialize;
 
 use super::{
     battle_fixture::{
@@ -21,31 +15,11 @@ use super::{
         drive_into_battle_running, menu_app_with_net_qa, mount_on_selected, run_one_frame,
     },
     command_exchange::BATTLE_SET_FIRE_MODE,
+    fire_mode_support::{
+        FireModeBody, battle_with_a_burst_capable_gun, mode_argument, selected_mode,
+        single_and_burst,
+    },
 };
-
-/// What `battle.set_fire_mode` answers with.
-#[derive(Debug, Deserialize)]
-struct FireModeBody {
-    mode: ModeKindNet,
-}
-
-/// A gun that offers single and burst, which the shipped test weapon does not.
-fn single_and_burst() -> FireMode {
-    FireMode::new(vec![
-        FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.5),
-            ModeShots::new(1),
-        ),
-        FireModeSpec::new(
-            ModeKind::Burst,
-            ModeConeMult::new(1.5),
-            ModeTuPercent::new(0.7),
-            ModeShots::new(3),
-        ),
-    ])
-}
 
 /// A gun that offers full alone, which neither the shipped test weapon nor the carried one does.
 fn full_only() -> FireMode {
@@ -57,41 +31,12 @@ fn full_only() -> FireMode {
     )])
 }
 
-fn selected_mode(app: &App) -> ModeKindNet {
-    let Some(mode) = app.world().get_resource::<SelectedFireMode>() else {
-        unreachable!("the input plugin inits SelectedFireMode when it is built");
-    };
-    ModeKindNet::from_sim(mode.kind)
-}
-
-fn mode_argument(mode: ModeKindNet) -> String {
-    let Ok(text) = ron::ser::to_string(&mode) else {
-        unreachable!("a wire fire-mode kind serializes to compact RON");
-    };
-    format!("(mode:{text})")
-}
-
 /// The code and note a refused call carries.
 fn refusal(answer: QaResponse) -> (UnavailableCode, RefusalNote) {
     let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = answer else {
         unreachable!("`{BATTLE_SET_FIRE_MODE}` must refuse this call, got {answer:?}");
     };
     (code, note)
-}
-
-/// A battle whose selected shooter holds a gun offering single and burst, settled on single.
-fn battle_with_a_burst_capable_gun() -> (App, mpsc::Sender<IncomingRequest>) {
-    let (mut app, tx) = menu_app_with_net_qa();
-    drive_into_battle_running(&mut app);
-    let _weapon = arm_selected_with_modes(&mut app, single_and_burst());
-    app.update();
-    assert_eq!(
-        selected_mode(&app),
-        ModeKindNet::Single,
-        "the frame after arming lets the selection sync settle, so the case starts on single and \
-         a later Burst cannot be the value it was already holding",
-    );
-    (app, tx)
 }
 
 #[test]

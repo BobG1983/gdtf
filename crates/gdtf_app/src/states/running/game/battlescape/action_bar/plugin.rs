@@ -1,5 +1,7 @@
 use bevy::prelude::*;
-use gdtf_battle_input::dispatch_act_intents;
+use gdtf_battle_input::{
+    dispatch_act_intents, reset_move_target_on_fire_mode_change, sync_fire_mode_on_select,
+};
 use gdtf_battle_presenter::{ActiveLevel, playback_caught_up};
 use gdtf_battle_sim::prelude::BattleInProgress;
 use gdtf_ui::{drive_switches, repaint_segments, select_segment_on_press, themed::UiSystems};
@@ -78,6 +80,8 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
                 Update,
                 mode_segment_write
                     .after(select_segment_on_press)
+                    .after(sync_fire_mode_on_select)
+                    .before(reset_move_target_on_fire_mode_change)
                     .run_if(resource_exists::<BattleInProgress>.and_then(playback_caught_up)),
             )
             .add_systems(

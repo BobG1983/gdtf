@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use gdtf_battle_input::{SelectedFireMode, SelectedShooter, firing_weapon_of, mode_spec_for};
+use gdtf_battle_input::{
+    SelectedFireMode, SelectedShooter, firing_weapon_of, mode_spec_for,
+    reset_move_target_on_fire_mode_change, sync_fire_mode_on_select,
+};
 use gdtf_battle_sim::weapon::{FireMode, MeleeWeapon, MountedWeapon, WieldedBy, Wields};
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
@@ -74,7 +77,10 @@ impl QaCommand for BattleSetFireMode {
     fn register_handler(app: &mut App) {
         app.add_systems(
             Update,
-            handle_battle_set_fire_mode.after(QaCommandSystems::Claim),
+            handle_battle_set_fire_mode
+                .after(QaCommandSystems::Claim)
+                .after(sync_fire_mode_on_select)
+                .before(reset_move_target_on_fire_mode_change),
         );
     }
 }
