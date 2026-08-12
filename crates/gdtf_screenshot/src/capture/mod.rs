@@ -16,7 +16,7 @@ mod verify;
 mod test;
 
 pub use aim::{CaptureAim, CaptureAimDetail};
-pub use dir::ShotDir;
+pub use dir::{ShotDir, ShotDirName};
 pub use outcome::CaptureOutcome;
 pub use plugin::{CapturePipelinePlugin, CaptureSystems};
 pub use queue::{CaptureCompletion, CaptureCompletions, CaptureQueue};
