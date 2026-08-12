@@ -58,7 +58,7 @@ New ticket descriptions do not carry a header; a description is understood to be
 A ticket outlives the line numbers in it. Locate things the way a reader can still
 find them after the file moves:
 
-- **The symbol.** `sync_fire_mode_on_select` in `gdtf_battle_input::pointer::fire_mode`.
+- **The symbol.** `mode_segment_write` in the action bar's mode panel.
   The `LSP` tool finds it wherever it went.
 - **The text.** Quote the line of code or prose you mean. A quote survives an edit
   above it, a rename, and a file split.

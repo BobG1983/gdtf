@@ -37,6 +37,7 @@ Short files under `.claude/rules/` — read and follow them:
 - [`reply-shape.md`](.claude/rules/reply-shape.md) — chat reply structure: answer first, no process narration.
 - [`comment-hygiene.md`](.claude/rules/comment-hygiene.md) — short docs; no ticket ids in comments.
 - [`code-navigation.md`](.claude/rules/code-navigation.md) — symbol questions go to the LSP; a grep count is not a caller count.
+- [`cargo-commands.md`](.claude/rules/cargo-commands.md) — every cargo command is an alias from `.cargo/config.toml`, including a single test.
 - [`bevy-systems.md`](.claude/rules/bevy-systems.md) — SystemParam / QueryData / split; no too_many_arguments expects on systems.
 - [`background-work.md`](.claude/rules/background-work.md) — never poll; sub-agents always run backgrounded; relay every result.
 - [`qa-mcp-access.md`](.claude/rules/qa-mcp-access.md) — drive the running app only through the `mcp__gdtf-qa__*` tools; never a socket.
@@ -62,7 +63,6 @@ Bevy ECS gotchas (system ordering, change detection, schedules, state transition
 ```bash
 cargo dbuild
 cargo drun
-cargo run -p grimdark_turfwar --release   # no dynamic linking
 ```
 
 ## Project structure

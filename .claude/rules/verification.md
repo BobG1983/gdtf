@@ -31,6 +31,10 @@ cargo doc-full
 | `doc` | Default-feature rustdoc. Workspace rustdoc lints are deny. |
 | `doc-full` | Same + dev_tools so feature-gated modules are checked. |
 
+Running one test or one suite uses the same aliases —
+[cargo-commands.md](./cargo-commands.md) owns that, and a bare cargo command is
+blocked by a hook.
+
 QA modules compile under `debug_assertions` (no `net_qa` feature). Protocol schema derives are always on (no `schema` feature / no separate schema suite steps).
 
 `cargo nextest run` may replace the test step when available; default is `cargo dtest`.
