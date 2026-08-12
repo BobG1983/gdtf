@@ -1,10 +1,10 @@
 use std::{
-    io::{Read as _, Write as _},
+    io::{self, ErrorKind, Read as _, Write as _},
     net::{Ipv4Addr, TcpStream},
-    sync::mpsc::Sender,
     time::Duration,
 };
 
+use bevy::app::App;
 use gdtf_qa_protocol::{
     command::{CommandArgsRon, CommandName},
     framing::{FrameDecoder, encode},
@@ -12,46 +12,64 @@ use gdtf_qa_protocol::{
     ports::NetQaPort,
 };
 
-use crate::support::{ClientResult, TestError};
+use crate::support::{EDITING_EXCHANGES, TestError};
 
-const READ_TIMEOUT: Duration = Duration::from_secs(10);
+/// How long one look at the socket waits before the editor gets another frame.
+/// Its expiry is the pause between frames, never a failure.
+const READ_POLL: Duration = Duration::from_millis(10);
 
-struct Client {
+/// Frames the editor may take to answer one request.
+const REPLY_BUDGET: u32 = 1024;
+
+pub(crate) struct Client {
     stream:  TcpStream,
     decoder: FrameDecoder,
 }
 
 impl Client {
-    fn connect(port: NetQaPort) -> Result<Self, TestError> {
+    pub(crate) fn connect(port: NetQaPort) -> Result<Self, TestError> {
         let stream = TcpStream::connect((Ipv4Addr::LOCALHOST, *port))?;
-        stream.set_read_timeout(Some(READ_TIMEOUT))?;
+        stream.set_read_timeout(Some(READ_POLL))?;
         Ok(Self {
             stream,
             decoder: FrameDecoder::new(),
         })
     }
 
-    fn send(&mut self, request: &QaRequest) -> Result<(), TestError> {
+    /// Put a request on the wire without running a frame, so a case can read the state it left.
+    pub(crate) fn send(&mut self, request: &QaRequest) -> Result<(), TestError> {
         self.stream.write_all(&encode(request)?)?;
         Ok(())
     }
 
-    fn read(&mut self) -> Result<QaResponse, TestError> {
+    /// Run frames until the editor answers, then hand back the reply.
+    /// The wait is counted in frames, so a busy machine makes a case slower and never red.
+    pub(crate) fn read(&mut self, app: &mut App) -> Result<QaResponse, TestError> {
         let mut buf = [0u8; 512];
-        loop {
+        for _ in 0..REPLY_BUDGET {
+            app.update();
+            match self.stream.read(&mut buf) {
+                Ok(0) => return Err("the editor closed before a full response arrived".into()),
+                Ok(read) => self.decoder.push(&buf[..read]),
+                Err(quiet) if nothing_yet(&quiet) => {}
+                Err(failed) => return Err(failed.into()),
+            }
             if let Some(frame) = self.decoder.next_frame()? {
                 return Ok(frame.decode::<QaResponse>()?);
             }
-            let read = self.stream.read(&mut buf)?;
-            assert!(read > 0, "the editor closed before a full response arrived");
-            self.decoder.push(&buf[..read]);
         }
+        Err(format!("the editor never answered within {REPLY_BUDGET} frames").into())
     }
 
-    fn exchange(&mut self, request: &QaRequest) -> Result<QaResponse, TestError> {
+    fn exchange(&mut self, app: &mut App, request: &QaRequest) -> Result<QaResponse, TestError> {
         self.send(request)?;
-        self.read()
+        self.read(app)
     }
+}
+
+// The socket had nothing to hand over this poll, rather than a connection that broke.
+fn nothing_yet(fault: &io::Error) -> bool {
+    matches!(fault.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut)
 }
 
 pub(crate) fn run_a_command_the_editor_has_not_built() -> QaRequest {
@@ -65,27 +83,14 @@ pub(crate) fn wrong_version() -> ProtocolVersion {
     ProtocolVersion::new(*ProtocolVersion::CURRENT + 1)
 }
 
-pub(crate) fn exchange_while_editing(port: NetQaPort) -> ClientResult {
-    let mut client = Client::connect(port)?;
-    Ok(vec![
-        client.exchange(&QaRequest::Hello(ProtocolVersion::CURRENT))?,
-        client.exchange(&QaRequest::Hello(wrong_version()))?,
-        client.exchange(&run_a_command_the_editor_has_not_built())?,
-    ])
-}
-
-pub(crate) fn exchange_during_load(
+pub(crate) fn exchange_while_editing(
+    app: &mut App,
     port: NetQaPort,
-    opened: &Sender<()>,
-    request: QaRequest,
-) -> Result<QaResponse, TestError> {
+) -> Result<[QaResponse; EDITING_EXCHANGES], TestError> {
     let mut client = Client::connect(port)?;
-    let negotiated = client.exchange(&QaRequest::Hello(ProtocolVersion::CURRENT))?;
-    assert!(
-        matches!(negotiated, QaResponse::HelloOk(_)),
-        "the connection must negotiate before the measured request goes out, got {negotiated:?}",
-    );
-    client.send(&request)?;
-    opened.send(())?;
-    client.read()
+    Ok([
+        client.exchange(app, &QaRequest::Hello(ProtocolVersion::CURRENT))?,
+        client.exchange(app, &QaRequest::Hello(wrong_version()))?,
+        client.exchange(app, &run_a_command_the_editor_has_not_built())?,
+    ])
 }
