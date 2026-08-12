@@ -458,6 +458,43 @@ Do NOT commit — /land owns the commit.`,
 
 phase('Land')
 
+// The land agent holds no Linear tools, so it has no field to guess with. Landing is
+// proven by the confirm step and a first-hand git check, never by this report.
+const LAND_RESULT = {
+  type:                 'object',
+  additionalProperties: false,
+  required:             ['committed', 'commitSha', 'mergeSha', 'pushedRange', 'filesStaged', 'suite', 'findings'],
+  properties:           {
+    committed:   { type: 'boolean', description: 'Did the commit and merge actually run' },
+    commitSha:   { type: 'string', description: 'Feature commit sha, or empty if none' },
+    mergeSha:    { type: 'string', description: 'Merge commit sha, or empty if none' },
+    pushedRange: { type: 'string', description: 'Exactly what git push printed, or empty' },
+    filesStaged: {
+      type:        'array',
+      items:       { type: 'string' },
+      description: 'Every path staged, by name. Never a glob or a count.',
+    },
+    suite: {
+      type:  'array',
+      items: {
+        type:                 'object',
+        additionalProperties: false,
+        required:             ['command', 'exit'],
+        properties:           {
+          command: { type: 'string' },
+          exit:    { type: 'integer' },
+        },
+      },
+      description: 'One row per suite command, with the exit code you read yourself',
+    },
+    findings: {
+      type:        'array',
+      items:       { type: 'string' },
+      description: 'Anything you noticed that is outside this ticket and worth a look. Not ticket status, not what the caller should do next — you cannot see the board.',
+    },
+  },
+}
+
 const landed = await agent(`Land ${TICKET} following the /land skill.
 
 Repo: ${REPO} — no worktree; the work is on ${BRANCH} in the main tree
@@ -494,7 +531,7 @@ every commit on develop, including the one that concludes a conflicted merge.
 
 Never --no-verify. Report what git said. Do not claim landing is proven —
 a separate confirm step will check origin/develop.`,
-  { model: 'opus', label: `land:${TICKET}`, phase: 'Land' })
+  { model: 'opus', label: `land:${TICKET}`, phase: 'Land', schema: LAND_RESULT })
 
 function parseLandedCommit(text) {
   if (typeof text !== 'string' || !text.trim()) return null
@@ -539,9 +576,9 @@ Move In Review then Done. Comment BEFORE status change with: landing SHA ${lande
 ${confirmOut}
 </confirm-report>
 
-<land-report>
-${landed}
-</land-report>
+<land-result>
+${JSON.stringify(landed, null, 2)}
+</land-result>
 
 <verify-report>
 ${verifyOut}
@@ -549,4 +586,14 @@ ${verifyOut}
     { model: 'opus', label: `close:${TICKET}`, phase: 'Land', agentType: 'project-manager' })
 }
 
-return { ticket: TICKET, landed: landedOk, landedSha: landedSha || null, rounds: attempt, land: landed, confirm: confirmOut, verify: verifyOut }
+return {
+  ticket:     TICKET,
+  landed:     landedOk,
+  landedSha:  landedSha || null,
+  rounds:     attempt,
+  confirm:    confirmOut,
+  verify:     verifyOut,
+  filesStaged: landed?.filesStaged ?? [],
+  suite:      landed?.suite ?? [],
+  findings:   landed?.findings ?? [],
+}
