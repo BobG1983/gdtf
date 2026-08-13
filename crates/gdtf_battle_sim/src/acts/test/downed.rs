@@ -130,6 +130,34 @@ fn an_execute_pool_one_short_of_the_quote_refuses_the_act() {
 }
 
 #[test]
+fn an_execute_pool_of_exactly_the_quote_carries_the_act_and_lands_on_zero() {
+    let mut app = headless_app();
+    let cost = quoted_cost(&app, execute_tu_cost);
+    assert!(
+        *cost > 0,
+        "an execute must be priced or a pool of exactly the quote is an empty pool"
+    );
+
+    let actor = spawn_downed_actor_with_pool(app.world_mut(), 10, 10, 1, cost);
+    let target = spawn_downed_target(app.world_mut(), 11, 10, 2);
+
+    app.world_mut()
+        .write_message(ExecuteDownedRequested::new(actor, target));
+    app.update();
+
+    assert_eq!(
+        app.world().get::<LifeState>(target).copied(),
+        Some(LifeState::Dead),
+        "a pool of exactly execute_tu_cost affords the act — the target must reach Dead",
+    );
+    assert_eq!(
+        app.world().get::<Tu>(actor).copied(),
+        Some(Tu::new(0)),
+        "the carried execute debits the whole pool — the actor lands on zero",
+    );
+}
+
+#[test]
 fn stabilize_dispatch_debits_the_actor_pool_by_the_sims_own_quote() {
     let mut app = headless_app();
     let cost = quoted_cost(&app, stabilize_tu_cost);
@@ -182,5 +210,32 @@ fn a_stabilize_pool_one_short_of_the_quote_refuses_the_act() {
         app.world().get::<Tu>(actor).copied(),
         Some(before),
         "a refused stabilize spends nothing — spend_tu never clamps",
+    );
+}
+
+#[test]
+fn a_stabilize_pool_of_exactly_the_quote_carries_the_act_and_lands_on_zero() {
+    let mut app = headless_app();
+    let cost = quoted_cost(&app, stabilize_tu_cost);
+    assert!(
+        *cost > 0,
+        "a stabilize must be priced or a pool of exactly the quote is an empty pool"
+    );
+
+    let actor = spawn_downed_actor_with_pool(app.world_mut(), 10, 10, 1, cost);
+    let target = spawn_downed_target(app.world_mut(), 11, 10, 1);
+
+    app.world_mut()
+        .write_message(StabilizeDownedRequested::new(actor, target));
+    app.update();
+
+    assert!(
+        app.world().get::<BleedingOut>(target).is_none(),
+        "a pool of exactly stabilize_tu_cost affords the act — the condition must be removed",
+    );
+    assert_eq!(
+        app.world().get::<Tu>(actor).copied(),
+        Some(Tu::new(0)),
+        "the carried stabilize debits the whole pool — the actor lands on zero",
     );
 }
