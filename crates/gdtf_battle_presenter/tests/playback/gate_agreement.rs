@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 use bevy::{app::App, ecs::system::RunSystemOnce};
-use gdtf_battle_presenter::{PlaybackGate, playback_caught_up};
+use gdtf_battle_presenter::{PlaybackCursor, PlaybackGate, playback_caught_up};
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActProvenance},
+    act_log::{ActDeed, ActLog, ActProvenance},
     ganger::Direction,
 };
 
@@ -53,6 +53,32 @@ fn both_readings_open_when_neither_resource_exists() {
 }
 
 #[test]
+fn both_readings_open_when_only_the_act_log_exists() {
+    let mut app = App::new();
+    app.insert_resource(ActLog::default());
+
+    assert!(
+        app.world().get_resource::<PlaybackCursor>().is_none(),
+        "this state has a log and no cursor",
+    );
+
+    assert_both_read(&mut app, true, "only the act log exists");
+}
+
+#[test]
+fn both_readings_open_when_only_the_playback_cursor_exists() {
+    let mut app = App::new();
+    app.init_resource::<PlaybackCursor>();
+
+    assert!(
+        app.world().get_resource::<ActLog>().is_none(),
+        "this state has a cursor and no log",
+    );
+
+    assert_both_read(&mut app, true, "only the playback cursor exists");
+}
+
+#[test]
 fn both_readings_close_while_the_cursor_lags_the_log_head() {
     let mut app = app_with_one_appended_act();
 
@@ -85,4 +111,19 @@ fn both_readings_open_once_the_hold_ends() {
     assert!(!holding(&app), "the minor beat ({beat}s) ends the hold");
 
     assert_both_read(&mut app, true, "shown is at the head and the hold is over");
+}
+
+#[test]
+fn both_readings_open_when_the_cursor_is_past_the_log_head() {
+    let mut app = playback_app();
+    app.world_mut()
+        .resource_mut::<PlaybackCursor>()
+        .advance_past_shown();
+
+    // A step here would erase the state: advance_playback resets a cursor past the head.
+    let head = app.world().resource::<ActLog>().head();
+    assert!(shown(&app) > head, "the cursor sits past the log head");
+    assert!(!holding(&app), "the cursor holds nothing");
+
+    assert_both_read(&mut app, true, "shown is past the log head");
 }
