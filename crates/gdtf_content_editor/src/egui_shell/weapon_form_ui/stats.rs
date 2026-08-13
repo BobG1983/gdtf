@@ -53,14 +53,14 @@ pub(super) fn handling_group(ui: &mut egui::Ui, spec: &mut WeaponSpec) {
 pub(super) fn magazine_group(ui: &mut egui::Ui, spec: &mut WeaponSpec) {
     ui.horizontal(|ui| {
         ui.label("size");
-        let mut size = *spec.magazine.size;
+        let mut size = *spec.magazine.size();
         if ui.add(egui::DragValue::new(&mut size)).changed() {
-            spec.magazine.size = MagazineSize::new(size);
+            spec.magazine.set_size(MagazineSize::new(size));
         }
         ui.label("reload_tu");
-        let mut reload = *spec.magazine.reload_tu;
+        let mut reload = *spec.magazine.reload_tu();
         if ui.add(egui::DragValue::new(&mut reload)).changed() {
-            spec.magazine.reload_tu = ReloadTu::new(reload);
+            spec.magazine.set_reload_tu(ReloadTu::new(reload));
         }
     });
 }

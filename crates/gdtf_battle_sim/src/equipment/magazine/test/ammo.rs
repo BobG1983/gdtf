@@ -35,6 +35,36 @@ fn magazine_clamps_request_to_magazine_size() {
 }
 
 #[test]
+fn set_size_clamps_rounds_to_the_new_capacity() {
+    let size = MagazineSize::new(20);
+    let smaller = MagazineSize::new(6);
+    let larger = MagazineSize::new(30);
+
+    let mut mag = Magazine::loaded(size, RELOAD_TU);
+    mag.set_size(smaller);
+    assert_eq!(
+        *mag.rounds(),
+        *smaller,
+        "shrinking capacity clamps the loaded rounds down to the new size"
+    );
+    assert!(
+        *mag.is_full(),
+        "the clamped magazine is full at the new capacity"
+    );
+
+    mag.set_size(larger);
+    assert_eq!(
+        *mag.rounds(),
+        *smaller,
+        "growing capacity leaves the loaded rounds where they were"
+    );
+    assert!(
+        !*mag.is_full(),
+        "growing capacity does not hand out rounds, so the magazine is no longer full"
+    );
+}
+
+#[test]
 fn spend_round_is_saturating_on_empty_and_decrements_exactly() {
     let size = MagazineSize::new(30);
 

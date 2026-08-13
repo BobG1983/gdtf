@@ -43,15 +43,15 @@ pub struct MagazineFull(bool);
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct Magazine {
     /// Capacity.
-    pub size:        MagazineSize,
+    size:        MagazineSize,
     /// Reload TU cost.
-    pub reload_tu:   ReloadTu,
+    reload_tu:   ReloadTu,
     /// Current rounds (not serialized to content).
     #[serde(default, skip_serializing)]
-    pub rounds:      LoadedRounds,
+    rounds:      LoadedRounds,
     /// Loaded ammo type (not serialized to content).
     #[serde(default, skip_serializing)]
-    pub loaded_ammo: AmmoType,
+    loaded_ammo: AmmoType,
 }
 
 impl Magazine {
@@ -99,10 +99,23 @@ impl Magazine {
         self.size
     }
 
+    /// Set capacity, clamping loaded rounds down to the new size.
+    pub const fn set_size(&mut self, size: MagazineSize) {
+        self.size = size;
+        if self.rounds.0 > size.get() {
+            self.rounds.0 = size.get();
+        }
+    }
+
     /// Reload cost.
     #[must_use]
     pub const fn reload_tu(&self) -> ReloadTu {
         self.reload_tu
+    }
+
+    /// Set the reload TU cost.
+    pub const fn set_reload_tu(&mut self, reload_tu: ReloadTu) {
+        self.reload_tu = reload_tu;
     }
 
     /// Loaded ammo type.

@@ -96,8 +96,9 @@ fn maximal_draft() -> WeaponDraft {
     spec.shred = WeaponShred::new(2);
     spec.damage_type = DamageType::Plasma;
     spec.accepts = AmmoType::Cell;
-    spec.magazine.size = MagazineSize::new(18);
-    spec.magazine.reload_tu = gdtf_battle_sim::magazine::ReloadTu::new(9);
+    spec.magazine.set_size(MagazineSize::new(18));
+    spec.magazine
+        .set_reload_tu(gdtf_battle_sim::magazine::ReloadTu::new(9));
     spec.fire_mode = FireMode::new(vec![
         FireModeSpec::new(
             ModeKind::Single,
@@ -160,8 +161,9 @@ fn minimal_draft() -> WeaponDraft {
     spec.accuracy = Accuracy::new(0.9);
     spec.damage = WeaponDamage::new(5);
     spec.damage_type = DamageType::Kinetic;
-    spec.magazine.size = MagazineSize::new(6);
-    spec.magazine.reload_tu = gdtf_battle_sim::magazine::ReloadTu::new(8);
+    spec.magazine.set_size(MagazineSize::new(6));
+    spec.magazine
+        .set_reload_tu(gdtf_battle_sim::magazine::ReloadTu::new(8));
     draft
 }
 
