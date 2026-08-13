@@ -50,6 +50,8 @@ fn e2e_app(active_level: Level) -> App {
     app.world_mut()
         .insert_resource(ActiveLevel::new(active_level));
     app.world_mut().insert_resource(BattleInProgress);
+    app.world_mut()
+        .insert_resource(ButtonInput::<KeyCode>::default());
     app.world_mut().insert_resource(OccupancyGrid::new());
 
     app.world_mut().spawn((

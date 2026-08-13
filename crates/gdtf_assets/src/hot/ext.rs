@@ -8,11 +8,14 @@ use crate::{
     hot::{
         chain::{HotRonChain, HotRonFallbackFn, HotRonMapFn},
         handle::HotRonHandle,
+        resolved::HotRonResolved,
         systems::{kick_off_hot_ron_resource, redrive_hot_ron_resource, resolve_hot_ron_resource},
     },
 };
 
 /// Register hot-reloadable RON-backed resources on a Bevy app.
+///
+/// The file lands on top of whatever `T` holds, once; a fallback only fills an absent `T`.
 pub trait HotRonAppExt {
     /// Load `T` from RON at `path` (identity map).
     fn init_hot_ron_resource<T>(&mut self, path: &'static str) -> &mut Self
@@ -117,6 +120,15 @@ impl HotRonAppExt for App {
     }
 }
 
+// The chain holds a handle and has not published its resource yet.
+fn unapplied<Spec, T>() -> impl SystemCondition<()>
+where
+    Spec: TypePath + Send + Sync + 'static,
+    T: Resource,
+{
+    resource_exists::<HotRonHandle<Spec>>.and_then(not(resource_exists::<HotRonResolved<Spec, T>>))
+}
+
 fn install<Spec, T>(app: &mut App, chain: HotRonChain<Spec, T>)
 where
     Spec: for<'de> Deserialize<'de> + TypePath + Send + Sync + 'static,
@@ -127,11 +139,10 @@ where
     }
     app.init_ron_asset::<Spec>();
     app.insert_resource(chain);
-    app.add_systems(Startup, kick_off_hot_ron_resource::<Spec, T>)
-        .add_systems(
-            Update,
-            resolve_hot_ron_resource::<Spec, T>
-                .run_if(resource_exists::<HotRonHandle<Spec>>.and_then(not(resource_exists::<T>))),
-        )
-        .add_systems(Update, redrive_hot_ron_resource::<Spec, T>);
+    app.add_systems(Startup, kick_off_hot_ron_resource::<Spec, T>);
+    app.add_systems(
+        Update,
+        resolve_hot_ron_resource::<Spec, T>.run_if(unapplied::<Spec, T>()),
+    );
+    app.add_systems(Update, redrive_hot_ron_resource::<Spec, T>);
 }

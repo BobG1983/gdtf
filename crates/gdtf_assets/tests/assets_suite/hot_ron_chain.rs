@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
     reflect::TypePath,
 };
-use gdtf_assets::{HotRonAppExt, HotRonChain, HotRonHandle, RonAsset};
+use gdtf_assets::{HotRonAppExt, HotRonChain, HotRonHandle, HotRonResolved, RonAsset};
 use gdtf_test_utils::GdtfUiTestAppBuilder;
 use serde::Deserialize;
 
@@ -82,6 +82,37 @@ fn plain_chain_loads_and_resolves_exactly_once() {
 }
 
 #[test]
+fn the_file_replaces_a_resource_inserted_before_the_chain_resolves() {
+    let mut app = real_asset_app();
+    let pre_inserted = HotSwatch {
+        label: "pre-inserted".to_owned(),
+        count: 41,
+    };
+    app.insert_resource(pre_inserted.clone());
+    app.init_hot_ron_resource::<HotSwatch>(GOOD_PATH);
+
+    let replaced = gdtf_test_utils::advance_until(
+        &mut app,
+        |app| app.world().get_resource::<HotSwatch>() != Some(&pre_inserted),
+        GENEROUS_LOAD_UPDATES,
+    );
+
+    assert!(
+        replaced,
+        "a resource present before the chain resolves must not gate the resolve off — the file \
+         has to land on top of it",
+    );
+    assert_eq!(
+        app.world().get_resource::<HotSwatch>(),
+        Some(&HotSwatch {
+            label: "molten".to_owned(),
+            count: 3,
+        }),
+        "the value that replaced the pre-inserted one must be the on-disk fixture",
+    );
+}
+
+#[test]
 fn mapped_chain_derives_resource_with_asset_server_access() {
     let mut app = real_asset_app();
     app.init_hot_ron_resource_mapped::<HotSwatch, MappedSwatch>(GOOD_PATH, map_swatch);
@@ -112,6 +143,38 @@ fn failed_load_with_fallback_inserts_the_default() {
         app.world().get_resource::<HotSwatch>(),
         Some(&fallback_swatch()),
         "a genuine Failed must fall back to the chain's default",
+    );
+}
+
+#[test]
+fn failed_load_with_fallback_keeps_a_resource_that_is_already_there() {
+    let mut app = real_asset_app();
+    let already_there = HotSwatch {
+        label: "already there".to_owned(),
+        count: 41,
+    };
+    app.insert_resource(already_there.clone());
+    app.init_hot_ron_resource_with_fallback::<HotSwatch>(MALFORMED_PATH, fallback_swatch);
+
+    let settled = gdtf_test_utils::advance_until(
+        &mut app,
+        |app| {
+            app.world()
+                .get_resource::<HotRonResolved<HotSwatch>>()
+                .is_some()
+        },
+        GENEROUS_LOAD_UPDATES,
+    );
+
+    assert!(
+        settled,
+        "a failed load must still settle the chain, or the fallback branch retries every frame",
+    );
+    assert_eq!(
+        app.world().get_resource::<HotSwatch>(),
+        Some(&already_there),
+        "the fallback fills an absent resource — it must never overwrite one that is already \
+         there",
     );
 }
 

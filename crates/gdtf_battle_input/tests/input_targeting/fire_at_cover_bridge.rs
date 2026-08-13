@@ -49,6 +49,7 @@ fn bridge_app() -> App {
     app.insert_resource(ViewMode::default());
     app.insert_resource(PlayerFaction::new(PLAYER_FACTION));
     app.insert_resource(ButtonInput::<MouseButton>::default());
+    app.insert_resource(ButtonInput::<KeyCode>::default());
     app.insert_resource(FireTargetHighlight::cleared());
     app
 }

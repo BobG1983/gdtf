@@ -59,6 +59,7 @@ fn preview_app() -> App {
     w.insert_resource(tuning);
     w.insert_resource(PlayerFaction::new(PLAYER_FACTION));
     w.insert_resource(ButtonInput::<MouseButton>::default());
+    w.insert_resource(ButtonInput::<KeyCode>::default());
     w.insert_resource(ActiveLevel::new(Level::new(0)));
     w.insert_resource(ViewMode::default());
     w.insert_resource(PathPreview::cleared());

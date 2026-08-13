@@ -6,7 +6,6 @@ use crate::{
     InputSystems,
     gamepad::{gamepad_click_act, gamepad_turn},
     intent::dispatch_act_intents,
-    keybinds::Keybinds,
     keyboard::{cycle_selection_keys, full_view_key, level_keys, posture_keys, select_clear_key},
     selection::{left_click_act, right_click_turn_to_face},
 };
@@ -16,17 +15,13 @@ pub(super) fn register_keyboard_acts(app: &mut App) {
         Update,
         (level_keys, full_view_key)
             .in_set(InputSystems::Gather)
-            .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<Keybinds>)),
+            .run_if(resource_exists::<BattleInProgress>),
     )
     .add_systems(
         Update,
         (select_clear_key, posture_keys, cycle_selection_keys)
             .in_set(InputSystems::Gather)
-            .run_if(
-                resource_exists::<BattleInProgress>
-                    .and_then(resource_exists::<Keybinds>)
-                    .and_then(playback_caught_up),
-            ),
+            .run_if(resource_exists::<BattleInProgress>.and_then(playback_caught_up)),
     );
 }
 

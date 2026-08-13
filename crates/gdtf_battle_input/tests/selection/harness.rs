@@ -36,6 +36,8 @@ pub(crate) fn selection_app(active_level: Level) -> App {
         .insert_resource(VerticalLinkGraph::default());
     app.world_mut()
         .insert_resource(ButtonInput::<MouseButton>::default());
+    app.world_mut()
+        .insert_resource(ButtonInput::<KeyCode>::default());
     app
 }
 

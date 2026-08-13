@@ -39,6 +39,8 @@ pub(crate) fn picking_app(active_level: Level) -> App {
         .insert_resource(ActiveLevel::new(active_level));
     app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(BattleInProgress);
+    app.world_mut()
+        .insert_resource(ButtonInput::<KeyCode>::default());
 
     app.world_mut().spawn((
         Camera2d,

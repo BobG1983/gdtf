@@ -24,7 +24,7 @@ pub use family::{
 };
 pub use hot::{
     HotRonAppExt, HotRonChain, HotRonFallbackFn, HotRonHandle, HotRonMapFn, HotRonPath,
-    kick_off_hot_ron_resource, redrive_hot_ron_resource, resolve_hot_ron_resource,
+    HotRonResolved, kick_off_hot_ron_resource, redrive_hot_ron_resource, resolve_hot_ron_resource,
 };
 pub use loader::RonAssetLoader;
 #[cfg(debug_assertions)]

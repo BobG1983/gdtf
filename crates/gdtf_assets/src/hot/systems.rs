@@ -9,7 +9,7 @@ use bevy::{
 
 use crate::{
     asset::RonAsset,
-    hot::{chain::HotRonChain, handle::HotRonHandle},
+    hot::{chain::HotRonChain, handle::HotRonHandle, resolved::HotRonResolved},
 };
 
 /// Load the RON asset and store its handle on startup.
@@ -29,12 +29,15 @@ pub fn kick_off_hot_ron_resource<Spec, T>(
 }
 
 /// Insert the mapped resource once the asset is ready (or run fallback on failure).
+///
+/// Marks the chain resolved on both branches; the fallback only fills an absent `T`.
 pub fn resolve_hot_ron_resource<Spec, T>(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
     chain: Option<Res<HotRonChain<Spec, T>>>,
     handle: Option<Res<HotRonHandle<Spec>>>,
     assets: Option<Res<Assets<RonAsset<Spec>>>>,
+    existing: Option<Res<T>>,
 ) where
     Spec: TypePath + Send + Sync + 'static,
     T: Resource,
@@ -47,20 +50,31 @@ pub fn resolve_hot_ron_resource<Spec, T>(
 
     if let Some(loaded) = assets.get(&**handle) {
         commands.insert_resource((chain.map())(&**loaded, &asset_server));
+        commands.insert_resource(HotRonResolved::<Spec, T>::new());
         return;
     }
 
     let Some(fallback) = chain.fallback() else {
         return;
     };
-    if asset_server.load_state(&**handle).is_failed() {
+    if !asset_server.load_state(&**handle).is_failed() {
+        return;
+    }
+    commands.insert_resource(HotRonResolved::<Spec, T>::new());
+    if existing.is_some() {
         warn!(
-            "hot-RON: asset `{}` failed to load; falling back to the default {}",
+            "hot-RON: asset `{}` failed to load; keeping the {} already present",
             *chain.path(),
             short_type_name::<T>(),
         );
-        commands.insert_resource(fallback());
+        return;
     }
+    warn!(
+        "hot-RON: asset `{}` failed to load; falling back to the default {}",
+        *chain.path(),
+        short_type_name::<T>(),
+    );
+    commands.insert_resource(fallback());
 }
 
 /// Re-map the resource when the underlying RON asset is modified.

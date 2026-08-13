@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
     reflect::TypePath,
 };
-use gdtf_assets::{HotRonAppExt, HotRonHandle, RonAsset, redrive_hot_ron_resource};
+use gdtf_assets::{HotRonAppExt, HotRonHandle, HotRonResolved, RonAsset, redrive_hot_ron_resource};
 use serde::Deserialize;
 
 #[derive(Resource, Deserialize, TypePath, Debug, Clone, PartialEq, Eq)]
@@ -60,6 +60,8 @@ fn stage_resolved(app: &mut App, baseline: HotSwatch) -> Handle<RonAsset<HotSwat
     app.world_mut().insert_resource(baseline);
     app.world_mut()
         .insert_resource(HotRonHandle::new(handle.clone()));
+    app.world_mut()
+        .insert_resource(HotRonResolved::<HotSwatch>::new());
     handle
 }
 
@@ -131,6 +133,8 @@ fn pre_resolve_events_are_drained_not_replayed() {
     app.world_mut().insert_resource(baseline.clone());
     app.world_mut()
         .insert_resource(HotRonHandle::new(pending.clone()));
+    app.world_mut()
+        .insert_resource(HotRonResolved::<HotSwatch>::new());
     app.update();
 
     assert_eq!(

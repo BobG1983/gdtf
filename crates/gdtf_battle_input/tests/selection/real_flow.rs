@@ -90,6 +90,8 @@ fn real_flow_app() -> App {
         .insert_resource(gdtf_battle_sim::test_support::test_gang_registry());
     app.world_mut()
         .insert_resource(ButtonInput::<MouseButton>::default());
+    app.world_mut()
+        .insert_resource(ButtonInput::<KeyCode>::default());
     app
 }
 

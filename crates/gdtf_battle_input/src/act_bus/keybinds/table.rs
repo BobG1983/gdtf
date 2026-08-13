@@ -112,7 +112,7 @@ impl BoundKey {
     }
 }
 
-/// Resolved keybind table loaded from RON.
+/// Keybind table. The shipped defaults live in code; the RON overrides them.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Deserialize, TypePath)]
 pub struct Keybinds {
     /// Clear selection.
@@ -133,6 +133,22 @@ pub struct Keybinds {
     pub select_next:      BoundKey,
     /// Select previous player ganger.
     pub select_prev:      BoundKey,
+}
+
+impl Default for Keybinds {
+    fn default() -> Self {
+        Self {
+            select_clear:     BoundKey::KeyEscape,
+            level_up:         BoundKey::KeyPageUp,
+            level_down:       BoundKey::KeyPageDown,
+            toggle_full_view: BoundKey::KeyV,
+            stance_cycle:     BoundKey::KeyC,
+            aim_toggle:       BoundKey::KeyF,
+            facing_cycle:     BoundKey::KeyR,
+            select_next:      BoundKey::KeyTab,
+            select_prev:      BoundKey::KeyTab,
+        }
+    }
 }
 
 impl Keybinds {
@@ -201,5 +217,7 @@ impl Keybinds {
 }
 
 pub(crate) fn register_keybinds_hot_ron(app: &mut App) {
+    // Outside the hot-RON chain: that install returns early with no `AssetServer`.
+    app.init_resource::<Keybinds>();
     app.init_hot_ron_resource::<Keybinds>(KEYBINDS_RON_PATH);
 }

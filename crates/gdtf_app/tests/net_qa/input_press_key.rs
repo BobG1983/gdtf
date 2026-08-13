@@ -5,6 +5,7 @@ use bevy::{
     input::{ButtonInput, keyboard::KeyCode},
 };
 use gdtf_app::qa_wire::key::{KeyNet, KeyPressNet, KeybindActionNet};
+use gdtf_assets::HotRonResolved;
 use gdtf_battle_input::{BoundKey, Keybinds};
 use gdtf_qa_protocol::{command::RunOptions, ports::NetQaPort};
 use gdtf_test_utils::advance_until;
@@ -33,25 +34,32 @@ fn held(app: &App, key: KeyCode) -> Result<bool, TestError> {
         .ok_or_else(|| "a built app carries the keyboard button input it folds presses into".into())
 }
 
-/// The menu app once its keybind table has loaded, plus the key clear-selection is bound to.
+/// The menu app with clear-selection rebound, plus the key it was rebound to.
+///
+/// The rebind waits for the RON so the asset cannot land on top of it a frame later.
 fn keybound_app() -> Result<(App, NetQaPort, BoundKey), TestError> {
     let (mut app, port) = game_app_listening()?;
     if !advance_until(
         &mut app,
-        |app| app.world().get_resource::<Keybinds>().is_some(),
+        |app| {
+            app.world()
+                .get_resource::<HotRonResolved<Keybinds>>()
+                .is_some()
+        },
         KEYBIND_BUDGET,
     ) {
         return Err(format!(
-            "the keybind table must load within {KEYBIND_BUDGET} frames for a named action to \
-             resolve against it"
+            "the keybind RON must apply within {KEYBIND_BUDGET} frames — until it has, a rebind \
+             written here races the asset landing on top of it"
         )
         .into());
     }
-    let Some(keybinds) = app.world().get_resource::<Keybinds>() else {
-        return Err("the wait above already proved the keybind table is loaded".into());
-    };
-    let bound = keybinds.select_clear;
-    Ok((app, port, bound))
+    let rebound = BoundKey::KeyQ;
+    app.insert_resource(Keybinds {
+        select_clear: rebound,
+        ..Keybinds::default()
+    });
+    Ok((app, port, rebound))
 }
 
 #[test]
@@ -113,8 +121,9 @@ fn a_named_action_presses_whatever_key_the_keybind_table_holds() -> TestResult {
         pressed.key,
         KeyNet::from_bound(bound),
         "a named action is resolved through the live `Keybinds` resource, so the key pressed is \
-         whatever that table holds for clear-selection — a hardcoded key would survive a rebind \
-         and this assertion would not: {pressed:?}",
+         whatever that table holds for clear-selection — this fixture rebound it away from the \
+         shipped key, which neither a hardcoded key nor the compiled default would honour: \
+         {pressed:?}",
     );
     Ok(())
 }

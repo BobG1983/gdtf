@@ -19,10 +19,10 @@ use crate::dev::net_qa::{
     wire::key::{KeyNet, KeyPressNet},
 };
 
-/// The refusal a named action gets before the keybind table has loaded.
+/// The refusal a named action gets on a host with no keybind table installed.
 const NO_KEYBINDS: RefusalNote = RefusalNote::from_static(
-    "a named action is resolved through the `Keybinds` resource, and it has not loaded yet — \
-     press the physical key instead, or wait for the keybind table",
+    "a named action is resolved through the `Keybinds` resource, and this host has no keybind \
+     table installed — press the physical key instead",
 );
 
 #[derive(Debug, Deserialize)]

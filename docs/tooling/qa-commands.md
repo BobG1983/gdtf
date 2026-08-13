@@ -533,10 +533,11 @@ what that means.
 `keyboard_input_system` folds into `ButtonInput<KeyCode>` in `PreUpdate` — so every consumer
 sees the press on the next frame, keybinds and focus bridge alike. It takes either a physical
 key or a named action; a named action is resolved through the live `Keybinds` resource, so a
-rebind is honoured and the reply names the physical key that was actually pressed. It is the
-the one `Deferred` command among them: the reply is held until the matching release has been
-written, so the caller's next command sees a settled keyboard rather than a key stuck down. A
-named action asked for before the keybind table has loaded is refused `MissingModel`.
+rebind is honoured and the reply names the physical key that was actually pressed. That table
+is there from plugin build — the shipped bindings are compiled in and the RON lands on top of
+them — so a named action never waits on the asset. It is the one `Deferred` command among
+them: the reply is held until the matching release has been written, so the caller's next
+command sees a settled keyboard rather than a key stuck down.
 
 `input.hover` moves the pointer to a pixel: the cursor goes into the primary window and a
 `CursorMoved` message goes out, which also takes pointer ownership back from the gamepad. It

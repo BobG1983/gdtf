@@ -43,6 +43,8 @@ pub(crate) fn control_app() -> App {
         .insert_resource(VerticalLinkGraph::default());
     app.world_mut()
         .insert_resource(ButtonInput::<MouseButton>::default());
+    app.world_mut()
+        .insert_resource(ButtonInput::<KeyCode>::default());
     add_probes(&mut app);
     app
 }

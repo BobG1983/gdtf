@@ -1,5 +1,4 @@
 use bevy::{input_focus::directional_navigation::DirectionalNavigationMap, prelude::*};
-use gdtf_battle_input::Keybinds;
 use gdtf_battle_sim::prelude::BattleInProgress;
 use gdtf_ui::focus_nav::FocusNavSystems;
 
@@ -26,8 +25,7 @@ impl Plugin for GameBattleScapeFocusNavScenePlugin {
             )
                 .run_if(
                     resource_exists::<BattleInProgress>
-                        .and_then(resource_exists::<DirectionalNavigationMap>)
-                        .and_then(resource_exists::<Keybinds>),
+                        .and_then(resource_exists::<DirectionalNavigationMap>),
                 ),
         )
         .add_systems(

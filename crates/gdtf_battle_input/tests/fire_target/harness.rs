@@ -57,6 +57,7 @@ pub(crate) fn fire_target_app() -> App {
     w.insert_resource(CombatTuning::default());
     w.insert_resource(PlayerFaction::new(PLAYER_FACTION));
     w.insert_resource(ButtonInput::<MouseButton>::default());
+    w.insert_resource(ButtonInput::<KeyCode>::default());
     w.insert_resource(FireTargetHighlight::cleared());
     w.insert_resource(SquadVisibility::new(HashSet::default(), HashSet::default()));
     app
