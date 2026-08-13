@@ -5,6 +5,7 @@ mod catch_up;
 mod expected;
 mod fixtures;
 mod map;
+mod modes;
 
 pub(crate) use behind::{
     battle_with_a_frozen_fog, battle_with_a_ganger_the_screen_has_not_moved,
@@ -24,3 +25,4 @@ pub(crate) use fixtures::{
     battle_with_lit_cover, battle_with_log_lines,
 };
 pub(crate) use map::a_cover_cell;
+pub(crate) use modes::battle_with_a_two_mode_gun;

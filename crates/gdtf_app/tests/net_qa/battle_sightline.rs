@@ -3,13 +3,13 @@ use gdtf_app::qa_wire::{
     sight::{CanEngageNet, CanSeeNet, SightlineNet},
     token::GangerToken,
 };
-use gdtf_battle_sim::ganger::Tu;
+use gdtf_battle_sim::{ganger::Tu, weapon::ModeKind};
 use gdtf_qa_protocol::{command::RunOptions, message::QaResponse};
 use serde::Deserialize;
 
 use super::{
     battle_reads::{a_player_ganger, an_unreachable_cell, cell_argument},
-    battle_setup::{MagazineLoad, battle_with_a_shooter_facing_north},
+    battle_setup::{MagazineLoad, battle_with_a_shooter_facing_north, battle_with_a_two_mode_gun},
     command_exchange::{
         BATTLE_SIGHTLINE, assert_refused_off_the_battle_screen, exchange_expected,
         exchange_planned, ran_body, run,
@@ -166,6 +166,50 @@ fn a_shooter_with_no_time_left_cannot_engage_the_cell_behind_it() -> TestResult 
         CanEngageNet::new(false),
         "the same cell out of arc with nothing left to spend on turning is refused, so the \
          answer tracks the sim's arc gate rather than a constant: {sightline:?}",
+    );
+    Ok(())
+}
+
+/// Ask about the cell behind a shooter whose two-mode gun is set to `chosen`.
+fn engaging_the_cell_behind_a_gun_set_to(
+    chosen: Option<ModeKind>,
+) -> Result<SightlineBody, TestError> {
+    let (replies, _posed) = exchange_expected(
+        move || battle_with_a_two_mode_gun(chosen),
+        |posed| {
+            vec![run(
+                BATTLE_SIGHTLINE,
+                &cell_argument(posed.behind),
+                RunOptions::default(),
+            )]
+        },
+    )?;
+    sightline_body(replies.into_iter().next())
+}
+
+#[test]
+fn a_shooter_whose_gun_is_set_to_no_mode_is_priced_with_its_single() -> TestResult {
+    let sightline = engaging_the_cell_behind_a_gun_set_to(None)?;
+
+    assert_eq!(
+        engage_answer(&sightline)?,
+        CanEngageNet::new(true),
+        "the fixture leaves the shooter holding exactly what turning and firing the gun's single \
+         costs, and a gun nobody set a mode on fires that single: {sightline:?}",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_shooter_set_to_a_mode_it_cannot_pay_for_cannot_engage_the_cell_behind_it() -> TestResult {
+    let sightline = engaging_the_cell_behind_a_gun_set_to(Some(ModeKind::Burst))?;
+
+    assert_eq!(
+        engage_answer(&sightline)?,
+        CanEngageNet::new(false),
+        "the same shooter, pose and pool with burst picked on the gun cannot pay for the shot, so \
+         an engage answer of true means the read priced a mode the shooter is not on: \
+         {sightline:?}",
     );
     Ok(())
 }

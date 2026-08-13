@@ -112,6 +112,58 @@ fn setting_the_mode_the_shooter_is_already_on_leaves_the_move_target_alone() {
 }
 
 #[test]
+fn picking_the_mode_the_gun_already_carries_leaves_the_move_target_alone() {
+    let (mut app, tx) = battle_with_a_burst_capable_gun();
+    let goal = CellLevel::new(Cell::new(9, 7), Level::new(0));
+    app.world_mut()
+        .insert_resource(PathPreviewTarget::new(goal));
+
+    let first: FireModeBody = decoded(
+        BATTLE_SET_FIRE_MODE,
+        run_one_frame(
+            &mut app,
+            &tx,
+            BATTLE_SET_FIRE_MODE,
+            &mode_argument(ModeKindNet::Burst),
+        ),
+    );
+
+    assert_eq!(
+        selected_mode(&app),
+        Some(BURST),
+        "the first pick has to land, or the second one is not the repeat this case is about: \
+         {first:?}",
+    );
+    assert_eq!(
+        **app.world().resource::<PathPreviewTarget>(),
+        None,
+        "the first pick switched the mode, so the reset threw the goal pinned above away; a goal \
+         still pinned here means the pick marked nothing changed and the repeat below proves \
+         nothing",
+    );
+
+    app.world_mut()
+        .insert_resource(PathPreviewTarget::new(goal));
+
+    let _repeat: FireModeBody = decoded(
+        BATTLE_SET_FIRE_MODE,
+        run_one_frame(
+            &mut app,
+            &tx,
+            BATTLE_SET_FIRE_MODE,
+            &mode_argument(ModeKindNet::Burst),
+        ),
+    );
+
+    assert_eq!(
+        **app.world().resource::<PathPreviewTarget>(),
+        Some(goal),
+        "the gun was already carrying burst, so this pick changed no mode and the move path the \
+         player pinned has to still be pinned",
+    );
+}
+
+#[test]
 fn a_mode_the_gun_does_not_offer_is_refused_and_leaves_the_selection_alone() {
     let (mut app, tx) = battle_with_a_burst_capable_gun();
 
