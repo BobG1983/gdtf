@@ -259,8 +259,8 @@ const DOCS_RESULT = {
 const LAND_RESULT = {
   type: 'object', additionalProperties: false,
   required: ['committed', 'commitSha', 'pushedRange', 'filesStaged', 'filesLeftUnstaged',
-             'carriedCommits', 'rebase', 'conflictedFiles', 'developBefore', 'developAfter',
-             'gatePass', 'branchDeleted', 'suite', 'findings'],
+    'carriedCommits', 'rebase', 'conflictedFiles', 'developBefore', 'developAfter',
+    'gatePass', 'branchDeleted', 'suite', 'findings'],
   properties: {
     committed: { type: 'boolean', description: 'Did the commit and push actually run' },
     commitSha: { type: 'string', description: 'Feature commit sha, or empty if none. Empty with committed true is a contradiction the run rejects.' },
@@ -299,8 +299,17 @@ const LAND_RESULT = {
 // came with the push. On GTW-1159 two unrelated commits rode in and nobody asked.
 const CONFIRM_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['landedSha', 'subject', 'developSha', 'extraCommits'],
+  required: ['landedSha', 'subject', 'developSha', 'extraCommits', 'gatePass'],
   properties: {
+    gatePass: {
+      type: 'object', additionalProperties: false, required: ['matchedReport', 'deleted', 'note'],
+      description: 'Step 7 of the land skill, which this step owns: compare .claude/.gate-pass against what the land step reported, then delete it.',
+      properties: {
+        matchedReport: { type: 'boolean', description: 'Whether the file on disk matched the land step\'s reported branch, head, fingerprint and scope.' },
+        deleted: { type: 'boolean', description: 'Whether the file is gone now. False is correct when the land was not proven — say so in note.' },
+        note: { type: 'string', description: 'What differed, or why the file was left alone. Empty when it matched and was deleted.' },
+      },
+    },
     landedSha: { type: 'string', description: 'The sha on origin/develop whose subject names this ticket, or the empty string if there is none.' },
     subject: { type: 'string', description: 'That commit\'s subject line, so the sha is checkable against the ticket rather than assumed.' },
     developSha: { type: 'string', description: 'origin/develop head after the fetch.' },
@@ -611,15 +620,18 @@ ${audit.report}`
 // One lens per question, and each owns its own failure modes. They used to share a checklist in
 // the agent definition, which is how three reviews came back saying the same thing.
 const LENSES = [
-  { key: 'clauses', focus: `Is every clause true of the code? Open each one and trace it — "the report says so" is not evidence.
+  {
+    key: 'clauses', focus: `Is every clause true of the code? Open each one and trace it — "the report says so" is not evidence.
 Hunt quiet narrowing: a clause half-built reads as built. Reject hedge markers — TODO, FIXME, "for now",
 "placeholder", "stub", "simplified". Reject any system, plugin or resource the ticket claims runs that
 nothing registers. Check docs/ against the same clauses.` },
-  { key: 'tests', focus: `Is the behaviour actually proven? Every behavioural clause needs a real-path,
+  {
+    key: 'tests', focus: `Is the behaviour actually proven? Every behavioural clause needs a real-path,
 assertion-bearing test that discriminates — name the mutation that would slip past each one. A clause with
 no test is NON-COMPLIANT, not a note. Reject MinimalPlugins stand-ins where the claim is about the real app,
 and reject exact-magnitude asserts on tunable data. Run ZERO cargo.` },
-  { key: 'rules', focus: `Does it obey the house? no-bare-types, module-layout (including files over 400 lines
+  {
+    key: 'rules', focus: `Does it obey the house? no-bare-types, module-layout (including files over 400 lines
 with mixed responsibilities), bevy-systems scheduling and ordering, plain-language, comment-hygiene.
 Cite the rule you are applying, never a preference. Run ZERO cargo.` },
 ]
@@ -863,26 +875,29 @@ without committing. There is no monitor coming to report your exit codes.
 
 ${GREEN}
 
-Steps (see .claude/skills/land/SKILL.md):
-1. Re-run the full green suite. Docs-sync runs after the gate, so the tree you are about to commit
-   is not the tree the verify report certified. The build cache makes it cheap when nothing changed.
-2. Write .claude/.gate-pass (TICKET/BRANCH/HEAD/FINGERPRINT/SCOPE). FINGERPRINT is the hex from the
-   one command in .claude/rules/verification.md — do not invent a recipe.
-3. Stage explicit files by name. Never git add -A. Files dirty in the tree that are not this
-   ticket's work are left alone — not staged, not reverted.
-4. Commit: \`Area: summary (${TICKET})\`. The body ends the message — no session URL, no
-   Co-Authored-By, nothing after it.
-5. From ${REPO}: fetch origin develop, rebase ${BRANCH} onto origin/develop, checkout develop, pull,
-   \`git merge --ff-only ${BRANCH}\`, push origin develop, delete the local feature branch. There is
-   no merge commit. If --ff-only fails, STOP and report — never fall back to a merge commit.
-6. Leave ${REPO} on develop.
+## What you own
 
-If the rebase conflicts, resolve it, stage the resolved files, and continue with
-\`git rebase --continue\` — never the commit subcommand. The pre-commit hook blocks every commit on
-develop.
+Steps 1 to 5 of .claude/skills/land/SKILL.md — the git half. Read that file and follow it; it is
+the only step list. Do not do steps 6 or 7: the close phase owns moving the ticket to Done and
+holds the Linear tools you do not, and the confirm phase owns reporting the pushed range and
+deleting .claude/.gate-pass. Leave the gate-pass file on disk so that phase can compare it against
+your report.
 
-Never --no-verify. Report what git said. Do not claim landing is proven — a separate confirm step
-checks origin/develop.
+Not doing 6 and 7 is the design, not a rule you broke. Do not report their absence as a finding.
+
+Four things this workflow pins on top of that file:
+
+- Re-run the full green suite before step 1. Docs-sync ran after the gate, so the tree you are
+  about to commit is not the tree the verify report certified. The build cache makes it cheap when
+  nothing changed.
+- Files dirty in the tree that are not this ticket's work are left alone — not staged, not
+  reverted. They are listed above. IF, AND ONLY IF, required, you may temporarily move the files
+  out of the tree in order to land. IF YOU DO, the files must be restored before you finish.
+- If \`--ff-only\` fails, STOP and report. Never fall back to a merge commit. If the rebase conflicts,
+  resolve it, stage the resolved files, and continue with \`git rebase --continue\` — never the
+  commit subcommand, because the pre-commit hook blocks every commit on develop.
+- Finish on develop. Never \`--no-verify\`. Report what git said, and do not claim landing is proven —
+  a separate confirm step checks origin/develop.
 
 ## Reporting
 
@@ -899,7 +914,8 @@ Every field is something git printed this run, not something you remember.
 - \`filesLeftUnstaged\`: the dirty paths you deliberately did not stage.
 - \`branchDeleted\`: whether the local feature branch is gone.
 - \`findings\`: each one typed. A rule this land broke or could not honour is \`process-violation\`,
-  not a note.`,
+  not a note. A step another phase owns is neither — steps 6 and 7 are theirs, so their absence is
+  not yours to report.`,
   { model: 'opus', label: `land:${TICKET}`, phase: 'Land', schema: LAND_RESULT })
 
 const confirm = await agent(`Confirm landing of ${TICKET}.
@@ -920,7 +936,13 @@ Every commit in that range whose subject does not name ${TICKET} goes in \`extra
 the only step that fetches origin, so this is the only place the question gets asked. Report them;
 never try to remove one.
 
-Change nothing.`,
+5. You own the rest of step 7 of .claude/skills/land/SKILL.md: once step 3 has exited 0, compare
+\`.claude/.gate-pass\` against what the land step reported and then delete the file. The land step
+must leave it on disk for exactly this comparison, and a gate-pass naming a branch that no longer
+exists blocks the next commit on the next feature branch. If step 3 did not exit 0, leave the file
+alone — the land is unproven and the file is still the record of what was staged.
+
+Change nothing else.`,
   { model: 'opus', label: `confirm-land:${TICKET}`, phase: 'Land', schema: CONFIRM_RESULT })
 
 const landedSha = /^[0-9a-f]{7,40}$/i.test(confirm?.landedSha ?? '') ? confirm.landedSha : null
