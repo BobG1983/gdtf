@@ -1,9 +1,12 @@
 // GDTF battle keybind table — the first keybind file in the repo.
 // Maps each bound battle ACT to a named key (a `BoundKey` variant that
 // resolves to a Bevy KeyCode). Edit freely — every binding is data, hot-swappable
-// through the same RonAsset<T> loader the theme / tiles / tuning use; nothing about
-// the key choices is hardcoded in Rust. The keyboard systems read the resolved
-// KeyCode off the loaded Keybinds resource, never a literal.
+// through the same RonAsset<T> loader the theme / tiles / tuning use, and this file
+// wins over the compiled table on load. The same nine bindings are also the
+// `Keybinds::default()` the input plugin inserts at build, so the resource exists
+// before this file resolves — edit one and the other follows, or
+// `shipped_keybinds_ron_matches_the_compiled_default` goes red. The keyboard systems
+// read the resolved KeyCode off the Keybinds resource, never a literal.
 //
 // `select_clear` / `level_up` / `level_down` are consumed by the keyboard surface;
 // `stance_cycle` / `aim_toggle` / `facing_cycle` are declared here and consumed over

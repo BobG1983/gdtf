@@ -473,7 +473,7 @@ command pushes the offered target onto the same `PendingContextualIntents` queue
 pushes onto, and the sim's own `dispatch_*` is the authoritative gate: nothing on the QA side
 re-checks adjacency, faction, life state or TU. `battle.offers` does report the panel's own
 `pressable` bit, but that is the greyed-out state the button already carries, read off the
-same offer resource — not a second legality check living on the QA side. Most of them
+same offer resource — not a second legality check living on the QA side. Most of the
 scans ask a predicate that folds the cost check in — `can_execute`, `can_stabilize`,
 `can_open_door`, `can_throw_grenade`, `can_enter_emplacement`, `can_exit_emplacement`. Melee
 and Shove have TU-blind predicates, so they price the act with the sim's own cost helper and
