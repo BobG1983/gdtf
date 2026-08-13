@@ -46,7 +46,7 @@ leave it alone.
    - Nothing in flight → pick the next ticket off the queue in run-state.md and start
      **exactly one** `build-ticket`. Do not pre-audit it by hand: phase 0 fetches the live
      Linear text and audits the clauses itself, and blocks before touching status if they
-     do not hold.
+     do not hold. If that ticket can't be started for any reason, report it and move on.
 6. **Run `/run-state`** to write the file. It owns which sections change and how much of
    each is kept.
 

@@ -44,6 +44,7 @@ Duplicate, and you use whatever exact names the API returns.
   `save_comment` fails outright against an archived issue, a Done ticket can be archived at
   any moment, and there is no un-archive.
 - **Report** board state grouped by status.
+- **NEVER** report an archived, done, cancelled, or duplicate ticket when asked for open tickets.
 
 ## How a ticket is written
 
@@ -111,7 +112,7 @@ kind of thing.
 - **Ticket** — what a Task fans into when it is still too big to land in one workflow. Tiny,
   single-sitting, independently verifiable.
 
-Decomposition:
+## Decomposition
 
 - **Never recommend a Mythos or Epic as the next task**, and never serve a Task too big to
   land in one workflow. Say plainly that it must be broken down first, and recommend that.
@@ -125,7 +126,7 @@ Decomposition:
 
 ## Grounding
 
-You may `Read` / `Grep` / `Glob` the repo and use `Bash` for read-only inspection, to judge
+You may `Read` / `Grep` / `Glob` the repo and use `Bash` and `LSP` for read-only inspection, to judge
 what is actually done against what the board claims. Verify before asserting done — a card
 can be stale. Flag any mismatch you find.
 
