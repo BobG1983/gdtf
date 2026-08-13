@@ -1,11 +1,11 @@
 //! The neighbour acts over a real socket: the panel picks who, and the sim carries it out.
 
 use bevy::{app::App, ecs::entity::Entity};
-use gdtf_app::qa_wire::{offer::OfferTargetNet, token::GangerToken};
+use gdtf_app::qa_wire::{act_payload::MeleeTargetNet, offer::OfferTargetNet, token::GangerToken};
 use gdtf_battle_sim::{
     acts::downed::is_8_adjacent,
     effects::bleed::BleedingOut,
-    ganger::{Faction, LifeState, Position},
+    ganger::{Faction, LifeState, Position, Tu, TuMax},
     prelude::CellLevel,
 };
 use gdtf_qa_protocol::{command::RunOptions, ports::NetQaPort};
@@ -14,13 +14,15 @@ use gdtf_test_utils::advance_until;
 use super::{
     super::{
         act_support::{assert_caught_up, caught_up, next},
-        battle_reads::{an_enemy_ganger, an_unselected_player_ganger},
-        command_exchange::{ACT_EXECUTE, ACT_SHOVE, ACT_STABILIZE, WAIT, exchange_inspecting, run},
+        battle_reads::{an_enemy_ganger, an_unselected_player_ganger, token_of},
+        command_exchange::{
+            ACT_EXECUTE, ACT_MELEE, ACT_SHOVE, ACT_STABILIZE, WAIT, exchange_inspecting, run,
+        },
         socket_support::{TestError, TestResult, battle_app_listening},
     },
     scene::{
-        SETTLE_BUDGET, a_neighbour, a_shovable_neighbour, accepted, clear_enemies_around, place,
-        position_of, select_a_player_ganger, settle,
+        SETTLE_BUDGET, a_neighbour, a_shovable_neighbour, accepted, clear_enemies_around,
+        melee_argument, place, position_of, select_a_player_ganger, settle, shooter,
     },
 };
 
@@ -99,6 +101,64 @@ pub(super) fn bleeding_mate_beside_the_shooter() -> Result<(App, NetQaPort, Enti
         );
     }
     Ok((app, port, mate))
+}
+
+/// What `ganger` has left to spend, with the pool its stat block allows.
+fn pool_of(app: &App, ganger: Entity) -> Option<(Tu, TuMax)> {
+    app.world()
+        .get_entity(ganger)
+        .ok()
+        .and_then(|row| row.get::<Tu>().copied().zip(row.get::<TuMax>().copied()))
+}
+
+#[test]
+fn a_melee_call_naming_the_offered_neighbour_is_accepted_and_swings_at_it() -> TestResult {
+    let (mut app, replies, (enemy, _landing)) =
+        exchange_inspecting(enemy_beside_the_shooter, |(enemy, _landing)| {
+            let target = MeleeTargetNet::Ganger(token_of(*enemy));
+            vec![
+                caught_up(),
+                run(ACT_MELEE, &melee_argument(target), RunOptions::default()),
+            ]
+        })?;
+    let Some(actor) = shooter(&app) else {
+        return Err("the fixture must hand over a battle with a shooter selected".into());
+    };
+    if pool_of(&app, actor).is_none() {
+        return Err(
+            "the selected shooter must carry both a TU pool and its maximum, or a pool this \
+             case spent cannot be told from one it never had"
+                .into(),
+        );
+    }
+    let mut replies = replies.into_iter();
+    assert_caught_up(next(WAIT, &mut replies)?)?;
+    let struck = accepted(ACT_MELEE, next(ACT_MELEE, &mut replies)?)?;
+
+    assert_eq!(
+        struck.target,
+        OfferTargetNet::Ganger(GangerToken::new(enemy.to_bits())),
+        "a call that names the ganger the panel is offering is the call the panel would make, \
+         so it is accepted and the reply names that same ganger back",
+    );
+    assert!(
+        struck.to_seq > struck.from_seq,
+        "a strike the sim carried out is recorded, so the window it opened is not empty: {:?}..{:?}",
+        struck.from_seq,
+        struck.to_seq,
+    );
+    let charged = advance_until(
+        &mut app,
+        |app| pool_of(app, actor).is_some_and(|(tu, max)| *tu < *max),
+        SETTLE_BUDGET,
+    );
+    assert!(
+        charged,
+        "the sim's own melee charges the attacker for the strike, so the full pool the fixture \
+         wrote must be spent down within {SETTLE_BUDGET} frames; it still held {:?}",
+        pool_of(&app, actor),
+    );
+    Ok(())
 }
 
 #[test]

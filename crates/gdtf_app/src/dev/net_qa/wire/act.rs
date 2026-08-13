@@ -51,6 +51,8 @@ pub enum ActRefusalNet {
     NoShooter,
     /// The contextual panel is offering nothing for that act family this frame.
     NoOffer,
+    /// The call named a target the contextual panel is not offering this frame.
+    TargetMismatch,
 }
 
 /// What every classic act answers: the act-log window it opened, or a refusal.

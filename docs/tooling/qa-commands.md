@@ -427,8 +427,9 @@ the window, or wait on `WalkComplete` if a walk is what you are waiting for.
 
 The QA layer invents no refusal vocabulary of its own: `ActRefusalNet` has exactly these
 variants, `UnknownToken` (a `GangerToken` naming no living ganger), `NoShooter` (the act
-needs a selection and there is none) and `NoOffer` (the contextual panel is offering nothing
-for that act family). All of them are conditions the QA layer can see before the sim is
+needs a selection and there is none), `NoOffer` (the contextual panel is offering nothing
+for that act family) and `TargetMismatch` (the call named a target the panel is not
+offering). All of them are conditions the QA layer can see before the sim is
 involved. Everything else the sim decides, and the act log reports.
 
 They all need a running battle whose screen has caught up with the act log — `Running` plus
@@ -451,14 +452,23 @@ The remaining `act.*` commands are the contextual acts — `act.melee`, `act.sho
 `act.stabilize`, `act.execute`, `act.throw_grenade`, `act.open_door`,
 `act.enter_emplacement` and `act.exit_emplacement`. They live in
 [`crates/gdtf_app/src/dev/net_qa/commands/act/contextual/`](../../crates/gdtf_app/src/dev/net_qa/commands/act/contextual)
-and they all take `()`.
+and all but `act.melee` take `()`. `act.melee` takes `(target: Ganger(...))` or
+`(target: Structure(...))` — the same `MeleeTargetNet` `battle.cost {Melee}` prices.
 
-**None of them takes a target, because no press does either.** The contextual panel offers
-exactly one target per act family, written by that family's offer scan, and a mouse click or
-a digit slot key pushes whatever the offer holds — unless the panel has greyed that button
-out, which makes it ignore both. A command that took a target could do
-something no player can. So an agent chooses by moving and selecting and then reading
-`battle.offers` — exactly as a player chooses by moving and looking at the panel. Each
+**None of them can act on a target the panel is not offering, because no press can
+either.** The contextual panel offers exactly one target per act family, written by that
+family's offer scan, and a mouse click or a digit slot key pushes whatever the offer holds
+— unless the panel has greyed that button out, which makes it ignore both. So an agent
+chooses by moving and selecting and then reading `battle.offers` — exactly as a player
+chooses by moving and looking at the panel.
+
+The seven that take `()` act on the offer standing. `act.melee` names the target it is
+about to hit and is refused `TargetMismatch` when that is not the one the panel is
+offering, so it still does only what a press does. Name it, because the panel's melee scan
+falls back to a structure cell when no adjacent ganger is in sight: a client that ignores a
+`NoLineOfSight` quote and swings anyway is turned away instead of smashing the wall the
+fallback picked. A `Ganger` target matches the offer's `Ganger` and a `Structure` target
+matches the offer's `Cell`, so a call names back the target the read named. Each
 command pushes the offered target onto the same `PendingContextualIntents` queue the button
 pushes onto, and the sim's own `dispatch_*` is the authoritative gate: nothing on the QA side
 re-checks adjacency, faction, life state or TU. `battle.offers` does report the panel's own
@@ -484,8 +494,9 @@ command refuses `NoOffer`.
 
 They are `Immediate`, they need the same `Running` plus `Caught` state the classic acts need,
 and they answer `ContextualReply`: `Accepted { from_seq, to_seq, complete, target }`, where
-`target` is the same `OfferTargetNet` `battle.offers` reported, or
-`Refused { reason: NoOffer }` when the family had nothing on offer. There is still no
+`target` is the same `OfferTargetNet` `battle.offers` reported,
+`Refused { reason: NoOffer }` when the family had nothing on offer, or, for `act.melee`,
+`Refused { reason: TargetMismatch }` when the call named something else. There is still no
 unaffordable or illegal refusal on these commands: every contextual dispatch in the sim
 rejects by doing nothing and emitting nothing, so a call the sim declined comes back with
 `from_seq` equal to `to_seq`. Read `battle.offers` first to tell them apart — an offer

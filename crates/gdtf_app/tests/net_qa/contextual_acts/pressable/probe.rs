@@ -1,8 +1,7 @@
 //! Reading one act's offer off a live battle whose shooter holds a chosen TU pool.
 
-use bevy::{app::App, ecs::entity::Entity};
+use bevy::app::App;
 use gdtf_app::qa_wire::offer::{ContextualActNet, ContextualOfferNet};
-use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{ganger::Tu, tuning::CombatTuning};
 use gdtf_qa_protocol::{command::RunOptions, ports::NetQaPort};
 use serde::Deserialize;
@@ -10,7 +9,7 @@ use serde::Deserialize;
 use crate::{
     act_support::{assert_caught_up, caught_up, decode, next},
     command_exchange::{BATTLE_OFFERS, WAIT, exchange_expected, run},
-    contextual_acts::scene::settle,
+    contextual_acts::scene::{settle, shooter},
     socket_support::TestError,
 };
 
@@ -41,13 +40,6 @@ pub(crate) struct OfferAtPool {
 /// A quote the combat tuning alone prices, read off the live world.
 pub(crate) fn from_tuning(price: fn(&CombatTuning) -> Tu) -> impl Fn(&App) -> Option<Tu> {
     move |app| app.world().get_resource::<CombatTuning>().map(price)
-}
-
-/// Who the fixture selected before it handed the battle over.
-pub(crate) fn shooter(app: &App) -> Option<Entity> {
-    app.world()
-        .get_resource::<SelectedShooter>()
-        .and_then(|selected| **selected)
 }
 
 /// Read one act's offer off a battle whose shooter holds `pool`, priced by `quote`.

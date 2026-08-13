@@ -276,9 +276,13 @@ Notes an agent relies on:
   `act.set_aiming`, `act.set_facing` and `act.end_turn`. The rest are the
   contextual acts the panel offers — `act.melee`, `act.shove`,
   `act.throw_grenade`, `act.open_door`, `act.enter_emplacement`,
-  `act.exit_emplacement`, `act.stabilize` and `act.execute` — and none of them
-  takes a target: the panel offers exactly one target per family, so each acts on
-  the offer standing or refuses `NoOffer`. Each takes the same intent bus the
+  `act.exit_emplacement`, `act.stabilize` and `act.execute`. The panel offers
+  exactly one target per family, so seven of them take `()` and act on the offer
+  standing or refuse `NoOffer`. `act.melee` names the target it is about to hit
+  — the same `MeleeTargetNet` `battle.cost {Melee}` prices, naming back the
+  ganger or the cell `battle.offers` reported — and is refused `TargetMismatch`
+  when the panel is offering a different one, so it still cannot act on
+  anything a press could not. Each takes the same intent bus the
   keybinds and the pointer push onto, so the sim keeps deciding legality; each
   answers the act-log window it opened, which `log.read` then explains.
   `act.fire`, `act.move`, `act.reload`, `act.set_stance` and `act.set_facing`

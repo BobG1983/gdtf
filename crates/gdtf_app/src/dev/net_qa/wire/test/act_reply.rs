@@ -13,11 +13,12 @@ use crate::dev::net_qa::wire::{
     token::GangerToken,
 };
 
-fn act_refusals() -> [ActRefusalNet; 3] {
+fn act_refusals() -> [ActRefusalNet; 4] {
     [
         ActRefusalNet::UnknownToken,
         ActRefusalNet::NoShooter,
         ActRefusalNet::NoOffer,
+        ActRefusalNet::TargetMismatch,
     ]
 }
 
@@ -49,7 +50,10 @@ fn act_complete_round_trips_both_ways() {
 fn act_refusal_round_trips_every_variant() {
     for reason in act_refusals() {
         match reason {
-            ActRefusalNet::UnknownToken | ActRefusalNet::NoShooter | ActRefusalNet::NoOffer => {}
+            ActRefusalNet::UnknownToken
+            | ActRefusalNet::NoShooter
+            | ActRefusalNet::NoOffer
+            | ActRefusalNet::TargetMismatch => {}
         }
         assert_ron_round_trip(&reason);
     }
@@ -106,9 +110,15 @@ fn reload_refusal_round_trips_and_only_a_decline_has_one() {
 }
 
 #[test]
-fn stance_refusal_round_trips_every_variant() {
+fn stance_refusal_round_trips_every_variant_and_mirrors_the_sim() {
     for refusal in [StanceRefusal::AlreadyHeld, StanceRefusal::Unaffordable] {
-        assert_ron_round_trip(&StanceRefusalNet::from_sim(refusal));
+        let wire = StanceRefusalNet::from_sim(refusal);
+        assert_ron_round_trip(&wire);
+        assert_eq!(
+            format!("{wire:?}"),
+            format!("{refusal:?}"),
+            "a refused stance change carries the sim's own reason, so each mirror keeps its name",
+        );
     }
     assert_ne!(
         StanceRefusalNet::from_sim(StanceRefusal::AlreadyHeld),
@@ -118,9 +128,15 @@ fn stance_refusal_round_trips_every_variant() {
 }
 
 #[test]
-fn facing_refusal_round_trips_every_variant() {
+fn facing_refusal_round_trips_every_variant_and_mirrors_the_sim() {
     for refusal in [FacingRefusal::AlreadyFacing, FacingRefusal::Unaffordable] {
-        assert_ron_round_trip(&FacingRefusalNet::from_sim(refusal));
+        let wire = FacingRefusalNet::from_sim(refusal);
+        assert_ron_round_trip(&wire);
+        assert_eq!(
+            format!("{wire:?}"),
+            format!("{refusal:?}"),
+            "a refused turn carries the sim's own reason, so each mirror keeps its name",
+        );
     }
     assert_ne!(
         FacingRefusalNet::from_sim(FacingRefusal::AlreadyFacing),

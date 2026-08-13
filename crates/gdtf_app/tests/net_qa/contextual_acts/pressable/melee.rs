@@ -9,9 +9,12 @@ use gdtf_battle_sim::{
 };
 use gdtf_qa_protocol::ports::NetQaPort;
 
-use super::probe::{OfferAtPool, Pool, offer_at_pool, offer_of, shooter};
+use super::probe::{OfferAtPool, Pool, offer_at_pool, offer_of};
 use crate::{
-    contextual_acts::{neighbour::enemy_beside_the_shooter, scene::settle},
+    contextual_acts::{
+        neighbour::enemy_beside_the_shooter,
+        scene::{settle, shooter},
+    },
     socket_support::{TestError, TestResult},
 };
 

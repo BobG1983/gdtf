@@ -123,7 +123,8 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
 
 - **New module**
   `crates/gdtf_app/src/dev/net_qa/commands/act/contextual/<act>.rs`: a unit struct
-  implementing `QaCommand` named `act.<act>`, with `type Args = NoArgs`,
+  implementing `QaCommand` named `act.<act>`, with `type Args = NoArgs` unless the act names
+  its own target (see the target bullet below),
   `type Parked = ContextualTicket`, `type Reply = ContextualReply`,
   `CommandTiming::Immediate` and `availability = running_and_caught`. It also implements
   `ContextualCommand`, which is where the act family is named — `type Act = <Act>` plus
@@ -139,9 +140,16 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
   the matching name in `tests/net_qa/command_exchange.rs`, the expected lists in
   `tests/net_qa/command_set.rs` and `tests/net_qa/commands.rs`, and the timing row in
   `tests/net_qa/catalogue_acts.rs`.
-- **The command takes NO target argument, and no new one may.** The panel offers exactly one
-  target per family and no press carries a target of its own, so a command that accepted one
-  would be a second code path doing something no player can do. The command reads
+- **The command may never act on a target the panel is not offering.** The panel offers
+  exactly one target per family and no press carries a target of its own, so a command that
+  acted on anything else would be a second code path doing something no player can do. Seven
+  of the eight take `NoArgs` and act on whatever the offer holds. `act.melee` names its
+  target — `type Args = ActMeleeArgs` carrying a `MeleeTargetNet` — because the melee scan
+  falls back to a structure cell when no adjacent ganger is in sight, so a client that
+  ignores a `NoLineOfSight` quote and swings anyway would otherwise smash a wall. Naming a
+  target does not widen what the command can do: `ContextualCommand::target_refusal` compares
+  it with the offer and answers `TargetMismatch` when the two differ. Its default body takes
+  whatever is offered, which is what the other seven want. Either way the command reads
   `ContextualOffer<A>`, pushes `offer.target()` onto `PendingContextualIntents<A>`, and
   refuses `NoOffer` when the family is offering nothing. It evaluates no legality and no TU —
   the sim's `dispatch_<act>` is still the only gate.
@@ -156,7 +164,7 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
   neighbouring family — stabilize to execute, enter to exit — then answers `NoOffer` and the
   case goes red instead of silently acting on the wrong thing. Relying on the seeded map to
   hold no rival candidate is a map-shaped flake.
-- **One line** in `docs/tooling/qa-commands.md`'s command list, and its count.
+- **One line** in `docs/tooling/qa-commands.md`'s command list.
 
 ### 6. Tests + test-surface (as the act warrants)
 

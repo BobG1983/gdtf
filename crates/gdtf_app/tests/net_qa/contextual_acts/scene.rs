@@ -4,6 +4,7 @@ use bevy::{app::App, ecs::entity::Entity};
 use gdtf_app::{
     qa_wire::{
         act::{ActRefusalNet, ActSeqNet},
+        act_payload::MeleeTargetNet,
         cell::CellLevelNet,
         offer::OfferTargetNet,
     },
@@ -68,6 +69,14 @@ pub(crate) fn refused(name: &'static str, reply: QaResponse) -> Result<ActRefusa
     }
 }
 
+/// Render a melee target as the compact RON body `act.melee` takes.
+pub(crate) fn melee_argument(target: MeleeTargetNet) -> String {
+    let Ok(text) = ron::ser::to_string(&target) else {
+        unreachable!("a wire melee target serializes to compact RON");
+    };
+    format!("(target:{text})")
+}
+
 /// Select the first living player ganger and report where it stands.
 pub(crate) fn select_a_player_ganger(app: &mut App) -> Result<(Entity, CellLevel), TestError> {
     let Some(shooter) = player_gangers(app).into_iter().next() else {
@@ -84,6 +93,13 @@ pub(crate) fn select_a_player_ganger(app: &mut App) -> Result<(Entity, CellLevel
     app.world_mut()
         .insert_resource(SelectedShooter::new(shooter));
     Ok((shooter, at))
+}
+
+/// Who the fixture selected before it handed the battle over.
+pub(crate) fn shooter(app: &App) -> Option<Entity> {
+    app.world()
+        .get_resource::<SelectedShooter>()
+        .and_then(|selected| **selected)
 }
 
 /// Where a ganger stands right now.

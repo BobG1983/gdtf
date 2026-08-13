@@ -67,6 +67,12 @@ pub(crate) trait ContextualCommand:
 
     /// How that family's target is named on the wire.
     const TARGET: OfferName<Self::Act>;
+
+    /// Why the call's arguments do not name the offered target, or nothing when they do.
+    /// The default takes whatever is offered, which is what a command with no target wants.
+    fn target_refusal(_args: &Self::Args, _offered: OfferTargetNet) -> Option<ActRefusalNet> {
+        None
+    }
 }
 
 /// What one parked contextual call needs to report its window and what it fired at.
@@ -111,13 +117,18 @@ impl<A: ContextualAct> ContextualClaim<'_, A> {
         self.selected.as_deref().and_then(|selected| **selected)
     }
 
-    /// Queue what the panel is offering onto the queue a button press pushes onto.
-    fn fire(&mut self, name: OfferName<A>) -> Option<OfferTargetNet> {
+    /// What the panel is offering this frame, as the sim holds it and as the wire names it.
+    fn offered(&self, name: OfferName<A>) -> Option<(A::Target, OfferTargetNet)> {
         let offer = self.offer.as_deref()?;
         let target = offer.target()?;
         let named = name(offer)?;
+        Some((target, named))
+    }
+
+    /// Queue the offered target onto the queue a button press pushes onto.
+    fn fire(&mut self, target: A::Target) -> Option<()> {
         self.pending.as_mut()?.push(target);
-        Some(named)
+        Some(())
     }
 }
 
@@ -143,14 +154,22 @@ fn claim_contextual<C: ContextualCommand>(
     }
     let from = claim.head();
     let actor = claim.shooter();
-    for (_args, responder) in take_calls::<C>(&mut queue) {
-        let Some(target) = claim.fire(C::TARGET) else {
+    for (args, responder) in take_calls::<C>(&mut queue) {
+        let Some((target, named)) = claim.offered(C::TARGET) else {
             responder.answer(&NO_OFFER);
             continue;
         };
+        if let Some(reason) = C::target_refusal(&args, named) {
+            responder.answer(&ContextualReply::Refused { reason });
+            continue;
+        }
+        if claim.fire(target).is_none() {
+            responder.answer(&NO_OFFER);
+            continue;
+        }
         deferred.park(
             responder,
-            ContextualTicket::new(ActTicket::new(from, actor), target),
+            ContextualTicket::new(ActTicket::new(from, actor), named),
         );
     }
 }
