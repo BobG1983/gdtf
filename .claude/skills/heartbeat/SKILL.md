@@ -43,8 +43,7 @@ leave it alone.
 5. **Act:**
    - Dead run with a resume id → resume from the **main session** with Workflow `resumeFromRunId` (a workflow cannot resume another workflow).
    - Alive run → do not start a second build.
-   - Nothing in flight → pick the next ticket off the queue in run-state.md and start
-     **exactly one** `build-ticket`. Do not pre-audit it by hand: phase 0 fetches the live
+   - Nothing in flight → pick the next ticket off the queue in run-state.md check it is still open on the linear board, and if it is, start **exactly one** `build-ticket`. Do not pre-audit it by handd phase 0 fetches the live
      Linear text and audits the clauses itself, and blocks before touching status if they
      do not hold. If that ticket can't be started for any reason, report it and move on.
 6. **Run `/run-state`** to write the file. It owns which sections change and how much of
