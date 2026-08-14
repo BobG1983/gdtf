@@ -2890,11 +2890,13 @@ dependencies = [
  "gdtf_battle_sim",
  "gdtf_content_families",
  "gdtf_net_qa_transport",
+ "gdtf_qa_command",
  "gdtf_qa_protocol",
  "gdtf_state_scoped",
  "gdtf_test_utils",
  "image",
  "ron",
+ "serde",
  "tempfile",
 ]
 

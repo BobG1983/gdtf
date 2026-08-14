@@ -9,9 +9,11 @@ use std::{
 
 use bevy::prelude::*;
 use gdtf_net_qa_transport::{IncomingRequest, NetInbox, bind_listener, run_listener};
+use gdtf_qa_command::dispatch::QaCommandSystems;
 use gdtf_qa_protocol::{ports::NetQaPort, timeouts::NetTimeouts};
 
 use super::{
+    commands::register_editor_commands,
     config::{DEFAULT_EDITOR_PORT, editor_hello_facts},
     router::route_editor_requests,
     schedule::EditorNetQaSystems,
@@ -106,6 +108,9 @@ fn serve(app: &mut App, listener: TcpListener, timeouts: NetTimeouts) {
     );
     app.add_systems(
         Update,
-        route_editor_requests.in_set(EditorNetQaSystems::Gather),
+        route_editor_requests
+            .in_set(QaCommandSystems::Route)
+            .in_set(EditorNetQaSystems::Gather),
     );
+    register_editor_commands(app);
 }

@@ -1,6 +1,6 @@
 ---
 name: Adding a QA command
-description: How to add a command to a QA host — a file, one line in that host's list, and a test — written from app.phase, the simplest command the game publishes.
+description: How to add a command to either QA host — a file, one line in that host's list, and a test — written from app.phase on the game and editor.phase on the editor.
 ---
 
 # Adding a QA command
@@ -11,6 +11,11 @@ variant, and changes nothing in the MCP courier — because a command is DATA ca
 frozen envelope variants rather than a variant of its own
 (see [Why the shape is what it is](#why-the-shape-is-what-it-is) below).
 
+**There are two hosts, and they take the same three edits.** The game is
+`host="game"` and the editor is `host="editor"`; each owns its own command list, its own
+facts type and its own wire mirrors, so a command is written into one host and cannot
+compile into the other.
+
 Everything below is written from the simplest command the game publishes,
 [`crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs).
 Read that file alongside this one: every shape shown here is in it, at that path. Nothing
@@ -18,7 +23,9 @@ here describes a command nobody has written. The game's other reads — `setting
 `ui.focus` and `playback.state`, beside it under `commands/read/` — are the same items
 reading a different resource, and
 [`commands/capture/screenshot.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs)
-is the same items with a `Deferred` handler — see [Calling it](#calling-it).
+is the same items with a `Deferred` handler — see [Calling it](#calling-it). The editor's
+[`commands/read/editor_phase.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/editor_phase.rs)
+is the same items again on the other host.
 
 ## What the QA channel is for
 
@@ -51,10 +58,14 @@ what is in view.
 1. **A file** under the host's `commands/` directory — one command per file, grouped by
    what it does (`read/` for a command that answers from the world without changing it).
 2. **One line** in that host's list. The game's is `GAME_COMMANDS` in
-   [`commands/set.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/set.rs); the whole
-   entry is `&YourCommand`.
+   [`commands/set.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/set.rs) and the
+   editor's is `EDITOR_COMMANDS` in
+   [its own `commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs);
+   the whole entry is `&YourCommand`.
 3. **A test.** The suite for the game's command layer is
-   [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs) —
+   [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs)
+   and the editor's is
+   [`crates/gdtf_content_editor/tests/net_qa_hello/`](../../crates/gdtf_content_editor/tests/net_qa_hello) —
    a real socket, a real listener, and the real router.
 
 ## The file
@@ -232,7 +243,17 @@ run(host="game", command="app.phase", arguments="()")     # do it
 run(host="game", command="capture.screenshot", arguments="(name: Some(\"menu\"))")
 run(host="game", command="battle.start", arguments="(seed: Some(42))")
 run(host="game", command="wait", arguments="(condition: BattleDecided)")
+
+commands(host="editor")                                   # the other host, same tools
+commands(host="editor", command="editor.phase", detail="Full")
+run(host="editor", command="editor.phase", arguments="()")
 ```
+
+The editor offers one command today, `editor.phase`. It reports the editor's lifecycle
+phase, the mode tab it has open — absent until the authoring scene is live — and every tab
+it offers in tab-bar order. It is `Immediate` and always `Available`, so it answers while
+the editor is still loading its registries. The command is
+[`commands/read/editor_phase.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/editor_phase.rs).
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
 `settings.read`, `ui.focus`, `playback.state`, `battle.roster`, `battle.turn`,

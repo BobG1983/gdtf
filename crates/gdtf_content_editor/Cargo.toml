@@ -13,7 +13,9 @@ gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
 ron = { workspace = true }
 gdtf_state_scoped = { path = "../gdtf_state_scoped" }
 gdtf_qa_protocol = { path = "../gdtf_qa_protocol" }
+gdtf_qa_command = { path = "../gdtf_qa_command" }
 gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport" }
+serde = { workspace = true }
 image = { version = "0.25", default-features = false, features = ["png"] }
 
 [dev-dependencies]

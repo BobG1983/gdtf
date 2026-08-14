@@ -186,11 +186,15 @@ from.
 
 The editor itself answers the two command-layer requests (`route_editor_requests`
 in `crates/gdtf_content_editor/src/net_qa/router/route.rs`): a `Catalogue`, with
-an EMPTY command list under its own host name, and a `Run`, with `Unknown` —
-because the editor publishes no commands yet. Building its set is follow-on work.
-Its capture pipeline is the shared one in `crates/gdtf_screenshot/src/capture/`,
-registered by the editor's QA plugin and driven today only by the editor's own
-integration suite, waiting for the capture command that will fill its queue.
+its own command list under its own host name, and a `Run`, by admitting the named
+command — or answering `Unknown`, which lists what it does offer, for a name it
+does not know. That list is `EDITOR_COMMANDS` in
+`crates/gdtf_content_editor/src/net_qa/commands/set.rs` and today it holds
+`editor.phase`.
+Capture is not wired here yet: `crates/gdtf_content_editor/Cargo.toml` does not
+depend on `gdtf_screenshot`, and the QA plugin registers no capture systems. The
+shared pipeline in `crates/gdtf_screenshot/src/capture/` is the path the editor
+will capture through, once the capture command that fills its queue exists.
 The wire shape, the framing, and the protocol version are the game's — see
 [the protocol sketch](#the-protocol-sketch) — so one client library speaks to
 both.
@@ -331,10 +335,10 @@ Notes an agent relies on:
   level keys and the action bar's level buttons take. `battle.set_fire_mode`
   picks a fire mode on the weapon the selected shooter fires, the same weapon the
   action bar's mode panel sets it on, through the same lookup.
-  The EDITOR host publishes none yet and answers every
-  `run` `Unknown`. That is the expected state mid-epic, not a regression: the
-  surface that used to sit here was deleted before the commands that replace it
-  were written, so any gap is a compile error rather than a silent fallback.
+  The EDITOR host publishes `editor.phase`, which reports the phase the editor
+  is in, the mode tab open right now — absent while it is still loading — and
+  every mode tab in tab-bar order. A name it does not know answers `Unknown`,
+  listing what it does offer.
 - **`logs` is the first thing to try when a launch came up but the app is not
   behaving.** Both of the child's output streams are captured at spawn into one
   buffer, in the order they were written, so the reply is what the process

@@ -13,11 +13,13 @@ pub const EDITOR_QA_SERVER_NAME: &str = "gdtf-editor-net-qa";
 pub(super) const DEFAULT_EDITOR_PORT: NetQaPort = NetQaPort::new(EDITOR_QA_PORT);
 
 #[must_use]
+pub(super) fn editor_host_name() -> ServerNameNet {
+    ServerNameNet::new(EDITOR_QA_SERVER_NAME.to_owned())
+}
+
+#[must_use]
 pub(super) fn editor_hello_facts() -> HelloFacts {
-    HelloFacts::new(
-        EDITOR_QA_PROTOCOL_VERSION,
-        ServerNameNet::new(EDITOR_QA_SERVER_NAME.to_owned()),
-    )
+    HelloFacts::new(EDITOR_QA_PROTOCOL_VERSION, editor_host_name())
 }
 
 #[cfg(test)]

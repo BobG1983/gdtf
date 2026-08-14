@@ -1,10 +1,14 @@
-//! Hello/version negotiation over the editor net-QA listener.
+//! Hello/version negotiation, and the `editor.phase` command layer, over the editor net-QA
+//! listener.
 #![cfg(debug_assertions)]
 
 mod assertions;
 mod client;
+mod command_set;
 mod harness;
 mod load_case;
+mod phase_command;
+mod phase_rows;
 mod support;
 
 use gdtf_qa_protocol::message::{ProtocolVersion, QaRequest};

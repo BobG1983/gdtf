@@ -64,7 +64,10 @@ pub use melee_weapon_form::{
 pub use melee_weapon_form::{write_melee_weapon, write_melee_weapon_in};
 pub use mode::EditorMode;
 #[cfg(debug_assertions)]
-pub use net_qa::{EDITOR_QA_SERVER_NAME, EditorNetQaSystems, NetQaEditorPlugin};
+pub use net_qa::{
+    EDITOR_QA_SERVER_NAME, EditorNetQaSystems, NetQaEditorPlugin,
+    assert_editor_command_set_is_conformant, editor_command_names,
+};
 pub use placement::{
     EditorTileClass, IllegalReason, PlacementVerdict, ProposedPlacement, apply_placement, classify,
     evaluate_placement, names_a_ladder,

@@ -14,6 +14,9 @@ use gdtf_qa_protocol::{
 
 use crate::support::{EDITING_EXCHANGES, TestError};
 
+/// The one command the editor host publishes.
+pub(crate) const EDITOR_PHASE: &str = "editor.phase";
+
 /// How long one look at the socket waits before the editor gets another frame.
 /// Its expiry is the pause between frames, never a failure.
 const READ_POLL: Duration = Duration::from_millis(10);
@@ -61,7 +64,11 @@ impl Client {
         Err(format!("the editor never answered within {REPLY_BUDGET} frames").into())
     }
 
-    fn exchange(&mut self, app: &mut App, request: &QaRequest) -> Result<QaResponse, TestError> {
+    pub(crate) fn exchange(
+        &mut self,
+        app: &mut App,
+        request: &QaRequest,
+    ) -> Result<QaResponse, TestError> {
         self.send(request)?;
         self.read(app)
     }
@@ -72,9 +79,16 @@ fn nothing_yet(fault: &io::Error) -> bool {
     matches!(fault.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut)
 }
 
-pub(crate) fn run_a_command_the_editor_has_not_built() -> QaRequest {
+pub(crate) fn run_editor_phase(arguments: &str) -> QaRequest {
     QaRequest::Run(RunCommand::new(
-        CommandName::from_static("editor.phase"),
+        CommandName::from_static(EDITOR_PHASE),
+        CommandArgsRon::new(arguments.to_owned()),
+    ))
+}
+
+pub(crate) fn run_a_misspelled_command_name() -> QaRequest {
+    QaRequest::Run(RunCommand::new(
+        CommandName::from_static("editor.phasee"),
         CommandArgsRon::new("()".to_owned()),
     ))
 }
@@ -91,6 +105,6 @@ pub(crate) fn exchange_while_editing(
     Ok([
         client.exchange(app, &QaRequest::Hello(ProtocolVersion::CURRENT))?,
         client.exchange(app, &QaRequest::Hello(wrong_version()))?,
-        client.exchange(app, &run_a_command_the_editor_has_not_built())?,
+        client.exchange(app, &run_a_misspelled_command_name())?,
     ])
 }
