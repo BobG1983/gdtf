@@ -1,26 +1,44 @@
 //! `act.melee` over a real socket when the sim's sight probe refuses the strike: the panel falls
-//! back to the wall, so a call naming the ganger the quote priced is refused, not redirected.
+//! back to a wall, so naming the ganger is refused and naming that wall is struck.
 
-use bevy::{app::App, ecs::entity::Entity};
-use gdtf_app::qa_wire::{act::ActRefusalNet, act_payload::MeleeTargetNet, cell::CellLevelNet};
+use bevy::{
+    app::{App, Update},
+    ecs::{entity::Entity, resource::Resource},
+    prelude::{MessageReader, ResMut},
+};
+use gdtf_app::{
+    qa_wire::{
+        act::ActRefusalNet,
+        act_payload::MeleeTargetNet,
+        cell::CellLevelNet,
+        offer::{ContextualActNet, ContextualOfferNet, OfferTargetNet},
+    },
+    test_support::NET_QA_PROTOCOL_VERSION,
+};
 use gdtf_battle_sim::{
+    acts::MeleeResolved,
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{LifeState, Position},
     prelude::CellLevel,
 };
-use gdtf_qa_protocol::{command::RunOptions, ports::NetQaPort};
+use gdtf_qa_protocol::{
+    command::RunOptions,
+    message::{QaRequest, QaResponse},
+    ports::NetQaPort,
+};
 use gdtf_test_utils::advance_until;
+use serde::Deserialize;
 
 use super::{
     super::{
-        act_support::{assert_caught_up, caught_up, next},
+        act_support::{assert_caught_up, caught_up, decode, next},
         battle_reads::{a_clear_diagonal_from, an_enemy_ganger, token_of},
-        command_exchange::{ACT_MELEE, WAIT, exchange_inspecting, run},
-        socket_support::{TestError, TestResult, battle_app_listening},
+        command_exchange::{ACT_MELEE, BATTLE_OFFERS, WAIT, exchange_inspecting, run},
+        socket_support::{Client, TestError, TestResult, battle_app_listening},
     },
     scene::{
-        SETTLE_BUDGET, clear_enemies_around, melee_argument, place, refused,
+        SETTLE_BUDGET, accepted, clear_enemies_around, melee_argument, place, refused,
         select_a_player_ganger, settle,
     },
 };
@@ -72,6 +90,60 @@ fn enemy_behind_a_walled_corner() -> Result<(App, NetQaPort, BlockedStrike), Tes
             corners: diagonal.corners,
         },
     ))
+}
+
+/// Every cell the sim has resolved a structure strike on since the case started.
+#[derive(Resource, Default)]
+struct StruckCells {
+    cells: Vec<CellLevel>,
+}
+
+fn record_struck_cells(mut resolved: MessageReader<MeleeResolved>, mut log: ResMut<StruckCells>) {
+    for strike in resolved.read() {
+        log.cells.push(strike.at);
+    }
+}
+
+/// Start recording structure strikes, before the fixture takes its first request.
+fn watch_struck_cells(app: &mut App) {
+    app.init_resource::<StruckCells>();
+    app.add_systems(Update, record_struck_cells);
+}
+
+/// Whether the sim has resolved a structure strike on `at`.
+fn struck_at(app: &App, at: CellLevel) -> bool {
+    app.world()
+        .get_resource::<StruckCells>()
+        .is_some_and(|log| log.cells.contains(&at))
+}
+
+/// The body `battle.offers` answers with, as far as this case reads it.
+#[derive(Debug, Deserialize)]
+struct OffersBody {
+    offers: Vec<ContextualOfferNet>,
+}
+
+/// The cell the panel's melee button is offering, or a failure naming what it offered instead.
+fn offered_cell(body: &OffersBody) -> Result<CellLevelNet, TestError> {
+    let Some(offer) = body
+        .offers
+        .iter()
+        .find(|offer| offer.act == ContextualActNet::Melee)
+    else {
+        return Err(format!(
+            "the shooter stands beside the walled corner, so the panel must be offering a melee \
+             button: {body:?}"
+        )
+        .into());
+    };
+    match offer.target {
+        OfferTargetNet::Cell(at) => Ok(at),
+        named => Err(format!(
+            "the sight probe leaves the panel falling back to a structure cell, so the melee \
+             offer must name one: {named:?}"
+        )
+        .into()),
+    }
 }
 
 /// Whether both walled corners still hold standing cover that has taken no damage.
@@ -154,6 +226,47 @@ fn a_melee_call_naming_the_target_behind_the_walled_corner_is_refused_not_redire
         !struck,
         "a refused call pushes nothing, so the corner wall the panel was offering must never be \
          hit; it lost HP within {SETTLE_BUDGET} frames",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_melee_call_naming_the_offered_structure_cell_is_accepted_and_struck() -> TestResult {
+    let (mut app, port, strike) = enemy_behind_a_walled_corner()?;
+    watch_struck_cells(&mut app);
+
+    let mut client = Client::connect(port)?;
+    let hello = client.exchange(&mut app, &QaRequest::Hello(NET_QA_PROTOCOL_VERSION))?;
+    if !matches!(hello, QaResponse::HelloOk(_)) {
+        return Err(format!("the handshake must succeed first, got {hello:?}").into());
+    }
+    assert_caught_up(client.exchange(&mut app, &caught_up())?)?;
+
+    let listed = client.exchange(&mut app, &run(BATTLE_OFFERS, "()", RunOptions::default()))?;
+    let at = offered_cell(&decode::<OffersBody>(BATTLE_OFFERS, listed)?)?;
+    let called = client.exchange(
+        &mut app,
+        &run(
+            ACT_MELEE,
+            &melee_argument(MeleeTargetNet::Structure(at)),
+            RunOptions::default(),
+        ),
+    )?;
+    let swung = accepted(ACT_MELEE, called)?;
+
+    assert_the_pair_held(&app, &strike);
+    assert_eq!(
+        swung.target,
+        OfferTargetNet::Cell(at),
+        "a call naming the structure cell the panel is offering is the call the panel would \
+         make, so it is accepted and the reply names that same cell back",
+    );
+    let landed = advance_until(&mut app, |app| struck_at(app, at.to_sim()), SETTLE_BUDGET);
+    assert!(
+        landed,
+        "the sim carries an accepted structure strike out on the cell it was aimed at, so a \
+         MeleeResolved must name {:?} within {SETTLE_BUDGET} frames",
+        at.to_sim(),
     );
     Ok(())
 }
