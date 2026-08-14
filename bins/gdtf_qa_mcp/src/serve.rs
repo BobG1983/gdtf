@@ -1,43 +1,91 @@
 //! Stdio serve loop for the MCP bridge.
 
-use std::io::{self, BufRead, Write};
+use std::{
+    io::{self, BufRead, BufReader, Write},
+    sync::mpsc::{self, RecvTimeoutError, Sender},
+    thread,
+    time::Instant,
+};
 
 use crate::{
     hosts::{HostPair, HostSet, QaHost},
-    lifecycle::{CargoSpawner, HostLifecycle, HostManager},
+    lifecycle::{CargoSpawner, HostLifecycle, HostManager, SweepClock, SweepDue, SweepSchedule},
     link::QaClient,
     rpc::dispatch,
 };
+
+// One newline-delimited JSON-RPC request read from input.
+struct RequestLine(String);
+
+impl core::ops::Deref for RequestLine {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// Whether the serve loop keeps reading.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Answered {
+    Continue,
+    Stop,
+}
 
 /// Run the MCP server on stdin/stdout until EOF.
 pub fn run_stdio() {
     let mut game_link = QaClient::for_host(QaHost::Game);
     let mut editor_link = QaClient::for_host(QaHost::Editor);
-    let mut game_lifecycle = HostManager::with_config(
-        Box::new(CargoSpawner::new()),
-        QaHost::Game.lifecycle_config(),
-    );
-    let mut editor_lifecycle = HostManager::with_config(
-        Box::new(CargoSpawner::new()),
-        QaHost::Editor.lifecycle_config(),
-    );
+    let game_config = QaHost::Game.lifecycle_config();
+    let editor_config = QaHost::Editor.lifecycle_config();
+    let mut game_lifecycle = HostManager::with_config(Box::new(CargoSpawner::new()), game_config);
+    let mut editor_lifecycle =
+        HostManager::with_config(Box::new(CargoSpawner::new()), editor_config);
+    let mut sweep = SweepClock::started(SweepSchedule::from_configs(game_config, editor_config));
     {
         let mut hosts = HostSet::new(
             HostPair::new(&mut game_link, &mut game_lifecycle),
             HostPair::new(&mut editor_link, &mut editor_lifecycle),
         );
-        let stdin = io::stdin();
         let stdout = io::stdout();
-        let reader = stdin.lock();
         let mut writer = stdout.lock();
-        run_loop(reader, &mut writer, &mut hosts);
+        run_loop(
+            BufReader::new(io::stdin()),
+            &mut writer,
+            &mut hosts,
+            &mut sweep,
+        );
     }
     let _ = game_lifecycle.stop_owned();
     let _ = editor_lifecycle.stop_owned();
 }
 
-/// Read newline-delimited JSON-RPC requests and write responses.
-pub fn run_loop<R: BufRead, W: Write>(mut reader: R, writer: &mut W, hosts: &mut HostSet<'_>) {
+/// Answer newline-delimited JSON-RPC requests, sweeping dead children between them.
+pub fn run_loop<R, W>(reader: R, writer: &mut W, hosts: &mut HostSet<'_>, sweep: &mut SweepClock)
+where
+    R: BufRead + Send + 'static,
+    W: Write,
+{
+    let (sender, requests) = mpsc::channel();
+    thread::spawn(move || read_requests(reader, &sender));
+    loop {
+        for host in sweep.take_due(SweepDue::new(Instant::now())) {
+            hosts.pair(host).lifecycle().reap_dead_child();
+        }
+        match requests.recv_timeout(*sweep.tick()) {
+            Ok(line) => {
+                if matches!(answer(&line, writer, hosts), Answered::Stop) {
+                    return;
+                }
+            }
+            Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Disconnected) => return,
+        }
+    }
+}
+
+// Read lines off the blocking input so the serve loop keeps its own clock.
+fn read_requests<R: BufRead>(mut reader: R, sender: &Sender<RequestLine>) {
     let mut line = String::new();
     loop {
         line.clear();
@@ -45,13 +93,21 @@ pub fn run_loop<R: BufRead, W: Write>(mut reader: R, writer: &mut W, hosts: &mut
             Ok(0) | Err(_) => return,
             Ok(_) => {}
         }
-        let Some(response) = dispatch(&line, hosts) else {
-            continue;
-        };
-        if writeln!(writer, "{response}").is_err() || writer.flush().is_err() {
+        if sender.send(RequestLine(line.clone())).is_err() {
             return;
         }
     }
+}
+
+// Dispatch one request and write its response.
+fn answer<W: Write>(line: &RequestLine, writer: &mut W, hosts: &mut HostSet<'_>) -> Answered {
+    let Some(response) = dispatch(line, hosts) else {
+        return Answered::Continue;
+    };
+    if writeln!(writer, "{response}").is_err() || writer.flush().is_err() {
+        return Answered::Stop;
+    }
+    Answered::Continue
 }
 
 #[cfg(test)]
@@ -64,10 +120,10 @@ mod tests {
     use super::run_loop;
     use crate::{
         error::McpError,
-        hosts::{HostPair, HostSet},
+        hosts::{HostPair, HostSet, QaHost},
         lifecycle::{
-            HostLifecycle, LaunchOutcome, LaunchSpec, OutputTail, StopOutcome, TailLines,
-            WorkingDir,
+            HostLifecycle, LaunchOutcome, LaunchSpec, OutputTail, StopOutcome, SweepClock,
+            SweepSchedule, TailLines, WorkingDir,
         },
         link::{QaLink, QaPort},
     };
@@ -95,6 +151,8 @@ mod tests {
             StopOutcome::NotRunning
         }
 
+        fn reap_dead_child(&mut self) {}
+
         fn child_working_dir(&self) -> Option<WorkingDir> {
             None
         }
@@ -121,7 +179,16 @@ mod tests {
             HostPair::new(&mut game_link, &mut game_life),
             HostPair::new(&mut editor_link, &mut editor_life),
         );
-        run_loop(Cursor::new(input.as_bytes()), &mut out, &mut hosts);
+        let mut sweep = SweepClock::started(SweepSchedule::from_configs(
+            QaHost::Game.lifecycle_config(),
+            QaHost::Editor.lifecycle_config(),
+        ));
+        run_loop(
+            Cursor::new(input.as_bytes()),
+            &mut out,
+            &mut hosts,
+            &mut sweep,
+        );
         let text = String::from_utf8(out).unwrap_or_default();
         let lines: Vec<&str> = text.lines().collect();
         assert_eq!(lines.len(), 2, "got: {text}");

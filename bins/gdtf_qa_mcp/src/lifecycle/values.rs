@@ -151,6 +151,26 @@ impl Deref for PollInterval {
     }
 }
 
+/// How often to check that a recorded child is still alive.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SweepInterval(Duration);
+
+impl SweepInterval {
+    /// Wrap a duration.
+    #[must_use]
+    pub const fn new(interval: Duration) -> Self {
+        Self(interval)
+    }
+}
+
+impl Deref for SweepInterval {
+    type Target = Duration;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /// Time to wait after SIGTERM before SIGKILL.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct KillGrace(Duration);

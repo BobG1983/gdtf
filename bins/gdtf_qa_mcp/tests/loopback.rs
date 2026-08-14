@@ -33,6 +33,8 @@ impl HostLifecycle for NoLifecycle {
         StopOutcome::NotRunning
     }
 
+    fn reap_dead_child(&mut self) {}
+
     fn child_working_dir(&self) -> Option<WorkingDir> {
         None
     }

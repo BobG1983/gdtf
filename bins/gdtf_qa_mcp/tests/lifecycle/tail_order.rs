@@ -1,127 +1,24 @@
-use std::{
-    io,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use gdtf_qa_mcp::{
-    ChildPid, ChildSpawner, FailureTail, HostLifecycle, HostManager, KillGrace, LaunchFailure,
-    LaunchOutcome, LaunchSpec, ManagedChild, OutputTail, QaPort, StopOutcome, TailLines,
+    HostLifecycle, HostManager, LaunchFailure, LaunchOutcome, LaunchSpec, QaPort, StopOutcome,
     lifecycle::ChildStatus,
 };
 
-use crate::support::{fast_config, free_port};
-
-const GATED_LINE: &str = "boot-oops: the child never came up";
-
-const GATED_PID: ChildPid = ChildPid::new(424_242);
+use crate::{
+    fake_child::{CallLog, ChildCall, GATED_LINE, ReapGatedSpawner, recorded},
+    support::{fast_config, free_port},
+};
 
 const NO_WAIT_BOOT_MS: u64 = 0;
 
 const UNREACHED_BOOT_MS: u64 = 2000;
 
-type CallLog = Arc<Mutex<Vec<ChildCall>>>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ChildCall {
-    Poll,
-    Terminate,
-    WaitUntilExit,
-    Kill,
-    Reap,
-    ReadFailureTail,
-}
-
-struct ReapGatedChild {
-    tail:   FailureTail,
-    status: ChildStatus,
-    calls:  CallLog,
-}
-
-impl ReapGatedChild {
-    fn record(&self, call: ChildCall) {
-        if let Ok(mut calls) = self.calls.lock() {
-            calls.push(call);
-        }
-    }
-
-    fn reaped(&self) -> bool {
-        self.calls
-            .lock()
-            .is_ok_and(|calls| calls.contains(&ChildCall::Reap))
-    }
-}
-
-impl ManagedChild for ReapGatedChild {
-    fn pid(&self) -> ChildPid {
-        GATED_PID
-    }
-
-    fn poll(&mut self) -> ChildStatus {
-        self.record(ChildCall::Poll);
-        self.status
-    }
-
-    fn terminate(&mut self) {
-        self.record(ChildCall::Terminate);
-    }
-
-    fn kill(&mut self) {
-        self.record(ChildCall::Kill);
-    }
-
-    fn wait_until_exit(&mut self, _within: KillGrace) -> ChildStatus {
-        self.record(ChildCall::WaitUntilExit);
-        ChildStatus::Running
-    }
-
-    fn reap(&mut self) {
-        self.record(ChildCall::Reap);
-    }
-
-    fn failure_tail(&self) -> FailureTail {
-        self.record(ChildCall::ReadFailureTail);
-        if self.reaped() {
-            self.tail.clone()
-        } else {
-            FailureTail::default()
-        }
-    }
-
-    fn output_tail(&self, _max: TailLines) -> OutputTail {
-        OutputTail::new((*self.failure_tail()).clone())
-    }
-}
-
-struct ReapGatedSpawner {
-    status: ChildStatus,
-    calls:  CallLog,
-}
-
-impl ChildSpawner for ReapGatedSpawner {
-    fn spawn(&self, _port: QaPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
-        Ok(Box::new(ReapGatedChild {
-            tail:   FailureTail::new(GATED_LINE.to_owned()),
-            status: self.status,
-            calls:  Arc::clone(&self.calls),
-        }))
-    }
-}
-
 fn manager_over_gated_child(status: ChildStatus, boot_ms: u64) -> (HostManager, CallLog) {
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
-    let spawner = ReapGatedSpawner {
-        status,
-        calls: Arc::clone(&calls),
-    };
+    let spawner = ReapGatedSpawner::new(status, Arc::clone(&calls));
     let manager = HostManager::with_config(Box::new(spawner), fast_config(boot_ms));
     (manager, calls)
-}
-
-fn recorded(calls: &CallLog) -> Vec<ChildCall> {
-    let Ok(log) = calls.lock() else {
-        unreachable!("the fake child's call record is not poisoned");
-    };
-    log.clone()
 }
 
 #[test]

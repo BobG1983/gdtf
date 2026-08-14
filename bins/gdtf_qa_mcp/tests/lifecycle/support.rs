@@ -13,7 +13,7 @@ use std::{
 
 use gdtf_qa_mcp::{
     BootTimeout, ChildSpawner, KillGrace, LaunchSpec, LifecycleConfig, ManagedChild, PollInterval,
-    ProbeTimeout, ProcessChild, QaPort,
+    ProbeTimeout, ProcessChild, QaPort, SweepInterval,
 };
 use gdtf_qa_protocol::{
     framing::{FrameDecoder, encode},
@@ -149,10 +149,18 @@ pub(crate) fn free_port() -> u16 {
 }
 
 pub(crate) const fn fast_config(boot_ms: u64) -> LifecycleConfig {
+    config_sweeping_every(boot_ms, SweepInterval::new(Duration::from_secs(60)))
+}
+
+pub(crate) const fn config_sweeping_every(
+    boot_ms: u64,
+    sweep_interval: SweepInterval,
+) -> LifecycleConfig {
     LifecycleConfig::new(
         BootTimeout::new(Duration::from_millis(boot_ms)),
         PollInterval::new(Duration::from_millis(50)),
         KillGrace::new(Duration::from_secs(1)),
         ProbeTimeout::new(Duration::from_millis(300)),
+        sweep_interval,
     )
 }

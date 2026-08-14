@@ -81,6 +81,20 @@ One game runs at a time, and the manager remembers the recipe that built it:
   `stop` first. Answering "already running" to a request for another
   checkout would hand back a success for a build that was never started.
 
+The record lasts only as long as the process. Every 60 seconds the host asks the
+OS whether each recorded child's pid is still running and drops the record when
+it is not, so a closed game window does not leave `launch` answering
+`already_running` with a pid nothing listens on. Until the sweep runs the stale
+record is still there, so for up to a minute after the child exits `launch` can
+still answer `already_running`; `stop` clears it at once. `logs` for that host
+answers `not_running` once the record is gone, so read the child's tail before
+the sweep drops it. The interval is `sweep_interval` on each host's
+`LifecycleConfig` (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`); the sweep is the
+`SweepClock` in `bins/gdtf_qa_mcp/src/lifecycle/sweep.rs` calling
+`reap_dead_child` on the `HostManager`, and the liveness answer comes from the
+`ChildLiveness` trait (`bins/gdtf_qa_mcp/src/lifecycle/liveness.rs`), so a test
+injects the answer instead of killing a real process.
+
 QA evidence goes through the MCP host. Hand-writing a socket client against this
 port is not an accepted route — that path tested the wrong tree once and is how
 to get it wrong again. Running the recipe by hand from a shell is fine for
@@ -339,8 +353,11 @@ Two wire shapes are in play, one per hop.
 stdin/stdout, newline-delimited (one JSON message per line), blocking `std` I/O
 throughout — no rmcp, no tokio, no async runtime. The stdio loop is `run_stdio`
 in `bins/gdtf_qa_mcp/src/serve.rs`; method dispatch lives under
-`bins/gdtf_qa_mcp/src/rpc/`. `initialize` and `tools/list` answer before the game
-is even up (the game connection is opened lazily on the first forwarding
+`bins/gdtf_qa_mcp/src/rpc/`. A reader thread pushes each line onto a channel and
+the loop waits on that channel with a timeout, so it keeps its own clock and can
+sweep dead children between requests instead of sitting inside a blocking read.
+`initialize` and `tools/list` answer before the game is even up (the game
+connection is opened lazily on the first forwarding
 `tools/call`). The MCP-protocol version echoed at `initialize` defaults to
 `2024-11-05` (`bins/gdtf_qa_mcp/src/mcp/initialize.rs`) — this is the MCP
 handshake string, distinct from the game wire version below.

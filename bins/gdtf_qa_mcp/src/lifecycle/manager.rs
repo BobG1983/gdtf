@@ -6,6 +6,7 @@ use super::{
     child::ManagedChild,
     config::LifecycleConfig,
     launch::{LaunchSpec, WorkingDir},
+    liveness::{ChildLiveness, SystemLiveness},
     orphan::{OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, PortHold, SystemOrphanWatch},
     outcome::{LaunchFailure, LaunchOutcome, StopOutcome},
     probe::probe_ready,
@@ -25,6 +26,9 @@ pub trait HostLifecycle {
     /// Stop only the child this manager owns.
     fn stop_owned(&mut self) -> StopOutcome;
 
+    /// Drop the recorded child if its process is no longer running.
+    fn reap_dead_child(&mut self);
+
     /// Working directory of the running child, if any.
     fn child_working_dir(&self) -> Option<WorkingDir>;
 
@@ -40,10 +44,11 @@ struct RunningChild {
 
 /// Default host lifecycle implementation.
 pub struct HostManager {
-    spawner: Box<dyn ChildSpawner>,
-    config:  LifecycleConfig,
-    running: Option<RunningChild>,
-    orphans: Box<dyn OrphanWatch>,
+    spawner:  Box<dyn ChildSpawner>,
+    config:   LifecycleConfig,
+    running:  Option<RunningChild>,
+    orphans:  Box<dyn OrphanWatch>,
+    liveness: Box<dyn ChildLiveness>,
 }
 
 impl HostManager {
@@ -66,11 +71,23 @@ impl HostManager {
         config: LifecycleConfig,
         orphans: Box<dyn OrphanWatch>,
     ) -> Self {
+        Self::with_probes(spawner, config, orphans, Box::new(SystemLiveness::new()))
+    }
+
+    /// Manager with explicit config, orphan watch, and liveness probe.
+    #[must_use]
+    pub fn with_probes(
+        spawner: Box<dyn ChildSpawner>,
+        config: LifecycleConfig,
+        orphans: Box<dyn OrphanWatch>,
+        liveness: Box<dyn ChildLiveness>,
+    ) -> Self {
         Self {
             spawner,
             config,
             running: None,
             orphans,
+            liveness,
         }
     }
 
@@ -170,6 +187,21 @@ impl HostLifecycle for HostManager {
         let pid = running.child.pid();
         shutdown(running.child.as_mut(), self.config.kill_grace());
         StopOutcome::Stopped { pid }
+    }
+
+    fn reap_dead_child(&mut self) {
+        let Some(running) = self.running.as_ref() else {
+            return;
+        };
+        if matches!(
+            self.liveness.status(running.child.pid()),
+            ChildStatus::Running
+        ) {
+            return;
+        }
+        if let Some(mut dead) = self.running.take() {
+            dead.child.reap();
+        }
     }
 
     fn child_working_dir(&self) -> Option<WorkingDir> {

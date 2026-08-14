@@ -20,12 +20,13 @@ pub mod serve;
 pub use error::McpError;
 pub use hosts::{HostPair, HostSet, QaHost};
 pub use lifecycle::{
-    BootTimeout, CargoPackage, CargoSpawner, ChildPid, ChildSpawner, EnvOverrides, EnvVar,
-    EnvVarName, EnvVarValue, FailureTail, FeatureList, FeatureName, HostLifecycle, HostManager,
-    KillGrace, LaunchFailure, LaunchOutcome, LaunchSpec, LifecycleConfig, ManagedChild,
-    OUTPUT_TAIL_LINES, OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, OutputTail, PollInterval,
-    PortHold, ProbeTimeout, ProcessChild, QaChannel, StopOutcome, SystemOrphanWatch, TailLines,
-    WorkingDir, build_command,
+    BootTimeout, CargoPackage, CargoSpawner, ChildLiveness, ChildPid, ChildSpawner, EnvOverrides,
+    EnvVar, EnvVarName, EnvVarValue, FailureTail, FeatureList, FeatureName, HostLifecycle,
+    HostManager, KillGrace, LaunchFailure, LaunchOutcome, LaunchSpec, LifecycleConfig,
+    ManagedChild, OUTPUT_TAIL_LINES, OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, OutputTail,
+    PollInterval, PortHold, ProbeTimeout, ProcessChild, QaChannel, StopOutcome, SweepClock,
+    SweepDue, SweepEntry, SweepInterval, SweepSchedule, SystemLiveness, SystemOrphanWatch,
+    TailLines, WorkingDir, build_command,
 };
 pub use link::{LINK_TIMEOUT, LinkTimeout, QaClient, QaLink, QaPort};
 pub use rpc::dispatch;

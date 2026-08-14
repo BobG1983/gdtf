@@ -58,6 +58,8 @@ impl HostLifecycle for ChildInDirLifecycle {
         StopOutcome::NotRunning
     }
 
+    fn reap_dead_child(&mut self) {}
+
     fn child_working_dir(&self) -> Option<WorkingDir> {
         self.0.clone().map(WorkingDir::new)
     }
