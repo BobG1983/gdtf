@@ -19,6 +19,10 @@ Dev loop: **`/next-task` → build → `/gate` → `/docs-sync` → `/land`**.
 Found a defect? `/file-bug` before fixing. Kit sanity? `/health-check`.
 Autonomous loop tick? `/heartbeat`.
 
+A ticket carrying **Needs Splitting** is not built. Split it first with
+[`.claude/workflows/split-ticket.js`](.claude/workflows/split-ticket.js) — it files the
+children, and the children are what get built.
+
 Orchestration uses on-demand sub-agents. Favor fan-out (e.g. `/gate` and `/health-check` spawn parallel read-only design-gate lenses). Sub-agents that review stay read-only. Commit subjects: `Area: summary (GTW-N)`.
 
 No agent has a memory store. Durable knowledge goes in `.claude/rules/`, the agent definition, or `docs/` — all of which are actually read.

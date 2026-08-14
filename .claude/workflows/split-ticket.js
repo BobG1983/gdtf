@@ -1,5 +1,5 @@
 export const meta = {
-  name: 'split-epic',
+  name: 'split-ticket',
   description: 'Split one epic into buildable children: propose, edit, revise, vote to consensus, map clause ownership, write each ticket, audit until clean, file with edges.',
   phases: [
     { title: 'Read', detail: 'the whole parent ticket and its canon' },
@@ -504,7 +504,7 @@ ${HOUSE}`,
       finalVotes: votes,
       proposals: proposals.map((p) => ({ id: p.id, path: p.path, angle: p.angle })),
       scratch: SCRATCH,
-      resume: `Workflow({scriptPath: '.claude/workflows/split-epic.js', args: {ticket: '${TICKET}', startFrom: 'map', winner: '<the proposal file you choose>', scratch: '${SCRATCH}'}})`,
+      resume: `Workflow({scriptPath: '.claude/workflows/split-ticket.js', args: {ticket: '${TICKET}', startFrom: 'map', winner: '<the proposal file you choose>', scratch: '${SCRATCH}'}})`,
     }
   }
 }
@@ -537,7 +537,7 @@ if (!map || map.unowned.length || map.overlaps.length) {
     map,
     voteRounds: history,
     scratch: SCRATCH,
-    resume: `Fix the proposal at ${chosen.path}, then: Workflow({scriptPath: '.claude/workflows/split-epic.js', args: {ticket: '${TICKET}', startFrom: 'map', winner: '${chosen.path}', scratch: '${SCRATCH}'}})`,
+    resume: `Fix the proposal at ${chosen.path}, then: Workflow({scriptPath: '.claude/workflows/split-ticket.js', args: {ticket: '${TICKET}', startFrom: 'map', winner: '${chosen.path}', scratch: '${SCRATCH}'}})`,
   }
 }
 
@@ -658,7 +658,7 @@ const finish = await agent(
 1. Add these blocking relations, reciprocal on both tickets:
 ${edges.join('\n') || '(none — the children are independent)'}
 2. Remove the \`Needs Splitting\` label from ${TICKET}. Leave \`Epic\` on it and leave its status alone.
-3. Comment on ${TICKET}, opening with the source line \`**[split-epic]**\` and nothing above it:
+3. Comment on ${TICKET}, opening with the source line \`**[split-ticket]**\` and nothing above it:
 
 Split into ${filed.length} children, in build order:
 ${filed.map((f) => `- ${f.identifier} — ${f.title}`).join('\n')}

@@ -142,6 +142,15 @@ Without a team filter, team-scoped labels are silently omitted.
 | Needs Splitting | Too big to build as-is; children not yet filed | Author when size is wrong | Children exist and parent is only a rollup — **or** ticket superseded / canceled. Not only when Done. |
 | Needs User Input | Blocked on a decision only the user can make. Ticket stays Backlog; question is a comment on the ticket | Agent or author when stuck | User answers on the ticket **and** this label is removed (or ticket moves on). Do not leave it on after the answer. |
 
+**A ticket carrying `Needs Splitting` is not built.** Split it first with
+[`../workflows/split-ticket.js`](../workflows/split-ticket.js), which proposes splits, argues
+them to consensus, maps every parent clause to a child that owns it, and files the children
+with their edges. The children are what get built; the parent stays as the rollup, and the
+label comes off it once they exist.
+
+This is what closes the gap in the row above: the label says children must exist before it
+comes off, and this says how they get there.
+
 ### User decisions
 
 To get a decision: put the question on the ticket as a comment, apply
