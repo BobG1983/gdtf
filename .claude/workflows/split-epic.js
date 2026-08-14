@@ -167,7 +167,20 @@ const VOTE = {
     },
     best: { type: 'string' },
     blocking: { type: 'array', items: { type: 'string' }, description: 'Objections that would make this lens refuse to build even its own pick. Empty if none.' },
-    answeredOthers: { type: 'string', description: 'Round 1: "first round". Later: what the other lenses argued, and whether it moved you. Holding your position is a legitimate answer — say why.' },
+    moved: { type: 'string', enum: ['first-round', 'changed', 'held'], description: 'Whether the other lenses moved your vote this round.' },
+    counterArguments: {
+      type: 'array',
+      description: 'Round 1: empty. Later: one entry per point from another lens that you answer — for or against. Argue with them; that is what this round is for.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['lens', 'theirPoint', 'stance', 'argument'],
+        properties: {
+          lens: { type: 'string', description: 'Whose point you are answering.' },
+          theirPoint: { type: 'string', description: 'Their claim, stated fairly enough that they would recognise it.' },
+          stance: { type: 'string', enum: ['agree', 'disagree', 'agree-but-outweighed'] },
+          argument: { type: 'string', description: 'Why. Evidence from the proposals or the code, not assertion.' },
+        },
+      },
+    },
   },
 }
 
