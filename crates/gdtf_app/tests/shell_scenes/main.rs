@@ -2,6 +2,7 @@
 
 mod loading_screen;
 mod menu_actions;
+mod menu_focus_paint;
 mod menu_scene;
 mod options_scene;
 mod scene_scaffold;

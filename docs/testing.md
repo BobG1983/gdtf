@@ -24,7 +24,6 @@ Standard Cargo, placed per the module-layout test convention ([module-layout.md]
 These repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
 
 - **`module_layout`** — the clause-7 module-layout conformance guard: wiring-only `mod.rs`, the warn>300 / block>400 line bands, and the exemption registry.
-- **`assets_tree_clean`** — the tracked `assets/` tree must be git-clean when the suite runs, so a test that mutates shipped authored content is caught loudly instead of silently corrupting authored work.
 - **`no_flat_integration_tests`** — every crate's and bin's `tests/` holds dir-form suites (`<suite>/main.rs`), never flat `tests/*.rs` binaries.
 - **`rustdoc_lint_gate`** — the workspace denies the whole rustdoc lint group and every member opts into the workspace lints.
 
