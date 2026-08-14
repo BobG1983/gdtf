@@ -1,4 +1,4 @@
-//! Handle [`TeardownBattleRequested`]: despawn terrain and clear battle resources.
+//! Handle [`TeardownBattleRequested`]: despawn terrain and gangers, and clear battle resources.
 
 use bevy::prelude::{Commands, MessageReader};
 
@@ -9,6 +9,7 @@ use crate::{
         resources::{BattleInProgress, BattleRoster, PlayerFaction},
     },
     cover::CoverLedger,
+    ganger::Faction,
     occupancy::OccupancyGrid,
     rng::{
         BattleSeed, FightRng, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng,
@@ -39,6 +40,7 @@ pub fn teardown_battle_on_request(
         bevy::prelude::Entity,
         bevy::prelude::With<crate::terrain::entity::TerrainCell>,
     >,
+    ganger_entities: bevy::prelude::Query<bevy::prelude::Entity, bevy::prelude::With<Faction>>,
     mut commands: Commands,
 ) {
     let mut requested = false;
@@ -58,6 +60,10 @@ pub fn teardown_battle_on_request(
         commands.remove_resource::<crate::effects::fields::FieldRegistry>();
         commands.remove_resource::<crate::effects::on_death::CoverOnDeathRegistry>();
         for entity in terrain_entities.iter() {
+            commands.entity(entity).despawn();
+        }
+        // Wielded weapons and worn armor are linked_spawn children, so they go with the ganger.
+        for entity in ganger_entities.iter() {
             commands.entity(entity).despawn();
         }
         commands.remove_resource::<BattleInProgress>();
