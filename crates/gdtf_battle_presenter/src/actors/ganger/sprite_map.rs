@@ -28,6 +28,12 @@ impl GangerSprites {
     pub fn contains(&self, sim: Entity) -> bool {
         self.map.contains_key(&sim)
     }
+
+    /// Whether no sim ganger has a sprite.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
 }
 
 /// Marker on a ganger sprite, pointing back at the sim entity.

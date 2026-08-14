@@ -9,3 +9,4 @@ mod spawn_appearance;
 mod spawn_move;
 mod storeys;
 mod suppression;
+mod teardown;

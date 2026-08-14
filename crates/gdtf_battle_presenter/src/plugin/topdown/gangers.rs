@@ -30,11 +30,10 @@ pub(super) fn register_ganger_draw(app: &mut App) {
             .in_set(PresenterSystems::Compose)
             .run_if(resource_exists::<BattleInProgress>),
     )
+    // Ungated: teardown drops `BattleInProgress`, so a gated system never reads the removal batch.
     .add_systems(
         Update,
-        despawn_removed_ganger_sprites
-            .in_set(PresenterSystems::Scene)
-            .run_if(resource_exists::<BattleInProgress>),
+        despawn_removed_ganger_sprites.in_set(PresenterSystems::Scene),
     )
     .add_systems(
         Update,
