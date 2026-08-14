@@ -151,7 +151,7 @@ const LENSES = [
 
 const VOTE = {
   type: 'object', additionalProperties: false,
-  required: ['lens', 'ranking', 'best', 'blocking', 'answeredOthers'],
+  required: ['lens', 'ranking', 'best', 'blocking', 'moved', 'counterArguments'],
   properties: {
     lens: { type: 'string' },
     ranking: {
