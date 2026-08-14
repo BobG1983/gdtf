@@ -1,99 +1,38 @@
 use bevy::{
     app::{App, AppExit},
+    ecs::entity::Entity,
     state::state::State,
+    ui::Interaction,
 };
 use gdtf_app::test_support::{
-    AfterMathState, AppState, BattleRunningComplete, BattleScapeState, RunningState, app_state,
+    AfterMathState, AppState, BattleRunningComplete, BattleScapeState, QuitButton, RunningState,
+    app_state,
 };
 use gdtf_test_utils::advance_until;
 
 use super::harness::*;
 
-fn drive_to_teardown() -> App {
-    let mut app = walk_app_with_theme();
-
-    assert!(
-        drive_past_menu(&mut app),
-        "the walk should reach RunningState::Menu within {WALK_BUDGET} updates; last observed \
-         RunningState was {:?}",
-        running_state(&app),
-    );
-
-    let reached_battle_running = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        WALK_BUDGET,
-    );
-    assert!(
-        reached_battle_running,
-        "the walk should descend to BattleScapeState::BattleRunning within {WALK_BUDGET} updates; \
-         last observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
-
-    for _ in 0..WALK_BUDGET {
-        app.update();
-        assert_eq!(
-            battlescape_state(&app),
-            Some(BattleScapeState::BattleRunning),
-            "BattleRunning must PERSIST with no BattleRunningComplete inserted; the placeholder turn-budget auto-exit must not advance it",
-        );
-        assert_ne!(
-            app_state(&app),
-            AppState::Teardown,
-            "the walk must NOT reach Teardown on its own — it rests at BattleRunning until an \
-             explicit end signal",
-        );
+fn single_with<M: bevy::ecs::component::Component>(app: &mut App) -> Option<Entity> {
+    let mut query = app
+        .world_mut()
+        .query_filtered::<Entity, bevy::ecs::prelude::With<M>>();
+    let found: Vec<Entity> = query.iter(app.world()).collect();
+    match found.as_slice() {
+        [one] => Some(*one),
+        _ => None,
     }
+}
 
-    app.world_mut().insert_resource(BattleRunningComplete);
-    let reached = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Teardown,
+fn drive_to_menu(app: &mut App) -> bool {
+    advance_until(
+        app,
+        |app| running_state(app) == Some(RunningState::Menu),
         WALK_BUDGET,
-    );
-    assert!(
-        reached,
-        "an explicit BattleRunningComplete insert should advance the walk to AppState::Teardown \
-         within {WALK_BUDGET} updates; last observed AppState was {:?}",
-        app_state(&app),
-    );
-
-    app
+    )
 }
 
 #[test]
-fn full_walk_reaches_teardown() {
-    let app = drive_to_teardown();
-    assert_eq!(
-        app_state(&app),
-        AppState::Teardown,
-        "the driven walk should rest in AppState::Teardown",
-    );
-}
-
-#[test]
-fn teardown_emits_app_exit() {
-    let mut app = drive_to_teardown();
-
-    let mut observed_exit = None;
-    for _ in 0..WALK_BUDGET {
-        app.update();
-        if let Some(exit) = app.should_exit() {
-            observed_exit = Some(exit);
-            break;
-        }
-    }
-
-    assert_eq!(
-        observed_exit,
-        Some(AppExit::Success),
-        "Teardown's move_on must emit AppExit::Success within {WALK_BUDGET} updates of reaching Teardown; observed {observed_exit:?}",
-    );
-}
-
-#[test]
-fn deep_pop_to_quit() {
+fn a_finished_battle_returns_to_the_menu() {
     let mut app = walk_app_with_theme();
 
     assert!(
@@ -135,17 +74,44 @@ fn deep_pop_to_quit() {
          within {WALK_BUDGET} updates",
     );
 
-    let reached_quit = advance_until(
+    let reached_menu = advance_until(
         &mut app,
-        |app| running_state(app) == Some(RunningState::Quit),
+        |app| running_state(app) == Some(RunningState::Menu),
         WALK_BUDGET,
     );
     assert!(
-        reached_quit,
-        "the AfterMath terminal should pop all the way out to RunningState::Quit, not wrap back \
-         into the game; last observed RunningState was {:?}",
+        reached_menu,
+        "the AfterMath terminal should return to RunningState::Menu so another battle can be \
+         started; last observed RunningState was {:?}",
         running_state(&app),
     );
+    assert_eq!(
+        app.should_exit(),
+        None,
+        "a finished battle must leave the process running, not ask the app to exit",
+    );
+}
+
+#[test]
+fn the_menu_quit_action_emits_app_exit() {
+    let mut app = walk_app_with_theme();
+
+    assert!(
+        drive_to_menu(&mut app),
+        "the walk should reach RunningState::Menu within {WALK_BUDGET} updates; last observed \
+         RunningState was {:?}",
+        running_state(&app),
+    );
+
+    let found = single_with::<QuitButton>(&mut app);
+    assert!(
+        found.is_some(),
+        "the menu must spawn exactly one QuitButton for this case to press",
+    );
+    let quit = found.unwrap_or(Entity::PLACEHOLDER);
+    if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(quit) {
+        *interaction = Interaction::Pressed;
+    }
 
     let reached_teardown = advance_until(
         &mut app,
@@ -154,7 +120,23 @@ fn deep_pop_to_quit() {
     );
     assert!(
         reached_teardown,
-        "RunningState::Quit should advance AppState to Teardown; last observed AppState was {:?}",
+        "pressing Quit should carry RunningState::Quit through to AppState::Teardown; last \
+         observed AppState was {:?}",
         app_state(&app),
+    );
+
+    let mut observed_exit = None;
+    for _ in 0..WALK_BUDGET {
+        app.update();
+        if let Some(exit) = app.should_exit() {
+            observed_exit = Some(exit);
+            break;
+        }
+    }
+
+    assert_eq!(
+        observed_exit,
+        Some(AppExit::Success),
+        "Teardown's move_on must emit AppExit::Success within {WALK_BUDGET} updates of reaching Teardown; observed {observed_exit:?}",
     );
 }

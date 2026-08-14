@@ -10,7 +10,9 @@ use crate::{
     },
     cover::CoverLedger,
     occupancy::OccupancyGrid,
-    rng::{FightRng, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng},
+    rng::{
+        BattleSeed, FightRng, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng,
+    },
     slab::SlabLedger,
     surface::SurfaceGrid,
     terrain::{entity::TerrainIndex, floor::FloorCostGrid},
@@ -20,6 +22,7 @@ use crate::{
 };
 
 fn remove_rng_streams(commands: &mut bevy::prelude::Commands) {
+    commands.remove_resource::<BattleSeed>();
     commands.remove_resource::<ShotRng>();
     commands.remove_resource::<SeverityRng>();
     commands.remove_resource::<LootRng>();

@@ -29,7 +29,7 @@ fn add_systems(app: &mut App) {
         )
         .add_systems(
             FixedUpdate,
-            advance_state_to(RunningState::Quit).run_if(
+            advance_state_to(RunningState::Menu).run_if(
                 in_state(AfterMathState::AnimateOut)
                     .and_then(resource_exists::<AfterMathAnimateOutComplete>),
             ),
