@@ -627,9 +627,19 @@ MCP envelope itself stays JSON-RPC — the RON is opaque text riding inside it.
 live answer rather than a static claim. Each of these can go wrong, and each tells you how to
 fix it in one round trip: `Unknown` lists every name the host does offer, `BadArguments`
 carries the schema your body failed against, `Unavailable` names the precondition that is
-missing, and a rider this build has not implemented (`await_ready`, `capture`) is refused
-`Unavailable` with code `NotBuilt` rather than run without it. `BadArguments` names the
-offending field in its `detail`, which is what `deny_unknown_fields` really buys.
+missing. `BadArguments` names the offending field in its `detail`, which is what
+`deny_unknown_fields` really buys.
+
+`run`'s two riders both work. `await_ready` holds a call its command refuses right now and
+tests admission again every frame until the command admits; when the seconds run out the
+answer is the command's own `Unavailable` refusal, the one the last test produced, never a
+rider refusal and never `Timeout`. Nothing clamps the budget: a waiting call holds the
+channel exactly as a parked `wait` does, and a budget past the socket's three-minute wait
+for a reply (`DEFAULT_REPLY_TIMEOUT` in `crates/gdtf_qa_protocol/src/timeouts.rs`) answers
+`Timeout` from the connection instead. A name the host does not know still answers `Unknown`
+at once. `capture` runs the command first and appends one PNG attachment to the reply it
+produced; an outcome that is not `Ran` comes straight back with no shot taken, and a shot
+that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## Why the shape is what it is
 

@@ -8,6 +8,7 @@ use std::{
 use bevy::{
     app::App,
     state::state::{NextState, State},
+    time::TimeUpdateStrategy,
 };
 use gdtf_app::test_support::{AppState, BattleScapeState, NetQaPlugin, RunningState};
 use gdtf_battle_sim::rng::BattleSeed;
@@ -34,6 +35,12 @@ const READ_POLL: Duration = Duration::from_millis(10);
 const REPLY_BUDGET: u32 = 1024;
 
 const DRIVE_BUDGET: u32 = 512;
+
+/// Fixed steps a frame runs while the descent is held still.
+const STOPPED: u32 = 0;
+
+/// Fixed steps a frame runs once the descent is let go.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 /// Pins procgen so every battle fixture generates the same map on every run.
 const FIXTURE_SEED: BattleSeed = BattleSeed::new(20_260_805);
@@ -136,12 +143,33 @@ pub(crate) fn capture_app_listening() -> Result<(App, NetQaPort), TestError> {
     Ok((app, port))
 }
 
-pub(crate) fn battle_app_listening() -> Result<(App, NetQaPort), TestError> {
-    let (mut app, port) = listening_menu_app()?;
+// Queue the descent into a battle without advancing a single frame.
+fn open_the_battle(app: &mut App) {
     app.insert_resource(FIXTURE_SEED);
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
+}
+
+/// The menu app with the descent queued and the fixed clock stopped, so it cannot advance.
+///
+/// Every step of the descent runs in `FixedUpdate`, so it moves only when a case calls
+/// [`let_the_descent_run`] — never because the machine was slow between two frames.
+pub(crate) fn opening_battle_app_listening() -> Result<(App, NetQaPort), TestError> {
+    let (mut app, port) = listening_menu_app()?;
+    open_the_battle(&mut app);
+    app.insert_resource(TimeUpdateStrategy::FixedTimesteps(STOPPED));
+    Ok((app, port))
+}
+
+/// Let the queued descent advance one fixed step per frame.
+pub(crate) fn let_the_descent_run(app: &mut App) {
+    app.insert_resource(TimeUpdateStrategy::FixedTimesteps(ONE_STEP_A_FRAME));
+}
+
+pub(crate) fn battle_app_listening() -> Result<(App, NetQaPort), TestError> {
+    let (mut app, port) = listening_menu_app()?;
+    open_the_battle(&mut app);
     if !advance_until(
         &mut app,
         |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),

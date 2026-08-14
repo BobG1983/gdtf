@@ -12,9 +12,11 @@ use super::{
         APP_PHASE, BATTLE_COST, BATTLE_FLEE, BATTLE_INSPECT, BATTLE_OFFERS, BATTLE_ROSTER,
         BATTLE_SELECTION, BATTLE_SIGHTLINE, BATTLE_START, BATTLE_TURN, BATTLE_VISIBLE,
         CAPTURE_SCREENSHOT, LOG_READ, PLAYBACK_STATE, PROCGEN_STEP, SETTINGS_READ, UI_FOCUS, WAIT,
-        exchange, exchange_all, published_names, run,
+        exchange, exchange_all, exchange_around, published_names, run,
     },
-    socket_support::{TestResult, game_app_listening},
+    socket_support::{
+        TestResult, game_app_listening, let_the_descent_run, opening_battle_app_listening,
+    },
 };
 
 /// Without the stepper compiled in, `procgen.step` is published but can never be built.
@@ -247,43 +249,46 @@ fn an_unknown_argument_is_bad_arguments_with_the_schema() -> TestResult {
     Ok(())
 }
 
-#[test]
-fn an_unbuilt_rider_is_refused_rather_than_dropped() -> TestResult {
-    let mut replies = exchange_all(
-        game_app_listening,
-        vec![
-            run(APP_PHASE, "()", RunOptions::default()),
-            run(
-                APP_PHASE,
-                "()",
-                RunOptions::new(Some(AwaitBudget::new(5)), None),
-            ),
-        ],
-    )?;
-    let Some(with_rider) = replies.pop() else {
-        unreachable!("two requests yield two replies");
-    };
-    let Some(plain) = replies.pop() else {
-        unreachable!("two requests yield two replies");
-    };
-    assert!(
-        matches!(plain, QaResponse::Outcome(CommandOutcome::Ran { .. })),
-        "the identical call WITHOUT the rider must run, or this case proves nothing about \
-         the rider — got {plain:?}",
-    );
+/// Seconds the held call may keep re-testing; the frame budget runs out long before this does.
+const OPENING_BUDGET: AwaitBudget = AwaitBudget::new(120);
 
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = with_rider else {
-        unreachable!("an await_ready rider must be refused, got {with_rider:?}");
+#[test]
+fn an_await_ready_rider_holds_the_call_until_the_battle_screen_opens() -> TestResult {
+    let (before_it_opens, once_it_opens) = exchange_around(
+        opening_battle_app_listening,
+        run(BATTLE_TURN, "()", RunOptions::default()),
+        let_the_descent_run,
+        run(
+            BATTLE_TURN,
+            "()",
+            RunOptions::new(Some(OPENING_BUDGET), None),
+        ),
+    )?;
+
+    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = before_it_opens else {
+        unreachable!(
+            "the identical call WITHOUT the rider must refuse before the screen opens, or this \
+             case proves nothing about the rider — got {before_it_opens:?}"
+        );
     };
     assert_eq!(
         code,
-        UnavailableCode::NotBuilt,
-        "nothing about the app's state can make an unbuilt rider exist",
+        UnavailableCode::WrongState,
+        "off the battle screen the battle read refuses for its own reason, never for a missing \
+         rider",
     );
-    assert!(
-        note.as_str().contains("await_ready"),
-        "the refusal names the rider that is missing: {}",
+    assert_eq!(
         note.as_str(),
+        "this reads the battle screen, and the game is not on it",
+    );
+
+    assert!(
+        matches!(
+            once_it_opens,
+            QaResponse::Outcome(CommandOutcome::Ran { .. })
+        ),
+        "the same call carrying await_ready is held and re-tested until the battle screen \
+         opens, then runs — got {once_it_opens:?}",
     );
     Ok(())
 }

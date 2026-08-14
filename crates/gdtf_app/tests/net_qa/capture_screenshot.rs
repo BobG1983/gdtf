@@ -1,7 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use gdtf_qa_protocol::{
-    command::{AttachmentKind, CommandOutcome, ReplyAttachment, RunOptions},
+    command::{AttachmentKind, CaptureRider, CommandOutcome, ReplyAttachment, RunOptions},
+    ids::ShotName,
     message::{QaError, QaResponse},
 };
 use gdtf_screenshot::ShotDir;
@@ -12,7 +13,7 @@ use super::{
         GPU_SHOT_NAME, HEADLESS_SHOT_NAME, gpu_game_app_listening, gpu_shot_dir, headless_shot_dir,
         landing_capture_app_listening,
     },
-    command_exchange::{CAPTURE_SCREENSHOT, exchange, run},
+    command_exchange::{APP_PHASE, CAPTURE_SCREENSHOT, exchange, exchange_all, ran_body, run},
     socket_support::{TestError, TestResult, capture_app_listening},
 };
 
@@ -56,6 +57,14 @@ fn assert_png_under(attachment: &ReplyAttachment, dir: &ShotDir, stem: &str) -> 
     png
 }
 
+// Each fixture call owns the directory its PNG landed in, so a case clears only that one.
+fn clear_case_dir(png: &Path) {
+    let Some(dir) = png.parent() else {
+        return;
+    };
+    drop(std::fs::remove_dir_all(dir));
+}
+
 #[test]
 fn a_landed_capture_over_the_socket_attaches_a_png_inside_the_shot_directory() -> TestResult {
     let reply = exchange(
@@ -68,8 +77,53 @@ fn a_landed_capture_over_the_socket_attaches_a_png_inside_the_shot_directory() -
     )?;
 
     let attachment = attachment_of(&reply)?;
-    assert_png_under(attachment, &headless_shot_dir(), HEADLESS_SHOT_NAME);
-    drop(std::fs::remove_dir_all(headless_shot_dir().as_path()));
+    let png = assert_png_under(attachment, &headless_shot_dir(), HEADLESS_SHOT_NAME);
+    clear_case_dir(&png);
+    Ok(())
+}
+
+#[test]
+fn a_capture_rider_attaches_a_png_to_the_reply_its_command_produced() -> TestResult {
+    let mut replies = exchange_all(
+        landing_capture_app_listening,
+        vec![
+            run(APP_PHASE, "()", RunOptions::default()),
+            run(
+                APP_PHASE,
+                "()",
+                RunOptions::new(
+                    None,
+                    Some(CaptureRider::new(Some(ShotName::new(
+                        HEADLESS_SHOT_NAME.to_owned(),
+                    )))),
+                ),
+            ),
+        ],
+    )?;
+    let Some(with_rider) = replies.pop() else {
+        unreachable!("two requests yield two replies");
+    };
+    let Some(plain) = replies.pop() else {
+        unreachable!("two requests yield two replies");
+    };
+    let plain_body = ran_body(APP_PHASE, plain)?;
+
+    let QaResponse::Outcome(CommandOutcome::Ran { reply, attachments }) = &with_rider else {
+        return Err(format!("a capture rider runs its command first, got {with_rider:?}").into());
+    };
+    assert_eq!(
+        reply.as_str(),
+        plain_body,
+        "the rider leaves the command's own reply body alone",
+    );
+    assert_eq!(
+        attachments.len(),
+        1,
+        "the rider appends exactly one attachment: {attachments:?}",
+    );
+    let attachment = attachment_of(&with_rider)?;
+    let png = assert_png_under(attachment, &headless_shot_dir(), HEADLESS_SHOT_NAME);
+    clear_case_dir(&png);
     Ok(())
 }
 

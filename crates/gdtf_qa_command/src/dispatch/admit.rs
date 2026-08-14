@@ -1,8 +1,6 @@
 //! Admit or refuse a command by name against the host command set.
 
-use gdtf_qa_protocol::command::{
-    CommandAvailability, CommandName, RefusalNote, RunOptions, UnavailableCode,
-};
+use gdtf_qa_protocol::command::{CommandAvailability, CommandName, RefusalNote, UnavailableCode};
 
 use crate::command::ErasedCommand;
 
@@ -68,35 +66,16 @@ impl<F> core::fmt::Debug for Admission<'_, F> {
     }
 }
 
-const fn rider_refusal(options: &RunOptions) -> Option<CommandRefusal> {
-    if options.is_plain() {
-        return None;
-    }
-    let note = match (options.await_ready.is_some(), options.capture.is_some()) {
-        (true, true) => "this build has neither the await_ready nor the capture rider",
-        (true, false) => "this build has no await_ready rider",
-        _ => "this build has no capture rider",
-    };
-    Some(CommandRefusal::new(
-        UnavailableCode::NotBuilt,
-        RefusalNote::from_static(note),
-    ))
-}
-
-/// Look up `name` in `commands` and check availability and riders.
+/// Look up `name` in `commands` and check its availability against host facts.
 #[must_use]
 pub fn admit<'a, F>(
     commands: &'a [&'a dyn ErasedCommand<F>],
     name: &CommandName,
-    options: &RunOptions,
     facts: &F,
 ) -> Admission<'a, F> {
     let Some(command) = commands.iter().copied().find(|entry| entry.name() == *name) else {
         return Admission::Unknown(commands.iter().map(|entry| entry.name()).collect());
     };
-    if let Some(refusal) = rider_refusal(options) {
-        return Admission::Unavailable(refusal);
-    }
     match command.availability(facts) {
         CommandAvailability::Available => Admission::Admit(command),
         CommandAvailability::Unavailable { code, note } => {

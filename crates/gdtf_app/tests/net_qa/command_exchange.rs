@@ -209,16 +209,38 @@ pub(crate) fn exchange_inspecting<T>(
     Ok((app, replies, expected))
 }
 
-fn exchange_over(
-    app: &mut App,
-    port: NetQaPort,
-    requests: Vec<QaRequest>,
-) -> Result<Vec<QaResponse>, TestError> {
+/// Exchange `first`, let `between` write the live world, then exchange `second`.
+///
+/// The world changes with no request in flight, so what each call sees is fixed by the case.
+pub(crate) fn exchange_around(
+    fixture: SocketFixture,
+    first: QaRequest,
+    between: impl FnOnce(&mut App),
+    second: QaRequest,
+) -> Result<(QaResponse, QaResponse), TestError> {
+    let (mut app, port) = fixture()?;
+    let mut client = greet(&mut app, port)?;
+    let before = client.exchange(&mut app, &first)?;
+    between(&mut app);
+    let after = client.exchange(&mut app, &second)?;
+    Ok((before, after))
+}
+
+fn greet(app: &mut App, port: NetQaPort) -> Result<Client, TestError> {
     let mut client = Client::connect(port)?;
     let hello = client.exchange(app, &QaRequest::Hello(NET_QA_PROTOCOL_VERSION))?;
     if !matches!(hello, QaResponse::HelloOk(_)) {
         return Err(format!("the handshake must succeed first, got {hello:?}").into());
     }
+    Ok(client)
+}
+
+fn exchange_over(
+    app: &mut App,
+    port: NetQaPort,
+    requests: Vec<QaRequest>,
+) -> Result<Vec<QaResponse>, TestError> {
+    let mut client = greet(app, port)?;
     let mut replies = Vec::with_capacity(requests.len());
     for request in &requests {
         replies.push(client.exchange(app, request)?);

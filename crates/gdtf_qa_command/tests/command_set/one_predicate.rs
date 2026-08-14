@@ -8,8 +8,6 @@ use gdtf_qa_command::{
 };
 use gdtf_qa_protocol::command::CommandAvailability;
 
-use crate::support::plain;
-
 fn advertised_and_admitted_agree(facts: FakeFacts) {
     let published = catalogue(fake_host_name(), FAKE_COMMANDS, &facts);
     assert_eq!(
@@ -19,7 +17,7 @@ fn advertised_and_admitted_agree(facts: FakeFacts) {
     );
 
     for entry in &published.entries {
-        let decision = admit(FAKE_COMMANDS, &entry.command, &plain(), &facts);
+        let decision = admit(FAKE_COMMANDS, &entry.command, &facts);
         match (&entry.availability, decision) {
             (CommandAvailability::Available, Admission::Admit(_)) => {}
             (CommandAvailability::Unavailable { code, note }, Admission::Unavailable(refusal)) => {

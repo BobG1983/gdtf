@@ -2,7 +2,7 @@
 
 use std::sync::mpsc::Receiver;
 
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemState, prelude::*};
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::{
     command::{CommandArgsRon, CommandName, RunOptions},
@@ -13,19 +13,45 @@ use super::fake::FakeFacts;
 use crate::{
     command::ErasedCommand,
     dispatch::{
-        Admission, CommandInbox, admit, register_command_set, unavailable_reply, unknown_reply,
+        CallQueues, IncomingCall, QaCommandSystems, register_command_set, retest_waiting,
+        route_call,
     },
 };
 
+/// The command set the fake host re-tests its held calls against.
+#[derive(Resource, Deref)]
+pub struct FakeCommandSet(&'static [&'static dyn ErasedCommand<FakeFacts>]);
+
+impl FakeCommandSet {
+    /// Wrap the set a fake host was built with.
+    #[must_use]
+    pub const fn new(commands: &'static [&'static dyn ErasedCommand<FakeFacts>]) -> Self {
+        Self(commands)
+    }
+}
+
 /// Build an app with the given command set and facts resource.
-pub fn fake_app(commands: &[&dyn ErasedCommand<FakeFacts>], facts: FakeFacts) -> App {
+pub fn fake_app(
+    commands: &'static [&'static dyn ErasedCommand<FakeFacts>],
+    facts: FakeFacts,
+) -> App {
     let mut app = App::new();
     app.insert_resource(facts);
+    app.insert_resource(FakeCommandSet::new(commands));
     register_command_set(&mut app, commands);
+    app.add_systems(Update, retest_fake_waiting.in_set(QaCommandSystems::Route));
     app
 }
 
-/// Admit a command call into the app inbox and return the reply channel.
+fn retest_fake_waiting(
+    facts: Res<FakeFacts>,
+    commands: Res<FakeCommandSet>,
+    mut queues: CallQueues,
+) {
+    retest_waiting(**commands, &facts, &mut queues);
+}
+
+/// Route a command call into the app and return the reply channel.
 #[must_use]
 pub fn run_fake_command(
     app: &mut App,
@@ -36,16 +62,10 @@ pub fn run_fake_command(
 ) -> Receiver<QaResponse> {
     let (responder, answer) = Responder::channel();
     let facts = *app.world().resource::<FakeFacts>();
-    match admit(commands, name, options, &facts) {
-        Admission::Admit(_) => {
-            app.world_mut().resource_mut::<CommandInbox>().admit(
-                name.clone(),
-                arguments.clone(),
-                responder,
-            );
-        }
-        Admission::Unavailable(refusal) => responder.reply(unavailable_reply(refusal)),
-        Admission::Unknown(known) => responder.reply(unknown_reply(known)),
+    let call = IncomingCall::new(name.clone(), arguments.clone(), options.clone(), responder);
+    let mut state: SystemState<CallQueues> = SystemState::new(app.world_mut());
+    if let Ok(mut queues) = state.get_mut(app.world_mut()) {
+        route_call(commands, call, &facts, &mut queues);
     }
     answer
 }

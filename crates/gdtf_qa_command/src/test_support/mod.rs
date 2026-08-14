@@ -20,7 +20,7 @@ pub use fake::{
     FakeSettleRaised, FakeSettleReply, FakeSettleSignal, FakeStall, FakeStallArgs, FakeStallLabel,
     FakeStallReply, fake_facts_loaded, fake_facts_unloaded, fake_host_name,
 };
-pub use harness::{fake_app, run_fake_command};
+pub use harness::{FakeCommandSet, fake_app, run_fake_command};
 
 #[cfg(test)]
 mod test;

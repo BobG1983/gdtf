@@ -4,9 +4,17 @@ use bevy::prelude::*;
 use gdtf_net_qa_transport::{PendingQueue, sweep_pending};
 
 use super::{
-    CommandCall, CommandInbox, DeferredReplies, QaCommandSystems, claim_calls, sweep_deferred,
+    CaptureHolds, CommandCall, CommandInbox, DeferredReplies, QaCommandSystems, WaitingCalls,
+    claim_calls, poll_capture_holds, sweep_deferred,
 };
 use crate::command::{ErasedCommand, QaCommand};
+
+/// Register the resources and the polling system the run riders need.
+pub fn register_riders(app: &mut App) {
+    app.init_resource::<WaitingCalls>();
+    app.init_resource::<CaptureHolds>();
+    app.add_systems(Last, poll_capture_holds);
+}
 
 /// Register inbox, queue, claim, sweep, and the command's own handler for `C`.
 pub fn register_command<C: QaCommand>(app: &mut App) {
@@ -22,8 +30,9 @@ pub fn register_command<C: QaCommand>(app: &mut App) {
     C::register_handler(app);
 }
 
-/// Register every command in a set.
+/// Register every command in a set, plus the rider wiring the router needs.
 pub fn register_command_set<F>(app: &mut App, commands: &[&dyn ErasedCommand<F>]) {
+    register_riders(app);
     for command in commands {
         command.register(app);
     }

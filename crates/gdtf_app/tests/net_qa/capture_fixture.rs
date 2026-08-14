@@ -1,4 +1,7 @@
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    sync::atomic::{AtomicU32, Ordering},
+};
 
 use bevy::{
     DefaultPlugins,
@@ -54,6 +57,12 @@ pub(crate) fn headless_shot_dir() -> ShotDir {
     )))
 }
 
+// One directory per fixture call, counted rather than named, so no two calls pick the same one.
+fn next_case_dir_name() -> String {
+    static CASES: AtomicU32 = AtomicU32::new(0);
+    format!("case_{}", CASES.fetch_add(1, Ordering::Relaxed))
+}
+
 fn workspace_assets_root() -> PathBuf {
     let Some(root) = gdtf_assets::workspace_assets_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
@@ -95,8 +104,11 @@ fn draw_into_the_capture_image(app: &mut App) {
 }
 
 /// The headless menu app, listening, with a PNG arriving at the path the pump picked.
+///
+/// Each call writes into its own directory under [`headless_shot_dir`], so two cases running
+/// side by side never share a file or delete each other's.
 pub(crate) fn landing_capture_app_listening() -> Result<(App, NetQaPort), TestError> {
-    let dir = headless_shot_dir();
+    let dir = ShotDir::new(headless_shot_dir().join(next_case_dir_name()));
     drop(std::fs::remove_dir_all(dir.as_path()));
     let (mut app, port) = capture_app_listening()?;
     app.insert_resource(dir);

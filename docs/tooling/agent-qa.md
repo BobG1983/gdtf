@@ -263,9 +263,19 @@ Notes an agent relies on:
   comes back `Unavailable` with the precondition named.
 - **`run`'s riders** are `await_ready` (keep re-testing admission for that
   many seconds instead of deciding once) and `capture` (take a screenshot after
-  the command has run). Neither is built yet: a call carrying either comes back
-  `Unavailable { code: NotBuilt }` rather than running the command with the rider
-  silently dropped.
+  the command has run). `await_ready` holds a call its command refuses right now
+  and tests admission again every frame; the moment the command admits, the call
+  runs. When the seconds run out the reply is the command's OWN `Unavailable`
+  refusal — the one the last test produced — never a rider refusal and never
+  `Timeout`. Nothing clamps the budget: a waiting call holds the channel exactly
+  as a parked `wait` does, and a budget past the three minutes the socket waits
+  for a reply answers `Timeout` from the connection instead. A name the host does
+  not know still comes back `Unknown` at once, because waiting cannot make a name
+  appear. `capture` runs the command first and appends one PNG attachment to the
+  reply it produced; an outcome that is not `Ran` comes straight back with no
+  shot taken, and a shot that never lands answers `Timeout` rather than the reply
+  without its PNG. Both riders compose on one call: it waits for admission, runs,
+  then comes back with the attachment.
 - **What the channel answers today.** The GAME host publishes the commands its catalogue lists.
   `app.phase` reports where the app is at every level of its state machine.
   `capture.screenshot` writes a PNG of what the game is showing and attaches it
