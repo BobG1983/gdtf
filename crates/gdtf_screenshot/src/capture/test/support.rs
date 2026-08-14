@@ -1,19 +1,11 @@
 use std::path::PathBuf;
 
-use bevy::{
-    asset::Assets,
-    camera::{ImageRenderTarget, RenderTarget},
-    image::Image,
-    prelude::*,
-    render::view::window::screenshot::Screenshot,
-};
+use bevy::{prelude::*, render::gpu_readback::Readback};
 
 use crate::{
     capture::{
-        CaptureCompletions, CaptureOutcome, CapturePipelinePlugin, CaptureQueue, CaptureSource,
-        ShotDir, ShotStem,
+        CaptureCompletions, CaptureOutcome, CapturePipelinePlugin, CaptureQueue, ShotDir, ShotStem,
     },
-    present::QaCaptureTarget,
     settle::{PollCap, SettleFrames},
 };
 
@@ -34,25 +26,6 @@ pub(super) fn pump_app(dir: PathBuf) -> App {
     app
 }
 
-pub(super) fn install_capture_target(app: &mut App, scale_factor: f32) -> ImageRenderTarget {
-    app.init_resource::<Assets<Image>>();
-    let handle = app
-        .world_mut()
-        .resource_mut::<Assets<Image>>()
-        .add(Image::default());
-    let target = ImageRenderTarget {
-        handle,
-        scale_factor,
-    };
-    app.insert_resource(QaCaptureTarget::new(target.clone()));
-    app.insert_resource(CaptureSource::Offscreen(target.clone()));
-    target
-}
-
-pub(super) fn spawn_camera_aimed_at(app: &mut App, target: RenderTarget) -> Entity {
-    app.world_mut().spawn((Camera::default(), target)).id()
-}
-
 pub(super) fn enqueue(app: &mut App, stem: &str) {
     app.world_mut()
         .resource_mut::<CaptureQueue<()>>()
@@ -61,7 +34,7 @@ pub(super) fn enqueue(app: &mut App, stem: &str) {
 
 pub(super) fn spawned_captures(app: &mut App) -> usize {
     let world = app.world_mut();
-    let mut query = world.query::<&Screenshot>();
+    let mut query = world.query::<&Readback>();
     query.iter(world).count()
 }
 
@@ -71,16 +44,6 @@ pub(super) fn outcomes(app: &App) -> Vec<CaptureOutcome> {
         .iter()
         .map(|completion| completion.outcome().clone())
         .collect()
-}
-
-/// Drive until the pump either finishes a capture or spawns one.
-pub(super) fn drive_until_settled(app: &mut App) {
-    for _ in 0..DRIVE_UPDATES {
-        app.update();
-        if !outcomes(app).is_empty() || spawned_captures(app) > 0 {
-            return;
-        }
-    }
 }
 
 pub(super) fn drive_until_spawned(app: &mut App) -> Option<u32> {

@@ -80,7 +80,7 @@ fn the_pump_creates_a_missing_shot_directory_before_it_spawns() {
     };
     assert!(
         dir.is_dir(),
-        "the pump must create {} before it spawns — Bevy's save_to_disk cannot write into a \
+        "the pump must create {} before it spawns — the capture's PNG writer cannot write into a \
          directory that is not there",
         dir.display(),
     );

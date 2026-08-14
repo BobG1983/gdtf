@@ -20,6 +20,4 @@ pub(in crate::states::running::options) use stepper_setting::{
 pub(in crate::states::running::options) use theming::paint_sound_toggle;
 
 #[cfg(test)]
-mod screenshot;
-#[cfg(test)]
 mod test;

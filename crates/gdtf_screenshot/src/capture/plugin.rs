@@ -8,9 +8,11 @@ use super::{
     dir::{ShotDir, ShotSequence},
     pump::drive_captures,
     queue::{CaptureCompletions, CaptureQueue},
-    source::CaptureSource,
 };
-use crate::settle::{PollCap, SettleFrames};
+use crate::{
+    settle::{PollCap, SettleFrames},
+    window_capture::CaptureImage,
+};
 
 /// System set holding the capture pump.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -41,7 +43,7 @@ impl<P: Send + Sync + 'static> Plugin for CapturePipelinePlugin<P> {
             .init_resource::<ShotSequence>()
             .init_resource::<SettleFrames>()
             .init_resource::<PollCap>()
-            .init_resource::<CaptureSource>();
+            .init_resource::<CaptureImage>();
         app.add_systems(Update, drive_captures::<P>.in_set(CaptureSystems));
     }
 }

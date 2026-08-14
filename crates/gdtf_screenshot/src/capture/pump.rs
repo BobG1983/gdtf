@@ -1,25 +1,26 @@
-//! The one settle → aim-check → spawn → verify → complete loop.
+//! The one settle → spawn → verify → complete loop.
 
 use bevy::{ecs::system::SystemParam, prelude::*};
 
 use super::{
-    aim::{CaptureAim, CaptureAimCheck},
     dir::{ShotDir, ShotSequence, next_capture_path},
     frames::{FrameTick, FramesLeft},
     outcome::CaptureOutcome,
     queue::{CaptureCompletions, CaptureQueue, CaptureStage, InFlightCapture},
-    source::CaptureSource,
     spawn::{ensure_dir, spawn_capture},
     verify::{ShotFile, inspect_shot},
 };
-use crate::settle::{PollCap, SettleFrames};
+use crate::{
+    settle::{PollCap, SettleFrames},
+    window_capture::CaptureImage,
+};
 
 #[derive(SystemParam)]
 pub(super) struct CaptureTunables<'w> {
     settle: Res<'w, SettleFrames>,
     poll:   Res<'w, PollCap>,
     dir:    Res<'w, ShotDir>,
-    source: Res<'w, CaptureSource>,
+    image:  Res<'w, CaptureImage>,
 }
 
 pub(super) fn drive_captures<P: Send + Sync + 'static>(
@@ -27,10 +28,9 @@ pub(super) fn drive_captures<P: Send + Sync + 'static>(
     mut completions: ResMut<CaptureCompletions<P>>,
     mut sequence: ResMut<ShotSequence>,
     tunables: CaptureTunables,
-    aim: CaptureAimCheck,
     mut commands: Commands,
 ) {
-    advance_in_flight(&mut queue, &mut completions, &tunables, &aim, &mut commands);
+    advance_in_flight(&mut queue, &mut completions, &tunables, &mut commands);
     claim_requests(&mut queue, &tunables, &mut sequence);
 }
 
@@ -54,7 +54,6 @@ fn advance_in_flight<P: Send + Sync + 'static>(
     queue: &mut CaptureQueue<P>,
     completions: &mut CaptureCompletions<P>,
     tunables: &CaptureTunables<'_>,
-    aim: &CaptureAimCheck<'_, '_>,
     commands: &mut Commands<'_, '_>,
 ) {
     for mut capture in queue.take_in_flight() {
@@ -64,15 +63,7 @@ fn advance_in_flight<P: Send + Sync + 'static>(
                     queue.keep(capture);
                     continue;
                 }
-                if let CaptureAim::Refused(detail) = aim.verify(&tunables.source) {
-                    warn!(
-                        detail = %detail.as_str(),
-                        "gdtf_screenshot: refusing a capture of an image nothing renders into",
-                    );
-                    completions.push(CaptureOutcome::Refused(detail), capture.payload);
-                    continue;
-                }
-                spawn_capture(&capture.path, &tunables.source, commands);
+                spawn_capture(&capture.path, &tunables.image, commands);
                 capture.stage = CaptureStage::Capturing(FramesLeft::new(**tunables.poll));
                 queue.keep(capture);
             }

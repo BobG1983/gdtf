@@ -1,6 +1,8 @@
 //! Contextual panel integration: acts, doors, layout, melee, shove, throw.
 
 mod actors;
+#[cfg(debug_assertions)]
+mod button_hover;
 mod door;
 mod downed_acts;
 mod downed_guards;

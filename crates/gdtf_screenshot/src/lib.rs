@@ -4,15 +4,13 @@ pub mod capture;
 pub mod path;
 pub mod present;
 pub mod settle;
+pub mod window_capture;
 
 pub use capture::{
-    CaptureAim, CaptureAimDetail, CaptureCompletion, CaptureCompletions, CaptureOutcome,
-    CapturePipelinePlugin, CaptureQueue, CaptureSource, CaptureSystems, ShotDir, ShotDirName,
-    ShotStem, aims_at,
+    CaptureCompletion, CaptureCompletions, CaptureOutcome, CapturePipelinePlugin, CaptureQueue,
+    CaptureSystems, ShotDir, ShotDirName, ShotStem,
 };
 pub use path::CapturePath;
-pub use present::{
-    CapturePresentPlugin, PRESENT_LAYER, PRESENT_ORDER, PresentCamera, PresentSprite,
-    PresentSystems, QaCaptureTarget,
-};
+pub use present::CapturePresentPlugin;
 pub use settle::{PollCap, SettleFrames};
+pub use window_capture::{CaptureImage, WindowCapturePlugin};

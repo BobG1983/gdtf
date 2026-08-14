@@ -7,7 +7,7 @@ use gdtf_qa_command::{
 use gdtf_qa_protocol::{
     command::{
         ArtifactPath, AttachmentKind, CommandAvailability, CommandName, CommandSummary,
-        CommandTiming, RefusalNote, ReplyAttachment, UnavailableCode,
+        CommandTiming, ReplyAttachment,
     },
     ids::ShotName,
     message::{QaError, QaResponse},
@@ -82,10 +82,6 @@ fn answer(outcome: CaptureOutcome, responder: ShotResponder) {
             let attachment = ReplyAttachment::new(AttachmentKind::Png, artifact.clone());
             responder.answer_with(&CaptureScreenshotReply { path: artifact }, vec![attachment]);
         }
-        CaptureOutcome::Refused(detail) => responder.unavailable(
-            UnavailableCode::WrongState,
-            RefusalNote::from_owned(detail.as_str().to_owned()),
-        ),
         CaptureOutcome::TimedOut(path) => {
             debug!(path = %path.display(), "net_qa: screenshot capture timed out");
             responder

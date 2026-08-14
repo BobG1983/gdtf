@@ -4,16 +4,14 @@ use bevy::prelude::*;
 use gdtf_net_qa_transport::{PendingQueue, Responder};
 use gdtf_qa_command::dispatch::{CommandCall, CommandResponder};
 use gdtf_qa_protocol::{
-    command::{AttachmentKind, CommandOutcome, UnavailableCode},
+    command::{AttachmentKind, CommandOutcome},
     message::{QaError, QaResponse},
 };
-use gdtf_screenshot::{CaptureAimDetail, CaptureCompletions, CaptureOutcome, CaptureQueue};
+use gdtf_screenshot::{CaptureCompletions, CaptureOutcome, CaptureQueue};
 
 use crate::dev::net_qa::commands::capture::screenshot::{
     CaptureScreenshot, ShotResponder, handle_capture_screenshot,
 };
-
-const REFUSAL_DETAIL: &str = "nothing renders into the image this capture would read";
 
 fn handler_app() -> App {
     let mut app = App::new();
@@ -31,32 +29,6 @@ fn complete_with(app: &mut App, outcome: CaptureOutcome) -> Receiver<QaResponse>
         .resource_mut::<CaptureCompletions<ShotResponder>>()
         .push(outcome, CommandResponder::new(responder));
     reply_rx
-}
-
-#[test]
-fn a_refused_capture_answers_unavailable_with_wrong_state_and_the_detail() {
-    let mut app = handler_app();
-    let detail = CaptureAimDetail::new(REFUSAL_DETAIL.to_owned());
-    let reply_rx = complete_with(&mut app, CaptureOutcome::Refused(detail));
-
-    app.update();
-
-    let reply = reply_rx.try_recv().ok();
-    let Some(QaResponse::Outcome(CommandOutcome::Unavailable { code, note })) = &reply else {
-        unreachable!("a refused capture must answer Unavailable, got {reply:?}");
-    };
-    assert_eq!(
-        *code,
-        UnavailableCode::WrongState,
-        "a capture the host refuses because nothing renders into its target is a WRONG STATE \
-         refusal, not NotBuilt and not Unsupported; got {reply:?}",
-    );
-    assert!(
-        note.as_str().contains(REFUSAL_DETAIL),
-        "the refusal must carry the aim check's own detail so a caller can see the mismatch; it \
-         said {:?}",
-        note.as_str(),
-    );
 }
 
 #[test]

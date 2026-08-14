@@ -324,10 +324,11 @@ command in
 `capture.screenshot` writes a PNG of what the game is showing and answers `Ran` with a
 `ReplyAttachment(Png, …)` naming it; `name` is optional and becomes the file stem inside
 the host's shot directory. It is `Deferred`, so the reply arrives once the PNG is on disk;
-a capture that never lands answers `Timeout`, and one aimed at an image nothing renders
-into is refused `Unavailable` with code `WrongState`. The capture pipeline itself — queue,
-settle, aim check, spawn, verify — lives in `crates/gdtf_screenshot` and is shared by both
-hosts; the command in
+a capture that never lands answers `Timeout`, and nothing refuses it. The capture pipeline
+itself — queue, settle, spawn the readback, verify — lives in `crates/gdtf_screenshot` and
+is shared by both hosts. `WindowCapturePlugin` there points the window's output attachment
+at an image it owns for the capture frame, reads that image back and writes the PNG, so no
+camera is ever retargeted and a covered or minimized window still captures. The command in
 [`crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs)
 only maps its `CaptureOutcome` onto the wire.
 

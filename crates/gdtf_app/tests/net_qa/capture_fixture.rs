@@ -4,6 +4,7 @@ use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
     asset::AssetPlugin,
+    camera::{ImageRenderTarget, RenderTarget},
     prelude::*,
     render::RenderPlugin,
     window::{ExitCondition, WindowPlugin, WindowResolution},
@@ -11,7 +12,7 @@ use bevy::{
 };
 use gdtf_app::test_support::{self, AppState, NetQaPlugin, RunningState};
 use gdtf_qa_protocol::ports::NetQaPort;
-use gdtf_screenshot::{CaptureSystems, PollCap, SettleFrames, ShotDir, ShotDirName};
+use gdtf_screenshot::{CaptureImage, CaptureSystems, PollCap, SettleFrames, ShotDir, ShotDirName};
 use gdtf_test_utils::advance_until;
 
 use super::socket_support::{TestError, capture_app_listening};
@@ -23,6 +24,9 @@ pub(crate) const GPU_SHOT_NAME: &str = "socket_shot";
 pub(crate) const HEADLESS_SHOT_NAME: &str = "headless_shot";
 
 const GPU_WINDOW_PX: UVec2 = UVec2::new(320, 180);
+
+/// Colour the fixture's own camera draws into the capture image.
+const FIXTURE_FRAME: Color = Color::srgb(0.9, 0.2, 0.4);
 
 const GPU_SETTLE: u32 = 4;
 
@@ -61,8 +65,7 @@ fn stand_in_shot_name() -> String {
     format!("{HEADLESS_SHOT_NAME}_0.png")
 }
 
-// A windowless, adapter-less app has no swapchain to read, so Bevy's save_to_disk never fires
-// and this is the only thing that can put a PNG under the shot directory.
+// Nothing renders here, so this stands in for the capture's own PNG writer.
 fn stand_in_for_the_renderer(dir: Res<ShotDir>) {
     if !dir.is_dir() {
         return;
@@ -73,6 +76,22 @@ fn stand_in_for_the_renderer(dir: Res<ShotDir>) {
     }
     let frame = image::RgbaImage::from_pixel(2, 2, image::Rgba([7, 9, 11, 255]));
     drop(frame.save_with_format(&path, image::ImageFormat::Png));
+}
+
+// Without winit there is no window handle, so bevy runs no window camera and draws nothing.
+fn draw_into_the_capture_image(app: &mut App) {
+    let image = app.world().resource::<CaptureImage>().clone();
+    app.world_mut().spawn((
+        Camera2d,
+        Camera {
+            clear_color: ClearColorConfig::Custom(FIXTURE_FRAME),
+            ..default()
+        },
+        RenderTarget::Image(ImageRenderTarget {
+            handle:       (*image).clone(),
+            scale_factor: 1.0,
+        }),
+    ));
 }
 
 /// The headless menu app, listening, with a PNG arriving at the path the pump picked.
@@ -139,5 +158,6 @@ pub(crate) fn gpu_game_app_listening() -> Result<(App, NetQaPort), TestError> {
     ) {
         return Err("the windowed game never rested at RunningState::Menu".into());
     }
+    draw_into_the_capture_image(&mut app);
     Ok((app, port))
 }

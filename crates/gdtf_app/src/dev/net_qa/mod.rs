@@ -5,7 +5,6 @@ mod config;
 mod env;
 mod facts;
 mod plugin;
-mod present;
 mod router;
 /// Wire types for external QA clients.
 pub mod wire;

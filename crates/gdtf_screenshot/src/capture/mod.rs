@@ -1,13 +1,11 @@
-//! One capture pipeline: settle, check the aim, spawn, verify, complete.
+//! One capture pipeline: settle, spawn the readback, verify, complete.
 
-mod aim;
 mod dir;
 mod frames;
 mod outcome;
 mod plugin;
 mod pump;
 mod queue;
-mod source;
 mod spawn;
 mod stem;
 mod verify;
@@ -15,10 +13,8 @@ mod verify;
 #[cfg(test)]
 mod test;
 
-pub use aim::{CaptureAim, CaptureAimDetail};
 pub use dir::{ShotDir, ShotDirName};
 pub use outcome::CaptureOutcome;
 pub use plugin::{CapturePipelinePlugin, CaptureSystems};
 pub use queue::{CaptureCompletion, CaptureCompletions, CaptureQueue};
-pub use source::{CaptureSource, aims_at};
 pub use stem::ShotStem;
