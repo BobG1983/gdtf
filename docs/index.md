@@ -31,7 +31,7 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 
 ## Engineering
 
-- [architecture.md](architecture.md) — the model/view split (the render-free authoritative sim `gdtf_battle_sim`, the presenter that mirrors it, the one-way input → presenter → sim chain), the rule that a `can_*` / `*_refusal` gate in the sim is the only answer to whether an act may happen, the `bevy_ui` / `egui` boundary, and the `AppState` tree.
+- [architecture.md](architecture.md) — the model/view split (the render-free authoritative sim `gdtf_battle_sim`, the presenter that mirrors it, the one-way input → presenter → sim chain), the rule that the presenter draws a fact when the playback cursor plays it and never when the sim resolves it, the rule that a `can_*` / `*_refusal` gate in the sim is the only answer to whether an act may happen, the `bevy_ui` / `egui` boundary, and the `AppState` tree.
 - [testing.md](testing.md) — the Rust test suite: how to run it, suite layout, conventions (injected seeded RNG, render-free model tests), and what it pins vs. what it deliberately doesn't.
 - [ui-picking-arbitration.md](ui-picking-arbitration.md) — how a mouse press is arbitrated between the UI and the battle world: Bevy's UI picking backend is already installed by `UiPlugin`, how it coexists with the battle `cursor_over_ui` gate, the minimum arbitration rule ("one pointer position, one owner per frame"), the wiring spec for the picking rollout, and the keyboard / gamepad activation state.
 

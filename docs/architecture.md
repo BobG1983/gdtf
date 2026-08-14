@@ -1,6 +1,6 @@
 # Architecture
 
-The three structural rules everything else is built on. All three are checkable against
+The four structural rules everything else is built on. All four are checkable against
 the tree, which is why they live here rather than in a decision record: if the code stops
 matching this page, the page is wrong and gets fixed.
 
@@ -27,6 +27,38 @@ battle that replays differently gives no error.
 
 **Code sites:** the crate boundaries themselves enforce direction, since
 `gdtf_battle_sim`'s manifest does not depend on the presenter.
+
+## The presenter plays the log
+
+**Anything the player sees happens when the playback cursor plays the fact, never when the
+sim resolves it.**
+
+The sim writes an act log as it resolves. The presenter walks that log at its own pace and
+draws what the cursor has reached, so the two clocks are always apart and the sim is always
+ahead.
+
+- **The log** — `ActLog` and `ActSeq`, in `gdtf_battle_sim::act_log`.
+- **The cursor** — `PlaybackCursor` and `LogPlayhead`, advanced by `advance_playback`.
+  `playback_caught_up` and `PlaybackGate` answer whether it has reached the sim.
+- **The played fact** — `Played` and `PlayedSignals`. This is what a presenter system
+  reads.
+- **The mirror** — `DrawnLife`, `DrawnMagazine`, `DrawnPose`, `DrawnPosition` and
+  `DrawnVitals`: sim state as played so far, and what the view draws from.
+
+**What this forbids:** a presenter system that reads a raw sim message buffer —
+`CoverDestroyed`, `SlabDestroyed` and their kin — and draws the result on the spot.
+Destruction is in scope: cover, wall and slab, and whatever replaces a destroyed piece.
+
+**Why it is load-bearing:** the sim resolves a whole act while playback is still animating
+the one before it. A system that reads the sim directly is not slightly early, it is an
+arbitrary number of acts early, and it fails silently — nothing errors when a wall breaks
+before the shot that broke it. GTW-889 was this bug for floating combat text and death
+ordering; GTW-937 is the same bug for destruction.
+
+**Code sites:** `crates/gdtf_battle_presenter/src/playback/`.
+`crates/gdtf_battle_presenter/src/actors/fx/fct/stacked_reader.rs` is the worked example —
+it reads the played fact rather than the sim's buffer. **Enforced by review, not by a
+test:** nothing in the suite goes red when a new system reads the raw buffer.
 
 ## The sim answers whether an act may happen
 
