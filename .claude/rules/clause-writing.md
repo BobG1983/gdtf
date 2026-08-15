@@ -20,7 +20,7 @@ A clause missing the third is a wish. "No longer depends on the default order" i
 the ordering edge lands, so nothing can fail; rewrite it as the case that reads the downed
 selection and the update count that keeps it readable.
 
-## The five
+## The six
 
 **Direction, for anything ordered.** An ordering clause names both endpoints in order — A before
 B, not "an edge between them". The two directions are different tickets, and the wrong one can
@@ -43,6 +43,17 @@ file and read it before writing the clause; the audit will, and finding it there
 is caused by the thing the clause is about. A second wielded weapon that flips an earlier assertion
 proves nothing about the guard. Say which assertion must go red, and rule out the other ways it
 could.
+
+**Nothing a clause asks for lives off the tree.** **A clause never says "file a bug."** Nor "the
+ticket exists", nor "the label is off", nor anything else answered by reading the board. A clause
+is satisfied by code, and shown by a run. Work that has to happen first but leaves no trace in the
+tree is a **precondition**: file it, and make it a blocking edge on the ticket.
+
+Measured on GTW-1002, whose clause 7 read "The editor's own 'New theme' button is filed as a Linear
+bug against the editor before this ticket lands." Its code half was finished and the gate failed
+the ticket twice on that clause, because the only way to answer it was to query Linear — and the
+answer was no. A blocking edge would have stopped the build from starting, which is what a
+precondition is for. Instead it burned two gate rounds on a ticket that could not pass.
 
 ## Assertions
 

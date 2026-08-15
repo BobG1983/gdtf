@@ -8,6 +8,7 @@ export const meta = {
     { title: 'Revise', detail: 'each proposal rewritten from its editor notes' },
     { title: 'Vote', detail: '4 lenses score every proposal' },
     { title: 'Argue', detail: 'lenses answer each other and re-vote, capped' },
+    { title: 'Settle', detail: "fold the panel's findings into the winning proposal" },
     { title: 'Map', detail: 'every parent clause against the children that own it' },
     { title: 'Write', detail: 'one agent per child writes its whole ticket' },
     { title: 'Audit', detail: 'audit and fix each ticket until no new finding' },
@@ -37,6 +38,7 @@ if (!TICKET) throw new Error(`args must supply { ticket }; got ${JSON.stringify(
 const PROPOSAL_COUNT = A?.proposals ?? 3
 const MAX_VOTE_ROUNDS = 5
 const MAX_AUDIT_ROUNDS = 4
+const MAX_MAP_ROUNDS = 5
 const START_FROM = A?.startFrom ?? 'propose'
 if (!['propose', 'vote', 'map'].includes(START_FROM)) throw new Error(`startFrom must be propose, vote or map; got ${START_FROM}`)
 if (START_FROM === 'map' && !A?.winner) throw new Error('startFrom "map" needs args.winner — the proposal file to build from')
@@ -157,16 +159,30 @@ const VOTE = {
     ranking: {
       type: 'array', description: 'Every proposal id, best first.',
       items: {
-        type: 'object', additionalProperties: false, required: ['id', 'score', 'why'],
+        type: 'object', additionalProperties: false, required: ['id', 'score', 'why', 'changeMyMindBy'],
         properties: {
           id: { type: 'string' },
           score: { type: 'integer', description: '0-10 against this lens only.' },
           why: { type: 'string' },
+          changeMyMindBy: {
+            type: 'string',
+            description: 'Your price on this proposal. For the one you picked: what would make you drop it. For the others: what would make you pick it. Name a change to the proposal, concrete enough that someone could make it and you would have to move. "Nothing" is an answer, but it says you are not judging.',
+          },
         },
       },
     },
     best: { type: 'string' },
-    blocking: { type: 'array', items: { type: 'string' }, description: 'Objections that would make this lens refuse to build even its own pick. Empty if none.' },
+    blocking: {
+      type: 'array',
+      description: 'Objections that would make this lens refuse to build the named proposal, its own pick included. Empty if none. This is a refusal, not a price — a preference goes in changeMyMindBy.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['against', 'objection'],
+        properties: {
+          against: { type: 'string', description: 'The proposal id this objection is against.' },
+          objection: { type: 'string' },
+        },
+      },
+    },
     moved: { type: 'string', enum: ['first-round', 'changed', 'held'], description: 'Whether the other lenses moved your vote this round.' },
     counterArguments: {
       type: 'array',
@@ -178,6 +194,50 @@ const VOTE = {
           theirPoint: { type: 'string', description: 'Their claim, stated fairly enough that they would recognise it.' },
           stance: { type: 'string', enum: ['agree', 'disagree', 'agree-but-outweighed'] },
           argument: { type: 'string', description: 'Why. Evidence from the proposals or the code, not assertion.' },
+        },
+      },
+    },
+  },
+}
+
+const MAP_FIX = {
+  type: 'object', additionalProperties: false,
+  required: ['fixed', 'changes', 'ticketEdits', 'needsTicketRuling'],
+  properties: {
+    fixed: { type: 'boolean', description: 'True only if the proposal file was edited so the flagged clauses are now owned cleanly.' },
+    changes: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false, required: ['clause', 'change'],
+        properties: {
+          clause: { type: 'integer' },
+          change: { type: 'string', description: 'What moved, and between which children.' },
+        },
+      },
+    },
+    ticketEdits: {
+      type: 'array',
+      description: 'Split directives rewritten in the parent ticket file. Empty when the parent was not touched.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['clause', 'before', 'after', 'why', 'newClauseText'],
+        properties: {
+          clause: { type: 'integer' },
+          before: { type: 'string', description: 'The directive as it read, quoted.' },
+          after: { type: 'string', description: 'What it reads now.' },
+          why: { type: 'string', description: 'Why the split cannot satisfy the old wording.' },
+          newClauseText: { type: 'string', description: 'The whole clause after the edit, verbatim, as later stages must quote it.' },
+        },
+      },
+    },
+    needsTicketRuling: {
+      type: 'array',
+      description: 'Empty unless a REQUIREMENT in the parent — what must change, where, or what goes red — is what blocks the split. Those you may not touch. Filling this means the proposal and the ticket were both left unedited.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['clause', 'contradiction', 'whyNoSplitSatisfiesIt'],
+        properties: {
+          clause: { type: 'integer' },
+          contradiction: { type: 'string', description: "Quote the part of the clause that forbids the arrangement." },
+          whyNoSplitSatisfiesIt: { type: 'string' },
         },
       },
     },
@@ -315,7 +375,7 @@ const parent = await agent(
 5. Return the constraints: anything in the description or the comments that fixes ordering, or says what must land before what.
 6. Return what the ticket explicitly puts out of scope.
 
-Write nothing. Change nothing on the board.`,
+Then write the whole ticket — description and numbered clauses, verbatim — to \`${SCRATCH}/ticket.md\`, so a later stage can amend a split directive in it without going back to the board. Write nothing else. Change nothing on the board.`,
   { label: `read:${TICKET}`, phase: 'Read', schema: PARENT },
 )
 if (!parent) throw new Error('could not read the parent ticket')
@@ -433,17 +493,11 @@ let history = []
 let votes = []
 let chosen = null
 
+let winnerPath = null
+
 if (START_FROM === 'map') {
   log(`startFrom=map: building from ${A.winner}`)
-  chosen = await agent(
-    `Read the split proposal at \`${A.winner}\` and return it in structured form. It has already been chosen — do not judge it, do not revise it, write nothing.
-
-${CONTEXT}
-
-Every parent clause must appear in some child's \`ownsClauses\`, whole or as a named portion. If the file leaves a clause unaccounted for, return it as unowned by saying so in \`risks\` rather than inventing an owner.`,
-    { label: 'load-winner', phase: 'Map', schema: PROPOSAL },
-  )
-  if (!chosen) throw new Error(`could not read the supplied winner at ${A.winner}`)
+  winnerPath = A.winner
 } else {
   phase('Vote')
   const proposalList = proposals.map((p) => `- ${p.id}: \`${p.path}\` — ${p.angle}`).join('\n')
@@ -453,9 +507,11 @@ Every parent clause must appear in some child's \`ownsClauses\`, whole or as a n
     round += 1
     const prior = round === 1 ? '' : `
 The other lenses voted last round. Read what they argued and answer it:
-${votes.map((v) => `\n### ${v.lens} — picked ${v.best}\n${v.ranking.map((r) => `  ${r.id}: ${r.score}/10 — ${r.why}`).join('\n')}\n  blocking: ${v.blocking.join('; ') || 'none'}`).join('\n')}
+${votes.map((v) => `\n### ${v.lens} — picked ${v.best}\n${v.ranking.map((r) => `  ${r.id}: ${r.score}/10 — ${r.why}\n    would change its mind by: ${r.changeMyMindBy}`).join('\n')}\n  blocking: ${v.blocking.map((b) => `[${b.against}] ${b.objection}`).join('; ') || 'none'}`).join('\n')}
 
-You may hold your position or change it. Both are legitimate. Say which, and why, in \`answeredOthers\`. Do not converge for the sake of converging — a disagreement that survives scrutiny is worth more than an agreement that was reached to be agreeable.
+Every lens named its price last round. Read the prices on the proposal you picked: if another lens named a condition and this round's proposals meet it, say so. If one named a condition against your pick, answer it or meet it.
+
+You may hold your position or change it. Both are legitimate. Say which, and why. Do not converge for the sake of converging — a disagreement that survives scrutiny is worth more than an agreement that was reached to be agreeable. But a price you named and then ignored when it was paid is not a position, so honour your own.
 `
 
     votes = (await parallel(LENSES.map((lens) => () =>
@@ -469,7 +525,11 @@ ${proposalList}
 
 ${CONTEXT}
 ${prior}
-Read the proposal files, the canon and the code. Score every proposal 0-10 against YOUR lens alone — three other lenses are covering the concerns that are not yours, and a score that quietly folds their concerns in makes the panel useless. Name the proposal you would build. List any objection that would make you refuse to build even your own pick.
+Read the proposal files, the canon and the code. Score every proposal 0-10 against YOUR lens alone — three other lenses are covering the concerns that are not yours, and a score that quietly folds their concerns in makes the panel useless. Name the proposal you would build.
+
+For every proposal, name your price in \`changeMyMindBy\`: what would make you drop the one you picked, and what would make you pick each one you did not. A price is a change to the proposal someone could actually make, not a wish — and once it is paid you are expected to move.
+
+Separately, list in \`blocking\` any objection that would make you refuse to build a proposal at all, your own pick included, and say which proposal each is against. A refusal is not a preference; if you would still build it, it belongs in your price.
 
 ${HOUSE}`,
         { label: `vote-${lens.key}-r${round}`, phase: round === 1 ? 'Vote' : 'Argue', schema: VOTE },
@@ -486,14 +546,30 @@ ${HOUSE}`,
     })
     log(`round ${round}: ${votes.map((v) => `${v.lens}→${v.best}${v.blocking.length ? '!' : ''}`).join(', ')}`)
 
+    // Consensus is about the winner only. A lens refusing to build a proposal nobody picked
+    // is not a disagreement about what to build, so it must not hold the panel open.
     const unanimous = Object.entries(tally).find(([, n]) => n === votes.length)
-    if (unanimous && votes.every((v) => v.blocking.length === 0)) {
+    const refusedByAny = unanimous
+      && votes.some((v) => v.blocking.some((b) => b.against === unanimous[0]))
+    if (unanimous && !refusedByAny) {
       chosen = proposals.find((p) => p.id === unanimous[0])
       log(`consensus on ${unanimous[0]} after ${round} round(s)`)
       break
     }
     if (round === 1) phase('Argue')
   }
+
+  // The panel's findings outlive this run: a hand-picked winner is re-entered as a fresh
+  // process, and the objections that cost it consensus are exactly what it needs revising
+  // against. The script has no filesystem, so an agent writes them.
+  await agent(
+    `Write this vote record to \`${SCRATCH}/votes-final.json\` as JSON, verbatim, and return the path. Do not summarise it, do not judge it, do not read anything else.
+
+\`\`\`json
+${JSON.stringify({ ticket: TICKET, winner: chosen?.id ?? null, rounds: history.length, votes }, null, 2)}
+\`\`\``,
+    { label: 'record-votes', phase: chosen ? 'Settle' : 'Argue' },
+  )
 
   if (!chosen) {
     log(`no consensus after ${MAX_VOTE_ROUNDS} rounds — returning the disagreement`)
@@ -507,37 +583,147 @@ ${HOUSE}`,
       resume: `Workflow({scriptPath: '.claude/workflows/split-ticket.js', args: {ticket: '${TICKET}', startFrom: 'map', winner: '<the proposal file you choose>', scratch: '${SCRATCH}'}})`,
     }
   }
+  winnerPath = chosen.path
 }
+
+// --- Settle ----------------------------------------------------------------
+// A winner still carries every objection the losing lenses raised against it. Fold them in
+// before anyone writes a ticket from it, on both paths — the hand-picked winner needs this
+// most, because it lost the vote it was picked out of.
+
+phase('Settle')
+await agent(
+  `Revise the chosen split proposal at \`${winnerPath}\` in place, so the ticket writers work from a document that answers the panel. Keep its shape and its voice.
+
+${CONTEXT}
+
+The panel's final vote is at \`${SCRATCH}/votes-final.json\` — read it. If it is not there, say so and revise against the proposal and the code alone.
+
+Apply, in this order:
+
+1. **Every \`blocking\` objection whose \`against\` names this proposal.** A lens raising one said it would refuse to build this split. Fix the proposal so the objection no longer holds, or state in the proposal why it does not apply.
+2. **Every \`changeMyMindBy\` price named against this proposal** by a lens that did not pick it. That is the change which would have won its vote, so it is the cheapest real improvement available.
+3. **Every point in \`counterArguments\` where each lens that spoke to it answered \`agree\` or \`agree-but-outweighed\`.** The panel converged there; apply it.
+
+Leave alone any point where the stances conflict. That is the disagreement the vote or the owner already settled, and re-opening it undoes the decision.
+
+Change nothing else. Do not re-argue the split, do not compare it to the proposals that lost, do not touch the board. Open the code and check every symbol and path you write still exists.
+
+${HOUSE}`,
+  { label: 'settle-winner', phase: 'Settle' },
+)
 
 // --- Map -------------------------------------------------------------------
 
 phase('Map')
-const map = await agent(
-  `Build the clause-ownership map for the winning split of ${TICKET}, at \`${chosen.path}\`.
+chosen = await agent(
+  `Read the split proposal at \`${winnerPath}\` and return it in structured form. It has already been chosen and revised — do not judge it, do not revise it further, write nothing.
 
 ${CONTEXT}
 
-Children: ${chosen.children.map((c) => `\`${c.key}\` — ${c.title}`).join('; ')}
+Every parent clause must appear in some child's \`ownsClauses\`, whole or as a named portion. If the file leaves a clause unaccounted for, return it as unowned by saying so in \`risks\` rather than inventing an owner.`,
+  { label: 'load-winner', phase: 'Map', schema: PROPOSAL },
+)
+if (!chosen) throw new Error(`could not read the winning proposal at ${winnerPath}`)
+
+const mapPrompt = (children) => `Build the clause-ownership map for the winning split of ${TICKET}, at \`${winnerPath}\`.
+
+${CONTEXT}
+
+Children: ${children.map((c) => `\`${c.key}\` — ${c.title}`).join('; ')}
 
 One row per parent clause. For each, name every child that owns any part of it and what portion. A clause split into distinct portions across children is legitimate — mark \`covered\` true when the portions together account for the whole clause with nothing left over.
 
 Report as \`unowned\` any clause no child owns, and any clause only partly claimed with the rest left unclaimed. Report as \`overlaps\` only where two children would genuinely do the same work — a clean partition is not an overlap.
 
-Report. Do not fix, do not rewrite the proposal, do not touch the board.`,
-  { label: 'clause-map', phase: 'Map', schema: CLAUSE_MAP },
-)
+Report. Do not fix, do not rewrite the proposal, do not touch the board.`
+
+let map = null
+let mapRounds = 0
+let ticketRuling = []
+const ticketEdits = []
+
+while (mapRounds < MAX_MAP_ROUNDS) {
+  mapRounds += 1
+  map = await agent(mapPrompt(chosen.children), { label: `clause-map-r${mapRounds}`, phase: 'Map', schema: CLAUSE_MAP })
+
+  if (map && !map.unowned.length && !map.overlaps.length) {
+    if (mapRounds > 1) log(`clause map clean after ${mapRounds} rounds`)
+    break
+  }
+  log(`map round ${mapRounds}: unowned [${(map?.unowned ?? []).join(', ')}], overlaps [${(map?.overlaps ?? []).map((o) => o.clause).join(', ')}]`)
+  if (mapRounds === MAX_MAP_ROUNDS) break
+
+  const fix = await agent(
+    `The clause-ownership map of the split at \`${winnerPath}\` is not clean. Fix the proposal so it is.
+
+${CONTEXT}
+
+Unowned clauses — no child owns them, or a child claims part and the rest is unclaimed:
+${(map?.unowned ?? []).map((n) => `- clause ${n}`).join('\n') || '- none'}
+
+Overlaps — two children doing the same work:
+${(map?.overlaps ?? []).map((o) => `- clause ${o.clause}: ${o.childKeys.join(' and ')} — ${o.why}`).join('\n') || '- none'}
+
+Edit the proposal in place: move work between children, split a child, or state a portion the proposal left implied. Keep its shape and its voice, change nothing the map did not flag, and check every symbol and path you write against the tree.
+
+Sometimes the split is fine and the parent is what blocks it. A clause can hold two different things, and they are not equal:
+
+- **A requirement** — what must change, where, and what goes red if it is wrong. This is the contract. **You may never edit it, and never narrow it to make the split fit** (\`${REPO}/.claude/rules/design-fidelity.md\`). If a requirement is what no arrangement of children can satisfy, leave everything alone, return it in \`needsTicketRuling\`, and say why. Stopping is the right answer there.
+- **A split directive** — the ticket telling the splitter how to split: which child owns what, what lands with what. That is this workflow's business, not the ticket's, and it is often written before anyone knew what the children would be. You may rewrite one.
+
+To rewrite a directive, edit \`${SCRATCH}/ticket.md\` in place and record it in \`ticketEdits\`: the clause, the old wording quoted, the new wording, why the split cannot satisfy the old one, and the whole amended clause verbatim — later stages quote clause text word for word, so \`newClauseText\` must be exactly what they should quote. Change no requirement in that file, and touch no clause the map did not flag.
+
+Worked example, so the line is clear. A clause reading "the child that lands this owns all of them" for a list of fixtures is a directive: it says who does the work, not what the work is. Rewriting it to carve out one fixture is legal. Deleting a fixture from the list, or dropping the behaviour the clause requires, is not.
+
+${HOUSE}`,
+    { label: `fix-map-r${mapRounds}`, phase: 'Map', schema: MAP_FIX },
+  )
+
+  if (fix?.needsTicketRuling?.length) {
+    ticketRuling = fix.needsTicketRuling
+    log(`map round ${mapRounds}: the contradiction is in ${TICKET}, not the split — stopping for a ruling`)
+    break
+  }
+  if (!fix?.fixed) {
+    log(`map round ${mapRounds}: fix agent changed nothing — stopping`)
+    break
+  }
+
+  // A rewritten directive changes the clause text the Write stage quotes verbatim, so the
+  // in-memory copy has to follow the file.
+  for (const e of fix.ticketEdits ?? []) {
+    const clause = parent.clauses.find((c) => c.n === e.clause)
+    if (clause) clause.text = e.newClauseText
+    ticketEdits.push(e)
+  }
+  log(`map round ${mapRounds}: ${fix.changes.length} split change(s), ${(fix.ticketEdits ?? []).length} ticket directive(s) — remapping`)
+
+  // The fix rewrote the file, so the structured read of it is stale.
+  chosen = await agent(
+    `Read the split proposal at \`${winnerPath}\` and return it in structured form. It has just been revised — do not judge it, do not revise it further, write nothing.
+
+${CONTEXT}
+
+Every parent clause must appear in some child's \`ownsClauses\`, whole or as a named portion. If the file leaves a clause unaccounted for, return it as unowned by saying so in \`risks\` rather than inventing an owner.`,
+    { label: `reload-winner-r${mapRounds}`, phase: 'Map', schema: PROPOSAL },
+  )
+  if (!chosen) throw new Error(`could not re-read the proposal at ${winnerPath} after fix round ${mapRounds}`)
+}
 
 if (!map || map.unowned.length || map.overlaps.length) {
-  log(`clause map not clean — unowned: [${(map?.unowned ?? []).join(', ')}], overlaps: [${(map?.overlaps ?? []).map((o) => o.clause).join(', ')}]`)
+  log(`clause map not clean after ${mapRounds} round(s)`)
   return {
     ticket: TICKET,
-    outcome: 'clause-map-unclean',
+    outcome: ticketRuling.length ? 'needs-ticket-ruling' : 'clause-map-unclean',
     winner: chosen.id,
-    winnerPath: chosen.path,
+    winnerPath,
     map,
+    mapRounds,
+    ticketRuling,
     voteRounds: history,
     scratch: SCRATCH,
-    resume: `Fix the proposal at ${chosen.path}, then: Workflow({scriptPath: '.claude/workflows/split-ticket.js', args: {ticket: '${TICKET}', startFrom: 'map', winner: '${chosen.path}', scratch: '${SCRATCH}'}})`,
+    resume: `${ticketRuling.length ? `Rule on ${TICKET} and amend it` : `Fix the proposal at ${winnerPath}`}, then: Workflow({scriptPath: '.claude/workflows/split-ticket.js', args: {ticket: '${TICKET}', startFrom: 'map', winner: '${winnerPath}', scratch: '${SCRATCH}'}})`,
   }
 }
 
@@ -658,14 +844,20 @@ const finish = await agent(
 1. Add these blocking relations, reciprocal on both tickets:
 ${edges.join('\n') || '(none — the children are independent)'}
 2. Remove the \`Needs Splitting\` label from ${TICKET}. Leave \`Epic\` on it and leave its status alone.
-3. Comment on ${TICKET}, opening with the source line \`**[split-ticket]**\` and nothing above it:
+${ticketEdits.length ? `3. Amend ${TICKET}'s description with the split directives the map forced. For each, replace the old wording with the new, and change nothing else in the clause:
+${ticketEdits.map((e) => `\n- Clause ${e.clause}. Was: "${e.before}"\n  Now: "${e.after}"\n  Because: ${e.why}`).join('')}
+
+Read the live description first and apply these to it — the ticket may have moved since this run read it. If the old wording is not there, do not force it: say so in your report and leave that clause alone.
+4.` : '3.'} Comment on ${TICKET}, opening with the source line \`**[split-ticket]**\` and nothing above it:
 
 Split into ${filed.length} children, in build order:
 ${filed.map((f) => `- ${f.identifier} — ${f.title}`).join('\n')}
 
-Each child was written from the parent clauses it owns and audited until the audit returned nothing new.${dirty.length ? ` These hit the audit cap and were filed with findings outstanding: ${dirty.map((d) => keyToId[d.childKey] ?? d.childKey).join(', ')}.` : ''}
+Each child was written from the parent clauses it owns and audited until the audit returned nothing new.${dirty.length ? ` These hit the audit cap and were filed with findings outstanding: ${dirty.map((d) => keyToId[d.childKey] ?? d.childKey).join(', ')}.` : ''}${ticketEdits.length ? `
 
-Report each relation you added, whether the label came off, and whether the comment posted.`,
+Say in the comment which split directives were rewritten and why, listing the clause numbers: ${ticketEdits.map((e) => e.clause).join(', ')}. No requirement was changed — only who owns what.` : ''}
+
+Report each relation you added, whether the label came off,${ticketEdits.length ? ' which directive edits applied,' : ''} and whether the comment posted.`,
   { label: 'finish-parent', phase: 'File', schema: FINISH },
 )
 
@@ -676,6 +868,8 @@ return {
   winnerPath: chosen.path,
   voteRounds: history,
   clauseMap: map,
+  mapRounds,
+  ticketEdits,
   children: filed.map((f) => {
     const d = drafts.find((x) => x.childKey === f.childKey)
     return { ...f, clean: d?.clean, auditRounds: d?.auditRounds, draftPath: d?.path, shrank: d?.shrank ?? false }
