@@ -45,4 +45,20 @@ impl EditorModeNet {
             EditorMode::MeleeWeapon => Self::MeleeWeapon,
         }
     }
+
+    /// Read a client's mode back as the editor's own, with no wildcard arm.
+    pub(in crate::net_qa) const fn to_mode(self) -> EditorMode {
+        match self {
+            Self::Terrain => EditorMode::Terrain,
+            Self::Theme => EditorMode::Theme,
+            Self::Prefab => EditorMode::Prefab,
+            Self::Gang => EditorMode::Gang,
+            Self::Armor => EditorMode::Armor,
+            Self::Injury => EditorMode::Injury,
+            Self::Sprite => EditorMode::Sprite,
+            Self::Attachment => EditorMode::Attachment,
+            Self::Weapon => EditorMode::Weapon,
+            Self::MeleeWeapon => EditorMode::MeleeWeapon,
+        }
+    }
 }

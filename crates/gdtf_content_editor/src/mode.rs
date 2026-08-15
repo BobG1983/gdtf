@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 /// Active authoring workflow in the content editor.
-#[derive(Resource, Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[derive(Resource, Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub enum EditorMode {
     /// Terrain def form.
     Terrain,

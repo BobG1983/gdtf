@@ -247,13 +247,15 @@ run(host="game", command="wait", arguments="(condition: BattleDecided)")
 commands(host="editor")                                   # the other host, same tools
 commands(host="editor", command="editor.phase", detail="Full")
 run(host="editor", command="editor.phase", arguments="()")
+run(host="editor", command="editor.set_mode", arguments="(mode: Armor)")
+run(host="editor", command="editor.new", arguments="(mode: Armor)")
+run(host="editor", command="editor.load", arguments="(mode: Armor, key: \"flak_vest\")")
+run(host="editor", command="editor.save", arguments="(mode: Armor)")
+run(host="editor", command="editor.last_save", arguments="()")
 ```
 
-The editor offers one command today, `editor.phase`. It reports the editor's lifecycle
-phase, the mode tab it has open — absent until the authoring scene is live — and every tab
-it offers in tab-bar order. It is `Immediate` and always `Available`, so it answers while
-the editor is still loading its registries. The command is
-[`commands/read/editor_phase.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/editor_phase.rs).
+The editor offers six commands today. They are listed in
+[The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
 `settings.read`, `ui.focus`, `playback.state`, `battle.roster`, `battle.turn`,
@@ -661,6 +663,47 @@ for a reply (`DEFAULT_REPLY_TIMEOUT` in `crates/gdtf_qa_protocol/src/timeouts.rs
 at once. `capture` runs the command first and appends one PNG attachment to the reply it
 produced; an outcome that is not `Ran` comes straight back with no shot taken, and a shot
 that never lands answers `Timeout` rather than the reply without its PNG.
+
+## The editor host
+
+The editor publishes six commands, all `Immediate`, all in `EDITOR_COMMANDS`
+([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
+Two are reads that answer at every point in the lifecycle; four write, and each needs the
+authoring scene, so during the editor's Load pass they answer
+`Unavailable { code: WrongState }`. That is not a policy choice — `EditorMode` and every
+draft are state-scoped to `EditorState::Editing` by the `init_state_scoped_resource` calls
+in `MapEditorPlugin::build`
+([`crates/gdtf_content_editor/src/plugin.rs`](../../crates/gdtf_content_editor/src/plugin.rs)),
+so during Load there is nothing to write.
+
+| Command | Availability | What it does |
+| --- | --- | --- |
+| `editor.phase` | always | The lifecycle phase, the mode tab open now, and every tab in tab-bar order. [`commands/read/editor_phase.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/editor_phase.rs) |
+| `editor.last_save` | always | What the newest save per mode did — the file it wrote, or the fault it reported. [`commands/read/last_save.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/last_save.rs) |
+| `editor.set_mode` | Editing | Opens a mode tab, writing the same `EditorMode` resource the tab bar and the number hotkeys write. [`commands/write/set_mode.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_mode.rs) |
+| `editor.new` | Editing | Replaces a mode's draft with that form's own blank-draft constructor. [`commands/write/blank/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/blank) |
+| `editor.load` | Editing | Loads a registry entry by key through that draft's own `load_*` method. [`commands/write/load/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load) |
+| `editor.save` | Editing | Writes a mode's draft through the same `write_*_in` its save button calls. [`commands/write/save/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save) |
+
+A mode a command does not handle is a **typed outcome inside a successful reply**, never
+`Unavailable` — that is reserved for host state. `editor.new` refuses Terrain and Prefab
+because neither form draws a New button, and refuses Theme because the theme form's own
+sync reloads the session theme's def over any draft whose key differs, so a blank Theme
+draft would not survive a frame. `editor.load` refuses Terrain and Prefab, which load
+nothing by key. A key no registry holds answers `NoSuchKey` with the keys it does hold, and
+leaves the draft untouched.
+
+`editor.save` writes under `EditorQaAssetsRoot`
+([`net_qa/assets_root.rs`](../../crates/gdtf_content_editor/src/net_qa/assets_root.rs)),
+which defaults to the workspace `assets/` and falls back to a temp directory when the
+marker search finds no workspace. Only Prefab takes a `name`, because only the prefab form
+carries its own name field; a name on any other mode is refused rather than dropped.
+
+`editor.last_save` reads the same `LastSaveRecord`
+([`crates/gdtf_content_editor/src/save_record/`](../../crates/gdtf_content_editor/src/save_record))
+that all eleven of the editor's own save buttons write, so a QA-driven save and a
+button-driven save are indistinguishable to it. The record is keyed by mode and is not
+state-scoped, so it survives a Load ↔ Editing round trip.
 
 ## Why the shape is what it is
 

@@ -1,21 +1,29 @@
-//! Hello/version negotiation, and the `editor.phase` command layer, over the editor net-QA
-//! listener.
+//! Hello/version negotiation, and the editor's lifecycle command layer — phase, mode tab, blank,
+//! load, save and last-save — over the editor net-QA listener.
 #![cfg(debug_assertions)]
 
 mod assertions;
 mod client;
 mod command_set;
 mod harness;
+mod last_save_command;
+mod lifecycle;
 mod load_case;
+mod load_command;
+mod new_command;
 mod phase_command;
 mod phase_rows;
+mod rows;
+mod save_command;
+mod set_mode_command;
 mod support;
 
 use gdtf_qa_protocol::message::{ProtocolVersion, QaRequest};
 
 use crate::{
     assertions::{
-        assert_editor_catalogue, assert_hello_ok, assert_unknown_command, assert_version_mismatch,
+        AnsweringPhase, assert_editor_catalogue, assert_hello_ok, assert_unknown_command,
+        assert_version_mismatch,
     },
     client::{exchange_while_editing, wrong_version},
     harness::{advance_to_editing, editor_app_listening},
@@ -37,7 +45,7 @@ fn hello_negotiates_over_the_real_editor_listener() -> TestResult {
 
 #[test]
 fn hello_negotiates_while_the_editor_is_still_loading() -> TestResult {
-    let (reply, _) = reply_answered_during_load(
+    let reply = reply_answered_during_load(
         QaRequest::Hello(ProtocolVersion::CURRENT),
         "the Hello(CURRENT) handshake",
     )?;
@@ -47,7 +55,7 @@ fn hello_negotiates_while_the_editor_is_still_loading() -> TestResult {
 
 #[test]
 fn a_wrong_version_is_refused_while_the_editor_is_still_loading() -> TestResult {
-    let (reply, _) = reply_answered_during_load(
+    let reply = reply_answered_during_load(
         QaRequest::Hello(wrong_version()),
         "the mismatched-version handshake",
     )?;
@@ -57,8 +65,7 @@ fn a_wrong_version_is_refused_while_the_editor_is_still_loading() -> TestResult 
 
 #[test]
 fn the_editors_own_drain_answers_while_it_is_still_loading() -> TestResult {
-    let (reply, during) =
-        reply_answered_during_load(QaRequest::Catalogue, "the catalogue request")?;
-    assert_editor_catalogue(&reply, during.as_ref());
+    let reply = reply_answered_during_load(QaRequest::Catalogue, "the catalogue request")?;
+    assert_editor_catalogue(&reply, AnsweringPhase::Load);
     Ok(())
 }

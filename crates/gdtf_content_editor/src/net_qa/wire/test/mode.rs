@@ -31,3 +31,15 @@ fn every_editor_mode_arm_round_trips() {
 fn the_editor_mode_traces_a_usable_shape() {
     assert_schema_is_usable::<EditorModeNet>("EditorModeNet");
 }
+
+#[test]
+fn every_editor_mode_reads_back_as_the_mode_it_mirrored() {
+    for mode in EditorMode::TAB_ORDER {
+        assert_eq!(
+            EditorModeNet::from_mode(mode).to_mode(),
+            mode,
+            "a client's mode must come back as the editor's own, or a write command would act on \
+             a different tab than the one it was asked for",
+        );
+    }
+}

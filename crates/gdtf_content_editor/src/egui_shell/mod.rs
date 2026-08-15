@@ -17,7 +17,7 @@ mod sprite_thumb;
 mod terrain_form_ui;
 mod textures;
 mod theme_combo;
-mod theme_form_ui;
+pub(crate) mod theme_form_ui;
 mod weapon_form_ui;
 
 pub(crate) use prefab::nav::{level_nav_hotkeys, view_mode_hotkey};

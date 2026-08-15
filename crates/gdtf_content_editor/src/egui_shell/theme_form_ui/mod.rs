@@ -7,7 +7,8 @@ mod stats;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use autoload::{load_theme_into_form, resolve_autoload};
-pub(crate) use fields::field_stack;
-pub(crate) use library::terrain_library_panel;
-pub(crate) use stats::stats_panel;
+pub(crate) use autoload::load_theme_into_form;
+pub(in crate::egui_shell) use autoload::resolve_autoload;
+pub(in crate::egui_shell) use fields::field_stack;
+pub(in crate::egui_shell) use library::terrain_library_panel;
+pub(in crate::egui_shell) use stats::stats_panel;

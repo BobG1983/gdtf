@@ -1,12 +1,13 @@
 use bevy_egui::egui;
 use gdtf_content_families::sprites::{SpriteDefRegistry, SpriteName};
 
-use crate::sprite_form::SpriteDraft;
+use crate::{save_record::LastSaveRecord, sprite_form::SpriteDraft};
 
 pub(crate) fn field_stack(
     ui: &mut egui::Ui,
     draft: &mut SpriteDraft,
     registry: Option<&SpriteDefRegistry>,
+    last_save: &mut LastSaveRecord,
 ) {
     ui.heading("Sprite");
     ui.separator();
@@ -22,7 +23,11 @@ pub(crate) fn field_stack(
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_button(ui, draft);
+        save_button(ui, draft, last_save);
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = last_save;
     }
 }
 
@@ -68,12 +73,13 @@ fn name_field(ui: &mut egui::Ui, draft: &mut SpriteDraft) {
 
 /// `#[cfg(debug_assertions)]` (the terrain / theme / gang / armor save precedent). The
 #[cfg(debug_assertions)]
-fn save_button(ui: &mut egui::Ui, draft: &SpriteDraft) {
+fn save_button(ui: &mut egui::Ui, draft: &SpriteDraft, last_save: &mut LastSaveRecord) {
     if !ui.button("Save sprite").clicked() {
         return;
     }
     let (name, def) = crate::sprite_form::draft_to_sprite_def(draft);
-    match crate::sprite_form::write_sprite(&name, &def) {
+    let written = crate::sprite_form::write_sprite(&name, &def);
+    match &written {
         Ok(path) => bevy::log::info!(
             "sprite save: wrote sprite `{}` to `{}`",
             name.as_str(),
@@ -81,4 +87,8 @@ fn save_button(ui: &mut egui::Ui, draft: &SpriteDraft) {
         ),
         Err(err) => bevy::log::error!("sprite save: sprite `{}`: {err}", name.as_str()),
     }
+    last_save.record(
+        crate::EditorMode::Sprite,
+        crate::save_record::SaveOutcome::from_result(written),
+    );
 }

@@ -14,8 +14,37 @@ use gdtf_qa_protocol::{
 
 use crate::support::{EDITING_EXCHANGES, TestError};
 
-/// The one command the editor host publishes.
+/// The lifecycle read the editor host publishes.
 pub(crate) const EDITOR_PHASE: &str = "editor.phase";
+
+/// The newest-save read the editor host publishes.
+pub(crate) const EDITOR_LAST_SAVE: &str = "editor.last_save";
+
+/// The mode-tab write the editor host publishes.
+pub(crate) const EDITOR_SET_MODE: &str = "editor.set_mode";
+
+/// The blank-draft write the editor host publishes.
+pub(crate) const EDITOR_NEW: &str = "editor.new";
+
+/// The registry-load write the editor host publishes.
+pub(crate) const EDITOR_LOAD: &str = "editor.load";
+
+/// The draft-save write the editor host publishes.
+pub(crate) const EDITOR_SAVE: &str = "editor.save";
+
+/// Every command name the editor host publishes today.
+pub(crate) const EDITOR_COMMAND_NAMES: [&str; 6] = [
+    EDITOR_PHASE,
+    EDITOR_LAST_SAVE,
+    EDITOR_SET_MODE,
+    EDITOR_NEW,
+    EDITOR_LOAD,
+    EDITOR_SAVE,
+];
+
+/// Command names that need the authoring scene, so they refuse the editor's Load pass.
+pub(crate) const EDITOR_EDITING_ONLY: [&str; 4] =
+    [EDITOR_SET_MODE, EDITOR_NEW, EDITOR_LOAD, EDITOR_SAVE];
 
 /// How long one look at the socket waits before the editor gets another frame.
 /// Its expiry is the pause between frames, never a failure.
@@ -45,12 +74,11 @@ impl Client {
         Ok(())
     }
 
-    /// Run frames until the editor answers, then hand back the reply.
-    /// The wait is counted in frames, so a busy machine makes a case slower and never red.
+    /// Read what is already answered before running another frame, so a case reads back the world
+    /// the answering frame left. The wait is counted in frames, so a busy machine is never red.
     pub(crate) fn read(&mut self, app: &mut App) -> Result<QaResponse, TestError> {
         let mut buf = [0u8; 512];
         for _ in 0..REPLY_BUDGET {
-            app.update();
             match self.stream.read(&mut buf) {
                 Ok(0) => return Err("the editor closed before a full response arrived".into()),
                 Ok(read) => self.decoder.push(&buf[..read]),
@@ -60,6 +88,7 @@ impl Client {
             if let Some(frame) = self.decoder.next_frame()? {
                 return Ok(frame.decode::<QaResponse>()?);
             }
+            app.update();
         }
         Err(format!("the editor never answered within {REPLY_BUDGET} frames").into())
     }
@@ -80,8 +109,12 @@ fn nothing_yet(fault: &io::Error) -> bool {
 }
 
 pub(crate) fn run_editor_phase(arguments: &str) -> QaRequest {
+    run_editor(EDITOR_PHASE, arguments)
+}
+
+pub(crate) fn run_editor(command: &'static str, arguments: &str) -> QaRequest {
     QaRequest::Run(RunCommand::new(
-        CommandName::from_static(EDITOR_PHASE),
+        CommandName::from_static(command),
         CommandArgsRon::new(arguments.to_owned()),
     ))
 }

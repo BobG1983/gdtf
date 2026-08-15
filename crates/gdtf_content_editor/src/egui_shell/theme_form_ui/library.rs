@@ -8,7 +8,7 @@ use crate::{
     theme_form::{ThemeDraft, sim_kind_label},
 };
 
-pub(crate) fn terrain_library_panel(
+pub(in crate::egui_shell) fn terrain_library_panel(
     ui: &mut egui::Ui,
     draft: &mut ThemeDraft,
     terrain: Option<&TerrainDefRegistry>,

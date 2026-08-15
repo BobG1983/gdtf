@@ -1,9 +1,16 @@
 use bevy::prelude::*;
 use gdtf_content_editor::{EditorState, MapEditorPlugin, NetQaEditorPlugin};
-use gdtf_qa_protocol::ports::NetQaPort;
+use gdtf_qa_protocol::{
+    message::{ProtocolVersion, QaRequest},
+    ports::NetQaPort,
+};
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
-use crate::support::{EDITING_UPDATES, TestError};
+use crate::{
+    assertions::assert_hello_ok,
+    client::Client,
+    support::{EDITING_UPDATES, TestError},
+};
 
 pub(crate) fn editor_app_listening() -> Result<(App, NetQaPort), TestError> {
     let (plugin, port) = NetQaEditorPlugin::listening(NetQaPort::new(0))?;
@@ -33,4 +40,14 @@ pub(crate) fn advance_to_editing(app: &mut App) {
     for _ in 0..4 {
         app.update();
     }
+}
+
+/// An editing app with a negotiated client on its real listener.
+pub(crate) fn editing_app_and_client() -> Result<(App, Client), TestError> {
+    let (mut app, port) = editor_app_listening()?;
+    advance_to_editing(&mut app);
+    let mut client = Client::connect(port)?;
+    let hello = client.exchange(&mut app, &QaRequest::Hello(ProtocolVersion::CURRENT))?;
+    assert_hello_ok(&hello);
+    Ok((app, client))
 }

@@ -190,7 +190,8 @@ its own command list under its own host name, and a `Run`, by admitting the name
 command — or answering `Unknown`, which lists what it does offer, for a name it
 does not know. That list is `EDITOR_COMMANDS` in
 `crates/gdtf_content_editor/src/net_qa/commands/set.rs` and today it holds
-`editor.phase`.
+`editor.phase`, `editor.last_save`, `editor.set_mode`, `editor.new`,
+`editor.load` and `editor.save`.
 Capture is not wired here yet: `crates/gdtf_content_editor/Cargo.toml` does not
 depend on `gdtf_screenshot`, and the QA plugin registers no capture systems. The
 shared pipeline in `crates/gdtf_screenshot/src/capture/` is the path the editor
@@ -335,10 +336,15 @@ Notes an agent relies on:
   level keys and the action bar's level buttons take. `battle.set_fire_mode`
   picks a fire mode on the weapon the selected shooter fires, the same weapon the
   action bar's mode panel sets it on, through the same lookup.
-  The EDITOR host publishes `editor.phase`, which reports the phase the editor
-  is in, the mode tab open right now — absent while it is still loading — and
-  every mode tab in tab-bar order. A name it does not know answers `Unknown`,
-  listing what it does offer.
+  The EDITOR host publishes six commands. `editor.phase` reports the phase the
+  editor is in, the mode tab open right now — absent while it is still loading —
+  and every mode tab in tab-bar order, and `editor.last_save` reports what the
+  newest save per mode did; both answer at every point in the lifecycle.
+  `editor.set_mode`, `editor.new`, `editor.load` and `editor.save` drive the
+  authoring forms and need the authoring scene, so during the editor's Load pass
+  they answer `Unavailable { code: WrongState }`. A name it does not know answers
+  `Unknown`, listing what it does offer. The editor-host section of
+  [qa-commands.md](qa-commands.md) has the whole list.
 - **`logs` is the first thing to try when a launch came up but the app is not
   behaving.** Both of the child's output streams are captured at spawn into one
   buffer, in the order they were written, so the reply is what the process

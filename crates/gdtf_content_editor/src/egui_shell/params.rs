@@ -23,12 +23,23 @@ use crate::{
     hovered_cell::HoveredCell,
     injury_form::{InjuryDraft, WeightingDraft},
     melee_weapon_form::MeleeWeaponDraft,
+    mode::EditorMode,
     preview::{target::PreviewTarget, view::PreviewPan},
+    save_record::LastSaveRecord,
+    session::MapEditorSession,
     sprite_form::SpriteDraft,
     terrain_form::TerrainDraft,
     theme_form::ThemeDraft,
     weapon_form::WeaponDraft,
 };
+
+/// The workbench-wide state every mode panel reads: the open tab, the session, the last save.
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct Workbench<'w> {
+    pub(super) mode:      Option<ResMut<'w, EditorMode>>,
+    pub(super) session:   Option<ResMut<'w, MapEditorSession>>,
+    pub(super) last_save: ResMut<'w, LastSaveRecord>,
+}
 
 #[derive(bevy::ecs::system::SystemParam)]
 pub(crate) struct SharedRegistries<'w> {

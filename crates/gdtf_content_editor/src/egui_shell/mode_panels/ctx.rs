@@ -11,6 +11,7 @@ use crate::{
         },
         textures::ResolvedTextures,
     },
+    save_record::LastSaveRecord,
     session::MapEditorSession,
     terrain_form::TerrainDraft,
     theme_form::ThemeDraft,
@@ -33,6 +34,7 @@ pub(in crate::egui_shell) struct ModePanelsCtx<
     'melee,
 > {
     pub(in crate::egui_shell) session:          &'a mut ResMut<'sess, MapEditorSession>,
+    pub(in crate::egui_shell) last_save:        &'a mut LastSaveRecord,
     pub(in crate::egui_shell) terrain_draft:    &'a mut ResMut<'ter, TerrainDraft>,
     pub(in crate::egui_shell) theme_draft:      &'a mut ResMut<'theme, ThemeDraft>,
     pub(in crate::egui_shell) themes:           Option<&'a UuidThemeRegistry>,

@@ -1,9 +1,14 @@
 use bevy_egui::egui;
 use gdtf_battle_sim::ganger::{GangName, GangRegistry};
 
-use crate::gang_form::GangDraft;
+use crate::{gang_form::GangDraft, save_record::LastSaveRecord};
 
-pub(crate) fn field_stack(ui: &mut egui::Ui, draft: &mut GangDraft, gangs: Option<&GangRegistry>) {
+pub(crate) fn field_stack(
+    ui: &mut egui::Ui,
+    draft: &mut GangDraft,
+    gangs: Option<&GangRegistry>,
+    last_save: &mut LastSaveRecord,
+) {
     ui.heading("Gang");
     ui.separator();
 
@@ -22,7 +27,11 @@ pub(crate) fn field_stack(ui: &mut egui::Ui, draft: &mut GangDraft, gangs: Optio
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_button(ui, draft);
+        save_button(ui, draft, last_save);
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = last_save;
     }
 }
 
@@ -67,12 +76,13 @@ fn name_field(ui: &mut egui::Ui, draft: &mut GangDraft) {
 
 /// `#[cfg(debug_assertions)]` (the terrain / theme save precedent).
 #[cfg(debug_assertions)]
-fn save_button(ui: &mut egui::Ui, draft: &GangDraft) {
+fn save_button(ui: &mut egui::Ui, draft: &GangDraft, last_save: &mut LastSaveRecord) {
     if !ui.button("Save gang").clicked() {
         return;
     }
     let (name, roster) = crate::gang_form::draft_to_roster(draft);
-    match crate::gang_form::write_gang(&name, &roster) {
+    let written = crate::gang_form::write_gang(&name, &roster);
+    match &written {
         Ok(path) => bevy::log::info!(
             "gang save: wrote gang `{}` to `{}`",
             name.as_str(),
@@ -80,4 +90,8 @@ fn save_button(ui: &mut egui::Ui, draft: &GangDraft) {
         ),
         Err(err) => bevy::log::error!("gang save: gang `{}`: {err}", name.as_str()),
     }
+    last_save.record(
+        crate::EditorMode::Gang,
+        crate::save_record::SaveOutcome::from_result(written),
+    );
 }

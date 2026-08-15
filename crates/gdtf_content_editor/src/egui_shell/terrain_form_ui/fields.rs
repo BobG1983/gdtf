@@ -9,9 +9,20 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
+    save_record::LastSaveRecord,
     session::MapEditorSession,
     terrain_form::{ArmorInput, FootfallChoice, HpInput, TerrainDraft, TerrainKindChoice},
 };
+
+/// What the terrain form's save button needs beyond the draft it is drawn against.
+pub(in crate::egui_shell) struct TerrainSaveContext<'a> {
+    /// The session whose theme names the folder the def is written into.
+    pub(in crate::egui_shell) session:   &'a MapEditorSession,
+    /// The themes registry the session theme's display name is read from.
+    pub(in crate::egui_shell) themes:    Option<&'a UuidThemeRegistry>,
+    /// Where the outcome of this save is recorded.
+    pub(in crate::egui_shell) last_save: &'a mut LastSaveRecord,
+}
 
 const HP_RANGE: core::ops::RangeInclusive<u32> = 0..=1000;
 
@@ -45,11 +56,10 @@ const fn band_label(band: HeightBand) -> &'static str {
     }
 }
 
-pub(crate) fn field_stack(
+pub(in crate::egui_shell) fn field_stack(
     ui: &mut egui::Ui,
     draft: &mut TerrainDraft,
-    session: &MapEditorSession,
-    themes: Option<&UuidThemeRegistry>,
+    save: TerrainSaveContext<'_>,
     weapons: Option<&WeaponRegistry>,
 ) {
     ui.heading("Terrain");
@@ -71,11 +81,16 @@ pub(crate) fn field_stack(
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_button(ui, draft, session, themes);
+        save_button(ui, draft, save);
     }
     #[cfg(not(debug_assertions))]
     {
-        let _ = (session, themes);
+        let TerrainSaveContext {
+            session,
+            themes,
+            last_save,
+        } = save;
+        let _ = (session, themes, last_save);
     }
 }
 
@@ -224,21 +239,22 @@ fn uuid_text(ui: &mut egui::Ui, draft: &TerrainDraft) {
 
 /// `#[cfg(debug_assertions)]`.
 #[cfg(debug_assertions)]
-fn save_button(
-    ui: &mut egui::Ui,
-    draft: &mut TerrainDraft,
-    session: &MapEditorSession,
-    themes: Option<&UuidThemeRegistry>,
-) {
+fn save_button(ui: &mut egui::Ui, draft: &mut TerrainDraft, save: TerrainSaveContext<'_>) {
     if !ui.button("Save terrain").clicked() {
         return;
     }
     let uuid = draft.ensure_uuid();
-    let theme_display = themes
-        .and_then(|themes| themes.def(&session.theme()))
+    let theme_display = save
+        .themes
+        .and_then(|themes| themes.def(&save.session.theme()))
         .map_or_else(String::new, |def| (*def.display_name).clone());
-    match crate::terrain_form::write_terrain(draft, uuid, &theme_display) {
+    let written = crate::terrain_form::write_terrain(draft, uuid, &theme_display);
+    match &written {
         Ok(path) => bevy::log::info!("terrain save: wrote terrain def to `{}`", path.display()),
         Err(err) => bevy::log::error!("terrain save: {err}"),
     }
+    save.last_save.record(
+        crate::EditorMode::Terrain,
+        crate::save_record::SaveOutcome::from_result(written),
+    );
 }

@@ -42,15 +42,13 @@ pub(crate) fn decoded_ran(reply: &QaResponse) -> Result<PhaseReplyRow, TestError
     Ok(ron::de::from_str::<PhaseReplyRow>(body.as_str())?)
 }
 
-/// The reported phase must name the editor state the app was in when it answered.
-pub(crate) fn assert_phase_names_the_live_state(row: PhaseRow, live: Option<&EditorState>) {
-    let Some(live) = live else {
-        unreachable!("the editor's state machine must exist on the frame that answered");
-    };
+/// The reported phase must name the editor state the frame that answered was in.
+pub(crate) fn assert_phase_is(row: PhaseRow, expected: EditorState) {
     assert_eq!(
         format!("{row:?}"),
-        format!("{live:?}"),
-        "the reply names the editor's own live state, not a phase of its own invention",
+        format!("{expected:?}"),
+        "the reply names the editor's own state on the frame that answered, not a phase of its \
+         own invention",
     );
 }
 

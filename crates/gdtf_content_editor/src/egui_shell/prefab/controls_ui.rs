@@ -10,6 +10,7 @@ use crate::{
         level_rail::{self, RailCtx, RailUiState},
         size_fields,
     },
+    save_record::LastSaveRecord,
     session::MapEditorSession,
 };
 
@@ -40,6 +41,7 @@ pub(crate) fn controls_panel(
     library: TerrainLibrary<'_>,
     rail_state: &mut RailUiState,
     save_name: &mut String,
+    last_save: &mut LastSaveRecord,
 ) {
     let EditedPrefab {
         map,
@@ -70,12 +72,13 @@ pub(crate) fn controls_panel(
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_control(ui, map, session, library, save_name);
+        save_control(ui, map, session, library, save_name, last_save);
     }
     #[cfg(not(debug_assertions))]
     {
         let _ = library.themes;
         let _ = save_name;
+        let _ = last_save;
     }
 }
 
@@ -118,6 +121,7 @@ fn save_control(
     session: &MapEditorSession,
     library: TerrainLibrary<'_>,
     save_name: &mut String,
+    last_save: &mut LastSaveRecord,
 ) {
     ui.label("Prefab name");
     ui.text_edit_singleline(save_name);
@@ -132,8 +136,13 @@ fn save_control(
         .themes
         .and_then(|themes| themes.def(&session.theme()))
         .map_or_else(String::new, |def| (*def.display_name).clone());
-    match crate::save::write_prefab(map, registry, session, &theme_display, save_name) {
+    let written = crate::save::write_prefab(map, registry, session, &theme_display, save_name);
+    match &written {
         Ok(path) => bevy::log::info!("prefab save: wrote prefab to `{}`", path.display()),
         Err(err) => bevy::log::error!("prefab save: {err}"),
     }
+    last_save.record(
+        crate::EditorMode::Prefab,
+        crate::save_record::SaveOutcome::from_result(written),
+    );
 }

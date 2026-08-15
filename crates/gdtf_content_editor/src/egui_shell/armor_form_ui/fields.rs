@@ -1,12 +1,13 @@
 use bevy_egui::egui;
 use gdtf_battle_sim::armor::{ArmorName, ArmorRegistry};
 
-use crate::armor_form::ArmorDraft;
+use crate::{armor_form::ArmorDraft, save_record::LastSaveRecord};
 
 pub(crate) fn field_stack(
     ui: &mut egui::Ui,
     draft: &mut ArmorDraft,
     armor: Option<&ArmorRegistry>,
+    last_save: &mut LastSaveRecord,
 ) {
     ui.heading("Armor");
     ui.separator();
@@ -22,7 +23,11 @@ pub(crate) fn field_stack(
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_button(ui, draft);
+        save_button(ui, draft, last_save);
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = last_save;
     }
 }
 
@@ -68,12 +73,13 @@ fn name_field(ui: &mut egui::Ui, draft: &mut ArmorDraft) {
 
 /// `#[cfg(debug_assertions)]` (the terrain / theme / gang save precedent).
 #[cfg(debug_assertions)]
-fn save_button(ui: &mut egui::Ui, draft: &ArmorDraft) {
+fn save_button(ui: &mut egui::Ui, draft: &ArmorDraft, last_save: &mut LastSaveRecord) {
     if !ui.button("Save armor").clicked() {
         return;
     }
     let (name, spec) = crate::armor_form::draft_to_spec(draft);
-    match crate::armor_form::write_armor(&name, &spec) {
+    let written = crate::armor_form::write_armor(&name, &spec);
+    match &written {
         Ok(path) => bevy::log::info!(
             "armor save: wrote armor `{}` to `{}`",
             name.as_str(),
@@ -81,4 +87,8 @@ fn save_button(ui: &mut egui::Ui, draft: &ArmorDraft) {
         ),
         Err(err) => bevy::log::error!("armor save: armor `{}`: {err}", name.as_str()),
     }
+    last_save.record(
+        crate::EditorMode::Armor,
+        crate::save_record::SaveOutcome::from_result(written),
+    );
 }

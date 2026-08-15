@@ -21,6 +21,7 @@ use crate::{
     mode::{EditorMode, mode_hotkeys},
     preview::{register_preview, view::PreviewPan},
     right_panel::seed_default_theme,
+    save_record::LastSaveRecord,
     session::MapEditorSession,
     sprite_form::SpriteDraft,
     terrain_form::TerrainDraft,
@@ -37,6 +38,7 @@ impl Plugin for MapEditorPlugin {
         app.init_state::<EditorState>();
         register_load(app);
         register_validation(app);
+        app.init_resource::<LastSaveRecord>();
 
         app.add_systems(Startup, disable_egui_auto_context);
 

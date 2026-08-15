@@ -1,12 +1,13 @@
 use bevy_egui::egui;
 use gdtf_battle_sim::injuries::{InjuryName, InjuryRegistry};
 
-use crate::injury_form::InjuryDraft;
+use crate::{injury_form::InjuryDraft, save_record::LastSaveRecord};
 
 pub(crate) fn field_stack(
     ui: &mut egui::Ui,
     draft: &mut InjuryDraft,
     injuries: Option<&InjuryRegistry>,
+    last_save: &mut LastSaveRecord,
 ) {
     ui.heading("Injury");
     ui.separator();
@@ -22,7 +23,11 @@ pub(crate) fn field_stack(
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_button(ui, draft);
+        save_button(ui, draft, last_save);
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = last_save;
     }
 }
 
@@ -68,12 +73,13 @@ fn key_field(ui: &mut egui::Ui, draft: &mut InjuryDraft) {
 
 /// gated `#[cfg(debug_assertions)]` (the terrain / theme / gang / armor save
 #[cfg(debug_assertions)]
-fn save_button(ui: &mut egui::Ui, draft: &InjuryDraft) {
+fn save_button(ui: &mut egui::Ui, draft: &InjuryDraft, last_save: &mut LastSaveRecord) {
     if !ui.button("Save injury").clicked() {
         return;
     }
     let (key, def) = crate::injury_form::draft_to_def(draft);
-    match crate::injury_form::write_injury(&key, &def) {
+    let written = crate::injury_form::write_injury(&key, &def);
+    match &written {
         Ok(path) => bevy::log::info!(
             "injury save: wrote injury `{}` to `{}`",
             key.as_str(),
@@ -81,4 +87,8 @@ fn save_button(ui: &mut egui::Ui, draft: &InjuryDraft) {
         ),
         Err(err) => bevy::log::error!("injury save: injury `{}`: {err}", key.as_str()),
     }
+    last_save.record(
+        crate::EditorMode::Injury,
+        crate::save_record::SaveOutcome::from_result(written),
+    );
 }

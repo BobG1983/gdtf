@@ -1,14 +1,18 @@
 use bevy_egui::egui;
 use gdtf_battle_sim::terrain::def::TerrainDefRegistry;
 
-use crate::theme_form::{ThemeDraft, slab_floor_candidates};
+use crate::{
+    save_record::LastSaveRecord,
+    theme_form::{ThemeDraft, slab_floor_candidates},
+};
 
 const KEY_PREFIX: &str = "UUID: ";
 
-pub(crate) fn field_stack(
+pub(in crate::egui_shell) fn field_stack(
     ui: &mut egui::Ui,
     draft: &mut ThemeDraft,
     terrain: Option<&TerrainDefRegistry>,
+    last_save: &mut LastSaveRecord,
 ) {
     ui.heading("Theme");
     ui.separator();
@@ -23,7 +27,11 @@ pub(crate) fn field_stack(
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_button(ui, draft);
+        save_button(ui, draft, last_save);
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = last_save;
     }
 }
 
@@ -85,13 +93,18 @@ fn new_theme_button(ui: &mut egui::Ui, draft: &mut ThemeDraft) {
 
 /// `#[cfg(debug_assertions)]`.
 #[cfg(debug_assertions)]
-fn save_button(ui: &mut egui::Ui, draft: &ThemeDraft) {
+fn save_button(ui: &mut egui::Ui, draft: &ThemeDraft, last_save: &mut LastSaveRecord) {
     if !ui.button("Save theme").clicked() {
         return;
     }
     let key = draft.key();
-    match crate::theme_form::write_theme(draft, key) {
+    let written = crate::theme_form::write_theme(draft, key);
+    match &written {
         Ok(path) => bevy::log::info!("theme save: wrote theme def to `{}`", path.display()),
         Err(err) => bevy::log::error!("theme save: {err}"),
     }
+    last_save.record(
+        crate::EditorMode::Theme,
+        crate::save_record::SaveOutcome::from_result(written),
+    );
 }

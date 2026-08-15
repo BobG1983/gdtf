@@ -1,12 +1,13 @@
 use bevy_egui::egui;
 use gdtf_battle_sim::equipment::attachments::{AttachmentName, AttachmentRegistry};
 
-use crate::attachment_form::AttachmentDraft;
+use crate::{attachment_form::AttachmentDraft, save_record::LastSaveRecord};
 
 pub(crate) fn field_stack(
     ui: &mut egui::Ui,
     draft: &mut AttachmentDraft,
     registry: Option<&AttachmentRegistry>,
+    last_save: &mut LastSaveRecord,
 ) {
     ui.heading("Attachment");
     ui.separator();
@@ -22,7 +23,11 @@ pub(crate) fn field_stack(
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_button(ui, draft);
+        save_button(ui, draft, last_save);
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = last_save;
     }
 }
 
@@ -72,12 +77,13 @@ fn name_field(ui: &mut egui::Ui, draft: &mut AttachmentDraft) {
 
 /// path is gated `#[cfg(debug_assertions)]` (the terrain / theme / gang / armor / sprite
 #[cfg(debug_assertions)]
-fn save_button(ui: &mut egui::Ui, draft: &AttachmentDraft) {
+fn save_button(ui: &mut egui::Ui, draft: &AttachmentDraft, last_save: &mut LastSaveRecord) {
     if !ui.button("Save attachment").clicked() {
         return;
     }
     let (name, spec) = crate::attachment_form::draft_to_attachment_spec(draft);
-    match crate::attachment_form::write_attachment(&name, &spec) {
+    let written = crate::attachment_form::write_attachment(&name, &spec);
+    match &written {
         Ok(path) => bevy::log::info!(
             "attachment save: wrote attachment `{}` to `{}`",
             name.as_str(),
@@ -85,4 +91,8 @@ fn save_button(ui: &mut egui::Ui, draft: &AttachmentDraft) {
         ),
         Err(err) => bevy::log::error!("attachment save: attachment `{}`: {err}", name.as_str()),
     }
+    last_save.record(
+        crate::EditorMode::Attachment,
+        crate::save_record::SaveOutcome::from_result(written),
+    );
 }

@@ -18,7 +18,7 @@ pub(in crate::egui_shell) fn right_panel(
     egui::Panel::right("editor_mode_form").show(viewport_ui, |ui| match mode {
         EditorMode::Terrain => {}
         EditorMode::Theme => {
-            theme_form_ui::field_stack(ui, ctx.theme_draft, ctx.terrain_registry);
+            theme_form_ui::field_stack(ui, ctx.theme_draft, ctx.terrain_registry, ctx.last_save);
         }
         EditorMode::Prefab => {
             if let (Some(edit_level), Some(view), Some(isolate), Some(map)) = (
@@ -41,42 +41,68 @@ pub(in crate::egui_shell) fn right_panel(
                     },
                     &mut ctx.prefab.rail_state,
                     &mut ctx.prefab.save_name,
+                    ctx.last_save,
                 );
             }
         }
         EditorMode::Gang => {
             if let Some(draft) = ctx.gang.draft.as_deref_mut() {
-                gang_form_ui::field_stack(ui, draft, ctx.gang.gangs.as_deref());
+                gang_form_ui::field_stack(ui, draft, ctx.gang.gangs.as_deref(), ctx.last_save);
             }
         }
         EditorMode::Armor => {
             if let Some(draft) = ctx.armor.draft.as_deref_mut() {
-                armor_form_ui::field_stack(ui, draft, ctx.armor.registry.as_deref());
+                armor_form_ui::field_stack(ui, draft, ctx.armor.registry.as_deref(), ctx.last_save);
             }
         }
         EditorMode::Injury => {
             if let Some(draft) = ctx.injury.draft.as_deref_mut() {
-                injury_form_ui::field_stack(ui, draft, ctx.injury.registry.as_deref());
+                injury_form_ui::field_stack(
+                    ui,
+                    draft,
+                    ctx.injury.registry.as_deref(),
+                    ctx.last_save,
+                );
             }
         }
         EditorMode::Sprite => {
             if let Some(draft) = ctx.sprite.draft.as_deref_mut() {
-                sprite_form_ui::field_stack(ui, draft, ctx.sprite.registry.as_deref());
+                sprite_form_ui::field_stack(
+                    ui,
+                    draft,
+                    ctx.sprite.registry.as_deref(),
+                    ctx.last_save,
+                );
             }
         }
         EditorMode::Attachment => {
             if let Some(draft) = ctx.attachment.draft.as_deref_mut() {
-                attachment_form_ui::field_stack(ui, draft, ctx.attachment.registry.as_deref());
+                attachment_form_ui::field_stack(
+                    ui,
+                    draft,
+                    ctx.attachment.registry.as_deref(),
+                    ctx.last_save,
+                );
             }
         }
         EditorMode::Weapon => {
             if let Some(draft) = ctx.weapon.draft.as_deref_mut() {
-                weapon_form_ui::field_stack(ui, draft, ctx.weapon.registry.as_deref());
+                weapon_form_ui::field_stack(
+                    ui,
+                    draft,
+                    ctx.weapon.registry.as_deref(),
+                    ctx.last_save,
+                );
             }
         }
         EditorMode::MeleeWeapon => {
             if let Some(draft) = ctx.melee_weapon.draft.as_deref_mut() {
-                melee_weapon_form_ui::field_stack(ui, draft, ctx.melee_weapon.registry.as_deref());
+                melee_weapon_form_ui::field_stack(
+                    ui,
+                    draft,
+                    ctx.melee_weapon.registry.as_deref(),
+                    ctx.last_save,
+                );
             }
         }
     });

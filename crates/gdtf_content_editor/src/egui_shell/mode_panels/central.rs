@@ -5,7 +5,9 @@ use crate::{
     egui_shell::{
         armor_form_ui, attachment_form_ui, gang_form_ui, injury_form_ui, melee_weapon_form_ui,
         prefab::{viewport_ui, viewport_ui::ViewportCtx},
-        sprite_form_ui, terrain_form_ui, theme_form_ui, weapon_form_ui,
+        sprite_form_ui,
+        terrain_form_ui::{self, TerrainSaveContext},
+        theme_form_ui, weapon_form_ui,
     },
     mode::EditorMode,
 };
@@ -20,8 +22,11 @@ pub(in crate::egui_shell) fn central_panel(
             terrain_form_ui::primary_panel(
                 ui,
                 ctx.terrain_draft,
-                ctx.session,
-                ctx.themes,
+                TerrainSaveContext {
+                    session:   ctx.session,
+                    themes:    ctx.themes,
+                    last_save: ctx.last_save,
+                },
                 ctx.sprite.registry.as_deref(),
                 ctx.weapons,
                 &ctx.textures.sprites,
@@ -54,24 +59,7 @@ pub(in crate::egui_shell) fn central_panel(
                 armor_form_ui::pieces_panel(ui, draft);
             }
         }
-        EditorMode::Injury => {
-            egui::ScrollArea::vertical()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    if let Some(draft) = ctx.injury.draft.as_deref_mut() {
-                        injury_form_ui::def_panel(ui, draft);
-                    }
-                    if let Some(weighting) = ctx.injury.weighting.as_deref_mut() {
-                        ui.separator();
-                        injury_form_ui::weighting_panel(
-                            ui,
-                            weighting,
-                            ctx.injury.registry.as_deref(),
-                            ctx.injury.tables.as_deref(),
-                        );
-                    }
-                });
-        }
+        EditorMode::Injury => injury_stack(ui, ctx),
         EditorMode::Sprite => {
             if let Some(draft) = ctx.sprite.draft.as_deref_mut() {
                 sprite_form_ui::primary_panel(
@@ -114,6 +102,29 @@ pub(in crate::egui_shell) fn central_panel(
                 });
         }
     });
+}
+
+fn injury_stack(
+    ui: &mut egui::Ui,
+    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
+) {
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            if let Some(draft) = ctx.injury.draft.as_deref_mut() {
+                injury_form_ui::def_panel(ui, draft);
+            }
+            if let Some(weighting) = ctx.injury.weighting.as_deref_mut() {
+                ui.separator();
+                injury_form_ui::weighting_panel(
+                    ui,
+                    weighting,
+                    ctx.injury.registry.as_deref(),
+                    ctx.injury.tables.as_deref(),
+                    ctx.last_save,
+                );
+            }
+        });
 }
 
 fn prefab_viewport(

@@ -4,5 +4,6 @@ mod fields;
 mod panel;
 mod preview;
 
-pub(crate) use panel::primary_panel;
+pub(in crate::egui_shell) use fields::TerrainSaveContext;
+pub(in crate::egui_shell) use panel::primary_panel;
 pub(crate) use preview::ron_preview;

@@ -1,12 +1,13 @@
 use bevy_egui::egui;
 use gdtf_battle_sim::weapon::{MeleeWeaponRegistry, WeaponName};
 
-use crate::melee_weapon_form::MeleeWeaponDraft;
+use crate::{melee_weapon_form::MeleeWeaponDraft, save_record::LastSaveRecord};
 
 pub(crate) fn field_stack(
     ui: &mut egui::Ui,
     draft: &mut MeleeWeaponDraft,
     registry: Option<&MeleeWeaponRegistry>,
+    last_save: &mut LastSaveRecord,
 ) {
     ui.heading("Melee weapon");
     ui.separator();
@@ -22,7 +23,11 @@ pub(crate) fn field_stack(
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_button(ui, draft);
+        save_button(ui, draft, last_save);
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = last_save;
     }
 }
 
@@ -72,12 +77,13 @@ fn name_field(ui: &mut egui::Ui, draft: &mut MeleeWeaponDraft) {
 
 /// melee-weapon save path is gated `#[cfg(debug_assertions)]` (the terrain / theme /
 #[cfg(debug_assertions)]
-fn save_button(ui: &mut egui::Ui, draft: &MeleeWeaponDraft) {
+fn save_button(ui: &mut egui::Ui, draft: &MeleeWeaponDraft, last_save: &mut LastSaveRecord) {
     if !ui.button("Save melee weapon").clicked() {
         return;
     }
     let (name, spec) = crate::melee_weapon_form::draft_to_melee_weapon_spec(draft);
-    match crate::melee_weapon_form::write_melee_weapon(&name, &spec) {
+    let written = crate::melee_weapon_form::write_melee_weapon(&name, &spec);
+    match &written {
         Ok(path) => bevy::log::info!(
             "melee weapon save: wrote melee weapon `{}` to `{}`",
             name.as_str(),
@@ -85,4 +91,8 @@ fn save_button(ui: &mut egui::Ui, draft: &MeleeWeaponDraft) {
         ),
         Err(err) => bevy::log::error!("melee weapon save: melee weapon `{}`: {err}", name.as_str()),
     }
+    last_save.record(
+        crate::EditorMode::MeleeWeapon,
+        crate::save_record::SaveOutcome::from_result(written),
+    );
 }

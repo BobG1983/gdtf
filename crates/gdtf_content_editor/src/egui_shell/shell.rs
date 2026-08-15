@@ -6,7 +6,7 @@ use crate::{
         autoload::{ModeSyncBundles, run_form_syncs},
         chrome::{mode_tabs, status_line, theme_combo_box},
         mode_panels::{ModePanelsCtx, central_panel, right_panel},
-        params::{ContentForms, PrefabParams, SharedRegistries, TerrainThemeDrafts},
+        params::{ContentForms, PrefabParams, SharedRegistries, TerrainThemeDrafts, Workbench},
         prefab::palette_ui,
         terrain_form_ui,
         textures::resolve_panel_textures,
@@ -14,24 +14,26 @@ use crate::{
         theme_form_ui,
     },
     mode::EditorMode,
-    session::MapEditorSession,
 };
 
 pub(crate) fn editor_egui_ui(
     mut contexts: EguiContexts,
-    mode: Option<ResMut<EditorMode>>,
-    session: Option<ResMut<MapEditorSession>>,
+    mut workbench: Workbench,
     drafts: TerrainThemeDrafts,
     shared: SharedRegistries,
     mut prefab: PrefabParams,
     mut forms: ContentForms,
 ) -> Result {
     let TerrainThemeDrafts { terrain, theme } = drafts;
-    let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) =
-        (mode, session, terrain, theme)
-    else {
+    let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) = (
+        workbench.mode.take(),
+        workbench.session.take(),
+        terrain,
+        theme,
+    ) else {
         return Ok(());
     };
+    let last_save = &mut *workbench.last_save;
 
     run_form_syncs(
         *mode,
@@ -100,21 +102,22 @@ pub(crate) fn editor_egui_ui(
     });
 
     let mut panel_ctx = ModePanelsCtx {
-        session:          &mut session,
-        terrain_draft:    &mut terrain_draft,
-        theme_draft:      &mut theme_draft,
-        themes:           shared.themes.as_deref(),
+        session: &mut session,
+        last_save,
+        terrain_draft: &mut terrain_draft,
+        theme_draft: &mut theme_draft,
+        themes: shared.themes.as_deref(),
         terrain_registry: shared.terrain.as_deref(),
-        weapons:          shared.weapons.as_deref(),
-        textures:         &textures,
-        prefab:           &mut prefab,
-        gang:             &mut forms.gang,
-        armor:            &mut forms.armor,
-        injury:           &mut forms.injury,
-        sprite:           &mut forms.sprite,
-        attachment:       &mut forms.attachment,
-        weapon:           &mut forms.weapon,
-        melee_weapon:     &mut forms.melee_weapon,
+        weapons: shared.weapons.as_deref(),
+        textures: &textures,
+        prefab: &mut prefab,
+        gang: &mut forms.gang,
+        armor: &mut forms.armor,
+        injury: &mut forms.injury,
+        sprite: &mut forms.sprite,
+        attachment: &mut forms.attachment,
+        weapon: &mut forms.weapon,
+        melee_weapon: &mut forms.melee_weapon,
     };
     right_panel(&mut viewport_ui, *mode, &mut panel_ctx);
     central_panel(&mut viewport_ui, *mode, &mut panel_ctx);

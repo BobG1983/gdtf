@@ -8,7 +8,7 @@ use gdtf_battle_sim::{
     severity::Severity,
 };
 
-use crate::injury_form::WeightingDraft;
+use crate::{injury_form::WeightingDraft, save_record::LastSaveRecord};
 
 const fn category_label(category: InjuryCategory) -> &'static str {
     match category {
@@ -32,6 +32,7 @@ pub(crate) fn weighting_panel(
     draft: &mut WeightingDraft,
     injuries: Option<&InjuryRegistry>,
     tables: Option<&InjuryTables>,
+    last_save: &mut LastSaveRecord,
 ) {
     ui.heading("Weighting");
     ui.separator();
@@ -47,7 +48,11 @@ pub(crate) fn weighting_panel(
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_button(ui, draft);
+        save_button(ui, draft, last_save);
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = last_save;
     }
 }
 
@@ -179,12 +184,13 @@ fn injury_combo(
 }
 
 #[cfg(debug_assertions)]
-fn save_button(ui: &mut egui::Ui, draft: &WeightingDraft) {
+fn save_button(ui: &mut egui::Ui, draft: &WeightingDraft, last_save: &mut LastSaveRecord) {
     if !ui.button("Save weighting").clicked() {
         return;
     }
     let weighting = crate::injury_form::draft_to_weighting(draft);
-    match crate::injury_form::write_weighting(&weighting) {
+    let written = crate::injury_form::write_weighting(&weighting);
+    match &written {
         Ok(path) => bevy::log::info!(
             "weighting save: wrote `{}` / `{}` table to `{}`",
             category_label(weighting.category),
@@ -197,4 +203,8 @@ fn save_button(ui: &mut egui::Ui, draft: &WeightingDraft) {
             context_label(weighting.context)
         ),
     }
+    last_save.record(
+        crate::EditorMode::Injury,
+        crate::save_record::SaveOutcome::from_result(written),
+    );
 }

@@ -13,7 +13,7 @@ use gdtf_content_editor::{
 use gdtf_qa_command::dispatch::QaCommandSystems;
 use gdtf_qa_protocol::command::CommandName;
 
-use crate::{client::EDITOR_PHASE, harness::editor_app_listening, support::TestResult};
+use crate::{client::EDITOR_COMMAND_NAMES, harness::editor_app_listening, support::TestResult};
 
 fn crate_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -25,13 +25,15 @@ fn the_editor_command_set_is_conformant() {
 }
 
 #[test]
-fn the_editor_offers_exactly_the_phase_read() {
-    assert_eq!(
-        editor_command_names(),
-        vec![CommandName::from_static(EDITOR_PHASE)],
-        "the editor's published list is part of the wire contract; the rest of the parent \
-         list's commands belong to their own tickets",
-    );
+fn the_editor_offers_the_lifecycle_commands() {
+    let published = editor_command_names();
+    for name in EDITOR_COMMAND_NAMES {
+        assert!(
+            published.contains(&CommandName::from_static(name)),
+            "the editor's published list is part of the wire contract, and `{name}` is missing \
+             from it: {published:?}",
+        );
+    }
 }
 
 #[test]

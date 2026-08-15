@@ -13,6 +13,7 @@ use gdtf_qa_command::dispatch::QaCommandSystems;
 use gdtf_qa_protocol::{ports::NetQaPort, timeouts::NetTimeouts};
 
 use super::{
+    assets_root::EditorQaAssetsRoot,
     commands::register_editor_commands,
     config::{DEFAULT_EDITOR_PORT, editor_hello_facts},
     router::route_editor_requests,
@@ -102,6 +103,7 @@ fn serve(app: &mut App, listener: TcpListener, timeouts: NetTimeouts) {
     let (tx, rx) = mpsc::channel::<IncomingRequest>();
     thread::spawn(move || run_listener(listener, tx, timeouts, editor_hello_facts()));
     app.insert_resource(NetInbox::new(rx));
+    app.init_resource::<EditorQaAssetsRoot>();
     app.configure_sets(
         Update,
         EditorNetQaSystems::Gather.run_if(resource_exists::<State<EditorState>>),

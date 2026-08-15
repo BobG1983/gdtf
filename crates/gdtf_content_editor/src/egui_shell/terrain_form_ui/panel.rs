@@ -1,25 +1,23 @@
 use bevy_egui::egui;
 use gdtf_battle_presenter::{TileRole, resolve_sprite};
-use gdtf_battle_sim::{level::UuidThemeRegistry, weapon::WeaponRegistry};
+use gdtf_battle_sim::weapon::WeaponRegistry;
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
-use super::fields::field_stack;
+use super::fields::{TerrainSaveContext, field_stack};
 use crate::{
     egui_shell::{
         sprite_thumb::{self, THUMB_EDGE},
         textures::SpriteTextures,
     },
-    session::MapEditorSession,
     terrain_form::{TerrainDraft, offered_graphic_roles},
 };
 
 const PICKER_COLUMNS: usize = 5;
 
-pub(crate) fn primary_panel(
+pub(in crate::egui_shell) fn primary_panel(
     ui: &mut egui::Ui,
     draft: &mut TerrainDraft,
-    session: &MapEditorSession,
-    themes: Option<&UuidThemeRegistry>,
+    save: TerrainSaveContext<'_>,
     sprites: Option<&SpriteDefRegistry>,
     weapons: Option<&WeaponRegistry>,
     textures: &SpriteTextures,
@@ -27,7 +25,7 @@ pub(crate) fn primary_panel(
     ui.columns(2, |columns| {
         if let [picker_col, fields_col] = columns {
             graphic_picker(picker_col, draft, sprites, textures);
-            field_stack(fields_col, draft, session, themes, weapons);
+            field_stack(fields_col, draft, save, weapons);
         }
     });
 }

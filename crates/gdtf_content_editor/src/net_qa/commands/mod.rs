@@ -4,6 +4,7 @@ mod conformance;
 mod read;
 mod register;
 mod set;
+mod write;
 
 pub use conformance::{assert_editor_command_set_is_conformant, editor_command_names};
 pub(in crate::net_qa) use register::register_editor_commands;

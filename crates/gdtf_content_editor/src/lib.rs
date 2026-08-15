@@ -22,6 +22,7 @@ mod preview;
 mod right_panel;
 #[cfg(debug_assertions)]
 mod save;
+mod save_record;
 mod session;
 mod sprite_form;
 mod state;
@@ -65,7 +66,7 @@ pub use melee_weapon_form::{write_melee_weapon, write_melee_weapon_in};
 pub use mode::EditorMode;
 #[cfg(debug_assertions)]
 pub use net_qa::{
-    EDITOR_QA_SERVER_NAME, EditorNetQaSystems, NetQaEditorPlugin,
+    EDITOR_QA_SERVER_NAME, EditorNetQaSystems, EditorQaAssetsRoot, NetQaEditorPlugin,
     assert_editor_command_set_is_conformant, editor_command_names,
 };
 pub use placement::{
@@ -79,6 +80,9 @@ pub use right_panel::GridSpanInput;
 pub use save::{
     SavePrefabError, editor_map_to_prefab, prefab_save_path, prefab_save_path_in, sanitize_name,
     serialize_prefab, write_prefab, write_prefab_in,
+};
+pub use save_record::{
+    EditorSaveFault, LastSaveRecord, SaveFaultMessage, SaveOutcome, SavedAssetPath,
 };
 pub use session::MapEditorSession;
 pub use sprite_form::{SpriteDraft, draft_to_sprite_def, sprite_file_name, sprite_save_path_in};
