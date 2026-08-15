@@ -12,7 +12,8 @@ use gdtf_battle_sim::{
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{ProgressBarFill, theme::default_theme};
 
-pub(crate) const BUDGET: u32 = 96;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 pub(crate) fn battlescape_state(app: &App) -> Option<BattleScapeState> {
     app.world()
@@ -48,36 +49,25 @@ pub(crate) fn walk_app() -> App {
         .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
     app
 }
 
-pub(crate) fn drive_to_battle_running(app: &mut App) -> bool {
-    let at_menu = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    if !at_menu {
-        return false;
-    }
+pub(crate) fn drive_to_battle_running(app: &mut App) {
+    advance_until(app, |app| running_state(app) == Some(RunningState::Menu));
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
-    advance_until(
-        app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    )
+    advance_until(app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
 }
 
 pub(crate) fn battle_running_app() -> App {
     let mut app = walk_app();
-    assert!(
-        drive_to_battle_running(&mut app),
-        "the walk should reach BattleScapeState::BattleRunning within {BUDGET} updates; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    drive_to_battle_running(&mut app);
     app
 }
 

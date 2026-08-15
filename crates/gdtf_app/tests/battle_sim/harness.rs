@@ -12,7 +12,8 @@ use gdtf_battle_sim::{
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
-pub(crate) const BUDGET: u32 = 96;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 pub(crate) fn two_ganger_situation() -> Situation {
     SituationBuilder::new()
@@ -32,29 +33,15 @@ pub(crate) fn running_state(app: &bevy::app::App) -> Option<RunningState> {
         .map(|state| *state.get())
 }
 
-pub(crate) fn drive_past_menu(app: &mut bevy::app::App) -> bool {
-    let reached = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    if !reached {
-        return false;
-    }
+pub(crate) fn drive_past_menu(app: &mut bevy::app::App) {
+    advance_until(app, |app| running_state(app) == Some(RunningState::Menu));
     app.world_mut()
         .resource_mut::<bevy::state::state::NextState<RunningState>>()
         .set(RunningState::Options);
-    let reached_options = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Options),
-        BUDGET,
-    );
-    if reached_options {
-        app.world_mut()
-            .resource_mut::<bevy::state::state::NextState<RunningState>>()
-            .set(RunningState::Game);
-    }
-    reached_options
+    advance_until(app, |app| running_state(app) == Some(RunningState::Options));
+    app.world_mut()
+        .resource_mut::<bevy::state::state::NextState<RunningState>>()
+        .set(RunningState::Game);
 }
 
 pub(crate) fn walk_app(situation: Option<Situation>) -> bevy::app::App {
@@ -72,16 +59,15 @@ pub(crate) fn walk_app(situation: Option<Situation>) -> bevy::app::App {
         .insert_resource(gdtf_battle_sim::test_support::test_gang_registry());
     app.world_mut()
         .insert_resource(LoadedSituation::new(situation.unwrap_or_default()));
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
     app
 }
 
-pub(crate) fn drive_to_generation(app: &mut bevy::app::App) -> bool {
-    if !drive_past_menu(app) {
-        return false;
-    }
-    advance_until(
-        app,
-        |app| battlescape_state(app) == Some(BattleScapeState::Generation),
-        BUDGET,
-    )
+pub(crate) fn drive_to_generation(app: &mut bevy::app::App) {
+    drive_past_menu(app);
+    advance_until(app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::Generation)
+    });
 }

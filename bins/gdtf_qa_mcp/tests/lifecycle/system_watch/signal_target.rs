@@ -5,8 +5,7 @@ use gdtf_qa_mcp::{OrphanStop, OrphanWatch, QaPort, SystemOrphanWatch};
 use super::{
     super::support::free_port,
     placeholder::{
-        exit_status_within, group_of, sleeper_command, spawn, spawn_sleeper_in_its_own_group,
-        target_on,
+        exit_status, group_of, sleeper_command, spawn, spawn_sleeper_in_its_own_group, target_on,
     },
 };
 
@@ -23,7 +22,7 @@ fn the_real_stop_reaches_a_process_that_is_not_a_group_leader() {
     let outcome = SystemOrphanWatch::new().stop(target_on(QaPort::new(free_port()), pid));
 
     assert_eq!(outcome, OrphanStop::Stopped);
-    let status = exit_status_within(&mut child);
+    let status = exit_status(&mut child);
     assert!(
         status.signal().is_some(),
         "the placeholder was signalled, not left to finish: {status:?}"
@@ -39,7 +38,7 @@ fn the_real_stop_reaches_a_process_group_leader() {
     let outcome = SystemOrphanWatch::new().stop(target_on(QaPort::new(free_port()), pid));
 
     assert_eq!(outcome, OrphanStop::Stopped);
-    let status = exit_status_within(&mut child);
+    let status = exit_status(&mut child);
     assert!(
         status.signal().is_some(),
         "the placeholder was signalled, not left to finish: {status:?}"

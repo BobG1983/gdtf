@@ -44,16 +44,9 @@ fn action_bar_spawns_in_battle_and_despawns_outside() {
     }
 
     app.world_mut().insert_resource(BattleRunningComplete);
-    let left_battle_running = advance_until(
-        &mut app,
-        |app| battlescape_state(app) != Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        left_battle_running,
-        "an explicit BattleRunningComplete insert must advance the machine out of BattleRunning \
-         within {BUDGET} updates",
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) != Some(BattleScapeState::BattleRunning)
+    });
     assert!(
         single_with::<StanceStandingButton>(&mut app).is_none(),
         "the action bar must be despawned once the battle leaves BattleRunning",

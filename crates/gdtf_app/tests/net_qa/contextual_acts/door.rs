@@ -15,7 +15,7 @@ use super::{
         socket_support::{TestError, TestResult, battle_app_listening, game_app_listening},
     },
     scene::{
-        Accepted, SETTLE_BUDGET, a_neighbour, accepted, clear_doors_around, door_state, refused,
+        Accepted, a_neighbour, accepted, clear_doors_around, door_state, refused,
         select_a_player_ganger, settle, spawn_closed_door,
     },
 };
@@ -24,7 +24,7 @@ use super::{
 pub(super) fn door_beside_the_shooter() -> Result<(App, NetQaPort, Entity), TestError> {
     let (mut app, port) = battle_app_listening()?;
     let (_shooter, at) = select_a_player_ganger(&mut app)?;
-    clear_doors_around(&mut app, at)?;
+    clear_doors_around(&mut app, at);
     let beside = a_neighbour(&app, at)?;
     let door = spawn_closed_door(&mut app, beside);
     settle(&mut app);
@@ -35,7 +35,7 @@ pub(super) fn door_beside_the_shooter() -> Result<(App, NetQaPort, Entity), Test
 fn no_door_beside_the_shooter() -> Result<(App, NetQaPort, CellLevel), TestError> {
     let (mut app, port) = battle_app_listening()?;
     let (_shooter, at) = select_a_player_ganger(&mut app)?;
-    clear_doors_around(&mut app, at)?;
+    clear_doors_around(&mut app, at);
     settle(&mut app);
     Ok((app, port, at))
 }
@@ -61,17 +61,9 @@ fn opening_the_offered_door_names_it_and_leaves_it_open_in_the_world() -> TestRe
         OfferTargetNet::Door(DoorToken::new(door.to_bits())),
         "the reply names the door the panel was offering, which is the one the call fired at",
     );
-    let toggled = advance_until(
-        &mut app,
-        |app| door_state(app, door) == Some(OpenState::Open),
-        SETTLE_BUDGET,
-    );
-    assert!(
-        toggled,
-        "the sim's own toggle must leave the carried door Open; the act log holds no deed for a \
-         door, so the world is the evidence — last state was {:?}",
-        door_state(&app, door),
-    );
+    advance_until(&mut app, |app| {
+        door_state(app, door) == Some(OpenState::Open)
+    });
     Ok(())
 }
 

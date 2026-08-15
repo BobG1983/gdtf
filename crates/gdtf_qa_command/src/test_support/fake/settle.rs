@@ -87,7 +87,9 @@ impl QaCommand for FakeSettle {
     const SUMMARY: CommandSummary =
         CommandSummary::from_static("Answer on a later frame, once the fake signal is raised.");
 
-    const DEFERRED_BUDGET: DeferredBudget = DeferredBudget::new(Duration::from_millis(750));
+    // Far above any case's own frames yet inside the must-beat-the-socket invariant;
+    // a case that wants expiry sets a zero budget explicitly.
+    const DEFERRED_BUDGET: DeferredBudget = DeferredBudget::new(Duration::from_secs(60));
     const TIMING: CommandTiming = CommandTiming::Deferred;
 
     fn availability(_facts: &FakeFacts) -> CommandAvailability {

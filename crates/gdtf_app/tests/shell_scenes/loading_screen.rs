@@ -7,7 +7,8 @@ use gdtf_battle_sim::{injuries::InjuryRegistry, tuning::CombatTuning, weapon::We
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
-const BUDGET: u32 = 96;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 const TOP_HUD_Z: i32 = 20;
 
@@ -57,13 +58,13 @@ fn app_driven_into_game() -> App {
         .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
 
-    let at_menu = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    assert!(at_menu, "the walk should reach RunningState::Menu");
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
@@ -74,16 +75,9 @@ fn app_driven_into_game() -> App {
 fn loading_screen_shows_in_generation_then_despawns_on_animate_in() {
     let mut app = app_driven_into_game();
 
-    let at_generation = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::Generation),
-        BUDGET,
-    );
-    assert!(
-        at_generation,
-        "the walk should descend to BattleScapeState::Generation; last was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::Generation)
+    });
 
     assert!(
         single_with::<LoadingScreenRoot>(&mut app).is_some(),
@@ -91,16 +85,9 @@ fn loading_screen_shows_in_generation_then_despawns_on_animate_in() {
          the assembly phase)",
     );
 
-    let at_animate_in = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::AnimateIn),
-        BUDGET,
-    );
-    assert!(
-        at_animate_in,
-        "Generation must advance to AnimateIn once the sim signals BattleReady; last was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::AnimateIn)
+    });
 
     assert!(
         single_with::<LoadingScreenRoot>(&mut app).is_none(),
@@ -113,16 +100,9 @@ fn loading_screen_shows_in_generation_then_despawns_on_animate_in() {
 fn loading_screen_z_is_above_the_hud_band() {
     let mut app = app_driven_into_game();
 
-    let at_generation = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::Generation),
-        BUDGET,
-    );
-    assert!(
-        at_generation,
-        "the walk should descend to BattleScapeState::Generation; last was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::Generation)
+    });
 
     let root = single_with::<LoadingScreenRoot>(&mut app);
     assert!(

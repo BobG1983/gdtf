@@ -21,9 +21,10 @@ use crate::{
 
 pub(super) type TestResult = Result<(), Box<dyn Error>>;
 
+// Never fire during a test; reaping has its own suite.
 const TEST_TIMEOUTS: NetTimeouts = NetTimeouts::new(
-    NetIoTimeout::new(Duration::from_secs(5)),
-    NetReplyTimeout::new(Duration::from_secs(5)),
+    NetIoTimeout::new(Duration::MAX),
+    NetReplyTimeout::new(Duration::MAX),
 );
 
 pub(super) fn host_facts() -> HelloFacts {
@@ -42,7 +43,6 @@ pub(super) fn connected_client() -> Result<(TcpStream, Receiver<IncomingRequest>
     let (listener, port) = bind_listener(NetQaPort::new(0))?;
     thread::spawn(move || run_listener(listener, tx, TEST_TIMEOUTS, host_facts()));
     let stream = TcpStream::connect((Ipv4Addr::LOCALHOST, *port))?;
-    stream.set_read_timeout(Some(*TEST_TIMEOUTS.io()))?;
     Ok((stream, rx))
 }
 

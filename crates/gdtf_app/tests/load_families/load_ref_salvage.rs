@@ -9,8 +9,6 @@ use gdtf_battle_sim::{
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 fn salvage_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
@@ -24,7 +22,7 @@ fn malformed_sibling_is_salvaged_around_reported_and_load_still_exits() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<WeaponRegistry>(&mut app);
 
     let weapons = app.world().get_resource::<WeaponRegistry>();
     assert!(
@@ -53,7 +51,7 @@ fn malformed_sibling_is_salvaged_around_reported_and_load_still_exits() {
         );
     }
 
-    advance_until_resource_exists::<ContentValidationDone>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<ContentValidationDone>(&mut app);
     let reported = app
         .world()
         .get_resource::<ContentIntegrityReport>()
@@ -75,16 +73,9 @@ fn malformed_sibling_is_salvaged_around_reported_and_load_still_exits() {
             .map(ContentIntegrityReport::findings),
     );
 
-    let load_released = advance_until(
-        &mut app,
-        |app| matches!(app_state(app), AppState::Intro | AppState::Running),
-        LOAD_SAFETY_NET,
-    );
-    assert!(
-        load_released,
-        "Load must still exit past the salvaged folder; last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        matches!(app_state(app), AppState::Intro | AppState::Running)
+    });
 }
 
 #[test]
@@ -93,7 +84,7 @@ fn an_authored_zero_turn_dot_is_salvage_rejected_and_never_reaches_the_sim() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<WeaponRegistry>(&mut app);
 
     let weapons = app.world().get_resource::<WeaponRegistry>();
     assert!(
@@ -118,7 +109,7 @@ fn an_authored_zero_turn_dot_is_salvage_rejected_and_never_reaches_the_sim() {
         }
     }
 
-    advance_until_resource_exists::<ContentValidationDone>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<ContentValidationDone>(&mut app);
     let reported = app
         .world()
         .get_resource::<ContentIntegrityReport>()
@@ -148,7 +139,7 @@ fn an_authored_zero_turn_field_is_salvage_rejected_and_never_reaches_the_sim() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<FieldDefRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<FieldDefRegistry>(&mut app);
 
     let fields = app.world().get_resource::<FieldDefRegistry>();
     assert!(
@@ -173,7 +164,7 @@ fn an_authored_zero_turn_field_is_salvage_rejected_and_never_reaches_the_sim() {
         );
     }
 
-    advance_until_resource_exists::<ContentValidationDone>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<ContentValidationDone>(&mut app);
     let reported = app
         .world()
         .get_resource::<ContentIntegrityReport>()

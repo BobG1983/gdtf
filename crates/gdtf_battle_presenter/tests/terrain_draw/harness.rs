@@ -34,8 +34,6 @@ use gdtf_content_families::{
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
-pub(crate) const LOAD_SAFETY_NET: u32 = 10_000;
-
 pub(crate) fn workspace_assets_root() -> PathBuf {
     let Some(root) = gdtf_assets::workspace_assets_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
@@ -84,8 +82,8 @@ pub(crate) fn headless_renderer_app() -> App {
 }
 
 pub(crate) fn settle_resources(app: &mut App) {
-    advance_until_resource_exists::<SpriteDefRegistry>(app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<TopDownAtlases>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<SpriteDefRegistry>(app);
+    advance_until_resource_exists::<TopDownAtlases>(app);
 }
 
 pub(crate) fn insert_occupancy(app: &mut App, terrain: Vec<TerrainPlacement>) {

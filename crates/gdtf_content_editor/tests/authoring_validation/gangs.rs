@@ -9,7 +9,7 @@ use gdtf_content_families::GangsFamily;
 use gdtf_test_utils::advance_until;
 
 use crate::harness::{
-    DANGLING_DEFAULT_FLOOR, REARM_UPDATES, advance_to_published, dangling_ref_referrer,
+    DANGLING_DEFAULT_FLOOR, advance_to_published, dangling_ref_referrer,
     editor_app_on_fixture_root, has_dangling_ref,
 };
 
@@ -96,22 +96,13 @@ fn gang_hot_edit_rearms_validation_and_republishes_current_findings() {
     app.world_mut()
         .write_message(AssetEvent::Modified { id: handle.id() });
 
-    let republished = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<ContentIntegrityReport>()
-                .is_some_and(|report| {
-                    has_dangling_ref(report, "WeaponRegistry", EDITED_DANGLING_WEAPON)
-                })
-        },
-        REARM_UPDATES,
-    );
-    assert!(
-        republished,
-        "a gang hot-edit must re-arm the validation pass — the edited dangling weapon key was \
-         never re-reported",
-    );
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<ContentIntegrityReport>()
+            .is_some_and(|report| {
+                has_dangling_ref(report, "WeaponRegistry", EDITED_DANGLING_WEAPON)
+            })
+    });
 
     let world = app.world();
     let report = world.resource::<ContentIntegrityReport>();

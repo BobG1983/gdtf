@@ -7,8 +7,6 @@ use gdtf_battle_sim::{
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 const PART_PER_CATEGORY: [(InjuryCategory, BodyPart); 4] = [
     (InjuryCategory::Head, BodyPart::Head),
     (InjuryCategory::Torso, BodyPart::Torso),
@@ -21,7 +19,7 @@ fn every_category_has_a_bucket_in_every_damage_context() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
-    advance_until_resource_exists::<InjuryTables>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<InjuryTables>(&mut app);
 
     let Some(tables) = app.world().get_resource::<InjuryTables>() else {
         return;
@@ -46,7 +44,7 @@ fn the_same_shared_pool_is_weighted_differently_per_source() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
-    advance_until_resource_exists::<InjuryTables>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<InjuryTables>(&mut app);
 
     let Some(tables) = app.world().get_resource::<InjuryTables>() else {
         return;

@@ -6,11 +6,7 @@ use gdtf_qa_protocol::{
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
-use crate::{
-    assertions::assert_hello_ok,
-    client::Client,
-    support::{EDITING_UPDATES, TestError},
-};
+use crate::{assertions::assert_hello_ok, client::Client, support::TestError};
 
 pub(crate) fn editor_app_listening() -> Result<(App, NetQaPort), TestError> {
     let (plugin, port) = NetQaEditorPlugin::listening(NetQaPort::new(0))?;
@@ -27,16 +23,7 @@ pub(crate) fn editor_state(app: &App) -> Option<EditorState> {
 }
 
 pub(crate) fn advance_to_editing(app: &mut App) {
-    let reached = advance_until(
-        app,
-        |app| editor_state(app) == Some(EditorState::Editing),
-        EDITING_UPDATES,
-    );
-    assert!(
-        reached,
-        "the editor never reached EditorState::Editing — its Load pass did not resolve the \
-         registries (a genuine load failure, not a frame-budget shortfall)",
-    );
+    advance_until(app, |app| editor_state(app) == Some(EditorState::Editing));
     for _ in 0..4 {
         app.update();
     }

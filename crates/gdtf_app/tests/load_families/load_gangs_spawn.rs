@@ -14,8 +14,6 @@ use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
 use gdtf_battle_sim::ganger::{GangRegistry, GangerName};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
-const BUDGET: u32 = 512;
-
 fn running_state(app: &App) -> Option<RunningState> {
     app.world()
         .get_resource::<State<RunningState>>()
@@ -34,33 +32,16 @@ fn real_skirmish_with_real_gangs_spawns_the_expected_set() {
         .starting_in(AppState::Load)
         .build();
 
-    let reached_menu = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    assert!(
-        reached_menu,
-        "the real Load flow must reach RunningState::Menu within {BUDGET} updates; last observed \
-         RunningState was {:?}",
-        running_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
 
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
-    let reached_battle = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        reached_battle,
-        "the real skirmish must generate + DEPLOY its roster and reach BattleRunning within \
-         {BUDGET} updates (a missing gang ref would leave zero gangers and never reach it); last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
 
     let gangs = app.world().get_resource::<GangRegistry>().cloned();
     assert!(

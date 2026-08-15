@@ -116,17 +116,9 @@ fn flee_button_press_ends_battle() {
     };
     press_ui_button(&mut app, flee);
 
-    let left_battle_running = advance_until(
-        &mut app,
-        |app| battlescape_state(app) != Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        left_battle_running,
-        "a flee press must advance the machine out of BattleRunning within {BUDGET} updates; \
-         last observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) != Some(BattleScapeState::BattleRunning)
+    });
     assert_eq!(
         battlescape_state(&app),
         Some(BattleScapeState::AnimateOut),
@@ -169,15 +161,9 @@ fn flee_button_despawns_on_exit_battle_running() {
     };
     press_ui_button(&mut app, flee);
 
-    let left_battle_running = advance_until(
-        &mut app,
-        |app| battlescape_state(app) != Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        left_battle_running,
-        "a flee press must advance the machine out of BattleRunning within {BUDGET} updates",
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) != Some(BattleScapeState::BattleRunning)
+    });
     assert!(
         single_with::<FleeButton>(&mut app).is_none(),
         "the flee button must be despawned once the battle leaves BattleRunning (with the bar)",

@@ -77,7 +77,8 @@ mod stepping {
         command_exchange::PROCGEN_STEP,
     };
 
-    const BUDGET: u32 = 512;
+    /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+    const ONE_STEP_A_FRAME: u32 = 1;
 
     #[derive(Debug, Deserialize)]
     struct StepBody {
@@ -104,28 +105,19 @@ mod stepping {
         let (tx, rx) = mpsc::channel();
         app.add_plugins(NetQaPlugin::with_channels(rx));
         app.add_plugins(ProcgenStepperPlugin::with_enabled(true));
-        assert!(
-            advance_until(
-                &mut app,
-                |app| running_state(app) == Some(RunningState::Menu),
-                BUDGET,
-            ),
-            "the real Load flow must rest at the Menu first",
-        );
+        app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+            ONE_STEP_A_FRAME,
+        ));
+        advance_until(&mut app, |app| {
+            running_state(app) == Some(RunningState::Menu)
+        });
         app.world_mut()
             .resource_mut::<NextState<RunningState>>()
             .set(RunningState::Game);
-        assert!(
-            advance_until(
-                &mut app,
-                |app| battlescape_state(app) == Some(BattleScapeState::Generation)
-                    && app.world().get_resource::<StagedProcgen>().is_some(),
-                BUDGET,
-            ),
-            "with the stepper engaged the app must rest in Generation with a staged driver; last \
-             observed BattleScapeState was {:?}",
-            battlescape_state(&app),
-        );
+        advance_until(&mut app, |app| {
+            battlescape_state(app) == Some(BattleScapeState::Generation)
+                && app.world().get_resource::<StagedProcgen>().is_some()
+        });
         (app, tx)
     }
 
@@ -169,10 +161,7 @@ mod stepping {
     fn stepping_over_the_wire_drives_generation_to_a_running_battle() {
         let (mut app, tx) = stepping_app_with_net_qa();
         let mut ran = 0_u32;
-        for _ in 0..BUDGET {
-            if stage_of(&app).is_none() {
-                break;
-            }
+        while stage_of(&app).is_some() {
             let pending = send(&tx, run_request(PROCGEN_STEP, "()"));
             app.update();
             if let Ok(QaResponse::Outcome(CommandOutcome::Ran { .. })) = pending.try_recv() {
@@ -183,15 +172,8 @@ mod stepping {
             ran > 0,
             "at least one step must have been taken over the wire, or nothing was driven",
         );
-        assert!(
-            advance_until(
-                &mut app,
-                |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-                BUDGET,
-            ),
-            "stepping the whole staged pipeline over the wire must land a running battle; last \
-             observed BattleScapeState was {:?}",
-            battlescape_state(&app),
-        );
+        advance_until(&mut app, |app| {
+            battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+        });
     }
 }

@@ -14,10 +14,6 @@ use gdtf_content_editor::{EditorState, MapEditorPlugin};
 use gdtf_content_families::{ArmorFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily};
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
-const MAX_UPDATES: u32 = 10_000;
-
-const REDRIVE_UPDATES: u32 = 100;
-
 fn editor_app() -> App {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(MapEditorPlugin);
@@ -25,20 +21,11 @@ fn editor_app() -> App {
 }
 
 fn advance_to_editing(app: &mut App) {
-    let reached = advance_until(
-        app,
-        |app| {
-            app.world()
-                .get_resource::<State<EditorState>>()
-                .is_some_and(|s| *s.get() == EditorState::Editing)
-        },
-        MAX_UPDATES,
-    );
-    assert!(
-        reached,
-        "the editor never reached EditorState::Editing — the registered Load pass did not \
-         resolve the gate resources",
-    );
+    advance_until(app, |app| {
+        app.world()
+            .get_resource::<State<EditorState>>()
+            .is_some_and(|s| *s.get() == EditorState::Editing)
+    });
     for _ in 0..4 {
         app.update();
     }
@@ -120,20 +107,12 @@ fn modified_weapon_member_rebuilds_weapon_registry_after_load() {
     assert_handle_persists_and_fire::<WeaponsFamily>(&mut app, handle.id());
 
     let key = WeaponName::new("stub_pistol".to_owned());
-    let rebuilt = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<WeaponRegistry>()
-                .and_then(|r| r.spec(&key).map(|s| *s.damage))
-                == Some(97)
-        },
-        REDRIVE_UPDATES,
-    );
-    assert!(
-        rebuilt,
-        "the Load redrive must rebuild the WeaponRegistry in place with the edited damage",
-    );
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<WeaponRegistry>()
+            .and_then(|r| r.spec(&key).map(|s| *s.damage))
+            == Some(97)
+    });
 }
 
 #[test]
@@ -162,20 +141,12 @@ fn modified_armor_member_rebuilds_armor_registry_after_load() {
     assert_handle_persists_and_fire::<ArmorFamily>(&mut app, handle.id());
 
     let key = ArmorName::new("flak_vest".to_owned());
-    let rebuilt = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<ArmorRegistry>()
-                .and_then(|r| r.spec(&key))
-                == armor_spec(99).as_ref()
-        },
-        REDRIVE_UPDATES,
-    );
-    assert!(
-        rebuilt,
-        "the Load redrive must rebuild the ArmorRegistry in place with the edited spec",
-    );
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<ArmorRegistry>()
+            .and_then(|r| r.spec(&key))
+            == armor_spec(99).as_ref()
+    });
 }
 
 #[test]
@@ -205,21 +176,12 @@ fn modified_terrain_def_member_rebuilds_terrain_registry_after_load() {
     };
     assert_handle_persists_and_fire::<TerrainDefsFamily>(&mut app, handle.id());
 
-    let rebuilt = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<TerrainDefRegistry>()
-                .and_then(|r| r.def(&key).map(|d| (*d.display_name).clone()))
-                == Some("Edited Terrain".to_owned())
-        },
-        REDRIVE_UPDATES,
-    );
-    assert!(
-        rebuilt,
-        "the Load redrive must rebuild the TerrainDefRegistry in place, keyed by the def UUID, \
-         with the edited display name — no restart",
-    );
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<TerrainDefRegistry>()
+            .and_then(|r| r.def(&key).map(|d| (*d.display_name).clone()))
+            == Some("Edited Terrain".to_owned())
+    });
 }
 
 #[test]
@@ -249,19 +211,10 @@ fn modified_theme_def_member_rebuilds_theme_registry_after_load() {
     };
     assert_handle_persists_and_fire::<ThemeDefsFamily>(&mut app, handle.id());
 
-    let rebuilt = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<UuidThemeRegistry>()
-                .and_then(|r| r.def(&key).map(|d| (*d.display_name).clone()))
-                == Some("Edited Theme".to_owned())
-        },
-        REDRIVE_UPDATES,
-    );
-    assert!(
-        rebuilt,
-        "the Load redrive must rebuild the UuidThemeRegistry in place, keyed by the theme UUID, \
-         with the edited display name — no restart",
-    );
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<UuidThemeRegistry>()
+            .and_then(|r| r.def(&key).map(|d| (*d.display_name).clone()))
+            == Some("Edited Theme".to_owned())
+    });
 }

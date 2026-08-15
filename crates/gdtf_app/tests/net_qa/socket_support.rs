@@ -2,7 +2,6 @@ use std::{
     error::Error,
     io::{self, ErrorKind, Read as _, Write as _},
     net::{Ipv4Addr, TcpStream},
-    time::Duration,
 };
 
 use bevy::{
@@ -27,15 +26,6 @@ pub(crate) type TestResult = Result<(), TestError>;
 /// Builds a listening app and returns it with the port its listener bound.
 pub(crate) type SocketFixture = fn() -> Result<(App, NetQaPort), TestError>;
 
-/// How long one look at the socket waits before the game gets another frame.
-/// Its expiry is the pause between frames, never a failure.
-const READ_POLL: Duration = Duration::from_millis(10);
-
-/// Frames the game may take to answer one request. A deferred act waits out a whole enemy turn.
-const REPLY_BUDGET: u32 = 1024;
-
-const DRIVE_BUDGET: u32 = 512;
-
 /// Fixed steps a frame runs while the descent is held still.
 const STOPPED: u32 = 0;
 
@@ -53,7 +43,7 @@ pub(crate) struct Client {
 impl Client {
     pub(crate) fn connect(port: NetQaPort) -> Result<Self, TestError> {
         let stream = TcpStream::connect((Ipv4Addr::LOCALHOST, *port))?;
-        stream.set_read_timeout(Some(READ_POLL))?;
+        stream.set_nonblocking(true)?;
         Ok(Self {
             stream,
             decoder: FrameDecoder::new(),
@@ -61,19 +51,19 @@ impl Client {
     }
 
     /// Send `request`, then run frames until the game answers it.
-    /// The wait is counted in frames, so a busy machine makes a case slower and never red.
+    /// The wait has no budget, so a busy machine makes a case slower and never red.
     pub(crate) fn exchange(
         &mut self,
         app: &mut App,
         request: &QaRequest,
     ) -> Result<QaResponse, TestError> {
         self.stream.write_all(&encode(request)?)?;
-        self.answer(app, request)
+        self.answer(app)
     }
 
-    fn answer(&mut self, app: &mut App, request: &QaRequest) -> Result<QaResponse, TestError> {
+    fn answer(&mut self, app: &mut App) -> Result<QaResponse, TestError> {
         let mut buf = [0u8; 512];
-        for _ in 0..REPLY_BUDGET {
+        loop {
             app.update();
             match self.stream.read(&mut buf) {
                 Ok(0) => {
@@ -89,7 +79,6 @@ impl Client {
                 return Ok(frame.decode::<QaResponse>()?);
             }
         }
-        Err(format!("the game never answered {request:?} within {REPLY_BUDGET} frames").into())
     }
 }
 
@@ -116,18 +105,10 @@ fn listening_menu_app() -> Result<(App, NetQaPort), TestError> {
         .starting_in(AppState::Load)
         .build();
     app.add_plugins(plugin);
-    if !advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        DRIVE_BUDGET,
-    ) {
-        return Err(format!(
-            "the real Load state never rested at RunningState::Menu within {DRIVE_BUDGET} \
-             frames; the live state was {:?}",
-            running_state(&app)
-        )
-        .into());
-    }
+    app.insert_resource(TimeUpdateStrategy::FixedTimesteps(ONE_STEP_A_FRAME));
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
     Ok((app, port))
 }
 
@@ -135,7 +116,7 @@ pub(crate) fn game_app_listening() -> Result<(App, NetQaPort), TestError> {
     listening_menu_app()
 }
 
-/// The menu app with both capture tunables small enough for a reply inside `REPLY_BUDGET`.
+/// The menu app with both capture tunables small, so a capture that cannot land gives up fast.
 pub(crate) fn capture_app_listening() -> Result<(App, NetQaPort), TestError> {
     let (mut app, port) = listening_menu_app()?;
     app.insert_resource(SettleFrames::new(2));
@@ -170,17 +151,8 @@ pub(crate) fn let_the_descent_run(app: &mut App) {
 pub(crate) fn battle_app_listening() -> Result<(App, NetQaPort), TestError> {
     let (mut app, port) = listening_menu_app()?;
     open_the_battle(&mut app);
-    if !advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        DRIVE_BUDGET,
-    ) {
-        return Err(format!(
-            "the descent never reached BattleScapeState::BattleRunning within {DRIVE_BUDGET} \
-             frames; the live state was {:?}",
-            battlescape_state(&app)
-        )
-        .into());
-    }
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
     Ok((app, port))
 }

@@ -5,7 +5,8 @@ use gdtf_battle_sim::{injuries::InjuryRegistry, tuning::CombatTuning, weapon::We
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
-const BUDGET: u32 = 96;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 fn game_state(app: &bevy::app::App) -> Option<GameState> {
     app.world()
@@ -41,54 +42,32 @@ fn presenter_app() -> bevy::app::App {
         .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
     app
 }
 
-fn drive_past_menu(app: &mut bevy::app::App) -> bool {
-    let reached = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    if !reached {
-        return false;
-    }
+fn drive_past_menu(app: &mut bevy::app::App) {
+    advance_until(app, |app| running_state(app) == Some(RunningState::Menu));
     app.world_mut()
         .resource_mut::<bevy::state::state::NextState<RunningState>>()
         .set(RunningState::Options);
-    let reached_options = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Options),
-        BUDGET,
-    );
-    if reached_options {
-        app.world_mut()
-            .resource_mut::<bevy::state::state::NextState<RunningState>>()
-            .set(RunningState::Game);
-    }
-    reached_options
+    advance_until(app, |app| running_state(app) == Some(RunningState::Options));
+    app.world_mut()
+        .resource_mut::<bevy::state::state::NextState<RunningState>>()
+        .set(RunningState::Game);
 }
 
-fn drive_to_battlescape(app: &mut bevy::app::App) -> bool {
-    if !drive_past_menu(app) {
-        return false;
-    }
-    advance_until(
-        app,
-        |app| game_state(app) == Some(GameState::BattleScape),
-        BUDGET,
-    )
+fn drive_to_battlescape(app: &mut bevy::app::App) {
+    drive_past_menu(app);
+    advance_until(app, |app| game_state(app) == Some(GameState::BattleScape));
 }
 
 #[test]
 fn battlescape_scene_runs_the_presenter_plugin_build() {
     let mut app = presenter_app();
-    assert!(
-        drive_to_battlescape(&mut app),
-        "the walk should descend to GameState::BattleScape within {BUDGET} updates; last observed \
-         GameState was {:?}",
-        game_state(&app),
-    );
+    drive_to_battlescape(&mut app);
     assert_eq!(
         game_state(&app),
         Some(GameState::BattleScape),

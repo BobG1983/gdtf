@@ -14,7 +14,8 @@ use gdtf_battle_sim::{
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
-const BUDGET: u32 = 96;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 fn world_cameras(app: &mut bevy::app::App) -> Vec<Entity> {
     app.world_mut()
@@ -65,48 +66,28 @@ fn walk_app() -> bevy::app::App {
         .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
     app
 }
 
-fn drive_into_battlescape(app: &mut bevy::app::App) -> bool {
-    let reached_menu = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    if !reached_menu {
-        return false;
-    }
+fn drive_into_battlescape(app: &mut bevy::app::App) {
+    advance_until(app, |app| running_state(app) == Some(RunningState::Menu));
     app.world_mut()
         .resource_mut::<bevy::state::state::NextState<RunningState>>()
         .set(RunningState::Options);
-    let reached_options = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Options),
-        BUDGET,
-    );
-    if !reached_options {
-        return false;
-    }
+    advance_until(app, |app| running_state(app) == Some(RunningState::Options));
     app.world_mut()
         .resource_mut::<bevy::state::state::NextState<RunningState>>()
         .set(RunningState::Game);
-    advance_until(
-        app,
-        |app| game_state(app) == Some(GameState::BattleScape),
-        BUDGET,
-    )
+    advance_until(app, |app| game_state(app) == Some(GameState::BattleScape));
 }
 
 #[test]
 fn world_camera_spawns_in_battlescape_and_despawns_on_exit() {
     let mut app = walk_app();
-    assert!(
-        drive_into_battlescape(&mut app),
-        "the walk should reach GameState::BattleScape within {BUDGET} updates; last observed \
-         GameState was {:?}",
-        game_state(&app),
-    );
+    drive_into_battlescape(&mut app);
 
     assert_eq!(
         world_cameras(&mut app).len(),
@@ -115,17 +96,9 @@ fn world_camera_spawns_in_battlescape_and_despawns_on_exit() {
     );
 
     app.world_mut().insert_resource(BattleRunningComplete);
-    let left_battlescape = advance_until(
-        &mut app,
-        |app| game_state(app).is_none_or(|state| state != GameState::BattleScape),
-        BUDGET,
-    );
-    assert!(
-        left_battlescape,
-        "the walk must leave GameState::BattleScape within {BUDGET} updates so the despawn fires; \
-         last observed GameState was {:?}",
-        game_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        game_state(app).is_none_or(|state| state != GameState::BattleScape)
+    });
 
     assert_eq!(
         world_cameras(&mut app).len(),
@@ -137,10 +110,7 @@ fn world_camera_spawns_in_battlescape_and_despawns_on_exit() {
 #[test]
 fn world_camera_survives_battlescape_substate_transitions() -> Result<(), &'static str> {
     let mut app = walk_app();
-    assert!(
-        drive_into_battlescape(&mut app),
-        "the walk should reach GameState::BattleScape within {BUDGET} updates",
-    );
+    drive_into_battlescape(&mut app);
     assert_eq!(
         battlescape_state(&app),
         Some(BattleScapeState::Generation),
@@ -158,17 +128,9 @@ fn world_camera_survives_battlescape_substate_transitions() -> Result<(), &'stat
         .copied()
         .ok_or("precondition: a WorldCamera entity must exist in GameState::BattleScape")?;
 
-    let reached_running = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        reached_running,
-        "the walk should reach BattleScapeState::BattleRunning within {BUDGET} updates; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
 
     let cameras_after = world_cameras(&mut app);
     assert_eq!(
@@ -190,10 +152,7 @@ fn world_camera_survives_battlescape_substate_transitions() -> Result<(), &'stat
 #[test]
 fn world_camera_renders_below_ui_and_off_layer_zero() {
     let mut app = walk_app();
-    assert!(
-        drive_into_battlescape(&mut app),
-        "the walk should reach GameState::BattleScape within {BUDGET} updates",
-    );
+    drive_into_battlescape(&mut app);
 
     let world = app.world_mut();
     let mut query = world.query_filtered::<(&Camera, &RenderLayers), With<WorldCamera>>();

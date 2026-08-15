@@ -23,12 +23,7 @@ fn occupancy_maintenance_plugin_is_wired() {
 #[test]
 fn entering_generation_seeds_rng_streams() {
     let mut app = walk_app(Some(two_ganger_situation()));
-    assert!(
-        drive_to_generation(&mut app),
-        "the walk should reach BattleScapeState::Generation within {BUDGET} updates; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    drive_to_generation(&mut app);
 
     assert!(
         app.world().get_resource::<ShotRng>().is_some(),
@@ -54,25 +49,14 @@ fn entering_generation_seeds_rng_streams() {
 #[test]
 fn generation_completion_is_gated_on_setup() {
     let mut app = walk_app(Some(two_ganger_situation()));
-    assert!(
-        drive_to_generation(&mut app),
-        "the walk should reach Generation within {BUDGET} updates",
-    );
+    drive_to_generation(&mut app);
 
     assert!(
         app.world().get_resource::<BattleInProgress>().is_some(),
         "a successful setup must have inserted the BattleInProgress witness before completion gates",
     );
 
-    let reached_animate_in = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::AnimateIn),
-        BUDGET,
-    );
-    assert!(
-        reached_animate_in,
-        "with setup succeeded, Generation must advance to AnimateIn within {BUDGET} updates; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::AnimateIn)
+    });
 }

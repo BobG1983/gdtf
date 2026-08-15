@@ -6,8 +6,8 @@ use gdtf_content_families::ThemeDefsFamily;
 use gdtf_test_utils::advance_until;
 
 use crate::harness::{
-    DANGLING_DEFAULT_FLOOR, DANGLING_PALETTE, REARM_UPDATES, advance_to_published,
-    editor_app_on_fixture_root, has_dangling_ref,
+    DANGLING_DEFAULT_FLOOR, DANGLING_PALETTE, advance_to_published, editor_app_on_fixture_root,
+    has_dangling_ref,
 };
 
 const EDITED_DEFAULT_FLOOR: u128 = 0x0000_0000_0000_0000_0000_0630_0000_0003;
@@ -74,20 +74,11 @@ fn theme_hot_edit_rearms_validation_and_republishes_current_findings() {
         .write_message(AssetEvent::Modified { id: handle.id() });
 
     let edited_uuid = TerrainUuid::new(Uuid::from_u128(EDITED_DEFAULT_FLOOR)).to_string();
-    let republished = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<ContentIntegrityReport>()
-                .is_some_and(|report| has_dangling_terrain_ref(report, &edited_uuid))
-        },
-        REARM_UPDATES,
-    );
-    assert!(
-        republished,
-        "a theme hot-edit must re-arm the validation pass — the edited dangling default_floor \
-         was never re-reported",
-    );
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<ContentIntegrityReport>()
+            .is_some_and(|report| has_dangling_terrain_ref(report, &edited_uuid))
+    });
 
     let world = app.world();
     let report = world.resource::<ContentIntegrityReport>();

@@ -25,7 +25,8 @@ use gdtf_test_utils::gpu_adapter_probe;
 
 const TARGET_PX: u32 = 64;
 
-const MAX_READBACK_UPDATES: usize = 60;
+/// Frames the hand-inserted scene needs to extract, prepare and draw — per-frame work, no IO.
+const SCENE_SETTLE_FRAMES: u32 = 8;
 
 #[derive(Resource, Default, Clone, Copy)]
 struct CapturedPixel {
@@ -95,6 +96,11 @@ fn render_reticle(cell: CellLevel, verdict: CellVisibility) -> Option<[u8; 4]> {
         .resource_mut::<Messages<HighlightRequest>>()
         .write(HighlightRequest::new(Some(cell), verdict));
 
+    // Let the scene draw before any copy is submitted, so every readback is of a settled frame.
+    for _ in 0..SCENE_SETTLE_FRAMES {
+        app.update();
+    }
+
     app.world_mut()
         .spawn(Readback::texture(target_handle))
         .observe(
@@ -116,15 +122,11 @@ fn render_reticle(cell: CellLevel, verdict: CellVisibility) -> Option<[u8; 4]> {
             },
         );
 
-    for _ in 0..MAX_READBACK_UPDATES {
+    while !app.world().resource::<CapturedPixel>().captured {
         app.update();
     }
 
     let captured = *app.world().resource::<CapturedPixel>();
-    assert!(
-        captured.captured,
-        "GPU readback never fired within {MAX_READBACK_UPDATES} updates"
-    );
     let mut q = app
         .world_mut()
         .query_filtered::<Entity, With<HoverHighlight>>();

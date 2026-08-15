@@ -77,8 +77,6 @@ impl ContentFamily for RelicFamily {
     }
 }
 
-const GENEROUS_LOAD_UPDATES: u32 = 10_000;
-
 fn real_asset_app() -> App {
     GdtfUiTestAppBuilder::new().with_ui_camera().build()
 }
@@ -89,14 +87,8 @@ fn mixed_folder_resolves_both_keying_shapes_and_skips_wrong_typed_members() {
     app.register_content_family::<SwatchFamily>();
     app.register_content_family::<BadgeFamily>();
 
-    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(
-        &mut app,
-        GENEROUS_LOAD_UPDATES,
-    );
-    gdtf_test_utils::advance_until_resource_exists::<BadgeRegistry>(
-        &mut app,
-        GENEROUS_LOAD_UPDATES,
-    );
+    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
+    gdtf_test_utils::advance_until_resource_exists::<BadgeRegistry>(&mut app);
 
     let mut expected_swatches = HashMap::new();
     expected_swatches.insert("alpha".to_owned(), 3);
@@ -134,10 +126,7 @@ fn failed_folder_inserts_the_empty_registry() {
     let mut app = real_asset_app();
     app.register_content_family::<RelicFamily>();
 
-    gdtf_test_utils::advance_until_resource_exists::<RelicRegistry>(
-        &mut app,
-        GENEROUS_LOAD_UPDATES,
-    );
+    gdtf_test_utils::advance_until_resource_exists::<RelicRegistry>(&mut app);
 
     assert_eq!(
         app.world().get_resource::<RelicRegistry>(),
@@ -157,10 +146,7 @@ fn missing_member_publishes_nothing_until_it_returns() {
     let mut app = real_asset_app();
     app.register_content_family::<SwatchFamily>();
     app.register_content_family::<BadgeFamily>();
-    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(
-        &mut app,
-        GENEROUS_LOAD_UPDATES,
-    );
+    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
 
     app.world_mut().remove_resource::<SwatchRegistry>();
     let beta = app
@@ -189,10 +175,7 @@ fn missing_member_publishes_nothing_until_it_returns() {
         .resource_mut::<Assets<RonAsset<Swatch>>>()
         .insert(beta.id(), RonAsset::new(Swatch { tone: 7 }));
     assert!(reinserted.is_ok(), "re-inserting the member must succeed");
-    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(
-        &mut app,
-        GENEROUS_LOAD_UPDATES,
-    );
+    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
     let betas = app
         .world()
         .get_resource::<SwatchRegistry>()
@@ -209,10 +192,7 @@ fn modified_member_rebuilds_the_registry_live() {
     let mut app = real_asset_app();
     app.register_content_family::<SwatchFamily>();
     app.register_content_family::<BadgeFamily>();
-    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(
-        &mut app,
-        GENEROUS_LOAD_UPDATES,
-    );
+    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
 
     let alpha = app
         .world()
@@ -226,20 +206,12 @@ fn modified_member_rebuilds_the_registry_live() {
         **asset = Swatch { tone: 9 };
     }
 
-    let rebuilt = gdtf_test_utils::advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<SwatchRegistry>()
-                .and_then(|registry| registry.0.get("alpha").copied())
-                == Some(9)
-        },
-        GENEROUS_LOAD_UPDATES,
-    );
-    assert!(
-        rebuilt,
-        "a Modified member must rebuild the registry in place with the edited tone",
-    );
+    gdtf_test_utils::advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<SwatchRegistry>()
+            .and_then(|registry| registry.0.get("alpha").copied())
+            == Some(9)
+    });
 }
 
 #[test]

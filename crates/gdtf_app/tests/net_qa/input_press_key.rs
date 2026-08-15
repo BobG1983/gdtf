@@ -17,9 +17,6 @@ use super::{
     socket_support::{TestError, TestResult, game_app_listening},
 };
 
-/// How many frames the keybind table gets to arrive off the asset server.
-const KEYBIND_BUDGET: u32 = 512;
-
 /// The menu app, for a case that reads the live keyboard after the exchange.
 fn menu_app() -> Result<(App, NetQaPort, ()), TestError> {
     let (app, port) = game_app_listening()?;
@@ -39,21 +36,11 @@ fn held(app: &App, key: KeyCode) -> Result<bool, TestError> {
 /// The rebind waits for the RON so the asset cannot land on top of it a frame later.
 fn keybound_app() -> Result<(App, NetQaPort, BoundKey), TestError> {
     let (mut app, port) = game_app_listening()?;
-    if !advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<HotRonResolved<Keybinds>>()
-                .is_some()
-        },
-        KEYBIND_BUDGET,
-    ) {
-        return Err(format!(
-            "the keybind RON must apply within {KEYBIND_BUDGET} frames — until it has, a rebind \
-             written here races the asset landing on top of it"
-        )
-        .into());
-    }
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<HotRonResolved<Keybinds>>()
+            .is_some()
+    });
     let rebound = BoundKey::KeyQ;
     app.insert_resource(Keybinds {
         select_clear: rebound,

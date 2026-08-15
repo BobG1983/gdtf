@@ -1,7 +1,6 @@
 use std::{
     io::{self, ErrorKind, Read as _, Write as _},
     net::{Ipv4Addr, TcpStream},
-    time::Duration,
 };
 
 use bevy::app::App;
@@ -46,13 +45,6 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 6] = [
 pub(crate) const EDITOR_EDITING_ONLY: [&str; 4] =
     [EDITOR_SET_MODE, EDITOR_NEW, EDITOR_LOAD, EDITOR_SAVE];
 
-/// How long one look at the socket waits before the editor gets another frame.
-/// Its expiry is the pause between frames, never a failure.
-const READ_POLL: Duration = Duration::from_millis(10);
-
-/// Frames the editor may take to answer one request.
-const REPLY_BUDGET: u32 = 1024;
-
 pub(crate) struct Client {
     stream:  TcpStream,
     decoder: FrameDecoder,
@@ -61,7 +53,7 @@ pub(crate) struct Client {
 impl Client {
     pub(crate) fn connect(port: NetQaPort) -> Result<Self, TestError> {
         let stream = TcpStream::connect((Ipv4Addr::LOCALHOST, *port))?;
-        stream.set_read_timeout(Some(READ_POLL))?;
+        stream.set_nonblocking(true)?;
         Ok(Self {
             stream,
             decoder: FrameDecoder::new(),
@@ -75,10 +67,10 @@ impl Client {
     }
 
     /// Read what is already answered before running another frame, so a case reads back the world
-    /// the answering frame left. The wait is counted in frames, so a busy machine is never red.
+    /// the answering frame left. The wait has no budget, so a busy machine is never red.
     pub(crate) fn read(&mut self, app: &mut App) -> Result<QaResponse, TestError> {
         let mut buf = [0u8; 512];
-        for _ in 0..REPLY_BUDGET {
+        loop {
             match self.stream.read(&mut buf) {
                 Ok(0) => return Err("the editor closed before a full response arrived".into()),
                 Ok(read) => self.decoder.push(&buf[..read]),
@@ -90,7 +82,6 @@ impl Client {
             }
             app.update();
         }
-        Err(format!("the editor never answered within {REPLY_BUDGET} frames").into())
     }
 
     pub(crate) fn exchange(

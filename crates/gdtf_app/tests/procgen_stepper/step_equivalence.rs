@@ -8,9 +8,12 @@ use gdtf_battle_sim::{
 use gdtf_test_utils::advance_until;
 
 use super::harness::{
-    BUDGET, FIXED_SEED, app_engaged_in_generation, app_ready_for_battle, battlescape_state,
+    FIXED_SEED, app_engaged_in_generation, app_ready_for_battle, battlescape_state,
     deployed_ganger_count, drive_into_battle_running, drive_stepper_to_done, terrain_fingerprint,
 };
+
+/// Runaway backstop for the pure staged driver — deterministic compute, no clock.
+const DRIVE_GUARD: u32 = 512;
 
 #[test]
 fn stepper_engaged_path_matches_the_normal_fingerprint() {
@@ -23,17 +26,9 @@ fn stepper_engaged_path_matches_the_normal_fingerprint() {
     let mut app = app_engaged_in_generation(FIXED_SEED);
     drive_stepper_to_done(&mut app);
 
-    let reached_running = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        reached_running,
-        "the stepper-engaged path must reach BattleRunning once its staged drive completes; \
-         last observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
 
     let actual = terrain_fingerprint(&app);
     assert_eq!(
@@ -59,17 +54,9 @@ fn stepper_engaged_path_deploys_the_same_roster() {
     let mut app = app_engaged_in_generation(FIXED_SEED);
     drive_stepper_to_done(&mut app);
 
-    let reached_running = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        reached_running,
-        "the stepper-engaged path must reach BattleRunning once its staged drive completes; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
 
     let actual = deployed_ganger_count(&mut app);
     assert_eq!(
@@ -118,7 +105,7 @@ fn placed_footprints_grow_one_per_step_over_real_content() {
     let mut guard = 0u32;
     while !driver.is_done() {
         guard += 1;
-        assert!(guard < BUDGET, "the staged drive must terminate");
+        assert!(guard < DRIVE_GUARD, "the staged drive must terminate");
         let advanced = driver.advance(registries);
         assert!(
             advanced.is_ok(),

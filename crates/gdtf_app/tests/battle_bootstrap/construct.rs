@@ -31,14 +31,7 @@ fn game_state(app: &bevy::app::App) -> Option<GameState> {
 
 #[test]
 fn bootstrap_reaches_battlescape_with_the_sim_constructed() {
-    let app_opt = bootstrap_app();
-    assert!(
-        app_opt.is_some(),
-        "the shared BattleAppBuilder drive should descend to BattleScapeState::BattleRunning",
-    );
-    let Some(mut app) = app_opt else {
-        return;
-    };
+    let mut app = bootstrap_app();
 
     assert_eq!(
         game_state(&app),
@@ -84,7 +77,7 @@ fn bootstrap_reaches_battlescape_with_the_sim_constructed() {
 #[test]
 fn the_drive_is_panic_free_and_seed_deterministic_across_runs() {
     let post_fire_target_state = || -> Option<(Option<Hp>, Option<Wounds>, Option<LifeState>)> {
-        let mut app = bootstrap_app()?;
+        let mut app = bootstrap_app();
         let shooter = find_ganger(&mut app, SHOOTER_FACTION)?;
         let target = find_ganger(&mut app, TARGET_FACTION)?;
 
@@ -128,14 +121,7 @@ fn the_drive_is_panic_free_and_seed_deterministic_across_runs() {
 
 #[test]
 fn drive_is_headless_and_stops_at_battle_running() {
-    let app_opt = bootstrap_app();
-    assert!(
-        app_opt.is_some(),
-        "the shared BattleAppBuilder drive should reach BattleScapeState::BattleRunning",
-    );
-    let Some(app) = app_opt else {
-        return;
-    };
+    let app = bootstrap_app();
 
     assert_eq!(
         battlescape_state(&app),

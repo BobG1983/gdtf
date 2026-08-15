@@ -1,13 +1,11 @@
 //! Prefab folder load: registry resolves by `ThemeUuid` + size + role.
 use std::path::PathBuf;
 
-use gdtf_app::test_support::{AppState, app_state, load_released};
+use gdtf_app::test_support::{AppState, load_released};
 use gdtf_battle_sim::level::{
     GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid,
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
-
-const LOAD_SAFETY_NET: u32 = 10_000;
 
 const fn known_theme_uuid() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_0901))
@@ -30,7 +28,7 @@ fn real_asset_resolves_prefab_registry_by_theme_uuid() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<PrefabRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<PrefabRegistry>(&mut app);
 
     if let Some(registry) = app.world().get_resource::<PrefabRegistry>() {
         assert!(
@@ -57,13 +55,7 @@ fn real_asset_resolves_prefab_registry_by_theme_uuid() {
         );
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "with a real AssetServer, Load must release to Intro (or beyond) once every folder \
-         (incl. the prefabs) resolves; last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
     assert!(
         app.world().get_resource::<PrefabRegistry>().is_some(),
         "a PrefabRegistry must be present when Load reaches Intro (the gate waited for it — not a hand-seeded default)",

@@ -36,24 +36,11 @@ fn game_hosts_setup() {
         .starting_in(AppState::Running)
         .build();
 
-    assert!(
-        drive_past_menu(&mut app),
-        "the walk should reach RunningState::Menu within {WALK_BUDGET} updates; last observed \
-         RunningState was {:?}",
-        running_state(&app),
-    );
+    drive_past_menu(&mut app);
 
-    let reached = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Game),
-        WALK_BUDGET,
-    );
-    assert!(
-        reached,
-        "the Menu →(player)→ Options → Game chain should reach RunningState::Game within \
-         {WALK_BUDGET} updates; last observed RunningState was {:?}",
-        running_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Game)
+    });
 
     assert_eq!(
         game_state(&app),

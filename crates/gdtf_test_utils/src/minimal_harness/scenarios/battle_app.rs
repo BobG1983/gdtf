@@ -3,6 +3,7 @@
 use bevy::{
     app::App,
     state::state::{NextState, State},
+    time::TimeUpdateStrategy,
 };
 use gdtf_app::test_support::{AppState, BattleScapeState, LoadedSituation, RunningState};
 use gdtf_battle_sim::{
@@ -19,7 +20,8 @@ use gdtf_ui::theme::default_theme;
 
 use crate::{GdtfTestAppBuilder, advance_until};
 
-const DRIVE_BUDGET: u32 = 96;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 /// Builds a `MinimalPlugins` app already in [`BattleScapeState::BattleRunning`].
 #[derive(Debug, Clone)]
@@ -52,9 +54,8 @@ impl BattleAppBuilder {
         self
     }
 
-    /// Drive into `BattleRunning`, or return `None` if the state transitions timed out.
-    #[must_use]
-    pub fn build(self) -> Option<App> {
+    /// Drive into `BattleRunning`.
+    pub fn build(self) -> App {
         let mut app = GdtfTestAppBuilder::new_with_scene_support()
             .starting_in(AppState::Running)
             .build();
@@ -73,37 +74,26 @@ impl BattleAppBuilder {
         if let Some(seed) = self.seed {
             app.world_mut().insert_resource(seed);
         }
+        app.insert_resource(TimeUpdateStrategy::FixedTimesteps(ONE_STEP_A_FRAME));
 
-        if !advance_until(
-            &mut app,
-            |app| running_state(app) == Some(RunningState::Menu),
-            DRIVE_BUDGET,
-        ) {
-            return None;
-        }
+        advance_until(&mut app, |app| {
+            running_state(app) == Some(RunningState::Menu)
+        });
         app.world_mut()
             .resource_mut::<NextState<RunningState>>()
             .set(RunningState::Options);
 
-        if !advance_until(
-            &mut app,
-            |app| running_state(app) == Some(RunningState::Options),
-            DRIVE_BUDGET,
-        ) {
-            return None;
-        }
+        advance_until(&mut app, |app| {
+            running_state(app) == Some(RunningState::Options)
+        });
         app.world_mut()
             .resource_mut::<NextState<RunningState>>()
             .set(RunningState::Game);
 
-        if !advance_until(
-            &mut app,
-            |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-            DRIVE_BUDGET,
-        ) {
-            return None;
-        }
-        Some(app)
+        advance_until(&mut app, |app| {
+            battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+        });
+        app
     }
 }
 

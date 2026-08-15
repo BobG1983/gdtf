@@ -32,8 +32,6 @@ use super::probes::visibility_of_sim;
 
 pub(crate) const MAX_UPDATES: u32 = 128;
 
-pub(crate) const LOAD_SAFETY_NET: u32 = 10_000;
-
 pub(crate) const SEED: u64 = 0x0D15_EA5E;
 
 pub(crate) fn workspace_assets_root() -> PathBuf {
@@ -92,12 +90,9 @@ pub(crate) fn band_only_fog(app: &mut App) {
 }
 
 pub(crate) fn settle_resources(app: &mut App) {
-    advance_until_resource_exists::<CharacterRoles>(app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<TopDownAtlases>(app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<gdtf_content_families::sprites::SpriteDefRegistry>(
-        app,
-        LOAD_SAFETY_NET,
-    );
+    advance_until_resource_exists::<CharacterRoles>(app);
+    advance_until_resource_exists::<TopDownAtlases>(app);
+    advance_until_resource_exists::<gdtf_content_families::sprites::SpriteDefRegistry>(app);
 }
 
 pub(crate) fn set_fog(app: &mut App, visible: &[CellLevel], explored: &[CellLevel]) {

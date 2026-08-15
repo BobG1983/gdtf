@@ -264,14 +264,9 @@ fn fire_mode_switch_hides_and_resets_stale_move_path() {
     let goal = CellLevel::new(Cell::new(14, 12), Level::new(0));
     let gun = select_and_target(&mut app, start, goal);
 
-    assert!(
-        advance_until(
-            &mut app,
-            |app| !app.world().resource::<PathPreview>().is_empty(),
-            8,
-        ),
-        "a normal move target must plan + show its path before any fire-mode switch",
-    );
+    advance_until(&mut app, |app| {
+        !app.world().resource::<PathPreview>().is_empty()
+    });
     assert_eq!(
         **app.world().resource::<PathPreviewTarget>(),
         Some(goal),

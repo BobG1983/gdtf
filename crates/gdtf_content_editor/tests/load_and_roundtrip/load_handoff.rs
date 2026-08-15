@@ -28,8 +28,6 @@ use gdtf_content_families::{
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
-const MAX_UPDATES: u32 = 10_000;
-
 fn editor_app() -> App {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(MapEditorPlugin);
@@ -69,20 +67,11 @@ fn editor_app_with_asset_root(root: &Path) -> App {
 }
 
 fn advance_to_editing(app: &mut App) {
-    let reached = advance_until(
-        app,
-        |app| {
-            app.world()
-                .get_resource::<State<EditorState>>()
-                .is_some_and(|s| *s.get() == EditorState::Editing)
-        },
-        MAX_UPDATES,
-    );
-    assert!(
-        reached,
-        "the editor never reached EditorState::Editing — the registered Load pass did not \
-         resolve (or fall back) every gate resource",
-    );
+    advance_until(app, |app| {
+        app.world()
+            .get_resource::<State<EditorState>>()
+            .is_some_and(|s| *s.get() == EditorState::Editing)
+    });
     for _ in 0..4 {
         app.update();
     }

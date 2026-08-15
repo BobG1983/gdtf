@@ -7,7 +7,7 @@ use gdtf_qa_protocol::{command::CommandOutcome, message::QaResponse};
 use gdtf_test_utils::advance_until;
 
 use super::{
-    battle_fixture::{DRIVE_BUDGET, menu_app_with_net_qa, request_battle, run_request, send},
+    battle_fixture::{menu_app_with_net_qa, request_battle, run_request, send},
     command_exchange::APP_PHASE,
 };
 
@@ -33,17 +33,9 @@ fn app_phase_reports_every_live_level_from_inside_a_battle() {
 
     request_battle(&mut app);
     app.update();
-    let reached = advance_until(
-        &mut app,
-        |app| live_name::<BattleScapeState>(app).as_deref() == Some("BattleRunning"),
-        DRIVE_BUDGET,
-    );
-    assert!(
-        reached,
-        "the fixture must descend to BattleRunning before the phase is worth reading; last \
-         observed BattleScapeState was {:?}",
-        live_name::<BattleScapeState>(&app),
-    );
+    advance_until(&mut app, |app| {
+        live_name::<BattleScapeState>(app).as_deref() == Some("BattleRunning")
+    });
 
     let body = read_phase(&mut app, &tx);
 

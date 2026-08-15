@@ -94,8 +94,8 @@ fn unrelated_def_change_leaves_drawn_tiles_tick_quiet() {
     let mut app = headless_renderer_app_at(dir.path());
     app.init_resource::<QuietProbe>();
     app.add_systems(Update, record_quiet_probe.after(PresenterSystems::Draw));
-    advance_until_resource_exists::<SpriteDefRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<TopDownAtlases>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<SpriteDefRegistry>(&mut app);
+    advance_until_resource_exists::<TopDownAtlases>(&mut app);
 
     let wall_key = CellLevel::new(Cell::new(8, 7), Level::new(0));
     draw_one_wall(&mut app, wall_key);
@@ -118,20 +118,12 @@ fn unrelated_def_change_leaves_drawn_tiles_tick_quiet() {
         .resource::<AssetServer>()
         .reload("content/sprites/rubble.spritedef.ron");
     let v2_rect = URect::from_corners(UVec2::new(48, 0), UVec2::new(64, 16));
-    let rebuilt = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<SpriteDefRegistry>()
-                .and_then(|defs| def_rect(defs, "rubble"))
-                == Some(v2_rect)
-        },
-        LOAD_SAFETY_NET,
-    );
-    assert!(
-        rebuilt,
-        "the re-saved unrelated def must rebuild the registry (the redrive path)",
-    );
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<SpriteDefRegistry>()
+            .and_then(|defs| def_rect(defs, "rubble"))
+            == Some(v2_rect)
+    });
     app.update();
     assert_quiet(&app, "unrelated-def rebuild window");
 

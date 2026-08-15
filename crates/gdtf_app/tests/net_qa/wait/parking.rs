@@ -12,9 +12,7 @@ use super::support::{
     PARKED_FRAMES, SETTLE_FRAMES, answered_within, holding_battle_with_net_qa, release_the_hold,
 };
 use crate::{
-    battle_fixture::{
-        DRIVE_BUDGET, drive_into_battle_running, menu_app_with_net_qa, run_request, send,
-    },
+    battle_fixture::{drive_into_battle_running, menu_app_with_net_qa, run_request, send},
     command_exchange::WAIT,
 };
 
@@ -86,7 +84,7 @@ fn a_condition_that_never_comes_true_times_out_rather_than_being_refused() {
     shorten_wait_budget(&mut app, DeferredBudget::new(Duration::ZERO));
 
     let reply = send(&tx, run_request(WAIT, "(condition:TurnChanged)"));
-    let answered = answered_within(&mut app, &reply, DRIVE_BUDGET);
+    let answered = answered_within(&mut app, &reply, SETTLE_FRAMES);
     assert_eq!(
         answered,
         Some(QaResponse::Error(QaError::Timeout)),

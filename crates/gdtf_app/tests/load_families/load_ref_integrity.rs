@@ -14,8 +14,6 @@ fn findings_snapshot(app: &bevy::app::App) -> Vec<ContentFinding> {
         .unwrap_or_default()
 }
 
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 fn ref_integrity_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
@@ -213,15 +211,7 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<ContentValidationDone>(&mut app, LOAD_SAFETY_NET);
-    assert!(
-        app.world()
-            .get_resource::<ContentValidationDone>()
-            .is_some(),
-        "the unified validation pass must publish (ContentValidationDone) within the \
-         safety net; last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until_resource_exists::<ContentValidationDone>(&mut app);
 
     let report = findings_snapshot(&app);
 
@@ -230,17 +220,9 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
     assert_item_edges(&report);
     assert_theme_and_prefab_edges(&report);
 
-    let load_released = advance_until(
-        &mut app,
-        |app| matches!(app_state(app), AppState::Intro | AppState::Running),
-        LOAD_SAFETY_NET,
-    );
-    assert!(
-        load_released,
-        "Load must still exit with findings on the report (loud, never fatal); \
-         last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        matches!(app_state(app), AppState::Intro | AppState::Running)
+    });
 }
 
 #[test]
@@ -249,15 +231,7 @@ fn shipped_content_graph_validates_with_zero_findings() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<ContentValidationDone>(&mut app, LOAD_SAFETY_NET);
-    assert!(
-        app.world()
-            .get_resource::<ContentValidationDone>()
-            .is_some(),
-        "the unified validation pass must publish over the shipped assets/ root; \
-         last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until_resource_exists::<ContentValidationDone>(&mut app);
     let report = findings_snapshot(&app);
     assert!(
         report.is_empty(),

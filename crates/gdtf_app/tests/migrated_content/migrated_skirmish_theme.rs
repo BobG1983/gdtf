@@ -1,9 +1,7 @@
 //! Skirmish load: shipped situation names a migrated theme UUID that resolves.
-use gdtf_app::test_support::{AppState, LoadedSituation, app_state, load_released};
+use gdtf_app::test_support::{AppState, LoadedSituation, load_released};
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
-
-const LOAD_SAFETY_NET: u32 = 10_000;
 
 const fn industrial_hive_theme() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001))
@@ -15,8 +13,8 @@ fn shipped_skirmish_names_a_migrated_theme_uuid_that_resolves() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<LoadedSituation>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<UuidThemeRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<LoadedSituation>(&mut app);
+    advance_until_resource_exists::<UuidThemeRegistry>(&mut app);
 
     let authored_theme_uuid = app
         .world()
@@ -40,11 +38,5 @@ fn shipped_skirmish_names_a_migrated_theme_uuid_that_resolves() {
         );
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "with a real AssetServer, Load must release to Intro (or beyond) once the situation + \
-         theme registry resolve; last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 }

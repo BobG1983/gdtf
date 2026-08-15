@@ -6,9 +6,7 @@ use gdtf_content_editor::{GangDraft, draft_to_roster, gang_file_name, write_gang
 use gdtf_content_families::GangsFamily;
 use gdtf_test_utils::advance_until;
 
-use crate::harness::{
-    MAX_UPDATES, advance_to_published, editor_app_with_asset_root, has_dangling_ref,
-};
+use crate::harness::{advance_to_published, editor_app_with_asset_root, has_dangling_ref};
 
 const REARM_GANG: &str = "rearm_gang";
 
@@ -61,22 +59,13 @@ fn gang_save_reload_rearms_validation_with_the_saved_keys() {
     let saved_path = format!("{}/{}", GangsFamily::FOLDER, gang_file_name(&name));
     app.world().resource::<AssetServer>().reload(saved_path);
 
-    let republished = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<ContentIntegrityReport>()
-                .is_some_and(|report| {
-                    has_dangling_ref(report, "WeaponRegistry", RESAVED_DANGLING_WEAPON)
-                })
-        },
-        MAX_UPDATES,
-    );
-    assert!(
-        republished,
-        "a gang SAVE + reload must re-arm the validation pass — the re-saved dangling weapon \
-         key was never re-reported",
-    );
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<ContentIntegrityReport>()
+            .is_some_and(|report| {
+                has_dangling_ref(report, "WeaponRegistry", RESAVED_DANGLING_WEAPON)
+            })
+    });
     let report = app.world().resource::<ContentIntegrityReport>();
     assert!(
         !has_dangling_ref(report, "WeaponRegistry", SAVED_DANGLING_WEAPON),

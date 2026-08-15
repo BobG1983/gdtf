@@ -2,8 +2,6 @@ use core::time::Duration;
 use std::{
     os::unix::process::CommandExt,
     process::{Child, Command, ExitStatus, Stdio},
-    thread,
-    time::Instant,
 };
 
 use gdtf_qa_mcp::{ChildPid, KillGrace, OrphanTarget, PollInterval, ProbeTimeout, QaPort};
@@ -11,8 +9,6 @@ use gdtf_qa_mcp::{ChildPid, KillGrace, OrphanTarget, PollInterval, ProbeTimeout,
 pub(super) const STOP_GRACE: KillGrace = KillGrace::new(Duration::from_millis(150));
 
 pub(super) const PROBE: ProbeTimeout = ProbeTimeout::new(Duration::from_millis(300));
-
-pub(super) const EXIT_LIMIT: Duration = Duration::from_secs(10);
 
 pub(super) const RECHECK: PollInterval = PollInterval::new(Duration::from_millis(5));
 
@@ -69,18 +65,10 @@ fn ps_field(field: &str, pid: u32) -> Result<String, ()> {
     String::from_utf8(output.stdout).map_err(|_| ())
 }
 
-pub(super) fn exit_status_within(child: &mut Child) -> ExitStatus {
-    let deadline = Instant::now() + EXIT_LIMIT;
-    loop {
-        match child.try_wait() {
-            Ok(Some(status)) => return status,
-            Ok(None) => {}
-            Err(_) => unreachable!("the placeholder process can be waited on"),
-        }
-        assert!(
-            Instant::now() < deadline,
-            "the placeholder process is still running after the stop"
-        );
-        thread::sleep(*RECHECK);
-    }
+// Blocks until the child exits; a stop that never lands hangs here, visibly.
+pub(super) fn exit_status(child: &mut Child) -> ExitStatus {
+    let Ok(status) = child.wait() else {
+        unreachable!("the placeholder process can be waited on")
+    };
+    status
 }

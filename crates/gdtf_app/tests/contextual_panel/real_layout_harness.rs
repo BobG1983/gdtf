@@ -16,8 +16,6 @@ use gdtf_app::test_support::{self, AppState, BattleScapeState, LoadedSituation, 
 use gdtf_test_utils::advance_until;
 use gdtf_ui::theme::default_theme;
 
-use super::harness::BUDGET;
-
 const REFERENCE_WIDTH: u32 = 1280;
 const REFERENCE_HEIGHT: u32 = 720;
 
@@ -93,7 +91,7 @@ fn seed_load_gate_registries(app: &mut App) {
         .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
 }
 
-fn insert_real_theme_and_wait_for_font(app: &mut App) -> bool {
+fn insert_real_theme_and_wait_for_font(app: &mut App) {
     let mut theme = default_theme();
     let asset_server = app.world().resource::<AssetServer>().clone();
     let font_path: String = (*theme.default_font).clone();
@@ -102,49 +100,31 @@ fn insert_real_theme_and_wait_for_font(app: &mut App) -> bool {
     theme.button.font = font.clone();
     app.world_mut().insert_resource(theme);
 
-    advance_until(
-        app,
-        move |app| app.world().resource::<Assets<Font>>().get(&font).is_some(),
-        BUDGET,
-    )
+    advance_until(app, move |app| {
+        app.world().resource::<Assets<Font>>().get(&font).is_some()
+    });
 }
 
-pub(crate) fn real_layout_battle_running_app() -> Option<App> {
+pub(crate) fn real_layout_battle_running_app() -> App {
     let mut app = new_real_layout_app();
     seed_load_gate_registries(&mut app);
 
-    if !insert_real_theme_and_wait_for_font(&mut app) {
-        return None;
-    }
+    insert_real_theme_and_wait_for_font(&mut app);
 
-    let at_menu = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<State<RunningState>>()
-                .map(|state| *state.get())
-                == Some(RunningState::Menu)
-        },
-        BUDGET,
-    );
-    if !at_menu {
-        return None;
-    }
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<State<RunningState>>()
+            .map(|state| *state.get())
+            == Some(RunningState::Menu)
+    });
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
-    let at_battle = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<State<BattleScapeState>>()
-                .map(|state| *state.get())
-                == Some(BattleScapeState::BattleRunning)
-        },
-        BUDGET,
-    );
-    if !at_battle {
-        return None;
-    }
-    Some(app)
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<State<BattleScapeState>>()
+            .map(|state| *state.get())
+            == Some(BattleScapeState::BattleRunning)
+    });
+    app
 }

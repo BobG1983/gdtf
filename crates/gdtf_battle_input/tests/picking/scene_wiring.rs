@@ -5,7 +5,8 @@ use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
-const BUDGET: u32 = 96;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 fn game_state(app: &App) -> Option<GameState> {
     app.world()
@@ -25,48 +26,28 @@ fn scene_stack_app() -> App {
         .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
     app
 }
 
-fn drive_to_battlescape(app: &mut App) -> bool {
-    let reached_menu = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    if !reached_menu {
-        return false;
-    }
+fn drive_to_battlescape(app: &mut App) {
+    advance_until(app, |app| running_state(app) == Some(RunningState::Menu));
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Options);
-    let reached_options = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Options),
-        BUDGET,
-    );
-    if !reached_options {
-        return false;
-    }
+    advance_until(app, |app| running_state(app) == Some(RunningState::Options));
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
-    advance_until(
-        app,
-        |app| game_state(app) == Some(GameState::BattleScape),
-        BUDGET,
-    )
+    advance_until(app, |app| game_state(app) == Some(GameState::BattleScape));
 }
 
 #[test]
 fn battlescape_scene_runs_the_input_plugin_build() {
     let mut app = scene_stack_app();
-    assert!(
-        drive_to_battlescape(&mut app),
-        "the walk should descend to GameState::BattleScape within {BUDGET} updates; last observed \
-         GameState was {:?}",
-        game_state(&app),
-    );
+    drive_to_battlescape(&mut app);
     assert_eq!(
         game_state(&app),
         Some(GameState::BattleScape),

@@ -55,14 +55,7 @@ fn find_ganger(app: &mut bevy::app::App, faction: u8) -> Option<Entity> {
 
 #[test]
 fn fire_requested_in_battle_running_drives_the_sim() {
-    let app_opt = driven_battle_app();
-    assert!(
-        app_opt.is_some(),
-        "the shared BattleAppBuilder drive should reach BattleScapeState::BattleRunning",
-    );
-    let Some(mut app) = app_opt else {
-        return;
-    };
+    let mut app = driven_battle_app();
 
     assert!(
         app.world().get_resource::<BattleInProgress>().is_some(),

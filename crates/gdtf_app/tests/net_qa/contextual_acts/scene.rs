@@ -30,8 +30,8 @@ use super::super::{
     socket_support::TestError,
 };
 
-/// Frames a world change is given to settle before a case reads it back.
-pub(crate) const SETTLE_BUDGET: u32 = 64;
+/// Frames a refused act is given to prove it moved nothing — per-frame sim work, no IO.
+pub(crate) const HOLD_FRAMES: u32 = 64;
 
 /// What an accepted contextual reply carries, as the cases read it.
 pub(crate) struct Accepted {
@@ -204,22 +204,11 @@ pub(crate) fn closed_doors_around(app: &App, at: CellLevel) -> Vec<Entity> {
 }
 
 /// Open the map's own adjacent doors through the real toggle, so only ours can be offered.
-pub(crate) fn clear_doors_around(app: &mut App, at: CellLevel) -> Result<(), TestError> {
+pub(crate) fn clear_doors_around(app: &mut App, at: CellLevel) {
     for door in closed_doors_around(app, at) {
         app.world_mut().write_message(SetOpenable::open(door));
     }
-    if advance_until(
-        app,
-        |app| closed_doors_around(app, at).is_empty(),
-        SETTLE_BUDGET,
-    ) {
-        return Ok(());
-    }
-    Err(format!(
-        "the map's own doors beside the shooter must open within {SETTLE_BUDGET} frames, or the \
-         refusal case is testing the map rather than the command"
-    )
-    .into())
+    advance_until(app, |app| closed_doors_around(app, at).is_empty());
 }
 
 /// Run the app until whatever the fixture just changed has been taken up by the sim.

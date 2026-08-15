@@ -38,8 +38,6 @@ const GOOD_PATH: &str = "test/hot_ron_fixture.ron";
 
 const MALFORMED_PATH: &str = "test/hot_ron_malformed.ron";
 
-const GENEROUS_LOAD_UPDATES: u32 = 10_000;
-
 fn real_asset_app() -> App {
     GdtfUiTestAppBuilder::new().with_ui_camera().build()
 }
@@ -49,7 +47,7 @@ fn plain_chain_loads_and_resolves_exactly_once() {
     let mut app = real_asset_app();
     app.init_hot_ron_resource::<HotSwatch>(GOOD_PATH);
 
-    gdtf_test_utils::advance_until_resource_exists::<HotSwatch>(&mut app, GENEROUS_LOAD_UPDATES);
+    gdtf_test_utils::advance_until_resource_exists::<HotSwatch>(&mut app);
 
     assert_eq!(
         app.world().get_resource::<HotSwatch>(),
@@ -91,17 +89,10 @@ fn the_file_replaces_a_resource_inserted_before_the_chain_resolves() {
     app.insert_resource(pre_inserted.clone());
     app.init_hot_ron_resource::<HotSwatch>(GOOD_PATH);
 
-    let replaced = gdtf_test_utils::advance_until(
-        &mut app,
-        |app| app.world().get_resource::<HotSwatch>() != Some(&pre_inserted),
-        GENEROUS_LOAD_UPDATES,
-    );
+    gdtf_test_utils::advance_until(&mut app, |app| {
+        app.world().get_resource::<HotSwatch>() != Some(&pre_inserted)
+    });
 
-    assert!(
-        replaced,
-        "a resource present before the chain resolves must not gate the resolve off — the file \
-         has to land on top of it",
-    );
     assert_eq!(
         app.world().get_resource::<HotSwatch>(),
         Some(&HotSwatch {
@@ -117,7 +108,7 @@ fn mapped_chain_derives_resource_with_asset_server_access() {
     let mut app = real_asset_app();
     app.init_hot_ron_resource_mapped::<HotSwatch, MappedSwatch>(GOOD_PATH, map_swatch);
 
-    gdtf_test_utils::advance_until_resource_exists::<MappedSwatch>(&mut app, GENEROUS_LOAD_UPDATES);
+    gdtf_test_utils::advance_until_resource_exists::<MappedSwatch>(&mut app);
 
     let mapped = app.world().get_resource::<MappedSwatch>();
     assert_eq!(
@@ -137,7 +128,7 @@ fn failed_load_with_fallback_inserts_the_default() {
     let mut app = real_asset_app();
     app.init_hot_ron_resource_with_fallback::<HotSwatch>(MALFORMED_PATH, fallback_swatch);
 
-    gdtf_test_utils::advance_until_resource_exists::<HotSwatch>(&mut app, GENEROUS_LOAD_UPDATES);
+    gdtf_test_utils::advance_until_resource_exists::<HotSwatch>(&mut app);
 
     assert_eq!(
         app.world().get_resource::<HotSwatch>(),
@@ -156,20 +147,12 @@ fn failed_load_with_fallback_keeps_a_resource_that_is_already_there() {
     app.insert_resource(already_there.clone());
     app.init_hot_ron_resource_with_fallback::<HotSwatch>(MALFORMED_PATH, fallback_swatch);
 
-    let settled = gdtf_test_utils::advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<HotRonResolved<HotSwatch>>()
-                .is_some()
-        },
-        GENEROUS_LOAD_UPDATES,
-    );
+    gdtf_test_utils::advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<HotRonResolved<HotSwatch>>()
+            .is_some()
+    });
 
-    assert!(
-        settled,
-        "a failed load must still settle the chain, or the fallback branch retries every frame",
-    );
     assert_eq!(
         app.world().get_resource::<HotSwatch>(),
         Some(&already_there),
@@ -183,7 +166,7 @@ fn good_load_with_fallback_resolves_the_file_not_the_default() {
     let mut app = real_asset_app();
     app.init_hot_ron_resource_with_fallback::<HotSwatch>(GOOD_PATH, fallback_swatch);
 
-    gdtf_test_utils::advance_until_resource_exists::<HotSwatch>(&mut app, GENEROUS_LOAD_UPDATES);
+    gdtf_test_utils::advance_until_resource_exists::<HotSwatch>(&mut app);
 
     assert_eq!(
         app.world().get_resource::<HotSwatch>(),
@@ -208,12 +191,7 @@ fn failed_load_without_fallback_leaves_the_resource_absent() {
         .map(|handle| handle.id());
     assert!(id.is_some(), "the kick-off must have stored the handle");
     let Some(id) = id else { return };
-    gdtf_test_utils::advance_until_load_state(
-        &mut app,
-        id,
-        |state| state.is_failed(),
-        GENEROUS_LOAD_UPDATES,
-    );
+    gdtf_test_utils::advance_until_load_state(&mut app, id, |state| state.is_failed());
 
     for _ in 0..4 {
         app.update();

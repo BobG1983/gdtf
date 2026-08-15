@@ -6,17 +6,15 @@ use gdtf_battle_sim::{
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 #[test]
 fn shipped_weapon_attachment_keys_resolve_and_fit() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<AttachmentRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<MeleeWeaponRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<AttachmentRegistry>(&mut app);
+    advance_until_resource_exists::<WeaponRegistry>(&mut app);
+    advance_until_resource_exists::<MeleeWeaponRegistry>(&mut app);
 
     assert!(
         app.world().get_resource::<AttachmentRegistry>().is_some()

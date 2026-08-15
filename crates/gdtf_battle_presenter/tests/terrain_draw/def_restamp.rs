@@ -49,8 +49,8 @@ fn def_resave_restamps_the_drawn_tile_in_place() {
     write_sprite_def(dir.path(), "wall.spritedef.ron", CENTER_WALL_DEF);
 
     let mut app = headless_renderer_app_at(dir.path());
-    advance_until_resource_exists::<SpriteDefRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<TopDownAtlases>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<SpriteDefRegistry>(&mut app);
+    advance_until_resource_exists::<TopDownAtlases>(&mut app);
 
     let wall_cell = Cell::new(8, 7);
     let l0 = Level::new(0);
@@ -80,26 +80,18 @@ fn def_resave_restamps_the_drawn_tile_in_place() {
         .reload("content/sprites/wall.spritedef.ron");
 
     let v2_rect = URect::from_corners(UVec2::new(16, 0), UVec2::new(32, 16));
-    let reached = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<Assets<TerrainFogMaterial>>()
-                .is_some_and(|materials| {
-                    materials.iter().any(|(_, material)| {
-                        material
-                            .atlas_layout
-                            .as_ref()
-                            .is_some_and(|layout| layout.textures.first().copied() == Some(v2_rect))
-                    })
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<Assets<TerrainFogMaterial>>()
+            .is_some_and(|materials| {
+                materials.iter().any(|(_, material)| {
+                    material
+                        .atlas_layout
+                        .as_ref()
+                        .is_some_and(|layout| layout.textures.first().copied() == Some(v2_rect))
                 })
-        },
-        LOAD_SAFETY_NET,
-    );
-    assert!(
-        reached,
-        "the re-saved def must reach the drawn tile's material (registry rebuild + restamp)",
-    );
+            })
+    });
 
     assert_eq!(
         sprite_rect_at(&mut app, wall_key),

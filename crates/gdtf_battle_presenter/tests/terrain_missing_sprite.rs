@@ -39,8 +39,6 @@ use gdtf_battle_sim::{
 use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
 use gdtf_test_utils::advance_until_resource_exists;
 
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 const MISSING_NAME: &str = "no_such_sprite_fixture";
 
 static CAPTURED: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -128,8 +126,8 @@ fn missing_sprite_def_warns_and_draws_the_magenta_marker() {
     install_global_capture();
 
     let mut app = headless_renderer_app();
-    advance_until_resource_exists::<SpriteDefRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<TopDownAtlases>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<SpriteDefRegistry>(&mut app);
+    advance_until_resource_exists::<TopDownAtlases>(&mut app);
 
     let cell = CellLevel::new(Cell::new(8, 7), Level::new(0));
 

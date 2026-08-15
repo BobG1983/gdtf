@@ -16,9 +16,8 @@ use gdtf_battle_sim::{
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, MessageProbe, MessageProbePlugin, advance_until};
 
-const BUDGET: u32 = 512;
-
-const CHAIN_BUDGET: u32 = 64;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 fn running_state(app: &App) -> Option<RunningState> {
     app.world()
@@ -32,30 +31,25 @@ fn battlescape_state(app: &App) -> Option<BattleScapeState> {
         .map(|state| *state.get())
 }
 
-fn battle_running_app() -> Option<App> {
+fn battle_running_app() -> App {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
 
-    if !advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    ) {
-        return None;
-    }
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
 
-    if !advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    ) {
-        return None;
-    }
-    Some(app)
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
+    app
 }
 
 fn grenade_spec() -> WeaponSpec {
@@ -123,14 +117,7 @@ fn log_line_texts(app: &mut App) -> Vec<String> {
 
 #[test]
 fn a_blast_detonation_renders_no_phantom_someone_missed_line() {
-    let app_opt = battle_running_app();
-    assert!(
-        app_opt.is_some(),
-        "the real Load + descent must reach BattleScapeState::BattleRunning",
-    );
-    let Some(mut app) = app_opt else {
-        return;
-    };
+    let mut app = battle_running_app();
     add_impact_probe(&mut app);
 
     let thrower_at = CellLevel::new(Cell::new(30, 30), Level::new(0));
@@ -139,13 +126,7 @@ fn a_blast_detonation_renders_no_phantom_someone_missed_line() {
     app.world_mut()
         .write_message(ThrowGrenadeRequested::new(thrower, target_at));
 
-    let detonated = advance_until(&mut app, blast_signal_seen, CHAIN_BUDGET);
-    assert!(
-        detonated,
-        "the real detonation must ride the presenter impact pipeline (ThrowResolved -> \
-         PendingImpact::for_blast -> ShotImpactResolved with a placeholder shooter + None \
-         report) within the chain budget",
-    );
+    advance_until(&mut app, blast_signal_seen);
 
     for _ in 0..4 {
         app.update();

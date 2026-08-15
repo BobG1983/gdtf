@@ -7,36 +7,21 @@ use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
 use super::harness::*;
 
-const LOAD_BUDGET: u32 = 512;
-
 fn load_battle_running_app() -> App {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
 
-    let at_menu = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        LOAD_BUDGET,
-    );
-    assert!(
-        at_menu,
-        "the real Load + descent must reach RunningState::Menu within {LOAD_BUDGET} updates",
-    );
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(1));
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
-    let at_battle = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        LOAD_BUDGET,
-    );
-    assert!(
-        at_battle,
-        "the real battle must reach BattleScapeState::BattleRunning within {LOAD_BUDGET} \
-         updates; last BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
     app
 }
 

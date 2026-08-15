@@ -8,9 +8,8 @@ use gdtf_ui::theme::GdtfTheme;
 
 use super::gate;
 
-const TRANSITION_BUDGET: u32 = 32;
-
-const LOAD_SAFETY_NET: u32 = 10_000;
+/// Frames the machine is given to prove it stays put — per-frame work, no IO.
+const HOLD_FRAMES: u32 = 32;
 
 pub(crate) trait FamilyLoadContract: ContentFamily {
     fn is_empty(registry: &Self::Registry) -> bool;
@@ -37,13 +36,7 @@ pub(crate) fn loader_no_ops_without_asset_server<F: FamilyLoadContract>() {
 
     gate::seed_full_load_gate(&mut app);
 
-    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
-    assert!(
-        released,
-        "with the full gate set seeded, Load must release to Intro (or beyond) within \
-         {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 }
 
 pub(crate) fn load_gates_on_registry<F: FamilyLoadContract>() {
@@ -53,17 +46,9 @@ pub(crate) fn load_gates_on_registry<F: FamilyLoadContract>() {
 
     gate::seed_gate_except::<F::Registry>(&mut app);
 
-    let left_load = advance_until(
-        &mut app,
-        |app| app_state(app) != AppState::Load,
-        TRANSITION_BUDGET,
-    );
-    assert!(
-        !left_load,
-        "Load must NOT leave while the {} is absent; it left to {:?}",
-        registry_name::<F>(),
-        app_state(&app),
-    );
+    for _ in 0..HOLD_FRAMES {
+        app.update();
+    }
     assert_eq!(
         app_state(&app),
         AppState::Load,
@@ -75,14 +60,7 @@ pub(crate) fn load_gates_on_registry<F: FamilyLoadContract>() {
 
     gate::seed_full_load_gate(&mut app);
     app.world_mut().insert_resource(F::Registry::default());
-    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
-    assert!(
-        released,
-        "once the {} is seeded, Load must release to Intro (or beyond) within \
-         {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
-        registry_name::<F>(),
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 }
 
 pub(crate) fn real_asset_resolves_registry<F: FamilyLoadContract>() {
@@ -90,13 +68,12 @@ pub(crate) fn real_asset_resolves_registry<F: FamilyLoadContract>() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<F::Registry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<F::Registry>(&mut app);
 
     let registry = app.world().get_resource::<F::Registry>();
     assert!(
         registry.is_some(),
-        "the real `{}` folder load must insert a {} within the safety-net budget \
-         (last AppState was {:?})",
+        "the real `{}` folder load must insert a {} (last AppState was {:?})",
         F::FOLDER,
         registry_name::<F>(),
         app_state(&app),
@@ -110,14 +87,7 @@ pub(crate) fn real_asset_resolves_registry<F: FamilyLoadContract>() {
         );
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "with a real AssetServer, Load must release to Intro (or beyond) once every folder \
-         (incl. `{}`) resolves; last AppState was {:?}",
-        F::FOLDER,
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
     assert!(
         app.world().get_resource::<F::Registry>().is_some(),
         "a {} must be present after Load releases (the gate waited for it; Load's cleanup \

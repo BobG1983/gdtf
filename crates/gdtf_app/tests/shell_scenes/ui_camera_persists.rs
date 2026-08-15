@@ -7,8 +7,6 @@ use bevy::{
 use gdtf_app::test_support::{AppState, RunningState};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 
-const TRANSITION_BUDGET: u32 = 16;
-
 fn camera2d_entities(app: &mut bevy::app::App) -> Vec<Entity> {
     app.world_mut()
         .query_filtered::<Entity, bevy::ecs::prelude::With<Camera2d>>()
@@ -71,17 +69,9 @@ fn ui_camera_survives_running_substate_exit() -> Result<(), &'static str> {
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Options);
-    let left_menu = advance_until(
-        &mut app,
-        |app| running_state(app).is_some_and(|state| state != RunningState::Menu),
-        TRANSITION_BUDGET,
-    );
-    assert!(
-        left_menu,
-        "RunningState should leave Menu (firing OnExit(RunningState::Menu)) within \
-         {TRANSITION_BUDGET} updates; last observed RunningState was {:?}",
-        running_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        running_state(app).is_some_and(|state| state != RunningState::Menu)
+    });
 
     let cameras_after = camera2d_entities(&mut app);
     assert_eq!(

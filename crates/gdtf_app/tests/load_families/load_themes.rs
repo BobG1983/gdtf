@@ -8,8 +8,6 @@ use load_suite::suite::{self, FamilyLoadContract};
 
 use super::load_suite;
 
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 impl FamilyLoadContract for ThemeDefsFamily {
     fn is_empty(registry: &UuidThemeRegistry) -> bool {
         registry.is_empty()
@@ -37,13 +35,12 @@ fn real_asset_themes_declare_terrain_and_default_floor() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<UuidThemeRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<UuidThemeRegistry>(&mut app);
 
     let registry = app.world().get_resource::<UuidThemeRegistry>();
     assert!(
         registry.is_some(),
-        "the real per-theme folder load must insert a UuidThemeRegistry within the safety-net \
-         budget",
+        "the real per-theme folder load must insert a UuidThemeRegistry",
     );
     let Some(registry) = registry else {
         return;

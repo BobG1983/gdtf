@@ -15,9 +15,10 @@ use super::harness::{
 
 #[test]
 fn hello_round_trips_and_a_second_client_is_busy() -> TestResult {
+    // Never fire during this test; reaping has its own suite.
     let (port, inbox) = spawn_listener(NetTimeouts::new(
-        NetIoTimeout::new(Duration::from_secs(5)),
-        NetReplyTimeout::new(Duration::from_secs(5)),
+        NetIoTimeout::new(Duration::MAX),
+        NetReplyTimeout::new(Duration::MAX),
     ))?;
     spawn_fake_host_side(inbox);
 

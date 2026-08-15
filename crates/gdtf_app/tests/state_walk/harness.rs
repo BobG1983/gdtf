@@ -12,7 +12,8 @@ use gdtf_battle_sim::{
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
-pub(crate) const WALK_BUDGET: u32 = 64;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 pub(crate) fn walk_app_with_theme() -> App {
     let mut app = GdtfTestAppBuilder::new_with_scene_support()
@@ -39,6 +40,9 @@ pub(crate) fn walk_app_with_theme() -> App {
         .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
     app
 }
 
@@ -54,27 +58,13 @@ pub(crate) fn battlescape_state(app: &bevy::app::App) -> Option<BattleScapeState
         .map(|state| *state.get())
 }
 
-pub(crate) fn drive_past_menu(app: &mut App) -> bool {
-    let reached_menu = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        WALK_BUDGET,
-    );
-    if !reached_menu {
-        return false;
-    }
+pub(crate) fn drive_past_menu(app: &mut App) {
+    advance_until(app, |app| running_state(app) == Some(RunningState::Menu));
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Options);
-    let reached_options = advance_until(
-        app,
-        |app| running_state(app) == Some(RunningState::Options),
-        WALK_BUDGET,
-    );
-    if reached_options {
-        app.world_mut()
-            .resource_mut::<NextState<RunningState>>()
-            .set(RunningState::Game);
-    }
-    reached_options
+    advance_until(app, |app| running_state(app) == Some(RunningState::Options));
+    app.world_mut()
+        .resource_mut::<NextState<RunningState>>()
+        .set(RunningState::Game);
 }

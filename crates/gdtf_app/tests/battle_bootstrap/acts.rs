@@ -14,14 +14,7 @@ const REQUESTED_STANCE: StanceKind = StanceKind::Prone;
 
 #[test]
 fn fire_requested_in_battle_running_mutates_the_model() {
-    let app_opt = bootstrap_app();
-    assert!(
-        app_opt.is_some(),
-        "the shared BattleAppBuilder drive should reach BattleScapeState::BattleRunning",
-    );
-    let Some(mut app) = app_opt else {
-        return;
-    };
+    let mut app = bootstrap_app();
 
     assert!(
         app.world().get_resource::<BattleInProgress>().is_some(),
@@ -82,14 +75,7 @@ fn fire_requested_in_battle_running_mutates_the_model() {
 
 #[test]
 fn set_stance_requested_in_battle_running_flips_the_component() {
-    let app_opt = bootstrap_app();
-    assert!(
-        app_opt.is_some(),
-        "the shared BattleAppBuilder drive should reach BattleScapeState::BattleRunning",
-    );
-    let Some(mut app) = app_opt else {
-        return;
-    };
+    let mut app = bootstrap_app();
 
     let actor_found = find_ganger(&mut app, SHOOTER_FACTION);
     assert!(

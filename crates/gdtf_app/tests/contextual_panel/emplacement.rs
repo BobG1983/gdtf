@@ -226,17 +226,9 @@ fn pressing_enter_mans_the_emplacement() {
     );
 
     press_ui_button(&mut app, enter_btn);
-    let manned = advance_until(
-        &mut app,
-        |app| emplacement_state(app, emplacement) == Some(EmplacementState::Occupied),
-        BUDGET,
-    );
-    assert!(
-        manned,
-        "pressing Enter on the carried VACANT emplacement must flip its EmplacementState to \
-         Occupied through the real dispatch path + sim; last was {:?}",
-        emplacement_state(&app, emplacement),
-    );
+    advance_until(&mut app, |app| {
+        emplacement_state(app, emplacement) == Some(EmplacementState::Occupied)
+    });
 
     let occupant = app
         .world()

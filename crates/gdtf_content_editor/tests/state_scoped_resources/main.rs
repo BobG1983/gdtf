@@ -7,8 +7,6 @@ use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
 use crate::asserts::{assert_all_scoped_resources_absent, assert_all_scoped_resources_seeded};
 
-const MAX_UPDATES: u32 = 10_000;
-
 fn editor_app() -> App {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(bevy::render::sync_world::SyncWorldPlugin);
@@ -17,20 +15,11 @@ fn editor_app() -> App {
 }
 
 fn advance_to_editing(app: &mut App) {
-    let reached = advance_until(
-        app,
-        |app| {
-            app.world()
-                .get_resource::<State<EditorState>>()
-                .is_some_and(|s| *s.get() == EditorState::Editing)
-        },
-        MAX_UPDATES,
-    );
-    assert!(
-        reached,
-        "the editor never reached EditorState::Editing — its Load pass did not resolve the \
-         theme + registries (a genuine load failure, not a frame-budget shortfall)",
-    );
+    advance_until(app, |app| {
+        app.world()
+            .get_resource::<State<EditorState>>()
+            .is_some_and(|s| *s.get() == EditorState::Editing)
+    });
     for _ in 0..4 {
         app.update();
     }

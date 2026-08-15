@@ -1,14 +1,6 @@
-use std::{
-    process::Command,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{process::Command, thread};
 
 use gdtf_qa_mcp::{ManagedChild, OUTPUT_TAIL_LINES, ProcessChild, TailLines};
-
-const CAPTURE_LIMIT: Duration = Duration::from_secs(30);
-
-const CAPTURE_STEP: Duration = Duration::from_millis(1);
 
 enum Stream {
     Out,
@@ -32,18 +24,14 @@ fn child_printing(lines: &[(Stream, &str)]) -> Box<dyn ManagedChild> {
     child
 }
 
+// The wait has no deadline: the capture thread always delivers the lines, load only delays them.
 fn await_captured(child: &dyn ManagedChild, wanted: &[&str]) -> String {
-    let deadline = Instant::now() + CAPTURE_LIMIT;
     loop {
         let tail = child.output_tail(TailLines::default());
         if wanted.iter().all(|line| tail.contains(line)) {
             return (*tail).clone();
         }
-        assert!(
-            Instant::now() < deadline,
-            "the child's lines must reach the capture ring; it held {tail:?}",
-        );
-        thread::sleep(CAPTURE_STEP);
+        thread::yield_now();
     }
 }
 

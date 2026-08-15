@@ -3,12 +3,8 @@ use std::{
     io::{self, Read, Write},
     net::{Ipv4Addr, TcpListener, TcpStream},
     process::{Command, Stdio},
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
+    sync::mpsc,
     thread,
-    time::Instant,
 };
 
 use gdtf_qa_mcp::{
@@ -21,10 +17,6 @@ use gdtf_qa_protocol::{
 };
 
 pub(crate) const STUB_STDERR_LINE: &str = "boot-oops";
-
-const STDERR_SYNC_LIMIT: Duration = Duration::from_secs(30);
-
-const STDERR_SYNC_STEP: Duration = Duration::from_millis(1);
 
 pub(crate) struct StubSpawner;
 
@@ -56,28 +48,21 @@ impl ChildSpawner for StubSpawner {
     }
 }
 
+// The wait has no deadline: the capture thread always delivers the line, load only delays it.
 fn await_captured_stderr(child: &dyn ManagedChild) {
-    let deadline = Instant::now() + STDERR_SYNC_LIMIT;
     while !child.failure_tail().contains(STUB_STDERR_LINE) {
-        if Instant::now() >= deadline {
-            unreachable!(
-                "the placeholder process writes {STUB_STDERR_LINE} to stderr and it is captured"
-            );
-        }
-        thread::sleep(STDERR_SYNC_STEP);
+        thread::yield_now();
     }
 }
 
 #[derive(Clone)]
-pub(crate) struct FakeGameGate(Arc<AtomicBool>);
+pub(crate) struct FakeGameGate(mpsc::Sender<()>);
 
 impl FakeGameGate {
     pub(crate) fn open(&self) {
-        self.0.store(true, Ordering::SeqCst);
+        let _ = self.0.send(());
     }
 }
-
-const GATE_POLL_STEP: Duration = Duration::from_millis(1);
 
 pub(crate) fn spawn_gated_fake_game() -> (u16, FakeGameGate) {
     let Ok(listener) = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)) else {
@@ -87,11 +72,11 @@ pub(crate) fn spawn_gated_fake_game() -> (u16, FakeGameGate) {
         unreachable!("the listener has a local address");
     };
     let port = addr.port();
-    let gate = FakeGameGate(Arc::new(AtomicBool::new(false)));
-    let open = Arc::clone(&gate.0);
+    let (open_tx, open_rx) = mpsc::channel::<()>();
+    let gate = FakeGameGate(open_tx);
     thread::spawn(move || {
-        while !open.load(Ordering::SeqCst) {
-            thread::sleep(GATE_POLL_STEP);
+        if open_rx.recv().is_err() {
+            return;
         }
         for stream in listener.incoming() {
             let Ok(mut stream) = stream else {

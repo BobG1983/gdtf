@@ -4,8 +4,6 @@ use gdtf_app::test_support::AppState;
 use gdtf_battle_presenter::{SheetRole, TopDownAtlases};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 fn layout_tile_count(app: &App, role: SheetRole) -> Option<usize> {
     let atlases = app.world().get_resource::<TopDownAtlases>()?;
     let sheet = atlases.role(role)?;
@@ -30,7 +28,7 @@ fn topdown_renderer_builds_the_sheet_atlases_including_32px_portraits() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<TopDownAtlases>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<TopDownAtlases>(&mut app);
     assert!(
         layout_tile_count(&app, SheetRole::Terrain).is_some(),
         "TopDownRendererPlugin must build the TopDownAtlases resource with terrain's layout — \

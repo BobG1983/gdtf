@@ -14,7 +14,7 @@ use gdtf_test_utils::BattleAppBuilder;
 
 const PAN_UPDATES: u32 = 12;
 
-fn live_battle_app() -> Option<bevy::app::App> {
+fn live_battle_app() -> bevy::app::App {
     BattleAppBuilder::new().build()
 }
 
@@ -72,16 +72,7 @@ fn hold_key_for_pan(app: &mut bevy::app::App, key_code: KeyCode) {
 
 #[test]
 fn keyboard_w_pans_camera_up_within_bounds() {
-    let app_opt = live_battle_app();
-    assert!(
-        app_opt.is_some(),
-        "the shared BattleAppBuilder drive should reach a LIVE battle (rested at \
-         BattleScapeState::BattleRunning, past Generation, so BattleInProgress + PlayerFaction \
-         are present)",
-    );
-    let Some(mut app) = app_opt else {
-        return;
-    };
+    let mut app = live_battle_app();
 
     assert!(
         app.world().get_resource::<BattleInProgress>().is_some()

@@ -6,9 +6,7 @@ use gdtf_qa_protocol::{
 };
 
 use super::{
-    battle_fixture::{
-        DRIVE_BUDGET, drive_into_battle_running, menu_app_with_net_qa, run_request, send,
-    },
+    battle_fixture::{drive_into_battle_running, menu_app_with_net_qa, run_request, send},
     command_exchange::{BATTLE_FLEE, exchange, run},
     socket_support::{TestResult, game_app_listening},
 };
@@ -35,14 +33,12 @@ fn battle_flee_ends_the_running_battle_the_way_the_flee_button_does() {
         "flee must go through the same insert the Flee button makes, on the frame it is claimed",
     );
 
-    let mut answered = None;
-    for _ in 0..DRIVE_BUDGET {
+    let answered = loop {
         app.update();
         if let Ok(reply) = pending.try_recv() {
-            answered = Some(reply);
-            break;
+            break Some(reply);
         }
-    }
+    };
 
     let Some(QaResponse::Outcome(CommandOutcome::Ran { reply, .. })) = answered else {
         unreachable!(

@@ -108,13 +108,7 @@ fn assert_env_pinned_seed_drives_streams() {
     LazyLock::force(&LOG_CAPTURE);
 
     let mut app = walk_app(None);
-    let reached = drive_to_generation(&mut app);
-    assert!(
-        reached,
-        "the env-pinned walk should reach Generation within {BUDGET} updates; last observed \
-         BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    drive_to_generation(&mut app);
     assert!(
         app.world().get_resource::<ShotRng>().is_some(),
         "the env-pinned Generation must insert a ShotRng stream (resolve_root_seed path)",
@@ -136,12 +130,7 @@ fn assert_unset_seed_is_wall_clock_and_logged() {
     LazyLock::force(&LOG_CAPTURE);
 
     let mut app = walk_app(None);
-    assert!(
-        drive_to_generation(&mut app),
-        "the unset (wall-clock) walk should reach Generation within {BUDGET} updates; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    drive_to_generation(&mut app);
     let world_first = app.world_mut().resource_mut::<ShotRng>().next_u64();
     let mut zero_stream = ShotRng::from_root(BattleSeed::new(0));
     assert_ne!(

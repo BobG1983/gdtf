@@ -17,8 +17,6 @@ const GOOD_FIXTURE_PATH: &str = "test/ron_loader_fixture.ron";
 
 const MALFORMED_FIXTURE_PATH: &str = "test/ron_loader_malformed.ron";
 
-const GENEROUS_LOAD_UPDATES: u32 = 10_000;
-
 #[test]
 fn well_formed_ron_resolves_to_typed_asset() {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
@@ -30,12 +28,7 @@ fn well_formed_ron_resolves_to_typed_asset() {
     };
 
     let id = handle.id();
-    gdtf_test_utils::advance_until_load_state(
-        &mut app,
-        id,
-        |state| state.is_loaded(),
-        GENEROUS_LOAD_UPDATES,
-    );
+    gdtf_test_utils::advance_until_load_state(&mut app, id, |state| state.is_loaded());
 
     let assets = app.world().resource::<Assets<RonAsset<LoaderFixture>>>();
     let asset = assets.get(id);
@@ -67,12 +60,7 @@ fn malformed_ron_fails_with_typed_load_state() {
     };
     let id = handle.id();
 
-    gdtf_test_utils::advance_until_load_state(
-        &mut app,
-        id,
-        |state| state.is_failed(),
-        GENEROUS_LOAD_UPDATES,
-    );
+    gdtf_test_utils::advance_until_load_state(&mut app, id, |state| state.is_failed());
 
     assert!(
         app.world()

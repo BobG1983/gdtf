@@ -7,7 +7,8 @@ use gdtf_battle_sim::{
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
-pub(crate) const BUDGET: u32 = 512;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 pub(crate) const FIXED_SEED: u64 = 0xC0FF_EE42;
 
@@ -40,18 +41,13 @@ pub(crate) fn app_ready_for_battle(seed: u64) -> App {
         .starting_in(AppState::Load)
         .build();
     app.world_mut().insert_resource(BattleSeed::new(seed));
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
 
-    let reached_menu = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    assert!(
-        reached_menu,
-        "the REAL Load flow must reach RunningState::Menu within {BUDGET} updates; last \
-         observed RunningState was {:?}",
-        running_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
     app
 }
 
@@ -59,24 +55,13 @@ pub(crate) fn drive_into_battle_running(app: &mut App) {
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
-    let reached_running = advance_until(
-        app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        reached_running,
-        "the battle must reach BattleRunning within {BUDGET} updates; last observed \
-         BattleScapeState was {:?}",
-        battlescape_state(app),
-    );
+    advance_until(app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
 }
 
 pub(crate) fn drive_stepper_to_done(app: &mut App) {
-    for _ in 0..BUDGET {
-        if app.world().get_resource::<StagedProcgen>().is_none() {
-            return;
-        }
+    while app.world().get_resource::<StagedProcgen>().is_some() {
         let pending = app.world_mut().get_resource_mut::<PendingStepCommand>();
         assert!(
             pending.is_some(),
@@ -95,16 +80,8 @@ pub(crate) fn app_engaged_in_generation(seed: u64) -> App {
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
-    let reached_generation = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::Generation),
-        BUDGET,
-    );
-    assert!(
-        reached_generation,
-        "the stepper-engaged path must reach BattleScapeState::Generation (request_battle_setup \
-         gated off, engage_stepper driving instead); last observed state was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::Generation)
+    });
     app
 }

@@ -21,8 +21,8 @@ use super::{
         socket_support::{TestError, TestResult, battle_app_listening},
     },
     scene::{
-        SETTLE_BUDGET, a_neighbour, a_shovable_neighbour, accepted, clear_enemies_around,
-        melee_argument, place, position_of, select_a_player_ganger, settle, shooter,
+        a_neighbour, a_shovable_neighbour, accepted, clear_enemies_around, melee_argument, place,
+        position_of, select_a_player_ganger, settle, shooter,
     },
 };
 
@@ -147,17 +147,9 @@ fn a_melee_call_naming_the_offered_neighbour_is_accepted_and_swings_at_it() -> T
         struck.from_seq,
         struck.to_seq,
     );
-    let charged = advance_until(
-        &mut app,
-        |app| pool_of(app, actor).is_some_and(|(tu, max)| *tu < *max),
-        SETTLE_BUDGET,
-    );
-    assert!(
-        charged,
-        "the sim's own melee charges the attacker for the strike, so the full pool the fixture \
-         wrote must be spent down within {SETTLE_BUDGET} frames; it still held {:?}",
-        pool_of(&app, actor),
-    );
+    advance_until(&mut app, |app| {
+        pool_of(app, actor).is_some_and(|(tu, max)| *tu < *max)
+    });
     Ok(())
 }
 
@@ -182,18 +174,9 @@ fn shoving_the_offered_neighbour_names_it_and_pushes_it_off_its_cell() -> TestRe
         shoved.from_seq,
         shoved.to_seq,
     );
-    let pushed = advance_until(
-        &mut app,
-        |app| position_of(app, enemy).map(|at| at.cell()) == Some(landing.cell()),
-        SETTLE_BUDGET,
-    );
-    assert!(
-        pushed,
-        "the sim's own shove must push the target one cell on along the line it was shoved \
-         from; it wanted {:?} and last stood at {:?}",
-        landing.cell(),
-        position_of(&app, enemy),
-    );
+    advance_until(&mut app, |app| {
+        position_of(app, enemy).map(|at| at.cell()) == Some(landing.cell())
+    });
     Ok(())
 }
 
@@ -212,16 +195,9 @@ fn executing_the_offered_downed_enemy_kills_it_in_the_world() -> TestResult {
         OfferTargetNet::Ganger(GangerToken::new(enemy.to_bits())),
         "the reply names the downed ganger the panel was offering",
     );
-    let killed = advance_until(
-        &mut app,
-        |app| app.world().get::<LifeState>(enemy) == Some(&LifeState::Dead),
-        SETTLE_BUDGET,
-    );
-    assert!(
-        killed,
-        "the sim's own execute must leave the carried target Dead; last life state was {:?}",
-        app.world().get::<LifeState>(enemy),
-    );
+    advance_until(&mut app, |app| {
+        app.world().get::<LifeState>(enemy) == Some(&LifeState::Dead)
+    });
     Ok(())
 }
 
@@ -240,16 +216,9 @@ fn stabilizing_the_offered_gang_mate_stops_its_bleed_rather_than_finishing_it() 
         OfferTargetNet::Ganger(GangerToken::new(mate.to_bits())),
         "the reply names the bleeding gang mate the panel was offering",
     );
-    let stopped = advance_until(
-        &mut app,
-        |app| app.world().get::<BleedingOut>(mate).is_none(),
-        SETTLE_BUDGET,
-    );
-    assert!(
-        stopped,
-        "the sim's own stabilize must clear the carried target's bleed; it was still bleeding \
-         after {SETTLE_BUDGET} frames",
-    );
+    advance_until(&mut app, |app| {
+        app.world().get::<BleedingOut>(mate).is_none()
+    });
     assert_eq!(
         app.world().get::<LifeState>(mate),
         Some(&LifeState::Downed),

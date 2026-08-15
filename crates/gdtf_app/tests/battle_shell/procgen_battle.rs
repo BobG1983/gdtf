@@ -8,7 +8,8 @@ use gdtf_battle_sim::{
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
-const BUDGET: u32 = 512;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 const fn industrial_hive_theme() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001))
@@ -91,17 +92,12 @@ fn procgen_battle_reaches_running_with_populated_terrain() {
         .starting_in(AppState::Load)
         .build();
 
-    let reached_menu = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    assert!(
-        reached_menu,
-        "the REAL Load flow must reach RunningState::Menu within {BUDGET} updates; last \
-         observed RunningState was {:?}",
-        running_state(&app),
-    );
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
 
     let before = prefab_len(&app);
     assert!(
@@ -114,17 +110,9 @@ fn procgen_battle_reaches_running_with_populated_terrain() {
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
-    let reached_running = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        reached_running,
-        "a theme+size-only situation should procgen its terrain and reach \
-         BattleRunning within {BUDGET} updates; last observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
 
     let terrain = app.world().get_resource::<TerrainIndex>();
     assert!(

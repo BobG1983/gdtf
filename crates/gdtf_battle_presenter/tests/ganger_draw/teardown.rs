@@ -40,7 +40,7 @@ fn teardown_despawns_every_ganger_sprite_and_clears_the_map() {
     );
 
     app.world_mut().write_message(TeardownBattleRequested);
-    let cleared = advance_until(&mut app, sprite_map_is_empty, MAX_UPDATES);
+    advance_until(&mut app, sprite_map_is_empty);
 
     let left = drawn_gangers(&mut app);
     assert!(
@@ -49,7 +49,7 @@ fn teardown_despawns_every_ganger_sprite_and_clears_the_map() {
         left.len(),
     );
     assert!(
-        cleared && sprite_map_is_empty(&app),
+        sprite_map_is_empty(&app),
         "leaving a battle must clear every GangerSprites entry",
     );
 }

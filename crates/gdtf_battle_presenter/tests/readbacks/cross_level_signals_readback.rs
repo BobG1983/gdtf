@@ -36,7 +36,8 @@ const DARK_CLEAR: Color = Color::srgb(0.02, 0.02, 0.03);
 
 const TARGET_PX: u32 = 8;
 
-const MAX_READBACK_UPDATES: usize = 90;
+/// Frames the hand-inserted scene needs to extract, prepare and draw — per-frame work, no IO.
+const SCENE_SETTLE_FRAMES: u32 = 8;
 
 #[derive(Resource, Default, Clone, Copy)]
 struct CapturedFrame {
@@ -140,6 +141,11 @@ fn render_badge_slot(present: bool) -> Option<CapturedFrame> {
         RenderLayers::layer(WORLD_RENDER_LAYER),
     ));
 
+    // Let the scene draw before any copy is submitted, so every readback is of a settled frame.
+    for _ in 0..SCENE_SETTLE_FRAMES {
+        app.update();
+    }
+
     app.world_mut()
         .spawn(Readback::texture(target_handle))
         .observe(
@@ -182,15 +188,11 @@ fn render_badge_slot(present: bool) -> Option<CapturedFrame> {
             },
         );
 
-    for _ in 0..MAX_READBACK_UPDATES {
+    while !app.world().resource::<CapturedFrame>().captured {
         app.update();
     }
 
     let captured = *app.world().resource::<CapturedFrame>();
-    assert!(
-        captured.captured,
-        "GPU readback never fired within {MAX_READBACK_UPDATES} updates"
-    );
     if present {
         let mut q = app.world_mut().query::<&CrossLevelBadgeTile>();
         assert!(

@@ -1,12 +1,10 @@
 //! Terrain load: shipped migrated terrain and theme content resolve by UUID.
-use gdtf_app::test_support::{AppState, app_state, load_released};
+use gdtf_app::test_support::{AppState, load_released};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainSimKind, TerrainTag, TerrainUuid},
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
-
-const LOAD_SAFETY_NET: u32 = 10_000;
 
 const MIGRATED_TERRAIN_DEF_COUNT: usize = 27;
 
@@ -51,8 +49,8 @@ fn shipped_migrated_terrain_and_theme_content_resolves_by_uuid() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<TerrainDefRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<UuidThemeRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<TerrainDefRegistry>(&mut app);
+    advance_until_resource_exists::<UuidThemeRegistry>(&mut app);
 
     if let Some(registry) = app.world().get_resource::<TerrainDefRegistry>() {
         assert!(
@@ -119,11 +117,5 @@ fn shipped_migrated_terrain_and_theme_content_resolves_by_uuid() {
         }
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "with a real AssetServer, Load must release to Intro (or beyond) once every folder \
-         (incl. the migrated per-theme terrain/) resolves; last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 }

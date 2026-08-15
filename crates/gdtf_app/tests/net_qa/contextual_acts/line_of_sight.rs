@@ -38,7 +38,7 @@ use super::{
         socket_support::{Client, TestError, TestResult, battle_app_listening},
     },
     scene::{
-        SETTLE_BUDGET, accepted, clear_enemies_around, melee_argument, place, refused,
+        HOLD_FRAMES, accepted, clear_enemies_around, melee_argument, place, refused,
         select_a_player_ganger, settle,
     },
 };
@@ -217,15 +217,13 @@ fn a_melee_call_naming_the_target_behind_the_walled_corner_is_refused_not_redire
         "the sight probe leaves the panel offering the corner wall, so a call naming the ganger \
          the quote priced names a target that is not on offer",
     );
-    let struck = advance_until(
-        &mut app,
-        |app| !walls_untouched(app, &strike.corners),
-        SETTLE_BUDGET,
-    );
+    for _ in 0..HOLD_FRAMES {
+        app.update();
+    }
     assert!(
-        !struck,
+        walls_untouched(&app, &strike.corners),
         "a refused call pushes nothing, so the corner wall the panel was offering must never be \
-         hit; it lost HP within {SETTLE_BUDGET} frames",
+         hit; it lost HP within {HOLD_FRAMES} frames",
     );
     Ok(())
 }
@@ -261,12 +259,6 @@ fn a_melee_call_naming_the_offered_structure_cell_is_accepted_and_struck() -> Te
         "a call naming the structure cell the panel is offering is the call the panel would \
          make, so it is accepted and the reply names that same cell back",
     );
-    let landed = advance_until(&mut app, |app| struck_at(app, at.to_sim()), SETTLE_BUDGET);
-    assert!(
-        landed,
-        "the sim carries an accepted structure strike out on the cell it was aimed at, so a \
-         MeleeResolved must name {:?} within {SETTLE_BUDGET} frames",
-        at.to_sim(),
-    );
+    advance_until(&mut app, |app| struck_at(app, at.to_sim()));
     Ok(())
 }

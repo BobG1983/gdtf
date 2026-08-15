@@ -31,7 +31,8 @@ use gdtf_qa_protocol::{
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
-pub(crate) const DRIVE_BUDGET: u32 = 128;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 fn running_state(app: &App) -> Option<RunningState> {
     app.world()
@@ -85,12 +86,12 @@ pub(crate) fn menu_app_with_situation(
     let (tx, rx) = mpsc::channel();
     app.add_plugins(NetQaPlugin::with_channels(rx));
 
-    let rested = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        DRIVE_BUDGET,
-    );
-    assert!(rested, "the harness must rest at RunningState::Menu");
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
     (app, tx)
 }
 
@@ -109,17 +110,9 @@ fn battlescape_state(app: &App) -> Option<BattleScapeState> {
 pub(crate) fn drive_into_battle_running(app: &mut App) {
     request_battle(app);
     app.update();
-    let reached = advance_until(
-        app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        DRIVE_BUDGET,
-    );
-    assert!(
-        reached,
-        "the fixture must descend to BattleRunning before a battle command means anything; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(app),
-    );
+    advance_until(app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
 }
 
 /// Send one command and drive exactly one frame, which is what pins when the effect lands.

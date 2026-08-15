@@ -20,9 +20,6 @@ use crate::{
     EffectRoles, FxTuning, IMPACT_FRAME_COUNT, PendingImpact, TopDownAtlases, TopDownRendererPlugin,
 };
 
-// The asset loads resolve in a few frames; this cap is a safety net, not a budget.
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 fn workspace_assets_root() -> PathBuf {
     let Some(root) = gdtf_assets::workspace_assets_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
@@ -60,9 +57,9 @@ fn impact_fx_app() -> App {
     )
     .add_plugins(TopDownRendererPlugin);
     app.set_error_handler(warn);
-    advance_until_resource_exists::<EffectRoles>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<TopDownAtlases>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<FxTuning>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<EffectRoles>(&mut app);
+    advance_until_resource_exists::<TopDownAtlases>(&mut app);
+    advance_until_resource_exists::<FxTuning>(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
     app
 }

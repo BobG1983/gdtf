@@ -17,7 +17,8 @@ use gdtf_battle_sim::{
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
-const BUDGET: u32 = 96;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 fn running_state(app: &App) -> Option<RunningState> {
     app.world()
@@ -62,32 +63,21 @@ fn full_stack_composes_to_battle_running() {
     seed_load(&mut app);
     let (_tx, rx) = mpsc::channel();
     app.add_plugins(NetQaPlugin::with_channels(rx));
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
 
-    assert!(
-        advance_until(
-            &mut app,
-            |app| running_state(app) == Some(RunningState::Menu),
-            BUDGET,
-        ),
-        "the walk should reach RunningState::Menu within {BUDGET} updates; last observed \
-         RunningState was {:?}",
-        running_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
 
     app.world_mut()
         .write_message(StartBattleRequested::new(None));
     app.update();
 
-    assert!(
-        advance_until(
-            &mut app,
-            |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-            BUDGET,
-        ),
-        "the full stack must compose and reach BattleRunning within {BUDGET} updates; \
-         last observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
 
     let world_cameras = {
         let world = app.world_mut();

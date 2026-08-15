@@ -22,8 +22,6 @@ use super::{
     socket_support::{TestError, TestResult, game_app_listening},
 };
 
-const DRIVE_BUDGET: u32 = 512;
-
 #[derive(Debug, Deserialize)]
 struct SettingsBody {
     sound: SoundNet,
@@ -51,12 +49,7 @@ fn sound_switched_off_app() -> Result<(App, NetQaPort), TestError> {
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Options);
-    if !advance_until(&mut app, |app| sound_toggle(app).is_some(), DRIVE_BUDGET) {
-        return Err(format!(
-            "the Options screen never spawned its sound toggle within {DRIVE_BUDGET} frames"
-        )
-        .into());
-    }
+    advance_until(&mut app, |app| sound_toggle(app).is_some());
     let Some(toggle) = sound_toggle(&app) else {
         return Err("the sound toggle vanished between the drive and the read".into());
     };
@@ -66,13 +59,7 @@ fn sound_switched_off_app() -> Result<(App, NetQaPort), TestError> {
         value:    false,
         is_final: true,
     });
-    if !advance_until(&mut app, |app| sound_readout(app) != before, DRIVE_BUDGET) {
-        return Err(format!(
-            "switching the toggle never reached the settings resource; the screen still reads \
-             {before:?} after {DRIVE_BUDGET} frames"
-        )
-        .into());
-    }
+    advance_until(&mut app, |app| sound_readout(app) != before);
     Ok((app, port))
 }
 

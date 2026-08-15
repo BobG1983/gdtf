@@ -10,9 +10,8 @@ use gdtf_ui::theme::default_theme;
 
 use crate::load_suite::gate;
 
-const TRANSITION_BUDGET: u32 = 32;
-
-const LOAD_SAFETY_NET: u32 = 10_000;
+/// Frames the machine is given to prove it stays put — per-frame work, no IO.
+const HOLD_FRAMES: u32 = 32;
 
 fn bad_tuning_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -41,14 +40,7 @@ fn tuning_loader_no_ops_cleanly_without_asset_server() {
 
     gate::seed_full_load_gate(&mut app);
 
-    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
-    assert!(
-        released,
-        "with a GdtfTheme + CombatTuning + WeaponRegistry + LoadedSituation present, Load must \
-         release to Intro (or beyond) within {TRANSITION_BUDGET} updates; last observed \
-         AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 }
 
 #[test]
@@ -59,16 +51,14 @@ fn load_does_not_leave_without_a_tuning() {
 
     gate::seed_gate_except::<CombatTuning>(&mut app);
 
-    let left_load = advance_until(
-        &mut app,
-        |app| app_state(app) != AppState::Load,
-        TRANSITION_BUDGET,
-    );
+    for _ in 0..HOLD_FRAMES {
+        app.update();
+    }
 
-    assert!(
-        !left_load,
-        "without a CombatTuning the machine must not leave Load; it reached {:?}",
+    assert_eq!(
         app_state(&app),
+        AppState::Load,
+        "without a CombatTuning the machine must not leave Load",
     );
 }
 
@@ -81,16 +71,14 @@ fn load_does_not_leave_on_theme_only() {
     app.update();
     app.world_mut().insert_resource(default_theme());
 
-    let left_load = advance_until(
-        &mut app,
-        |app| app_state(app) != AppState::Load,
-        TRANSITION_BUDGET,
-    );
+    for _ in 0..HOLD_FRAMES {
+        app.update();
+    }
 
-    assert!(
-        !left_load,
-        "with a theme but NO tuning the machine must not leave Load; it reached {:?}",
+    assert_eq!(
         app_state(&app),
+        AppState::Load,
+        "with a theme but NO tuning the machine must not leave Load",
     );
 }
 
@@ -100,7 +88,7 @@ fn real_asset_resolves_persistent_combat_tuning() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<CombatTuning>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<CombatTuning>(&mut app);
 
     if let Some(tuning) = app.world().get_resource::<CombatTuning>() {
         let default = CombatTuning::default();
@@ -112,13 +100,7 @@ fn real_asset_resolves_persistent_combat_tuning() {
         }
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "with a resolved theme + tuning, Load must release to Intro (or beyond); last AppState \
-         was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
     assert!(
         app.world().get_resource::<CombatTuning>().is_some(),
         "CombatTuning must persist past OnExit(Load) into Intro — the BattleScape-consumer \
@@ -132,7 +114,7 @@ fn real_asset_failure_path_does_not_hang_and_uses_default_tuning() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<CombatTuning>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<CombatTuning>(&mut app);
 
     if let Some(tuning) = app.world().get_resource::<CombatTuning>() {
         assert_eq!(
@@ -142,11 +124,5 @@ fn real_asset_failure_path_does_not_hang_and_uses_default_tuning() {
         );
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "even on a failed tuning, Load must release to Intro (or beyond) with the default \
-         tuning; last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 }

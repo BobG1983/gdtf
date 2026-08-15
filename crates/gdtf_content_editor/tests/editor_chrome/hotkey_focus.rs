@@ -14,8 +14,6 @@ use gdtf_battle_presenter::ViewMode;
 use gdtf_content_editor::{CurrentEditLevel, EditorMode, EditorState, MapEditorPlugin};
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
-const MAX_UPDATES: u32 = 10_000;
-
 const PROBE_ID: &str = "egui-suppression-probe";
 
 fn editor_app_with_focus_machinery() -> App {
@@ -27,20 +25,11 @@ fn editor_app_with_focus_machinery() -> App {
 }
 
 fn advance_to_editing(app: &mut App) {
-    let reached = advance_until(
-        app,
-        |app| {
-            app.world()
-                .get_resource::<State<EditorState>>()
-                .is_some_and(|s| *s.get() == EditorState::Editing)
-        },
-        MAX_UPDATES,
-    );
-    assert!(
-        reached,
-        "the editor never reached EditorState::Editing — its Load pass did not resolve the theme + \
-         registries",
-    );
+    advance_until(app, |app| {
+        app.world()
+            .get_resource::<State<EditorState>>()
+            .is_some_and(|s| *s.get() == EditorState::Editing)
+    });
     for _ in 0..4 {
         app.update();
     }

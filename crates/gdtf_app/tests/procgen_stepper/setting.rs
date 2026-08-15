@@ -13,7 +13,7 @@ use gdtf_battle_sim::procgen::StagedProcgen;
 use gdtf_test_utils::advance_until;
 
 use super::harness::{
-    BUDGET, FIXED_SEED, app_ready_for_battle, battlescape_state, drive_into_battle_running,
+    FIXED_SEED, app_ready_for_battle, battlescape_state, drive_into_battle_running,
     drive_stepper_to_done, running_state, terrain_fingerprint,
 };
 
@@ -43,17 +43,9 @@ fn app_on_options_screen() -> App {
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Options);
-    let reached = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Options),
-        BUDGET,
-    );
-    assert!(
-        reached,
-        "the app must reach RunningState::Options within {BUDGET} updates; last observed \
-         RunningState was {:?}",
-        running_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Options)
+    });
     app
 }
 
@@ -136,32 +128,14 @@ fn a_flipped_on_setting_steps_the_next_generation() {
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
-    let reached_generation = advance_until(
-        &mut app,
-        |app| app.world().get_resource::<StagedProcgen>().is_some(),
-        BUDGET,
-    );
-    assert!(
-        reached_generation,
-        "the toggled-on stepper must engage a StagedProcgen drive for the next Generation \
-         entry; last observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        app.world().get_resource::<StagedProcgen>().is_some()
+    });
 
     drive_stepper_to_done(&mut app);
-    let reached_running = advance_until(
-        &mut app,
-        |app| {
-            battlescape_state(app) == Some(gdtf_app::test_support::BattleScapeState::BattleRunning)
-        },
-        BUDGET,
-    );
-    assert!(
-        reached_running,
-        "the stepped drive must reach BattleRunning once stepped to done; last observed \
-         BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(gdtf_app::test_support::BattleScapeState::BattleRunning)
+    });
     let fingerprint = terrain_fingerprint(&app);
     assert!(
         matches!(fingerprint, Some(n) if n > 0),

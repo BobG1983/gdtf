@@ -79,16 +79,9 @@ fn contextual_panel_despawns_outside_battle() {
 
     app.world_mut()
         .insert_resource(gdtf_app::test_support::BattleRunningComplete);
-    let left_battle_running = advance_until(
-        &mut app,
-        |app| battlescape_state(app) != Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        left_battle_running,
-        "an explicit BattleRunningComplete insert must advance the machine out of BattleRunning \
-         within {BUDGET} updates",
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) != Some(BattleScapeState::BattleRunning)
+    });
 
     assert!(
         single_with::<ContextualPanelRoot>(&mut app).is_none(),

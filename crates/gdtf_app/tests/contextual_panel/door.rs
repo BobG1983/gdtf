@@ -167,15 +167,7 @@ fn pressing_open_door_toggles_the_door_open() {
     );
 
     press_ui_button(&mut app, open_door_btn);
-    let opened = advance_until(
-        &mut app,
-        |app| door_state(app, door) == Some(OpenState::Open),
-        BUDGET,
-    );
-    assert!(
-        opened,
-        "pressing Open Door on the carried CLOSED door must toggle its OpenState to Open through \
-         the real dispatch path + sim; last was {:?}",
-        door_state(&app, door),
-    );
+    advance_until(&mut app, |app| {
+        door_state(app, door) == Some(OpenState::Open)
+    });
 }

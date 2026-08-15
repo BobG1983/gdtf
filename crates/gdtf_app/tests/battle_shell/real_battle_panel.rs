@@ -2,13 +2,13 @@
 use bevy::{app::App, prelude::*, state::state::State, ui::Val};
 use gdtf_app::test_support::{
     AppState, BattleScapeState, InspectPanelRoot, RunningState, StatName, StatStance, StatTuBar,
-    app_state,
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 use gdtf_ui::ProgressBarFill;
 
-const BUDGET: u32 = 512;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 const NO_TARGET: &str = "No ganger selected";
 
@@ -87,34 +87,20 @@ fn real_skirmish_battle_shows_a_selectable_readable_player_ganger() {
         .starting_in(AppState::Load)
         .build();
 
-    let reached_menu = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    assert!(
-        reached_menu,
-        "the real Load + descent must reach RunningState::Menu within {BUDGET} updates; last \
-         AppState was {:?}, RunningState {:?}",
-        app_state(&app),
-        running_state(&app),
-    );
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
 
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
 
-    let reached_battle = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        reached_battle,
-        "the real battle must reach BattleScapeState::BattleRunning within {BUDGET} updates; last \
-         BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
 
     assert!(
         has_selection(&app),

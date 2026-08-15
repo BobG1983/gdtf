@@ -24,8 +24,6 @@ use gdtf_content_editor::{
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 const THEME: ThemeUuid = ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0662_0000_0011));
 
 const SLAB: TerrainUuid = TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0662_0000_0012));
@@ -105,7 +103,7 @@ fn saved_prefab_round_trips_through_the_real_game_prefab_loader() {
 
     let mut app = GdtfLoadTestAppBuilder::with_asset_root(dir.path().to_path_buf()).build();
 
-    advance_until_resource_exists::<PrefabRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<PrefabRegistry>(&mut app);
 
     let loaded = app.world().get_resource::<PrefabRegistry>();
     assert!(loaded.is_some(), "the PrefabRegistry must resolve");

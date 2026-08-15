@@ -11,9 +11,7 @@ use gdtf_content_editor::{
 use gdtf_content_families::injuries::{INJURIES_FOLDER, WEIGHTING_SUBFOLDER};
 use gdtf_test_utils::advance_until;
 
-use crate::harness::{
-    MAX_UPDATES, advance_to_published, editor_app_with_asset_root, has_dangling_ref,
-};
+use crate::harness::{advance_to_published, editor_app_with_asset_root, has_dangling_ref};
 
 const SAVED_DANGLING_INJURY: &str = "saved_missing_injury";
 
@@ -73,22 +71,13 @@ fn weighting_save_reload_rearms_validation_with_the_saved_keys() {
     );
     app.world().resource::<AssetServer>().reload(saved_path);
 
-    let republished = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<ContentIntegrityReport>()
-                .is_some_and(|report| {
-                    has_dangling_ref(report, "InjuryRegistry", RESAVED_DANGLING_INJURY)
-                })
-        },
-        MAX_UPDATES,
-    );
-    assert!(
-        republished,
-        "a weighting SAVE + reload must re-arm the validation pass — the re-saved dangling \
-         injury key was never re-reported (is the InjuryRegistry in the watch set?)",
-    );
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<ContentIntegrityReport>()
+            .is_some_and(|report| {
+                has_dangling_ref(report, "InjuryRegistry", RESAVED_DANGLING_INJURY)
+            })
+    });
     let report = app.world().resource::<ContentIntegrityReport>();
     assert!(
         !has_dangling_ref(report, "InjuryRegistry", SAVED_DANGLING_INJURY),

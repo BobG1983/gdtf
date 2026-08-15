@@ -13,7 +13,7 @@ use gdtf_content_families::ArmorFamily;
 use gdtf_test_utils::advance_until;
 
 use crate::harness::{
-    MAX_UPDATES, advance_to_published, editor_app_with_asset_root, has_dangling_ref, has_malformed,
+    advance_to_published, editor_app_with_asset_root, has_dangling_ref, has_malformed,
 };
 
 const REARM_ARMOR: &str = "rearm_plate";
@@ -99,31 +99,22 @@ fn armor_save_reload_rearms_validation_and_republishes_findings() {
     let saved_path = format!("{}/{}", ArmorFamily::FOLDER, armor_file_name(&armor_name));
     app.world().resource::<AssetServer>().reload(saved_path);
 
-    let republished = advance_until(
-        &mut app,
-        |app| {
-            let registry_rebuilt =
-                app.world()
-                    .get_resource::<ArmorRegistry>()
-                    .is_some_and(|registry| {
-                        registry.spec(&ArmorName::new(REARM_ARMOR.to_owned())) == Some(&edited_spec)
-                    });
-            let report_fresh = app
-                .world()
-                .get_resource::<ContentIntegrityReport>()
-                .is_some_and(|report| {
-                    has_dangling_ref(report, "WeaponRegistry", DANGLING_WEAPON)
-                        && !has_malformed(report, MALFORMED_STEM)
+    advance_until(&mut app, |app| {
+        let registry_rebuilt =
+            app.world()
+                .get_resource::<ArmorRegistry>()
+                .is_some_and(|registry| {
+                    registry.spec(&ArmorName::new(REARM_ARMOR.to_owned())) == Some(&edited_spec)
                 });
-            registry_rebuilt && report_fresh
-        },
-        MAX_UPDATES,
-    );
-    assert!(
-        republished,
-        "an armor SAVE + reload must rebuild the ArmorRegistry with the re-saved spec, re-arm \
-         the validation pass, and re-publish the current findings onto a fresh report",
-    );
+        let report_fresh = app
+            .world()
+            .get_resource::<ContentIntegrityReport>()
+            .is_some_and(|report| {
+                has_dangling_ref(report, "WeaponRegistry", DANGLING_WEAPON)
+                    && !has_malformed(report, MALFORMED_STEM)
+            });
+        registry_rebuilt && report_fresh
+    });
     let report = app.world().resource::<ContentIntegrityReport>();
     assert!(
         !has_dangling_ref(report, "ArmorRegistry", REARM_ARMOR),

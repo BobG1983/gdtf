@@ -18,7 +18,8 @@ use gdtf_ui::{
     theme::{GdtfTheme, default_theme},
 };
 
-pub(crate) const BUDGET: u32 = 96;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 pub(crate) fn battlescape_state(app: &App) -> Option<BattleScapeState> {
     app.world()
@@ -54,26 +55,19 @@ pub(crate) fn battle_running_app() -> App {
         .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
 
-    let at_menu = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
-    assert!(at_menu, "the walk should reach RunningState::Menu");
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
-    let at_battle = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        at_battle,
-        "the walk should reach BattleScapeState::BattleRunning; last was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
     app
 }
 

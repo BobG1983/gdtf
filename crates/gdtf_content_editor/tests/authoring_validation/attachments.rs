@@ -13,8 +13,8 @@ use gdtf_content_families::{AttachmentsFamily, WeaponsFamily};
 use gdtf_test_utils::advance_until;
 
 use crate::harness::{
-    MAX_UPDATES, advance_to_published, dangling_ref_referrer, editor_app_with_asset_root,
-    has_dangling_ref, has_malformed,
+    advance_to_published, dangling_ref_referrer, editor_app_with_asset_root, has_dangling_ref,
+    has_malformed,
 };
 
 const REARM_SCOPE: &str = "rearm_scope";
@@ -145,33 +145,22 @@ fn attachment_save_reload_rearms_validation_and_republishes_weapon_findings() {
     );
     app.world().resource::<AssetServer>().reload(saved_path);
 
-    let republished = advance_until(
-        &mut app,
-        |app| {
-            let registry_rebuilt = app
-                .world()
-                .get_resource::<AttachmentRegistry>()
-                .is_some_and(|registry| {
-                    registry.spec(&AttachmentName::new(REARM_SCOPE.to_owned()))
-                        == Some(&edited_spec)
-                });
-            let report_fresh = app
-                .world()
-                .get_resource::<ContentIntegrityReport>()
-                .is_some_and(|report| {
-                    has_dangling_ref(report, "AttachmentRegistry", DANGLING_SCOPE)
-                        && !has_malformed(report, MALFORMED_STEM)
-                });
-            registry_rebuilt && report_fresh
-        },
-        MAX_UPDATES,
-    );
-    assert!(
-        republished,
-        "an attachment SAVE + reload must rebuild the AttachmentRegistry with the re-saved \
-         spec, re-arm the validation pass (is the AttachmentRegistry in the watch set?), and \
-         re-publish the current weapon-edge findings onto a fresh report",
-    );
+    advance_until(&mut app, |app| {
+        let registry_rebuilt = app
+            .world()
+            .get_resource::<AttachmentRegistry>()
+            .is_some_and(|registry| {
+                registry.spec(&AttachmentName::new(REARM_SCOPE.to_owned())) == Some(&edited_spec)
+            });
+        let report_fresh = app
+            .world()
+            .get_resource::<ContentIntegrityReport>()
+            .is_some_and(|report| {
+                has_dangling_ref(report, "AttachmentRegistry", DANGLING_SCOPE)
+                    && !has_malformed(report, MALFORMED_STEM)
+            });
+        registry_rebuilt && report_fresh
+    });
     let report = app.world().resource::<ContentIntegrityReport>();
     assert!(
         !has_dangling_ref(report, "AttachmentRegistry", REARM_SCOPE),

@@ -13,19 +13,13 @@ use gdtf_qa_protocol::{
 use serde::Deserialize;
 
 use super::{
-    battle_fixture::{DRIVE_BUDGET, menu_app_with_net_qa, run_request, send},
+    battle_fixture::{menu_app_with_net_qa, run_request, send},
     command_exchange::{APP_PHASE, BATTLE_START, exchange_all, run},
     socket_support::{TestResult, game_app_listening},
 };
 
 /// A seed no wall clock will ever produce, so a verbatim reply cannot be a coincidence.
 const PINNED_SEED: u64 = 0x0BAD_F00D_DEAD_BEEF;
-
-/// Frames a deferred start is given to run generation to completion.
-const START_FRAMES: u32 = DRIVE_BUDGET * 4;
-
-/// Frames an immediate refusal is given to come back.
-const REFUSAL_FRAMES: u32 = 4;
 
 #[derive(Debug, Deserialize)]
 struct StartBody {
@@ -52,19 +46,11 @@ fn started_seed(reply: &QaResponse) -> SeedNet {
 fn start_over_the_channel(arguments: &str) -> StartedBattle {
     let (mut app, tx) = menu_app_with_net_qa();
     let pending = send(&tx, run_request(BATTLE_START, arguments));
-    let mut answered = None;
-    for _ in 0..START_FRAMES {
+    let reply = loop {
         app.update();
         if let Ok(reply) = pending.try_recv() {
-            answered = Some(reply);
-            break;
+            break reply;
         }
-    }
-    let Some(reply) = answered else {
-        unreachable!(
-            "battle.start is deferred and must answer once generation completes, and none \
-             arrived within {START_FRAMES} frames"
-        );
     };
     StartedBattle { app, tx, reply }
 }
@@ -107,22 +93,14 @@ fn battle_start_holds_its_reply_until_generation_has_finished() {
     let (mut app, tx) = menu_app_with_net_qa();
     let pending = send(&tx, run_request(BATTLE_START, "()"));
 
-    let mut answered = None;
-    let mut generation_had_finished = false;
-    for _ in 0..START_FRAMES {
+    let generation_had_finished = loop {
         let generated = app.world().contains_resource::<GenerationComplete>();
         app.update();
-        if let Ok(reply) = pending.try_recv() {
-            answered = Some(reply);
-            generation_had_finished = generated;
-            break;
+        if pending.try_recv().is_ok() {
+            break generated;
         }
-    }
+    };
 
-    assert!(
-        answered.is_some(),
-        "battle.start must answer within {START_FRAMES} frames or this case proves nothing",
-    );
     assert!(
         generation_had_finished,
         "battle.start answered on a frame that opened with no GenerationComplete — the seed is \
@@ -135,15 +113,13 @@ fn battle_start_holds_its_reply_until_generation_has_finished() {
 fn a_second_start_from_inside_the_battle_is_refused() {
     let StartedBattle { mut app, tx, .. } = start_over_the_channel("()");
     let pending = send(&tx, run_request(BATTLE_START, "()"));
-    let mut answered = None;
-    for _ in 0..REFUSAL_FRAMES {
+    let answered = loop {
         app.update();
         if let Ok(reply) = pending.try_recv() {
-            answered = Some(reply);
-            break;
+            break reply;
         }
-    }
-    let Some(QaResponse::Outcome(CommandOutcome::Unavailable { code, .. })) = answered else {
+    };
+    let QaResponse::Outcome(CommandOutcome::Unavailable { code, .. }) = answered else {
         unreachable!("a start from inside a battle must be refused, not parked; got {answered:?}");
     };
     assert_eq!(

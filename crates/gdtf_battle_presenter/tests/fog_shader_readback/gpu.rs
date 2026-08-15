@@ -33,7 +33,8 @@ pub(crate) fn workspace_assets_root() -> PathBuf {
 
 pub(crate) const TARGET_PX: u32 = 16;
 
-pub(crate) const MAX_READBACK_UPDATES: usize = 60;
+/// Frames the hand-inserted scene needs to extract, prepare and draw — per-frame work, no IO.
+const SCENE_SETTLE_FRAMES: u32 = 8;
 
 pub(crate) fn solid_image(rgba: [u8; 4]) -> Image {
     let data: Vec<u8> = rgba.iter().copied().cycle().take(4 * 2 * 2).collect();
@@ -144,6 +145,11 @@ pub(crate) fn render_and_read(
         Transform::default(),
     ));
 
+    // Let the scene draw before any copy is submitted, so every readback is of a settled frame.
+    for _ in 0..SCENE_SETTLE_FRAMES {
+        app.update();
+    }
+
     app.world_mut()
         .spawn(Readback::texture(target_handle))
         .observe(
@@ -165,14 +171,10 @@ pub(crate) fn render_and_read(
             },
         );
 
-    for _ in 0..MAX_READBACK_UPDATES {
+    while !app.world().resource::<CapturedPixel>().captured {
         app.update();
     }
 
     let captured = *app.world().resource::<CapturedPixel>();
-    assert!(
-        captured.captured,
-        "GPU readback never fired within {MAX_READBACK_UPDATES} updates"
-    );
     Some(captured.rgba)
 }

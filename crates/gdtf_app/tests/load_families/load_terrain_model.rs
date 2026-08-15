@@ -1,14 +1,12 @@
 //! Terrain model load: real assets resolve `TerrainDefRegistry` and `UuidThemeRegistry` by UUID.
 use std::path::PathBuf;
 
-use gdtf_app::test_support::{AppState, app_state, load_released};
+use gdtf_app::test_support::{AppState, load_released};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
-
-const LOAD_SAFETY_NET: u32 = 10_000;
 
 const fn known_terrain_uuid() -> TerrainUuid {
     TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_0801))
@@ -31,8 +29,8 @@ fn real_asset_resolves_new_terrain_and_theme_registries_by_uuid() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<TerrainDefRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<UuidThemeRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<TerrainDefRegistry>(&mut app);
+    advance_until_resource_exists::<UuidThemeRegistry>(&mut app);
 
     if let Some(registry) = app.world().get_resource::<TerrainDefRegistry>() {
         assert!(
@@ -63,13 +61,7 @@ fn real_asset_resolves_new_terrain_and_theme_registries_by_uuid() {
         );
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "with a real AssetServer, Load must release to Intro (or beyond) once every folder \
-         (incl. the new per-theme terrain/) resolves; last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
     assert!(
         app.world().get_resource::<TerrainDefRegistry>().is_some()
             && app.world().get_resource::<UuidThemeRegistry>().is_some(),

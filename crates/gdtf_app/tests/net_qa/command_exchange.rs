@@ -2,7 +2,7 @@ use bevy::app::App;
 use gdtf_app::test_support::NET_QA_PROTOCOL_VERSION;
 use gdtf_qa_protocol::{
     command::{CommandArgsRon, CommandName, CommandOutcome, RunOptions, UnavailableCode},
-    message::{QaRequest, QaResponse, RunCommand},
+    message::{QaError, QaRequest, QaResponse, RunCommand},
     ports::NetQaPort,
 };
 
@@ -261,6 +261,24 @@ pub(crate) fn exchange(
 ) -> Result<QaResponse, TestError> {
     let mut replies = exchange_all(fixture, vec![request])?;
     replies.pop().ok_or_else(|| "no reply arrived".into())
+}
+
+/// Exchange `request` repeatedly until the reply is not `Timeout`.
+///
+/// A capture answers Timeout while its readback is still in flight; a loaded machine
+/// makes that happen more often, never differently.
+pub(crate) fn exchange_until_not_timeout(
+    fixture: SocketFixture,
+    request: QaRequest,
+) -> Result<QaResponse, TestError> {
+    let (mut app, port) = fixture()?;
+    let mut client = greet(&mut app, port)?;
+    loop {
+        let reply = client.exchange(&mut app, &request)?;
+        if !matches!(reply, QaResponse::Error(QaError::Timeout)) {
+            return Ok(reply);
+        }
+    }
 }
 
 pub(crate) fn run(name: &'static str, arguments: &str, options: RunOptions) -> QaRequest {

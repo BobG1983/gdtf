@@ -8,8 +8,6 @@ use gdtf_battle_sim::{
 };
 use gdtf_test_utils::BattleAppBuilder;
 
-pub(crate) const BUDGET: u32 = 96;
-
 pub(crate) const SHOOTER_FACTION: u8 = 0;
 pub(crate) const TARGET_FACTION: u8 = 1;
 
@@ -41,7 +39,7 @@ pub(crate) fn battlescape_state(app: &bevy::app::App) -> Option<BattleScapeState
         .map(|state| *state.get())
 }
 
-pub(crate) fn driven_battle_app() -> Option<bevy::app::App> {
+pub(crate) fn driven_battle_app() -> bevy::app::App {
     BattleAppBuilder::new()
         .with_situation(two_ganger_situation())
         .build()

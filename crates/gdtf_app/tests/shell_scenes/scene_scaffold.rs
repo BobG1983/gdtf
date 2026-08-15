@@ -11,7 +11,8 @@ use gdtf_battle_sim::{
 use gdtf_state_scoped::StateScopedResourceAppExt as _;
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 
-const WALK_BUDGET: u32 = 64;
+/// Fixed steps a frame runs, so Intro's steps advance per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 #[derive(Resource, Debug, PartialEq, Eq)]
 struct LoadScopedProbe(u8);
@@ -51,6 +52,9 @@ fn scaffold_walk_app() -> App {
         .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
+    app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
+        ONE_STEP_A_FRAME,
+    ));
     app
 }
 
@@ -65,15 +69,7 @@ fn state_scoped_probe_lives_exactly_across_the_load_span() {
         "the Load-scoped probe must be ABSENT before Load is entered",
     );
 
-    let reached_load = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Load,
-        WALK_BUDGET,
-    );
-    assert!(
-        reached_load,
-        "Init's marker scaffold must advance the walk to Load"
-    );
+    advance_until(&mut app, |app| app_state(app) == AppState::Load);
 
     assert_eq!(
         app.world().get_resource::<LoadScopedProbe>(),
@@ -81,23 +77,11 @@ fn state_scoped_probe_lives_exactly_across_the_load_span() {
         "the probe must be PRESENT with its exact seeded value while in Load",
     );
 
-    let released = advance_until(&mut app, load_released, WALK_BUDGET);
-    assert!(
-        released,
-        "the seeded gates must let Load release to Intro (or beyond)"
-    );
+    advance_until(&mut app, load_released);
     assert!(
         app.world().get_resource::<LoadScopedProbe>().is_none(),
         "the probe must be REMOVED once Load exits",
     );
 
-    let reached_running = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Running,
-        WALK_BUDGET,
-    );
-    assert!(
-        reached_running,
-        "Intro's marker scaffold must advance the walk to Running",
-    );
+    advance_until(&mut app, |app| app_state(app) == AppState::Running);
 }

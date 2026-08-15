@@ -30,14 +30,7 @@ const OFF_BUTTON_PX: Vec2 = Vec2::new(1.0, 1.0);
 
 /// The real-layout battle app with the QA present path and a drivable capture queue.
 fn battle_app_with_the_qa_capture_path() -> (App, TempDir) {
-    let app_opt = real_layout_battle_running_app();
-    assert!(
-        app_opt.is_some(),
-        "the real-layout harness must reach BattleScapeState::BattleRunning with its font loaded",
-    );
-    let Some(mut app) = app_opt else {
-        unreachable!("the assertion above leaves the app present")
-    };
+    let mut app = real_layout_battle_running_app();
     let Ok((plugin, _port)) = NetQaPlugin::listening(NetQaPort::new(0)) else {
         unreachable!("the OS must hand out a loopback port when asked for port 0")
     };

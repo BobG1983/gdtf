@@ -14,10 +14,6 @@ use gdtf_assets::{ContentFinding, ContentIntegrityReport, ContentValidationDone}
 use gdtf_content_editor::MapEditorPlugin;
 use gdtf_test_utils::advance_until;
 
-pub(crate) const MAX_UPDATES: u32 = 10_000;
-
-pub(crate) const REARM_UPDATES: u32 = 200;
-
 pub(crate) const DANGLING_DEFAULT_FLOOR: &str = "00000000-0000-0000-0000-063000000001";
 
 pub(crate) const DANGLING_PALETTE: &str = "00000000-0000-0000-0000-063000000002";
@@ -60,20 +56,11 @@ pub(crate) fn editor_app_on_fixture_root() -> App {
 }
 
 pub(crate) fn advance_to_published(app: &mut App) {
-    let published = advance_until(
-        app,
-        |app| {
-            app.world()
-                .get_resource::<ContentValidationDone>()
-                .is_some()
-        },
-        MAX_UPDATES,
-    );
-    assert!(
-        published,
-        "the editor never published the content-integrity report — the authoring-time \
-         validation pass is not registered (ContentValidationDone was never stamped)",
-    );
+    advance_until(app, |app| {
+        app.world()
+            .get_resource::<ContentValidationDone>()
+            .is_some()
+    });
     for _ in 0..4 {
         app.update();
     }

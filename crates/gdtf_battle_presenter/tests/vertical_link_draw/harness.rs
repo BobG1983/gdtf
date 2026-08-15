@@ -28,8 +28,6 @@ use gdtf_test_utils::advance_until_resource_exists;
 
 pub(crate) const MAX_UPDATES: u32 = 128;
 
-pub(crate) const LOAD_SAFETY_NET: u32 = 10_000;
-
 pub(crate) const SEED: u64 = 0x0D15_EA5E;
 
 pub(crate) fn workspace_assets_root() -> PathBuf {
@@ -82,8 +80,8 @@ pub(crate) fn headless_renderer_app() -> App {
 }
 
 pub(crate) fn settle_resources(app: &mut App) {
-    advance_until_resource_exists::<SpriteDefRegistry>(app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<TopDownAtlases>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<SpriteDefRegistry>(app);
+    advance_until_resource_exists::<TopDownAtlases>(app);
 }
 
 pub(crate) fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {

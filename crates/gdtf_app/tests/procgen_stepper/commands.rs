@@ -5,7 +5,7 @@ use gdtf_app::test_support::{
 use gdtf_test_utils::advance_until;
 
 use super::harness::{
-    BUDGET, FIXED_SEED, app_engaged_in_generation, app_ready_for_battle, battlescape_state,
+    FIXED_SEED, app_engaged_in_generation, app_ready_for_battle, battlescape_state,
     drive_into_battle_running, terrain_fingerprint,
 };
 
@@ -29,17 +29,9 @@ fn skip_drives_every_remaining_stage_in_one_request() {
     }
     app.update();
 
-    let reached_running = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
-    assert!(
-        reached_running,
-        "a single Skip request must drive the WHOLE remaining staged pipeline to completion and \
-         reach BattleRunning; last observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
 
     let actual = terrain_fingerprint(&app);
     assert_eq!(
@@ -72,20 +64,11 @@ fn auto_run_advances_every_stage_without_a_manual_command() {
         .insert_resource(TimeUpdateStrategy::ManualDuration(
             AutoStepDelay::DEFAULT.duration(),
         ));
-    let reached_running = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
-        BUDGET,
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::Automatic);
-    assert!(
-        reached_running,
-        "toggling Auto on ONCE, with no further PendingStepCommand ever requested, must free-run \
-         the whole staged drive to BattleRunning on its own timer; last observed \
-         BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
 
     let actual = terrain_fingerprint(&app);
     assert_eq!(

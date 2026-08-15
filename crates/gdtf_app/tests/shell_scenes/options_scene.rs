@@ -13,8 +13,6 @@ use gdtf_app::test_support::{
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{focus_nav::FocusActivated, theme::default_theme};
 
-const BUDGET: u32 = 16;
-
 fn running_state(app: &bevy::app::App) -> Option<RunningState> {
     app.world()
         .get_resource::<State<RunningState>>()
@@ -57,19 +55,15 @@ fn options_app() -> bevy::app::App {
         .starting_in(AppState::Running)
         .build();
     app.world_mut().insert_resource(default_theme());
-    let _ = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    );
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Options);
-    let _ = advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Options),
-        BUDGET,
-    );
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Options)
+    });
     app
 }
 
@@ -180,20 +174,12 @@ fn sound_toggle_flip_updates_value_label() {
     );
 
     activate_sound_checkbox(&mut app, checkbox);
-    let mut flipped_to_off = false;
-    for _ in 0..BUDGET {
+    loop {
         app.update();
         if sound_value_text(&mut app).as_deref() == Some("Off") {
-            flipped_to_off = true;
             break;
         }
     }
-    assert!(
-        flipped_to_off,
-        "activating the sound toggle must update the readout to Off within {BUDGET} updates; \
-         last observed value was {:?}",
-        sound_value_text(&mut app),
-    );
     assert!(
         app.world().get::<Checked>(checkbox).is_none(),
         "the first-party checkbox_self_update observer must clear Checked when toggled Off",

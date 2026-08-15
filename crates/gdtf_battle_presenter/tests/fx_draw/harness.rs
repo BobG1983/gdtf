@@ -26,8 +26,6 @@ use gdtf_battle_sim::{
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
-pub(crate) const LOAD_SAFETY_NET: u32 = 10_000;
-
 pub(crate) fn workspace_assets_root() -> PathBuf {
     let Some(root) = gdtf_assets::workspace_assets_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
@@ -86,10 +84,10 @@ pub(crate) fn play<M: bevy::ecs::message::Message + Clone>(app: &mut App, fact: 
 }
 
 pub(crate) fn settle_resources(app: &mut App) {
-    advance_until_resource_exists::<EffectRoles>(app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<TopDownAtlases>(app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<FxTuning>(app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<CharacterRoles>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<EffectRoles>(app);
+    advance_until_resource_exists::<TopDownAtlases>(app);
+    advance_until_resource_exists::<FxTuning>(app);
+    advance_until_resource_exists::<CharacterRoles>(app);
 }
 
 pub(crate) fn effect_roles(app: &App) -> Option<EffectRoles> {

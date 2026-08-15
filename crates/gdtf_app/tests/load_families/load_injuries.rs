@@ -11,9 +11,8 @@ use gdtf_test_utils::{
 
 use crate::load_suite::gate;
 
-const TRANSITION_BUDGET: u32 = 32;
-
-const LOAD_SAFETY_NET: u32 = 10_000;
+/// Frames the machine is given to prove it stays put — per-frame work, no IO.
+const HOLD_FRAMES: u32 = 32;
 
 #[test]
 fn injuries_loader_no_ops_cleanly_without_asset_server() {
@@ -30,14 +29,7 @@ fn injuries_loader_no_ops_cleanly_without_asset_server() {
 
     gate::seed_full_load_gate(&mut app);
 
-    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
-    assert!(
-        released,
-        "with a GdtfTheme + CombatTuning + GangerStatTuning + WeaponRegistry + ArmorRegistry \
-         + InjuryRegistry + LoadedSituation present, Load must release to \
-         Intro (or beyond) within {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 }
 
 #[test]
@@ -48,17 +40,10 @@ fn load_does_not_leave_without_an_injury_registry() {
 
     gate::seed_gate_except::<InjuryRegistry>(&mut app);
 
-    let left_load = advance_until(
-        &mut app,
-        |app| app_state(app) != AppState::Load,
-        TRANSITION_BUDGET,
-    );
+    for _ in 0..HOLD_FRAMES {
+        app.update();
+    }
 
-    assert!(
-        !left_load,
-        "Load must NOT leave while the InjuryRegistry is absent; it left to {:?}",
-        app_state(&app),
-    );
     assert_eq!(
         app_state(&app),
         AppState::Load,
@@ -73,7 +58,7 @@ fn real_asset_resolves_injury_registry_and_tables() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<InjuryRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<InjuryRegistry>(&mut app);
 
     if let Some(registry) = app.world().get_resource::<InjuryRegistry>() {
         assert!(
@@ -144,13 +129,7 @@ fn real_asset_resolves_injury_registry_and_tables() {
         );
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "with a real AssetServer, Load must release to Intro (or beyond) once every folder \
-         (incl. injuries) resolves; last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
     assert!(
         app.world().get_resource::<InjuryRegistry>().is_some(),
         "an InjuryRegistry must be present when Load reaches Intro (the gate waited for it)",

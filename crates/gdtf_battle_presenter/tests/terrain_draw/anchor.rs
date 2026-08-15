@@ -53,8 +53,8 @@ fn off_center_anchor_displaces_the_drawn_tile_transform() {
     write_sprites_folder(dir.path());
 
     let mut app = headless_renderer_app_at(dir.path());
-    advance_until_resource_exists::<SpriteDefRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<TopDownAtlases>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<SpriteDefRegistry>(&mut app);
+    advance_until_resource_exists::<TopDownAtlases>(&mut app);
 
     let wall_cell = Cell::new(8, 7);
     let l0 = Level::new(0);

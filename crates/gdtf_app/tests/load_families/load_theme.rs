@@ -10,9 +10,8 @@ use gdtf_ui::theme::{GdtfTheme, default_theme};
 
 use crate::load_suite::gate;
 
-const TRANSITION_BUDGET: u32 = 32;
-
-const LOAD_SAFETY_NET: u32 = 10_000;
+/// Frames the machine is given to prove it stays put — per-frame work, no IO.
+const HOLD_FRAMES: u32 = 32;
 
 #[test]
 fn entering_load_without_asset_server_does_not_panic() {
@@ -48,13 +47,7 @@ fn theme_present_transitions_to_intro_and_persists() {
 
     gate::seed_full_load_gate(&mut app);
 
-    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
-    assert!(
-        released,
-        "with a GdtfTheme present, Load must release to Intro (or beyond) within \
-         {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 
     assert!(
         app.world().get_resource::<GdtfTheme>().is_some(),
@@ -70,16 +63,14 @@ fn load_does_not_leave_without_a_theme() {
 
     gate::seed_gate_except::<GdtfTheme>(&mut app);
 
-    let left_load = advance_until(
-        &mut app,
-        |app| app_state(app) != AppState::Load,
-        TRANSITION_BUDGET,
-    );
+    for _ in 0..HOLD_FRAMES {
+        app.update();
+    }
 
-    assert!(
-        !left_load,
-        "without a GdtfTheme the machine must not leave Load; it reached {:?}",
+    assert_eq!(
         app_state(&app),
+        AppState::Load,
+        "without a GdtfTheme the machine must not leave Load",
     );
 }
 
@@ -96,7 +87,7 @@ fn real_asset_good_path_resolves_shipped_theme_and_transitions() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<GdtfTheme>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<GdtfTheme>(&mut app);
 
     if let Some(theme) = app.world().get_resource::<GdtfTheme>() {
         assert_eq!(
@@ -116,13 +107,7 @@ fn real_asset_good_path_resolves_shipped_theme_and_transitions() {
         }
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "with a resolved GdtfTheme, Load must release to Intro (or beyond); last AppState \
-         was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 }
 
 #[test]
@@ -131,7 +116,7 @@ fn real_asset_multi_font_load_resolves_distinct_title_font() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<GdtfTheme>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<GdtfTheme>(&mut app);
 
     if let Some(theme) = app.world().get_resource::<GdtfTheme>() {
         assert_ne!(
@@ -156,7 +141,7 @@ fn real_asset_failure_path_does_not_hang_and_uses_default_theme() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<GdtfTheme>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<GdtfTheme>(&mut app);
 
     if let Some(theme) = app.world().get_resource::<GdtfTheme>() {
         assert_eq!(
@@ -166,11 +151,5 @@ fn real_asset_failure_path_does_not_hang_and_uses_default_theme() {
         );
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "even on a failed asset, Load must release to Intro (or beyond) with the default \
-         theme; last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 }

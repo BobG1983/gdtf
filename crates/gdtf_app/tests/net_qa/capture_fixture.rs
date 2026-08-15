@@ -10,6 +10,7 @@ use bevy::{
     camera::{ImageRenderTarget, RenderTarget},
     prelude::*,
     render::RenderPlugin,
+    time::TimeUpdateStrategy,
     window::{ExitCondition, WindowPlugin, WindowResolution},
     winit::WinitPlugin,
 };
@@ -39,7 +40,8 @@ const HEADLESS_SETTLE: u32 = 2;
 
 const HEADLESS_POLL_BUDGET: u32 = 16;
 
-const DRIVE_BUDGET: u32 = 512;
+/// Fixed steps a frame runs, so Intro's steps advance per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 /// Where the windowed capture writes.
 pub(crate) fn gpu_shot_dir() -> ShotDir {
@@ -159,17 +161,12 @@ pub(crate) fn gpu_game_app_listening() -> Result<(App, NetQaPort), TestError> {
         .set(AppState::Load);
     app.finish();
     app.cleanup();
-    if !advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<State<RunningState>>()
-                .is_some_and(|state| *state.get() == RunningState::Menu)
-        },
-        DRIVE_BUDGET,
-    ) {
-        return Err("the windowed game never rested at RunningState::Menu".into());
-    }
+    app.insert_resource(TimeUpdateStrategy::FixedTimesteps(ONE_STEP_A_FRAME));
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<State<RunningState>>()
+            .is_some_and(|state| *state.get() == RunningState::Menu)
+    });
     draw_into_the_capture_image(&mut app);
     Ok((app, port))
 }

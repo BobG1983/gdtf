@@ -163,14 +163,9 @@ fn populates_reachable_cells_matching_reachable_within_including_l1() {
         )
     };
 
-    assert!(
-        advance_until(
-            &mut app,
-            |app| !app.world().resource::<ReachableCells>().is_empty(),
-            8,
-        ),
-        "the populate system must fill ReachableCells within 8 updates",
-    );
+    advance_until(&mut app, |app| {
+        !app.world().resource::<ReachableCells>().is_empty()
+    });
 
     let populated: Vec<(CellLevel, Tu)> =
         app.world().resource::<ReachableCells>().cells().collect();
@@ -208,15 +203,9 @@ fn click_to_target_path_preview_still_works_with_overlay_off() {
     app.world_mut()
         .insert_resource(PathPreviewTarget::new(goal));
 
-    assert!(
-        advance_until(
-            &mut app,
-            |app| !app.world().resource::<PathPreview>().is_empty(),
-            8,
-        ),
-        "the click-to-target route preview must populate within 8 updates (C5b: it is the only \
-         move feedback by default and stays working regardless of the overlay gating)",
-    );
+    advance_until(&mut app, |app| {
+        !app.world().resource::<PathPreview>().is_empty()
+    });
 
     let preview = app.world().resource::<PathPreview>();
     assert_eq!(

@@ -8,8 +8,6 @@ use load_suite::suite::{self, FamilyLoadContract};
 
 use super::load_suite;
 
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 impl FamilyLoadContract for GangsFamily {
     fn is_empty(registry: &GangRegistry) -> bool {
         registry.is_empty()
@@ -37,12 +35,12 @@ fn real_asset_gang_rosters_hold_members() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<GangRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<GangRegistry>(&mut app);
 
     let registry = app.world().get_resource::<GangRegistry>();
     assert!(
         registry.is_some(),
-        "the real gangs folder load must insert a GangRegistry within the safety-net budget",
+        "the real gangs folder load must insert a GangRegistry",
     );
     let Some(registry) = registry else {
         return;

@@ -16,8 +16,6 @@ use bevy::{
 use gdtf_battle_presenter::SheetRole;
 use gdtf_test_utils::{advance_until_load_state, gpu_adapter_probe};
 
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 static GPU_LOCK: Mutex<()> = Mutex::new(());
 
 fn lock_gpu() -> MutexGuard<'static, ()> {
@@ -106,33 +104,28 @@ fn all_sheet_role_pngs_load_from_sprites_folder() {
     let effects = load_sheet(&app, SheetRole::Effects);
     let portraits = load_sheet(&app, SheetRole::Portraits);
 
-    advance_until_load_state(&mut app, terrain.id(), |s| s.is_loaded(), LOAD_SAFETY_NET);
+    advance_until_load_state(&mut app, terrain.id(), |s| s.is_loaded());
     assert_loaded(
         &app,
         &terrain,
         "SheetRole::Terrain at `sprites/alt_tileset_terrain.png`",
     );
 
-    advance_until_load_state(
-        &mut app,
-        characters.id(),
-        |s| s.is_loaded(),
-        LOAD_SAFETY_NET,
-    );
+    advance_until_load_state(&mut app, characters.id(), |s| s.is_loaded());
     assert_loaded(
         &app,
         &characters,
         "SheetRole::Characters at `sprites/alt_tileset_characters.png`",
     );
 
-    advance_until_load_state(&mut app, effects.id(), |s| s.is_loaded(), LOAD_SAFETY_NET);
+    advance_until_load_state(&mut app, effects.id(), |s| s.is_loaded());
     assert_loaded(
         &app,
         &effects,
         "SheetRole::Effects at `sprites/alt_tileset_effects.png`",
     );
 
-    advance_until_load_state(&mut app, portraits.id(), |s| s.is_loaded(), LOAD_SAFETY_NET);
+    advance_until_load_state(&mut app, portraits.id(), |s| s.is_loaded());
     assert_loaded(
         &app,
         &portraits,

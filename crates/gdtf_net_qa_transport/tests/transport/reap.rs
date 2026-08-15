@@ -17,8 +17,8 @@ fn an_idle_client_is_reaped_by_the_read_timeout_not_by_the_reply_wait() -> TestR
     let (port, inbox) = spawn_listener(timeouts)?;
     spawn_fake_host_side(inbox);
 
+    // The read blocks with no deadline of its own: only the server's reap can end it.
     let mut client = TcpStream::connect((Ipv4Addr::LOCALHOST, *port))?;
-    client.set_read_timeout(Some(Duration::from_secs(5)))?;
 
     let mut buf = [0u8; 16];
     let read = client.read(&mut buf)?;

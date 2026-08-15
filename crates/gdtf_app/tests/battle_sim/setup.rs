@@ -15,6 +15,9 @@ use gdtf_test_utils::advance_until;
 
 use super::harness::*;
 
+/// Frames the machine is given to prove it stays put — per-frame work, no IO.
+const HOLD_FRAMES: u32 = 96;
+
 fn dangling_link_situation() -> Situation {
     let present = key(4, 4, 0);
     let missing = key(4, 4, 1);
@@ -30,10 +33,7 @@ fn setup_battle_lands_resources_and_spawns_gangers() {
     let situation = two_ganger_situation();
     let authored_gangers = situation.gangers.len();
     let mut app = walk_app(Some(situation));
-    assert!(
-        drive_to_generation(&mut app),
-        "the walk should reach Generation within {BUDGET} updates",
-    );
+    drive_to_generation(&mut app);
 
     assert!(
         app.world().get_resource::<CoverLedger>().is_some(),
@@ -65,21 +65,11 @@ fn setup_battle_lands_resources_and_spawns_gangers() {
 #[test]
 fn failed_setup_does_not_advance_generation() {
     let mut app = walk_app(Some(dangling_link_situation()));
-    assert!(
-        drive_to_generation(&mut app),
-        "the walk should reach Generation within {BUDGET} updates",
-    );
+    drive_to_generation(&mut app);
 
-    let advanced = advance_until(
-        &mut app,
-        |app| battlescape_state(app) != Some(BattleScapeState::Generation),
-        BUDGET,
-    );
-    assert!(
-        !advanced,
-        "a failed setup must NOT advance past Generation; last observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    for _ in 0..HOLD_FRAMES {
+        app.update();
+    }
     assert_eq!(
         battlescape_state(&app),
         Some(BattleScapeState::Generation),
@@ -99,27 +89,14 @@ fn failed_setup_does_not_advance_generation() {
 #[test]
 fn battle_resources_survive_battle_and_clean_on_exit() {
     let mut app = walk_app(Some(two_ganger_situation()));
-    assert!(
-        drive_to_generation(&mut app),
-        "the walk should reach Generation within {BUDGET} updates",
-    );
+    drive_to_generation(&mut app);
 
-    let past_generation = advance_until(
-        &mut app,
-        |app| {
-            matches!(
-                battlescape_state(app),
-                Some(BattleScapeState::AnimateIn | BattleScapeState::BattleRunning)
-            )
-        },
-        BUDGET,
-    );
-    assert!(
-        past_generation,
-        "the walk should advance past Generation into AnimateIn/BattleRunning within {BUDGET} \
-         updates; last observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        matches!(
+            battlescape_state(app),
+            Some(BattleScapeState::AnimateIn | BattleScapeState::BattleRunning)
+        )
+    });
     assert!(
         app.world().get_resource::<ShotRng>().is_some(),
         "RNG streams must survive past Generation (battle-lifetime)",
@@ -146,19 +123,11 @@ fn battle_resources_survive_battle_and_clean_on_exit() {
     );
 
     app.world_mut().insert_resource(BattleRunningComplete);
-    let left_battlescape = advance_until(
-        &mut app,
-        |app| {
-            app.world()
-                .get_resource::<State<GameState>>()
-                .is_none_or(|state| *state.get() != GameState::BattleScape)
-        },
-        BUDGET,
-    );
-    assert!(
-        left_battlescape,
-        "the walk should leave GameState::BattleScape within {BUDGET} updates",
-    );
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<State<GameState>>()
+            .is_none_or(|state| *state.get() != GameState::BattleScape)
+    });
     assert!(
         app.world().get_resource::<ShotRng>().is_none(),
         "RNG streams must be cleaned on leaving the battle",
@@ -188,10 +157,7 @@ fn battle_resources_survive_battle_and_clean_on_exit() {
 #[test]
 fn empty_situation_builds_and_advances() {
     let mut app = walk_app(None);
-    assert!(
-        drive_to_generation(&mut app),
-        "the walk should reach Generation within {BUDGET} updates with the empty default situation",
-    );
+    drive_to_generation(&mut app);
 
     assert!(
         app.world().get_resource::<CoverLedger>().is_some(),
@@ -218,15 +184,7 @@ fn empty_situation_builds_and_advances() {
         "the empty Default situation spawns zero gangers",
     );
 
-    let reached_animate_in = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::AnimateIn),
-        BUDGET,
-    );
-    assert!(
-        reached_animate_in,
-        "the absent-Situation Default path must still advance Generation to AnimateIn; last \
-         observed BattleScapeState was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::AnimateIn)
+    });
 }

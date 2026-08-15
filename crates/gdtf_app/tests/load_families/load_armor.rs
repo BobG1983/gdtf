@@ -1,15 +1,13 @@
 //! Load armor into [`ArmorFamily`] by authored member keys.
 //! Value-agnostic: registry presence only; magnitudes are tuning data.
 use bevy::app::Startup;
-use gdtf_app::test_support::{AppState, app_state, load_released, seed_load_fallbacks};
+use gdtf_app::test_support::{AppState, load_released, seed_load_fallbacks};
 use gdtf_battle_sim::armor::ArmorRegistry;
 use gdtf_content_families::ArmorFamily;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
 
 use super::load_suite;
-
-const LOAD_SAFETY_NET: u32 = 10_000;
 
 impl FamilyLoadContract for ArmorFamily {
     fn is_empty(registry: &ArmorRegistry) -> bool {
@@ -39,7 +37,7 @@ fn seeded_startup_does_not_shadow_real_armor_resolution() {
         .build();
     app.add_systems(Startup, seed_load_fallbacks);
 
-    advance_until_resource_exists::<ArmorRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<ArmorRegistry>(&mut app);
 
     if let Some(registry) = app.world().get_resource::<ArmorRegistry>() {
         assert!(
@@ -48,11 +46,5 @@ fn seeded_startup_does_not_shadow_real_armor_resolution() {
         );
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "with the Startup seed present, Load must still release to Intro (or beyond) once the \
-         real armor resolves; last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 }

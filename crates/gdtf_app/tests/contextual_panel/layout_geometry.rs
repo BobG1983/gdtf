@@ -80,14 +80,7 @@ fn pixel_rect_of<M: Component>(app: &mut App, claim: &str) -> PixelRect {
 
 #[test]
 fn contextual_panel_is_contained_inside_the_bottom_bar() {
-    let app_opt = real_layout_battle_running_app();
-    assert!(
-        app_opt.is_some(),
-        "the real-layout harness must reach BattleScapeState::BattleRunning with its font loaded",
-    );
-    let Some(mut app) = app_opt else {
-        unreachable!("the assertion above leaves the app present")
-    };
+    let mut app = real_layout_battle_running_app();
 
     spawn_throw_actor(&mut app, 5, 5, 0);
     for _ in 0..8 {

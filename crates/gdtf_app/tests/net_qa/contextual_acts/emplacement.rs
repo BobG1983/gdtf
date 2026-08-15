@@ -21,7 +21,7 @@ use super::{
         },
         socket_support::{TestError, TestResult, battle_app_listening},
     },
-    scene::{SETTLE_BUDGET, a_neighbour, accepted, select_a_player_ganger, settle},
+    scene::{a_neighbour, accepted, select_a_player_ganger, settle},
 };
 
 /// Who is manning an emplacement right now.
@@ -90,18 +90,10 @@ pub(super) fn manned_emplacement_under_the_shooter()
     let (mut app, port, (shooter, emplacement)) = emplacement_beside_the_shooter()?;
     app.world_mut()
         .write_message(SetEmplacement::occupy(emplacement, shooter));
-    if advance_until(
-        &mut app,
-        |app| occupant_of(app, emplacement) == Some(shooter),
-        SETTLE_BUDGET,
-    ) {
-        return Ok((app, port, (shooter, emplacement)));
-    }
-    Err(format!(
-        "the sim's own toggle must man the emplacement within {SETTLE_BUDGET} frames, or the \
-         dismount case has nothing to dismount"
-    )
-    .into())
+    advance_until(&mut app, |app| {
+        occupant_of(app, emplacement) == Some(shooter)
+    });
+    Ok((app, port, (shooter, emplacement)))
 }
 
 #[test]
@@ -126,18 +118,9 @@ fn entering_the_offered_emplacement_names_it_and_mans_it_in_the_world() -> TestR
         "the reply names the emplacement the panel was offering, which is the one the call \
          fired at",
     );
-    let manned = advance_until(
-        &mut app,
-        |app| occupant_of(app, emplacement) == Some(shooter),
-        SETTLE_BUDGET,
-    );
-    assert!(
-        manned,
-        "the sim's own toggle must leave the shooter manning the carried emplacement; the act \
-         log holds no deed for one, so the world is the evidence — it was {:?} with occupant {:?}",
-        state_of(&app, emplacement),
-        occupant_of(&app, emplacement),
-    );
+    advance_until(&mut app, |app| {
+        occupant_of(app, emplacement) == Some(shooter)
+    });
     Ok(())
 }
 
@@ -162,18 +145,9 @@ fn exiting_the_manned_emplacement_names_it_and_leaves_it_vacant() -> TestResult 
         OfferTargetNet::Emplacement(EmplacementToken::new(emplacement.to_bits())),
         "the reply names the emplacement the shooter was riding, which is the one it left",
     );
-    let vacated = advance_until(
-        &mut app,
-        |app| state_of(app, emplacement) == Some(EmplacementState::Vacant),
-        SETTLE_BUDGET,
-    );
-    assert!(
-        vacated,
-        "the sim's own toggle must leave the carried emplacement vacant; it was {:?} with \
-         occupant {:?}",
-        state_of(&app, emplacement),
-        occupant_of(&app, emplacement),
-    );
+    advance_until(&mut app, |app| {
+        state_of(app, emplacement) == Some(EmplacementState::Vacant)
+    });
     assert_eq!(
         occupant_of(&app, emplacement),
         None,

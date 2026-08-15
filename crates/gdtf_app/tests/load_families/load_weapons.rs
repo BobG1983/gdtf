@@ -9,8 +9,6 @@ use load_suite::suite::{self, FamilyLoadContract};
 
 use super::load_suite;
 
-const LOAD_SAFETY_NET: u32 = 10_000;
-
 impl FamilyLoadContract for WeaponsFamily {
     fn is_empty(registry: &WeaponRegistry) -> bool {
         registry.is_empty()
@@ -39,7 +37,7 @@ fn seeded_startup_does_not_shadow_real_weapon_resolution() {
         .build();
     app.add_systems(Startup, seed_load_fallbacks);
 
-    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<WeaponRegistry>(&mut app);
 
     if let Some(registry) = app.world().get_resource::<WeaponRegistry>() {
         assert!(
@@ -48,12 +46,7 @@ fn seeded_startup_does_not_shadow_real_weapon_resolution() {
         );
     }
 
-    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
-    assert!(
-        released,
-        "with the Startup seed present, Load must still release to Intro (or beyond) once the real weapons resolve; last AppState was {:?}",
-        app_state(&app),
-    );
+    advance_until(&mut app, load_released);
 }
 
 #[test]
@@ -62,12 +55,12 @@ fn shipped_cone_and_line_weapons_resolve_their_aoe_hit_types() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<WeaponRegistry>(&mut app);
 
     let registry = app.world().get_resource::<WeaponRegistry>();
     assert!(
         registry.is_some(),
-        "the real weapons folder load must insert a WeaponRegistry within the budget (last AppState was {:?})",
+        "the real weapons folder load must insert a WeaponRegistry (last AppState was {:?})",
         app_state(&app),
     );
     let Some(registry) = registry else {
@@ -101,12 +94,12 @@ fn shipped_weapons_each_declare_an_accepted_ammo_type() {
         .starting_in(AppState::Load)
         .build();
 
-    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<WeaponRegistry>(&mut app);
 
     let registry = app.world().get_resource::<WeaponRegistry>();
     assert!(
         registry.is_some(),
-        "the real weapons folder load must insert a WeaponRegistry within the budget (last AppState was {:?})",
+        "the real weapons folder load must insert a WeaponRegistry (last AppState was {:?})",
         app_state(&app),
     );
     let Some(registry) = registry else {

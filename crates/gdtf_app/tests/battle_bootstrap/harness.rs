@@ -47,7 +47,7 @@ pub(crate) fn bootstrap_situation() -> Situation {
 
 pub(crate) const BOOTSTRAP_SEED: BattleSeed = BattleSeed::new(0);
 
-pub(crate) fn bootstrap_app() -> Option<bevy::app::App> {
+pub(crate) fn bootstrap_app() -> bevy::app::App {
     BattleAppBuilder::new()
         .with_situation(bootstrap_situation())
         .with_seed(BOOTSTRAP_SEED)

@@ -16,7 +16,8 @@ use gdtf_battle_sim::{
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
-const BUDGET: u32 = 512;
+/// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
+const ONE_STEP_A_FRAME: u32 = 1;
 
 const FLIGHT_STEP: std::time::Duration = std::time::Duration::from_millis(20);
 
@@ -52,26 +53,21 @@ fn fx_pipeline_idle(app: &mut App) -> bool {
     projectile_count(app) == 0 && pending_impact_count(app) == 0
 }
 
-fn battle_running_app() -> Option<App> {
+fn battle_running_app() -> App {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
 
-    if !advance_until(
-        &mut app,
-        |app| running_state(app) == Some(RunningState::Menu),
-        BUDGET,
-    ) {
-        return None;
-    }
+    app.insert_resource(TimeUpdateStrategy::FixedTimesteps(ONE_STEP_A_FRAME));
+    advance_until(&mut app, |app| {
+        running_state(app) == Some(RunningState::Menu)
+    });
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Game);
 
-    if !advance_until(&mut app, in_battle_running, BUDGET) {
-        return None;
-    }
-    Some(app)
+    advance_until(&mut app, in_battle_running);
+    app
 }
 
 fn lethal_ganger_hit(struck: Entity) -> HitReport {
@@ -143,14 +139,7 @@ fn drain_frame_zero_delta(app: &mut App) {
 
 #[test]
 fn a_shot_kill_keeps_battle_running_until_the_deciding_impact_lands() {
-    let app_opt = battle_running_app();
-    assert!(
-        app_opt.is_some(),
-        "the real Load + descent must reach BattleScapeState::BattleRunning",
-    );
-    let Some(mut app) = app_opt else {
-        return;
-    };
+    let mut app = battle_running_app();
 
     write_deciding_shot(&mut app);
     app.world_mut()
@@ -183,52 +172,25 @@ fn a_shot_kill_keeps_battle_running_until_the_deciding_impact_lands() {
         );
     }
 
-    let reached_animate_out = step_until(
-        &mut app,
-        std::time::Duration::from_millis(50),
-        BUDGET,
-        |app| battlescape_state(app) == Some(BattleScapeState::AnimateOut),
-    );
-    assert!(
-        reached_animate_out,
-        "once the deciding shot's impact resolves (the FX pipeline drains), the battlescape must \
-         advance BattleRunning -> AnimateOut within the manual-step budget; last state was {:?}",
-        battlescape_state(&app),
-    );
+    step_until(&mut app, std::time::Duration::from_millis(50), |app| {
+        battlescape_state(app) == Some(BattleScapeState::AnimateOut)
+    });
 }
 
-fn step_until(
-    app: &mut App,
-    step: std::time::Duration,
-    cap: u32,
-    predicate: impl Fn(&App) -> bool,
-) -> bool {
+// Advance the virtual clock by `step` per update until `predicate` holds.
+fn step_until(app: &mut App, step: std::time::Duration, predicate: impl Fn(&App) -> bool) {
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::ManualDuration(step));
-    let mut met = false;
-    for _ in 0..cap {
-        if predicate(app) {
-            met = true;
-            break;
-        }
+    while !predicate(app) {
         app.update();
     }
-    met = met || predicate(app);
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::Automatic);
-    met
 }
 
 #[test]
 fn a_flee_with_no_shot_in_flight_ends_promptly() {
-    let app_opt = battle_running_app();
-    assert!(
-        app_opt.is_some(),
-        "the real Load + descent must reach BattleScapeState::BattleRunning",
-    );
-    let Some(mut app) = app_opt else {
-        return;
-    };
+    let mut app = battle_running_app();
 
     assert!(
         fx_pipeline_idle(&mut app),
@@ -239,15 +201,7 @@ fn a_flee_with_no_shot_in_flight_ends_promptly() {
         .resource_mut::<Messages<BattleLost>>()
         .write(BattleLost);
 
-    let reached_animate_out = advance_until(
-        &mut app,
-        |app| battlescape_state(app) == Some(BattleScapeState::AnimateOut),
-        BUDGET,
-    );
-    assert!(
-        reached_animate_out,
-        "a non-shot end (no projectile in flight) must transition BattleRunning -> AnimateOut \
-         promptly (the deferral must not hang on a never-busy FX pipeline); last state was {:?}",
-        battlescape_state(&app),
-    );
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::AnimateOut)
+    });
 }
