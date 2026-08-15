@@ -12,7 +12,7 @@ use crate::{
         ProcgenFinding, ProcgenTuning, generate_level,
     },
     rng::{BattleSeed, ProcgenRng},
-    terrain::def::TerrainUuid,
+    terrain::{def::TerrainUuid, facing::TerrainFacing},
 };
 
 fn at(x: i32, y: i32) -> CellLevel {
@@ -52,7 +52,9 @@ fn registry_placing(
                 role,
                 placements
                     .iter()
-                    .map(|(piece, x)| TerrainPlacementEntry::new(*piece, at(*x, 1)))
+                    .map(|(piece, x)| {
+                        TerrainPlacementEntry::new(*piece, at(*x, 1), TerrainFacing::default())
+                    })
                     .collect(),
             ),
         )

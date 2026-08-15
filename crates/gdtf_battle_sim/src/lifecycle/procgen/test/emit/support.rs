@@ -14,7 +14,10 @@ use crate::{
     },
     rng::{BattleSeed, ProcgenRng},
     situation::Situation,
-    terrain::def::{TerrainDefRegistry, TerrainUuid},
+    terrain::{
+        def::{TerrainDefRegistry, TerrainUuid},
+        facing::TerrainFacing,
+    },
 };
 
 pub(in crate::lifecycle::procgen::test) fn at(x: i32, y: i32) -> CellLevel {
@@ -49,7 +52,11 @@ pub(in crate::lifecycle::procgen::test) fn prefab(
             theme,
             fp,
             role,
-            vec![TerrainPlacementEntry::new(wall_piece(), at(1, 1))],
+            vec![TerrainPlacementEntry::new(
+                wall_piece(),
+                at(1, 1),
+                TerrainFacing::default(),
+            )],
         ),
     )
 }

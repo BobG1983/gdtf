@@ -12,12 +12,13 @@ use gdtf_battle_sim::{
             TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
+        facing::TerrainFacing,
         piece::TerrainGraphicKey,
     },
 };
 use gdtf_content_editor::{
-    EditorMap, MapEditorSession, PairingOutcome, ProposedPlacement, apply_placement_with_pairing,
-    editor_map_to_prefab, serialize_prefab,
+    EditorMap, MapEditorSession, PaintedPiece, PairingOutcome, ProposedPlacement,
+    apply_placement_with_pairing, editor_map_to_prefab, serialize_prefab,
 };
 
 const fn theme() -> ThemeUuid {
@@ -81,7 +82,7 @@ fn up_connector_pairs_down_above_and_round_trips_both_endpoints() {
     let mut map = EditorMap::new();
     let cell = Cell::new(1, 1);
 
-    let placement = ProposedPlacement::new(at(cell, 0), STAIR_NS_UP);
+    let placement = ProposedPlacement::new(at(cell, 0), STAIR_NS_UP, TerrainFacing::default());
     let outcome = apply_placement_with_pairing(&mut map, &reg, theme(), &placement, size());
 
     assert_eq!(
@@ -94,12 +95,12 @@ fn up_connector_pairs_down_above_and_round_trips_both_endpoints() {
     );
     assert_eq!(
         map.tile_at_level(at(cell, 0)),
-        Some(STAIR_NS_UP),
+        Some(PaintedPiece::new(STAIR_NS_UP, TerrainFacing::default())),
         "the up connector is placed at N",
     );
     assert_eq!(
         map.tile_at_level(at(cell, 1)),
-        Some(STAIR_NS_DOWN),
+        Some(PaintedPiece::new(STAIR_NS_DOWN, TerrainFacing::default())),
         "the paired down connector is auto-placed at N+1 (the auto-placement FIRED)",
     );
     assert_eq!(

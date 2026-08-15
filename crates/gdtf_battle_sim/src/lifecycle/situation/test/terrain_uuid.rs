@@ -54,7 +54,9 @@ fn cover_uuid_resolves_against_def_registry_seeding_entry_and_kind() {
     let (mut situation, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .build_with_gangs();
-    situation.walls.push(CoverSpawn::new(wall_at, wall_key));
+    situation
+        .walls
+        .push(CoverSpawn::new(wall_at, wall_key, TerrainFacing::default()));
 
     let Some((mut app, _setup)) = run_setup_with(
         situation,
@@ -120,8 +122,12 @@ fn wall_entity_carries_graphic_and_slab_carries_footfall() {
     let (mut situation, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .build_with_gangs();
-    situation.walls.push(CoverSpawn::new(wall_at, wall_key));
-    situation.slabs.push(SlabSpawn::new(slab_at, slab_key));
+    situation
+        .walls
+        .push(CoverSpawn::new(wall_at, wall_key, TerrainFacing::default()));
+    situation
+        .slabs
+        .push(SlabSpawn::new(slab_at, slab_key, TerrainFacing::default()));
 
     let Some((mut app, _setup)) = run_setup_with(
         situation,
@@ -186,13 +192,19 @@ fn spawned_entities_carry_blocks_pathfinding_per_def() {
     let (mut situation, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .build_with_gangs();
-    situation.walls.push(CoverSpawn::new(wall_at, wall_key));
     situation
-        .slabs
-        .push(SlabSpawn::new(plain_slab_at, plain_slab_key));
-    situation
-        .slabs
-        .push(SlabSpawn::new(barricade_slab_at, barricade_slab_key));
+        .walls
+        .push(CoverSpawn::new(wall_at, wall_key, TerrainFacing::default()));
+    situation.slabs.push(SlabSpawn::new(
+        plain_slab_at,
+        plain_slab_key,
+        TerrainFacing::default(),
+    ));
+    situation.slabs.push(SlabSpawn::new(
+        barricade_slab_at,
+        barricade_slab_key,
+        TerrainFacing::default(),
+    ));
 
     let Some((mut app, _setup)) = run_setup_with(
         situation,

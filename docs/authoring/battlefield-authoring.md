@@ -56,7 +56,7 @@ From the shipped
 | `theme` | `ThemeUuid` | UUID string | The theme whose defs the placements reference |
 | `size` | `GridSize` | `(width:, height:, levels:)` | Footprint, validated to the 60×60×8 coarse-grid maxima |
 | `role` | `SpawnRole` | `Player` \| `Enemy` \| `Fill` | `#[serde(default)]` → `Fill`. A packed level needs one `Player` + one `Enemy` deployment fragment |
-| `placements` | `Vec<TerrainPlacementEntry>` | list of `(piece:, at:)` | Each entry: a `TerrainUuid` + a `(cell, level)`. May be empty |
+| `placements` | `Vec<TerrainPlacementEntry>` | list of `(piece:, at:, facing:)` | Each entry: a `TerrainUuid` + a `(cell, level)` + a `TerrainFacing`. `facing` is `#[serde(default)]` → `North`, so an entry may omit it. May be empty |
 
 There is NO authored-opening / connectivity field: inter-fragment connectivity
 is by-construction in the procgen assembler (every placement reserves a 1-cell

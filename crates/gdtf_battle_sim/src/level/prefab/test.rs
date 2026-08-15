@@ -2,7 +2,7 @@ use super::{Prefab, PrefabKey, PrefabRegistry, PrefabSpec, SpawnRole, TerrainPla
 use crate::{
     level::{GridHeight, GridLevels, GridSize, GridWidth, PrefabName, ThemeUuid},
     metric::{Cell, CellLevel, Level},
-    terrain::def::TerrainUuid,
+    terrain::{def::TerrainUuid, facing::TerrainFacing},
 };
 
 fn theme_uuid() -> ThemeUuid {
@@ -72,10 +72,12 @@ fn round_trips_through_ron() {
         TerrainPlacementEntry::new(
             TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_00b1)),
             CellLevel::new(Cell::new(0, 0), Level::new(0)),
+            TerrainFacing::East,
         ),
         TerrainPlacementEntry::new(
             TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_00b2)),
             CellLevel::new(Cell::new(2, 1), Level::new(0)),
+            TerrainFacing::default(),
         ),
     ];
     let spec = PrefabSpec::new(theme, size, SpawnRole::Enemy, placements);
@@ -98,6 +100,7 @@ fn registry_inserts_and_retrieves_by_key() {
     let placements = vec![TerrainPlacementEntry::new(
         TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_00b1)),
         CellLevel::new(Cell::new(1, 1), Level::new(0)),
+        TerrainFacing::default(),
     )];
     let spec = PrefabSpec::new(theme, size, SpawnRole::Player, placements);
     let prefab = Prefab::new(PrefabName::new("entry_pad".to_owned()), spec);

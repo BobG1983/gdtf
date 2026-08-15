@@ -3,6 +3,7 @@ use gdtf_battle_sim::{
     level::{GridHeight, GridLevels, GridSize, GridWidth},
     metric::{CellLevel, Level},
     prelude::Cell,
+    terrain::facing::TerrainFacing,
 };
 
 use super::support::{COVER, SLAB, UNKNOWN, registry, size, texel};
@@ -15,9 +16,25 @@ use crate::{
 fn sweep_is_storey_scoped_and_counts() {
     let size = size();
     let mut map = EditorMap::new();
-    assert!(map.paint_at(CellLevel::new(Cell::new(1, 2), Level::new(0)), COVER, size));
-    assert!(map.paint_at(CellLevel::new(Cell::new(0, 0), Level::new(1)), SLAB, size));
-    assert!(map.paint_at(CellLevel::new(Cell::new(3, 3), Level::new(1)), COVER, size));
+    let north = TerrainFacing::default();
+    assert!(map.paint_at(
+        CellLevel::new(Cell::new(1, 2), Level::new(0)),
+        COVER,
+        north,
+        size
+    ));
+    assert!(map.paint_at(
+        CellLevel::new(Cell::new(0, 0), Level::new(1)),
+        SLAB,
+        north,
+        size
+    ));
+    assert!(map.paint_at(
+        CellLevel::new(Cell::new(3, 3), Level::new(1)),
+        COVER,
+        north,
+        size
+    ));
     let reg = registry();
 
     let (_, ground_count) = storey_key(&map, Some(&reg), size, Level::new(0));
@@ -55,12 +72,29 @@ fn sweep_is_storey_scoped_and_counts() {
 fn sweep_hues_by_resolved_role() {
     let size = size();
     let mut map = EditorMap::new();
-    assert!(map.paint_at(CellLevel::new(Cell::new(0, 0), Level::new(0)), COVER, size));
-    assert!(map.paint_at(CellLevel::new(Cell::new(1, 0), Level::new(0)), SLAB, size));
-    assert!(map.paint_at(CellLevel::new(Cell::new(2, 0), Level::new(0)), COVER, size));
+    let north = TerrainFacing::default();
+    assert!(map.paint_at(
+        CellLevel::new(Cell::new(0, 0), Level::new(0)),
+        COVER,
+        north,
+        size
+    ));
+    assert!(map.paint_at(
+        CellLevel::new(Cell::new(1, 0), Level::new(0)),
+        SLAB,
+        north,
+        size
+    ));
+    assert!(map.paint_at(
+        CellLevel::new(Cell::new(2, 0), Level::new(0)),
+        COVER,
+        north,
+        size
+    ));
     assert!(map.paint_at(
         CellLevel::new(Cell::new(3, 0), Level::new(0)),
         UNKNOWN,
+        north,
         size
     ));
     let reg = registry();
@@ -88,7 +122,12 @@ fn sweep_hues_by_resolved_role() {
 fn sweep_ignores_out_of_bounds_stale_paints() {
     let big = size();
     let mut map = EditorMap::new();
-    assert!(map.paint_at(CellLevel::new(Cell::new(3, 3), Level::new(0)), COVER, big));
+    assert!(map.paint_at(
+        CellLevel::new(Cell::new(3, 3), Level::new(0)),
+        COVER,
+        TerrainFacing::default(),
+        big
+    ));
     let small = GridSize::new(GridWidth::new(2), GridHeight::new(2), GridLevels::new(1))
         .unwrap_or_else(|_| GridSize::default());
     let reg = registry();

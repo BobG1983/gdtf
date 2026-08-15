@@ -10,12 +10,16 @@ fn crossed_terrain_fixture() -> (Situation, CellLevel, CellLevel) {
         .with_gangers([ganger_at(key(10, 10, 0), 0), ganger_at(key(12, 12, 0), 1)])
         .build();
 
-    situation
-        .walls
-        .push(CoverSpawn::new(cover_in_walls_cell, test_pieces::COVER));
-    situation
-        .scatter
-        .push(CoverSpawn::new(wall_in_scatter_cell, test_pieces::WALL));
+    situation.walls.push(CoverSpawn::new(
+        cover_in_walls_cell,
+        test_pieces::COVER,
+        TerrainFacing::default(),
+    ));
+    situation.scatter.push(CoverSpawn::new(
+        wall_in_scatter_cell,
+        test_pieces::WALL,
+        TerrainFacing::default(),
+    ));
 
     (situation, cover_in_walls_cell, wall_in_scatter_cell)
 }

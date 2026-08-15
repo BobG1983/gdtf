@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use gdtf_battle_sim::level::{GridHeight, GridLevels, GridSize, GridWidth};
+use gdtf_battle_sim::{
+    level::{GridHeight, GridLevels, GridSize, GridWidth},
+    terrain::facing::TerrainFacing,
+};
 use gdtf_content_editor::{CurrentEditLevel, EditorMap, LevelStep, MapEditorSession};
 
 use super::harness::*;
@@ -58,6 +61,7 @@ fn editor_default_isolates_the_active_storey_with_one_onion_below() {
                 gdtf_battle_sim::metric::Level::new(1),
             ),
             tile,
+            TerrainFacing::default(),
             size,
         );
         let Some(mut edit_level) = world.get_resource_mut::<CurrentEditLevel>() else {

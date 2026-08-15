@@ -15,6 +15,7 @@ use crate::{
             TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
+        facing::TerrainFacing,
         piece::TerrainGraphicKey,
     },
 };
@@ -108,12 +109,12 @@ fn door_stair_prefabs(theme: ThemeUuid, fp: GridSize) -> PrefabRegistry {
                 fp,
                 role,
                 vec![
-                    TerrainPlacementEntry::new(DOOR_NS, at(1, 1)),
-                    TerrainPlacementEntry::new(DOOR_EW, at(2, 1)),
-                    TerrainPlacementEntry::new(STAIR_NS_UP, at(3, 1)),
-                    TerrainPlacementEntry::new(STAIR_NS_DOWN, at(4, 1)),
-                    TerrainPlacementEntry::new(STAIR_EW_UP, at(5, 1)),
-                    TerrainPlacementEntry::new(STAIR_EW_DOWN, at(6, 1)),
+                    TerrainPlacementEntry::new(DOOR_NS, at(1, 1), TerrainFacing::default()),
+                    TerrainPlacementEntry::new(DOOR_EW, at(2, 1), TerrainFacing::default()),
+                    TerrainPlacementEntry::new(STAIR_NS_UP, at(3, 1), TerrainFacing::default()),
+                    TerrainPlacementEntry::new(STAIR_NS_DOWN, at(4, 1), TerrainFacing::default()),
+                    TerrainPlacementEntry::new(STAIR_EW_UP, at(5, 1), TerrainFacing::default()),
+                    TerrainPlacementEntry::new(STAIR_EW_DOWN, at(6, 1), TerrainFacing::default()),
                 ],
             ),
         )

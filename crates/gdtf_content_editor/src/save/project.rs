@@ -57,14 +57,18 @@ pub fn editor_map_to_prefab(
     let size = session.grid_size();
 
     let mut placements: Vec<TerrainPlacementEntry> = Vec::new();
-    for (slot, tile) in map.painted() {
-        let placement = ProposedPlacement::new(*slot, *tile);
+    for (slot, piece) in map.painted() {
+        let placement = ProposedPlacement::new(*slot, piece.tile(), piece.facing());
         if let PlacementVerdict::Illegal(_) =
             evaluate_placement(map, registry, theme, &placement, size)
         {
             return Err(SavePrefabError::IllegalCell(*slot));
         }
-        placements.push(TerrainPlacementEntry::new(*tile, *slot));
+        placements.push(TerrainPlacementEntry::new(
+            piece.tile(),
+            *slot,
+            piece.facing(),
+        ));
     }
 
     placements.sort_by(|a, b| {

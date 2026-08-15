@@ -8,6 +8,7 @@ use crate::{
     ganger::{Faction, GangName, GangRegistry, GangRoster},
     metric::CellLevel,
     situation::{CoverSpawn, GangerSpawn, Situation, SlabSpawn},
+    terrain::facing::TerrainFacing,
     vertical::VerticalLink,
 };
 
@@ -42,7 +43,7 @@ pub mod test_pieces {
 /// Wall spawn at a cell.
 #[must_use]
 pub const fn wall_at(at: CellLevel) -> CoverSpawn {
-    CoverSpawn::new(at, test_pieces::WALL)
+    CoverSpawn::new(at, test_pieces::WALL, TerrainFacing::North)
 }
 
 /// Fluent builder for [`Situation`] and optional gang registry.
@@ -92,14 +93,16 @@ impl SituationBuilder {
     pub fn slab_at(mut self, at: CellLevel) -> Self {
         self.situation
             .slabs
-            .push(SlabSpawn::new(at, test_pieces::SLAB));
+            .push(SlabSpawn::new(at, test_pieces::SLAB, TerrainFacing::North));
         self
     }
 
     /// Place a specific slab piece at a cell.
     #[must_use]
     pub fn slab_piece_at(mut self, at: CellLevel, piece: crate::terrain::def::TerrainUuid) -> Self {
-        self.situation.slabs.push(SlabSpawn::new(at, piece));
+        self.situation
+            .slabs
+            .push(SlabSpawn::new(at, piece, TerrainFacing::North));
         self
     }
 

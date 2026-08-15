@@ -37,11 +37,15 @@ fn test1_one_entity_per_terrain_piece() {
 
 #[test]
 fn test1_counts_all_kinds() {
-    use crate::situation::CoverSpawn;
+    use crate::{situation::CoverSpawn, terrain::facing::TerrainFacing};
 
     let mut app = headless_app();
 
-    let scatter = CoverSpawn::new(cl(9, 9, 0), crate::test_support::test_pieces::COVER);
+    let scatter = CoverSpawn::new(
+        cl(9, 9, 0),
+        crate::test_support::test_pieces::COVER,
+        TerrainFacing::default(),
+    );
     let situation = SituationBuilder::new()
         .with_ganger(ganger_at(cl(0, 0, 0), 0))
         .with_ganger(ganger_at(cl(1, 1, 0), 1))

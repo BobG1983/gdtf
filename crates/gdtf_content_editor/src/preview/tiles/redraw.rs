@@ -115,10 +115,11 @@ fn draw_storey(
         for x in 0..i32::from(*pass.size.width()) {
             let cell = Cell::new(x, y);
             let slot = CellLevel::new(cell, storey_level);
+            let painted = pass.map.tile_at_level(slot).map(|piece| piece.tile());
             let tile = if storey == GROUND_STOREY {
-                pass.map.tile_at_level(slot).or(pass.default_floor)
+                painted.or(pass.default_floor)
             } else {
-                pass.map.tile_at_level(slot)
+                painted
             };
             let Some(tile) = tile else {
                 if is_active_storey {

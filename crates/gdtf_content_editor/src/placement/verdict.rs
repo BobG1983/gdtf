@@ -1,6 +1,9 @@
 //! Placement legality verdict and proposed placement.
 
-use gdtf_battle_sim::{metric::CellLevel, terrain::def::TerrainUuid};
+use gdtf_battle_sim::{
+    metric::CellLevel,
+    terrain::{def::TerrainUuid, facing::TerrainFacing},
+};
 
 /// Why a placement was rejected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,15 +51,16 @@ impl PlacementVerdict {
 /// A tile the author wants to place at a slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProposedPlacement {
-    slot: CellLevel,
-    tile: TerrainUuid,
+    slot:   CellLevel,
+    tile:   TerrainUuid,
+    facing: TerrainFacing,
 }
 
 impl ProposedPlacement {
     /// Build a placement proposal.
     #[must_use]
-    pub const fn new(slot: CellLevel, tile: TerrainUuid) -> Self {
-        Self { slot, tile }
+    pub const fn new(slot: CellLevel, tile: TerrainUuid, facing: TerrainFacing) -> Self {
+        Self { slot, tile, facing }
     }
 
     /// Target slot.
@@ -69,5 +73,11 @@ impl ProposedPlacement {
     #[must_use]
     pub const fn tile(&self) -> TerrainUuid {
         self.tile
+    }
+
+    /// Which way the tile is turned.
+    #[must_use]
+    pub const fn facing(&self) -> TerrainFacing {
+        self.facing
     }
 }

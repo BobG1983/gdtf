@@ -3,6 +3,7 @@ use gdtf_battle_sim::{
     level::{GridHeight, GridLevels, GridSize, GridWidth},
     metric::{CellLevel, Level},
     prelude::Cell,
+    terrain::facing::TerrainFacing,
 };
 
 use super::support::{COVER, SLAB, registry, size};
@@ -22,11 +23,11 @@ fn signature_keys_content_not_ticks() {
     let (empty_b, _) = storey_key(&map, Some(&reg), size, Level::new(0));
     assert_eq!(empty_a, empty_b, "identical content keys identically");
 
-    assert!(map.paint_at(slot, COVER, size));
+    assert!(map.paint_at(slot, COVER, TerrainFacing::default(), size));
     let (painted, _) = storey_key(&map, Some(&reg), size, Level::new(0));
     assert_ne!(empty_a, painted, "a paint moves the key");
 
-    assert!(map.paint_at(slot, SLAB, size));
+    assert!(map.paint_at(slot, SLAB, TerrainFacing::default(), size));
     let (repainted, _) = storey_key(&map, Some(&reg), size, Level::new(0));
     assert_ne!(
         painted, repainted,
@@ -76,7 +77,12 @@ fn cache_rebuilds_only_on_signature_change() {
         "a hit serves the cached count"
     );
 
-    assert!(map.paint_at(CellLevel::new(Cell::new(0, 0), Level::new(0)), COVER, size));
+    assert!(map.paint_at(
+        CellLevel::new(Cell::new(0, 0), Level::new(0)),
+        COVER,
+        TerrainFacing::default(),
+        size
+    ));
     let (sig_painted, count_painted) = storey_key(&map, Some(&reg), size, Level::new(0));
     let build = || {
         builds.set(builds.get() + 1);

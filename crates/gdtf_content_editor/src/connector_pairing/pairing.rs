@@ -63,7 +63,7 @@ pub fn apply_placement_with_pairing(
         return PairingOutcome::PlacedPairSkipped;
     };
 
-    let pair = ProposedPlacement::new(above, down);
+    let pair = ProposedPlacement::new(above, down, placement.facing());
     if apply_placement(map, registry, theme, &pair, size) {
         PairingOutcome::PairPlaced { down, at: above }
     } else {

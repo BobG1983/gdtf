@@ -13,6 +13,7 @@ use gdtf_battle_sim::{
             TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
+        facing::TerrainFacing,
         piece::TerrainGraphicKey,
     },
 };
@@ -167,10 +168,16 @@ fn editor_map_round_trips_through_the_loader() {
     let mut map = EditorMap::new();
     let size = size();
 
-    assert!(map.paint(Cell::new(0, 1), FLOOR, size));
-    assert!(map.paint(Cell::new(3, 3), WALL, size));
-    assert!(map.paint(Cell::new(2, 2), SLAB, size));
-    assert!(map.paint_at(CellLevel::new(Cell::new(1, 1), Level::new(1)), LADDER, size,));
+    let north = TerrainFacing::default();
+    assert!(map.paint(Cell::new(0, 1), FLOOR, north, size));
+    assert!(map.paint(Cell::new(3, 3), WALL, TerrainFacing::East, size));
+    assert!(map.paint(Cell::new(2, 2), SLAB, north, size));
+    assert!(map.paint_at(
+        CellLevel::new(Cell::new(1, 1), Level::new(1)),
+        LADDER,
+        north,
+        size,
+    ));
 
     let built = editor_map_to_prefab(&map, &reg, &session);
     assert!(
@@ -212,6 +219,17 @@ fn editor_map_round_trips_through_the_loader() {
         4,
         "the four painted cells must each be one placement (C2)",
     );
+    let east = reloaded
+        .placements
+        .iter()
+        .filter(|entry| entry.facing == TerrainFacing::East)
+        .count();
+    assert_eq!(
+        east, 1,
+        "exactly the one cell painted East must come back East — the other three were \
+         painted North; got {:?}",
+        reloaded.placements,
+    );
     assert_eq!(
         saved.role,
         SpawnRole::Fill,
@@ -231,8 +249,14 @@ fn illegal_cell_rejects_the_save() {
     let mut illegal = EditorMap::new();
     let size = size();
 
-    assert!(illegal.paint_at(ground(1, 1), LADDER, size));
-    assert!(illegal.paint_at(CellLevel::new(Cell::new(1, 1), Level::new(1)), SLAB, size,));
+    let north = TerrainFacing::default();
+    assert!(illegal.paint_at(ground(1, 1), LADDER, north, size));
+    assert!(illegal.paint_at(
+        CellLevel::new(Cell::new(1, 1), Level::new(1)),
+        SLAB,
+        north,
+        size,
+    ));
 
     let built = editor_map_to_prefab(&illegal, &reg, &session);
     assert!(

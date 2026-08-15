@@ -5,7 +5,11 @@ fn setup_errors_on_a_missing_terrain_key() {
     let missing = TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0149_dead_0000_0001));
     let (situation, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
-        .with_scatter(CoverSpawn::new(key(2, 2, 0), missing))
+        .with_scatter(CoverSpawn::new(
+            key(2, 2, 0),
+            missing,
+            TerrainFacing::default(),
+        ))
         .build_with_gangs();
 
     let mut app = App::new();

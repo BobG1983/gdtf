@@ -18,6 +18,7 @@ use crate::{
     terrain::{
         def::{TerrainDefRegistry, TerrainUuid},
         entity::TerrainPieceKind,
+        facing::TerrainFacing,
     },
 };
 
@@ -116,10 +117,20 @@ fn pour_prefab(
     for placement in &spec.placements {
         let at = translate(placement.at, origin);
         match classify(placement.piece, terrain_defs) {
-            PlacedKind::Slab => situation.slabs.push(SlabSpawn::new(at, placement.piece)),
-            PlacedKind::Cover => situation.walls.push(CoverSpawn::new(at, placement.piece)),
+            PlacedKind::Slab => {
+                situation
+                    .slabs
+                    .push(SlabSpawn::new(at, placement.piece, placement.facing));
+            }
+            PlacedKind::Cover => {
+                situation
+                    .walls
+                    .push(CoverSpawn::new(at, placement.piece, placement.facing));
+            }
             PlacedKind::Unresolved => {
-                situation.walls.push(CoverSpawn::new(at, placement.piece));
+                situation
+                    .walls
+                    .push(CoverSpawn::new(at, placement.piece, placement.facing));
                 let finding = ProcgenFinding::UnresolvedTerrainPiece {
                     piece: placement.piece,
                 };
@@ -156,6 +167,7 @@ fn floor_region(rect: RegionRect, default_floor: TerrainUuid, situation: &mut Si
             situation.floors.push(FloorSpawn::new(
                 CellLevel::new(cell, Level::new(0)),
                 default_floor,
+                TerrainFacing::default(),
             ));
         }
     }

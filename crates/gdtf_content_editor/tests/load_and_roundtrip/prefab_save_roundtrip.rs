@@ -15,6 +15,7 @@ use gdtf_battle_sim::{
             TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
+        facing::TerrainFacing,
         piece::TerrainGraphicKey,
     },
 };
@@ -27,6 +28,9 @@ use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 const THEME: ThemeUuid = ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0662_0000_0011));
 
 const SLAB: TerrainUuid = TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0662_0000_0012));
+
+/// Painted deliberately off the [`TerrainFacing`] default, so a dropped field cannot pass.
+const PAINTED_FACING: TerrainFacing = TerrainFacing::East;
 
 fn small_size() -> Option<GridSize> {
     GridSize::new(GridWidth::new(3), GridHeight::new(3), GridLevels::new(1)).ok()
@@ -63,7 +67,7 @@ fn saved_prefab_round_trips_through_the_real_game_prefab_loader() {
 
     let mut map = EditorMap::new();
     let slot = CellLevel::new(Cell::new(1, 1), Level::new(0));
-    let placement = ProposedPlacement::new(slot, SLAB);
+    let placement = ProposedPlacement::new(slot, SLAB, PAINTED_FACING);
     assert!(
         apply_placement(&mut map, &registry, THEME, &placement, size),
         "painting a slab on the ground level of an empty 3x3x1 map must be legal",
@@ -125,5 +129,14 @@ fn saved_prefab_round_trips_through_the_real_game_prefab_loader() {
         &expected,
         "the reloaded prefab spec must equal the saved projection — the round-trip \
          through the REAL game loader",
+    );
+
+    let entry = prefab.spec().placements.first();
+    assert_eq!(
+        entry.map(|entry| entry.facing),
+        Some(PAINTED_FACING),
+        "the reloaded entry must carry the facing that was PAINTED, asserted against the \
+         literal rather than against `expected` (which is itself the save projection, so a \
+         dropped facing would show up on both sides); got {entry:?}",
     );
 }

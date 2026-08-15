@@ -8,6 +8,8 @@ pub mod def;
 pub mod emplacement;
 /// Per-tile terrain ECS entities.
 pub mod entity;
+/// Cardinal facing of a placed piece.
+pub mod facing;
 /// Floor cost grid.
 pub mod floor;
 /// Occupancy grid and blocking projections.

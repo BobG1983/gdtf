@@ -9,6 +9,7 @@ use gdtf_battle_sim::{
             TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
+        facing::TerrainFacing,
         piece::TerrainGraphicKey,
     },
 };
@@ -16,7 +17,10 @@ use gdtf_battle_sim::{
 use super::{
     PairingOutcome, apply_placement_with_pairing, is_up_connector, resolve_down_counterpart,
 };
-use crate::{editor_map::EditorMap, placement::ProposedPlacement};
+use crate::{
+    editor_map::{EditorMap, PaintedPiece},
+    placement::ProposedPlacement,
+};
 
 fn theme() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0149_1490_0002))
@@ -147,7 +151,7 @@ fn placing_up_connector_auto_places_down_pair_above() {
     let mut map = EditorMap::new();
     let cell = Cell::new(1, 1);
 
-    let placement = ProposedPlacement::new(at(cell, 0), STAIR_NS_UP);
+    let placement = ProposedPlacement::new(at(cell, 0), STAIR_NS_UP, TerrainFacing::East);
     let outcome = apply_placement_with_pairing(&mut map, &reg, th, &placement, size());
 
     assert_eq!(
@@ -160,13 +164,14 @@ fn placing_up_connector_auto_places_down_pair_above() {
     );
     assert_eq!(
         map.tile_at_level(at(cell, 0)),
-        Some(STAIR_NS_UP),
+        Some(PaintedPiece::new(STAIR_NS_UP, TerrainFacing::East)),
         "the up connector is placed at N (C2)",
     );
     assert_eq!(
         map.tile_at_level(at(cell, 1)),
-        Some(STAIR_NS_DOWN),
-        "the paired down connector is auto-placed at N+1 (C2)",
+        Some(PaintedPiece::new(STAIR_NS_DOWN, TerrainFacing::East)),
+        "the paired down connector is auto-placed at N+1 wearing the source placement's \
+         facing, never a reset default",
     );
     assert_eq!(map.painted_count(), 2, "both endpoints are present (C2)");
 }
@@ -177,7 +182,7 @@ fn up_connector_on_top_storey_skips_pair_fail_closed() {
     let th = theme();
     let mut map = EditorMap::new();
     let cell = Cell::new(2, 2);
-    let placement = ProposedPlacement::new(at(cell, 2), STAIR_EW_UP);
+    let placement = ProposedPlacement::new(at(cell, 2), STAIR_EW_UP, TerrainFacing::default());
     let outcome = apply_placement_with_pairing(&mut map, &reg, th, &placement, size());
 
     assert_eq!(
@@ -187,7 +192,7 @@ fn up_connector_on_top_storey_skips_pair_fail_closed() {
     );
     assert_eq!(
         map.tile_at_level(at(cell, 2)),
-        Some(STAIR_EW_UP),
+        Some(PaintedPiece::new(STAIR_EW_UP, TerrainFacing::default())),
         "the up connector still landed on the top storey (C2)",
     );
     assert_eq!(
@@ -203,7 +208,7 @@ fn non_connector_placement_places_no_pair() {
     let th = theme();
     let mut map = EditorMap::new();
     let cell = Cell::new(0, 0);
-    let placement = ProposedPlacement::new(at(cell, 0), STAIR_NS_DOWN);
+    let placement = ProposedPlacement::new(at(cell, 0), STAIR_NS_DOWN, TerrainFacing::default());
     let outcome = apply_placement_with_pairing(&mut map, &reg, th, &placement, size());
     assert_eq!(
         outcome,

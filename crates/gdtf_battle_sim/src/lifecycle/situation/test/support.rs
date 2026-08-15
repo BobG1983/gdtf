@@ -26,6 +26,7 @@ pub(super) use crate::{
             TerrainSimKind, TerrainTag, TerrainUuid,
         },
         entity::{BlocksPathfinding, TerrainCell, TerrainPieceKind},
+        facing::TerrainFacing,
         floor::FloorCostGrid,
         piece::{FootfallSound, TerrainGraphicKey},
     },

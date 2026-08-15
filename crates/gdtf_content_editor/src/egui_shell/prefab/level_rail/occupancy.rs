@@ -8,7 +8,10 @@ use gdtf_battle_sim::{
     terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
 
-use crate::{editor_map::EditorMap, terrain_graphics::graphic_key};
+use crate::{
+    editor_map::{EditorMap, PaintedPiece},
+    terrain_graphics::graphic_key,
+};
 
 const FALLBACK_HUE: egui::Color32 = egui::Color32::from_rgb(200, 60, 200);
 
@@ -26,14 +29,16 @@ pub(crate) fn storey_key(
 ) -> (StoreySignature, PaintedCount) {
     let mut folded: u64 = 0;
     let mut count: usize = 0;
-    for (slot, tile) in painted_in_storey(map, storey) {
+    for (slot, piece) in painted_in_storey(map, storey) {
         if texel_index(slot, size).is_none() {
             continue;
         }
         let mut hasher = DefaultHasher::new();
         slot.x.hash(&mut hasher);
         slot.y.hash(&mut hasher);
-        cell_hue(registry, tile).to_array().hash(&mut hasher);
+        cell_hue(registry, &piece.tile())
+            .to_array()
+            .hash(&mut hasher);
         folded = folded.wrapping_add(hasher.finish());
         count += 1;
     }
@@ -52,11 +57,11 @@ pub(crate) fn storey_image(
     let width = usize::from(*size.width());
     let height = usize::from(*size.height());
     let mut pixels = vec![egui::Color32::TRANSPARENT; width * height];
-    for (slot, tile) in painted_in_storey(map, storey) {
+    for (slot, piece) in painted_in_storey(map, storey) {
         if let Some(index) = texel_index(slot, size)
             && let Some(pixel) = pixels.get_mut(index)
         {
-            *pixel = cell_hue(registry, tile);
+            *pixel = cell_hue(registry, &piece.tile());
         }
     }
     egui::ColorImage::new([width, height], pixels)
@@ -65,7 +70,7 @@ pub(crate) fn storey_image(
 fn painted_in_storey(
     map: &EditorMap,
     storey: Level,
-) -> impl Iterator<Item = (&CellLevel, &TerrainUuid)> {
+) -> impl Iterator<Item = (&CellLevel, &PaintedPiece)> {
     let z = i32::from(*storey);
     map.painted().filter(move |(slot, _)| slot.z == z)
 }

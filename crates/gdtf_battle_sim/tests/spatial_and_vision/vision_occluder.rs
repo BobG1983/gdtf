@@ -9,7 +9,7 @@ use gdtf_battle_sim::{
     prelude::{Faction, Stance, StanceKind},
     rng::BattleSeed,
     situation::{CoverSpawn, Situation},
-    terrain::{entity::TerrainCell, occupancy::OccupancyGrid},
+    terrain::{entity::TerrainCell, facing::TerrainFacing, occupancy::OccupancyGrid},
     test_support::{
         GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_melee_weapon_registry,
         test_pieces, test_terrain_registry, test_weapon_registry,
@@ -196,6 +196,7 @@ fn occluder_band_gates_the_sightline() {
             b.with_scatter(CoverSpawn::new(
                 occluder_at(),
                 test_pieces::LOW_VISION_COVER,
+                TerrainFacing::default(),
             ))
         }),
     );

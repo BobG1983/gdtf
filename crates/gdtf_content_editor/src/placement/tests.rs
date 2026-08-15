@@ -10,6 +10,7 @@ use gdtf_battle_sim::{
             TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
+        facing::TerrainFacing,
         piece::TerrainGraphicKey,
     },
 };
@@ -18,7 +19,9 @@ use super::{
     EditorTileClass, IllegalReason, PlacementVerdict, ProposedPlacement, apply_placement, classify,
     evaluate_placement,
 };
-use crate::editor_map::EditorMap;
+use crate::editor_map::{EditorMap, PaintedPiece};
+
+const NORTH: TerrainFacing = TerrainFacing::North;
 
 fn theme() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0149_1490_0001))
@@ -122,7 +125,7 @@ fn legal_floor_placement_commits_and_mutates_map() {
     let th = theme();
     let mut map = EditorMap::new();
     let cell = Cell::new(1, 1);
-    let placement = ProposedPlacement::new(ground(cell), FLOOR);
+    let placement = ProposedPlacement::new(ground(cell), FLOOR, TerrainFacing::East);
 
     assert_eq!(
         evaluate_placement(&map, &reg, th, &placement, size()),
@@ -135,8 +138,8 @@ fn legal_floor_placement_commits_and_mutates_map() {
     );
     assert_eq!(
         map.tile_at(cell),
-        Some(FLOOR),
-        "a committed placement mutates the map (legal case)",
+        Some(PaintedPiece::new(FLOOR, TerrainFacing::East)),
+        "a committed placement carries the proposal's tile AND facing into the map",
     );
     assert_eq!(map.painted_count(), 1);
 }
@@ -148,11 +151,11 @@ fn slab_on_ladder_same_cell_is_illegal_and_rejected() {
     let mut map = EditorMap::new();
     let cell = Cell::new(2, 2);
 
-    let ladder = ProposedPlacement::new(ground(cell), LADDER);
+    let ladder = ProposedPlacement::new(ground(cell), LADDER, NORTH);
     assert!(apply_placement(&mut map, &reg, th, &ladder, size()));
     assert_eq!(map.painted_count(), 1, "the ladder commits at L0");
 
-    let slab = ProposedPlacement::new(ground(cell), SLAB);
+    let slab = ProposedPlacement::new(ground(cell), SLAB, NORTH);
     assert_eq!(
         evaluate_placement(&map, &reg, th, &slab, size()),
         PlacementVerdict::Illegal(IllegalReason::SlabSealsLadder),
@@ -169,7 +172,7 @@ fn slab_on_ladder_same_cell_is_illegal_and_rejected() {
     );
     assert_eq!(
         map.tile_at(cell),
-        Some(LADDER),
+        Some(PaintedPiece::new(LADDER, NORTH)),
         "the ladder is untouched — the illegal slab never overwrote it (C2)",
     );
 }
@@ -181,10 +184,10 @@ fn slab_above_ladder_is_illegal_and_rejected() {
     let mut map = EditorMap::new();
     let cell = Cell::new(1, 3);
 
-    let ladder = ProposedPlacement::new(ground(cell), LADDER);
+    let ladder = ProposedPlacement::new(ground(cell), LADDER, NORTH);
     assert!(apply_placement(&mut map, &reg, th, &ladder, size()));
 
-    let slab = ProposedPlacement::new(above(cell), SLAB);
+    let slab = ProposedPlacement::new(above(cell), SLAB, NORTH);
     assert_eq!(
         evaluate_placement(&map, &reg, th, &slab, size()),
         PlacementVerdict::Illegal(IllegalReason::SlabSealsLadder),
@@ -208,10 +211,10 @@ fn ladder_auto_clears_slab_above() {
     let mut map = EditorMap::new();
     let cell = Cell::new(0, 0);
 
-    assert!(map.paint_at(above(cell), SLAB, size()));
+    assert!(map.paint_at(above(cell), SLAB, NORTH, size()));
     assert_eq!(map.painted_count(), 1, "the slab is seeded at L1");
 
-    let ladder = ProposedPlacement::new(ground(cell), LADDER);
+    let ladder = ProposedPlacement::new(ground(cell), LADDER, NORTH);
     assert_eq!(
         evaluate_placement(&map, &reg, th, &ladder, size()),
         PlacementVerdict::legal_clearing(above(cell)),
@@ -227,7 +230,7 @@ fn ladder_auto_clears_slab_above() {
     );
     assert_eq!(
         map.tile_at(cell),
-        Some(LADDER),
+        Some(PaintedPiece::new(LADDER, NORTH)),
         "the ladder was painted at L0 (C1)",
     );
     assert_eq!(
@@ -243,7 +246,7 @@ fn ladder_without_slab_above_is_plain_legal() {
     let th = theme();
     let map = EditorMap::new();
     let cell = Cell::new(3, 3);
-    let ladder = ProposedPlacement::new(ground(cell), LADDER);
+    let ladder = ProposedPlacement::new(ground(cell), LADDER, NORTH);
     assert_eq!(
         evaluate_placement(&map, &reg, th, &ladder, size()),
         PlacementVerdict::legal(),
@@ -256,7 +259,7 @@ fn out_of_bounds_is_illegal() {
     let reg = registry();
     let th = theme();
     let map = EditorMap::new();
-    let placement = ProposedPlacement::new(ground(Cell::new(4, 0)), FLOOR);
+    let placement = ProposedPlacement::new(ground(Cell::new(4, 0)), FLOOR, NORTH);
     assert_eq!(
         evaluate_placement(&map, &reg, th, &placement, size()),
         PlacementVerdict::Illegal(IllegalReason::OutOfBounds),

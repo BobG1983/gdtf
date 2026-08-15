@@ -5,6 +5,7 @@ use gdtf_battle_sim::{
     ganger::Direction,
     metric::{Cell, CellLevel, Level},
     situation::CoverSpawn,
+    terrain::facing::TerrainFacing,
     test_support::{SituationBuilder, single_mode},
 };
 
@@ -16,7 +17,11 @@ fn destroyed_cover_with_leave_field_spawns_the_field_at_that_cell() {
 
     let situation = SituationBuilder::new()
         .with_gangers([shooter(ground(5, 5), Direction::East)])
-        .with_scatter(CoverSpawn::new(ground(8, 5), BARREL))
+        .with_scatter(CoverSpawn::new(
+            ground(8, 5),
+            BARREL,
+            TerrainFacing::default(),
+        ))
         .build_with_gangs();
     drive_setup(&mut app, seed, situation);
 
@@ -56,7 +61,11 @@ fn a_barrel_smashed_in_melee_leaves_its_on_death_field() {
 
     let situation = SituationBuilder::new()
         .with_gangers([melee_attacker(ground(5, 5), PLAYER, Direction::East)])
-        .with_scatter(CoverSpawn::new(ground(6, 5), BARREL))
+        .with_scatter(CoverSpawn::new(
+            ground(6, 5),
+            BARREL,
+            TerrainFacing::default(),
+        ))
         .build_with_gangs();
     drive_setup(&mut app, seed, situation);
 

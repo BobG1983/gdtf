@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use gdtf_battle_sim::{
     metric::{CellLevel, Level},
     prelude::Cell,
-    terrain::def::TerrainDefRegistry,
+    terrain::{def::TerrainDefRegistry, facing::TerrainFacing},
 };
 use gdtf_content_editor::{
     EditorMap, EditorMode, HoveredCell, MapEditorSession, PreviewPan, PreviewTarget,
@@ -132,7 +132,7 @@ fn shared_apply_placement_paints_the_map() {
             unreachable!("map inserted in Editing");
         };
         let slot = CellLevel::new(Cell::new(1, 1), Level::new(0));
-        let placement = ProposedPlacement::new(slot, tile);
+        let placement = ProposedPlacement::new(slot, tile, TerrainFacing::default());
         apply_placement(&mut map, &registry, theme, &placement, size)
     };
     assert!(

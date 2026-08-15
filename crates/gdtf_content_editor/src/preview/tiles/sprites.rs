@@ -4,7 +4,7 @@ use gdtf_battle_presenter::{StoreyTreatment, anchor_world_offset, source_parts, 
 use gdtf_battle_sim::{
     metric::{CellLevel, Level},
     prelude::Cell,
-    terrain::def::TerrainDefRegistry,
+    terrain::{def::TerrainDefRegistry, facing::TerrainFacing},
 };
 use gdtf_content_families::sprites::{SpriteDef, SpriteDefRegistry};
 
@@ -71,7 +71,7 @@ pub(super) fn draw_hover_ghost(
         return;
     };
     let slot = CellLevel::new(cell, level);
-    let placement = ProposedPlacement::new(slot, tile);
+    let placement = ProposedPlacement::new(slot, tile, TerrainFacing::default());
     let verdict = evaluate_placement(
         map,
         art.registry,

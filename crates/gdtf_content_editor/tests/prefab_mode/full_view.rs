@@ -4,6 +4,7 @@ use gdtf_battle_sim::{
     level::{GridHeight, GridLevels, GridSize, GridWidth},
     metric::{CellLevel, Level},
     prelude::Cell,
+    terrain::facing::TerrainFacing,
 };
 use gdtf_content_editor::{CurrentEditLevel, EditorMap, EditorMode, MapEditorSession};
 
@@ -74,7 +75,12 @@ fn full_view_toggle_changes_the_drawn_tile_set() {
         let upper = Level::new(1);
         for x in 0..3 {
             for y in 0..3 {
-                map.paint_at(CellLevel::new(Cell::new(x, y), upper), tile, size);
+                map.paint_at(
+                    CellLevel::new(Cell::new(x, y), upper),
+                    tile,
+                    TerrainFacing::default(),
+                    size,
+                );
             }
         }
         let Some(mut edit_level) = world.get_resource_mut::<CurrentEditLevel>() else {

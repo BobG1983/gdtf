@@ -5,15 +5,42 @@ use gdtf_battle_sim::{
     level::GridSize,
     metric::{CellLevel, Level},
     prelude::Cell,
-    terrain::def::TerrainUuid,
+    terrain::{def::TerrainUuid, facing::TerrainFacing},
 };
 
 pub(crate) const GROUND_LEVEL: Level = Level::new(0);
 
+/// One painted slot: which terrain def, turned which way.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PaintedPiece {
+    tile:   TerrainUuid,
+    facing: TerrainFacing,
+}
+
+impl PaintedPiece {
+    /// Build a painted piece.
+    #[must_use]
+    pub const fn new(tile: TerrainUuid, facing: TerrainFacing) -> Self {
+        Self { tile, facing }
+    }
+
+    /// Terrain def painted here.
+    #[must_use]
+    pub const fn tile(&self) -> TerrainUuid {
+        self.tile
+    }
+
+    /// Which way the piece is turned.
+    #[must_use]
+    pub const fn facing(&self) -> TerrainFacing {
+        self.facing
+    }
+}
+
 /// Sparse store of painted terrain tiles by cell-level.
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
 pub struct EditorMap {
-    painted: HashMap<CellLevel, TerrainUuid>,
+    painted: HashMap<CellLevel, PaintedPiece>,
 }
 
 impl EditorMap {
@@ -25,39 +52,51 @@ impl EditorMap {
         }
     }
 
-    /// Paint `tile` at ground level for `cell` if in bounds.
-    pub fn paint(&mut self, cell: Cell, tile: TerrainUuid, size: GridSize) -> bool {
-        self.paint_at(CellLevel::new(cell, GROUND_LEVEL), tile, size)
+    /// Paint `tile` facing `facing` at ground level for `cell` if in bounds.
+    pub fn paint(
+        &mut self,
+        cell: Cell,
+        tile: TerrainUuid,
+        facing: TerrainFacing,
+        size: GridSize,
+    ) -> bool {
+        self.paint_at(CellLevel::new(cell, GROUND_LEVEL), tile, facing, size)
     }
 
-    /// Paint `tile` at `slot` if in bounds.
-    pub fn paint_at(&mut self, slot: CellLevel, tile: TerrainUuid, size: GridSize) -> bool {
+    /// Paint `tile` facing `facing` at `slot` if in bounds.
+    pub fn paint_at(
+        &mut self,
+        slot: CellLevel,
+        tile: TerrainUuid,
+        facing: TerrainFacing,
+        size: GridSize,
+    ) -> bool {
         if !slot_in_bounds(slot, size) {
             return false;
         }
-        self.painted.insert(slot, tile);
+        self.painted.insert(slot, PaintedPiece::new(tile, facing));
         true
     }
 
-    /// Remove the tile at `slot`, returning the previous value.
-    pub fn clear(&mut self, slot: CellLevel) -> Option<TerrainUuid> {
+    /// Remove the piece at `slot`, returning the previous value.
+    pub fn clear(&mut self, slot: CellLevel) -> Option<PaintedPiece> {
         self.painted.remove(&slot)
     }
 
-    /// Tile at ground level for `cell`, if any.
+    /// Piece at ground level for `cell`, if any.
     #[must_use]
-    pub fn tile_at(&self, cell: Cell) -> Option<TerrainUuid> {
+    pub fn tile_at(&self, cell: Cell) -> Option<PaintedPiece> {
         self.tile_at_level(CellLevel::new(cell, GROUND_LEVEL))
     }
 
-    /// Tile at `slot`, if any.
+    /// Piece at `slot`, if any.
     #[must_use]
-    pub fn tile_at_level(&self, slot: CellLevel) -> Option<TerrainUuid> {
+    pub fn tile_at_level(&self, slot: CellLevel) -> Option<PaintedPiece> {
         self.painted.get(&slot).copied()
     }
 
     /// Iterate all painted slots.
-    pub fn painted(&self) -> impl Iterator<Item = (&CellLevel, &TerrainUuid)> {
+    pub fn painted(&self) -> impl Iterator<Item = (&CellLevel, &PaintedPiece)> {
         self.painted.iter()
     }
 
@@ -86,10 +125,10 @@ mod tests {
         level::{GridHeight, GridLevels, GridSize, GridWidth},
         metric::{CellLevel, Level},
         prelude::Cell,
-        terrain::def::TerrainUuid,
+        terrain::{def::TerrainUuid, facing::TerrainFacing},
     };
 
-    use super::EditorMap;
+    use super::{EditorMap, PaintedPiece};
 
     fn small_size() -> GridSize {
         GridSize::new(GridWidth::new(4), GridHeight::new(4), GridLevels::new(2))
@@ -113,13 +152,18 @@ mod tests {
             "unpainted cell reads None"
         );
 
-        let recorded = map.paint(Cell::new(1, 2), key(0xAA), small_size());
+        let recorded = map.paint(
+            Cell::new(1, 2),
+            key(0xAA),
+            TerrainFacing::East,
+            small_size(),
+        );
         assert!(recorded, "an in-bounds paint must be recorded (C2)");
         assert_eq!(map.painted_count(), 1, "one paint -> one entry");
         assert_eq!(
             map.tile_at(Cell::new(1, 2)),
-            Some(key(0xAA)),
-            "the painted cell reads back its tile keyed by its Cell (C2)",
+            Some(PaintedPiece::new(key(0xAA), TerrainFacing::East)),
+            "the painted cell reads back its tile AND its facing keyed by its Cell (C2)",
         );
     }
 
@@ -127,8 +171,8 @@ mod tests {
     fn repaint_overwrites_the_same_cell() {
         let mut map = EditorMap::new();
         let cell = Cell::new(0, 0);
-        assert!(map.paint(cell, key(0x1), small_size()));
-        assert!(map.paint(cell, key(0x2), small_size()));
+        assert!(map.paint(cell, key(0x1), TerrainFacing::East, small_size()));
+        assert!(map.paint(cell, key(0x2), TerrainFacing::South, small_size()));
         assert_eq!(
             map.painted_count(),
             1,
@@ -136,8 +180,8 @@ mod tests {
         );
         assert_eq!(
             map.tile_at(cell),
-            Some(key(0x2)),
-            "repainting must overwrite with the latest tile",
+            Some(PaintedPiece::new(key(0x2), TerrainFacing::South)),
+            "repainting must overwrite with the latest tile and facing",
         );
     }
 
@@ -155,7 +199,7 @@ mod tests {
             Cell::new(width, height),
         ] {
             assert!(
-                !map.paint(out, key(0x9), size),
+                !map.paint(out, key(0x9), TerrainFacing::default(), size),
                 "out-of-bounds cell {out:?} must be rejected (C3)",
             );
         }
@@ -173,19 +217,31 @@ mod tests {
         let ground = CellLevel::new(Cell::new(1, 1), Level::new(0));
         let above = CellLevel::new(Cell::new(1, 1), Level::new(1));
 
-        assert!(map.paint_at(ground, key(0x10), size), "L0 paint records");
-        assert!(map.paint_at(above, key(0x20), size), "L1 paint records");
+        assert!(
+            map.paint_at(ground, key(0x10), TerrainFacing::default(), size),
+            "L0 paint records"
+        );
+        assert!(
+            map.paint_at(above, key(0x20), TerrainFacing::West, size),
+            "L1 paint records"
+        );
         assert_eq!(
             map.painted_count(),
             2,
             "the same x/y on two storeys are two distinct slots",
         );
-        assert_eq!(map.tile_at_level(ground), Some(key(0x10)));
-        assert_eq!(map.tile_at_level(above), Some(key(0x20)));
+        assert_eq!(
+            map.tile_at_level(ground),
+            Some(PaintedPiece::new(key(0x10), TerrainFacing::default()))
+        );
+        assert_eq!(
+            map.tile_at_level(above),
+            Some(PaintedPiece::new(key(0x20), TerrainFacing::West))
+        );
 
         let over = CellLevel::new(Cell::new(1, 1), Level::new(2));
         assert!(
-            !map.paint_at(over, key(0x30), size),
+            !map.paint_at(over, key(0x30), TerrainFacing::default(), size),
             "L2 is past the extent"
         );
         assert_eq!(
@@ -196,8 +252,8 @@ mod tests {
 
         assert_eq!(
             map.clear(above),
-            Some(key(0x20)),
-            "clear returns the removed tile"
+            Some(PaintedPiece::new(key(0x20), TerrainFacing::West)),
+            "clear returns the removed piece"
         );
         assert_eq!(map.painted_count(), 1, "clear removes one entry");
         assert!(

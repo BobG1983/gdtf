@@ -2,7 +2,7 @@ use bevy_egui::egui;
 use gdtf_battle_sim::{
     level::UuidThemeRegistry,
     metric::{CellLevel, Level},
-    terrain::def::TerrainDefRegistry,
+    terrain::{def::TerrainDefRegistry, facing::TerrainFacing},
 };
 
 use crate::{
@@ -114,7 +114,7 @@ fn paint_at_uv(ctx: &mut ViewportCtx<'_>, uv: egui::Vec2, level: Level) {
     };
     let cell = uv_to_cell(bevy_uv(uv), **ctx.zoom, ctx.pan.offset());
     let slot = CellLevel::new(cell, level);
-    let placement = ProposedPlacement::new(slot, tile);
+    let placement = ProposedPlacement::new(slot, tile, TerrainFacing::default());
     apply_placement_with_pairing(
         ctx.map,
         registry,

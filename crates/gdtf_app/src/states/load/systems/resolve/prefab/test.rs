@@ -10,7 +10,7 @@ use gdtf_battle_sim::{
         SpawnRole, TerrainPlacementEntry, ThemeUuid,
     },
     metric::{Cell, CellLevel, Level},
-    terrain::def::TerrainUuid,
+    terrain::{def::TerrainUuid, facing::TerrainFacing},
 };
 
 use super::redrive_prefabs_on_asset_event;
@@ -33,6 +33,7 @@ fn prefab_spec(theme: ThemeUuid, size: GridSize, placements: usize) -> PrefabSpe
                     0x0184_0a3e_09b0 + offset,
                 )),
                 CellLevel::new(Cell::new(1, i32::try_from(i).unwrap_or(0)), Level::new(0)),
+                TerrainFacing::default(),
             )
         })
         .collect();

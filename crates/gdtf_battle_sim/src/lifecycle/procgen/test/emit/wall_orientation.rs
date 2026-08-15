@@ -15,6 +15,7 @@ use crate::{
             TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
+        facing::TerrainFacing,
         piece::TerrainGraphicKey,
     },
 };
@@ -82,8 +83,8 @@ fn orientation_prefabs(theme: ThemeUuid, fp: GridSize) -> PrefabRegistry {
                 fp,
                 role,
                 vec![
-                    TerrainPlacementEntry::new(WALL_NS_EW_NS, at(1, 1)),
-                    TerrainPlacementEntry::new(WALL_NS_EW_EW, at(2, 2)),
+                    TerrainPlacementEntry::new(WALL_NS_EW_NS, at(1, 1), TerrainFacing::default()),
+                    TerrainPlacementEntry::new(WALL_NS_EW_EW, at(2, 2), TerrainFacing::default()),
                 ],
             ),
         )

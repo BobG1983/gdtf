@@ -46,7 +46,7 @@ pub use canvas::{CanvasZoom, CurrentEditLevel, LevelStep};
 pub use connector_pairing::{
     PairingOutcome, apply_placement_with_pairing, is_up_connector, resolve_down_counterpart,
 };
-pub use editor_map::EditorMap;
+pub use editor_map::{EditorMap, PaintedPiece};
 pub use egui_shell::prefab::size_fields::SizeFieldSpans;
 pub use gang_form::{GangDraft, draft_to_roster, gang_file_name, gang_save_path_in};
 #[cfg(debug_assertions)]

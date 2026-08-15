@@ -17,7 +17,7 @@ fn is_ladder(
     slot: CellLevel,
 ) -> bool {
     map.tile_at_level(slot)
-        .is_some_and(|key| classify(registry, theme, &key) == EditorTileClass::Ladder)
+        .is_some_and(|piece| classify(registry, theme, &piece.tile()) == EditorTileClass::Ladder)
 }
 
 #[must_use]
@@ -28,7 +28,7 @@ fn is_slab(
     slot: CellLevel,
 ) -> bool {
     map.tile_at_level(slot)
-        .is_some_and(|key| classify(registry, theme, &key) == EditorTileClass::Slab)
+        .is_some_and(|piece| classify(registry, theme, &piece.tile()) == EditorTileClass::Slab)
 }
 
 #[must_use]
@@ -107,7 +107,7 @@ pub fn apply_placement(
             if let Some(slot) = auto_clear {
                 map.clear(slot);
             }
-            map.paint_at(placement.slot(), placement.tile(), size)
+            map.paint_at(placement.slot(), placement.tile(), placement.facing(), size)
         }
     }
 }
