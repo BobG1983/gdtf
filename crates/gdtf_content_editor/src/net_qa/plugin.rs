@@ -110,9 +110,7 @@ fn serve(app: &mut App, listener: TcpListener, timeouts: NetTimeouts) {
     );
     app.add_systems(
         Update,
-        route_editor_requests
-            .in_set(QaCommandSystems::Route)
-            .in_set(EditorNetQaSystems::Gather),
+        route_editor_requests.in_set(QaCommandSystems::Route),
     );
     register_editor_commands(app);
 }
