@@ -53,7 +53,7 @@ const SCRATCH = A?.scratch ?? `${JOB_TMP}/split-${TICKET}`
 const HOUSE = `House rules, all under \`${REPO}/.claude/rules/\` — read the ones you touch:
 - \`clause-writing.md\` — a clause says what changes, where, and what goes red if it is wrong.
 - \`plain-language.md\` — plain wording, shortest text that carries the information.
-- \`linear-discipline.md\` — cite a symbol or quote the text, never a bare line number.
+- \`linear-discipline.md\` — cite a symbol or quote the text, never a bare line number. Feature / Editor / Improvement that adds a player or author verb must include the MCP surface block; refuse a draft that lacks it.
 - \`design-fidelity.md\` — build exactly what is specified; never narrow a requirement to make it fit.
 - \`verification.md\` — the one definition of green.`
 
@@ -754,6 +754,8 @@ Canon: ${parent.canonPaths.join(', ')}. The full split is at \`${chosen.path}\`.
 
 Open the code and check every symbol and path you cite exists right now. Say what changes, where, and what goes red if it is wrong — \`${REPO}/.claude/rules/clause-writing.md\` is the list, and the audit checks against the same one.
 
+If this child adds a player or author verb, include the MCP surface block from \`${REPO}/.claude/rules/linear-discipline.md\`. A Feature / Editor / Improvement draft without that block is incomplete — do not emit it.
+
 Do not restate the parent. Do not claim scope this child does not own. Do not name a mutation that would go red for a reason other than the clause it belongs to.
 
 ${HOUSE}
@@ -774,7 +776,7 @@ Write the ticket text to \`${SCRATCH}/child-${child.key}.md\` and return the str
 ${CONTEXT}
 Canon: ${parent.canonPaths.join(', ')}.
 
-Open every file it cites and confirm the symbol is there now. Check each clause is buildable as written, names where the change goes, and names what goes red. Check nothing it claims contradicts the canon or the parent.
+Open every file it cites and confirm the symbol is there now. Check each clause is buildable as written, names where the change goes, and names what goes red. Check nothing it claims contradicts the canon or the parent. If the child adds a player or author verb, the MCP surface block must be present and name host, the verb, grow-or-add-or-none, and a drive path.
 
 Report findings only — you do not rewrite. Give each finding a stable id slug describing the defect, so the same defect reported twice carries the same id.`,
         { label: `audit-${child.key}-r${rounds}`, phase: 'Audit', schema: AUDIT, agentType: 'clause-audit' },

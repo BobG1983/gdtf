@@ -165,3 +165,34 @@ superseded or canceled.
 Do not invent workspace labels (e.g. Enhancement, Chore, Easy, Refactor) for
 GDTF. Use Improvement, Hygiene, or Feature instead. If a real new label is
 needed, add it in Linear and document it in this section in the same change.
+
+## Player/author capability needs an MCP surface
+
+If a player or an author can newly do it, the matching host MCP can do it
+(game or editor). Linear issue templates do not apply through the Linear MCP
+we use — agents write the description; this block *is* the template.
+
+A **Feature**, **Editor**, or **Improvement** ticket that adds that capability
+is not filed without:
+
+```
+## MCP surface
+Host: game | editor | both | none
+What the player/author can newly do: …
+MCP: grow <existing command> | add <name> | none because <one line>
+Drive: the mcp__gdtf-qa path that proves it
+```
+
+`none` is for hygiene, sim-only, docs, or a bug that adds no new verb — and
+must say why. Blank is not `none`. Do not slap the `MCP` label on every
+feature; that label is for host / protocol / command-set work.
+
+Same ticket when you only grow an existing command (`offers`, `inspect`,
+`set_mode`). New command family: child under GTW-938, feature `blockedBy`
+that child; the feature is not Done while the child is open.
+
+Whoever files (project-manager, split-ticket, Linear MCP) refuses
+Feature / Editor / Improvement without the block. **design-gate:**
+VIOLATION if the ticket added a player/author verb with no MCP clause, or
+the code added an act/tab with no command. Live evidence is
+`mcp__gdtf-qa__*` only.
