@@ -56,9 +56,10 @@ A ticket has three parts and nothing else:
    `linear-discipline.md`. A line number rots; a ticket outlives it.
 3. **Done when.** What must be true, and what proves it.
 
-When the labels are Feature, Editor, or Improvement and the ticket adds a player
-or author verb, it also has the **MCP surface** block in `linear-discipline.md`.
-Refuse to file without it. `none because …` is allowed; a missing section is not.
+When the labels are `Feature`, `Editor`, or `Improvement` and the ticket adds a player
+or author verb, it **MUST HAVE** the **MCP surface** block, see `linear-discipline.md`.
+Refuse to file without it. `none because …` is allowed, but you **MUST** check it's valid 
+and honest; a missing section is **NOT** allowed.
 
 Cut anything that is not one of those three:
 

@@ -167,32 +167,25 @@ GDTF. Use Improvement, Hygiene, or Feature instead. If a real new label is
 needed, add it in Linear and document it in this section in the same change.
 
 ## Player/author capability needs an MCP surface
-
-If a player or an author can newly do it, the matching host MCP can do it
-(game or editor). Linear issue templates do not apply through the Linear MCP
-we use — agents write the description; this block *is* the template.
-
-A **Feature**, **Editor**, or **Improvement** ticket that adds that capability
-is not filed without:
+### MCP Block Format
 
 ```
 ## MCP surface
 Host: game | editor | both | none
 What the player/author can newly do: …
-MCP: grow <existing command> | add <name> | none because <one line>
+MCP: grow <existing command> | add <new command> | none because <one line>
 Drive: the mcp__gdtf-qa path that proves it
 ```
 
-`none` is for hygiene, sim-only, docs, or a bug that adds no new verb — and
-must say why. Blank is not `none`. Do not slap the `MCP` label on every
-feature; that label is for host / protocol / command-set work.
+### MCP Block Guiding Principles
+**0. If a ticket creates a capability a player or an author can newly do the matching host MCP **MUST** also be able to do it (game or editor).** 
+1. Favor new commands over growing existing commands
+2. Commands should be scoped to a screen/ganger/state so they're only available where they're valid
+3. Commands should return the minimal amount of informtion required (ie. a `list inventory` command takes a ganger, and returns only that gangers inventory, it does not return the inventory of every ganger)
+4. MCP commands **MUST** exist for anything a player or content creator could do
+5. Do not add the `MCP` label to every ticket that adds MCP capability, only those that target ONLY MCP functionality
+6. `none` is for hygiene, sim-only, docs, or a bug that adds no new verb — and
+must say why. Blank is not `none`.
+7. Filing a ticket without an MCP block, when that ticket is a `Feature`, `Editor` or `Improvement` ticket is a **VIOLATION** and must be refused.
 
-Same ticket when you only grow an existing command (`offers`, `inspect`,
-`set_mode`). New command family: child under GTW-938, feature `blockedBy`
-that child; the feature is not Done while the child is open.
-
-Whoever files (project-manager, split-ticket, Linear MCP) refuses
-Feature / Editor / Improvement without the block. **design-gate:**
-VIOLATION if the ticket added a player/author verb with no MCP clause, or
-the code added an act/tab with no command. Live evidence is
-`mcp__gdtf-qa__*` only.
+FOLLOWING LINEAR DISCIPLINE IS NOT OPTIONAL ALL OF THIS FILE MUST BE FOLLOWED WITHOUT DEVIATION

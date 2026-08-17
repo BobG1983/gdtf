@@ -754,7 +754,7 @@ Canon: ${parent.canonPaths.join(', ')}. The full split is at \`${chosen.path}\`.
 
 Open the code and check every symbol and path you cite exists right now. Say what changes, where, and what goes red if it is wrong — \`${REPO}/.claude/rules/clause-writing.md\` is the list, and the audit checks against the same one.
 
-If this child adds a player or author verb, include the MCP surface block from \`${REPO}/.claude/rules/linear-discipline.md\`. A Feature / Editor / Improvement draft without that block is incomplete — do not emit it.
+If this child adds a player or author verb, include the MCP surface block from \`${REPO}/.claude/rules/linear-discipline.md\`. A Feature / Editor / Improvement draft without that block is incomplete — **NEVER** omit it.
 
 Do not restate the parent. Do not claim scope this child does not own. Do not name a mutation that would go red for a reason other than the clause it belongs to.
 
