@@ -1,6 +1,6 @@
 use gdtf_battle_sim::{acts::MoveRequested, ganger::Direction, test_support::SituationBuilder};
 
-use super::harness::*;
+use super::{harness::*, support::set_tu};
 
 // === AC4 — the per-turn cap bites and resets next turn. With cap == 1, a watcher interrupts
 // at most once this turn, then reacts AGAIN after a turn boundary resets the counter. ===
@@ -72,9 +72,17 @@ fn ac4_the_per_turn_cap_bites_then_resets_next_turn() {
     let Some(enemy_now) = pos_of(&app, enemy) else {
         unreachable!("the enemy persists across the turn cycle");
     };
-    let away_x = (enemy_now.x + 3).min(player_watcher.x + 5);
+    set_tu(&mut app, enemy, 20);
+    let dest = {
+        let preferred = ground(player_watcher.x + 2, player_watcher.y + 1);
+        if preferred == enemy_now {
+            ground(player_watcher.x + 2, player_watcher.y - 1)
+        } else {
+            preferred
+        }
+    };
     app.world_mut()
-        .write_message(MoveRequested::new(enemy, ground(away_x, player_watcher.y)));
+        .write_message(MoveRequested::new(enemy, dest));
     run_until_walk_ends(&mut app, enemy);
     step(&mut app, 3);
     assert!(
