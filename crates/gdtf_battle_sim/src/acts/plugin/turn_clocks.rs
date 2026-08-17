@@ -32,6 +32,7 @@ pub(super) fn wire_turn_clocks(app: &mut App) {
             .after(dispatch_end_turn)
             .after(project_path_blocking)
             .before(dispatch_fire)
+            .before(dispatch_melee)
             .before(dispatch_reload)
             .before(dispatch_move)
             .in_set(SimSystems::Simulate),

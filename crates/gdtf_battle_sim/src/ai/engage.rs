@@ -17,16 +17,17 @@ use crate::{
     magazine::{FireActor, Magazine, can_fire},
     march::MarchGrids,
     tuning::CombatTuning,
-    weapon::{FireMode, FireModeSpec, Handedness},
+    weapon::{FightMode, FireMode, FireModeSpec, Handedness},
 };
 
 /// Lookup for the weapon an enemy is currently firing.
 #[derive(SystemParam)]
 pub struct WeaponLookup<'w, 's> {
-    wields:  WieldsQuery<'w, 's>,
-    weapons: Query<'w, 's, (&'static Magazine, &'static FireMode, &'static Handedness)>,
-    melee:   MeleeQuery<'w, 's>,
-    mounted: MountedQuery<'w, 's>,
+    wields:      WieldsQuery<'w, 's>,
+    weapons:     Query<'w, 's, (&'static Magazine, &'static FireMode, &'static Handedness)>,
+    fight_modes: Query<'w, 's, &'static FightMode>,
+    melee:       MeleeQuery<'w, 's>,
+    mounted:     MountedQuery<'w, 's>,
 }
 
 impl WeaponLookup<'_, '_> {
@@ -37,6 +38,16 @@ impl WeaponLookup<'_, '_> {
             |entity| self.melee.get(entity).is_ok(),
         )?;
         self.weapons.get(weapon).ok()
+    }
+
+    /// Fight mode on the melee weapon this enemy wields, when it has one.
+    pub(super) fn melee_fight_mode(&self, enemy: Entity) -> Option<&FightMode> {
+        let weapon = self
+            .wields
+            .get(enemy)
+            .ok()?
+            .melee_weapon(|entity| self.melee.get(entity).is_ok())?;
+        self.fight_modes.get(weapon).ok()
     }
 }
 
