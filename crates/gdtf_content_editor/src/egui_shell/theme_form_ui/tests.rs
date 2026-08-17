@@ -15,7 +15,6 @@ use gdtf_battle_sim::{
 use super::{autoload::resolve_autoload, load_theme_into_form};
 use crate::theme_form::ThemeDraft;
 
-
 fn theme_key(n: u128) -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0001_84c3_0000 + n))
 }
