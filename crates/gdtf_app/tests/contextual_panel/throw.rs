@@ -154,6 +154,57 @@ fn an_empty_magazine_does_not_offer_throw() {
 }
 
 #[test]
+fn switching_to_a_ganger_with_nothing_throwable_hides_throw() {
+    let mut app = battle_running_app();
+    let thrower = spawn_throw_actor(&mut app, 5, 5, 0, TrajectoryStyle::Arc);
+    let slugger = spawn_throw_actor(&mut app, 6, 6, 0, TrajectoryStyle::Straight);
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(thrower));
+    hover_cell(&mut app, 15, 15);
+    app.update();
+    assert!(
+        throw_visible(&mut app),
+        "sanity: the Arc wielder with a hovered cell offers Throw",
+    );
+
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(slugger));
+    hover_cell(&mut app, 15, 15);
+    app.update();
+    assert!(
+        !throw_visible(&mut app),
+        "the same hover must not keep Throw up after the selected ganger has nothing throwable",
+    );
+}
+
+#[test]
+fn emptying_the_magazine_hides_throw_while_hover_stays() {
+    let mut app = battle_running_app();
+    spawn_throw_actor_with_rounds(&mut app, 5, 5, 0, TrajectoryStyle::Arc, 1);
+    hover_cell(&mut app, 15, 15);
+    app.update();
+    assert!(
+        throw_visible(&mut app),
+        "sanity: a loaded Arc weapon with a hovered cell offers Throw",
+    );
+
+    let weapon = the_only::<TrajectoryStyle>(
+        &mut app,
+        "exactly one weapon must carry a TrajectoryStyle so emptying it is the offer the panel \
+         reads",
+    );
+    if let Ok(mut entity) = app.world_mut().get_entity_mut(weapon) {
+        entity.insert(magazine_of(0));
+    }
+    hover_cell(&mut app, 15, 15);
+    app.update();
+    assert!(
+        !throw_visible(&mut app),
+        "emptying the magazine must hide Throw even though the same cell stays hovered",
+    );
+}
+
+#[test]
 fn pressing_throw_emits_throw_grenade_requested_for_hovered_cell() {
     let mut app = battle_running_app();
     add_throw_probe(&mut app);

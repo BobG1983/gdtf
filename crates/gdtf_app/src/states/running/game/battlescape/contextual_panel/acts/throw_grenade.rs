@@ -39,13 +39,21 @@ pub(in crate::states::running::game::battlescape) struct ThrowReads<'w, 's> {
 }
 
 impl ThrowReads<'_, '_> {
-    /// The hovered cell, when the sim would allow this thrower to lob at it with `tu`.
-    fn throw_target(&self, actor: Entity, tu: Tu, tuning: &CombatTuning) -> Option<CellLevel> {
-        let hovered = self.inspect.as_ref()?.hovered()?;
-        let wields = self.wields.get(actor).ok()?;
-        let weapon = wields.ranged_weapon(|entity| self.melee.get(entity).is_ok())?;
-        let (style, magazine) = self.arms.get(weapon).ok()?;
-        (*can_throw_grenade(*style, magazine, &tu, tuning)).then_some(hovered)
+    fn hovered_cell(&self) -> Option<CellLevel> {
+        self.inspect.as_ref()?.hovered()
+    }
+
+    fn can_throw(&self, actor: Entity, tu: Tu, tuning: &CombatTuning) -> bool {
+        let Ok(wields) = self.wields.get(actor) else {
+            return false;
+        };
+        let Some(weapon) = wields.ranged_weapon(|entity| self.melee.get(entity).is_ok()) else {
+            return false;
+        };
+        let Ok((style, magazine)) = self.arms.get(weapon) else {
+            return false;
+        };
+        *can_throw_grenade(*style, magazine, &tu, tuning)
     }
 }
 
@@ -75,13 +83,13 @@ fn scan_throw(
     pool: Option<&Tu>,
     tuning: &CombatTuning,
 ) -> Option<(CellLevel, OfferPressable)> {
-    // Asking with the cost as the pool holds affordability true, so the other terms pick the target.
     let cost = throw_grenade_tu_cost(tuning);
-    let target = throw.throw_target(actor, cost, tuning)?;
+    if !throw.can_throw(actor, cost, tuning) {
+        return None;
+    }
+    let target = throw.hovered_cell()?;
     Some((
         target,
-        OfferPressable::new(
-            pool.is_some_and(|tu| throw.throw_target(actor, *tu, tuning).is_some()),
-        ),
+        OfferPressable::new(pool.is_some_and(|tu| throw.can_throw(actor, *tu, tuning))),
     ))
 }
