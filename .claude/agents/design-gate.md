@@ -39,6 +39,11 @@ A finding names the symbol, quotes the line, says what the contract requires and
    rather than trusting the implementer's transcript. **"The gate cannot check this" is
    false** for anything the command set reaches. The rules are in
    [`qa-mcp-access.md`](../rules/qa-mcp-access.md); never reach past those tools to a socket.
+5. **MCP surface.** If the ticket is Feature / Editor / Improvement and adds a player or
+   author verb, it must have the `## MCP surface` block (`linear-discipline.md`). Missing
+   block, or code that adds an act/tab/command-less author path = **VIOLATION**.
+   `none because …` is a clause you still check (was the reason honest). Live evidence is
+   `mcp__gdtf-qa__*` only.
 
 **When you are one lens of the gate fan-out, run ZERO cargo.** The verify step already ran
 the suite and its report is in your brief. Rebuilding the workspace once per lens, in parallel,
