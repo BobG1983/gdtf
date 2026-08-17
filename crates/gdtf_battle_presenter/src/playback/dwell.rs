@@ -100,12 +100,11 @@ dwell_seconds!(
     ImpactCapSeconds,
     2.00,
     "The HARD upper bound on how long the cursor will wait for a round's projectile to fly \
-     and land.\n\nA backstop, not a dwell: the projectile spawner legitimately spawns NO \
-     bolt when its effects sheet is missing or too short, and a hot-reloadable projectile \
-     velocity of zero would leave a bolt in flight forever. Without this cap either case \
-     would hold the cursor — and therefore the input gate — indefinitely, with no in-battle \
-     quit key to escape it. `2.0` comfortably exceeds a full-diagonal shot's flight time at \
-     the shipped velocity, so it never truncates a real bolt."
+     and land.\n\nA backstop, not a dwell: a hot-reloadable projectile velocity of zero \
+     would leave a bolt in flight forever. Without this cap that case would hold the \
+     cursor — and therefore the input gate — indefinitely, with no in-battle quit key to \
+     escape it. `2.0` comfortably exceeds a full-diagonal shot's flight time at the shipped \
+     velocity, so it never truncates a real bolt."
 );
 
 /// All playback dwell timings, hot-loaded from RON.

@@ -52,13 +52,14 @@ Destruction is in scope: cover, wall and slab, and whatever replaces a destroyed
 **Why it is load-bearing:** the sim resolves a whole act while playback is still animating
 the one before it. A system that reads the sim directly is not slightly early, it is an
 arbitrary number of acts early, and it fails silently — nothing errors when a wall breaks
-before the shot that broke it. GTW-889 was this bug for floating combat text and death
-ordering; GTW-937 is the same bug for destruction.
+before the shot that broke it. GTW-888 was this bug for hit floating combat text
+on the shot path; GTW-889 was consequence text and death ordering; GTW-937 is the
+same bug for destruction.
 
 **Code sites:** `crates/gdtf_battle_presenter/src/playback/`.
 `crates/gdtf_battle_presenter/src/actors/fx/fct/stacked_reader.rs` is the worked example —
-it reads the played fact rather than the sim's buffer. **Enforced by review, not by a
-test:** nothing in the suite goes red when a new system reads the raw buffer.
+it reads the played fact rather than the sim's buffer. The shot path is pinned the same
+way: a raw `ShotFired` pops no hit text. Other raw buffers are still enforced by review.
 
 ## The sim answers whether an act may happen
 
