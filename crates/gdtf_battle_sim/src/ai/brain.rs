@@ -1,4 +1,4 @@
-//! Enemy turn brain: fire if possible, else reload an empty mag, else advance, else end turn.
+//! Enemy turn brain: fire if possible, else reload, else melee, else advance, else end turn.
 
 use bevy::prelude::{Entity, Res};
 
@@ -11,12 +11,15 @@ use super::{
 };
 use crate::{
     acts::{
-        EndTurnRequested, FireRequested, MoveRequested, ReloadRequested, can_reload,
+        EndTurnRequested, FireRequested, MeleeAttacker, MeleeReach, MeleeRequested, MoveRequested,
+        ReloadRequested, can_melee, can_reload, melee_tu_cost,
         movement::{BreakAwayMover, suppressed_move_legal},
     },
     battle::PlayerFaction,
     ganger::LifeState,
+    los::{Observer, PeekOffset, Target, has_los},
     magazine::{Magazine, mode_tu_cost},
+    tu::can_spend_tu,
     turn::ActiveFaction,
     visibility::OmniscientFog,
     weapon::Handedness,
@@ -62,6 +65,56 @@ fn plan_reload(enemy: &GangerRow, weapons: &WeaponLookup) -> Option<ReloadReques
     (*can_reload(enemy.life, &enemy.tu, magazine)).then(|| ReloadRequested::new(enemy.entity))
 }
 
+// Adjacent living foe in LOS the sim would accept, as a melee request.
+fn plan_melee(
+    enemy: &GangerRow,
+    targets: &[GangerRow],
+    weapons: &WeaponLookup,
+    grids: &AiPlanningGrids,
+    is_dead: &impl Fn(Entity) -> bool,
+) -> Option<MeleeRequested> {
+    let fight_mode = weapons.melee_fight_mode(enemy.entity)?;
+    let cost = melee_tu_cost(fight_mode);
+    if !*can_spend_tu(&enemy.tu, cost) {
+        return None;
+    }
+    let attacker = MeleeAttacker::new(enemy.position, enemy.faction);
+    let observer = Observer {
+        position:         &enemy.position,
+        stance:           &enemy.stance,
+        facing:           &enemy.facing,
+        stair_eye_offset: grids.march().occupancy.stair_eye_offset_at(&enemy.position),
+        peek_offset:      PeekOffset::default(),
+    };
+    let mut swingable: Vec<AiTarget> = Vec::new();
+    for target in targets {
+        let reach = MeleeReach::ganger(target.position, target.faction, target.life);
+        if !*can_melee(attacker, reach) {
+            continue;
+        }
+        let los_target = Target {
+            position: &target.position,
+            stance:   &target.stance,
+        };
+        if !*has_los(
+            &observer,
+            &los_target,
+            grids.march(),
+            grids.tuning(),
+            is_dead,
+        ) {
+            continue;
+        }
+        swingable.push(AiTarget::new(
+            target.entity,
+            target.position.cell(),
+            target.position.level(),
+        ));
+    }
+    let picked = pick_nearest(enemy.position.cell(), enemy.position.level(), &swingable)?;
+    Some(MeleeRequested::new(enemy.entity, picked.entity))
+}
+
 // One step closer to the nearest target, as a move request the sim will not turn down.
 fn plan_step(
     enemy: &GangerRow,
@@ -89,7 +142,7 @@ fn plan_step(
     Some(MoveRequested::new(enemy.entity, dest))
 }
 
-/// One enemy acts: shoot, reload an empty mag, move closer, or end the turn.
+/// One enemy acts: shoot, reload, melee, move closer, or end the turn.
 pub fn enemy_ai_turn(
     active: Res<ActiveFaction>,
     player: Option<Res<PlayerFaction>>,
@@ -146,6 +199,12 @@ pub fn enemy_ai_turn(
 
         if let Some(reload) = plan_reload(enemy, &weapon_lookup) {
             orders.reload.write(reload);
+            acted = true;
+            break;
+        }
+
+        if let Some(swing) = plan_melee(enemy, &targets, &weapon_lookup, &grids, is_dead) {
+            orders.melee.write(swing);
             acted = true;
             break;
         }

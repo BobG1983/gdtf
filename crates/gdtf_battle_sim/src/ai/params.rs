@@ -6,7 +6,9 @@ use bevy::{
 };
 
 use crate::{
-    acts::{EndTurnRequested, FireRequested, MoveRequested, ReloadRequested, SightWorld},
+    acts::{
+        EndTurnRequested, FireRequested, MeleeRequested, MoveRequested, ReloadRequested, SightWorld,
+    },
     cover::CoverLedger,
     march::MarchGrids,
     occupancy::OccupancyGrid,
@@ -69,6 +71,7 @@ impl AiPlanningGrids<'_> {
 pub struct AiActRequests<'w> {
     pub(super) fire:     MessageWriter<'w, FireRequested>,
     pub(super) reload:   MessageWriter<'w, ReloadRequested>,
+    pub(super) melee:    MessageWriter<'w, MeleeRequested>,
     pub(super) step:     MessageWriter<'w, MoveRequested>,
     pub(super) end_turn: MessageWriter<'w, EndTurnRequested>,
 }

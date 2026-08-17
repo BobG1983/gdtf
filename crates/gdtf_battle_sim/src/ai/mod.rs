@@ -1,4 +1,4 @@
-//! Enemy turn AI: snapshot, target pick, advance, engage, reload.
+//! Enemy turn AI: snapshot, target pick, advance, engage, reload, melee.
 
 mod advance;
 mod brain;

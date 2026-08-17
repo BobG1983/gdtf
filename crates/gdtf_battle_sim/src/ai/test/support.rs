@@ -4,14 +4,14 @@ pub(super) use crate::{
     acts::{FireRequested, MoveRequested, SimActsPlugin},
     cover::HeightBand,
     ganger::{
-        Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stance,
+        Aiming, Direction, Facing, Faction, Fight, Hp, LifeState, Luck, Position, Shooting, Stance,
         StanceKind, Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::InflictedWounds,
     magazine::{LoadedRounds, Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
-    rng::BattleSeed,
+    rng::{BattleSeed, FightRng},
     test_support::insert_sim_resources,
     turn::ActiveFaction,
     visibility::{OmniscientFog, SquadVisibility},
@@ -35,6 +35,7 @@ pub(super) fn brain_app() -> App {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(SimActsPlugin);
     insert_sim_resources(&mut app, BattleSeed::new(SEED));
+    app.insert_resource(FightRng::from_root(BattleSeed::new(SEED)));
     let omniscient = SquadVisibility::omniscient(&OccupancyGrid::new());
     app.insert_resource(omniscient.clone());
     app.insert_resource(OmniscientFog::new(omniscient));
@@ -89,6 +90,7 @@ pub(super) fn spawn_combatant(
             Stance::new(StanceKind::Standing),
             Aiming::new(false),
             Shooting::new(1.0),
+            Fight::new(1.0),
             Tu::new(tu),
             TuMax::new(tu),
             faction,
@@ -150,6 +152,7 @@ pub(super) fn spawn_combatant_handed(
             Stance::new(StanceKind::Standing),
             Aiming::new(false),
             Shooting::new(1.0),
+            Fight::new(1.0),
             Tu::new(100),
             TuMax::new(100),
             faction,
