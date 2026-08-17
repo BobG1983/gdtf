@@ -15,7 +15,7 @@ use crate::states::running::game::battlescape::contextual_panel::seam::{
 };
 
 crate::support_item! {
-    /// Contextual button that throws a grenade at the inspected cell.
+    /// Contextual button that throws a grenade at the last inspected cell.
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ThrowGrenadeButton;
 }
@@ -69,12 +69,16 @@ pub(in crate::states::running::game::battlescape) fn offer_throw_grenade(
     let scanned = (**selected)
         .and_then(|actor| actors.get(actor).ok().map(|tu| (actor, tu)))
         .zip(tuning.as_deref())
-        .and_then(|((actor, pool), tuning)| scan_throw(&throw, actor, pool, tuning));
-    let (target, pressable) = scanned
-        .map_or((None, OfferPressable::new(false)), |(target, pressable)| {
-            (Some(target), pressable)
+        .and_then(|((actor, pool), tuning)| {
+            scan_throw(&throw, actor, pool, tuning, offer.target())
         });
-    offer.set_if_neq(ContextualOffer::new(target).with_pressable(pressable));
+    let next = match scanned {
+        Some((target, pressable)) => ContextualOffer::new(target)
+            .with_offered(true)
+            .with_pressable(pressable),
+        None => ContextualOffer::new(None).with_pressable(OfferPressable::new(false)),
+    };
+    offer.set_if_neq(next);
 }
 
 fn scan_throw(
@@ -82,14 +86,14 @@ fn scan_throw(
     actor: Entity,
     pool: Option<&Tu>,
     tuning: &CombatTuning,
-) -> Option<(CellLevel, OfferPressable)> {
+    last_target: Option<CellLevel>,
+) -> Option<(Option<CellLevel>, OfferPressable)> {
     let cost = throw_grenade_tu_cost(tuning);
     if !throw.can_throw(actor, cost, tuning) {
         return None;
     }
-    let target = throw.hovered_cell()?;
     Some((
-        target,
+        throw.hovered_cell().or(last_target),
         OfferPressable::new(pool.is_some_and(|tu| throw.can_throw(actor, *tu, tuning))),
     ))
 }

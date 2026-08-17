@@ -1,4 +1,4 @@
-//! `act.throw_grenade` over a real socket: with no cell hovered the panel offers nothing.
+//! `act.throw_grenade` over a real socket: with no cell on offer the command refuses.
 
 use bevy::app::App;
 use gdtf_app::qa_wire::act::ActRefusalNet;
@@ -35,8 +35,8 @@ fn throwing_a_grenade_refuses_with_no_offer_while_no_cell_is_hovered() -> TestRe
     assert_eq!(
         reason,
         ActRefusalNet::NoOffer,
-        "the throw offer starts from the hovered cell, so a shooter with nothing hovered is \
-         offered nothing and the command refuses rather than picking a cell of its own",
+        "the command throws at the cell the panel is offering, so a shooter with no cell on \
+         offer is refused rather than inventing a landing cell",
     );
     Ok(())
 }

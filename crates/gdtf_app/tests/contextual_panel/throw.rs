@@ -13,13 +13,13 @@ use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed
 use super::{actors::*, harness::*};
 
 /// What one throw would charge, taken from the sim's own cost helper against the live tuning.
-fn throw_cost(app: &App) -> Tu {
+pub(super) fn throw_cost(app: &App) -> Tu {
     app.world()
         .get_resource::<CombatTuning>()
         .map_or_else(|| Tu::new(0), throw_grenade_tu_cost)
 }
 
-fn spawn_throw_actor(
+pub(super) fn spawn_throw_actor(
     app: &mut App,
     x: i32,
     y: i32,
@@ -29,7 +29,7 @@ fn spawn_throw_actor(
     spawn_throw_actor_with_rounds(app, x, y, gang, trajectory, 1)
 }
 
-fn spawn_throw_actor_with_rounds(
+pub(super) fn spawn_throw_actor_with_rounds(
     app: &mut App,
     x: i32,
     y: i32,
@@ -48,7 +48,7 @@ fn spawn_throw_actor_with_rounds(
     actor
 }
 
-fn hover_cell(app: &mut App, x: i32, y: i32) {
+pub(super) fn hover_cell(app: &mut App, x: i32, y: i32) {
     app.world_mut()
         .insert_resource(InspectTarget::new(Some(CellLevel::new(
             Cell::new(x, y),
@@ -56,11 +56,15 @@ fn hover_cell(app: &mut App, x: i32, y: i32) {
         ))));
 }
 
-fn throw_visible(app: &mut App) -> bool {
+pub(super) fn clear_hover(app: &mut App) {
+    app.world_mut().insert_resource(InspectTarget::new(None));
+}
+
+pub(super) fn throw_visible(app: &mut App) -> bool {
     visibility::<ThrowGrenadeButton>(app) == Some(Visibility::Visible)
 }
 
-fn add_throw_probe(app: &mut App) {
+pub(super) fn add_throw_probe(app: &mut App) {
     app.init_resource::<MessageProbe<ThrowGrenadeRequested>>();
     app.add_systems(
         Update,
@@ -68,8 +72,15 @@ fn add_throw_probe(app: &mut App) {
     );
 }
 
-fn throws(app: &App) -> Vec<ThrowGrenadeRequested> {
+pub(super) fn throws(app: &App) -> Vec<ThrowGrenadeRequested> {
     probed::<ThrowGrenadeRequested>(app)
+}
+
+pub(super) fn the_throw_button(app: &mut App) -> Entity {
+    the_only::<ThrowGrenadeButton>(
+        app,
+        "the panel must offer exactly one Throw button to press",
+    )
 }
 
 #[test]
@@ -98,7 +109,7 @@ fn arc_weapon_and_hovered_cell_offers_throw() {
 }
 
 #[test]
-fn straight_weapon_or_no_hover_does_not_offer_throw() {
+fn a_straight_weapon_does_not_offer_throw() {
     let mut app = battle_running_app();
     spawn_throw_actor(&mut app, 5, 5, 0, TrajectoryStyle::Straight);
     hover_cell(&mut app, 15, 15);
@@ -108,15 +119,7 @@ fn straight_weapon_or_no_hover_does_not_offer_throw() {
         "a Straight-trajectory weapon offers NO throw even with a cell hovered (button hidden)",
     );
 
-    let actor = spawn_throw_actor(&mut app, 6, 6, 0, TrajectoryStyle::Arc);
-    app.world_mut().insert_resource(InspectTarget::new(None));
-    app.update();
-    assert!(
-        !throw_visible(&mut app),
-        "an Arc weapon with NOTHING hovered offers NO throw (no target cell, button hidden)",
-    );
-
-    let _ = actor;
+    let _ = spawn_throw_actor(&mut app, 6, 6, 0, TrajectoryStyle::Arc);
     hover_cell(&mut app, 20, 20);
     app.update();
     assert!(
@@ -217,10 +220,7 @@ fn pressing_throw_emits_throw_grenade_requested_for_hovered_cell() {
         throw_visible(&mut app),
         "sanity: the Throw button is offered before the press",
     );
-    let throw_btn = the_only::<ThrowGrenadeButton>(
-        &mut app,
-        "the panel must offer exactly one Throw button to press",
-    );
+    let throw_btn = the_throw_button(&mut app);
 
     hover_cell(&mut app, 15, 15);
     press_ui_button(&mut app, throw_btn);

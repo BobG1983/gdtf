@@ -67,6 +67,7 @@ impl OfferPressable {
 pub(crate) struct ContextualOffer<A: ContextualAct> {
     target:    Option<A::Target>,
     pressable: OfferPressable,
+    offered:   bool,
 }
 
 impl<A: ContextualAct> Default for ContextualOffer<A> {
@@ -74,23 +75,27 @@ impl<A: ContextualAct> Default for ContextualOffer<A> {
         Self {
             target:    None,
             pressable: OfferPressable::new(true),
+            offered:   false,
         }
     }
 }
 
 impl<A: ContextualAct> PartialEq for ContextualOffer<A> {
     fn eq(&self, other: &Self) -> bool {
-        self.target == other.target && self.pressable == other.pressable
+        self.target == other.target
+            && self.pressable == other.pressable
+            && self.offered == other.offered
     }
 }
 
 impl<A: ContextualAct> ContextualOffer<A> {
-    /// An offer the panel shows as pressable.
+    /// An offer the panel shows as pressable. Shown when `target` is `Some`.
     #[must_use]
     pub(crate) const fn new(target: Option<A::Target>) -> Self {
         Self {
             target,
             pressable: OfferPressable::new(true),
+            offered: target.is_some(),
         }
     }
 
@@ -100,6 +105,17 @@ impl<A: ContextualAct> ContextualOffer<A> {
         Self {
             target: self.target,
             pressable,
+            offered: self.offered,
+        }
+    }
+
+    /// Show or hide the button without requiring a target this frame.
+    #[must_use]
+    pub(crate) const fn with_offered(self, offered: bool) -> Self {
+        Self {
+            target: self.target,
+            pressable: self.pressable,
+            offered,
         }
     }
 
@@ -115,6 +131,6 @@ impl<A: ContextualAct> ContextualOffer<A> {
 
     #[must_use]
     pub(crate) const fn is_offered(&self) -> bool {
-        self.target.is_some()
+        self.offered
     }
 }

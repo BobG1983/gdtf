@@ -505,15 +505,20 @@ ask `can_spend_tu`. Either way the bit is
 the sim's answer about affordability, shown on a button — and, for melee, its answer about
 whether the actor wields a melee weapon to price a strike with at all.
 
-`act.throw_grenade` is the one that needs more than a selection: its offer scan reads the
-hovered cell, and it only offers while the shooter wields an arcing ranged weapon —
+`act.throw_grenade` is the one that needs more than a selection: the panel offers
+the button while the shooter wields an arcing ranged weapon, and a press aims at
+the last cell the cursor hovered —
 [`crates/gdtf_app/tests/contextual_panel/throw.rs`](../../crates/gdtf_app/tests/contextual_panel/throw.rs)
-pins both halves, and pins that a press aims at the hovered cell. On a host with a primary
+and
+[`crates/gdtf_app/tests/contextual_panel/throw_hover.rs`](../../crates/gdtf_app/tests/contextual_panel/throw_hover.rs)
+pin both halves, and pin that a press after the hover leaves the map still aims
+at that last cell. On a host with a primary
 window the drive is `input.hover`, then `battle.offers` to see which cell came out, then
 `act.throw_grenade`. Each of those lands on its own frame, which is what makes it work:
 `ContextualPanelSystems::Offer` is ordered *before* `pick_hovered_cell`, so within any one
 frame the offer scan reads the cell the frame before resolved, never the pixel that arrived
-this frame. With nothing hovered — including every host built without a primary window — the
+this frame. With no cell on offer — including every host built without a primary window,
+until a fixture holds a hover — the
 command refuses `NoOffer`.
 
 They are `Immediate`, they need the same `Running` plus `Caught` state the classic acts need,

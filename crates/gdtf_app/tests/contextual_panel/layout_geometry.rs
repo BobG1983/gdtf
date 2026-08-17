@@ -35,8 +35,24 @@ fn hover_cell(app: &mut App, x: i32, y: i32) {
         ))));
 }
 
-fn clear_hover(app: &mut App) {
-    app.world_mut().insert_resource(InspectTarget::new(None));
+fn empty_the_magazine(app: &mut App) {
+    let weapon = the_only::<TrajectoryStyle>(
+        app,
+        "exactly one weapon must carry a TrajectoryStyle so emptying it hides Throw",
+    );
+    if let Ok(mut entity) = app.world_mut().get_entity_mut(weapon) {
+        entity.insert(magazine_of(0));
+    }
+}
+
+fn load_the_magazine(app: &mut App) {
+    let weapon = the_only::<TrajectoryStyle>(
+        app,
+        "exactly one weapon must carry a TrajectoryStyle so loading it shows Throw",
+    );
+    if let Ok(mut entity) = app.world_mut().get_entity_mut(weapon) {
+        entity.insert(magazine_of(1));
+    }
 }
 
 struct PixelRect {
@@ -153,7 +169,7 @@ fn contextual_panel_updates_mutate_in_place() {
         "a shown button reserves its layout row (Display::Flex)",
     );
 
-    clear_hover(&mut app);
+    empty_the_magazine(&mut app);
     app.update();
     assert_eq!(
         single_with::<ContextualPanelRoot>(&mut app),
@@ -176,7 +192,7 @@ fn contextual_panel_updates_mutate_in_place() {
         "a hidden button COLLAPSES its layout row (Display::None) so the column stays in the bar",
     );
 
-    hover_cell(&mut app, 15, 15);
+    load_the_magazine(&mut app);
     app.update();
     assert_eq!(
         single_with::<ContextualPanelRoot>(&mut app),
