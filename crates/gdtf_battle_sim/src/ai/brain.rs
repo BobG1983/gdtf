@@ -1,4 +1,4 @@
-//! Enemy turn brain: fire if possible, else advance, else end turn.
+//! Enemy turn brain: fire if possible, else reload an empty mag, else advance, else end turn.
 
 use bevy::prelude::{Entity, Res};
 
@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{
     acts::{
-        EndTurnRequested, FireRequested, MoveRequested,
+        EndTurnRequested, FireRequested, MoveRequested, ReloadRequested, can_reload,
         movement::{BreakAwayMover, suppressed_move_legal},
     },
     battle::PlayerFaction,
@@ -53,6 +53,15 @@ fn plan_shot(
     ))
 }
 
+// Empty mag, same `can_reload` gate the player dispatch uses, as a reload request.
+fn plan_reload(enemy: &GangerRow, weapons: &WeaponLookup) -> Option<ReloadRequested> {
+    let (magazine, ..) = weapons.firing(enemy.entity)?;
+    if !*magazine.is_empty() {
+        return None;
+    }
+    (*can_reload(enemy.life, &enemy.tu, magazine)).then(|| ReloadRequested::new(enemy.entity))
+}
+
 // One step closer to the nearest target, as a move request the sim will not turn down.
 fn plan_step(
     enemy: &GangerRow,
@@ -80,7 +89,7 @@ fn plan_step(
     Some(MoveRequested::new(enemy.entity, dest))
 }
 
-/// One enemy acts: shoot an engageable target, move closer, or end the turn.
+/// One enemy acts: shoot, reload an empty mag, move closer, or end the turn.
 pub fn enemy_ai_turn(
     active: Res<ActiveFaction>,
     player: Option<Res<PlayerFaction>>,
@@ -131,6 +140,12 @@ pub fn enemy_ai_turn(
 
         if let Some(shot) = plan_shot(enemy, &targets, &weapon_lookup, &grids, is_dead) {
             orders.fire.write(shot);
+            acted = true;
+            break;
+        }
+
+        if let Some(reload) = plan_reload(enemy, &weapon_lookup) {
+            orders.reload.write(reload);
             acted = true;
             break;
         }
