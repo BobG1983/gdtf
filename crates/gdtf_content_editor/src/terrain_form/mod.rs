@@ -2,6 +2,7 @@
 mod draft;
 mod error;
 mod inputs;
+mod load;
 mod picks;
 mod save;
 

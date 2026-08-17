@@ -116,4 +116,13 @@ impl FootfallChoice {
             Self::Grate => Some(FootfallSound::new("footfall_grate".to_owned())),
         }
     }
+
+    /// Inverse of [`Self::footfall`].
+    #[must_use]
+    pub fn from_sound(sound: Option<&FootfallSound>) -> Self {
+        Self::ALL
+            .into_iter()
+            .find(|choice| choice.footfall().as_ref() == sound)
+            .unwrap_or(Self::None)
+    }
 }

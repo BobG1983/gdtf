@@ -5,6 +5,7 @@ use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
+    effects::on_death::OnDeathEffect,
     slab::SlabHp,
     terrain::def::{LosBlocking, TerrainTag, TerrainUuid},
     weapon::WeaponName,
@@ -13,7 +14,7 @@ use gdtf_battle_sim::{
 use super::picks::{FootfallChoice, TerrainKindChoice};
 
 /// In-progress terrain def being authored.
-#[derive(Resource, Clone, Debug, PartialEq, Eq)]
+#[derive(Resource, Clone, Debug, PartialEq)]
 pub struct TerrainDraft {
     display_name:     String,
     kind:             TerrainKindChoice,
@@ -28,6 +29,7 @@ pub struct TerrainDraft {
     tags:             Vec<TerrainTag>,
     blocks_pathing:   Option<bool>,
     blocks_los:       Option<LosBlocking>,
+    on_death:         Option<OnDeathEffect>,
     uuid:             Option<TerrainUuid>,
 }
 
@@ -173,6 +175,11 @@ impl TerrainDraft {
         }
     }
 
+    /// Replace the selected tags.
+    pub fn replace_tags(&mut self, tags: Vec<TerrainTag>) {
+        self.tags = tags;
+    }
+
     /// Optional pathing override.
     #[must_use]
     pub const fn blocks_pathing(&self) -> Option<bool> {
@@ -195,10 +202,31 @@ impl TerrainDraft {
         self.blocks_los = blocks_los;
     }
 
+    /// On-death effect, if authored.
+    #[must_use]
+    pub const fn on_death(&self) -> Option<&OnDeathEffect> {
+        self.on_death.as_ref()
+    }
+
+    /// Set the on-death effect.
+    pub fn set_on_death(&mut self, on_death: Option<OnDeathEffect>) {
+        self.on_death = on_death;
+    }
+
+    /// Mutable on-death effect for the form.
+    pub const fn on_death_mut(&mut self) -> &mut Option<OnDeathEffect> {
+        &mut self.on_death
+    }
+
     /// Assigned terrain uuid, if any.
     #[must_use]
     pub const fn uuid(&self) -> Option<TerrainUuid> {
         self.uuid
+    }
+
+    /// Assign a terrain uuid.
+    pub const fn set_uuid(&mut self, uuid: Option<TerrainUuid>) {
+        self.uuid = uuid;
     }
 
     /// Ensure a uuid exists and return it.
@@ -223,6 +251,7 @@ impl Default for TerrainDraft {
             tags:             Vec::new(),
             blocks_pathing:   None,
             blocks_los:       None,
+            on_death:         None,
             uuid:             None,
         }
     }
