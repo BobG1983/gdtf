@@ -3,7 +3,7 @@ use bevy::prelude::{App, IntoScheduleConfigs, Update, resource_exists};
 use crate::{
     acts::{
         downed::dispatch_stabilize_downed, fire::dispatch_fire, injury::apply_injury,
-        melee::dispatch_melee, movement::dispatch_move,
+        melee::dispatch_melee, movement::dispatch_move, reload::dispatch_reload,
     },
     ai::enemy_ai_turn,
     effects::{
@@ -32,6 +32,7 @@ pub(super) fn wire_turn_clocks(app: &mut App) {
             .after(dispatch_end_turn)
             .after(project_path_blocking)
             .before(dispatch_fire)
+            .before(dispatch_reload)
             .before(dispatch_move)
             .in_set(SimSystems::Simulate),
     );
