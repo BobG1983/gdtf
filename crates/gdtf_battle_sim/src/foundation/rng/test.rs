@@ -204,7 +204,7 @@ fn sim_src_has_no_global_or_implicit_entropy_source() {
     let src_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut files = Vec::new();
     rs_files(&src_root, &mut files);
-    assert!(!files.is_empty());
+    assert_ne!(files, Vec::<std::path::PathBuf>::new());
 
     for file in &files {
         let Ok(contents) = fs::read_to_string(file) else {
