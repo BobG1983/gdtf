@@ -36,6 +36,16 @@ pub(crate) const TARGET_PX: u32 = 16;
 /// Frames the hand-inserted scene needs to extract, prepare and draw — per-frame work, no IO.
 const SCENE_SETTLE_FRAMES: u32 = 8;
 
+/// Copies to wait after Readback is spawned. A first copy can be the clear color.
+const DRAW_WAIT_FRAMES: u32 = 64;
+
+/// Camera clear — RGB must match `Color::srgb(1.0, 0.0, 1.0)` on the test camera.
+const CLEAR_RGB: [u8; 3] = [255, 0, 255];
+
+fn sampled_clear(rgba: [u8; 4]) -> bool {
+    rgba[..3] == CLEAR_RGB
+}
+
 pub(crate) fn solid_image(rgba: [u8; 4]) -> Image {
     let data: Vec<u8> = rgba.iter().copied().cycle().take(4 * 2 * 2).collect();
     Image::new(
@@ -171,10 +181,25 @@ pub(crate) fn render_and_read(
             },
         );
 
-    while !app.world().resource::<CapturedPixel>().captured {
+    let mut frames = 0_u32;
+    loop {
+        let pixel = *app.world().resource::<CapturedPixel>();
+        if pixel.captured && !sampled_clear(pixel.rgba) {
+            return Some(pixel.rgba);
+        }
+        if frames >= DRAW_WAIT_FRAMES {
+            assert!(
+                pixel.captured,
+                "GPU readback never completed after {frames} frames"
+            );
+            assert!(
+                !sampled_clear(pixel.rgba),
+                "mesh never drew: readback is camera clear {:?} after {frames} frames",
+                pixel.rgba
+            );
+            return Some(pixel.rgba);
+        }
         app.update();
+        frames += 1;
     }
-
-    let captured = *app.world().resource::<CapturedPixel>();
-    Some(captured.rgba)
 }
