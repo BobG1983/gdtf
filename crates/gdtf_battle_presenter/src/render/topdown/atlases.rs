@@ -103,6 +103,15 @@ impl TopDownAtlases {
         self.sheets.get(&role)
     }
 
+    /// An atlas table with no sheets loaded.
+    #[must_use]
+    #[cfg(test)]
+    pub(crate) fn empty() -> Self {
+        Self {
+            sheets: HashMap::default(),
+        }
+    }
+
     /// Which sheet role owns this image asset id.
     #[must_use]
     pub fn sheet_role_for_image(&self, id: AssetId<Image>) -> Option<SheetRole> {

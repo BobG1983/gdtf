@@ -68,7 +68,9 @@ classifier (`crates/gdtf_battle_presenter/src/actors/fx/fct/reader/`) and the
 fall FX reader — see the palette rustdoc for why. Both now claim their stacking
 slot from the SAME lifetime-aware allocator as the palette families, but they
 remain their own separate readers — they are not merged into the generic
-consequence-family dispatch.
+consequence-family dispatch. Shot pops are classified when the played shot
+spawns its bolt, and they appear when that bolt lands — not when the sim writes
+`ShotFired`, and not on the drain frame.
 
 ---
 

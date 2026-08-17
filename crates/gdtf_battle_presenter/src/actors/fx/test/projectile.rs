@@ -10,17 +10,24 @@ use bevy::{
     time::TimeUpdateStrategy,
 };
 use gdtf_battle_sim::{
-    prelude::{Cell, Level},
+    prelude::{Cell, Level, SimPos},
+    resolve_and_apply::HitReport,
+    resolve_coarse::ShotKind,
+    sample_cone::ShotDir,
+    shot_fired::ShotFired,
     weapon::DamageType,
 };
 
 use super::super::{
     projectile::{
         PendingImpact, ProjectileTravel, ShotProjectile, advance_projectiles,
+        spawn_shot_projectiles,
         travel::{ImpactPayload, ProjectileFlight},
     },
-    tuning::{InterShotSeconds, ProjectileVelocity},
+    roles::{DIRECTION_COUNT, DamageTypeFx, EffectRoles, IMPACT_FRAME_COUNT},
+    tuning::{FxTuning, InterShotSeconds, ProjectileVelocity},
 };
+use crate::{FloatingCombatText, GangerSprites, Played, TileIndex, TopDownAtlases};
 
 const TEST_VELOCITY: f32 = ProjectileVelocity::DEFAULT;
 
@@ -198,5 +205,69 @@ fn staggered_round_holds_at_the_muzzle_until_its_launch_delay_elapses() {
     assert!(
         bolt.launched(),
         "once its launch delay elapses the round must launch (leave the muzzle)",
+    );
+}
+
+fn stub_roles() -> EffectRoles {
+    let block = DamageTypeFx {
+        directions: [TileIndex::new(0); DIRECTION_COUNT],
+        impact:     [TileIndex::new(0); IMPACT_FRAME_COUNT],
+    };
+    EffectRoles {
+        bleed:           TileIndex::new(0),
+        armor_break:     TileIndex::new(0),
+        cover_destroyed: TileIndex::new(0),
+        melee_strike:    TileIndex::new(0),
+        fall_impact:     TileIndex::new(0),
+        orange:          block.clone(),
+        blue:            block.clone(),
+        green:           block.clone(),
+        purple:          block,
+    }
+}
+
+#[test]
+fn a_played_shot_with_no_effects_sheet_still_flies_a_bolt() {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.insert_resource(FxTuning::default());
+    app.insert_resource(stub_roles());
+    app.insert_resource(TopDownAtlases::empty());
+    app.init_resource::<GangerSprites>();
+    app.add_message::<Played<ShotFired>>();
+    app.add_systems(Update, spawn_shot_projectiles);
+
+    let shot = ShotFired {
+        shooter:      app.world_mut().spawn_empty().id(),
+        muzzle:       SimPos::new(0.0, 0.0, 0.0),
+        trajectory:   ShotDir::from_direction(Vec3::new(1.0, 0.0, 0.0)),
+        impact_cell:  Cell::new(4, 0),
+        impact_level: Level::new(0),
+        kind:         ShotKind::Miss,
+        damage:       DamageType::Kinetic,
+        report:       Some(HitReport::no_effect(ShotKind::Miss)),
+    };
+    let written = app.world_mut().write_message(Played::new(shot)).is_some();
+    assert!(written, "Played<ShotFired> must be registered");
+    app.update();
+
+    let bolts = app
+        .world_mut()
+        .query::<&ShotProjectile>()
+        .iter(app.world())
+        .count();
+    assert_eq!(
+        bolts, 1,
+        "a played shot must fly a bolt even when the effects sheet is missing — popping FCT \
+         on the drain frame is the defect",
+    );
+    let pops = app
+        .world_mut()
+        .query::<&FloatingCombatText>()
+        .iter(app.world())
+        .count();
+    assert_eq!(
+        pops, 0,
+        "hit FCT must not spawn on the drain frame when the sheet is missing",
     );
 }

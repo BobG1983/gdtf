@@ -26,14 +26,14 @@ use super::{
 };
 use crate::{GangerSpriteWorld, cell_to_world, playback::Played, sim_pos_to_world};
 
-/// Spawn a directional projectile (or immediate pops if the sheet is missing).
+/// Spawn a traveling bolt from each played `ShotFired`.
+/// A missing sheet still flies an invisible bolt.
 pub fn spawn_shot_projectiles(
     mut commands: Commands,
     sprites: FxSprites,
     tuning: Res<FxTuning>,
     gangers: GangerSpriteWorld,
     positions: Query<&Position>,
-    allocator: FctSlotAllocator,
     mut shots: MessageReader<Played<ShotFired>>,
 ) {
     let draw_scale = *tuning.projectile_draw_scale;
@@ -53,26 +53,44 @@ pub fn spawn_shot_projectiles(
             .get(dir_index)
             .copied();
         let sprite = tile.and_then(|t| sprites.tile(t, Color::WHITE, draw_scale));
-        let Some(sprite) = sprite else {
-            spawn_pops_at_anchor(&mut commands, &allocator, &pops, anchor, &tuning);
-            continue;
-        };
         let launch_delay = std::time::Duration::ZERO;
         let travel = ProjectileTravel::new(
             ProjectileFlight::new(muzzle_world, target_world, velocity, launch_delay),
             ImpactPayload::new(msg.damage, pops, anchor, msg.shooter, msg.report.clone()),
         );
-        let transform = Transform::from_translation(muzzle_world);
-        let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
-        commands
-            .spawn_scene((
-                bsn! { template(move |_| Ok(sprite.clone())) },
-                template_value(transform),
-                template_value(Visibility::Hidden),
-                template_value(layers),
-                bsn! { template(move |_| Ok(travel.clone())) },
-            ))
-            .insert(ShotProjectile);
+        spawn_bolt(&mut commands, sprite, travel, muzzle_world);
+    }
+}
+
+fn spawn_bolt(
+    commands: &mut Commands,
+    sprite: Option<Sprite>,
+    travel: ProjectileTravel,
+    muzzle_world: Vec3,
+) {
+    let transform = Transform::from_translation(muzzle_world);
+    let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
+    match sprite {
+        Some(sprite) => {
+            commands
+                .spawn_scene((
+                    bsn! { template(move |_| Ok(sprite.clone())) },
+                    template_value(transform),
+                    template_value(Visibility::Hidden),
+                    template_value(layers),
+                    bsn! { template(move |_| Ok(travel.clone())) },
+                ))
+                .insert(ShotProjectile);
+        }
+        None => {
+            commands.spawn((
+                transform,
+                Visibility::Hidden,
+                layers,
+                travel,
+                ShotProjectile,
+            ));
+        }
     }
 }
 

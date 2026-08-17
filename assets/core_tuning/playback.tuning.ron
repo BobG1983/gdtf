@@ -49,9 +49,8 @@
     minor_seconds: 0.10,
 
     // NOT a dwell — the hard upper bound on waiting for a round's bolt to fly and land.
-    // The projectile spawner legitimately spawns no bolt when its effects sheet is missing,
-    // and a projectile_velocity of 0 in fx.tuning.ron would leave one in flight forever;
-    // without this cap either case would hold the cursor, and the input gate, indefinitely.
+    // A projectile_velocity of 0 in fx.tuning.ron would leave one in flight forever;
+    // without this cap that case would hold the cursor, and the input gate, indefinitely.
     // 2.0 comfortably exceeds a full-diagonal shot at the shipped velocity, so it never
     // truncates a real bolt. Do not lower it below the longest possible flight time.
     impact_cap_seconds: 2.0,

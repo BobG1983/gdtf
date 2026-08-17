@@ -6,6 +6,7 @@ mod drawn_anchor;
 mod fall_fx;
 mod flash;
 mod harness;
+mod hit_after_shot;
 mod impact_fct;
 mod injury_fct;
 mod kill_despawn;
