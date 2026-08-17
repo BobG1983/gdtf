@@ -112,6 +112,8 @@ Creating a new team label requires writing its meaning here in the same change.
 When listing labels via Linear MCP, pass the GDTF team (e.g. `team: GDTF`).
 Without a team filter, team-scoped labels are silently omitted.
 
+If you discover the user has created a label and the table below is out of date, update the tables before continuing (and let the orchestrator know).
+
 ### Kind (what the work is)
 
 | Label | Meaning | Who applies | What removes it |
