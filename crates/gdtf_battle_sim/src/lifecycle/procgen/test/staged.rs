@@ -96,7 +96,7 @@ fn step_advances_exactly_one_placement_per_call() {
     };
 
     assert_eq!(staged.stage(), ProcgenStage::Assemble);
-    assert!(staged.placed_footprints().is_empty());
+    assert_eq!(staged.placed_footprints(), []);
 
     let mut assemble_steps = 0usize;
     let mut fill_placement_steps = 0usize;

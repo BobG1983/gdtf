@@ -55,7 +55,7 @@ fn default_is_pristine_and_load_gang_fills_the_form() {
         "the fresh seed must autoload once"
     );
     assert_eq!(draft.name(), "");
-    assert!(draft.members().is_empty());
+    assert_eq!(draft.members(), []);
 
     let roster = fixture_roster();
     draft.load_gang(&GangName::new("edited_gang".to_owned()), &roster);
@@ -69,7 +69,7 @@ fn new_gang_and_mark_autoloaded_end_the_one_shot_seed() {
     let draft = GangDraft::new_gang();
     assert!(!draft.autoload_pending());
     assert_eq!(draft.name(), "");
-    assert!(draft.members().is_empty());
+    assert_eq!(draft.members(), []);
 
     let mut pristine = GangDraft::default();
     pristine.mark_autoloaded();
@@ -91,7 +91,7 @@ fn add_and_remove_member_own_the_list_structure() {
 
     assert!(!draft.remove_member(5), "out of range removes nothing");
     assert!(draft.remove_member(0));
-    assert!(draft.members().is_empty());
+    assert_eq!(draft.members(), []);
 }
 
 #[test]

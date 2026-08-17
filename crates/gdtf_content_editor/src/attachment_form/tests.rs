@@ -48,7 +48,7 @@ fn empty_effects_list_is_legal_and_reachable() {
     );
 
     let (_, spec) = draft_to_attachment_spec(&draft);
-    assert!(spec.effects.is_empty());
+    assert_eq!(spec.effects, []);
 }
 
 #[test]

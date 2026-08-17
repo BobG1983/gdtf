@@ -187,8 +187,9 @@ fn an_orphan_with_no_named_process_is_reported_as_held() {
             pid: OrphanPid::Unknown,
         }
     );
-    assert!(
-        recorded(&stopped).is_empty(),
+    assert_eq!(
+        recorded(&stopped),
+        [],
         "a process that cannot be named is not signalled"
     );
 }
@@ -207,7 +208,7 @@ fn a_free_port_still_answers_not_running() {
     );
 
     assert_eq!(manager.stop(port), StopOutcome::NotRunning);
-    assert!(recorded(&stopped).is_empty());
+    assert_eq!(recorded(&stopped), []);
 }
 
 #[test]
@@ -224,8 +225,9 @@ fn the_shutdown_path_never_adopts_an_orphan() {
     );
 
     assert_eq!(manager.stop_owned(), StopOutcome::NotRunning);
-    assert!(
-        recorded(&stopped).is_empty(),
+    assert_eq!(
+        recorded(&stopped),
+        [],
         "the shutdown path signalled nothing on port {}",
         *port
     );

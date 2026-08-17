@@ -94,7 +94,7 @@ mod tests {
         autoload_weighting_table(&mut draft, &tables);
         assert_eq!(draft.category(), InjuryCategory::ALL[0]);
         assert_eq!(draft.weighting().minor, vec![row]);
-        assert!(draft.weighting().major.is_empty());
+        assert_eq!(draft.weighting().major, []);
 
         draft.load_table(InjuryCategory::Leg, DamageContext::Ranged, &tables);
         autoload_weighting_table(&mut draft, &tables);

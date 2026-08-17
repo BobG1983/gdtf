@@ -106,7 +106,7 @@ mod tests {
     use serde_json::json;
 
     use super::parse_launch_spec;
-    use crate::lifecycle::LaunchSpec;
+    use crate::lifecycle::{EnvOverrides, LaunchSpec};
 
     fn parse_game(args: &serde_json::Value) -> Result<LaunchSpec, String> {
         parse_launch_spec(&LaunchSpec::game_default(), args)
@@ -123,7 +123,7 @@ mod tests {
             Some("dynamic_linking,dev_tools".to_owned())
         );
         assert!(spec.working_dir().is_none());
-        assert!(spec.env().is_empty());
+        assert_eq!(spec.env(), &EnvOverrides::default());
     }
 
     #[test]

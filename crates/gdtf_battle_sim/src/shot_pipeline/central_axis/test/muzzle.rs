@@ -31,7 +31,7 @@ fn muzzle_is_forward_of_center_in_the_facing_direction() {
         let step = dir.forward_step();
         let dx = muzzle.x - center.x;
         let dy = muzzle.y - center.y;
-        let along = dx * step.x + dy * step.y;
+        let along = dy.mul_add(step.y, dx * step.x);
         assert!(
             along > 0.0,
             "{dir:?}: muzzle must be forward of center along the facing (dot {along})",
