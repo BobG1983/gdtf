@@ -74,6 +74,7 @@ pub(in crate::egui_shell) fn field_stack(
     mounted_weapon_combo(ui, draft, weapons);
     tag_checkboxes(ui, draft);
     super::blocking::blocking_overrides(ui, draft);
+    super::on_death::on_death_form(ui, draft);
 
     ui.separator();
     uuid_text(ui, draft);
