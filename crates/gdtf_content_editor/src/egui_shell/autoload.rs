@@ -93,13 +93,10 @@ fn theme_form_sync(
     themes: Option<&UuidThemeRegistry>,
     draft: &mut ThemeDraft,
 ) {
-    if mode == EditorMode::Theme
-        && let Some(themes) = themes
-        && let Some(def) = theme_form_ui::resolve_autoload(session.theme(), themes)
-        && draft.key() != def.key
-    {
-        theme_form_ui::load_theme_into_form(draft, def);
-    }
+    let Some(themes) = themes else {
+        return;
+    };
+    theme_form_ui::sync_theme_draft(mode, session.theme(), themes, draft);
 }
 
 fn gang_form_sync(mode: EditorMode, draft: Option<&mut GangDraft>, gangs: Option<&GangRegistry>) {

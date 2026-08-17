@@ -6,22 +6,30 @@ use gdtf_battle_sim::{level::ThemeUuid, terrain::def::TerrainUuid};
 /// In-progress theme being authored.
 #[derive(Resource, Clone, Debug, PartialEq, Eq)]
 pub struct ThemeDraft {
-    display_name:  String,
-    terrain:       Vec<TerrainUuid>,
-    default_floor: Option<TerrainUuid>,
-    key:           ThemeUuid,
+    display_name:   String,
+    terrain:        Vec<TerrainUuid>,
+    default_floor:  Option<TerrainUuid>,
+    key:            ThemeUuid,
+    user_blank:     bool,
+    pinned_session: Option<ThemeUuid>,
 }
 
 impl ThemeDraft {
-    /// Empty draft with a fresh key.
+    fn blank(user_blank: bool) -> Self {
+        Self {
+            display_name: String::new(),
+            terrain: Vec::new(),
+            default_floor: None,
+            key: ThemeUuid::generate(),
+            user_blank,
+            pinned_session: None,
+        }
+    }
+
+    /// Empty draft the user just asked to author — must not be overwritten by sync.
     #[must_use]
     pub fn new_theme() -> Self {
-        Self {
-            display_name:  String::new(),
-            terrain:       Vec::new(),
-            default_floor: None,
-            key:           ThemeUuid::generate(),
-        }
+        Self::blank(true)
     }
 
     /// Build from existing parts (e.g. loaded from registry).
@@ -37,6 +45,8 @@ impl ThemeDraft {
             terrain,
             default_floor: Some(default_floor),
             key,
+            user_blank: false,
+            pinned_session: None,
         }
     }
 
@@ -93,11 +103,28 @@ impl ThemeDraft {
     pub const fn key(&self) -> ThemeUuid {
         self.key
     }
+
+    /// Whether this draft is a user-started blank that sync must keep.
+    #[must_use]
+    pub const fn user_blank(&self) -> bool {
+        self.user_blank
+    }
+
+    /// Session theme this blank was pinned against, if any.
+    #[must_use]
+    pub const fn pinned_session(&self) -> Option<ThemeUuid> {
+        self.pinned_session
+    }
+
+    /// Remember the session theme that must not overwrite this blank.
+    pub const fn pin_session(&mut self, session: ThemeUuid) {
+        self.pinned_session = Some(session);
+    }
 }
 
 impl Default for ThemeDraft {
     fn default() -> Self {
-        Self::new_theme()
+        Self::blank(false)
     }
 }
 
