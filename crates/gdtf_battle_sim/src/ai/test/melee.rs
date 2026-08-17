@@ -138,6 +138,7 @@ fn melee_only_adjacent_swings_and_dispatch_runs_same_frame() {
     let player_at = ground(6, 5);
     let enemy = spawn_melee_combatant(app.world_mut(), ground(5, 5), ENEMY, Direction::East, 40);
     let player = spawn_combatant(app.world_mut(), player_at, PLAYER, Direction::West, 100, 2);
+    app.world_mut().entity_mut(player).insert(Fight::new(0.0));
     place_occupant(&mut app, player_at, player);
 
     app.update();
