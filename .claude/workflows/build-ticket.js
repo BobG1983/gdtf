@@ -19,6 +19,23 @@ export const meta = {
 // Every agent answers through a schema. Nothing here reads a verdict out of prose —
 // that cost repair rounds on correct code when a report opened "NON-COMPLIANT? No — COMPLIANT".
 
+// Model tier per call — the rubric is .claude/rules/model-tiering.md (user ruling 2026-08-18).
+// Very hard or creative -> fable. Hard, engineering-focused -> opus. Mechanical copy/compare ->
+// sonnet. Between tiers -> the higher one.
+//
+//   fetch:*         sonnet  verbatim Linear snapshot, judges nothing
+//   clause-audit:*  opus    audit judgment against tree and canon
+//   open:*          sonnet  status move plus templated comment
+//   build:*         opus    the implementation
+//   refetch:*       sonnet  read-only re-fetch
+//   verify:*        opus    adversarial verification, trusts nothing
+//   gate:*          opus    design-gate lens
+//   fix:*           opus    repair engineering
+//   docs-sync:*     opus    decides doc drift against source
+//   land:*          opus    rebase, suite, and failure judgment
+//   confirm-land:*  sonnet  compares expected landing state to actual
+//   close:*         sonnet  posts supplied evidence and moves status
+//
 // args: { ticket: "GTW-123", slug: "gtw-123-some-slug" }
 // Accept either a real object or a JSON-encoded string — the harness may deliver either.
 let A = args
@@ -461,7 +478,7 @@ Fill every field of the schema:
   and its body goes in \`userNotes\` as well.
 - \`relations\` needs \`includeRelations: true\`. Without it the board returns none, and a ticket
   with edges is indistinguishable from one without.`,
-  { model: 'opus', label: `fetch:${TICKET}`, phase: 'Clause-audit', agentType: 'project-manager', schema: TICKET_SNAPSHOT })
+  { model: 'sonnet', label: `fetch:${TICKET}`, phase: 'Clause-audit', agentType: 'project-manager', schema: TICKET_SNAPSHOT })
 
 if (!live) throw new Error(`could not fetch ${TICKET} for clause audit`)
 
@@ -520,7 +537,7 @@ ${renderCorrections(audit)}
 
 ${audit.report}
 ---`,
-  { model: 'opus', label: `open:${TICKET}`, phase: 'Open', agentType: 'project-manager', schema: TICKET_SNAPSHOT })
+  { model: 'sonnet', label: `open:${TICKET}`, phase: 'Open', agentType: 'project-manager', schema: TICKET_SNAPSHOT })
 
 if (!opened) throw new Error(`could not open ${TICKET}`)
 
@@ -601,7 +618,7 @@ const fresh = await agent(`Re-fetch ${TICKET} from Linear. READ-ONLY.
 Return the CURRENT state of every schema field: description and comment bodies verbatim, \`source\`
 from each comment's \`**[name]**\` line or exactly \`owner\` where there is none, owner-written
 bodies repeated in \`userNotes\`, and \`relations\` fetched with \`includeRelations: true\`.`,
-  { model: 'opus', label: `refetch:${TICKET}`, phase: 'Verify', agentType: 'project-manager', schema: TICKET_SNAPSHOT })
+  { model: 'sonnet', label: `refetch:${TICKET}`, phase: 'Verify', agentType: 'project-manager', schema: TICKET_SNAPSHOT })
 
 const contract = `${renderTicket(fresh || opened)}
 
@@ -943,7 +960,7 @@ exists blocks the next commit on the next feature branch. If step 3 did not exit
 alone — the land is unproven and the file is still the record of what was staged.
 
 Change nothing else.`,
-  { model: 'opus', label: `confirm-land:${TICKET}`, phase: 'Land', schema: CONFIRM_RESULT })
+  { model: 'sonnet', label: `confirm-land:${TICKET}`, phase: 'Land', schema: CONFIRM_RESULT })
 
 const landedSha = /^[0-9a-f]{7,40}$/i.test(confirm?.landedSha ?? '') ? confirm.landedSha : null
 
@@ -989,7 +1006,7 @@ ${verifyOut.report}
 <gate-verdicts rounds="${attempt}">
 ${verdicts.map((v, i) => `<gate-lens name="${LENSES[i].key}" verdict="${v?.verdict ?? 'MISSING'}"/>`).join('\n')}
 </gate-verdicts>`,
-    { model: 'opus', label: `close:${TICKET}`, phase: 'Land', agentType: 'project-manager', schema: CLOSE_RESULT })
+    { model: 'sonnet', label: `close:${TICKET}`, phase: 'Land', agentType: 'project-manager', schema: CLOSE_RESULT })
   : null
 
 return {

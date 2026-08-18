@@ -16,6 +16,28 @@ export const meta = {
   ],
 }
 
+// Model tier per call — the rubric is .claude/rules/model-tiering.md (user ruling 2026-08-18).
+// Very hard or creative -> fable. Hard, engineering-focused -> opus. Mechanical copy/compare ->
+// sonnet. Between tiers -> the higher one.
+//
+//   read:*            opus    verbatim fetch plus constraint extraction every stage builds on
+//   propose-*         fable   invents a split from a blank page
+//   editor-*          opus    critiques a proposal against the code
+//   revise-*          fable   rewrites the proposal in its own creative register
+//   load-proposal-*   sonnet  reads a file into a schema, judges nothing
+//   vote-*            opus    lens judgment over proposals and code
+//   record-votes      sonnet  writes given JSON to a file verbatim
+//   settle-winner     opus    folds panel objections into the winner against the tree
+//   load-winner       sonnet  reads a file into a schema, judges nothing
+//   clause-map-*      opus    ownership judgment across children
+//   fix-map-*         fable   requirement-vs-directive ruling, the hardest call here
+//   reload-winner-*   sonnet  re-reads a file into a schema
+//   write-*           opus    ticket text under clause-writing discipline, code-checked
+//   audit-*           opus    clause audit
+//   fix-*             opus    resolves audit findings without shrinking scope
+//   file-*            sonnet  copies finished text onto the board
+//   finish-parent     opus    applies edits to a live description with a do-not-force guard
+//
 // args: {
 //   ticket:    "GTW-1175"                     required
 //   proposals: 3                              how many splits to propose (usually 3-10)
@@ -376,7 +398,7 @@ const parent = await agent(
 6. Return what the ticket explicitly puts out of scope.
 
 Then write the whole ticket — description and numbered clauses, verbatim — to \`${SCRATCH}/ticket.md\`, so a later stage can amend a split directive in it without going back to the board. Write nothing else. Change nothing on the board.`,
-  { label: `read:${TICKET}`, phase: 'Read', schema: PARENT },
+  { model: 'opus', label: `read:${TICKET}`, phase: 'Read', schema: PARENT },
 )
 if (!parent) throw new Error('could not read the parent ticket')
 log(`${TICKET}: ${parent.clauses.length} clauses, ${parent.comments.length} comments, ${parent.canonPaths.length} canon docs`)
@@ -426,7 +448,7 @@ Every parent clause must be accounted for. A clause may be split across children
 ${HOUSE}
 
 Write the proposal in full to \`${SCRATCH}/proposal-${i + 1}.md\` — the reasoning, the children, the order, what you rejected and why — then return the structured form. Do not touch the board.`,
-        { label: `propose-${i + 1}`, phase: 'Propose', schema: PROPOSAL },
+        { model: 'fable', label: `propose-${i + 1}`, phase: 'Propose', schema: PROPOSAL },
       )),
   )).filter(Boolean)
   if (!proposals.length) throw new Error('no proposal survived')
@@ -448,7 +470,7 @@ Read the file and the code. Say what it gets right that a rewrite must not lose,
 The thing most worth your attention: a child whose \`greenBecause\` does not survive contact with the code. Check them.
 
 ${HOUSE}`,
-      { label: `editor-${p.id}`, phase: 'Edit', schema: EDIT_NOTES },
+      { model: 'opus', label: `editor-${p.id}`, phase: 'Edit', schema: EDIT_NOTES },
     ))
   )).filter(Boolean)
 
@@ -470,7 +492,7 @@ ${(note?.fix ?? []).map((f, i) => `${i + 1}. [${f.child}] ${f.change}\n   why: $
 Rewrite the file in place at \`${p.path}\` and return the structured form. Every parent clause accounted for, whole or in named portions.
 
 ${HOUSE}`,
-      { label: `revise-${p.id}`, phase: 'Revise', schema: PROPOSAL },
+      { model: 'fable', label: `revise-${p.id}`, phase: 'Revise', schema: PROPOSAL },
     )
   }))).filter(Boolean)
 } else if (START_FROM === 'vote') {
@@ -482,7 +504,7 @@ ${HOUSE}`,
 ${CONTEXT}
 
 Use \`p${i + 1}\` as the id if the file does not name one, and \`${path}\` as the path.`,
-      { label: `load-proposal-${i + 1}`, phase: 'Vote', schema: PROPOSAL },
+      { model: 'sonnet', label: `load-proposal-${i + 1}`, phase: 'Vote', schema: PROPOSAL },
     ))
   )).filter(Boolean)
 }
@@ -532,7 +554,7 @@ For every proposal, name your price in \`changeMyMindBy\`: what would make you d
 Separately, list in \`blocking\` any objection that would make you refuse to build a proposal at all, your own pick included, and say which proposal each is against. A refusal is not a preference; if you would still build it, it belongs in your price.
 
 ${HOUSE}`,
-        { label: `vote-${lens.key}-r${round}`, phase: round === 1 ? 'Vote' : 'Argue', schema: VOTE },
+        { model: 'opus', label: `vote-${lens.key}-r${round}`, phase: round === 1 ? 'Vote' : 'Argue', schema: VOTE },
       ))
     )).filter(Boolean)
 
@@ -568,7 +590,7 @@ ${HOUSE}`,
 \`\`\`json
 ${JSON.stringify({ ticket: TICKET, winner: chosen?.id ?? null, rounds: history.length, votes }, null, 2)}
 \`\`\``,
-    { label: 'record-votes', phase: chosen ? 'Settle' : 'Argue' },
+    { model: 'sonnet', label: 'record-votes', phase: chosen ? 'Settle' : 'Argue' },
   )
 
   if (!chosen) {
@@ -610,7 +632,7 @@ Leave alone any point where the stances conflict. That is the disagreement the v
 Change nothing else. Do not re-argue the split, do not compare it to the proposals that lost, do not touch the board. Open the code and check every symbol and path you write still exists.
 
 ${HOUSE}`,
-  { label: 'settle-winner', phase: 'Settle' },
+  { model: 'opus', label: 'settle-winner', phase: 'Settle' },
 )
 
 // --- Map -------------------------------------------------------------------
@@ -622,7 +644,7 @@ chosen = await agent(
 ${CONTEXT}
 
 Every parent clause must appear in some child's \`ownsClauses\`, whole or as a named portion. If the file leaves a clause unaccounted for, return it as unowned by saying so in \`risks\` rather than inventing an owner.`,
-  { label: 'load-winner', phase: 'Map', schema: PROPOSAL },
+  { model: 'sonnet', label: 'load-winner', phase: 'Map', schema: PROPOSAL },
 )
 if (!chosen) throw new Error(`could not read the winning proposal at ${winnerPath}`)
 
@@ -645,7 +667,7 @@ const ticketEdits = []
 
 while (mapRounds < MAX_MAP_ROUNDS) {
   mapRounds += 1
-  map = await agent(mapPrompt(chosen.children), { label: `clause-map-r${mapRounds}`, phase: 'Map', schema: CLAUSE_MAP })
+  map = await agent(mapPrompt(chosen.children), { model: 'opus', label: `clause-map-r${mapRounds}`, phase: 'Map', schema: CLAUSE_MAP })
 
   if (map && !map.unowned.length && !map.overlaps.length) {
     if (mapRounds > 1) log(`clause map clean after ${mapRounds} rounds`)
@@ -677,7 +699,7 @@ To rewrite a directive, edit \`${SCRATCH}/ticket.md\` in place and record it in 
 Worked example, so the line is clear. A clause reading "the child that lands this owns all of them" for a list of fixtures is a directive: it says who does the work, not what the work is. Rewriting it to carve out one fixture is legal. Deleting a fixture from the list, or dropping the behaviour the clause requires, is not.
 
 ${HOUSE}`,
-    { label: `fix-map-r${mapRounds}`, phase: 'Map', schema: MAP_FIX },
+    { model: 'fable', label: `fix-map-r${mapRounds}`, phase: 'Map', schema: MAP_FIX },
   )
 
   if (fix?.needsTicketRuling?.length) {
@@ -706,7 +728,7 @@ ${HOUSE}`,
 ${CONTEXT}
 
 Every parent clause must appear in some child's \`ownsClauses\`, whole or as a named portion. If the file leaves a clause unaccounted for, return it as unowned by saying so in \`risks\` rather than inventing an owner.`,
-    { label: `reload-winner-r${mapRounds}`, phase: 'Map', schema: PROPOSAL },
+    { model: 'sonnet', label: `reload-winner-r${mapRounds}`, phase: 'Map', schema: PROPOSAL },
   )
   if (!chosen) throw new Error(`could not re-read the proposal at ${winnerPath} after fix round ${mapRounds}`)
 }
@@ -761,7 +783,7 @@ Do not restate the parent. Do not claim scope this child does not own. Do not na
 ${HOUSE}
 
 Write the ticket text to \`${SCRATCH}/child-${child.key}.md\` and return the structured form. Do not touch the board.`,
-      { label: `write-${child.key}`, phase: 'Write', schema: DRAFT },
+      { model: 'opus', label: `write-${child.key}`, phase: 'Write', schema: DRAFT },
     )
   },
   async (draft, child) => {
@@ -779,7 +801,7 @@ Canon: ${parent.canonPaths.join(', ')}.
 Open every file it cites and confirm the symbol is there now. Check each clause is buildable as written, names where the change goes, and names what goes red. Check nothing it claims contradicts the canon or the parent. If the child adds a player or author verb, the MCP surface block must be present and name host, the verb, grow-or-add-or-none, and a drive path.
 
 Report findings only — you do not rewrite. Give each finding a stable id slug describing the defect, so the same defect reported twice carries the same id.`,
-        { label: `audit-${child.key}-r${rounds}`, phase: 'Audit', schema: AUDIT, agentType: 'clause-audit' },
+        { model: 'opus', label: `audit-${child.key}-r${rounds}`, phase: 'Audit', schema: AUDIT, agentType: 'clause-audit' },
       )
       const findings = audit?.findings ?? []
       const fresh = findings.filter((f) => !seen.has(f.id))
@@ -798,7 +820,7 @@ Rewrite the file in place. Correct the facts. **Never resolve a finding by delet
 Report every finding as resolved or not resolved. Leaving one standing because it is wrong is legitimate — give the evidence.
 
 ${HOUSE}`,
-        { label: `fix-${child.key}-r${rounds}`, phase: 'Audit', schema: FIX_RESULT },
+        { model: 'opus', label: `fix-${child.key}-r${rounds}`, phase: 'Audit', schema: FIX_RESULT },
       )
       if (fix && (fix.requirementsRemoved.length || fix.clauseCountAfter < fix.clauseCountBefore)) {
         log(`fix-${child.key}-r${rounds} shrank the ticket: ${fix.clauseCountBefore}→${fix.clauseCountAfter} clauses, removed [${fix.requirementsRemoved.join('; ')}]`)
@@ -829,7 +851,7 @@ const filed = (await parallel(drafts.map((d) => () => {
 Add no relations — a later step adds them once every sibling exists.
 
 Return the identifier, url and title.`,
-    { label: `file-${d.childKey}`, phase: 'File', schema: FILED },
+    { model: 'sonnet', label: `file-${d.childKey}`, phase: 'File', schema: FILED },
   )
 }))).filter(Boolean)
 
@@ -860,7 +882,7 @@ Each child was written from the parent clauses it owns and audited until the aud
 Say in the comment which split directives were rewritten and why, listing the clause numbers: ${ticketEdits.map((e) => e.clause).join(', ')}. No requirement was changed — only who owns what.` : ''}
 
 Report each relation you added, whether the label came off,${ticketEdits.length ? ' which directive edits applied,' : ''} and whether the comment posted.`,
-  { label: 'finish-parent', phase: 'File', schema: FINISH },
+  { model: 'opus', label: 'finish-parent', phase: 'File', schema: FINISH },
 )
 
 return {
