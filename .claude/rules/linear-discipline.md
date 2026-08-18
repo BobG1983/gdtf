@@ -167,6 +167,7 @@ GDTF. Use Improvement, Hygiene, or Feature instead. If a real new label is
 needed, add it in Linear and document it in this section in the same change.
 
 ## Player/author capability needs an MCP surface
+
 ### MCP Block Format
 
 ```
@@ -178,7 +179,9 @@ Drive: the mcp__gdtf-qa path that proves it
 ```
 
 ### MCP Block Guiding Principles
-**0. If a ticket creates a capability a player or an author can newly do the matching host MCP **MUST** also be able to do it (game or editor).** 
+
+**0. If a ticket creates a capability a player or an author can newly do the matching host MCP **MUST** also be able to do it (game or editor).**
+
 1. Favor new commands over growing existing commands
 2. Commands should be scoped to a screen/ganger/state so they're only available where they're valid
 3. Commands should return the minimal amount of informtion required (ie. a `list inventory` command takes a ganger, and returns only that gangers inventory, it does not return the inventory of every ganger)

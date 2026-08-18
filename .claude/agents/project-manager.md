@@ -58,7 +58,7 @@ A ticket has three parts and nothing else:
 
 When the labels are `Feature`, `Editor`, or `Improvement` and the ticket adds a player
 or author verb, it **MUST HAVE** the **MCP surface** block, see `linear-discipline.md`.
-Refuse to file without it. `none because …` is allowed, but you **MUST** check it's valid 
+Refuse to file without it. `none because …` is allowed, but you **MUST** check it's valid
 and honest; a missing section is **NOT** allowed.
 
 Cut anything that is not one of those three:
