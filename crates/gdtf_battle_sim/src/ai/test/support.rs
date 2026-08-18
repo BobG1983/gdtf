@@ -1,7 +1,10 @@
 pub(super) use bevy::prelude::{App, Entity, Messages, MinimalPlugins, World};
 
 pub(super) use crate::{
-    acts::{FireRequested, MoveRequested, SetAimingRequested, SetStanceRequested, SimActsPlugin},
+    acts::{
+        FireRequested, MoveRequested, OpenDoorRequested, SetAimingRequested, SetStanceRequested,
+        SimActsPlugin,
+    },
     cover::HeightBand,
     ganger::{
         Aiming, Direction, Facing, Faction, Fight, Hp, LifeState, Luck, Position, Shooting, Stance,
@@ -222,6 +225,13 @@ pub(super) fn drain_aims(app: &mut App) -> Vec<SetAimingRequested> {
 pub(super) fn drain_stances(app: &mut App) -> Vec<SetStanceRequested> {
     app.world_mut()
         .resource_mut::<Messages<SetStanceRequested>>()
+        .drain()
+        .collect()
+}
+
+pub(super) fn drain_opens(app: &mut App) -> Vec<OpenDoorRequested> {
+    app.world_mut()
+        .resource_mut::<Messages<OpenDoorRequested>>()
         .drain()
         .collect()
 }
