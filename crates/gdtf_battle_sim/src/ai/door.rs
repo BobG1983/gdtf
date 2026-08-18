@@ -5,7 +5,7 @@ use bevy::prelude::Entity;
 use super::{
     advance::plan_reposition,
     decide::{AiTarget, pick_nearest},
-    params::AiPlanningGrids,
+    params::{AiActRequests, AiPlanningGrids},
     snapshot::{GangerRow, row_cell_level},
 };
 use crate::{
@@ -42,6 +42,26 @@ const NEIGHBOUR_XY: [(i32, i32); 8] = [
     (1, 0),
     (1, 1),
 ];
+
+pub(super) fn door_rows(
+    doors: impl IntoIterator<Item = (Entity, OpenState, CellLevel)>,
+) -> Vec<DoorRow> {
+    doors
+        .into_iter()
+        .map(|(entity, state, cell)| DoorRow {
+            entity,
+            cell,
+            state,
+        })
+        .collect()
+}
+
+pub(super) fn write_door_act(orders: &mut AiActRequests, act: DoorAct) {
+    match act {
+        DoorAct::Open(open) => orders.open_door.write(open),
+        DoorAct::Step(step) => orders.step.write(step),
+    }
+}
 
 pub(super) fn plan_door(
     enemy: &GangerRow,

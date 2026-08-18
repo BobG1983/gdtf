@@ -10,13 +10,16 @@ use crate::{
         EndTurnRequested, FireRequested, MeleeRequested, MoveRequested, OpenDoorRequested,
         ReloadRequested, SetAimingRequested, SetStanceRequested, SightWorld,
     },
+    battle::PlayerFaction,
     cover::CoverLedger,
+    ganger::Faction,
     march::MarchGrids,
     occupancy::OccupancyGrid,
     pathfinder::MoveGrids,
     surface::SurfaceGrid,
     terrain::floor::FloorCostGrid,
     tuning::CombatTuning,
+    turn::ActiveFaction,
     vertical::VerticalLinkGraph,
 };
 
@@ -64,6 +67,22 @@ impl AiPlanningGrids<'_> {
     /// The grids and tuning a break-away sight probe is flown through.
     pub(super) fn sight<F: Fn(Entity) -> bool>(&self, is_dead: F) -> SightWorld<'_, F> {
         SightWorld::new(&self.occupancy, &self.surface, &self.tuning, is_dead)
+    }
+}
+
+/// Whose turn this is, and who the player is.
+#[derive(SystemParam)]
+pub struct AiTurnSides<'w> {
+    active: Res<'w, ActiveFaction>,
+    player: Option<Res<'w, PlayerFaction>>,
+}
+
+impl AiTurnSides<'_> {
+    /// The active enemy faction, when it is not the player's turn.
+    pub(super) fn enemy_faction(&self) -> Option<Faction> {
+        let player = **self.player.as_deref()?;
+        let active = **self.active;
+        (active != player).then_some(active)
     }
 }
 
