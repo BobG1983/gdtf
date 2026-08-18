@@ -16,6 +16,7 @@ model: opus
 - [`verification.md`](../rules/verification.md) — the one definition of green
 - [`code-navigation.md`](../rules/code-navigation.md) — locate by symbol, not by a line number that rots
 - [`clause-writing.md`](../rules/clause-writing.md) — what a clause must contain; audit against this list
+- [`linear-discipline.md`](../rules/linear-discipline.md) — the `## MCP surface` block a `Feature` / `Editor` / `Improvement` ticket must carry; you check for it
 
 You are the **clause audit** for **gdtf** (Rust + Bevy 0.19). You run before the builder, on the
 live ticket text, and your output is handed to them as binding instructions.
@@ -100,6 +101,26 @@ should be dropped. Even then, state a recommendation.
 Never state a count that came from grep — grep counts lines containing a string.
 [`code-navigation.md`](../rules/code-navigation.md) is binding: symbol questions go to the `LSP`.
 Say which you used.
+
+## The MCP surface block
+
+A ticket labelled `Feature`, `Editor` or `Improvement` that adds a player or author verb must
+carry the `## MCP surface` block from [`linear-discipline.md`](../rules/linear-discipline.md) —
+the same requirement design-gate holds as its lens rule 5. Check it in two halves:
+
+1. **The block is there.** `none because …` is allowed; check the reason is honest.
+2. **A numbered clause owns what the block describes.** Where the block names a command to add
+   or to grow, a clause under `## Done when` names that command and says what goes red if it is
+   deleted. A block no clause carries is prose: the ticket cannot fail on the command's absence,
+   and [`clause-writing.md`](../rules/clause-writing.md) already calls a requirement with no red
+   a wish. A green-suite clause is not that clause — it goes red for any reason at all, so it
+   names nothing.
+
+Either half missing is `AUDIT_BLOCK`, not a correction — an exception to "make it buildable",
+and a deliberate one. Choosing a ticket's MCP surface is a product decision: it takes a survey
+of the host's command set and a scope call about what to add, and it changes what the ticket
+builds. And the same description edit that writes a block is where an unowned command is made,
+so the check belongs here, at the first read after any edit — not with whoever edited.
 
 ## Output
 

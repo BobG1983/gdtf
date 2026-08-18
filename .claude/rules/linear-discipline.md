@@ -128,6 +128,7 @@ If you discover the user has created a label and the table below is out of date,
 | MCP | QA MCP host, net_qa channel, protocol/transport, evidence over the wire | Author | Ticket Done / canceled |
 | Editor | Content editor (bevy_egui) work | Author | Ticket Done / canceled |
 | Art | Hand-authored art assets | Author | Ticket Done / canceled |
+| Content | Game content: authored data files, plus the sim or editor change a content batch directly needs — it may ride with `Feature` or `Improvement` when the content needs code. Lives in the Content Authoring tree | Author | Ticket Done / canceled |
 | MVP | On the critical path to the first playable cut | Author / prioritisation | Ticket Done / canceled, or scope leaves MVP |
 
 ### Size / hierarchy
@@ -143,6 +144,9 @@ If you discover the user has created a label and the table below is out of date,
 | --- | --- | --- | --- |
 | Needs Splitting | Too big to build as-is; children not yet filed | Author when size is wrong | Children exist and parent is only a rollup — **or** ticket superseded / canceled. Not only when Done. |
 | Needs User Input | Blocked on a decision only the user can make. Ticket stays Backlog; question is a comment on the ticket | Agent or author when stuck | User answers on the ticket **and** this label is removed (or ticket moves on). Do not leave it on after the answer. |
+| DO NOT CLOSE | A standing bucket Epic that collects children and never finishes. Never move it to Done, Canceled or Duplicate — closing a parent auto-completes and archives its open children (the auto-complete cascade), and every child being closed is not a reason. Not a Mythos marker: it sits on the bucket Epics, not on their parent | Author when creating a standing bucket | Only the user, retiring the bucket by hand — never "Ticket Done / canceled" |
+| Needs Design | The design is not settled enough to split or build. The Epic stays Backlog until the design is written | Author when filing | The design recorded in docs/ or on the ticket; usually hands over to `Needs Splitting` |
+| Needs Research | A question must be answered before design can start — today every carrier also carries `Needs Design` and `Needs Splitting` | Author when filing | The answer recorded on the ticket |
 
 **A ticket carrying `Needs Splitting` is not built.** Split it first with
 [`../workflows/split-ticket.js`](../workflows/split-ticket.js), which proposes splits, argues

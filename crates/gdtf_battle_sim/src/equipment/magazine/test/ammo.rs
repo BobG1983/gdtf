@@ -1,6 +1,6 @@
 use super::support::*;
 use crate::{
-    magazine::{LoadedRounds, Magazine, clamp_burst},
+    magazine::{LoadedRounds, Magazine, ReloadTu, clamp_burst},
     weapon::{MagazineSize, ModeShots},
 };
 
@@ -145,5 +145,19 @@ fn clamp_burst_bounds_shots_to_rounds_left() {
         *clamp_burst(ModeShots::new(5), &empty),
         0,
         "an empty magazine fires zero rounds"
+    );
+}
+
+#[test]
+fn set_reload_tu_overwrites_the_construction_cost() {
+    let mut mag = Magazine::loaded(MagazineSize::new(12), RELOAD_TU);
+
+    let new_cost = ReloadTu::new(7);
+    mag.set_reload_tu(new_cost);
+    assert_eq!(
+        *mag.reload_tu(),
+        *new_cost,
+        "set_reload_tu writes the new cost; 12 is the construction cost and 0 the default, so \
+         either value here means the write was dropped"
     );
 }
