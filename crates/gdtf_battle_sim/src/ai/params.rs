@@ -7,7 +7,8 @@ use bevy::{
 
 use crate::{
     acts::{
-        EndTurnRequested, FireRequested, MeleeRequested, MoveRequested, ReloadRequested, SightWorld,
+        EndTurnRequested, FireRequested, MeleeRequested, MoveRequested, ReloadRequested,
+        SetAimingRequested, SetStanceRequested, SightWorld,
     },
     cover::CoverLedger,
     march::MarchGrids,
@@ -73,5 +74,7 @@ pub struct AiActRequests<'w> {
     pub(super) reload:   MessageWriter<'w, ReloadRequested>,
     pub(super) melee:    MessageWriter<'w, MeleeRequested>,
     pub(super) step:     MessageWriter<'w, MoveRequested>,
+    pub(super) aim:      MessageWriter<'w, SetAimingRequested>,
+    pub(super) stance:   MessageWriter<'w, SetStanceRequested>,
     pub(super) end_turn: MessageWriter<'w, EndTurnRequested>,
 }

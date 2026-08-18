@@ -1,10 +1,11 @@
-//! Enemy turn AI: snapshot, target pick, advance, engage, reload, melee.
+//! Enemy turn AI: snapshot, target pick, advance, engage, reload, melee, aim, crouch.
 
 mod advance;
 mod brain;
 mod decide;
 mod engage;
 mod params;
+mod posture;
 mod snapshot;
 
 #[cfg(test)]

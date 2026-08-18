@@ -7,6 +7,7 @@ use super::{
     decide::{AiTarget, pick_nearest},
     engage::{WeaponLookup, engageable_targets},
     params::{AiActRequests, AiPlanningGrids},
+    posture::{plan_aim, plan_crouch},
     snapshot::{EnemyTurnGangers, GangerRow, cell_order, ganger_rows},
 };
 use crate::{
@@ -142,7 +143,7 @@ fn plan_step(
     Some(MoveRequested::new(enemy.entity, dest))
 }
 
-/// One enemy acts: shoot, reload, melee, move closer, or end the turn.
+/// One enemy acts: aim, shoot, reload, melee, move closer, crouch, or end the turn.
 pub fn enemy_ai_turn(
     active: Res<ActiveFaction>,
     player: Option<Res<PlayerFaction>>,
@@ -191,6 +192,12 @@ pub fn enemy_ai_turn(
             continue;
         }
 
+        if let Some(aim) = plan_aim(enemy, &targets, &weapon_lookup, &grids, is_dead) {
+            orders.aim.write(aim);
+            acted = true;
+            break;
+        }
+
         if let Some(shot) = plan_shot(enemy, &targets, &weapon_lookup, &grids, is_dead) {
             orders.fire.write(shot);
             acted = true;
@@ -218,6 +225,12 @@ pub fn enemy_ai_turn(
             is_dead,
         ) {
             orders.step.write(step);
+            acted = true;
+            break;
+        }
+
+        if let Some(crouch) = plan_crouch(enemy, &grids) {
+            orders.stance.write(crouch);
             acted = true;
             break;
         }
