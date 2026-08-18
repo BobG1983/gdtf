@@ -5,7 +5,7 @@ use gdtf_battle_sim::{
     metric::CellLevel,
     prelude::{Faction, Tu},
     terrain::emplacement::EmplacementState,
-    test_support::SituationBuilder,
+    test_support::{SituationBuilder, emplacement_at},
 };
 
 use super::harness::*;
@@ -15,9 +15,10 @@ fn unaffordable_enter_is_rejected_no_charge() {
     let (mut app, seed) = battle_app(0x5543_0B0B);
     let situation = SituationBuilder::new()
         .with_gangers([player_at(ground(5, 5), Direction::East)])
+        .with_scatter(emplacement_at(ground(6, 5)))
         .build_with_gangs();
     drive_setup(&mut app, seed, situation);
-    let emplacement = spawn_emplacement(&mut app, ground(6, 5));
+    let emplacement = seated_emplacement(&mut app, ground(6, 5));
     let Some(actor) = player_ganger(&mut app) else {
         unreachable!("setup spawns one player ganger");
     };
@@ -52,9 +53,10 @@ fn non_adjacent_enter_is_rejected_no_charge() {
     let (mut app, seed) = battle_app(0x5543_0C0C);
     let situation = SituationBuilder::new()
         .with_gangers([player_at(ground(5, 5), Direction::East)])
+        .with_scatter(emplacement_at(ground(8, 5)))
         .build_with_gangs();
     drive_setup(&mut app, seed, situation);
-    let emplacement = spawn_emplacement(&mut app, ground(8, 5));
+    let emplacement = seated_emplacement(&mut app, ground(8, 5));
     let Some(actor) = player_ganger(&mut app) else {
         unreachable!("setup spawns one player ganger");
     };
@@ -79,15 +81,16 @@ fn non_adjacent_enter_is_rejected_no_charge() {
 #[test]
 fn enter_on_occupied_is_rejected_no_force_eject() {
     let (mut app, seed) = battle_app(0x5543_0D0D);
+    let emp_cell = ground(6, 5);
     let situation = SituationBuilder::new()
         .with_gangers([
             player_at(ground(5, 5), Direction::East),
             player_at(ground(7, 5), Direction::West),
         ])
+        .with_scatter(emplacement_at(emp_cell))
         .build_with_gangs();
     drive_setup(&mut app, seed, situation);
-    let emp_cell = ground(6, 5);
-    let emplacement = spawn_emplacement(&mut app, emp_cell);
+    let emplacement = seated_emplacement(&mut app, emp_cell);
 
     let world = app.world_mut();
     let mut q = world.query::<(Entity, &Faction, &gdtf_battle_sim::ganger::Position)>();

@@ -31,19 +31,36 @@ pub(crate) const EDITOR_LOAD: &str = "editor.load";
 /// The draft-save write the editor host publishes.
 pub(crate) const EDITOR_SAVE: &str = "editor.save";
 
+/// The single-field write the editor host publishes.
+pub(crate) const EDITOR_SET_FIELD: &str = "editor.set_field";
+
+/// The list-field write the editor host publishes.
+pub(crate) const EDITOR_LIST_OP: &str = "editor.list_op";
+
 /// Every command name the editor host publishes today.
-pub(crate) const EDITOR_COMMAND_NAMES: [&str; 6] = [
+pub(crate) const EDITOR_COMMAND_NAMES: [&str; 8] = [
     EDITOR_PHASE,
     EDITOR_LAST_SAVE,
     EDITOR_SET_MODE,
     EDITOR_NEW,
     EDITOR_LOAD,
     EDITOR_SAVE,
+    EDITOR_SET_FIELD,
+    EDITOR_LIST_OP,
 ];
 
 /// Command names that need the authoring scene, so they refuse the editor's Load pass.
-pub(crate) const EDITOR_EDITING_ONLY: [&str; 4] =
-    [EDITOR_SET_MODE, EDITOR_NEW, EDITOR_LOAD, EDITOR_SAVE];
+pub(crate) const EDITOR_EDITING_ONLY: [&str; 6] = [
+    EDITOR_SET_MODE,
+    EDITOR_NEW,
+    EDITOR_LOAD,
+    EDITOR_SAVE,
+    EDITOR_SET_FIELD,
+    EDITOR_LIST_OP,
+];
+
+/// Command names that also need the Terrain tab, so they refuse every other tab.
+pub(crate) const EDITOR_TERRAIN_TAB_ONLY: [&str; 2] = [EDITOR_SET_FIELD, EDITOR_LIST_OP];
 
 pub(crate) struct Client {
     stream:  TcpStream,

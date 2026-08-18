@@ -95,6 +95,39 @@ fn slab_named_struct_ron_parses() {
 }
 
 #[test]
+fn emplacement_omitting_entry_sides_parses_with_none() {
+    let ron = r#"(
+        key: "01840a3e-0000-4000-8000-000000000004",
+        display_name: "Scenery Mount",
+        sim_kind: Emplacement(
+            hp: 45,
+            armor_protection: 5,
+            armor_hardness: 2,
+            height_band: High,
+            mounted_weapon: "heavy_bolter",
+        ),
+        presenter_kind: Emplacement(
+            graphic_name: "emplacement",
+        ),
+    )"#;
+    let parsed = ron::de::from_str::<TerrainDef>(ron);
+    assert!(
+        parsed.is_ok(),
+        "an Emplacement TerrainDef that omits entry_sides must parse: {parsed:?}",
+    );
+    if let Ok(def) = parsed {
+        assert!(
+            matches!(
+                &def.sim_kind,
+                TerrainSimKind::Emplacement { entry_sides, .. } if entry_sides.is_empty()
+            ),
+            "an omitted entry_sides reads as no sides — a mount authored as scenery, got {:?}",
+            def.sim_kind,
+        );
+    }
+}
+
+#[test]
 fn slab_presenter_footfall_is_optional() {
     let with_footfall = r#"(
         key: "01840a3e-0000-4000-8000-000000000010",

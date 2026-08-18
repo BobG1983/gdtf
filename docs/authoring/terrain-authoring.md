@@ -115,6 +115,7 @@ low `Cover`):
 | Sub-field | Rust type | RON form | Notes |
 |-----------|-----------|----------|-------|
 | `mounted_weapon` | `WeaponName` | bare string | The bolted-down gun's weapon registry key (a `.weapon.ron` file stem) |
+| `entry_sides` | `Vec<TerrainFacing>` | list of `North` \| `East` \| `South` \| `West` | The sides a ganger may enter from, unrotated (see 1i). `#[serde(default)]` — omitted = `[]` = names no side |
 
 `Slab` uses the distinct `SlabHp` pool and NO band (the march stops on an
 intact slab regardless of the shot's band, `resolution.md` §2 — do not author a
@@ -294,6 +295,52 @@ that shots also pass through is authored on the `Slab` kind (not seeded into the
 cover ledger) — the low-railing / catwalk-lip case. This is a property of the
 pre-existing shot-follows-LoS + destructible-cover model, not of the override.
 
+### 1i. `entry_sides:` — which sides an emplacement is entered from
+
+An `Emplacement` names the sides a ganger may enter it from, as a list of
+`TerrainFacing` cardinals (`crates/gdtf_battle_sim/src/terrain/facing.rs` — the
+same four-cardinal type a prefab placement's `facing` carries, see
+[battlefield-authoring.md](battlefield-authoring.md) 2b).
+
+The sides are authored in the piece's OWN unrotated frame. `rotated_entry_sides`
+(`crates/gdtf_battle_sim/src/terrain/def/kind.rs`) reads them in the frame of a
+piece turned to a given facing, so a mount turned east reports its authored sides
+turned east with it. That is what will stop a turned mount being entered through
+its own armour.
+
+The field is `#[serde(default)]`, so a def that omits it names no side — which is
+how a mount is authored as scenery, once the gate reads them
+([../combat/emplacements.md](../combat/emplacements.md)).
+
+From the shipped `heavy_bolter_emplacement.terrain_def.ron`:
+
+```ron
+    sim_kind: Emplacement(
+        hp:               45,
+        armor_protection: 5,
+        armor_hardness:   2,
+        height_band:      High,
+        mounted_weapon:   "heavy_bolter",
+        entry_sides:      [South],   // unrotated; the placement's facing turns them
+    ),
+```
+
+Battle setup carries the def's UNROTATED sides and the placement's facing onto
+the spawned piece as `EmplacementEntrySides` and `EmplacementFacing`
+(`crates/gdtf_battle_sim/src/terrain/emplacement/state.rs`) — the reader rotates,
+the seed does not.
+
+**Nothing reads the sides to decide anything yet.** `can_enter_emplacement`
+(`crates/gdtf_battle_sim/src/acts/enter_emplacement.rs`) still gates on
+8-adjacency, so authoring a side changes no offer and no act today. The data
+lands ahead of the gate that will read it.
+
+The content editor's Terrain tab carries a four-checkbox picker for the sides,
+drawn only while the kind is `Emplacement`
+(`crates/gdtf_content_editor/src/egui_shell/terrain_form_ui/entry_sides.rs`),
+committed through `TerrainDraft::set_entry_sides` — which likewise commits only
+at that kind, and is cleared when the kind changes away.
+
 ---
 
 ## Part 2 — How to extend the terrain model
@@ -441,4 +488,5 @@ Supporting newtypes from other modules:
 - `TerrainGraphicKey`, `FootfallSound` —
   `crates/gdtf_battle_sim/src/terrain/piece/components.rs`
 - `WeaponName` — `crates/gdtf_battle_sim/src/equipment/weapon/components/handling.rs`
+- `TerrainFacing` — `crates/gdtf_battle_sim/src/terrain/facing.rs`
 - `OnDeathEffect` — `crates/gdtf_battle_sim/src/effects/on_death/effect.rs`

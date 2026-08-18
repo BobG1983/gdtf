@@ -16,10 +16,12 @@ pub use harness::{
 };
 pub use literals::{dot_turns, field_turns};
 pub use registries::{
-    TEST_ARMOR_KEY, TEST_MELEE_WEAPON_KEY, TEST_WEAPON_KEY, arbitrary_armor, key,
-    test_armor_registry, test_armor_spec, test_melee_weapon_registry, test_melee_weapon_spec,
-    test_weapon_registry, test_weapon_spec,
+    TEST_ARMOR_KEY, TEST_MELEE_WEAPON_KEY, TEST_MOUNTED_WEAPON_KEY, TEST_WEAPON_KEY,
+    arbitrary_armor, key, test_armor_registry, test_armor_spec, test_melee_weapon_registry,
+    test_melee_weapon_spec, test_weapon_registry, test_weapon_spec,
 };
 pub use seeds::{empty_slab_ledger, fight_rng, injury_rng, reaction_rng, severity_rng, shot_rng};
-pub use situation::{SituationBuilder, fixtures, test_gang_registry, test_pieces, wall_at};
+pub use situation::{
+    SituationBuilder, emplacement_at, fixtures, test_gang_registry, test_pieces, wall_at,
+};
 pub use terrain::test_terrain_registry;

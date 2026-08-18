@@ -8,6 +8,7 @@ mod command_set;
 mod harness;
 mod last_save_command;
 mod lifecycle;
+mod list_op_command;
 mod load_case;
 mod load_command;
 mod new_command;
@@ -15,6 +16,7 @@ mod phase_command;
 mod phase_rows;
 mod rows;
 mod save_command;
+mod set_field_command;
 mod set_mode_command;
 mod support;
 

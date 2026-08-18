@@ -1,5 +1,6 @@
 //! Terrain mode egui form.
 mod blocking;
+mod entry_sides;
 mod fields;
 mod on_death;
 mod panel;

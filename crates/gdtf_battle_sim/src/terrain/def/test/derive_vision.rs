@@ -62,6 +62,7 @@ fn emplacement_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
             armor_hardness:   ArmorHardness::new(2),
             height_band:      band,
             mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
+            entry_sides:      Vec::new(),
         },
         presenter_kind: TerrainPresenterKind::Emplacement {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),

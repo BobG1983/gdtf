@@ -4,5 +4,6 @@ mod derive_vision;
 mod kind_projection;
 mod parse;
 mod registry;
+mod rotation;
 mod round_trip;
 mod tags;

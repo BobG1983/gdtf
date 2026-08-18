@@ -6,7 +6,10 @@ use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
-    terrain::piece::{FootfallSound, TerrainGraphicKey},
+    terrain::{
+        facing::TerrainFacing,
+        piece::{FootfallSound, TerrainGraphicKey},
+    },
     weapon::WeaponName,
 };
 
@@ -169,6 +172,7 @@ fn emplacement_def_round_trips() {
             armor_hardness:   ArmorHardness::new(2),
             height_band:      HeightBand::High,
             mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
+            entry_sides:      vec![TerrainFacing::South, TerrainFacing::West],
         },
         presenter_kind: TerrainPresenterKind::Emplacement {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),

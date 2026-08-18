@@ -3,6 +3,7 @@ use gdtf_battle_sim::{
     terrain::{
         def::{TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind},
         entity::TerrainPieceKind,
+        facing::TerrainFacing,
     },
     weapon::WeaponName,
 };
@@ -65,15 +66,26 @@ fn segment_order_covers_every_piece_kind() {
 #[test]
 fn emplacement_draft_projects_serializes_and_registers() {
     let weapon = WeaponName::new("heavy_stubber".to_owned());
+    let sides = vec![TerrainFacing::South, TerrainFacing::West];
     let mut draft = TerrainDraft::default();
     draft.set_display_name("Heavy Stubber Nest".to_owned());
     draft.set_kind(TerrainKindChoice::Emplacement);
     draft.set_graphic(TileRole::Emplacement);
     draft.set_mounted_weapon(Some(weapon.clone()));
+    draft.set_entry_sides(sides.clone());
 
     let Ok(def) = draft_to_terrain_def(&draft, key()) else {
         unreachable!("an Emplacement draft with a selected weapon must project (C6)")
     };
+    assert!(
+        matches!(
+            &def.sim_kind,
+            TerrainSimKind::Emplacement { entry_sides, .. } if *entry_sides == sides
+        ),
+        "the projected sim kind must carry the EXACT sides the draft holds, not the default \
+         empty list: {:?}",
+        def.sim_kind,
+    );
     assert!(
         matches!(
             &def.sim_kind,
@@ -100,13 +112,22 @@ fn emplacement_draft_projects_serializes_and_registers() {
         reloaded, def,
         "the Emplacement def must survive the RON round-trip field-for-field",
     );
-    let registry = TerrainDefRegistry::new([(key(), reloaded)]);
+    let registry = TerrainDefRegistry::new([(key(), reloaded.clone())]);
     assert!(
         matches!(
             registry.def(&key()).map(|d| &d.sim_kind),
             Some(TerrainSimKind::Emplacement { mounted_weapon, .. }) if *mounted_weapon == weapon
         ),
         "the registry must resolve the Emplacement def with its mounted-weapon key intact (AC3)",
+    );
+
+    let mut opened = TerrainDraft::default();
+    opened.load_from_def(&reloaded);
+    assert_eq!(
+        opened.entry_sides(),
+        sides.as_slice(),
+        "opening an authored emplacement must read its sides back into the draft — otherwise the \
+         next save writes an unenterable def",
     );
 }
 
@@ -155,5 +176,34 @@ fn mounted_weapon_gate_holds_fail_closed() {
         draft.mounted_weapon(),
         None,
         "switching off Emplacement clears the mounted weapon (C5 fail-closed)",
+    );
+}
+
+#[test]
+fn entry_sides_gate_holds_fail_closed() {
+    let sides = vec![TerrainFacing::East];
+
+    let mut draft = TerrainDraft::default();
+    draft.set_kind(TerrainKindChoice::Wall);
+    draft.set_entry_sides(sides.clone());
+    assert!(
+        draft.entry_sides().is_empty(),
+        "an entry-sides commit on a non-Emplacement kind is ignored, got {:?}",
+        draft.entry_sides(),
+    );
+
+    draft.set_kind(TerrainKindChoice::Emplacement);
+    draft.set_entry_sides(sides.clone());
+    assert_eq!(
+        draft.entry_sides(),
+        sides.as_slice(),
+        "an Emplacement kind keeps the selected entry sides",
+    );
+
+    draft.set_kind(TerrainKindChoice::Slab);
+    assert!(
+        draft.entry_sides().is_empty(),
+        "switching off Emplacement clears the entry sides, got {:?}",
+        draft.entry_sides(),
     );
 }

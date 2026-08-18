@@ -2,7 +2,7 @@
 
 use bevy::prelude::{Component, Deref, Entity};
 
-use crate::weapon::WeaponName;
+use crate::{terrain::facing::TerrainFacing, weapon::WeaponName};
 
 /// Whether the emplacement is vacant or occupied.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -55,6 +55,30 @@ impl MountedWeaponKey {
     #[must_use]
     pub const fn new(key: WeaponName) -> Self {
         Self(key)
+    }
+}
+
+/// Sides the emplacement can be entered from, as its def authored them.
+#[derive(Component, Deref, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EmplacementEntrySides(Vec<TerrainFacing>);
+
+impl EmplacementEntrySides {
+    /// Wrap the def's unrotated sides.
+    #[must_use]
+    pub const fn new(sides: Vec<TerrainFacing>) -> Self {
+        Self(sides)
+    }
+}
+
+/// Which way this emplacement is turned on the map.
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EmplacementFacing(TerrainFacing);
+
+impl EmplacementFacing {
+    /// Wrap the placed piece's facing.
+    #[must_use]
+    pub const fn new(facing: TerrainFacing) -> Self {
+        Self(facing)
     }
 }
 

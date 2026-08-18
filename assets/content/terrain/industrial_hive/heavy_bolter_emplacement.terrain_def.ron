@@ -18,6 +18,9 @@
         // weapon file stem) by the enter act. This must match the mounted weapon spec's file
         // stem: assets/content/weapons/ranged/heavy_bolter.weapon.ron.
         mounted_weapon:   "heavy_bolter",
+        // The sides a ganger may enter from, named in the piece's unrotated frame and turned by
+        // the placement's own facing. A def naming none is a mount authored as scenery.
+        entry_sides:      [South],
     ),
     presenter_kind: Emplacement(
         graphic_name: "emplacement",   // TileRoles `emplacement` key — the dedicated VACANT weapon-mount tile, drawn distinctly from generic cover. While OCCUPIED the presenter swaps this tile in place to the `emplacement_occupied` tile (a Changed<EmplacementState> signal), so occupancy reads distinctly.

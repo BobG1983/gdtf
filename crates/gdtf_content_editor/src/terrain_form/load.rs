@@ -46,12 +46,14 @@ impl TerrainDraft {
                 armor_hardness,
                 height_band,
                 mounted_weapon,
+                entry_sides,
             } => {
                 self.set_cover_hp(*hp);
                 self.set_armor_protection(*armor_protection);
                 self.set_armor_hardness(*armor_hardness);
                 self.set_height_band(*height_band);
                 self.set_mounted_weapon(Some(mounted_weapon.clone()));
+                self.set_entry_sides(entry_sides.clone());
             }
         }
         let graphic_name = match &def.presenter_kind {

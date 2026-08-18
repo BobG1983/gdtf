@@ -62,6 +62,7 @@ fn emplacement_def(tags: Vec<TerrainTag>) -> TerrainDef {
             armor_hardness:   ArmorHardness::new(2),
             height_band:      HeightBand::High,
             mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
+            entry_sides:      Vec::new(),
         },
         presenter_kind: TerrainPresenterKind::Emplacement {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
@@ -179,6 +180,7 @@ fn sim_kind_default_blocks_wall_and_cover_only() {
         armor_hardness:   ArmorHardness::new(0),
         height_band:      HeightBand::High,
         mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
+        entry_sides:      Vec::new(),
     };
     assert!(*sim_kind_blocks_path(&wall), "Wall blocks by default");
     assert!(*sim_kind_blocks_path(&cover), "Cover blocks by default");

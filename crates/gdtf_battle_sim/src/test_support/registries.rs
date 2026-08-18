@@ -26,6 +26,9 @@ pub const TEST_ARMOR_KEY: &str = "test-armor";
 /// Key for the shared test melee weapon.
 pub const TEST_MELEE_WEAPON_KEY: &str = "test-melee";
 
+/// Key for the weapon bolted to the test emplacement.
+pub const TEST_MOUNTED_WEAPON_KEY: &str = "test-mounted";
+
 /// Cell at `(x, y, level)`.
 #[must_use]
 pub fn key(x: i32, y: i32, level: u8) -> CellLevel {
@@ -63,13 +66,19 @@ pub fn test_weapon_spec() -> WeaponSpec {
     }
 }
 
-/// Registry containing only the test weapon.
+/// Registry with the test weapon and the test mounted weapon.
 #[must_use]
 pub fn test_weapon_registry() -> WeaponRegistry {
-    WeaponRegistry::new([(
-        WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-        test_weapon_spec(),
-    )])
+    WeaponRegistry::new([
+        (
+            WeaponName::new(TEST_WEAPON_KEY.to_owned()),
+            test_weapon_spec(),
+        ),
+        (
+            WeaponName::new(TEST_MOUNTED_WEAPON_KEY.to_owned()),
+            test_weapon_spec(),
+        ),
+    ])
 }
 
 /// Basic melee weapon spec.

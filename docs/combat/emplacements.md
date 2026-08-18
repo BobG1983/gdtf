@@ -55,8 +55,9 @@ stops a turned mount being entered through its own armour.
 `can_enter_emplacement` requires 8-adjacency, and mounting leaves the ganger on
 its own cell. Only the occupancy band is set at the emplacement's cell, so an
 occupied emplacement is indistinguishable from an empty one on screen, and the
-ganger keeps whatever cover it was already in. There is no entry-side data, no
-remembered origin cell, and no exit act.
+ganger keeps whatever cover it was already in. The entry sides are authored on
+the def and reach the spawned piece, but nothing reads them to decide anything.
+There is no remembered origin cell and no exit act.
 
 The first implementation was wrong. This replaces it rather than extending it.
 
@@ -72,7 +73,11 @@ The first implementation was wrong. This replaces it rather than extending it.
   [../authoring/terrain-authoring.md](../authoring/terrain-authoring.md) for the
   def the entry sides are authored on.
 - Code sites: `can_enter_emplacement` and the act live in
-  `crates/gdtf_battle_sim`. **TBD (Bevy):** entry sides, the remembered origin
-  cell, the exit act, and the facing they rotate with are not built.
+  `crates/gdtf_battle_sim`. Built: the def's `entry_sides` and the
+  `rotated_entry_sides` rotation (`terrain/def/kind.rs`), plus the
+  `EmplacementEntrySides` and `EmplacementFacing` components battle setup puts
+  on the spawned piece (`terrain/emplacement/state.rs`) — nothing reads them.
+  **TBD (Bevy):** the enter gate reading those sides, the remembered origin
+  cell, and the exit act.
 - Source: owner rulings, given directly in conversation, 2026-08-14. Ticket:
   GTW-1176.

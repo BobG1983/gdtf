@@ -38,12 +38,20 @@ pub mod test_pieces {
     /// Low vision cover.
     pub const LOW_VISION_COVER: TerrainUuid =
         TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0007));
+    /// Emplacement piece.
+    pub const EMPLACEMENT: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0008));
 }
 
 /// Wall spawn at a cell.
 #[must_use]
 pub const fn wall_at(at: CellLevel) -> CoverSpawn {
     CoverSpawn::new(at, test_pieces::WALL, TerrainFacing::North)
+}
+
+/// Emplacement spawn at a cell.
+#[must_use]
+pub const fn emplacement_at(at: CellLevel) -> CoverSpawn {
+    CoverSpawn::new(at, test_pieces::EMPLACEMENT, TerrainFacing::North)
 }
 
 /// Fluent builder for [`Situation`] and optional gang registry.

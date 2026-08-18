@@ -7,7 +7,10 @@ use gdtf_battle_sim::{
     cover::{CoverHp, HeightBand},
     effects::on_death::OnDeathEffect,
     slab::SlabHp,
-    terrain::def::{LosBlocking, TerrainTag, TerrainUuid},
+    terrain::{
+        def::{LosBlocking, TerrainTag, TerrainUuid},
+        facing::TerrainFacing,
+    },
     weapon::WeaponName,
 };
 
@@ -26,6 +29,7 @@ pub struct TerrainDraft {
     graphic:          TileRole,
     footfall:         FootfallChoice,
     mounted_weapon:   Option<WeaponName>,
+    entry_sides:      Vec<TerrainFacing>,
     tags:             Vec<TerrainTag>,
     blocks_pathing:   Option<bool>,
     blocks_los:       Option<LosBlocking>,
@@ -51,7 +55,7 @@ impl TerrainDraft {
         self.kind
     }
 
-    /// Set kind; clears footfall / mounted weapon when they no longer apply.
+    /// Set kind; clears footfall / mounted weapon / entry sides when they no longer apply.
     pub fn set_kind(&mut self, kind: TerrainKindChoice) {
         self.kind = kind;
         if !kind.offers_footfall() {
@@ -59,6 +63,7 @@ impl TerrainDraft {
         }
         if !matches!(kind, TerrainKindChoice::Emplacement) {
             self.mounted_weapon = None;
+            self.entry_sides = Vec::new();
         }
     }
 
@@ -96,6 +101,19 @@ impl TerrainDraft {
     pub fn set_mounted_weapon(&mut self, weapon: Option<WeaponName>) {
         if matches!(self.kind, TerrainKindChoice::Emplacement) {
             self.mounted_weapon = weapon;
+        }
+    }
+
+    /// Sides an emplacement can be entered from, unrotated.
+    #[must_use]
+    pub fn entry_sides(&self) -> &[TerrainFacing] {
+        &self.entry_sides
+    }
+
+    /// Set the entry sides when the kind is emplacement.
+    pub fn set_entry_sides(&mut self, sides: Vec<TerrainFacing>) {
+        if matches!(self.kind, TerrainKindChoice::Emplacement) {
+            self.entry_sides = sides;
         }
     }
 
@@ -248,6 +266,7 @@ impl Default for TerrainDraft {
             graphic:          TileRole::Floor,
             footfall:         FootfallChoice::default(),
             mounted_weapon:   None,
+            entry_sides:      Vec::new(),
             tags:             Vec::new(),
             blocks_pathing:   None,
             blocks_los:       None,

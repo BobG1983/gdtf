@@ -6,7 +6,9 @@ use crate::{
     occupancy::TerrainKind,
     situation::Situation,
     terrain::{
-        emplacement::{EmplacementState, MountedWeaponKey},
+        emplacement::{
+            EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedWeaponKey,
+        },
         entity::{BlocksPathfinding, BlocksVision, TerrainCell, TerrainIndexKey},
         openable::{OpenState, OpenableBlocking},
     },
@@ -63,6 +65,8 @@ pub(super) fn seed_cover_terrain(
             commands.entity(entity).insert((
                 EmplacementState::Vacant,
                 MountedWeaponKey::new(mounted_weapon.clone()),
+                EmplacementEntrySides::new(resolved.entry_sides.clone()),
+                EmplacementFacing::new(cover.facing),
             ));
         }
         terrain_pairs.push((TerrainIndexKey::Cover(cover.at), entity));

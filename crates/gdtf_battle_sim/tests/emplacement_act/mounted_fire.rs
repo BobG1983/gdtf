@@ -9,7 +9,7 @@ use gdtf_battle_sim::{
     prelude::{Faction, Stance, StanceKind},
     shot_fired::ShotFired,
     situation::GangerSpawn,
-    test_support::{GangerSpawnBuilder, SituationBuilder},
+    test_support::{GangerSpawnBuilder, SituationBuilder, emplacement_at},
     weapon::{
         DamageType, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, WeaponName,
     },
@@ -63,9 +63,10 @@ fn occupied_ganger_fires_the_mounted_weapon_deterministically() {
                 player_at(ground(5, 5), Direction::East),
                 enemy_at(ground(7, 5), Direction::West),
             ])
+            .with_scatter(emplacement_at(ground(6, 5)))
             .build_with_gangs();
         drive_setup(&mut app, seed, situation);
-        let emplacement = spawn_emplacement(&mut app, ground(6, 5));
+        let emplacement = seated_emplacement(&mut app, ground(6, 5));
         let world = app.world_mut();
         let mut q = world.query::<(Entity, &Faction, &gdtf_battle_sim::ganger::Position)>();
         let actor = q

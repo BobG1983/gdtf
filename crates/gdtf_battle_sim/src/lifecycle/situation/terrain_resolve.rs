@@ -13,6 +13,7 @@ use crate::{
             is_openable,
         },
         entity::TerrainPieceKind,
+        facing::TerrainFacing,
         piece::{FootfallSound, TerrainGraphicKey},
     },
     weapon::WeaponName,
@@ -29,6 +30,7 @@ pub(super) struct ResolvedCoverPiece {
     pub(super) occludes_vision:  Option<HeightBand>,
     pub(super) openable:         Option<HeightBand>,
     pub(super) emplacement:      Option<WeaponName>,
+    pub(super) entry_sides:      Vec<TerrainFacing>,
 }
 
 pub(super) struct ResolvedSlabPiece {
@@ -43,7 +45,7 @@ pub(super) struct ResolvedSlabPiece {
 }
 
 pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<ResolvedCoverPiece> {
-    let (max_hp, armor_protection, armor_hardness, height_band, mounted_weapon) =
+    let (max_hp, armor_protection, armor_hardness, height_band, mounted_weapon, entry_sides) =
         match &def.sim_kind {
             TerrainSimKind::Wall {
                 hp,
@@ -56,19 +58,28 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
                 armor_protection,
                 armor_hardness,
                 height_band,
-            } => (*hp, *armor_protection, *armor_hardness, *height_band, None),
+            } => (
+                *hp,
+                *armor_protection,
+                *armor_hardness,
+                *height_band,
+                None,
+                Vec::new(),
+            ),
             TerrainSimKind::Emplacement {
                 hp,
                 armor_protection,
                 armor_hardness,
                 height_band,
                 mounted_weapon,
+                entry_sides,
             } => (
                 *hp,
                 *armor_protection,
                 *armor_hardness,
                 *height_band,
                 Some(mounted_weapon.clone()),
+                entry_sides.clone(),
             ),
             TerrainSimKind::Slab { .. } => {
                 bevy::log::error!(
@@ -87,6 +98,7 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
         armor_hardness,
         piece_kind: def.sim_kind.kind(),
         emplacement: mounted_weapon,
+        entry_sides,
         graphic: presenter_graphic(&def.presenter_kind),
         blocks_path: derives_path_blocking(def),
         occludes_vision: derives_vision_occlusion(def),

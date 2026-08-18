@@ -77,6 +77,7 @@ pub fn draft_to_terrain_def(
                     armor_hardness: draft.armor_hardness(),
                     height_band: draft.height_band(),
                     mounted_weapon,
+                    entry_sides: draft.entry_sides().to_vec(),
                 },
                 TerrainPresenterKind::Emplacement { graphic_name },
             )

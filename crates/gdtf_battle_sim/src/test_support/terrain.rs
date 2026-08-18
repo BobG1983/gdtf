@@ -1,6 +1,6 @@
 //! Named test terrain definitions and the registry that holds them.
 
-use super::situation::test_pieces;
+use super::{registries::TEST_MOUNTED_WEAPON_KEY, situation::test_pieces};
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
@@ -10,8 +10,10 @@ use crate::{
             TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainTag,
         },
+        facing::TerrainFacing,
         piece::{FootfallSound, TerrainGraphicKey},
     },
+    weapon::WeaponName,
 };
 
 fn display(name: &str) -> TerrainDisplayName {
@@ -162,6 +164,28 @@ fn test_low_vision_cover() -> TerrainDef {
     }
 }
 
+fn test_emplacement() -> TerrainDef {
+    TerrainDef {
+        key:            test_pieces::EMPLACEMENT,
+        display_name:   display("Test Emplacement"),
+        sim_kind:       TerrainSimKind::Emplacement {
+            hp:               CoverHp::new(45),
+            armor_protection: ArmorProtection::new(0),
+            armor_hardness:   ArmorHardness::new(0),
+            height_band:      HeightBand::High,
+            mounted_weapon:   WeaponName::new(TEST_MOUNTED_WEAPON_KEY.to_owned()),
+            entry_sides:      TerrainFacing::ALL.to_vec(),
+        },
+        presenter_kind: TerrainPresenterKind::Emplacement {
+            graphic_name: graphic("emplacement"),
+        },
+        tags:           Vec::new(),
+        on_death:       None,
+        blocks_pathing: None,
+        blocks_los:     None,
+    }
+}
+
 /// Registry of all named test terrain pieces.
 #[must_use]
 pub fn test_terrain_registry() -> TerrainDefRegistry {
@@ -173,5 +197,41 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
         (test_pieces::VISION_SLAB, test_vision_slab()),
         (test_pieces::PATH_SLAB, test_path_slab()),
         (test_pieces::LOW_VISION_COVER, test_low_vision_cover()),
+        (test_pieces::EMPLACEMENT, test_emplacement()),
     ])
+}
+
+#[cfg(test)]
+mod test {
+    use super::{TerrainSimKind, test_terrain_registry};
+    use crate::{test_support::registries::test_weapon_registry, weapon::WeaponName};
+
+    #[test]
+    fn every_test_emplacement_names_a_weapon_the_test_registry_holds() {
+        let registry = test_terrain_registry();
+        let mounts: Vec<&WeaponName> = registry
+            .defs()
+            .filter_map(|(_, def)| match &def.sim_kind {
+                TerrainSimKind::Emplacement { mounted_weapon, .. } => Some(mounted_weapon),
+                TerrainSimKind::Wall { .. }
+                | TerrainSimKind::Cover { .. }
+                | TerrainSimKind::Slab { .. } => None,
+            })
+            .collect();
+        assert!(
+            !mounts.is_empty(),
+            "test_terrain_registry must hold at least one Emplacement def, or the mounted-weapon \
+             check below passes without checking anything",
+        );
+
+        let weapons = test_weapon_registry();
+        for key in mounts {
+            assert!(
+                weapons.spec(key).is_some(),
+                "test_weapon_registry must resolve `{}`, the mounted weapon a test emplacement \
+                 def names — the two registries are handed out as a pair",
+                key.as_str(),
+            );
+        }
+    }
 }

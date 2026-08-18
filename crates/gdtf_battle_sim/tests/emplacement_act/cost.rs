@@ -7,7 +7,7 @@ use gdtf_battle_sim::{
     },
     ganger::{Direction, Position, Tu},
     terrain::emplacement::{EmplacementOccupant, EmplacementState},
-    test_support::SituationBuilder,
+    test_support::{SituationBuilder, emplacement_at},
     tuning::CombatTuning,
 };
 
@@ -23,13 +23,14 @@ fn tuning_of(app: &bevy::app::App) -> CombatTuning {
 #[test]
 fn enter_and_exit_charge_exactly_their_quotes_and_the_predicates_agree() {
     let (mut app, seed) = battle_app(0x5543_0C05);
+    let emp_cell = ground(6, 5);
     let situation = SituationBuilder::new()
         .with_gangers([player_at(ground(5, 5), Direction::East)])
+        .with_scatter(emplacement_at(emp_cell))
         .build_with_gangs();
     drive_setup(&mut app, seed, situation);
 
-    let emp_cell = ground(6, 5);
-    let emplacement = spawn_emplacement(&mut app, emp_cell);
+    let emplacement = seated_emplacement(&mut app, emp_cell);
     let Some(actor) = player_ganger(&mut app) else {
         unreachable!("setup spawns one player ganger");
     };

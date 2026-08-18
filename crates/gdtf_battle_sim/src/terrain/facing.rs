@@ -15,3 +15,8 @@ pub enum TerrainFacing {
     /// West (-X).
     West,
 }
+
+impl TerrainFacing {
+    /// All cardinals, in ring order.
+    pub const ALL: [Self; 4] = [Self::North, Self::East, Self::South, Self::West];
+}

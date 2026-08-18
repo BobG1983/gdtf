@@ -72,6 +72,7 @@ pub(in crate::egui_shell) fn field_stack(
     band_row(ui, draft);
     footfall_combo(ui, draft);
     mounted_weapon_combo(ui, draft, weapons);
+    super::entry_sides::entry_sides(ui, draft);
     tag_checkboxes(ui, draft);
     super::blocking::blocking_overrides(ui, draft);
     super::on_death::on_death_form(ui, draft);

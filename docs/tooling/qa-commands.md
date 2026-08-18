@@ -252,9 +252,12 @@ run(host="editor", command="editor.new", arguments="(mode: Armor)")
 run(host="editor", command="editor.load", arguments="(mode: Armor, key: \"flak_vest\")")
 run(host="editor", command="editor.save", arguments="(mode: Armor)")
 run(host="editor", command="editor.last_save", arguments="()")
+run(host="editor", command="editor.set_mode", arguments="(mode: Terrain)")
+run(host="editor", command="editor.set_field", arguments="(field: Kind(Emplacement))")
+run(host="editor", command="editor.list_op", arguments="(list: EntrySides, op: Toggle(East))")
 ```
 
-The editor offers six commands today. They are listed in
+The editor offers eight commands today. They are listed in
 [The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
@@ -671,9 +674,9 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## The editor host
 
-The editor publishes six commands, all `Immediate`, all in `EDITOR_COMMANDS`
+The editor publishes eight commands, all `Immediate`, all in `EDITOR_COMMANDS`
 ([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
-Two are reads that answer at every point in the lifecycle; four write, and each needs the
+Two are reads that answer at every point in the lifecycle; six write, and each needs the
 authoring scene, so during the editor's Load pass they answer
 `Unavailable { code: WrongState }`. That is not a policy choice — `EditorMode` and every
 draft are state-scoped to `EditorState::Editing` by the `init_state_scoped_resource` calls
@@ -689,6 +692,19 @@ so during Load there is nothing to write.
 | `editor.new` | Editing | Replaces a mode's draft with that form's own blank-draft constructor. [`commands/write/blank/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/blank) |
 | `editor.load` | Editing | Loads a registry entry by key through that draft's own `load_*` method. [`commands/write/load/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load) |
 | `editor.save` | Editing | Writes a mode's draft through the same `write_*_in` its save button calls. [`commands/write/save/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save) |
+| `editor.set_field` | Editing + the Terrain tab | Writes one single-value field of the active mode's draft — today the Terrain draft's kind. [`commands/write/set_field.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_field.rs) |
+| `editor.list_op` | Editing + the Terrain tab | Edits one list-valued field through the form's own setter — today the Terrain draft's emplacement entry sides. [`commands/write/list_op.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/list_op.rs) |
+
+`editor.set_field` and `editor.list_op` need more than the authoring scene. Every field and
+list they offer today belongs to the Terrain draft, so they also need the Terrain tab open
+and answer `Unavailable { code: WrongState }` on any other tab. The phase is checked first
+([`commands/write/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/availability.rs)),
+so a call during Load carries the phase note and not the tab note. Each value rides on its
+variant — `Kind(Emplacement)`, `EntrySides`, `Toggle(East)` — so an unknown field or list
+name is a decode failure answering `BadArguments` with the schema, and neither command adds
+a protocol variant. `editor.list_op` refuses a `Toggle` on the entry sides while the draft's
+kind is not `Emplacement`, because `TerrainDraft::set_entry_sides` commits only at that kind
+and the write would otherwise do nothing.
 
 A mode a command does not handle is a **typed outcome inside a successful reply**, never
 `Unavailable` — that is reserved for host state. `editor.new` refuses Terrain and Prefab

@@ -9,6 +9,7 @@ use crate::{
     slab::SlabHp,
     terrain::{
         entity::TerrainPieceKind,
+        facing::TerrainFacing,
         piece::{FootfallSound, TerrainGraphicKey},
     },
     weapon::WeaponName,
@@ -60,6 +61,9 @@ pub enum TerrainSimKind {
         height_band:      HeightBand,
         /// Mounted weapon key.
         mounted_weapon:   WeaponName,
+        /// Sides the emplacement can be entered from, in its unrotated frame.
+        #[serde(default)]
+        entry_sides:      Vec<TerrainFacing>,
     },
 }
 
@@ -74,6 +78,35 @@ impl TerrainSimKind {
             Self::Emplacement { .. } => TerrainPieceKind::Emplacement,
         }
     }
+}
+
+// Where a cardinal sits in the ring `TerrainFacing::ALL` walks.
+fn ring_position(facing: TerrainFacing) -> Option<usize> {
+    TerrainFacing::ALL
+        .iter()
+        .position(|cardinal| *cardinal == facing)
+}
+
+/// The authored entry sides read in the frame of a piece turned to `facing`.
+///
+/// Each side advances by the ring steps from [`TerrainFacing::default`] to `facing`.
+#[must_use]
+pub fn rotated_entry_sides(
+    authored: &[TerrainFacing],
+    facing: TerrainFacing,
+) -> Vec<TerrainFacing> {
+    let ring = TerrainFacing::ALL;
+    let (Some(from), Some(to)) = (
+        ring_position(TerrainFacing::default()),
+        ring_position(facing),
+    ) else {
+        return authored.to_vec();
+    };
+    let steps = (to + ring.len() - from) % ring.len();
+    authored
+        .iter()
+        .filter_map(|side| ring_position(*side).map(|at| ring[(at + steps) % ring.len()]))
+        .collect()
 }
 
 /// Presenter side of a terrain piece.

@@ -5,9 +5,8 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    armor::{ArmorHardness, ArmorProtection},
     battle::{BattleSimPlugin, SetupBattleRequested},
-    cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    cover::HeightBand,
     ganger::{Cool, Direction, Facing, GangRegistry, Grit, Speed, Strength, Toughness},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
@@ -15,14 +14,12 @@ use gdtf_battle_sim::{
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     terrain::{
-        emplacement::{
-            EmplacementOccupant, EmplacementState, MountedWeaponEntity, MountedWeaponKey,
-        },
+        emplacement::{EmplacementOccupant, EmplacementState, MountedWeaponEntity},
         entity::TerrainCell,
     },
     test_support::{
-        GangerSpawnBuilder, single_mode, test_armor_registry, test_melee_weapon_registry,
-        test_weapon_spec,
+        GangerSpawnBuilder, TEST_MOUNTED_WEAPON_KEY, single_mode, test_armor_registry,
+        test_melee_weapon_registry, test_terrain_registry, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
@@ -32,8 +29,6 @@ use gdtf_battle_sim::{
 };
 
 pub(crate) const PLAYER: u8 = 0;
-
-pub(crate) const MOUNTED_KEY: &str = "test-mounted";
 
 pub(crate) const OWN_KEY: &str = "test-own-gun";
 
@@ -65,7 +60,7 @@ pub(crate) fn test_ranged_registry() -> WeaponRegistry {
             gun_spec(OWN_DAMAGE_TYPE),
         ),
         (
-            WeaponName::new(MOUNTED_KEY.to_owned()),
+            WeaponName::new(TEST_MOUNTED_WEAPON_KEY.to_owned()),
             gun_spec(MOUNT_DAMAGE_TYPE),
         ),
     ])
@@ -82,6 +77,7 @@ pub(crate) fn battle_app(seed: u64) -> (App, u64) {
     app.insert_resource(test_ranged_registry());
     app.insert_resource(test_melee_weapon_registry());
     app.insert_resource(test_armor_registry());
+    app.insert_resource(test_terrain_registry());
     (app, seed)
 }
 
@@ -123,28 +119,25 @@ pub(crate) fn player_at(at: CellLevel, facing: Direction) -> GangerSpawn {
         .build()
 }
 
-pub(crate) fn spawn_emplacement(app: &mut App, at: CellLevel) -> Entity {
-    let entity = app
-        .world_mut()
-        .spawn((
-            TerrainCell::new(at),
-            EmplacementState::Vacant,
-            MountedWeaponKey::new(WeaponName::new(MOUNTED_KEY.to_owned())),
-        ))
-        .id();
-    app.world_mut()
-        .resource_mut::<CoverLedger>()
-        .insert(at, cover_entry());
+/// The one emplacement seeded at `at`, or a failure naming the cell.
+pub(crate) fn seated_emplacement(app: &mut App, at: CellLevel) -> Entity {
+    let world = app.world_mut();
+    let mut query = world.query::<(Entity, &TerrainCell, &EmplacementState)>();
+    let matches: Vec<Entity> = query
+        .iter(world)
+        .filter(|(_, cell, _)| ***cell == at)
+        .map(|(entity, ..)| entity)
+        .collect();
+    assert_eq!(
+        matches.len(),
+        1,
+        "exactly one emplacement must be seeded at {at:?}, found {}",
+        matches.len(),
+    );
+    let [entity] = matches[..] else {
+        unreachable!("the count above is one");
+    };
     entity
-}
-
-pub(crate) const fn cover_entry() -> CoverEntry {
-    CoverEntry::seeded(
-        CoverHp::new(45),
-        HeightBand::High,
-        ArmorProtection::new(0),
-        ArmorHardness::new(0),
-    )
 }
 
 pub(crate) fn state(app: &App, entity: Entity) -> Option<EmplacementState> {

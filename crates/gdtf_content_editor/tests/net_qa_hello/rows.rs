@@ -40,6 +40,49 @@ pub(crate) struct SetModeReplyRow {
     pub(crate) mode: ModeRow,
 }
 
+/// A client's own reading of the Terrain draft's kind pick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum TerrainKindRow {
+    Wall,
+    Cover,
+    Slab,
+    Emplacement,
+}
+
+/// A client's own reading of a cardinal side.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum FacingRow {
+    North,
+    East,
+    South,
+    West,
+}
+
+/// Which single-value field a write named, carrying the value read back.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum FieldRow {
+    Kind(TerrainKindRow),
+}
+
+/// Which list a write named.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum ListRow {
+    EntrySides,
+}
+
+/// `editor.set_field`'s reply body.
+#[derive(Debug, Deserialize)]
+pub(crate) struct SetFieldReplyRow {
+    pub(crate) field: FieldRow,
+}
+
+/// `editor.list_op`'s reply body.
+#[derive(Debug, Deserialize)]
+pub(crate) struct ListOpReplyRow {
+    pub(crate) list:    ListRow,
+    pub(crate) members: Vec<FacingRow>,
+}
+
 /// What `editor.new` did.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub(crate) enum NewOutcomeRow {

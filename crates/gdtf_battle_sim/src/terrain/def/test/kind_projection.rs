@@ -35,6 +35,7 @@ fn sim_kind_of(kind: TerrainPieceKind) -> TerrainSimKind {
             armor_hardness:   ArmorHardness::new(2),
             height_band:      HeightBand::High,
             mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
+            entry_sides:      Vec::new(),
         },
     }
 }

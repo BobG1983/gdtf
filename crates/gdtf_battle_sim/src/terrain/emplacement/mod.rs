@@ -7,6 +7,7 @@ pub mod toggle;
 mod test;
 
 pub use state::{
-    EmplacementManned, EmplacementOccupant, EmplacementState, MountedWeaponEntity, MountedWeaponKey,
+    EmplacementEntrySides, EmplacementFacing, EmplacementManned, EmplacementOccupant,
+    EmplacementState, MountedWeaponEntity, MountedWeaponKey,
 };
 pub use toggle::{EmplacementTogglePlugin, SetEmplacement, apply_emplacement_toggle};

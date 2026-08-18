@@ -3,7 +3,7 @@ use gdtf_battle_sim::{
     cover::HeightBand,
     ganger::Direction,
     terrain::emplacement::EmplacementState,
-    test_support::SituationBuilder,
+    test_support::{SituationBuilder, emplacement_at},
 };
 
 use super::harness::*;
@@ -11,13 +11,14 @@ use super::harness::*;
 #[test]
 fn enter_mans_and_spawns_mount_exit_reverts_and_despawns_mount() {
     let (mut app, seed) = battle_app(0x5543_0A0A);
+    let emp_cell = ground(6, 5);
     let situation = SituationBuilder::new()
         .with_gangers([player_at(ground(5, 5), Direction::East)])
+        .with_scatter(emplacement_at(emp_cell))
         .build_with_gangs();
     drive_setup(&mut app, seed, situation);
 
-    let emp_cell = ground(6, 5);
-    let emplacement = spawn_emplacement(&mut app, emp_cell);
+    let emplacement = seated_emplacement(&mut app, emp_cell);
     let Some(actor) = player_ganger(&mut app) else {
         unreachable!("setup spawns one player ganger");
     };

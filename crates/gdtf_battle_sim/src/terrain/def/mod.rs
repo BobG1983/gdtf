@@ -14,7 +14,9 @@ pub use blocking::{
     sim_kind_default_los, sim_kind_occludes_vision,
 };
 pub use definition::{BlocksPathingOverride, TerrainDef, TerrainDisplayName};
-pub use kind::{LosBlocking, TerrainPresenterKind, TerrainSimKind, TerrainTag};
+pub use kind::{
+    LosBlocking, TerrainPresenterKind, TerrainSimKind, TerrainTag, rotated_entry_sides,
+};
 pub use registry::TerrainDefRegistry;
 pub(crate) use uuid::fnv1a64_u128;
 pub use uuid::{NilKey, TerrainUuid};
