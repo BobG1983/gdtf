@@ -5,7 +5,7 @@ use super::support::{
     place_occupant, spawn_combatant, tu_of,
 };
 use crate::{
-    acts::{OpenDoorRequested, dispatch_open_door},
+    acts::OpenDoorRequested,
     cover::HeightBand,
     ganger::{Direction, Position, Tu},
     occupancy::{GRID_HEIGHT, project_path_blocking},
@@ -25,14 +25,13 @@ fn door_brain_app() -> App {
         Update,
         apply_openable_toggle
             .in_set(SimSystems::Simulate)
-            .after(dispatch_open_door)
             .before(project_path_blocking),
     );
     app
 }
 
 fn seal_column(world: &mut World, door_y: i32) -> Entity {
-    let mut door = Entity::from_bits(0);
+    let mut door = Entity::PLACEHOLDER;
     for y in 0..i32::try_from(GRID_HEIGHT).unwrap_or(0) {
         let at = ground(WALL_X, y);
         if y == door_y {
