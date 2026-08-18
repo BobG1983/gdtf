@@ -4,9 +4,9 @@ use bevy::prelude::Entity;
 
 use super::{
     advance::plan_reposition,
-    decide::{AiTarget, pick_nearest},
+    decide::AiTarget,
     params::{AiActRequests, AiPlanningGrids},
-    snapshot::{GangerRow, row_cell_level},
+    snapshot::GangerRow,
 };
 use crate::{
     acts::{
@@ -141,11 +141,12 @@ fn walkable_pads(door: CellLevel, occupancy: &OccupancyGrid) -> Vec<CellLevel> {
 }
 
 fn nearest_pad(from: Position, pads: &[CellLevel]) -> Option<CellLevel> {
-    let from_level = row_cell_level(&from);
-    let candidates: Vec<AiTarget> = pads
-        .iter()
-        .map(|pad| AiTarget::new(Entity::from_bits(0), pad.cell(), pad.level()))
-        .collect();
-    pick_nearest(from_level.cell(), from_level.level(), &candidates)
-        .map(|picked| CellLevel::new(picked.cell, picked.level))
+    let from_cell = from.cell();
+    let from_level = from.level();
+    pads.iter().copied().min_by_key(|pad| {
+        let dx = (from_cell.x - pad.x).unsigned_abs();
+        let dy = (from_cell.y - pad.y).unsigned_abs();
+        let level_gap = u32::from((*from_level).abs_diff(*pad.level()));
+        (dx.max(dy), level_gap, pad.z, pad.y, pad.x)
+    })
 }
