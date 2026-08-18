@@ -7,8 +7,8 @@ use bevy::{
 
 use crate::{
     acts::{
-        EndTurnRequested, FireRequested, MeleeRequested, MoveRequested, ReloadRequested,
-        SetAimingRequested, SetStanceRequested, SightWorld,
+        EndTurnRequested, FireRequested, MeleeRequested, MoveRequested, OpenDoorRequested,
+        ReloadRequested, SetAimingRequested, SetStanceRequested, SightWorld,
     },
     cover::CoverLedger,
     march::MarchGrids,
@@ -70,11 +70,12 @@ impl AiPlanningGrids<'_> {
 /// The acts one enemy turn requests.
 #[derive(SystemParam)]
 pub struct AiActRequests<'w> {
-    pub(super) fire:     MessageWriter<'w, FireRequested>,
-    pub(super) reload:   MessageWriter<'w, ReloadRequested>,
-    pub(super) melee:    MessageWriter<'w, MeleeRequested>,
-    pub(super) step:     MessageWriter<'w, MoveRequested>,
-    pub(super) aim:      MessageWriter<'w, SetAimingRequested>,
-    pub(super) stance:   MessageWriter<'w, SetStanceRequested>,
-    pub(super) end_turn: MessageWriter<'w, EndTurnRequested>,
+    pub(super) fire:      MessageWriter<'w, FireRequested>,
+    pub(super) reload:    MessageWriter<'w, ReloadRequested>,
+    pub(super) melee:     MessageWriter<'w, MeleeRequested>,
+    pub(super) step:      MessageWriter<'w, MoveRequested>,
+    pub(super) open_door: MessageWriter<'w, OpenDoorRequested>,
+    pub(super) aim:       MessageWriter<'w, SetAimingRequested>,
+    pub(super) stance:    MessageWriter<'w, SetStanceRequested>,
+    pub(super) end_turn:  MessageWriter<'w, EndTurnRequested>,
 }

@@ -4,7 +4,7 @@ use crate::{
     acts::{
         dispatch_set_aiming, dispatch_set_stance, downed::dispatch_stabilize_downed,
         fire::dispatch_fire, injury::apply_injury, melee::dispatch_melee, movement::dispatch_move,
-        reload::dispatch_reload,
+        open_door::dispatch_open_door, reload::dispatch_reload,
     },
     ai::enemy_ai_turn,
     effects::{
@@ -35,6 +35,7 @@ pub(super) fn wire_turn_clocks(app: &mut App) {
             .before(dispatch_fire)
             .before(dispatch_melee)
             .before(dispatch_reload)
+            .before(dispatch_open_door)
             .before(dispatch_set_aiming)
             .before(dispatch_set_stance)
             .before(dispatch_move)

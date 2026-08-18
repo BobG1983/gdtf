@@ -1,8 +1,9 @@
-//! Enemy turn AI: snapshot, target pick, advance, engage, reload, melee, aim, crouch.
+//! Enemy turn AI: snapshot, target pick, advance, engage, reload, melee, doors, aim, crouch.
 
 mod advance;
 mod brain;
 mod decide;
+mod door;
 mod engage;
 mod params;
 mod posture;

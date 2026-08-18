@@ -1,10 +1,11 @@
-//! Enemy turn brain: fire if possible, else reload, else melee, else advance, else end turn.
+//! Enemy turn brain: fire if possible, else reload, else melee, else advance, else a door, else crouch, else end turn.
 
-use bevy::prelude::{Entity, Res};
+use bevy::prelude::{Entity, Query, Res};
 
 use super::{
     advance::plan_reposition,
     decide::{AiTarget, pick_nearest},
+    door::{DoorAct, DoorRow, plan_door},
     engage::{WeaponLookup, engageable_targets},
     params::{AiActRequests, AiPlanningGrids},
     posture::{plan_aim, plan_crouch},
@@ -20,6 +21,7 @@ use crate::{
     ganger::LifeState,
     los::{Observer, PeekOffset, Target, has_los},
     magazine::{Magazine, mode_tu_cost},
+    terrain::{entity::TerrainCell, openable::OpenState},
     tu::can_spend_tu,
     turn::ActiveFaction,
     visibility::OmniscientFog,
@@ -143,7 +145,7 @@ fn plan_step(
     Some(MoveRequested::new(enemy.entity, dest))
 }
 
-/// One enemy acts: aim, shoot, reload, melee, move closer, crouch, or end the turn.
+/// One enemy acts: aim, shoot, reload, melee, move closer, open a door, crouch, or end the turn.
 pub fn enemy_ai_turn(
     active: Res<ActiveFaction>,
     player: Option<Res<PlayerFaction>>,
@@ -151,6 +153,7 @@ pub fn enemy_ai_turn(
     grids: AiPlanningGrids,
     gangers: EnemyTurnGangers,
     weapon_lookup: WeaponLookup,
+    doors: Query<(Entity, &OpenState, &TerrainCell)>,
     mut orders: AiActRequests,
 ) {
     let Some(player_faction) = player.as_deref().map(|player| **player) else {
@@ -178,6 +181,14 @@ pub fn enemy_ai_turn(
     let all_targets: Vec<AiTarget> = targets
         .iter()
         .map(|row| AiTarget::new(row.entity, row.position.cell(), row.position.level()))
+        .collect();
+    let door_rows: Vec<DoorRow> = doors
+        .iter()
+        .map(|(entity, state, cell)| DoorRow {
+            entity,
+            cell: **cell,
+            state: *state,
+        })
         .collect();
 
     let is_dead_fn = |entity: Entity| {
@@ -225,6 +236,26 @@ pub fn enemy_ai_turn(
             is_dead,
         ) {
             orders.step.write(step);
+            acted = true;
+            break;
+        }
+
+        if let Some(door_act) = plan_door(
+            enemy,
+            &door_rows,
+            &rows,
+            omniscient.as_deref(),
+            &grids,
+            is_dead,
+        ) {
+            match door_act {
+                DoorAct::Open(open) => {
+                    orders.open_door.write(open);
+                }
+                DoorAct::Step(step) => {
+                    orders.step.write(step);
+                }
+            }
             acted = true;
             break;
         }
