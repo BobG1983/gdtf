@@ -285,7 +285,7 @@ fn idle_crouches_once_then_the_turn_ends() {
             break;
         }
     }
-    assert!(more.is_empty(), "already crouched, they hold: {more:?}",);
+    assert!(more.is_empty(), "already crouched, they hold: {more:?}");
     assert!(
         returned,
         "after the one crouch the turn must come back to the player",

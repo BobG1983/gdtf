@@ -5,9 +5,9 @@ use bevy::prelude::{Entity, Query, Res};
 use super::{
     advance::plan_reposition,
     decide::{AiTarget, pick_nearest},
-    door::{DoorAct, DoorRow, plan_door},
+    door::{door_rows, plan_door, write_door_act},
     engage::{WeaponLookup, engageable_targets},
-    params::{AiActRequests, AiPlanningGrids},
+    params::{AiActRequests, AiPlanningGrids, AiTurnSides},
     posture::{plan_aim, plan_crouch},
     snapshot::{EnemyTurnGangers, GangerRow, cell_order, ganger_rows},
 };
@@ -17,13 +17,11 @@ use crate::{
         ReloadRequested, can_melee, can_reload, melee_tu_cost,
         movement::{BreakAwayMover, suppressed_move_legal},
     },
-    battle::PlayerFaction,
-    ganger::LifeState,
+    ganger::{Faction, LifeState},
     los::{Observer, PeekOffset, Target, has_los},
     magazine::{Magazine, mode_tu_cost},
     terrain::{entity::TerrainCell, openable::OpenState},
     tu::can_spend_tu,
-    turn::ActiveFaction,
     visibility::OmniscientFog,
     weapon::Handedness,
 };
@@ -145,10 +143,24 @@ fn plan_step(
     Some(MoveRequested::new(enemy.entity, dest))
 }
 
+fn split_sides(rows: &[GangerRow], active: Faction) -> (Vec<GangerRow>, Vec<GangerRow>) {
+    let mut enemies: Vec<GangerRow> = rows
+        .iter()
+        .copied()
+        .filter(|row| row.faction == active)
+        .collect();
+    enemies.sort_by_key(|row| cell_order(&row.position));
+    let targets = rows
+        .iter()
+        .copied()
+        .filter(|row| row.faction != active)
+        .collect();
+    (enemies, targets)
+}
+
 /// One enemy acts: aim, shoot, reload, melee, move closer, open a door, crouch, or end the turn.
 pub fn enemy_ai_turn(
-    active: Res<ActiveFaction>,
-    player: Option<Res<PlayerFaction>>,
+    sides: AiTurnSides,
     omniscient: Option<Res<OmniscientFog>>,
     grids: AiPlanningGrids,
     gangers: EnemyTurnGangers,
@@ -156,119 +168,69 @@ pub fn enemy_ai_turn(
     doors: Query<(Entity, &OpenState, &TerrainCell)>,
     mut orders: AiActRequests,
 ) {
-    let Some(player_faction) = player.as_deref().map(|player| **player) else {
+    let Some(active) = sides.enemy_faction() else {
         return;
     };
-    let active_faction = **active;
-    if active_faction == player_faction {
-        return;
-    }
-
     let rows = ganger_rows(&gangers);
-
-    let mut enemies: Vec<GangerRow> = rows
-        .iter()
-        .copied()
-        .filter(|row| row.faction == active_faction)
-        .collect();
-    enemies.sort_by_key(|row| cell_order(&row.position));
-
-    let targets: Vec<GangerRow> = rows
-        .iter()
-        .copied()
-        .filter(|row| row.faction != active_faction)
-        .collect();
+    let (enemies, targets) = split_sides(&rows, active);
     let all_targets: Vec<AiTarget> = targets
         .iter()
         .map(|row| AiTarget::new(row.entity, row.position.cell(), row.position.level()))
         .collect();
-    let door_rows: Vec<DoorRow> = doors
-        .iter()
-        .map(|(entity, state, cell)| DoorRow {
-            entity,
-            cell: **cell,
-            state: *state,
-        })
-        .collect();
-
+    let scanned = door_rows(
+        doors
+            .iter()
+            .map(|(entity, state, cell)| (entity, *state, **cell)),
+    );
     let is_dead_fn = |entity: Entity| {
         rows.iter()
             .find(|row| row.entity == entity)
             .is_some_and(|row| row.life == LifeState::Dead)
     };
     let is_dead = &is_dead_fn;
+    let fog = omniscient.as_deref();
     let mut acted = false;
     for enemy in &enemies {
         if !*enemy.life.is_active() || *enemy.walking {
             continue;
         }
-
         if let Some(aim) = plan_aim(enemy, &targets, &weapon_lookup, &grids, is_dead) {
             orders.aim.write(aim);
             acted = true;
             break;
         }
-
         if let Some(shot) = plan_shot(enemy, &targets, &weapon_lookup, &grids, is_dead) {
             orders.fire.write(shot);
             acted = true;
             break;
         }
-
         if let Some(reload) = plan_reload(enemy, &weapon_lookup) {
             orders.reload.write(reload);
             acted = true;
             break;
         }
-
         if let Some(swing) = plan_melee(enemy, &targets, &weapon_lookup, &grids, is_dead) {
             orders.melee.write(swing);
             acted = true;
             break;
         }
-
-        if let Some(step) = plan_step(
-            enemy,
-            &rows,
-            &all_targets,
-            omniscient.as_deref(),
-            &grids,
-            is_dead,
-        ) {
+        if let Some(step) = plan_step(enemy, &rows, &all_targets, fog, &grids, is_dead) {
             orders.step.write(step);
             acted = true;
             break;
         }
-
-        if let Some(door_act) = plan_door(
-            enemy,
-            &door_rows,
-            &rows,
-            omniscient.as_deref(),
-            &grids,
-            is_dead,
-        ) {
-            match door_act {
-                DoorAct::Open(open) => {
-                    orders.open_door.write(open);
-                }
-                DoorAct::Step(step) => {
-                    orders.step.write(step);
-                }
-            }
+        if let Some(door) = plan_door(enemy, &scanned, &rows, fog, &grids, is_dead) {
+            write_door_act(&mut orders, door);
             acted = true;
             break;
         }
-
         if let Some(crouch) = plan_crouch(enemy, &grids) {
             orders.stance.write(crouch);
             acted = true;
             break;
         }
     }
-
-    let any_walking = enemies.iter().any(|enemy| *enemy.walking);
-    if !acted && !any_walking {
+    if !acted && !enemies.iter().any(|enemy| *enemy.walking) {
         orders.end_turn.write(EndTurnRequested);
     }
 }

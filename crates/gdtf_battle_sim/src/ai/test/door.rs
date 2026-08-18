@@ -33,7 +33,7 @@ fn door_brain_app() -> App {
 
 fn seal_column(world: &mut World, door_y: i32) -> Entity {
     let mut door = Entity::from_bits(0);
-    for y in 0..GRID_HEIGHT as i32 {
+    for y in 0..i32::try_from(GRID_HEIGHT).unwrap_or(0) {
         let at = ground(WALL_X, y);
         if y == door_y {
             door = world
