@@ -1,8 +1,3 @@
----
-paths:
-  - "**/*"
----
-
 # Linear discipline — the board is the truth of the work
 
 Why this rule exists: tickets marked Done while un-done, and work done with no

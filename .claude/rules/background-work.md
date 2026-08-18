@@ -1,7 +1,3 @@
----
-paths: ["**/*"]
----
-
 # Background work — never poll, always relay
 
 Backgrounding is not the problem. Not relaying the result is. Spawn everything in

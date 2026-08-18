@@ -4,10 +4,9 @@ paths: [".claude/workflows/**", ".claude/agents/**"]
 
 # Model tiering — the tier is set where the call is made
 
-User ruling, given directly in conversation, 2026-08-18. Every `agent()` call in a workflow
-script names its model. The agent definitions in `.claude/agents/` all carry `model: opus`
-in frontmatter, and a call-site `model:` overrides it — so the call site is the only place
-a tier is actually decided.
+Every `agent()` call in a workflow script names its model. The agent definitions 
+in `.claude/agents/` all carry `model: opus`in frontmatter, and a call-site `model:` 
+overrides it — so the call site is the only place a tier is actually decided.
 
 ## The three tiers
 

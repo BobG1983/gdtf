@@ -1,8 +1,3 @@
----
-paths:
-  - "**/*"
----
-
 # Design fidelity — build what was specified
 
 Why this rule exists: this kit's history includes agents quietly NARROWING a

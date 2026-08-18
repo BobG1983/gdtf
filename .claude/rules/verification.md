@@ -39,12 +39,6 @@ QA modules compile under `debug_assertions` (no `net_qa` feature). Protocol sche
 
 `cargo nextest run` may replace the test step when available; default is `cargo dtest`.
 
-### CI green (static)
-
-CI does not use `dynamic_linking` or `dev_tools`. See `.github/workflows/`.
-
-Release binary builds are packaging-time only (not a CI gate).
-
 ### Pre-commit subset
 
 `.claude/hooks/pre-commit-gate.sh` runs a **fast subset** (`fmt`, `dclippy`, `dtest`, `dbuild`) as a deterministic backstop. Full green is still every command above, via `/gate`.
@@ -61,9 +55,9 @@ Scope is agent judgment in the `/gate` skill (and re-checked by `/land`), not a 
 4. **Report failures verbatim** — paste the assert, compiler, or clippy output.
 5. **`/gate` is the gatekeeper** — this suite plus the design-gate audit. No gate-pass, no commit.
 
-6. **A flaky test is a broken test.** A test that passes only sometimes was never green, and a passing re-run is not evidence — it is the same test disagreeing with itself. Fix the cause so it cannot race: remove the clock, the shared path, the ordering assumption. A wider timeout, a sleep, a retry, or a larger random range makes a collision less likely and is therefore the wrong fix. If you cannot make it deterministic, say so and file it; never re-run until it passes and report green.
+6. **A flaky test is a broken test.** A test that passes only sometimes was never green, and a passing re-run is not evidence — it is the same test disagreeing with itself. Fix the cause so it cannot race: remove the clock, the shared path, the ordering assumption. A wider timeout, a sleep, a retry, or a larger random range makes a collision less likely and is therefore the wrong fix. If you cannot make it deterministic, you're wrong; never re-run until it passes and report green.
 
-7. **Prove it the cheap way first.** An integration test is about as good as a unit test; both beat reading the code; every one of them beats building tooling to demonstrate behaviour. **Read the existing tests before writing anything** — the invariant you are about to prove is often already asserted, and a numeric difference is not a defect until you have grepped the tests for it. Building a harness to show what a test already covers is wasted work, and a clause whose evidence depends on winning a race is a wrong clause.
+7. **Prove it the cheap way first.** An integration test is about as good as a unit test; both beat reading the code; every one of them beats building tooling to demonstrate behaviour. **Read the existing tests before writing anything** — the invariant you are about to prove is often already asserted, and a numeric difference is not a defect until you have searched the tests for it.
 
 8. **Do not pin changeable literals in tests.** If an ordinary content or tuning edit (new weapon file, renamed stem, magnitude tweak) turns a test red, the test is pinning a changeable literal — assert the **property** instead (non-empty registry, deserializes a `Cone` somewhere, gate waits on the resource). Exact filenames, counts, and magnitudes belong in content data, not in `assert!`. Dedicated guard crates under `gdtf_test_utils/tests/` are the exception: they pin repo structure on purpose.
 

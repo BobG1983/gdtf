@@ -151,9 +151,6 @@ Still over the limit                → the access set is wrong; redesign
 
 - Non-system helpers with many true domain args — still prefer newtypes and
   structs; this file is about **ECS systems and their param lists**.
-- Other `#[expect]` uses (casts, restriction lints) are out of *this file's*
-  scope but not permitted — the repo target is zero `#[expect]` of any lint.
-  Fix the type or the code, not the attribute.
 - `#[allow]` is forbidden project-wide (`clippy::allow_attributes = deny`), and
   `#[expect]` is not the way around that.
 

@@ -100,7 +100,7 @@ newtype, a param/return matching the enclosing newtype's OWN inner type (its
 constructor/accessor boundary), trait-`impl` signatures, framework plumbing
 that genuinely cannot be wrapped (Bevy system params, a `ShaderType` GPU
 uniform's bare `f32`/`Vec2` for WGSL layout, a `.run_if` run-condition's bare
-`bool` return), and the four rule-4 **convention carve-outs** (GTW-722): (a)
+`bool` return), and the four rule-4 **convention carve-outs**: (a)
 the std-container trio `is_empty`/`len`/`contains…` (the `len` allowance gated
 on an `is_empty` sibling in the same inherent `impl`, the `contains…` allowance
 gated on a reference parameter); (b) a coordinate/vector newtype's
@@ -116,7 +116,3 @@ name does not say `hash`) is STILL a violation. Test bands are out of scope
 (their scaffolding values are not domain data). Wrapping a value is also how
 `docs/glossary.md` vocabulary becomes code — see `design-fidelity.md`.
 
-A `syn`-based mechanical checker was built and deliberately retired 2026-07-10
-(GTW-703/724) after the false-positive maintenance cost outweighed demonstrated
-value — do not rebuild mechanical enforcement for this rule without new evidence
-(a one-crate pilot measuring false-positive rate and caught-bug rate).

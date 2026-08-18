@@ -2,28 +2,24 @@
 
 A turn-based tactics **situation generator** (Necromunda campaign × XCOM) — grimdark.
 Core loop: `fight → consequences on survivors → carry the scarred roster forward → fight again, changed`.
-Built in **Rust + Bevy 0.19**. Design canon lives in [`docs/`](docs/index.md).
+Built in **Rust + Bevy**. Design canon lives in [`docs/`](docs/index.md).
 
 Work queue is Linear (project **GDTF**, tickets **GTW-***). Use the Linear MCP; do not hardcode team names or hand-edit task state.
 
 ## Process
 
-Dev loop: **`/next-task` → build → `/gate` → `/docs-sync` → `/land`**.
+Dev loop: **`/next-task` → build → `/gate` → `/docs-sync` → `/land` handled using the build-ticket workflow**.
 
-- Pick a ticket onto `feature/gtw-N-slug`.
-- Build it.
-- `/gate` (green suite + design-gate audit).
-- `/docs-sync` if docs drifted.
-- `/land` onto `develop` and close the ticket.
+- Pick a ticket
+- Call the workflow `.claude/workflows/build-ticket.js`
 
 Found a defect? `/file-bug` before fixing. Kit sanity? `/health-check`.
 Autonomous loop tick? `/heartbeat`.
 
 A ticket carrying **Needs Splitting** is not built. Split it first with
-[`.claude/workflows/split-ticket.js`](.claude/workflows/split-ticket.js) — it files the
-children, and the children are what get built.
+`.claude/workflows/split-ticket.js` — it files the children, and the children are what get built.
 
-Orchestration uses on-demand sub-agents. Favor fan-out (e.g. `/gate` and `/health-check` spawn parallel read-only design-gate lenses). Sub-agents that review stay read-only. Commit subjects: `Area: summary (GTW-N)`.
+Orchestration uses prebuild workflows where possible, on-demand workflows where not, and on-demand sub-agents where a workflow would be overly heavy. Commit subjects: `Area: summary (GTW-N)`.
 
 No agent has a memory store. Durable knowledge goes in `.claude/rules/`, the agent definition, or `docs/` — all of which are actually read.
 
@@ -38,8 +34,8 @@ Short files under `.claude/rules/` — read and follow them:
 - [`clause-writing.md`](.claude/rules/clause-writing.md) — a clause says what changes, where, and what goes red if it is wrong.
 - [`no-bare-types.md`](.claude/rules/no-bare-types.md) — no bare Rust/std type for a domain value; named newtype that `Deref`s.
 - [`module-layout.md`](.claude/rules/module-layout.md) — module is a directory; mod.rs is wiring-only; size limits.
-- [`plain-language.md`](.claude/rules/plain-language.md) — plain wording and length; name the real mechanism.
-- [`reply-shape.md`](.claude/rules/reply-shape.md) — chat reply structure: answer first, no process narration.
+- [`plain-language.md`](.claude/rules/plain-language.md) — plain wording and length; name the real mechanism. **CRITICAL**
+- [`reply-shape.md`](.claude/rules/reply-shape.md) — chat reply structure - **HOW TO SPEAK TO THE USER**: answer first, no process narration. **CRITICAL**
 - [`comment-hygiene.md`](.claude/rules/comment-hygiene.md) — short docs; no ticket ids in comments.
 - [`code-navigation.md`](.claude/rules/code-navigation.md) — symbol questions go to the LSP; a grep count is not a caller count.
 - [`model-tiering.md`](.claude/rules/model-tiering.md) — fable for very hard or creative work, opus for hard engineering, sonnet for mechanical copy/compare; the call site decides, higher tier wins between.
@@ -66,14 +62,18 @@ Bevy ECS gotchas (system ordering, change detection, schedules, state transition
 
 ## Run it
 
+Favor using the gdtf-qa MCP, but if you **MUST** run the app directly:
+
 ```bash
-cargo dbuild
-cargo drun
+cargo dbuild  # Builds the game
+cargo drun    # Runs the game
+cargo edbuild # Builds the editor
+cargo edrun   # Runs the editor
 ```
 
 ## Project structure
 
-Cargo workspace (`crates/*` + `bins/*`). Bevy app is `crates/gdtf_app`. Sim (`gdtf_battle_sim`) is the source of combat truth — render-free, deterministic. Presenter reads the sim; the sim never reads the presenter.
+Cargo workspace (`crates/*` + `bins/*` + `libs/*`). Core Bevy app wiring for the game is `crates/gdtf_app`. Sim (`gdtf_battle_sim`) is the source of combat truth — render-free, deterministic. Presenter reads the sim; the sim never reads the presenter.
 
 ## Conventions
 
@@ -82,3 +82,5 @@ Cargo workspace (`crates/*` + `bins/*`). Bevy app is `crates/gdtf_app`. Sim (`gd
 - Doc every `pub` item.
 - Typed everything — no bare domain values.
 - Bevy ECS idioms: small focused systems, `Query`/`Commands`/`Res`, `States` + `OnEnter`/`OnExit`.
+- Anything the user can do the MCP must be able to do (MCP Commands)
+- Anything the games player can do the games AI also has access to (Acts)

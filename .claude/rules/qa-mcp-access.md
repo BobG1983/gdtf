@@ -4,15 +4,15 @@ paths: ["**/*"]
 
 # Driving the running app — the MCP tools, and nothing else
 
-Why this rule exists: the QA MCP is not a convenience wrapper around a socket. It **is**
-the deliverable — the thing GTW-998 and GTW-997 are building, and the way the game and
-editor get looked at. An agent that reaches past it to a raw socket proves nothing about
-the path a real QA client takes, and hides a broken MCP instead of reporting it.
+Why this rule exists: the QA MCP is not a convenience wrapper around a socket. It 
+is **the** way the game and editor get looked at by agents. 
+An agent that reaches past it to a raw socket proves nothing about
+the path a real client takes, and hides a broken MCP instead of reporting it.
 
 ## Rules
 
-1. **Drive the app only through the `mcp__gdtf-qa__*` tools.** `launch`, `run`, `logs`,
-   `stop`, `commands`. That is the whole interface.
+1. **Drive the game and editor only through the `mcp__gdtf-qa__*` tools.** 
+   `launch`, `run`, `logs`,`stop`, `commands`. That is the whole interface.
 2. **Never write a socket client.** Not a Python script, not `nc`, not a Rust test binary
    that opens the port, not "just to check something". There is no case where this is the
    right move, including a deadline and including a tool that is misbehaving.

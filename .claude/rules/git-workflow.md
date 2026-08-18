@@ -1,8 +1,3 @@
----
-paths:
-  - "**/*"
----
-
 # Git workflow — branch per ticket, commit on gate-pass
 
 Why this rule exists: giant multi-ticket uncommitted working trees that nobody

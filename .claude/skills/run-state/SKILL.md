@@ -34,24 +34,16 @@ alone. If you did, update its row with the new id. The table is one row per live
 
 **Step 3 — In Flight.** This section is a **replace, not an append.** Rewrite it to describe only
 what is live right now. If a build is running, that means the ticket, the branch, the workflow run
-id, the exact resume command, and anything the next tick would otherwise have to rediscover —
-including any user ruling attached to the ticket that a builder could undo by accident. If nothing
-is running, cut it to one line saying so and naming what comes next. Delete anything (including notes) about work that has landed; that belongs in the Delivery Log or on the ticket. Do note store the details in memory, memory goes stale and is not durable.
+id, the exact resume command, and anything the next tick would otherwise have to rediscover about the ongoing work (not notes you want to keep). If nothing is running, cut it to one line saying so. Delete anything (including notes) about work that has landed; that belongs in the Delivery Log or on the ticket. Do note store the details in memory, memory goes stale and is not durable.
 
 **Step 4 — Delivery Log.** Did a ticket land since the last write? If not, leave the section alone.
 If it did, add one line at the top:
 `YYYY-MM-DD-HH:MM  GTW-n  one sentence saying what the ticket was.`
 Then count the lines — if there are 11, delete the bottom one.
 
-**Step 5 — The Queue.** Did the board's order change — a ticket landed, was filed, was cancelled,
-or gained a blocking edge? If not, leave the section alone. If it did, rewrite the affected lines in
-the form `GTW-n one sentence of detail Blocked By:… Blocks:…`, ordered by dependency rather than by
-number. Drop any ticket that has landed. Cap the list at 20; if it would be longer, keep the ones
-nearest to being worked and say in a line beneath that the rest are on the board.
+**Step 5 — The Queue.** Did the board's order change — a ticket landed, was filed, was cancelled, gained a blocking edge, or the user gave a new ordering? If not, leave the section alone. If it did, rewrite the affected lines in the form `GTW-n one sentence of detail Blocked By:… Blocks:…`, ordered by dependency rather than by number. Drop any ticket that has landed. Cap the list at 20; if it would be longer, keep the ones nearest to being worked and say in a line beneath that the rest are on the board.
 
-**Step 6 — Gotchas This Run.** Did anything this run behave in a way that cost time and would cost
-it again? If not, leave the section alone. If it did, check whether the list already holds that
-gotcha: if so, increment its count and move it to the top; if not, add it at the top as
+**Step 6 — Gotchas This Run.** Did anything this run behave in a way that was unexpected and is unlikely to be a one-off? If not, leave the section alone. If it did, check whether the list already holds that gotcha: if so, increment its count and move it to the top; if not, add it at the top as
 `While working on GTW-n, <what happened>. The solution was: <what to do>. This gotcha has been seen 1 time.` one single, short, concise, sentence following the plain language rule.
 Then two trims, in this order. If any entry now reads more than 5 times, take it out of the list and
 either file it as a bug, if it is a defect in the code, the rules or the workflow, or write it to
@@ -63,7 +55,7 @@ alone — it is a record of ticks, not of every edit. If you are, add one line a
 Name the cron id, the run id of anything in flight, where `develop` is, and whether you started a
 build. Then count the lines — if there are 6, delete the bottom one.
 
-**Step 8 — User Directed Notes.** **Do not touch this section** unless the user directed a note in
+**Step 8 — User Directed Notes.** Do not touch this section **unless** the user directed a note in
 this conversation, or a ticket has landed.
 
 If the user did direct a note, add it under a heading in the form
