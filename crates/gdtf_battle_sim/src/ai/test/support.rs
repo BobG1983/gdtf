@@ -1,7 +1,7 @@
 pub(super) use bevy::prelude::{App, Entity, Messages, MinimalPlugins, World};
 
 pub(super) use crate::{
-    acts::{FireRequested, MoveRequested, SimActsPlugin},
+    acts::{FireRequested, MoveRequested, SetAimingRequested, SetStanceRequested, SimActsPlugin},
     cover::HeightBand,
     ganger::{
         Aiming, Direction, Facing, Faction, Fight, Hp, LifeState, Luck, Position, Shooting, Stance,
@@ -210,4 +210,28 @@ pub(super) fn drain_moves(app: &mut App) -> Vec<MoveRequested> {
         .resource_mut::<Messages<MoveRequested>>()
         .drain()
         .collect()
+}
+
+pub(super) fn drain_aims(app: &mut App) -> Vec<SetAimingRequested> {
+    app.world_mut()
+        .resource_mut::<Messages<SetAimingRequested>>()
+        .drain()
+        .collect()
+}
+
+pub(super) fn drain_stances(app: &mut App) -> Vec<SetStanceRequested> {
+    app.world_mut()
+        .resource_mut::<Messages<SetStanceRequested>>()
+        .drain()
+        .collect()
+}
+
+pub(super) fn aiming_of(app: &App, entity: Entity) -> bool {
+    app.world()
+        .get::<Aiming>(entity)
+        .is_some_and(|aiming| **aiming)
+}
+
+pub(super) fn stance_of(app: &App, entity: Entity) -> Option<StanceKind> {
+    app.world().get::<Stance>(entity).map(|stance| **stance)
 }
