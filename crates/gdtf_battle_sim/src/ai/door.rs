@@ -58,8 +58,12 @@ pub(super) fn door_rows(
 
 pub(super) fn write_door_act(orders: &mut AiActRequests, act: DoorAct) {
     match act {
-        DoorAct::Open(open) => orders.open_door.write(open),
-        DoorAct::Step(step) => orders.step.write(step),
+        DoorAct::Open(open) => {
+            orders.open_door.write(open);
+        }
+        DoorAct::Step(step) => {
+            orders.step.write(step);
+        }
     }
 }
 
