@@ -41,7 +41,8 @@ pub(crate) fn workspace_assets_root() -> PathBuf {
     root
 }
 
-pub(crate) fn headless_renderer_app_at(assets_root: &std::path::Path) -> App {
+// The shared renderer build both public builders call.
+fn renderer_app_at(assets_root: &std::path::Path) -> App {
     let mut app = App::new();
     app.add_plugins(
         DefaultPlugins
@@ -69,15 +70,26 @@ pub(crate) fn headless_renderer_app_at(assets_root: &std::path::Path) -> App {
             }),
     )
     .add_message::<BattleReady>()
-    .add_message::<TerrainPieceDestroyed>()
     .add_plugins(TopDownRendererPlugin);
     app.register_content_family::<SpriteDefsFamily>();
     app.set_error_handler(warn);
     app
 }
 
+pub(crate) fn headless_renderer_app_at(assets_root: &std::path::Path) -> App {
+    let mut app = renderer_app_at(assets_root);
+    app.add_message::<TerrainPieceDestroyed>();
+    app
+}
+
 pub(crate) fn headless_renderer_app() -> App {
     headless_renderer_app_at(&workspace_assets_root())
+}
+
+/// The same renderer app with no raw `TerrainPieceDestroyed` buffer, so only the played buffer
+/// can drive a destruction swap.
+pub(crate) fn headless_renderer_app_without_raw_destroyed() -> App {
+    renderer_app_at(&workspace_assets_root())
 }
 
 pub(crate) fn settle_resources(app: &mut App) {

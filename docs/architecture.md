@@ -61,8 +61,9 @@ on the shot path, consequence text and death ordering, and destruction.
 
 **Code sites:** `crates/gdtf_battle_presenter/src/playback/`.
 `crates/gdtf_battle_presenter/src/actors/fx/fct/stacked_reader.rs` is the worked example —
-it reads the played fact rather than the sim's buffer. The shot path is pinned the same
-way: a raw `ShotFired` pops no hit text. Other raw buffers are still enforced by review.
+it reads the played fact rather than the sim's buffer. Two paths are pinned the same
+way: a raw `ShotFired` pops no hit text, and a raw `TerrainPieceDestroyed` swaps no slab tile.
+Other raw buffers are still enforced by review.
 
 ## The sim answers whether an act may happen
 

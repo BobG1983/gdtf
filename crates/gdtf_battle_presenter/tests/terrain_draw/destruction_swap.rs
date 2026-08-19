@@ -1,5 +1,5 @@
 use bevy::ecs::message::Messages;
-use gdtf_battle_presenter::{ActiveLevel, Played, StampedGraphic};
+use gdtf_battle_presenter::{ActiveLevel, StampedGraphic};
 use gdtf_battle_sim::{
     battle::BattleReady,
     cover::CoverLedger,
@@ -7,7 +7,7 @@ use gdtf_battle_sim::{
     occupancy::{TerrainKind, TerrainPlacement},
     occupancy_sync::TerrainPieceDestroyed,
     prelude::{BattleInProgress, Cell, CellLevel, Level},
-    surface::{SlabState, SurfaceGrid},
+    surface::SurfaceGrid,
 };
 
 use super::harness::*;
@@ -69,146 +69,6 @@ fn cover_destroyed_swaps_the_cover_cell_to_rubble() {
         sprite_rect_at(&mut app, wall_key),
         wall_rect_before,
         "the other (wall) terrain sprite must be untouched by the cover destruction",
-    );
-}
-
-#[test]
-fn slab_destroyed_swaps_the_slab_cell_to_destroyed_in_place() {
-    let mut app = headless_renderer_app();
-    settle_resources(&mut app);
-
-    let slab_cell = Cell::new(4, 5);
-    let other_slab_cell = Cell::new(6, 7);
-    let l0 = Level::new(0);
-    let slab_key = CellLevel::new(slab_cell, l0);
-    let other_slab_key = CellLevel::new(other_slab_cell, l0);
-
-    insert_occupancy(&mut app, Vec::new());
-    app.world_mut().insert_resource(CoverLedger::new());
-    let mut surface = SurfaceGrid::new();
-    surface.set_slab(slab_key, SlabState::Present);
-    surface.set_slab(other_slab_key, SlabState::Present);
-    app.world_mut().insert_resource(surface);
-    app.world_mut().insert_resource(BattleInProgress);
-
-    app.world_mut()
-        .resource_mut::<Messages<BattleReady>>()
-        .write(BattleReady);
-    app.update();
-
-    let defs = sprite_defs(&app);
-    assert!(
-        defs.is_some(),
-        "the SpriteDefRegistry must be resident after settle"
-    );
-    let Some(defs) = defs else { return };
-
-    assert_ne!(
-        def_rect(&defs, "slab_destroyed"),
-        def_rect(&defs, "slab"),
-        "the slab_destroyed def rect must differ from the intact slab rect (a real swap)",
-    );
-
-    assert_eq!(
-        sprite_rect_at(&mut app, slab_key),
-        def_rect(&defs, "slab"),
-        "the slab cell's sprite must start on the intact slab def's rect",
-    );
-    let entity_before = sprite_entity_at(&mut app, slab_key);
-    assert!(
-        entity_before.is_some(),
-        "the slab cell's terrain sprite must exist before the destruction",
-    );
-    let other_rect_before = sprite_rect_at(&mut app, other_slab_key);
-
-    app.world_mut()
-        .resource_mut::<Messages<TerrainPieceDestroyed>>()
-        .write(TerrainPieceDestroyed::new(slab_key, TerrainPieceKind::Slab));
-    app.update();
-
-    assert_eq!(
-        sprite_rect_at(&mut app, slab_key),
-        def_rect(&defs, "slab_destroyed"),
-        "the destroyed slab cell's sprite must now carry the `slab_destroyed` def's rect",
-    );
-    assert_eq!(
-        stamped_graphic_at(&mut app, slab_key),
-        Some(StampedGraphic::from_key("slab_destroyed")),
-        "a Slab-kind destruction leaves the cell stamped with the destroyed-slab role, not \
-         rubble: the cover swap runs after the slab swap and must skip a Slab-kind message — \
-         found {:?}",
-        stamped_graphic_at(&mut app, slab_key),
-    );
-    assert_eq!(
-        sprite_entity_at(&mut app, slab_key),
-        entity_before,
-        "the destroyed slab cell must be the SAME Entity after the swap (no despawn/respawn)",
-    );
-    assert_eq!(
-        sprite_rect_at(&mut app, other_slab_key),
-        other_rect_before,
-        "the other (intact) slab sprite must be untouched by the slab destruction",
-    );
-}
-
-#[test]
-fn the_slab_swap_runs_with_only_the_raw_destroyed_buffer_in_the_app() {
-    let mut app = headless_renderer_app();
-    settle_resources(&mut app);
-
-    let slab_key = CellLevel::new(Cell::new(4, 5), Level::new(0));
-
-    insert_occupancy(&mut app, Vec::new());
-    app.world_mut().insert_resource(CoverLedger::new());
-    let mut surface = SurfaceGrid::new();
-    surface.set_slab(slab_key, SlabState::Present);
-    app.world_mut().insert_resource(surface);
-    app.world_mut().insert_resource(BattleInProgress);
-
-    app.world_mut()
-        .resource_mut::<Messages<BattleReady>>()
-        .write(BattleReady);
-    app.update();
-
-    let defs = sprite_defs(&app);
-    assert!(
-        defs.is_some(),
-        "the SpriteDefRegistry must be resident after settle"
-    );
-    let Some(defs) = defs else { return };
-    assert_eq!(
-        sprite_rect_at(&mut app, slab_key),
-        def_rect(&defs, "slab"),
-        "the slab cell's sprite must start on the intact slab def's rect",
-    );
-
-    // TopDownRendererPlugin registers the played buffer, so only dropping it tells the gates apart.
-    app.world_mut()
-        .remove_resource::<Messages<Played<TerrainPieceDestroyed>>>();
-    app.world_mut()
-        .resource_mut::<Messages<TerrainPieceDestroyed>>()
-        .write(TerrainPieceDestroyed::new(slab_key, TerrainPieceKind::Slab));
-    app.update();
-
-    assert!(
-        !app.world()
-            .contains_resource::<Messages<Played<TerrainPieceDestroyed>>>(),
-        "the played buffer must stay absent across the update, or this case cannot tell a gate \
-         on the raw buffer from a gate on the played one",
-    );
-    assert_eq!(
-        stamped_graphic_at(&mut app, slab_key),
-        Some(StampedGraphic::from_key("slab_destroyed")),
-        "swap_destroyed_slab must be gated on the raw TerrainPieceDestroyed buffer it reads: \
-         moving that gate onto Played<TerrainPieceDestroyed> before the reader moves disables \
-         the system in an app that holds only the raw buffer — found {:?}",
-        stamped_graphic_at(&mut app, slab_key),
-    );
-    assert_eq!(
-        sprite_rect_at(&mut app, slab_key),
-        def_rect(&defs, "slab_destroyed"),
-        "the destroyed slab cell's sprite must carry the `slab_destroyed` def's rect with the \
-         played buffer absent",
     );
 }
 

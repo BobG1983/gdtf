@@ -8,6 +8,7 @@ mod emplacement;
 mod harness;
 mod level_band;
 mod per_def_graphics;
+mod played_slab_swap;
 mod static_draw;
 mod storey_fog;
 mod view_mode;

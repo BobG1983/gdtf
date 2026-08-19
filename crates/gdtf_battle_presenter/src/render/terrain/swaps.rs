@@ -17,7 +17,7 @@ use super::{
     static_map::SpriteResolveCtx,
     treatment::{IsolateView, StoreyViewMode},
 };
-use crate::TerrainFogMaterial;
+use crate::{TerrainFogMaterial, playback::Played};
 
 fn retarget_tile(
     at: CellLevel,
@@ -77,14 +77,15 @@ pub fn swap_destroyed_cover(
     }
 }
 
-/// Swap slab tiles to the destroyed graphic when a slab is destroyed.
+/// Swap slab tiles to the destroyed graphic when the playback cursor plays a
+/// [`Played`] `TerrainPieceDestroyed` whose kind is `Slab`.
 pub fn swap_destroyed_slab(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
     isolate: Res<IsolateView>,
     resolve: SpriteResolveCtx,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
-    mut destroyed: MessageReader<TerrainPieceDestroyed>,
+    mut destroyed: MessageReader<Played<TerrainPieceDestroyed>>,
     mut tiles: Query<(
         &TerrainSprite,
         &MeshMaterial2d<TerrainFogMaterial>,

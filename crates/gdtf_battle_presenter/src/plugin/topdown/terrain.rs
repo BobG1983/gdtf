@@ -9,7 +9,7 @@ use gdtf_battle_sim::{
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use crate::{
-    MissingTileTexture, PresenterSystems, draw_static_battlefield, draw_vertical_links,
+    MissingTileTexture, Played, PresenterSystems, draw_static_battlefield, draw_vertical_links,
     indicate_emplacement_occupied, render::terrain::setup_missing_tile_texture,
     restamp_tiles_on_def_change, swap_destroyed_cover, swap_destroyed_slab,
 };
@@ -48,7 +48,7 @@ pub(super) fn register_destruction_swaps(app: &mut App) {
         swap_destroyed_slab.in_set(PresenterSystems::Scene).run_if(
             resource_exists::<BattleInProgress>
                 .and_then(sprite_resolution_ready)
-                .and_then(resource_exists::<Messages<TerrainPieceDestroyed>>),
+                .and_then(resource_exists::<Messages<Played<TerrainPieceDestroyed>>>),
         ),
     )
     .add_systems(
