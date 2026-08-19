@@ -50,16 +50,15 @@ ahead.
 Destruction is in scope: cover, wall and slab, and whatever replaces a destroyed piece.
 
 **Two exceptions the tree still carries**, both dated 2026-08-18 and both on their way out:
-`swap_destroyed_slab` reads the raw buffer until GTW-1212 moves it onto the played fact, and
-`swap_destroyed_cover` reads the raw buffer until GTW-1175 moves it (clause 15) and then
-deletes both (clause 13). Nothing else may join them.
+`swap_destroyed_slab` and `swap_destroyed_cover` read the raw buffer and draw from it. Both
+move onto the played fact, and the swaps are deleted once nothing needs them. Nothing else may
+join them.
 
 **Why it is load-bearing:** the sim resolves a whole act while playback is still animating
 the one before it. A system that reads the sim directly is not slightly early, it is an
 arbitrary number of acts early, and it fails silently — nothing errors when a wall breaks
-before the shot that broke it. GTW-888 was this bug for hit floating combat text
-on the shot path; GTW-889 was consequence text and death ordering; GTW-937 is the
-same bug for destruction.
+before the shot that broke it. It has been the same bug three times: hit floating combat text
+on the shot path, consequence text and death ordering, and destruction.
 
 **Code sites:** `crates/gdtf_battle_presenter/src/playback/`.
 `crates/gdtf_battle_presenter/src/actors/fx/fct/stacked_reader.rs` is the worked example —
