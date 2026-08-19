@@ -22,17 +22,17 @@ each file readable in one sitting.
    a `register_*(app: &mut App)` aggregator, not even a delegating
    `Plugin::build`, no impl, no type definitions, no closure systems inside
    `add_systems`.
-3. **Line length bands cover EVERY FILE** logic, unit tests and integration tests. 
+3. **Line length bands cover EVERY FILE** logic, unit tests and integration tests.
    **OK under 300** — no action.
-   **AVOID over 300** — split now if the split is obvious. 
+   **AVOID over 300** — split now if the split is obvious.
    **BLOCK over 400** — must not land; the conformance test will fail.
-4. **Crate roots** (`lib.rs`/`src/main.rs`) follow the same rules. 
-   A crate root (`lib.rs`) is PURE WIRING (docs + `mod`/`pub mod` decls + re-exports, 
+4. **Crate roots** (`lib.rs`/`src/main.rs`) follow the same rules.
+   A crate root (`lib.rs`) is PURE WIRING (docs + `mod`/`pub mod` decls + re-exports,
    zero fn/impl). A binary root (`src/main.rs`) contains only `fn main()` and
    delegates everything else to crates.
 5. **Test placement** follows the convention: sibling `test/`
-   directory for unit tests; `<module>/tests/mod.rs` behind `#[cfg(test)] mod test. 
-   For integration tests; `<crate>/tests/main.rs` contains the integration test 
+   directory for unit tests; `<module>/tests/mod.rs` behind `#[cfg(test)] mod test.
+   For integration tests;`<crate>/tests/main.rs` contains the integration test
    module, the module lives in `<crate>/tests/<suite_name>`.
 6. **Splits are behavior-preserving pure moves.** The only edits allowed
    beyond the move: visibility (`pub(super)`/`pub(crate)`/`pub(in path)`),
@@ -52,4 +52,4 @@ each file readable in one sitting.
 
 Conformance test: `crates/gdtf_test_utils/tests/module_layout/`
 walks the tracked tree on every `cargo dtest` run — any overly large file or
-logic-bearing mod.rs fails the suite, loudly. 
+logic-bearing mod.rs fails the suite, loudly.

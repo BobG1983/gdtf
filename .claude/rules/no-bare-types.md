@@ -115,4 +115,3 @@ newtype, an `index` on a type with no owned array, a cast/sampling helper whose
 name does not say `hash`) is STILL a violation. Test bands are out of scope
 (their scaffolding values are not domain data). Wrapping a value is also how
 `docs/glossary.md` vocabulary becomes code — see `design-fidelity.md`.
-
