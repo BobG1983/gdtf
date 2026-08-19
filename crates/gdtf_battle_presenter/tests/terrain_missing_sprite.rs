@@ -29,7 +29,7 @@ use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     battle::BattleReady,
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
-    entity::TerrainCell,
+    entity::{TerrainCell, TerrainPieceKind},
     occupancy::{OccupancyInput, TerrainKind, TerrainPlacement},
     occupancy_sync::CoverDestroyed,
     piece::TerrainGraphicKey,
@@ -148,6 +148,7 @@ fn missing_sprite_def_warns_and_draws_the_magenta_marker() {
             HeightBand::Low,
             ArmorProtection::new(2),
             ArmorHardness::new(1),
+            TerrainPieceKind::Cover,
         ),
     );
     app.world_mut().insert_resource(cover_ledger);

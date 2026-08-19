@@ -10,6 +10,7 @@ use crate::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Direction, StanceKind, Suppressed, Tu},
     metric::{Cell, CellLevel},
+    terrain::entity::TerrainPieceKind,
     turn::ActiveFaction,
     weapon::{FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
 };
@@ -48,6 +49,7 @@ fn wall_toward(app: &mut App, at: CellLevel) {
             HeightBand::Mid,
             ArmorProtection::new(1),
             ArmorHardness::new(1),
+            TerrainPieceKind::Wall,
         ),
     );
 }

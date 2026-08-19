@@ -38,6 +38,7 @@ impl CoverLedger {
             prototype.height_band,
             prototype.armor_protection,
             prototype.armor_hardness,
+            prototype.kind,
         ))
     }
 

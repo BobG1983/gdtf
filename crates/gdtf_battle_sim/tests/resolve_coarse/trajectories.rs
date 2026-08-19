@@ -3,6 +3,7 @@ use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection, BodyPart},
     cone::{ConeAngle, PriorShots},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::Facing,
     prelude::{Cell, Direction, Level, OccupancyGrid, Position, Stance, StanceKind},
     resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse},
@@ -61,6 +62,7 @@ fn shot_into_cover_returns_cover_entry() {
         HeightBand::High,
         ArmorProtection::new(6),
         ArmorHardness::new(3),
+        TerrainPieceKind::Cover,
     );
     let mut cover = CoverLedger::new();
     cover.insert(cover_cell, entry);
@@ -146,6 +148,7 @@ fn shot_outcome_variants_construct_and_inspect() {
         HeightBand::Mid,
         ArmorProtection::new(1),
         ArmorHardness::new(1),
+        TerrainPieceKind::Cover,
     );
     let surface_cell = key(3, 4, 2);
 

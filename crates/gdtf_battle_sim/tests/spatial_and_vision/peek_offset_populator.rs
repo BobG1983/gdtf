@@ -7,6 +7,7 @@ use bevy::{
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::Facing,
     los::{Observer, PeekOffset, Target, has_los, has_los_peeking},
     march::MarchGrids,
@@ -49,6 +50,7 @@ fn corner_cover() -> CoverLedger {
                 HeightBand::High,
                 ArmorProtection::new(5),
                 ArmorHardness::new(2),
+                TerrainPieceKind::Cover,
             ),
         );
     }

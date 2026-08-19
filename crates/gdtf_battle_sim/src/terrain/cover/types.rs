@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
     metric::CellLevel,
+    terrain::entity::TerrainPieceKind,
 };
 
 /// Cover hit points. Authored as a bare integer.
@@ -65,16 +66,19 @@ pub struct CoverEntry {
     pub armor_hardness:   ArmorHardness,
     /// Destroyed flag.
     pub destroyed:        Destroyed,
+    /// Which kind of terrain piece this entry holds.
+    pub kind:             TerrainPieceKind,
 }
 
 impl CoverEntry {
-    /// Fresh cover at full HP.
+    /// Fresh cover at full HP, standing in for a piece of the given kind.
     #[must_use]
     pub const fn seeded(
         max_hp: CoverHp,
         height_band: HeightBand,
         armor_protection: ArmorProtection,
         armor_hardness: ArmorHardness,
+        kind: TerrainPieceKind,
     ) -> Self {
         Self {
             current_hp: max_hp,
@@ -83,6 +87,7 @@ impl CoverEntry {
             armor_protection,
             armor_hardness,
             destroyed: Destroyed::new(false),
+            kind,
         }
     }
 }

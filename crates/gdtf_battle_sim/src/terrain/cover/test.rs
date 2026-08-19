@@ -5,15 +5,17 @@ use super::{
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
     metric::{Cell, CellLevel, Level},
+    terrain::entity::TerrainPieceKind,
     tuning::CombatTuning,
 };
 
-fn arbitrary_prototype(max_hp: u32, band: HeightBand) -> CoverEntry {
+fn arbitrary_prototype(max_hp: u32, band: HeightBand, kind: TerrainPieceKind) -> CoverEntry {
     CoverEntry::seeded(
         CoverHp::new(max_hp),
         band,
         ArmorProtection::new(7),
         ArmorHardness::new(3),
+        kind,
     )
 }
 
@@ -25,7 +27,9 @@ fn key(x: i32, y: i32, level: u8) -> CellLevel {
 fn absent_entry_seeds_current_to_max() {
     let mut ledger = CoverLedger::new();
     let k = key(2, 3, 1);
-    let prototype = arbitrary_prototype(42, HeightBand::Mid);
+    let prototype = arbitrary_prototype(42, HeightBand::Mid, TerrainPieceKind::Wall);
+    let other_k = key(9, 9, 0);
+    let other_prototype = arbitrary_prototype(17, HeightBand::Low, TerrainPieceKind::Emplacement);
 
     assert!(
         ledger.peek(&k).is_none(),
@@ -46,15 +50,30 @@ fn absent_entry_seeds_current_to_max() {
         Destroyed::new(false),
         "a freshly seeded entry is not destroyed",
     );
+    assert_eq!(
+        seeded.kind,
+        TerrainPieceKind::Wall,
+        "the seed must take its kind from the prototype (a Wall prototype), found {:?}",
+        seeded.kind,
+    );
+
+    let other_seeded = ledger.entry_seeded(other_k, other_prototype);
+    assert_eq!(
+        other_seeded.kind,
+        TerrainPieceKind::Emplacement,
+        "a second key seeded from an Emplacement prototype must carry ITS kind, not the first \
+         key's, found {:?}",
+        other_seeded.kind,
+    );
 }
 
 #[test]
 fn wall_and_prop_share_one_ledger() {
     let mut ledger = CoverLedger::new();
     let wall_key = key(0, 0, 0);
-    let wall = arbitrary_prototype(100, HeightBand::High);
+    let wall = arbitrary_prototype(100, HeightBand::High, TerrainPieceKind::Wall);
     let prop_key = key(5, 5, 0);
-    let prop = arbitrary_prototype(20, HeightBand::Low);
+    let prop = arbitrary_prototype(20, HeightBand::Low, TerrainPieceKind::Cover);
 
     ledger.insert(wall_key, wall);
     ledger.insert(prop_key, prop);
@@ -74,7 +93,7 @@ fn depletion_to_zero_destroys_and_returns_marker() {
     let mut ledger = CoverLedger::new();
     let tuning = CombatTuning::default();
     let k = key(4, 7, 2);
-    let prototype = arbitrary_prototype(30, HeightBand::Low);
+    let prototype = arbitrary_prototype(30, HeightBand::Low, TerrainPieceKind::Cover);
 
     let event = ledger.deplete_cover(k, CoverDamage::new(30), prototype, &tuning);
 
@@ -101,7 +120,7 @@ fn partial_depletion_does_not_destroy() {
     let mut ledger = CoverLedger::new();
     let tuning = CombatTuning::default();
     let k = key(1, 1, 0);
-    let prototype = arbitrary_prototype(50, HeightBand::Mid);
+    let prototype = arbitrary_prototype(50, HeightBand::Mid, TerrainPieceKind::Cover);
 
     let event = ledger.deplete_cover(k, CoverDamage::new(20), prototype, &tuning);
 
@@ -128,7 +147,7 @@ fn second_hit_finishes_a_damaged_piece() {
     let mut ledger = CoverLedger::new();
     let tuning = CombatTuning::default();
     let k = key(3, 3, 1);
-    let prototype = arbitrary_prototype(10, HeightBand::Low);
+    let prototype = arbitrary_prototype(10, HeightBand::Low, TerrainPieceKind::Cover);
 
     let first = ledger.deplete_cover(k, CoverDamage::new(6), prototype, &tuning);
     assert_eq!(first, CoverEvent::Damaged(k));

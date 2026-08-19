@@ -3,6 +3,7 @@ use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection, BodyPart},
     armor_wear::ArmorWearOutcome,
     cover::{CoverEntry, CoverHp, HeightBand},
+    entity::TerrainPieceKind,
     matchup::Matchup,
     prelude::{Cell, CellLevel, Level, LifeState},
     resolve_and_apply::{
@@ -32,6 +33,7 @@ fn cover_entry() -> CoverEntry {
         HeightBand::Mid,
         ArmorProtection::new(0),
         ArmorHardness::new(0),
+        TerrainPieceKind::Cover,
     )
 }
 
@@ -125,7 +127,10 @@ fn a_cover_hit_logs_a_structural_line_not_a_miss() {
         actor:  LogName::new("Vex"),
         report: Some(Box::new(HitReport {
             kind:    ShotKind::Cover(cover_entry()),
-            verdict: HitVerdict::Cover(CoverVerdict { destroyed: None }),
+            verdict: HitVerdict::Cover(CoverVerdict {
+                destroyed: None,
+                kind:      TerrainPieceKind::Cover,
+            }),
         })),
     };
     let lines = classify_log_event(&damaged);
@@ -145,6 +150,7 @@ fn a_cover_hit_logs_a_structural_line_not_a_miss() {
         kind:    ShotKind::Cover(cover_entry()),
         verdict: HitVerdict::Cover(CoverVerdict {
             destroyed: Some(struck_key()),
+            kind:      TerrainPieceKind::Cover,
         }),
     };
     let destroyed = CombatLogEvent::ShotOutcome {

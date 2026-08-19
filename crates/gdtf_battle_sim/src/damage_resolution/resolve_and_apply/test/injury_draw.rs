@@ -62,7 +62,7 @@ fn corpse_hit_takes_no_injury_draw() {
 fn cover_hit_takes_no_injury_draw() {
     let tuning = CombatTuning::default();
     let weapon = a_weapon(40, 20, 10, DamageType::Kinetic);
-    let entry = cover_entry(5, 0, 0);
+    let entry = cover_entry(5, 0, 0, TerrainPieceKind::Cover);
     let outcome = cover_outcome(entry);
     let mut cover = ledger();
     let mut slab = slab_ledger();

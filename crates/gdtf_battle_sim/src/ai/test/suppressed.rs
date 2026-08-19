@@ -8,6 +8,7 @@ use crate::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Direction, Suppressed, SuppressorCell},
     metric::CellLevel,
+    terrain::entity::TerrainPieceKind,
 };
 
 /// Frames the enemy turn is given to finish.
@@ -35,6 +36,7 @@ fn wall_the_line(app: &mut App, at: CellLevel) {
             HeightBand::High,
             ArmorProtection::new(1),
             ArmorHardness::new(1),
+            TerrainPieceKind::Wall,
         ),
     );
 }
@@ -65,6 +67,7 @@ fn cover_the_row(app: &mut App, y: i32) {
                 HeightBand::Mid,
                 ArmorProtection::new(1),
                 ArmorHardness::new(1),
+                TerrainPieceKind::Cover,
             ),
         );
     }

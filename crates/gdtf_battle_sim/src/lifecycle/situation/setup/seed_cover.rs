@@ -34,6 +34,7 @@ pub(super) fn seed_cover_terrain(
             resolved.height_band,
             resolved.armor_protection,
             resolved.armor_hardness,
+            resolved.piece_kind,
         );
         cover_ledger.insert(cover.at, entry);
         let entity = commands

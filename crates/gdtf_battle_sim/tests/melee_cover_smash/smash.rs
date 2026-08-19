@@ -1,6 +1,7 @@
 use bevy::{app::App, prelude::Entity};
 use gdtf_battle_sim::{
     acts::{MeleeRequested, melee_tu_cost},
+    entity::TerrainPieceKind,
     ganger::Direction,
     prelude::Tu,
     test_support::SituationBuilder,
@@ -104,6 +105,44 @@ fn repeated_smashing_destroys_cover_and_fires_the_destroyed_signal() {
     assert!(
         melee_hits(&app) >= 1,
         "C5(b): the smash emits MeleeResolved",
+    );
+}
+
+#[test]
+fn smashing_an_unseeded_cell_mints_a_cover_kind_entry() {
+    let (mut app, seed) = battle_app(0x5508_0E0E);
+    with_logs(&mut app);
+
+    let situation = SituationBuilder::new()
+        .with_gangers([attacker(ground(5, 5), PLAYER, Direction::East)])
+        .build_with_gangs();
+    drive_setup(&mut app, seed, situation);
+
+    let bare = ground(6, 5);
+    assert!(
+        cover_entry_at(&app, bare).is_none(),
+        "precondition: the target cell was never seeded, so the smash must fall back",
+    );
+
+    let Some(attacker_entity) = player_ganger(&mut app) else {
+        unreachable!("setup spawns one player attacker");
+    };
+    app.world_mut()
+        .write_message(MeleeRequested::new_structural(attacker_entity, bare));
+    step(&mut app, 3);
+
+    let minted = cover_entry_at(&app, bare);
+    assert!(
+        minted.is_some(),
+        "smashing an unseeded cell must mint a ledger entry from the melee fallback",
+    );
+    let Some(minted) = minted else { return };
+    assert_eq!(
+        minted.kind,
+        TerrainPieceKind::Cover,
+        "the melee structure fallback stands in as COVER, so the minted entry's kind is Cover, \
+         found {:?}",
+        minted.kind,
     );
 }
 

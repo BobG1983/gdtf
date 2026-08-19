@@ -10,6 +10,7 @@ pub(super) use crate::{
         TerrainPlacement,
     },
     surface::{SlabState, SurfaceGrid},
+    terrain::entity::TerrainPieceKind,
     tuning::{BandEdge, CombatTuning},
 };
 
@@ -35,6 +36,7 @@ pub(super) fn cover_entry(band: HeightBand) -> CoverEntry {
         band,
         ArmorProtection::new(5),
         ArmorHardness::new(2),
+        TerrainPieceKind::Cover,
     )
 }
 

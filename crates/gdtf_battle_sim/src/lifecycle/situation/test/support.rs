@@ -32,8 +32,8 @@ pub(super) use crate::{
     },
     test_support::{
         GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, arbitrary_armor, ganger_at, key,
-        test_armor_registry, test_gang_registry, test_melee_weapon_registry, test_terrain_registry,
-        test_weapon_registry as test_registry,
+        test_armor_registry, test_gang_registry, test_melee_weapon_registry, test_pieces,
+        test_terrain_registry, test_weapon_registry as test_registry,
     },
     tuning::GangerStatTuning,
     vertical::{InvalidVerticalLink, LinkKind, VerticalLink, VerticalLinkGraph},
@@ -242,6 +242,30 @@ pub(super) fn minimal_fixture() -> (Situation, CellLevel, CellLevel, CellLevel, 
         .slab_at(slab_cell)
         .build();
     (situation, alice_at, bob_at, wall_cell, slab_cell)
+}
+
+/// A Cover-spec piece authored in the walls list and a Wall-spec piece authored in the
+/// scatter list, so a reader that trusts the authoring list disagrees with the def.
+pub(super) fn crossed_terrain_fixture() -> (Situation, CellLevel, CellLevel) {
+    let cover_in_walls_cell = key(1, 2, 0);
+    let wall_in_scatter_cell = key(3, 4, 0);
+
+    let mut situation = SituationBuilder::new()
+        .with_gangers([ganger_at(key(10, 10, 0), 0), ganger_at(key(12, 12, 0), 1)])
+        .build();
+
+    situation.walls.push(CoverSpawn::new(
+        cover_in_walls_cell,
+        test_pieces::COVER,
+        TerrainFacing::default(),
+    ));
+    situation.scatter.push(CoverSpawn::new(
+        wall_in_scatter_cell,
+        test_pieces::WALL,
+        TerrainFacing::default(),
+    ));
+
+    (situation, cover_in_walls_cell, wall_in_scatter_cell)
 }
 
 pub(super) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {

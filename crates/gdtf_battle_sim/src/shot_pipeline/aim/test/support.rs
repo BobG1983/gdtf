@@ -7,6 +7,7 @@ use crate::{
     magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     stability::StabilityTerms,
+    terrain::entity::TerrainPieceKind,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
@@ -64,6 +65,7 @@ pub(super) fn cover_entry(band: HeightBand) -> CoverEntry {
         band,
         ArmorProtection::new(1),
         ArmorHardness::new(1),
+        TerrainPieceKind::Cover,
     )
 }
 

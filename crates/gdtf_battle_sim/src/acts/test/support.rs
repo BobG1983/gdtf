@@ -17,7 +17,7 @@ pub(super) use crate::{
     resolve_and_apply::HitVerdict,
     resolve_coarse::ShotKind,
     shot_fired::ShotFired,
-    terrain::floor::FloorCostGrid,
+    terrain::{entity::TerrainPieceKind, floor::FloorCostGrid},
     test_support::{SimAppBuilder, TEST_PLAYER_GANG, single_mode, target_bundle},
     tuning::CombatTuning,
     weapon::{

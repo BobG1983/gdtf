@@ -3,6 +3,7 @@ use gdtf_battle_sim::{
     acts::{MeleeRequested, melee_tu_cost},
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::Direction,
     metric::CellLevel,
     prelude::{LifeState, Position, Tu},
@@ -231,6 +232,7 @@ fn gate_los_blocked_produces_no_melee() {
                 HeightBand::High,
                 ArmorProtection::new(50),
                 ArmorHardness::new(50),
+                TerrainPieceKind::Wall,
             );
             ledger.insert(corner, wall);
         }

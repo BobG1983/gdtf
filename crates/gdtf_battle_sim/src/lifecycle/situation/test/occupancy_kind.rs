@@ -1,28 +1,5 @@
 //! Occupancy kind comes from each terrain piece's own spec variant.
 use super::support::*;
-use crate::test_support::test_pieces;
-
-fn crossed_terrain_fixture() -> (Situation, CellLevel, CellLevel) {
-    let cover_in_walls_cell = key(1, 2, 0);
-    let wall_in_scatter_cell = key(3, 4, 0);
-
-    let mut situation = SituationBuilder::new()
-        .with_gangers([ganger_at(key(10, 10, 0), 0), ganger_at(key(12, 12, 0), 1)])
-        .build();
-
-    situation.walls.push(CoverSpawn::new(
-        cover_in_walls_cell,
-        test_pieces::COVER,
-        TerrainFacing::default(),
-    ));
-    situation.scatter.push(CoverSpawn::new(
-        wall_in_scatter_cell,
-        test_pieces::WALL,
-        TerrainFacing::default(),
-    ));
-
-    (situation, cover_in_walls_cell, wall_in_scatter_cell)
-}
 
 #[test]
 fn occupancy_kind_comes_from_spec_variant_not_authoring_list() {

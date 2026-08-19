@@ -286,7 +286,7 @@ fn structural_and_miss_arms_take_zero_draws_on_both_streams() {
     let weapon = a_weapon(40, 20, 10, DamageType::Kinetic);
 
     let outcomes = [
-        cover_outcome(cover_entry(50, 2, 1)),
+        cover_outcome(cover_entry(50, 2, 1, TerrainPieceKind::Cover)),
         slab_outcome(),
         ground_outcome(),
         non_ganger_outcome(ShotKind::Miss),

@@ -10,6 +10,7 @@ use gdtf_app::qa_wire::{
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::{LifeState, Position, Tu},
     prelude::CellLevel,
 };
@@ -47,6 +48,7 @@ const fn a_high_wall() -> CoverEntry {
         HeightBand::High,
         ArmorProtection::new(50),
         ArmorHardness::new(50),
+        TerrainPieceKind::Wall,
     )
 }
 

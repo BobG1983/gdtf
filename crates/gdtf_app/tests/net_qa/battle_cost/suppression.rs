@@ -9,6 +9,7 @@ use gdtf_app::qa_wire::{
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::{Direction, Position, Suppressed, SuppressorCell},
     prelude::{Cell, CellLevel},
 };
@@ -74,6 +75,7 @@ const fn a_cover_entry() -> CoverEntry {
         HeightBand::Mid,
         ArmorProtection::new(0),
         ArmorHardness::new(0),
+        TerrainPieceKind::Cover,
     )
 }
 

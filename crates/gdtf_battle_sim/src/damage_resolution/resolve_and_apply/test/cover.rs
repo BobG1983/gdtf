@@ -5,7 +5,7 @@ use crate::resolve_and_apply::{ShotSource, WoundRoll};
 fn sufficient_hit_destroys_cover_and_records_the_cell() {
     let tuning = CombatTuning::default();
     let weapon = a_weapon(60, 40, 20, DamageType::Kinetic);
-    let entry = cover_entry(20, 2, 1);
+    let entry = cover_entry(20, 2, 1, TerrainPieceKind::Wall);
     let at = cover_cell_level();
 
     let mut cover = ledger();
@@ -34,8 +34,10 @@ fn sufficient_hit_destroys_cover_and_records_the_cell() {
         report.verdict,
         HitVerdict::Cover(CoverVerdict {
             destroyed: Some(at),
+            kind:      TerrainPieceKind::Wall,
         }),
-        "a sufficient cover hit must record the destroyed (cell, level) on the verdict",
+        "a sufficient cover hit must record the destroyed (cell, level) AND the struck entry's \
+         own kind on the verdict",
     );
 
     let after = cover.peek(&at).copied();
@@ -66,7 +68,7 @@ fn insufficient_hit_reduces_hp_without_destroying() {
     let tuning = CombatTuning::default();
     let weapon = a_weapon(12, 6, 2, DamageType::Kinetic);
     let max_hp = 200_u32;
-    let entry = cover_entry(max_hp, 2, 1);
+    let entry = cover_entry(max_hp, 2, 1, TerrainPieceKind::Cover);
     let at = cover_cell_level();
 
     let mut cover = ledger();
@@ -93,8 +95,12 @@ fn insufficient_hit_reduces_hp_without_destroying() {
 
     assert_eq!(
         report.verdict,
-        HitVerdict::Cover(CoverVerdict { destroyed: None }),
-        "an insufficient cover hit must record NO destroyed cell",
+        HitVerdict::Cover(CoverVerdict {
+            destroyed: None,
+            kind:      TerrainPieceKind::Cover,
+        }),
+        "an insufficient cover hit must record NO destroyed cell, and still carry the struck \
+         entry's own kind",
     );
 
     let after = cover.peek(&at).copied();
@@ -129,7 +135,7 @@ fn cover_hit_is_deterministic_under_seeded_rng() {
     let run = || {
         let tuning = CombatTuning::default();
         let weapon = a_weapon(30, 20, 8, DamageType::Kinetic);
-        let entry = cover_entry(50, 3, 2);
+        let entry = cover_entry(50, 3, 2, TerrainPieceKind::Cover);
         let at = cover_cell_level();
         let mut cover = ledger();
         cover.insert(at, entry);

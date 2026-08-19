@@ -27,6 +27,7 @@ pub(super) use crate::{
     slab::{SlabEntry, SlabHp, SlabLedger},
     stability::RecoilGrowth,
     surface::GroundDamage,
+    terrain::entity::TerrainPieceKind,
     tuning::{CombatTuning, RecoilClimb},
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
@@ -174,12 +175,18 @@ pub(super) fn cover_cell_level() -> CellLevel {
     CellLevel::new(Cell::new(4, 6), Level::new(2))
 }
 
-pub(super) fn cover_entry(max_hp: u32, protection: i32, hardness: i32) -> CoverEntry {
+pub(super) fn cover_entry(
+    max_hp: u32,
+    protection: i32,
+    hardness: i32,
+    kind: TerrainPieceKind,
+) -> CoverEntry {
     CoverEntry::seeded(
         CoverHp::new(max_hp),
         HeightBand::Mid,
         ArmorProtection::new(protection),
         ArmorHardness::new(hardness),
+        kind,
     )
 }
 

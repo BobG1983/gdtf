@@ -6,6 +6,7 @@ use gdtf_app::test_support::{
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, Destroyed, HeightBand},
+    entity::TerrainPieceKind,
     occupancy::TerrainKind,
     prelude::{Cell, CellLevel, Level, OccupancyGrid},
 };
@@ -35,6 +36,7 @@ fn hovering_an_object_shows_the_object_block() {
             armor_protection: ArmorProtection::new(2),
             armor_hardness:   ArmorHardness::new(3),
             destroyed:        Destroyed::new(false),
+            kind:             TerrainPieceKind::Cover,
         },
     );
 

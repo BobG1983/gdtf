@@ -3,6 +3,7 @@ use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection, BodyPart},
     armor_wear::ArmorWearOutcome,
     cover::{CoverEntry, CoverHp, HeightBand},
+    entity::TerrainPieceKind,
     matchup::Matchup,
     prelude::{Cell, CellLevel, Level, LifeState},
     resolve_and_apply::{
@@ -32,13 +33,17 @@ fn cover_entry() -> CoverEntry {
         HeightBand::Mid,
         ArmorProtection::new(0),
         ArmorHardness::new(0),
+        TerrainPieceKind::Cover,
     )
 }
 
 fn cover_damaged_report() -> HitReport {
     HitReport {
         kind:    ShotKind::Cover(cover_entry()),
-        verdict: HitVerdict::Cover(CoverVerdict { destroyed: None }),
+        verdict: HitVerdict::Cover(CoverVerdict {
+            destroyed: None,
+            kind:      TerrainPieceKind::Cover,
+        }),
     }
 }
 
@@ -47,6 +52,7 @@ fn cover_destroyed_report() -> HitReport {
         kind:    ShotKind::Cover(cover_entry()),
         verdict: HitVerdict::Cover(CoverVerdict {
             destroyed: Some(struck_key()),
+            kind:      TerrainPieceKind::Cover,
         }),
     }
 }

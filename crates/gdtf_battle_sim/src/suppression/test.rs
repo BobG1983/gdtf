@@ -6,6 +6,7 @@ use crate::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Position, Stance, StanceKind, Suppressed, SuppressorCell},
     metric::{Cell, CellLevel, Level},
+    terrain::entity::TerrainPieceKind,
     test_support::SimAppBuilder,
 };
 
@@ -18,6 +19,7 @@ fn seed_cover(app: &mut App, at: CellLevel) {
                 HeightBand::Mid,
                 ArmorProtection::new(0),
                 ArmorHardness::new(0),
+                TerrainPieceKind::Cover,
             ),
         );
     }

@@ -22,7 +22,7 @@ use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     battle::BattleReady,
     cover::{CoverEntry, CoverHp, HeightBand},
-    entity::TerrainCell,
+    entity::{TerrainCell, TerrainPieceKind},
     occupancy::{OccupancyInput, TerrainPlacement},
     occupancy_sync::{CoverDestroyed, SlabDestroyed},
     piece::{FootfallSound, TerrainGraphicKey},
@@ -114,6 +114,7 @@ pub(crate) const fn low_cover_entry() -> CoverEntry {
         HeightBand::Low,
         ArmorProtection::new(2),
         ArmorHardness::new(1),
+        TerrainPieceKind::Cover,
     )
 }
 

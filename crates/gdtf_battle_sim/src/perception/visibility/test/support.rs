@@ -8,6 +8,7 @@ pub(super) use crate::{
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
+    terrain::entity::TerrainPieceKind,
     tuning::{CombatTuning, ViewRange},
     visibility::{
         FactionRelation, FovObserver, SquadVisibility, accrue, is_ganger_visible, union_fov,
@@ -45,6 +46,7 @@ pub(super) fn cover_entry(band: HeightBand) -> CoverEntry {
         band,
         ArmorProtection::new(5),
         ArmorHardness::new(2),
+        TerrainPieceKind::Cover,
     )
 }
 

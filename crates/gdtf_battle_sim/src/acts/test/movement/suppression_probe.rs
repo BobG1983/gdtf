@@ -22,6 +22,7 @@ fn wall(ledger: &mut CoverLedger, at: CellLevel, band: HeightBand) {
             band,
             ArmorProtection::new(0),
             ArmorHardness::new(0),
+            TerrainPieceKind::Wall,
         ),
     );
 }

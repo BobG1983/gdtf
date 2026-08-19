@@ -27,6 +27,7 @@ pub(super) use crate::{
     severity::Severity,
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
+    terrain::entity::TerrainPieceKind,
     test_support::{single_mode, target_bundle},
     tuning::CombatTuning,
     weapon::{

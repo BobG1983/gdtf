@@ -79,6 +79,7 @@ fn dispatch_and_occupancy_co_schedule_and_a_kill_frees_the_slot() {
                 HeightBand::High,
                 ArmorProtection::new(0),
                 ArmorHardness::new(0),
+                TerrainPieceKind::Cover,
             ),
         );
     }

@@ -3,6 +3,7 @@ use gdtf_battle_sim::{
     acts::{EndTurnRequested, FireRequested},
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, Destroyed, HeightBand},
+    entity::TerrainPieceKind,
     ganger::{Direction, Suppressed},
     metric::{Cell, CellLevel, Level},
     prelude::StanceKind,
@@ -29,6 +30,7 @@ const fn cover_at_band(band: HeightBand) -> CoverEntry {
         armor_protection: ArmorProtection::new(2),
         armor_hardness:   ArmorHardness::new(1),
         destroyed:        Destroyed::new(false),
+        kind:             TerrainPieceKind::Cover,
     }
 }
 

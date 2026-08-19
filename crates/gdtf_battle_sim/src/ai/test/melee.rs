@@ -14,6 +14,7 @@ use crate::{
     },
     inflicted_wound::InflictedWounds,
     metric::{Cell, CellLevel},
+    terrain::entity::TerrainPieceKind,
     weapon::{
         DamageType, FatalBias, FightMode, FightModeKind, FightModeSpec, Handedness,
         MeleeDamageProfile, MeleeWeaponBundle, Reach, Shove, Strikes, TuCost, WeaponDamage,
@@ -97,6 +98,7 @@ fn wall_the_diagonal_corners(app: &mut App) {
                 HeightBand::High,
                 ArmorProtection::new(50),
                 ArmorHardness::new(50),
+                TerrainPieceKind::Wall,
             ),
         );
     }

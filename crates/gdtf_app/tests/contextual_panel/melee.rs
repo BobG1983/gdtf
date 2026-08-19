@@ -5,6 +5,7 @@ use gdtf_battle_sim::{
     acts::{MeleeRequested, MeleeTarget, melee_tu_cost},
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::{Facing, Tu},
     metric::{Cell, CellLevel, Level},
     prelude::{Direction, Faction, Position, Stance, StanceKind},
@@ -127,6 +128,7 @@ fn bare_ground_offers_no_melee_but_a_live_cover_entry_does() {
             HeightBand::Low,
             ArmorProtection::new(2),
             ArmorHardness::new(1),
+            TerrainPieceKind::Cover,
         ),
     );
     app.world_mut().insert_resource(ledger);

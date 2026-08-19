@@ -59,4 +59,5 @@ const STRUCTURE_SMASH_FALLBACK: crate::cover::CoverEntry = crate::cover::CoverEn
     crate::cover::HeightBand::Low,
     crate::armor::ArmorProtection::new(0),
     crate::armor::ArmorHardness::new(0),
+    crate::terrain::entity::TerrainPieceKind::Cover,
 );

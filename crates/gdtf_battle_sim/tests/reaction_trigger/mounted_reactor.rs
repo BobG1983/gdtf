@@ -3,6 +3,7 @@ use gdtf_battle_sim::{
     acts::{EnterEmplacementRequested, MoveRequested},
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::Direction,
     magazine::{LoadedRounds, Magazine},
     metric::CellLevel,
@@ -44,6 +45,7 @@ fn spawn_emplacement(app: &mut App, at: CellLevel) -> Entity {
             HeightBand::High,
             ArmorProtection::new(0),
             ArmorHardness::new(0),
+            TerrainPieceKind::Emplacement,
         ),
     );
     entity

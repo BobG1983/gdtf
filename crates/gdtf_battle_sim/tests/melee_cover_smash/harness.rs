@@ -9,6 +9,7 @@ use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     battle::{BattleSimPlugin, SetupBattleRequested},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::{Cool, Direction, Facing, GangRegistry, Grit, Speed, Strength, Toughness},
     metric::{Cell, CellLevel, Level},
     occupancy_sync::CoverDestroyed,
@@ -75,6 +76,13 @@ pub(crate) fn cover_hp(app: &App, at: CellLevel) -> Option<u32> {
         .get_resource::<CoverLedger>()
         .and_then(|ledger| ledger.peek(&at))
         .map(|entry| *entry.current_hp)
+}
+
+pub(crate) fn cover_entry_at(app: &App, at: CellLevel) -> Option<CoverEntry> {
+    app.world()
+        .get_resource::<CoverLedger>()
+        .and_then(|ledger| ledger.peek(&at))
+        .copied()
 }
 
 pub(crate) fn cover_destroyed_flag(app: &App, at: CellLevel) -> bool {
@@ -150,6 +158,7 @@ pub(crate) fn seed_cover(app: &mut App, at: CellLevel, max_hp: u32) {
         HeightBand::Mid,
         ArmorProtection::new(0),
         ArmorHardness::new(0),
+        TerrainPieceKind::Cover,
     );
     app.world_mut()
         .resource_mut::<CoverLedger>()

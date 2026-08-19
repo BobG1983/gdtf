@@ -18,6 +18,7 @@ fn cover_on(at: CellLevel) -> CoverLedger {
             HeightBand::Mid,
             ArmorProtection::new(0),
             ArmorHardness::new(0),
+            TerrainPieceKind::Cover,
         ),
     );
     ledger

@@ -1,6 +1,7 @@
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, HeightBand},
+    terrain::entity::TerrainPieceKind,
 };
 
 pub(super) fn faced_cover(band: HeightBand) -> CoverEntry {
@@ -9,5 +10,6 @@ pub(super) fn faced_cover(band: HeightBand) -> CoverEntry {
         band,
         ArmorProtection::new(1),
         ArmorHardness::new(1),
+        TerrainPieceKind::Cover,
     )
 }

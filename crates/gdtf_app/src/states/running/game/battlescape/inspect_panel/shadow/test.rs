@@ -4,6 +4,7 @@ use gdtf_battle_sim::{
     act_log::{ActDeed, ActLog, ActProvenance, RecordedAct},
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::Faction,
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, TerrainKind},
@@ -69,6 +70,7 @@ fn wall_entry() -> CoverEntry {
         HeightBand::High,
         ArmorProtection::new(2),
         ArmorHardness::new(1),
+        TerrainPieceKind::Wall,
     )
 }
 

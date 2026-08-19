@@ -19,6 +19,7 @@ fn spawn_inline_target(
             HeightBand::Low,
             ArmorProtection::new(0),
             ArmorHardness::new(0),
+            TerrainPieceKind::Cover,
         ),
     );
     target

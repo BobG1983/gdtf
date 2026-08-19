@@ -6,6 +6,7 @@ use gdtf_battle_sim::{
     aim::{Shooter, stability_for},
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     faced_cell::faced_cell,
     ganger::{Aiming, Facing, TuMax},
     injuries::InjuryRegistry,
@@ -180,6 +181,7 @@ const fn high_cover() -> CoverEntry {
         HeightBand::High,
         ArmorProtection::new(0),
         ArmorHardness::new(0),
+        TerrainPieceKind::Cover,
     )
 }
 

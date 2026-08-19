@@ -7,6 +7,7 @@ use crate::{
     metric::CellLevel,
     resolve_and_apply::report::HitVerdict,
     resolve_hit::{HpDamage, resolve_hit},
+    terrain::entity::TerrainPieceKind,
     tuning::CombatTuning,
     weapon::WeaponStats,
 };
@@ -16,6 +17,8 @@ use crate::{
 pub struct CoverVerdict {
     /// Cell whose cover was destroyed, if any.
     pub destroyed: Option<CellLevel>,
+    /// Which kind of terrain piece the struck ledger entry holds.
+    pub kind:      TerrainPieceKind,
 }
 
 /// Build a temporary armor piece from a cover entry.
@@ -58,5 +61,8 @@ pub(in crate::damage_resolution::resolve_and_apply) fn fold(
         CoverEvent::Destroyed(cell) => Some(cell),
         CoverEvent::Damaged(_) => None,
     };
-    HitVerdict::Cover(CoverVerdict { destroyed })
+    HitVerdict::Cover(CoverVerdict {
+        destroyed,
+        kind: entry.kind,
+    })
 }

@@ -48,7 +48,7 @@ fn ground_hit_touches_no_ganger_cover_or_slab_state() {
 
     let at = ground_cell_level();
     let mut cover = ledger();
-    cover.insert(at, cover_entry(100, 2, 1));
+    cover.insert(at, cover_entry(100, 2, 1, TerrainPieceKind::Cover));
     let cover_before = cover.peek(&at).copied();
     let mut slab = slab_ledger();
     slab.insert(at, slab_entry(100, 2, 1));

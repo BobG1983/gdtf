@@ -1,6 +1,7 @@
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, HeightBand},
+    entity::TerrainPieceKind,
 };
 
 use super::{assert_ron_round_trip, roster::a_card};
@@ -51,6 +52,7 @@ fn a_sim_cover_entry_mirrors_onto_the_wire() {
         HeightBand::High,
         ArmorProtection::new(3),
         ArmorHardness::new(5),
+        TerrainPieceKind::Wall,
     );
     let mirrored = CoverBlockNet::from_sim(entry);
     assert_eq!(

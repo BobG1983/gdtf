@@ -18,6 +18,7 @@ fn walled(at: CellLevel, band: HeightBand) -> CoverLedger {
             band,
             ArmorProtection::new(0),
             ArmorHardness::new(0),
+            TerrainPieceKind::Wall,
         ),
     );
     ledger

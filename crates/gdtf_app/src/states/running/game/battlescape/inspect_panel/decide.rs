@@ -6,6 +6,7 @@ use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     battle::PlayerFaction,
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     occupancy::TerrainKind,
     prelude::{CellLevel, Faction, OccupancyGrid},
     visibility::{FactionRelation, SquadVisibility},
@@ -126,16 +127,18 @@ pub(crate) fn object_entry(
     ledger: Option<&CoverLedger>,
 ) -> Option<CoverEntry> {
     let grid = grid?;
-    let terrain = grid.terrain(&cell);
-    if !matches!(terrain, TerrainKind::Wall | TerrainKind::Cover) {
-        return None;
-    }
+    let piece_kind = match grid.terrain(&cell) {
+        TerrainKind::Wall => TerrainPieceKind::Wall,
+        TerrainKind::Cover => TerrainPieceKind::Cover,
+        TerrainKind::Open | TerrainKind::Emplacement => return None,
+    };
     ledger.and_then(|l| l.peek(&cell).copied()).or_else(|| {
         Some(CoverEntry::seeded(
             CoverHp::new(1),
             HeightBand::High,
             ArmorProtection::new(0),
             ArmorHardness::new(0),
+            piece_kind,
         ))
     })
 }

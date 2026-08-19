@@ -9,6 +9,7 @@ pub(super) use crate::{
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, StairEyeOffset},
     surface::{SlabState, SurfaceGrid},
+    terrain::entity::TerrainPieceKind,
     tuning::{CombatTuning, ViewRange},
 };
 
@@ -34,6 +35,7 @@ pub(super) fn cover_entry(band: HeightBand) -> CoverEntry {
         band,
         ArmorProtection::new(5),
         ArmorHardness::new(2),
+        TerrainPieceKind::Cover,
     )
 }
 

@@ -8,6 +8,7 @@ use gdtf_battle_sim::{
     acts::FireRequested,
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
     magazine::{LoadedRounds, Magazine, ReloadTu},
@@ -101,6 +102,7 @@ const fn low_hp_cover() -> CoverEntry {
         HeightBand::High,
         ArmorProtection::new(2),
         ArmorHardness::new(1),
+        TerrainPieceKind::Cover,
     )
 }
 

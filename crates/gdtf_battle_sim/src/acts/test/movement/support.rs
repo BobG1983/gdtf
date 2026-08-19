@@ -103,6 +103,7 @@ pub(super) fn author_cover_on(app: &mut App, x: i32, y: i32, storey: Level) {
         HeightBand::Mid,
         ArmorProtection::new(0),
         ArmorHardness::new(0),
+        TerrainPieceKind::Cover,
     );
     if let Some(mut ledger) = app.world_mut().get_resource_mut::<CoverLedger>() {
         ledger.insert(at, entry);
@@ -117,6 +118,7 @@ pub(super) fn author_wall(app: &mut App, x: i32, y: i32) {
         HeightBand::High,
         ArmorProtection::new(0),
         ArmorHardness::new(0),
+        TerrainPieceKind::Wall,
     );
     if let Some(mut ledger) = app.world_mut().get_resource_mut::<CoverLedger>() {
         ledger.insert(at, entry);

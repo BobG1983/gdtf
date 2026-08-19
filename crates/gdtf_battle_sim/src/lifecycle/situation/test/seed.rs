@@ -22,6 +22,7 @@ fn cover_ledger_seeded_from_fixture_wall() {
         HeightBand::High,
         ArmorProtection::new(8),
         ArmorHardness::new(4),
+        TerrainPieceKind::Wall,
     );
     assert_eq!(
         ledger.peek(&wall_cell).copied(),
@@ -37,6 +38,37 @@ fn cover_ledger_seeded_from_fixture_wall() {
         ledger.peek(&wall_cell).map(|e| e.current_hp),
         ledger.peek(&wall_cell).map(|e| e.max_hp),
         "current_hp seeds to the authored max",
+    );
+}
+
+/// records each piece's own kind, not the kind its authoring list implies.
+#[test]
+fn cover_ledger_kind_comes_from_the_piece_not_the_authoring_list() {
+    let (situation, cover_in_walls_cell, wall_in_scatter_cell) = crossed_terrain_fixture();
+    let Some((app, _setup)) = run_setup(situation) else {
+        return;
+    };
+
+    let ledger = app.world().get_resource::<CoverLedger>();
+    assert!(ledger.is_some(), "setup must insert a CoverLedger resource");
+    let Some(ledger) = ledger else {
+        return;
+    };
+
+    let cover_kind = ledger.peek(&cover_in_walls_cell).map(|entry| entry.kind);
+    assert_eq!(
+        cover_kind,
+        Some(TerrainPieceKind::Cover),
+        "a Cover-spec piece authored in the walls list must seed a Cover ledger entry, \
+         found {cover_kind:?}",
+    );
+
+    let wall_kind = ledger.peek(&wall_in_scatter_cell).map(|entry| entry.kind);
+    assert_eq!(
+        wall_kind,
+        Some(TerrainPieceKind::Wall),
+        "a Wall-spec piece authored in the scatter list must seed a Wall ledger entry, \
+         found {wall_kind:?}",
     );
 }
 
