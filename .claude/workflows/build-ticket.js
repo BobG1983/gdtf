@@ -684,6 +684,13 @@ shorter suite.
 Reproduce every evidence clause yourself and give each one a \`clauses\` row. A clause you could not
 reach is \`met: false\` with the reason as its evidence, never a missing row.
 
+**Never run git to undo your own edit.** Copy the file first, mutate it, run the test, restore from
+your copy. \`git checkout --\`, \`git restore\`, \`git stash\` and \`git reset\` all reset to HEAD, and the
+ticket's work is uncommitted — so each of them silently deletes the implementer's changes to every
+file you name. This has happened twice, on GTW-1215 and GTW-1183; both times the file was rebuilt
+from a captured diff and the run continued, which is luck, not a recovery. Reading git is fine:
+\`status\`, \`diff\` and \`log\` change nothing.
+
 Run \`git -C ${REPO} status --porcelain\` and compare it against the claimed file list above. Set
 \`reportMatchesTree\` false if the implementer named a file it did not touch or missed one it did,
 and say which in your report. An implementer has reported doing nothing while its branch held six
@@ -695,8 +702,17 @@ Check the two claim lists against the tree, not against the prose:
   \`unansweredCorrections\` the clause number of any correction with no row, and of any row claiming
   \`applied\` where the code says otherwise. Open the file and look — an honest \`applied: false\`
   is not a finding, a false \`true\` is.
-- Put in \`undeclaredDeviations\` anything the code does differently from the contract that the
-  implementer did not declare. A deviation it declared is the gate's business, not this field's.
+- Put in \`undeclaredDeviations\` anything the code does differently from what the contract
+  **requires** and the implementer did not declare. A deviation it declared is the gate's business,
+  not this field's.
+
+  A prediction is not a requirement. Clause prose that guesses at an incidental number — a line
+  count a change is expected to land on, a count of call sites, a file size — is a guess about an
+  outcome, and a guess that misses is a defect in the clause, not in the code. Say so in your
+  report and leave the field empty. It belongs there only when the code fails to do something the
+  clause asks for. Measured on GTW-1183: a clause predicted a test file would shrink to about 260
+  lines, its own mandated signature pushed the file to 323, and a run whose suite was green and
+  whose every clause was met went RED on the gap.
 
 A GREEN verdict with either array non-empty is a contradiction; the run reads it as RED.
 

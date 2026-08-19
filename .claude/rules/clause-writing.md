@@ -64,6 +64,16 @@ message must tell the reader.
 Do not pin a changeable literal: assert the property, per
 [verification.md](./verification.md) rule 8.
 
+A predicted line count is a changeable literal, and writing one into a clause turns a guess into
+something the build can fail on. Where a size limit matters, name the limit the guard enforces —
+`module-layout.md`'s block line — never a count the change is expected to land on.
+
+Measured on GTW-1183. Clause 2 said moving two helpers "takes about 30 lines off"
+`crates/gdtf_app/tests/contextual_panel/emplacement.rs`, and a corrections row asserted a 290-line
+count. The file went to 323, because the same clause's mandated signature turned each of eight call
+sites in that file from one line into nine. Verify read the gap as a deviation and reddened a run
+whose suite was green and whose every clause was met.
+
 ## Length
 
 A clause is one requirement. If it needs "and also", it is two clauses. A ticket whose clauses

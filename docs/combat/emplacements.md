@@ -57,8 +57,9 @@ its facing, and allows the enter only from one of those cells; a mount naming no
 side cannot be entered at all. Mounting still leaves the ganger on its own cell.
 Only the occupancy band is set at the emplacement's cell, so an occupied
 emplacement is indistinguishable from an empty one on screen, and the ganger
-keeps whatever cover it was already in. There is no remembered origin cell and
-no exit act.
+keeps whatever cover it was already in. There is no remembered origin cell, and
+none is needed: the ganger never left its own cell, so the exit act charges its
+cost and clears the emplacement's occupant without moving anything.
 
 The first implementation was wrong. This replaces it rather than extending it.
 
