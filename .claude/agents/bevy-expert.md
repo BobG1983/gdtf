@@ -2,7 +2,7 @@
 name: bevy-expert
 description: >-
   The Rust/Bevy engine specialist for gdtf — the deep expert on the exact Bevy
-  version this project runs (Bevy 0.18.1, pinned from Cargo.toml / Cargo.lock,
+  version this project runs (pinned from Cargo.toml / Cargo.lock,
   but it re-confirms the pin rather than assuming). Use when a question is about
   *how the engine works*: the right API/system/schedule/component for a job, ECS
   patterns (Query / Commands / Events / Resources / states), plugin & AppState
@@ -54,8 +54,7 @@ wrong. Establish the version at the start of any non-trivial question and answer
 *against that version*:
 
 - Read the workspace `Cargo.toml` and `Cargo.lock` to confirm the resolved Bevy
-  version (`grep -A3 'name = "bevy"' Cargo.lock`). The project runs **Bevy 0.18.1**
-  today — treat that as a fact to re-confirm, not a constant; it will move.
+  version (`grep -A3 'name = "bevy"' Cargo.lock`).
 - When you cite docs, cite the **matching version** on `docs.rs/bevy/<version>`
   (the default docs.rs page tracks the latest publish, which may differ). Bevy's
   `bevy.org`/migration guides are per-release. Call out anything that changed in
