@@ -14,28 +14,29 @@ use crate::{
     },
     metric::CellLevel,
     occupancy::OccupancyGrid,
+    terrain::entity::TerrainIndexKey,
     weapon::{MeleeWeapon, MountedWeapon, Wields},
 };
 
-/// Cover-cell on-death effects keyed by cell.
+/// Terrain on-death effects keyed by the terrain piece that carries them.
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
-pub struct CoverOnDeathRegistry(HashMap<CellLevel, OnDeathEffect>);
+pub struct TerrainOnDeathRegistry(HashMap<TerrainIndexKey, OnDeathEffect>);
 
-impl CoverOnDeathRegistry {
-    /// From cell/effect pairs.
+impl TerrainOnDeathRegistry {
+    /// From key/effect pairs.
     #[must_use]
-    pub fn new(effects: impl IntoIterator<Item = (CellLevel, OnDeathEffect)>) -> Self {
+    pub fn new(effects: impl IntoIterator<Item = (TerrainIndexKey, OnDeathEffect)>) -> Self {
         Self(effects.into_iter().collect())
     }
 
     /// Insert or replace an effect.
-    pub fn insert(&mut self, at: CellLevel, effect: OnDeathEffect) -> Option<OnDeathEffect> {
+    pub fn insert(&mut self, at: TerrainIndexKey, effect: OnDeathEffect) -> Option<OnDeathEffect> {
         self.0.insert(at, effect)
     }
 
     /// Look up an effect.
     #[must_use]
-    pub fn effect(&self, at: &CellLevel) -> Option<&OnDeathEffect> {
+    pub fn effect(&self, at: &TerrainIndexKey) -> Option<&OnDeathEffect> {
         self.0.get(at)
     }
 
@@ -82,27 +83,38 @@ pub struct FieldSpawning<'w> {
     defs:   Option<Res<'w, FieldDefRegistry>>,
 }
 
-/// Fan each buffered death through its weapon or cover on-death effect.
+/// One death already fanned: a terrain piece by its key, a body by its cell.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum DeathVisit {
+    /// A terrain death, told apart by which piece died.
+    Terrain(TerrainIndexKey),
+    /// An entity death, told apart by where it fell.
+    Cell(CellLevel),
+}
+
+/// Fan each buffered death through its weapon or terrain on-death effect.
 pub fn resolve_on_death(
     mut deaths: MessageReader<OnDeathOccurred>,
     weapons: DeathWeapons,
     mut victims: Query<VictimRow>,
     grid: Res<OccupancyGrid>,
     mut fields: FieldSpawning,
-    cover_on_death: Res<CoverOnDeathRegistry>,
+    terrain_on_death: Res<TerrainOnDeathRegistry>,
 ) {
     let mut queue: Vec<OnDeathOccurred> = deaths.read().copied().collect();
-    let mut visited: HashSet<CellLevel> = HashSet::new();
+    let mut visited: HashSet<DeathVisit> = HashSet::new();
 
     while let Some(death) = queue.pop() {
-        if !visited.insert(death.at) {
+        let visit = death
+            .terrain
+            .map_or(DeathVisit::Cell(death.at), DeathVisit::Terrain);
+        if !visited.insert(visit) {
             continue;
         }
 
-        let effect: Option<OnDeathEffect> = if death.entity == Entity::PLACEHOLDER {
-            cover_on_death.effect(&death.at).cloned()
-        } else {
-            weapons.effect_of(death.entity)
+        let effect: Option<OnDeathEffect> = match death.terrain {
+            Some(key) => terrain_on_death.effect(&key).cloned(),
+            None => weapons.effect_of(death.entity),
         };
         let Some(effect) = effect else {
             continue;

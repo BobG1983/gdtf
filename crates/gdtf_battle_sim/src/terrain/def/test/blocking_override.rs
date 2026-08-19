@@ -13,7 +13,7 @@ use crate::{
     metric::{Cell, CellLevel, Level, SimPos},
     occupancy::{OccupancyGrid, pathable_neighbors},
     slab::SlabHp,
-    surface::SurfaceGrid,
+    surface::{SlabState, SurfaceGrid},
     terrain::{floor::FloorCostGrid, piece::TerrainGraphicKey},
     tuning::{CombatTuning, MoveCosts},
 };
@@ -84,8 +84,14 @@ fn high_above(tuning: &CombatTuning) -> f32 {
     f32::midpoint(*tuning.projectile_band_edges.mid_high, 1.0)
 }
 
-fn march_row(grid: &OccupancyGrid, tuning: &CombatTuning, above: f32) -> MarchResult {
-    let surface = SurfaceGrid::new();
+fn march_row(
+    grid: &OccupancyGrid,
+    tuning: &CombatTuning,
+    above: f32,
+    occluder: CellLevel,
+) -> MarchResult {
+    let mut surface = SurfaceGrid::new();
+    surface.set_slab(occluder, SlabState::Present);
     let cover = CoverLedger::new();
     let muzzle = SimPos::new(2.5, 10.5, above);
     march_vector(
@@ -130,7 +136,7 @@ fn pathing_only_blocker_is_los_transparent() {
     );
 
     let tuning = CombatTuning::default();
-    let result = march_row(&grid, &tuning, low_above(&tuning));
+    let result = march_row(&grid, &tuning, low_above(&tuning), occluder);
     assert_eq!(
         result.kind,
         MarchKind::Miss,
@@ -161,7 +167,7 @@ fn los_only_blocker_is_walkable() {
     );
 
     let tuning = CombatTuning::default();
-    let result = march_row(&grid, &tuning, high_above(&tuning));
+    let result = march_row(&grid, &tuning, high_above(&tuning), occluder);
     assert_eq!(
         result.kind,
         MarchKind::Slab,
@@ -189,12 +195,12 @@ fn band_limited_los_on_wall_lets_high_round_over() {
     let mut limited_grid = OccupancyGrid::new();
     apply_derived(&mut limited_grid, &limited, occluder);
     assert_eq!(
-        march_row(&limited_grid, &tuning, low_above(&tuning)).kind,
+        march_row(&limited_grid, &tuning, low_above(&tuning), occluder).kind,
         MarchKind::Slab,
         "AC2(c): a LOW round is occluded by the Low-band LoS blocker",
     );
     assert_eq!(
-        march_row(&limited_grid, &tuning, high_above(&tuning)).kind,
+        march_row(&limited_grid, &tuning, high_above(&tuning), occluder).kind,
         MarchKind::Miss,
         "AC2(c): a HIGH round sails OVER the band-limited LoS blocker",
     );
@@ -208,7 +214,7 @@ fn band_limited_los_on_wall_lets_high_round_over() {
     let mut default_grid = OccupancyGrid::new();
     apply_derived(&mut default_grid, &default_wall, occluder);
     assert_eq!(
-        march_row(&default_grid, &tuning, high_above(&tuning)).kind,
+        march_row(&default_grid, &tuning, high_above(&tuning), occluder).kind,
         MarchKind::Slab,
         "without the override, the HIGH round IS occluded — the override changed the march",
     );

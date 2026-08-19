@@ -63,12 +63,13 @@ enum SteppedAxis {
     Z,
 }
 
-/// Test whether the current cell contains an impact (ganger, cover, or occluder).
+/// Test whether the current cell contains an impact (ganger, cover, or Present slab).
 pub(super) fn impact_at(
     here: CellLevel,
     here_point: SimPos,
     test_band: HeightBand,
     occupancy: &OccupancyGrid,
+    surface: &SurfaceGrid,
     cover: &CoverLedger,
     is_dead: &impl Fn(Entity) -> bool,
 ) -> Option<MarchResult> {
@@ -97,6 +98,7 @@ pub(super) fn impact_at(
         });
     }
     if let Some(occluder_band) = occupancy.vision_occluder_at(&here)
+        && surface.slab_state(&here) == SlabState::Present
         && round_clears_occupant(test_band, occluder_band) == Clearance::Impacts
     {
         return Some(MarchResult {

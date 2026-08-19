@@ -74,6 +74,7 @@ fn drop_lands_on_first_present_slab_below() {
 #[test]
 fn drop_falls_through_absent_and_destroyed_to_first_support() {
     let mut surface = SurfaceGrid::new();
+    surface.set_slab(CellLevel::new(cell(), Level::new(3)), SlabState::Present);
     surface.destroy_slab(CellLevel::new(cell(), Level::new(3)));
     surface.set_slab(CellLevel::new(cell(), Level::new(1)), SlabState::Present);
 

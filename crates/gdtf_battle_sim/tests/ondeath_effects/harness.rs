@@ -41,6 +41,8 @@ pub(crate) const PLAYER: u8 = 0;
 pub(crate) const TEST_VIEW_RANGE: u16 = 20;
 pub(crate) const BARREL: TerrainUuid =
     TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0547_0547_0001));
+pub(crate) const FUEL_SLAB: TerrainUuid =
+    TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0547_0547_0002));
 
 pub(crate) fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
@@ -101,7 +103,33 @@ pub(crate) fn barrel_terrain_registry() -> TerrainDefRegistry {
             blocks_los:     None,
         },
     );
+    base.insert(FUEL_SLAB, fuel_slab_def());
     base
+}
+
+/// A slab def carrying an authored `on_death`, so a destroyed slab can fan an effect.
+fn fuel_slab_def() -> TerrainDef {
+    TerrainDef {
+        key:            FUEL_SLAB,
+        display_name:   TerrainDisplayName::new("Fuel Slab".to_owned()),
+        sim_kind:       TerrainSimKind::Slab {
+            hp:               gdtf_battle_sim::slab::SlabHp::new(120),
+            armor_protection: gdtf_battle_sim::armor::ArmorProtection::new(4),
+            armor_hardness:   gdtf_battle_sim::armor::ArmorHardness::new(2),
+        },
+        presenter_kind: TerrainPresenterKind::Slab {
+            graphic_name: gdtf_battle_sim::terrain::piece::TerrainGraphicKey::new(
+                "slab".to_owned(),
+            ),
+            footfall:     None,
+        },
+        tags:           Vec::new(),
+        on_death:       Some(OnDeathEffect::LeaveField {
+            field: FieldKey::new("burning".to_owned()),
+        }),
+        blocks_pathing: None,
+        blocks_los:     None,
+    }
 }
 
 pub(crate) fn burning_field_registry() -> FieldDefRegistry {

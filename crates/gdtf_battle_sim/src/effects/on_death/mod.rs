@@ -18,5 +18,5 @@ pub use component::OnDeath;
 pub use effect::OnDeathEffect;
 pub use explode::{ApplyExplode, ExplodeDamage};
 pub use leave_field::ApplyLeaveField;
-pub use resolve::{CoverOnDeathRegistry, resolve_on_death};
+pub use resolve::{TerrainOnDeathRegistry, resolve_on_death};
 pub use signal::OnDeathOccurred;

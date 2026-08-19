@@ -58,7 +58,7 @@ pub fn teardown_battle_on_request(
         commands.remove_resource::<TerrainIndex>();
         commands.remove_resource::<FloorCostGrid>();
         commands.remove_resource::<crate::effects::fields::FieldRegistry>();
-        commands.remove_resource::<crate::effects::on_death::CoverOnDeathRegistry>();
+        commands.remove_resource::<crate::effects::on_death::TerrainOnDeathRegistry>();
         for entity in terrain_entities.iter() {
             commands.entity(entity).despawn();
         }

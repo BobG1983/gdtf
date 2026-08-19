@@ -89,7 +89,7 @@ fn wire_on_death(app: &mut App) {
             .after(apply_falls)
             .run_if(resource_exists::<crate::occupancy::OccupancyGrid>)
             .run_if(resource_exists::<crate::effects::fields::FieldRegistry>)
-            .run_if(resource_exists::<crate::effects::on_death::CoverOnDeathRegistry>)
+            .run_if(resource_exists::<crate::effects::on_death::TerrainOnDeathRegistry>)
             .in_set(SimSystems::Simulate),
     );
 }

@@ -90,8 +90,11 @@ impl SurfaceGrid {
         self.slabs.insert(key, state);
     }
 
-    /// Mark a slab destroyed permanently.
+    /// Mark a Present slab destroyed permanently; bare ground is left alone.
     pub fn destroy_slab(&mut self, key: CellLevel) {
+        if self.slab_state(&key) != SlabState::Present {
+            return;
+        }
         self.slabs.insert(key, SlabState::Destroyed);
     }
 

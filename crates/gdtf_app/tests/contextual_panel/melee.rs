@@ -3,7 +3,10 @@ use gdtf_app::test_support::MeleeButton;
 use gdtf_battle_input::{SelectedShooter, contextual::ContextualActSystems};
 use gdtf_battle_sim::{
     acts::{MeleeRequested, MeleeTarget, melee_tu_cost},
+    armor::{ArmorHardness, ArmorProtection},
+    cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Facing, Tu},
+    metric::{Cell, CellLevel, Level},
     prelude::{Direction, Faction, Position, Stance, StanceKind},
     weapon::{FightMode, FightModeKind, FightModeSpec, MeleeWeapon, Strikes, TuCost, WieldedBy},
 };
@@ -99,6 +102,40 @@ fn non_adjacent_or_ally_does_not_offer_melee() {
     assert!(
         melee_visible(&mut app),
         "moving the alive enemy into 8-adjacency reveals the Melee button (discriminating)",
+    );
+}
+
+#[test]
+fn bare_ground_offers_no_melee_but_a_live_cover_entry_does() {
+    let mut app = battle_running_app();
+    // The scan answers None when the ledger resource is missing, so it must be present.
+    app.world_mut().insert_resource(CoverLedger::new());
+    spawn_melee_actor(&mut app, 5, 5, 0);
+    app.update();
+
+    assert!(
+        !melee_visible(&mut app),
+        "an empty cover ledger and no enemy in reach must offer NO melee — bare ground is never \
+         a structure target",
+    );
+
+    let mut ledger = CoverLedger::new();
+    ledger.insert(
+        CellLevel::new(Cell::new(6, 5), Level::new(0)),
+        CoverEntry::seeded(
+            CoverHp::new(30),
+            HeightBand::Low,
+            ArmorProtection::new(2),
+            ArmorHardness::new(1),
+        ),
+    );
+    app.world_mut().insert_resource(ledger);
+    app.update();
+
+    assert!(
+        melee_visible(&mut app),
+        "a LIVE cover entry in an adjacent cell must offer melee, or the bare-ground half above \
+         passes vacuously",
     );
 }
 

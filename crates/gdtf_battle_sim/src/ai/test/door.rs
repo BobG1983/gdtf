@@ -8,9 +8,11 @@ use crate::{
     acts::OpenDoorRequested,
     cover::HeightBand,
     ganger::{Direction, Position, Tu},
+    metric::CellLevel,
     occupancy::{GRID_HEIGHT, project_path_blocking},
     occupancy_sync::{OccupancyMaintenancePlugin, SimSystems},
     openable::{OpenState, OpenableBlocking, apply_openable_toggle},
+    surface::{SlabState, SurfaceGrid},
     terrain::entity::{BlocksPathfinding, BlocksVision, TerrainCell},
 };
 
@@ -30,10 +32,18 @@ fn door_brain_app() -> App {
     app
 }
 
+// A hand-built occluder only stops rounds where the surface grid also holds a Present slab.
+fn mark_present(world: &mut World, at: CellLevel) {
+    if let Some(mut surface) = world.get_resource_mut::<SurfaceGrid>() {
+        surface.set_slab(at, SlabState::Present);
+    }
+}
+
 fn seal_column(world: &mut World, door_y: i32) -> Entity {
     let mut door = Entity::PLACEHOLDER;
     for y in 0..i32::try_from(GRID_HEIGHT).unwrap_or(0) {
         let at = ground(WALL_X, y);
+        mark_present(world, at);
         if y == door_y {
             door = world
                 .spawn((
@@ -188,8 +198,10 @@ fn reachable_door_is_walked_to_then_opened() {
 #[test]
 fn a_clear_advance_does_not_open_a_side_door() {
     let mut app = door_brain_app();
+    let side_door_at = ground(5, 40);
+    mark_present(app.world_mut(), side_door_at);
     app.world_mut().spawn((
-        TerrainCell::new(ground(5, 40)),
+        TerrainCell::new(side_door_at),
         OpenState::Closed,
         OpenableBlocking::new(HeightBand::High),
         BlocksPathfinding,

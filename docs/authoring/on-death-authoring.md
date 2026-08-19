@@ -58,8 +58,8 @@ report.
 - **Every terminal gate emits.** `OnDeathOccurred`
   (`crates/gdtf_battle_sim/src/effects/on_death/signal.rs`) fires from every
   path that kills — ranged fire (primary + splash), melee kills, falls, the
-  per-round bleed / DOT / field clocks, and both cover-destroy sites — so an
-  authored effect fans no matter HOW the source died.
+  per-round bleed / DOT / field clocks, both cover-destroy sites, and the
+  slab-destroy site — so an authored effect fans no matter HOW the source died.
 - **Deterministic, RNG-free.** The `Explode` drain is a flat, armor-bypassing
   HP drain over the sorted AoE set — byte-stable, so it never perturbs the
   seeded autobattle stream.
@@ -68,6 +68,10 @@ report.
   work-queue (`resolve_on_death`,
   `crates/gdtf_battle_sim/src/effects/on_death/resolve.rs`) — chained
   explosions all land.
+- **Two pieces on one cell each fan.** A terrain death is deduped by WHICH
+  piece died (cover and slab are separate keys); an entity death is deduped by
+  its cell. So a cover and a slab destroyed on the same cell in the same frame
+  each fan their own authored effect.
 - A cone authored on a corpse degenerates to the full disc (a corpse has no
   meaningful fire direction).
 
@@ -96,10 +100,13 @@ source of truth; this section is the pointer.
 
 ## Part 3 — Verify
 
-- **Suite:** `cargo dtest`. The mechanics suite lives in-crate at
-  `crates/gdtf_battle_sim/src/effects/on_death/test.rs` (resolver, cascade,
-  drain discipline) plus the per-effect unit tests in `explode.rs` /
-  `leave_field.rs`.
+- **Suite:** `cargo dtest`. The mechanics suite lives in-crate under
+  `crates/gdtf_battle_sim/src/effects/on_death/test/` (resolver, cascade, drain
+  discipline, per-piece keying, the per-round clocks) alongside `tests.rs` (the
+  shipped serde forms and the delegation), plus the per-effect unit tests in
+  `explode.rs` / `leave_field.rs`. The end-to-end fans — a smashed barrel, a
+  destroyed slab — are driven through a real battle in
+  `crates/gdtf_battle_sim/tests/ondeath_effects/`.
 - **In game:** `cargo drun` — the shipped skirmish fields "Alex Mercer" with
   the `volatile_charge` satchel weapon: when Alex dies, the radius-1 blast
   detonates at the body (the presenter marks it with a bold "BOOM" floating

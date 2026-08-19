@@ -76,6 +76,9 @@ pub(super) fn emit_report_signals(
         HitVerdict::Slab(slab) => {
             if let Some(at) = slab.destroyed {
                 signals.slab_destroyed.write(SlabDestroyed::new(at));
+                signals
+                    .deaths
+                    .write(crate::effects::on_death::OnDeathOccurred::slab(at));
             }
         }
         HitVerdict::Ground(accrual) => {

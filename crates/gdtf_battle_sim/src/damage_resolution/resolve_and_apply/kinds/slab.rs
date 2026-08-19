@@ -28,18 +28,18 @@ const fn slab_armor_piece(entry: &SlabEntry) -> ArmorPiece {
     )
 }
 
-/// Resolve and apply damage to a slab at a cell.
+/// Resolve and apply damage to a slab at a cell; a cell with no authored slab takes none.
 pub(in crate::damage_resolution::resolve_and_apply) fn fold(
     at: CellLevel,
     weapon: WeaponStats<'_>,
     slab: &mut SlabLedger,
     tuning: &CombatTuning,
 ) -> HitVerdict {
-    const SLAB_FALLBACK_DEFAULTS: crate::tuning::SlabDefaults =
-        crate::tuning::SlabDefaults::FALLBACK;
-    let prototype = SlabLedger::prototype_for(at, &SLAB_FALLBACK_DEFAULTS);
+    let Some(entry) = slab.peek(&at).copied() else {
+        return HitVerdict::Slab(SlabVerdict { destroyed: None });
+    };
 
-    let piece = slab_armor_piece(&prototype);
+    let piece = slab_armor_piece(&entry);
     let hit = resolve_hit(
         *weapon.damage,
         *weapon.punch,
@@ -51,9 +51,9 @@ pub(in crate::damage_resolution::resolve_and_apply) fn fold(
 
     let removed = SlabDamage::new(u32::try_from((*hit.hp_damage).max(0)).unwrap_or(0));
 
-    let destroyed = match slab.deplete_slab(at, removed, prototype) {
-        SlabEvent::Destroyed(cell) => Some(cell),
-        SlabEvent::Damaged(_) => None,
+    let destroyed = match slab.deplete_slab(at, removed) {
+        Some(SlabEvent::Destroyed(cell)) => Some(cell),
+        Some(SlabEvent::Damaged(_)) | None => None,
     };
     HitVerdict::Slab(SlabVerdict { destroyed })
 }

@@ -54,6 +54,7 @@ pub fn march_vector(
                 here_point,
                 test_band,
                 grids.occupancy,
+                grids.surface,
                 grids.cover,
                 &is_dead,
             )

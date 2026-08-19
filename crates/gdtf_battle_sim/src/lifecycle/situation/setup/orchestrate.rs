@@ -47,8 +47,8 @@ pub fn setup_battle(
     let melee_bundles =
         resolve::resolve_melee_bundles(&resolved_members, melee_weapons, attachments)?;
     let armor_specs = resolve::resolve_armor_specs(&resolved_members, armor)?;
-    let resolved_covers = resolve::resolve_covers(situation, terrain)?;
-    let resolved_slabs = resolve::resolve_slabs(situation, terrain)?;
+    let mut resolved_covers = resolve::resolve_covers(situation, terrain)?;
+    let resolved_slabs = resolve::resolve_slabs(situation, terrain, &mut resolved_covers.on_death)?;
 
     let field_registry = resolve::build_field_registry(situation, fields)?;
 

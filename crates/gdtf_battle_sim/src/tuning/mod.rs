@@ -12,7 +12,6 @@ mod matchup;
 mod melee;
 mod reaction;
 mod severity;
-mod slab;
 mod stat_tuning;
 mod visibility;
 mod wounds;
@@ -50,7 +49,6 @@ pub use severity::{
     DefenderLuckScale, PenDamageScale, RandomSpread, SeverityEdge, SeverityEdges, SeverityScaling,
     ShooterLuckScale, ToughnessMitigation,
 };
-pub use slab::{SlabDefaultHp, SlabDefaults};
 pub use stat_tuning::{
     BottlePerMorale, FightWeights, GangerStatTuning, HpWeights, MoraleWeights, ReactionsWeights,
     ShootingWeights, StatWeight, TuBase, TuPerSpeed, WoundsPerHp,

@@ -10,12 +10,12 @@ use crate::{
     armor::{ArmorRegistry, ArmorSpec},
     effects::{
         fields::{FieldDefRegistry, FieldRegistry},
-        on_death::CoverOnDeathRegistry,
+        on_death::TerrainOnDeathRegistry,
     },
     equipment::attachments::{AttachmentRegistry, resolve_pending_attachments},
     ganger::{GangMember, GangRegistry},
     situation::{BattleSetupError, PlacedGanger, Situation},
-    terrain::def::TerrainDefRegistry,
+    terrain::{def::TerrainDefRegistry, entity::TerrainIndexKey},
     weapon::{
         FISTS_KEY, MeleeWeaponBundle, MeleeWeaponRegistry, PendingAttachments, WeaponBundle,
         WeaponName, WeaponRegistry, WeaponSpawnSiblings,
@@ -103,7 +103,7 @@ pub(super) fn resolve_armor_specs(
 /// The cover pieces a situation spawns, plus the on-death effects their cells carry.
 pub(super) struct ResolvedCovers {
     pub(super) pieces:   Vec<ResolvedCoverPiece>,
-    pub(super) on_death: CoverOnDeathRegistry,
+    pub(super) on_death: TerrainOnDeathRegistry,
 }
 
 pub(super) fn resolve_covers(
@@ -111,11 +111,11 @@ pub(super) fn resolve_covers(
     terrain: Option<&TerrainDefRegistry>,
 ) -> Result<ResolvedCovers, BattleSetupError> {
     let mut pieces: Vec<ResolvedCoverPiece> = Vec::new();
-    let mut on_death = CoverOnDeathRegistry::default();
+    let mut on_death = TerrainOnDeathRegistry::default();
     for cover in situation.walls.iter().chain(situation.scatter.iter()) {
         let def = resolve_terrain_or_err(terrain, &cover.piece)?;
         if let Some(effect) = &def.on_death {
-            on_death.insert(cover.at, effect.clone());
+            on_death.insert(TerrainIndexKey::Cover(cover.at), effect.clone());
         }
         let Some(resolved) = resolve_cover_def(&cover.piece, def) else {
             return Err(BattleSetupError::TerrainNotFound { piece: cover.piece });
@@ -125,13 +125,18 @@ pub(super) fn resolve_covers(
     Ok(ResolvedCovers { pieces, on_death })
 }
 
+/// Resolve the slab pieces, registering each def's `on_death` under its slab key.
 pub(super) fn resolve_slabs(
     situation: &Situation,
     terrain: Option<&TerrainDefRegistry>,
+    on_death: &mut TerrainOnDeathRegistry,
 ) -> Result<Vec<ResolvedSlabPiece>, BattleSetupError> {
     let mut resolved_slabs: Vec<ResolvedSlabPiece> = Vec::new();
     for slab_spawn in &situation.slabs {
         let def = resolve_terrain_or_err(terrain, &slab_spawn.piece)?;
+        if let Some(effect) = &def.on_death {
+            on_death.insert(TerrainIndexKey::Slab(slab_spawn.at), effect.clone());
+        }
         let Some(resolved) = resolve_slab_def(&slab_spawn.piece, def) else {
             return Err(BattleSetupError::TerrainNotFound {
                 piece: slab_spawn.piece,
