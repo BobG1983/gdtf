@@ -867,7 +867,13 @@ row and leave both alone (\`.claude/rules/design-fidelity.md\` rule 4).
 
 Files dirty in the tree that are not this ticket's work stay exactly as they are.
 
-Do NOT commit — /land owns the commit.`,
+Every word you write into docs/ follows \`.claude/rules/plain-language.md\` and the doc-register
+section of the \`/docs-sync\` skill: no ticket id, no clause number, no plan or intention, and no
+coined figure of speech where a literal description works. That applies to text you edit as well as
+text you add — if a claim you are already fixing carries a GTW id or a clause number, strip it in
+the same pass and say so in its \`claims\` row.
+
+Do NOT commit — /land owns the commit.\`,
   { model: 'opus', label: `docs-sync:${TICKET}`, phase: 'Docs-sync', schema: DOCS_RESULT })
 
 phase('Land')

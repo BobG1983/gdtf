@@ -21,7 +21,7 @@ gdtf_battle_sim`. System order is input → sim → presentation.
 presenter owns. Presenter code that decides a combat outcome. A test that proves sim
 behaviour by asserting on rendered state.
 
-**Why it is load-bearing:** the sim is the thing that must be deterministic and replayable
+**What breaks without it:** the sim is the thing that must be deterministic and replayable
 from a seed. Every leak of view state into it costs that, and the loss is silent — a
 battle that replays differently gives no error.
 
@@ -49,12 +49,11 @@ ahead.
 `TerrainPieceDestroyed` and its kin — and draws the result on the spot.
 Destruction is in scope: cover, wall and slab, and whatever replaces a destroyed piece.
 
-**Two exceptions the tree still carries**, both dated 2026-08-18 and both on their way out:
-`swap_destroyed_slab` and `swap_destroyed_cover` read the raw buffer and draw from it. Both
-move onto the played fact, and the swaps are deleted once nothing needs them. Nothing else may
-join them.
+**Two exceptions the tree carries:** `swap_destroyed_slab` and `swap_destroyed_cover` read the
+raw buffer and draw from it. They are the only two, and nothing else may join them. Each ends the
+same way — the swap reads the played fact instead, and the system goes when nothing needs it.
 
-**Why it is load-bearing:** the sim resolves a whole act while playback is still animating
+**What breaks without it:** the sim resolves a whole act while playback is still animating
 the one before it. A system that reads the sim directly is not slightly early, it is an
 arbitrary number of acts early, and it fails silently — nothing errors when a wall breaks
 before the shot that broke it. It has been the same bug three times: hit floating combat text
@@ -93,7 +92,7 @@ rest picks the target, then again with the real pool to decide whether the butto
 pressable. Where the predicate is TU-blind — `can_shove`, `can_melee` — ask it for the
 target and ask `can_spend_tu` for the pool. Either way both answers come from the sim.
 
-**Why it is load-bearing:** a copy starts out agreeing and stops agreeing on the next
+**What breaks without it:** a copy starts out agreeing and stops agreeing on the next
 change to the sim, and it fails quietly — the player is offered an act the sim then
 refuses, or is denied one it would have allowed. Nothing errors either way.
 
@@ -120,7 +119,7 @@ hand-rolling; the ban is on the third-party ecosystem, not on Bevy's primitives.
 editor, and a shared widget layer spanning both. Gamepad focus navigation is required on
 the game UI; pointer emulation is not a substitute.
 
-**Why it is load-bearing:** the two stacks have incompatible layout and input models.
+**What breaks without it:** the two stacks have incompatible layout and input models.
 A widget that tries to serve both ends up serving neither, and the failure shows up as
 input that works with a mouse and not a controller.
 
