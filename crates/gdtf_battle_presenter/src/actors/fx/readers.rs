@@ -7,8 +7,8 @@ use bevy::{
     scene::{CommandsSceneExt, bsn, template_value},
 };
 use gdtf_battle_sim::{
-    armor_wear::ArmorBroken, effects::bleed::Bleeding, ganger::Wounds,
-    occupancy_sync::CoverDestroyed, prelude::Position,
+    armor_wear::ArmorBroken, effects::bleed::Bleeding, entity::TerrainPieceKind, ganger::Wounds,
+    occupancy_sync::TerrainPieceDestroyed, prelude::Position,
 };
 
 use super::{
@@ -100,14 +100,17 @@ pub fn read_armor_broken(
     }
 }
 
-/// Cover-destroyed flash at the smashed cell.
+/// Destruction flash at the smashed cell, for every kind but a slab.
 pub fn read_cover_destroyed(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,
     roles: Res<EffectRoles>,
-    mut destroyed: MessageReader<Played<CoverDestroyed>>,
+    mut destroyed: MessageReader<Played<TerrainPieceDestroyed>>,
 ) {
     for msg in destroyed.read() {
+        if msg.kind == TerrainPieceKind::Slab {
+            continue;
+        }
         let (cell, level) = msg.at.split();
         let Some(sprite) = fx_sprite(roles.cover_destroyed, Color::WHITE, &atlases) else {
             continue;

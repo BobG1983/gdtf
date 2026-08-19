@@ -4,7 +4,8 @@ use gdtf_battle_sim::{
     armor::BodyPart,
     armor_wear::ArmorBroken,
     effects::bleed::Bleeding,
-    occupancy_sync::CoverDestroyed,
+    entity::TerrainPieceKind,
+    occupancy_sync::TerrainPieceDestroyed,
     prelude::{BattleInProgress, Cell, CellLevel, Level},
     weapon::DamageType,
 };
@@ -106,7 +107,10 @@ fn cover_destroyed_spawns_one_flash_at_the_cover_destroyed_index() {
     let level = Level::new(0);
     let at = CellLevel::new(cell, level);
 
-    play(&mut app, CoverDestroyed::new(at));
+    play(
+        &mut app,
+        TerrainPieceDestroyed::new(at, TerrainPieceKind::Cover),
+    );
     app.update();
 
     let roles = effect_roles(&app);
@@ -132,6 +136,28 @@ fn cover_destroyed_spawns_one_flash_at_the_cover_destroyed_index() {
         index,
         Some(*roles.cover_destroyed),
         "the cover-destroyed flash's index must equal the table's cover_destroyed role index",
+    );
+}
+
+#[test]
+fn a_destroyed_slab_spawns_no_flash() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let at = CellLevel::new(Cell::new(3, 4), Level::new(1));
+
+    play(
+        &mut app,
+        TerrainPieceDestroyed::new(at, TerrainPieceKind::Slab),
+    );
+    app.update();
+
+    assert_eq!(
+        fx_count(&mut app),
+        0,
+        "a destroyed slab spawns no destruction flash — that is the behaviour today and this \
+         ticket keeps it",
     );
 }
 

@@ -219,7 +219,7 @@ fn fired_rounds_deplete_then_destroy_slab_and_open_los_without_walkability() {
             .resource::<SurfaceGrid>()
             .slab_state(&slab_key()),
         SlabState::Destroyed,
-        "C9(a): the bridge (dispatch_fire → SlabDestroyed → sync_destroyed_slab → \
+        "C9(a): the bridge (dispatch_fire → TerrainPieceDestroyed → sync_destroyed_piece → \
          destroy_slab) must set the slab Destroyed once its persistent pool hits zero",
     );
 

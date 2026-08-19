@@ -168,7 +168,7 @@ fn clicking_cover_fires_and_the_sim_depletes_it() {
     assert!(
         *grid.is_cover_destroyed(&cover_cell()),
         "AFTER: clicking the cover must have fired a real shot that depleted it — \
-         sync_destroyed_cover marks the smashed cell destroyed (the click→fire→free chain); \
+         sync_destroyed_piece marks the smashed cell destroyed (the click→fire→free chain); \
          got destroyed-set miss",
     );
     assert!(

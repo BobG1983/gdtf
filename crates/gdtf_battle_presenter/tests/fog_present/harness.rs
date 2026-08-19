@@ -71,7 +71,7 @@ pub(crate) fn headless_renderer_app() -> App {
     )
     .add_message::<SetupBattleRequested>()
     .add_message::<gdtf_battle_sim::battle::BattleReady>()
-    .add_message::<gdtf_battle_sim::occupancy_sync::CoverDestroyed>()
+    .add_message::<gdtf_battle_sim::occupancy_sync::TerrainPieceDestroyed>()
     .add_systems(Update, setup_battle_on_request)
     .add_plugins(TopDownRendererPlugin);
     gdtf_assets::ContentFamilyAppExt::register_content_family::<

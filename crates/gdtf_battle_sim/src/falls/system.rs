@@ -19,10 +19,11 @@ use crate::{
     injuries::{InjuryRegistry, InjuryTables},
     metric::{CellLevel, Level},
     occupancy::OccupancyGrid,
-    occupancy_sync::SlabDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     resolve_and_apply::{StruckPiece, TargetGanger},
     rng::{InjuryRng, SeverityRng},
     surface::SurfaceGrid,
+    terrain::entity::TerrainPieceKind,
     tuning::CombatTuning,
 };
 
@@ -73,9 +74,9 @@ pub struct FallSignals<'w> {
     deaths:   MessageWriter<'w, OnDeathOccurred>,
 }
 
-/// On [`SlabDestroyed`], move gangers down and resolve fall hits.
+/// On a destroyed slab, move gangers down and resolve fall hits.
 pub fn apply_falls(
-    mut destroyed: MessageReader<SlabDestroyed>,
+    mut destroyed: MessageReader<TerrainPieceDestroyed>,
     mut fallers: FallerQuery,
     mut armor: FallArmor,
     grids: FallGrids,
@@ -97,6 +98,9 @@ pub fn apply_falls(
     };
 
     for event in destroyed.read() {
+        if event.kind != TerrainPieceKind::Slab {
+            continue;
+        }
         let (destroyed_cell, destroyed_level) = event.at.split();
 
         for (entity, mut position, mut hp, mut wounds, mut life, mut inflicted, toughness, luck) in

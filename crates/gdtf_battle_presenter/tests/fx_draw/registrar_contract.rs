@@ -16,7 +16,7 @@ use gdtf_battle_sim::{
     armor_wear::ArmorBroken,
     effects::{bleed::Bleeding, dot::DotTicked, on_death::OnDeathOccurred},
     falls::FallOccurred,
-    occupancy_sync::SlabDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     prelude::{BattleInProgress, Cell, CellLevel, Level},
     shot_fired::ShotFired,
     suppression::SuppressionApplied,
@@ -161,8 +161,8 @@ fn a_presenter_only_app_with_no_family_buffers_stays_inert() {
             .get_resource::<Messages<ThrowResolved>>()
             .map(|_| "ThrowResolved"),
         app.world()
-            .get_resource::<Messages<SlabDestroyed>>()
-            .map(|_| "SlabDestroyed"),
+            .get_resource::<Messages<TerrainPieceDestroyed>>()
+            .map(|_| "TerrainPieceDestroyed"),
     ] {
         assert!(
             absent.is_none(),

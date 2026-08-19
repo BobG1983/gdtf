@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
     entity::TerrainPieceKind,
     ganger::{Cool, Direction, Facing, GangRegistry, Grit, Speed, Strength, Toughness},
     metric::{Cell, CellLevel, Level},
-    occupancy_sync::CoverDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     prelude::{Faction, Stance, StanceKind, Tu},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
@@ -99,7 +99,7 @@ pub(crate) struct MeleeLog {
 
 #[derive(Resource, Default)]
 pub(crate) struct DestroyedLog {
-    hits: Vec<CoverDestroyed>,
+    hits: Vec<TerrainPieceDestroyed>,
 }
 
 pub(crate) fn record_melee(
@@ -112,7 +112,7 @@ pub(crate) fn record_melee(
 }
 
 pub(crate) fn record_destroyed(
-    mut destroyed: bevy::prelude::MessageReader<CoverDestroyed>,
+    mut destroyed: bevy::prelude::MessageReader<TerrainPieceDestroyed>,
     mut log: bevy::prelude::ResMut<DestroyedLog>,
 ) {
     for hit in destroyed.read() {
@@ -138,6 +138,13 @@ pub(crate) fn destroyed_hits(app: &App) -> usize {
         .map_or(0, |log| log.hits.len())
 }
 
+pub(crate) fn destroyed_messages(app: &App) -> Vec<TerrainPieceDestroyed> {
+    app.world()
+        .get_resource::<DestroyedLog>()
+        .map(|log| log.hits.clone())
+        .unwrap_or_default()
+}
+
 pub(crate) fn attacker(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
     GangerSpawnBuilder::new()
         .at(at)
@@ -152,13 +159,13 @@ pub(crate) fn attacker(at: CellLevel, faction: u8, facing: Direction) -> GangerS
         .build()
 }
 
-pub(crate) fn seed_cover(app: &mut App, at: CellLevel, max_hp: u32) {
+pub(crate) fn seed_cover(app: &mut App, at: CellLevel, max_hp: u32, kind: TerrainPieceKind) {
     let entry = CoverEntry::seeded(
         CoverHp::new(max_hp),
         HeightBand::Mid,
         ArmorProtection::new(0),
         ArmorHardness::new(0),
-        TerrainPieceKind::Cover,
+        kind,
     );
     app.world_mut()
         .resource_mut::<CoverLedger>()

@@ -5,8 +5,8 @@ use bevy::prelude::{App, IntoScheduleConfigs, Plugin, SystemSet, Update};
 use crate::{
     occupancy::{project_path_blocking, project_vision_blocking},
     occupancy_sync::{
-        CoverDestroyed, GroundAccrued, SlabDestroyed, sync_accrued_ground, sync_dead_gangers,
-        sync_destroyed_cover, sync_destroyed_slab, sync_moved_gangers,
+        GroundAccrued, TerrainPieceDestroyed, sync_accrued_ground, sync_dead_gangers,
+        sync_destroyed_piece, sync_moved_gangers,
     },
 };
 
@@ -25,8 +25,7 @@ pub struct OccupancyMaintenancePlugin;
 
 impl Plugin for OccupancyMaintenancePlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<CoverDestroyed>()
-            .add_message::<SlabDestroyed>()
+        app.add_message::<TerrainPieceDestroyed>()
             .add_message::<GroundAccrued>()
             .configure_sets(Update, SimSystems::Simulate)
             .configure_sets(Update, SimSystems::Record.after(SimSystems::Simulate))
@@ -35,18 +34,17 @@ impl Plugin for OccupancyMaintenancePlugin {
                 (
                     sync_moved_gangers,
                     sync_dead_gangers,
-                    sync_destroyed_cover,
+                    sync_destroyed_piece,
                     project_path_blocking,
                     project_vision_blocking,
                 )
                     .chain()
                     .in_set(SimSystems::Simulate),
             )
-            .add_systems(Update, sync_destroyed_slab.in_set(SimSystems::Simulate))
             .add_systems(
                 Update,
                 sync_accrued_ground
-                    .after(sync_destroyed_slab)
+                    .after(sync_destroyed_piece)
                     .in_set(SimSystems::Simulate),
             );
     }

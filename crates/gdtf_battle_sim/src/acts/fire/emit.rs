@@ -5,8 +5,9 @@ use bevy::prelude::Entity;
 use super::signals::FireSignals;
 use crate::{
     acts::injury::InjuryInflicted,
-    occupancy_sync::{CoverDestroyed, GroundAccrued, SlabDestroyed},
+    occupancy_sync::{GroundAccrued, TerrainPieceDestroyed},
     shot_fired::ShotFired,
+    terrain::entity::TerrainPieceKind,
     weapon::DamageType,
 };
 
@@ -67,7 +68,9 @@ pub(super) fn emit_report_signals(
         }
         HitVerdict::Cover(cover) => {
             if let Some(at) = cover.destroyed {
-                signals.cover_destroyed.write(CoverDestroyed::new(at));
+                signals
+                    .destroyed
+                    .write(TerrainPieceDestroyed::new(at, cover.kind));
                 signals
                     .deaths
                     .write(crate::effects::on_death::OnDeathOccurred::cover(at));
@@ -75,7 +78,9 @@ pub(super) fn emit_report_signals(
         }
         HitVerdict::Slab(slab) => {
             if let Some(at) = slab.destroyed {
-                signals.slab_destroyed.write(SlabDestroyed::new(at));
+                signals
+                    .destroyed
+                    .write(TerrainPieceDestroyed::new(at, TerrainPieceKind::Slab));
                 signals
                     .deaths
                     .write(crate::effects::on_death::OnDeathOccurred::slab(at));

@@ -20,7 +20,6 @@ use gdtf_battle_sim::{
     armor_wear::ArmorBroken,
     effects::{bleed::Bleeding, dot::DotTicked},
     falls::FallOccurred,
-    occupancy_sync::CoverDestroyed,
     shot_fired::ShotFired,
     suppression::SuppressionApplied,
 };
@@ -62,7 +61,6 @@ pub(crate) fn headless_renderer_app() -> App {
     )
     .add_message::<Bleeding>()
     .add_message::<ArmorBroken>()
-    .add_message::<CoverDestroyed>()
     .add_message::<ShotFired>()
     .add_message::<SuppressionApplied>()
     .add_message::<DotTicked>()

@@ -6,8 +6,9 @@ use crate::{
     clearance::silhouette_band,
     ganger::{LifeState, Position, Stance, StanceKind},
     occupancy::OccupancyGrid,
-    occupancy_sync::{CoverDestroyed, GroundAccrued, PrevSlot, SlabDestroyed},
+    occupancy_sync::{GroundAccrued, PrevSlot, TerrainPieceDestroyed},
     surface::SurfaceGrid,
+    terrain::entity::TerrainPieceKind,
 };
 
 type MovedReads<'a> = (
@@ -77,23 +78,19 @@ pub fn sync_dead_gangers(
     }
 }
 
-/// Mark cover cells destroyed on the occupancy grid.
-pub fn sync_destroyed_cover(
+/// Project a destroyed piece onto the grid its kind lives in.
+pub fn sync_destroyed_piece(
     mut grid: ResMut<OccupancyGrid>,
-    mut destroyed: MessageReader<CoverDestroyed>,
-) {
-    for event in destroyed.read() {
-        grid.mark_cover_destroyed(event.at);
-    }
-}
-
-/// Destroy slabs on the surface grid.
-pub fn sync_destroyed_slab(
     mut surface: ResMut<SurfaceGrid>,
-    mut destroyed: MessageReader<SlabDestroyed>,
+    mut destroyed: MessageReader<TerrainPieceDestroyed>,
 ) {
     for event in destroyed.read() {
-        surface.destroy_slab(event.at);
+        match event.kind {
+            TerrainPieceKind::Slab => surface.destroy_slab(event.at),
+            TerrainPieceKind::Wall | TerrainPieceKind::Cover | TerrainPieceKind::Emplacement => {
+                grid.mark_cover_destroyed(event.at);
+            }
+        }
     }
 }
 

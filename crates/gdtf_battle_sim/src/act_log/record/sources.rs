@@ -20,7 +20,7 @@ use crate::{
     inflicted_wound::InflictedWounds,
     injuries::InflictedInjuries,
     magazine::Magazine,
-    occupancy_sync::CoverDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     reaction::InterruptDeclared,
     shot_fired::ShotFired,
     suppression::SuppressionApplied,
@@ -109,7 +109,7 @@ pub struct ConsequenceMessages<'w, 's> {
     pub(super) bleed_ticks:   MessageReader<'w, 's, Bleeding>,
     pub(super) dot_ticks:     MessageReader<'w, 's, DotTicked>,
     pub(super) field_ticks:   MessageReader<'w, 's, FieldTicked>,
-    pub(super) cover_smashed: MessageReader<'w, 's, CoverDestroyed>,
+    pub(super) cover_smashed: MessageReader<'w, 's, TerrainPieceDestroyed>,
     pub(super) melee_landed:  MessageReader<'w, 's, MeleeResolved>,
     pub(super) throw_landed:  MessageReader<'w, 's, ThrowResolved>,
 }

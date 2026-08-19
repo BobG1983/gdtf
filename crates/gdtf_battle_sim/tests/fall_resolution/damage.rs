@@ -1,5 +1,6 @@
 use bevy::{app::App, prelude::Entity};
 use gdtf_battle_sim::{
+    entity::TerrainPieceKind,
     prelude::{CellLevel, Level, OccupancyGrid},
     surface::{SlabState, SurfaceGrid},
     tuning::PerStoreyDamage,
@@ -70,7 +71,7 @@ fn fall_drops_hp_fires_injury_and_damage_is_monotone_in_storeys() {
         app.insert_resource(SurfaceGrid::new());
         app.insert_resource(OccupancyGrid::new());
         let before = hp_of(&app, faller);
-        destroy_slab_and_settle(&mut app, start_level);
+        destroy_slab_and_settle(&mut app, start_level, TerrainPieceKind::Slab);
         let after = hp_of(&app, faller);
         (before - after, injury_fired_for(&app, faller))
     };
@@ -108,7 +109,7 @@ fn falls_are_deterministic_under_same_seed() {
         app.insert_resource(surface);
         app.insert_resource(OccupancyGrid::new());
         let before = hp_of(&app, faller);
-        destroy_slab_and_settle(&mut app, 3);
+        destroy_slab_and_settle(&mut app, 3, TerrainPieceKind::Slab);
         let signals = fall_signals(&app);
         let storeys = signals.first().map_or(0, |s| *s.storeys);
         (
@@ -137,7 +138,7 @@ fn hot_edit_per_storey_damage_changes_fall_damage() {
         app.insert_resource(surface);
         app.insert_resource(OccupancyGrid::new());
         let before = hp_of(&app, faller);
-        destroy_slab_and_settle(&mut app, 3);
+        destroy_slab_and_settle(&mut app, 3, TerrainPieceKind::Slab);
         before - hp_of(&app, faller)
     };
     let small = lost(5);

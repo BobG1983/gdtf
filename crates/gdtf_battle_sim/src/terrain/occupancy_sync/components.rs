@@ -5,6 +5,7 @@ use bevy::prelude::{Component, Message};
 use crate::{
     metric::{Cell, CellLevel},
     surface::GroundDamage,
+    terrain::entity::TerrainPieceKind,
 };
 
 /// Previous occupancy slots for a moving ganger (lower and optional upper).
@@ -43,33 +44,20 @@ impl PrevSlot {
     }
 }
 
-/// Cover at a cell was destroyed.
+/// A terrain piece at a cell was destroyed, and which kind it was.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CoverDestroyed {
-    /// Cell of the cover.
-    pub at: CellLevel,
+pub struct TerrainPieceDestroyed {
+    /// Cell of the piece.
+    pub at:   CellLevel,
+    /// Kind of piece that was destroyed.
+    pub kind: TerrainPieceKind,
 }
 
-impl CoverDestroyed {
+impl TerrainPieceDestroyed {
     /// Build the message.
     #[must_use]
-    pub const fn new(at: CellLevel) -> Self {
-        Self { at }
-    }
-}
-
-/// Slab at a cell was destroyed.
-#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SlabDestroyed {
-    /// Cell of the slab.
-    pub at: CellLevel,
-}
-
-impl SlabDestroyed {
-    /// Build the message.
-    #[must_use]
-    pub const fn new(at: CellLevel) -> Self {
-        Self { at }
+    pub const fn new(at: CellLevel, kind: TerrainPieceKind) -> Self {
+        Self { at, kind }
     }
 }
 

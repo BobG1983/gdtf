@@ -13,9 +13,9 @@ fn occupancy_maintenance_plugin_is_wired() {
 
     assert!(
         app.world()
-            .get_resource::<bevy::ecs::message::Messages<gdtf_battle_sim::occupancy_sync::CoverDestroyed>>()
+            .get_resource::<bevy::ecs::message::Messages<gdtf_battle_sim::occupancy_sync::TerrainPieceDestroyed>>()
             .is_some(),
-        "BattleSimPlugin must register the CoverDestroyed message buffer via \
+        "BattleSimPlugin must register the TerrainPieceDestroyed message buffer via \
          OccupancyMaintenancePlugin",
     );
 }

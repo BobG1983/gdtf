@@ -15,7 +15,7 @@ use crate::{
     },
     equipment::attachments::apply_pending_attachments,
     occupancy::{project_path_blocking, project_vision_blocking},
-    occupancy_sync::{SimSystems, sync_accrued_ground, sync_destroyed_cover, sync_destroyed_slab},
+    occupancy_sync::{SimSystems, sync_accrued_ground, sync_destroyed_piece},
 };
 
 pub(super) fn wire_acts(app: &mut App) {
@@ -39,10 +39,9 @@ pub(super) fn wire_acts(app: &mut App) {
     app.add_systems(
         Update,
         dispatch_move
-            .after(sync_destroyed_cover)
+            .after(sync_destroyed_piece)
             .after(project_path_blocking)
             .after(project_vision_blocking)
-            .after(sync_destroyed_slab)
             .after(sync_accrued_ground)
             .in_set(SimSystems::Simulate),
     );
@@ -50,7 +49,7 @@ pub(super) fn wire_acts(app: &mut App) {
         Update,
         advance_walk
             .after(dispatch_move)
-            .after(sync_destroyed_cover)
+            .after(sync_destroyed_piece)
             .after(project_path_blocking)
             .in_set(SimSystems::Simulate),
     );

@@ -6,10 +6,11 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     effects::on_death::OnDeathOccurred,
+    entity::TerrainPieceKind,
     falls::FallsPlugin,
     ganger::{Hp, Luck, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
-    occupancy_sync::{OccupancyMaintenancePlugin, SlabDestroyed},
+    occupancy_sync::{OccupancyMaintenancePlugin, TerrainPieceDestroyed},
     prelude::{
         Cell, CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Stance, StanceKind, Tu,
     },
@@ -73,11 +74,10 @@ fn spawn_frail_faller(app: &mut App, level: u8) -> Entity {
 }
 
 fn destroy_slab_and_settle(app: &mut App, level: u8) {
-    app.world_mut()
-        .write_message(SlabDestroyed::new(CellLevel::new(
-            column_cell(),
-            Level::new(level),
-        )));
+    app.world_mut().write_message(TerrainPieceDestroyed::new(
+        CellLevel::new(column_cell(), Level::new(level)),
+        TerrainPieceKind::Slab,
+    ));
     app.update();
     app.update();
 }

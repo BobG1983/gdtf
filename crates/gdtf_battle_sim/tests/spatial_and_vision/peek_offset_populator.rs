@@ -13,7 +13,7 @@ use gdtf_battle_sim::{
     march::MarchGrids,
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, StairEyeOffset, TerrainKind},
-    occupancy_sync::{CoverDestroyed, sync_destroyed_cover},
+    occupancy_sync::{TerrainPieceDestroyed, sync_destroyed_piece},
     peek_sync::{peek_population_needed, sync_peek_offsets},
     prelude::{Direction, Faction, Position, Stance, StanceKind},
     surface::SurfaceGrid,
@@ -60,7 +60,7 @@ fn corner_cover() -> CoverLedger {
 fn populator_app(grid: OccupancyGrid) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
-    app.add_message::<CoverDestroyed>();
+    app.add_message::<TerrainPieceDestroyed>();
     app.insert_resource(grid);
     app.add_systems(
         bevy::prelude::Update,
@@ -206,12 +206,13 @@ fn open_ground_gets_no_peek() {
 fn cover_destroyed_clears_a_stationary_peek() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
-    app.add_message::<CoverDestroyed>();
+    app.add_message::<TerrainPieceDestroyed>();
     app.insert_resource(corner_grid(TerrainKind::Cover));
+    app.insert_resource(SurfaceGrid::new());
     app.add_systems(
         bevy::prelude::Update,
         (
-            sync_destroyed_cover,
+            sync_destroyed_piece,
             sync_peek_offsets.run_if(peek_population_needed),
         )
             .chain(),
@@ -224,8 +225,10 @@ fn cover_destroyed_clears_a_stationary_peek() {
         "precondition: the cover-corner ganger has the South lean",
     );
 
-    app.world_mut()
-        .write_message(CoverDestroyed::new(key(4, 3)));
+    app.world_mut().write_message(TerrainPieceDestroyed::new(
+        key(4, 3),
+        TerrainPieceKind::Cover,
+    ));
     app.update();
 
     assert_eq!(

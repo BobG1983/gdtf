@@ -43,7 +43,7 @@ pub(super) fn mirror_drawn(entry: &ActEntry, drawn: &mut DrawnWriters) {
         | ActDeed::FieldTicked { .. }
         | ActDeed::BleedStarted
         | ActDeed::Bled
-        | ActDeed::CoverSmashed { .. }
+        | ActDeed::TerrainPieceSmashed { .. }
         | ActDeed::MeleeLanded { .. }
         | ActDeed::ThrowLanded { .. } => {}
     }

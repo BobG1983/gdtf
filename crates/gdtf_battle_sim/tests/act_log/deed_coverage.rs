@@ -28,7 +28,7 @@ const fn disposition(deed: &ActDeed) -> Disposition {
         | ActDeed::Bled
         | ActDeed::DotTicked { .. }
         | ActDeed::FieldTicked { .. }
-        | ActDeed::CoverSmashed { .. }
+        | ActDeed::TerrainPieceSmashed { .. }
         | ActDeed::MeleeLanded { .. }
         | ActDeed::ThrowLanded { .. } => Disposition::Replayed,
         ActDeed::PostureChanged { .. }
@@ -96,6 +96,7 @@ use gdtf_battle_sim::{
     acts::{MoveRejection, ReloadOutcome, RoundCount},
     armor::BodyPart,
     effects::fields::FieldDamage,
+    entity::TerrainPieceKind,
     falls::StoreysFallen,
     ganger::{
         Aiming, Direction, Facing, Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, Wounds,
@@ -179,7 +180,10 @@ fn sample_deeds() -> Vec<ActDeed> {
             at,
             amount: FieldDamage::new(1),
         },
-        ActDeed::CoverSmashed { at },
+        ActDeed::TerrainPieceSmashed {
+            at,
+            kind: TerrainPieceKind::Wall,
+        },
         ActDeed::MeleeLanded {
             at,
             damage: DamageType::Kinetic,

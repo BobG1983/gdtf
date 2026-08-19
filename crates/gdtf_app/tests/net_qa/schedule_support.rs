@@ -81,11 +81,56 @@ pub(crate) fn covers(graph: &ScheduleGraph, node: NodeId, wanted: SystemKey) -> 
     false
 }
 
-/// Whether the schedule carries a dependency edge out of `from` that covers `to`.
+/// The systems a node holds: itself when it is a system, everything under it when it is a set.
+fn systems_under(graph: &ScheduleGraph, node: NodeId) -> Vec<SystemKey> {
+    let mut held: Vec<SystemKey> = Vec::new();
+    let mut seen: Vec<NodeId> = Vec::new();
+    let mut pending = vec![node];
+    while let Some(node) = pending.pop() {
+        if seen.contains(&node) {
+            continue;
+        }
+        seen.push(node);
+        match node {
+            NodeId::System(key) => held.push(key),
+            NodeId::Set(_) => pending.extend(
+                graph
+                    .hierarchy()
+                    .graph()
+                    .neighbors_directed(node, Direction::Outgoing),
+            ),
+        }
+    }
+    held
+}
+
+/// The nodes whose outgoing edges order `from`: `from`, and any set holding the same systems.
+///
+/// `.after(a_system)` hangs its edge on that system's own type set, never on the system node.
+fn ordering_nodes(graph: &ScheduleGraph, from: NodeId) -> Vec<NodeId> {
+    let held = systems_under(graph, from);
+    let mut nodes = vec![from];
+    nodes.extend(
+        graph
+            .hierarchy()
+            .graph()
+            .neighbors_directed(from, Direction::Incoming)
+            .filter(|parent| {
+                let above = systems_under(graph, *parent);
+                above.len() == held.len() && held.iter().all(|key| above.contains(key))
+            }),
+    );
+    nodes
+}
+
+/// Whether a dependency edge covering `to` leaves `from`, or leaves a set holding the same
+/// systems as `from` and no others.
 pub(crate) fn ordered_before(graph: &ScheduleGraph, from: NodeId, to: SystemKey) -> bool {
-    graph
-        .dependency()
-        .graph()
-        .neighbors_directed(from, Direction::Outgoing)
-        .any(|next| covers(graph, next, to))
+    ordering_nodes(graph, from).into_iter().any(|node| {
+        graph
+            .dependency()
+            .graph()
+            .neighbors_directed(node, Direction::Outgoing)
+            .any(|next| covers(graph, next, to))
+    })
 }

@@ -144,7 +144,7 @@ pub(crate) const fn deed_name(deed: &ActDeed) -> &'static str {
         ActDeed::Bled => "Bled",
         ActDeed::DotTicked { .. } => "DotTicked",
         ActDeed::FieldTicked { .. } => "FieldTicked",
-        ActDeed::CoverSmashed { .. } => "CoverSmashed",
+        ActDeed::TerrainPieceSmashed { .. } => "TerrainPieceSmashed",
         ActDeed::MeleeLanded { .. } => "MeleeLanded",
         ActDeed::ThrowLanded { .. } => "ThrowLanded",
         ActDeed::LifeChanged { .. } => "LifeChanged",

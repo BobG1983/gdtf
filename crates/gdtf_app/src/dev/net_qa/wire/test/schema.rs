@@ -14,7 +14,7 @@ use crate::dev::net_qa::{
         cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet},
         click::{ClickDecisionNet, ClickReply},
         cost::{CostActNet, CostLegalNet, CostRefusalNet},
-        deed::{ActDeedKindNet, MoveRejectionNet, ReloadOutcomeNet},
+        deed::{ActDeedKindNet, MoveRejectionNet, ReloadOutcomeNet, TerrainPieceKindNet},
         inspect::{
             CoverBlockNet, CoverHpNet, HardnessNet, HeightBandNet, InspectShownNet, ProtectionNet,
         },
@@ -114,6 +114,7 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<LogDroppedCount>("LogDroppedCount");
     assert_schema_is_usable::<MoveRejectionNet>("MoveRejectionNet");
     assert_schema_is_usable::<ReloadOutcomeNet>("ReloadOutcomeNet");
+    assert_schema_is_usable::<TerrainPieceKindNet>("TerrainPieceKindNet");
     assert_schema_is_usable::<ActDeedKindNet>("ActDeedKindNet");
     assert_schema_is_usable::<LogEntryNet>("LogEntryNet");
 

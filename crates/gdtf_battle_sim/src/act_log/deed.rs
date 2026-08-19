@@ -12,6 +12,7 @@ use crate::{
     metric::{Cell, CellLevel, Level},
     resolve_hit::HpDamage,
     shot_fired::ShotFired,
+    terrain::entity::TerrainPieceKind,
     weapon::{DamageType, DotDamage, ModeKind},
 };
 
@@ -162,10 +163,12 @@ pub enum ActDeed {
         amount: FieldDamage,
     },
 
-    /// Cover was destroyed.
-    CoverSmashed {
-        /// Cover cell.
-        at: CellLevel,
+    /// A terrain piece was destroyed.
+    TerrainPieceSmashed {
+        /// Cell of the piece.
+        at:   CellLevel,
+        /// Kind of piece that was destroyed.
+        kind: TerrainPieceKind,
     },
 
     /// Melee hit landed.

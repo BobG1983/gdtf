@@ -15,7 +15,7 @@ use gdtf_battle_sim::{
         on_death::OnDeathOccurred,
     },
     falls::FallOccurred,
-    occupancy_sync::CoverDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     suppression::SuppressionApplied,
     turn::TurnStarted,
 };
@@ -81,7 +81,9 @@ pub(super) fn emit_played(entry: &ActEntry, played: &mut PlayedSignals) {
         }
         ActDeed::BleedStarted => play(&mut played.bleed_started, BleedStarted::new(actor)),
         ActDeed::Bled => play(&mut played.bleeding, Bleeding::new(actor)),
-        ActDeed::CoverSmashed { at } => play(&mut played.cover, CoverDestroyed::new(*at)),
+        ActDeed::TerrainPieceSmashed { at, kind } => {
+            play(&mut played.cover, TerrainPieceDestroyed::new(*at, *kind));
+        }
         ActDeed::MeleeLanded { at, damage } => {
             play(&mut played.melee_landed, MeleeResolved::new(*at, *damage));
         }

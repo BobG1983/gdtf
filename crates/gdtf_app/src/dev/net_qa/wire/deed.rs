@@ -3,6 +3,7 @@
 use gdtf_battle_sim::{
     act_log::ActDeed,
     acts::{MoveRejection, ReloadOutcome},
+    entity::TerrainPieceKind,
 };
 use serde::{Deserialize, Serialize};
 
@@ -48,6 +49,32 @@ impl MoveRejectionNet {
             MoveRejection::Unreachable => Self::Unreachable,
             MoveRejection::Unaffordable => Self::Unaffordable,
             MoveRejection::Suppressed => Self::Suppressed,
+        }
+    }
+}
+
+/// Which kind of terrain piece a smash destroyed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum TerrainPieceKindNet {
+    /// Full wall.
+    Wall,
+    /// Partial cover.
+    Cover,
+    /// Floor slab.
+    Slab,
+    /// Weapon emplacement.
+    Emplacement,
+}
+
+impl TerrainPieceKindNet {
+    /// Mirror the sim's own kind.
+    #[must_use]
+    pub const fn from_sim(kind: TerrainPieceKind) -> Self {
+        match kind {
+            TerrainPieceKind::Wall => Self::Wall,
+            TerrainPieceKind::Cover => Self::Cover,
+            TerrainPieceKind::Slab => Self::Slab,
+            TerrainPieceKind::Emplacement => Self::Emplacement,
         }
     }
 }
@@ -105,8 +132,11 @@ pub enum ActDeedKindNet {
     DotTicked,
     /// Field tick.
     FieldTicked,
-    /// Cover was destroyed.
-    CoverSmashed,
+    /// A terrain piece was destroyed, carrying which kind it was.
+    TerrainPieceSmashed {
+        /// Kind of piece the sim destroyed.
+        kind: TerrainPieceKindNet,
+    },
     /// Melee hit landed.
     MeleeLanded,
     /// Thrown weapon or item landed.
@@ -146,7 +176,9 @@ impl ActDeedKindNet {
             ActDeed::Bled => Self::Bled,
             ActDeed::DotTicked { .. } => Self::DotTicked,
             ActDeed::FieldTicked { .. } => Self::FieldTicked,
-            ActDeed::CoverSmashed { .. } => Self::CoverSmashed,
+            ActDeed::TerrainPieceSmashed { kind, .. } => Self::TerrainPieceSmashed {
+                kind: TerrainPieceKindNet::from_sim(*kind),
+            },
             ActDeed::MeleeLanded { .. } => Self::MeleeLanded,
             ActDeed::ThrowLanded { .. } => Self::ThrowLanded,
             ActDeed::LifeChanged { .. } => Self::LifeChanged,

@@ -10,7 +10,7 @@ use crate::{
     ganger::{Facing, Faction, LifeState, Position, Stance},
     los::PeekOffset,
     occupancy::{OccupancyGrid, VisionOccluderChanged},
-    occupancy_sync::{CoverDestroyed, SlabDestroyed},
+    occupancy_sync::TerrainPieceDestroyed,
     surface::SurfaceGrid,
     terrain::entity::{BlocksVision, TerrainCell},
     tuning::CombatTuning,
@@ -31,12 +31,10 @@ pub fn should_recompute_visibility(
     player: Option<Res<PlayerFaction>>,
     occluder_changed: Query<(), (With<TerrainCell>, VisionOccluderChanged)>,
     mut occluder_removed: RemovedComponents<BlocksVision>,
-    mut cover_destroyed: MessageReader<CoverDestroyed>,
-    mut slab_destroyed: MessageReader<SlabDestroyed>,
+    mut destroyed: MessageReader<TerrainPieceDestroyed>,
     mut ready: MessageReader<BattleReady>,
 ) -> bool {
-    let cover_changed = cover_destroyed.read().count() > 0;
-    let slab_changed = slab_destroyed.read().count() > 0;
+    let terrain_changed = destroyed.read().count() > 0;
     let battle_ready = ready.read().count() > 0;
     let occluder_added_or_retuned = !occluder_changed.is_empty();
     let occluder_removed = occluder_removed.read().count() > 0;
@@ -44,11 +42,7 @@ pub fn should_recompute_visibility(
     let player_observer_changed = player
         .as_deref()
         .is_some_and(|player| moved.iter().any(|faction| *faction == **player));
-    player_observer_changed
-        || cover_changed
-        || slab_changed
-        || battle_ready
-        || vision_occluder_changed
+    player_observer_changed || terrain_changed || battle_ready || vision_occluder_changed
 }
 
 /// Recompute player squad visibility from all living player-faction observers.

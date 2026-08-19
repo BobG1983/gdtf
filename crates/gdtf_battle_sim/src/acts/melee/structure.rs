@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     acts::request::MeleeResolved, cover::CoverEvent, melee::resolve_structural_melee,
-    metric::CellLevel, occupancy_sync::CoverDestroyed, tu::spend_tu,
+    metric::CellLevel, occupancy_sync::TerrainPieceDestroyed, tu::spend_tu,
 };
 
 /// Spend TU and smash adjacent cover/structure.
@@ -44,7 +44,9 @@ pub(super) fn resolve_structure_melee(
     );
 
     if let CoverEvent::Destroyed(cell) = event {
-        outcomes.cover.write(CoverDestroyed::new(cell));
+        outcomes
+            .cover
+            .write(TerrainPieceDestroyed::new(cell, prototype.kind));
         outcomes
             .deaths
             .write(crate::effects::on_death::OnDeathOccurred::cover(cell));

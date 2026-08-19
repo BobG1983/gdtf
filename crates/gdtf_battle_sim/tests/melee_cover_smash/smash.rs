@@ -32,7 +32,7 @@ fn smash_reduces_adjacent_cover_hp_and_emits_resolved() {
     drive_setup(&mut app, seed, situation);
 
     let cover = ground(6, 5);
-    seed_cover(&mut app, cover, 1_000);
+    seed_cover(&mut app, cover, 1_000, TerrainPieceKind::Cover);
 
     let Some(attacker_entity) = player_ganger(&mut app) else {
         unreachable!("setup spawns one player attacker");
@@ -76,7 +76,7 @@ fn repeated_smashing_destroys_cover_and_fires_the_destroyed_signal() {
     drive_setup(&mut app, seed, situation);
 
     let cover = ground(6, 5);
-    seed_cover(&mut app, cover, 1);
+    seed_cover(&mut app, cover, 1, TerrainPieceKind::Cover);
 
     let Some(attacker_entity) = player_ganger(&mut app) else {
         unreachable!("setup spawns one player attacker");
@@ -100,11 +100,56 @@ fn repeated_smashing_destroys_cover_and_fires_the_destroyed_signal() {
 
     assert!(
         destroyed_hits(&app) >= 1,
-        "C5(b): destroying the cover fires the CoverDestroyed signal (the FX bridge)",
+        "C5(b): destroying the cover fires the TerrainPieceDestroyed signal (the FX bridge)",
     );
     assert!(
         melee_hits(&app) >= 1,
         "C5(b): the smash emits MeleeResolved",
+    );
+}
+
+#[test]
+fn a_smashed_piece_reports_the_kind_the_ledger_held() {
+    let (mut app, seed) = battle_app(0x5508_0F0F);
+    with_logs(&mut app);
+
+    let situation = SituationBuilder::new()
+        .with_gangers([attacker(ground(5, 5), PLAYER, Direction::East)])
+        .build_with_gangs();
+    drive_setup(&mut app, seed, situation);
+
+    let wall = ground(6, 5);
+    let cover = ground(5, 6);
+    seed_cover(&mut app, wall, 1, TerrainPieceKind::Wall);
+    seed_cover(&mut app, cover, 1, TerrainPieceKind::Cover);
+
+    let Some(attacker_entity) = player_ganger(&mut app) else {
+        unreachable!("setup spawns one player attacker");
+    };
+
+    for at in [wall, cover] {
+        for _ in 0..8 {
+            if cover_destroyed_flag(&app, at) {
+                break;
+            }
+            if let Some(mut pool) = app.world_mut().get_mut::<Tu>(attacker_entity) {
+                *pool = Tu::new(250);
+            }
+            app.world_mut()
+                .write_message(MeleeRequested::new_structural(attacker_entity, at));
+            step(&mut app, 3);
+        }
+    }
+
+    let kinds: Vec<TerrainPieceKind> = destroyed_messages(&app)
+        .into_iter()
+        .map(|message| message.kind)
+        .collect();
+    assert_eq!(
+        kinds,
+        vec![TerrainPieceKind::Wall, TerrainPieceKind::Cover],
+        "a melee smash reports the kind the ledger entry held — a smashed Wall then a smashed \
+         Cover, found {kinds:?}",
     );
 }
 
@@ -156,7 +201,7 @@ fn the_structural_smash_is_seed_independent_no_fight_roll() {
             .build_with_gangs();
         drive_setup(&mut app, seed, situation);
         let cover = ground(6, 5);
-        seed_cover(&mut app, cover, 1_000);
+        seed_cover(&mut app, cover, 1_000, TerrainPieceKind::Cover);
         let Some(attacker_entity) = player_ganger(&mut app) else {
             unreachable!("setup spawns one player attacker");
         };
@@ -190,7 +235,7 @@ fn a_smash_the_pool_cannot_cover_leaves_the_cover_and_the_pool_alone() {
     drive_setup(&mut app, seed, situation);
 
     let cover = ground(6, 5);
-    seed_cover(&mut app, cover, 1_000);
+    seed_cover(&mut app, cover, 1_000, TerrainPieceKind::Cover);
 
     let Some(attacker_entity) = player_ganger(&mut app) else {
         unreachable!("setup spawns one player attacker");
@@ -228,7 +273,7 @@ fn a_smash_the_pool_cannot_cover_leaves_the_cover_and_the_pool_alone() {
     assert_eq!(
         destroyed_hits(&app),
         0,
-        "a smash the attacker cannot afford fires NO CoverDestroyed",
+        "a smash the attacker cannot afford fires NO TerrainPieceDestroyed",
     );
     assert_eq!(
         melee_hits(&app),
@@ -264,7 +309,7 @@ fn a_non_adjacent_structure_is_not_smashed() {
     drive_setup(&mut app, seed, situation);
 
     let far_cover = ground(8, 5);
-    seed_cover(&mut app, far_cover, 1_000);
+    seed_cover(&mut app, far_cover, 1_000, TerrainPieceKind::Cover);
 
     let Some(attacker_entity) = player_ganger(&mut app) else {
         unreachable!("setup spawns one player attacker");

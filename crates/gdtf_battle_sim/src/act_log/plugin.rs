@@ -16,7 +16,7 @@ use crate::{
         on_death::OnDeathOccurred,
     },
     falls::FallOccurred,
-    occupancy_sync::{CoverDestroyed, SimSystems},
+    occupancy_sync::{SimSystems, TerrainPieceDestroyed},
     reaction::InterruptDeclared,
     shot_fired::ShotFired,
     suppression::SuppressionApplied,
@@ -44,7 +44,7 @@ pub fn wire_act_log(app: &mut App) {
         .add_message::<FieldTicked>()
         .add_message::<BleedStarted>()
         .add_message::<Bleeding>()
-        .add_message::<CoverDestroyed>()
+        .add_message::<TerrainPieceDestroyed>()
         .add_message::<MeleeResolved>()
         .add_message::<ThrowResolved>()
         .add_systems(

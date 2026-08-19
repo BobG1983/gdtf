@@ -1,4 +1,5 @@
 use gdtf_battle_sim::{
+    entity::TerrainPieceKind,
     prelude::{CellLevel, Level, OccupancyGrid},
     surface::{SlabState, SurfaceGrid},
     tuning::PerStoreyDamage,
@@ -14,7 +15,7 @@ fn faller_on_destroyed_slab_level_falls_roof_occupant_does_not() {
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(OccupancyGrid::new());
 
-    destroy_slab_and_settle(&mut app, 2);
+    destroy_slab_and_settle(&mut app, 2, TerrainPieceKind::Slab);
 
     assert_eq!(
         level_of(&app, faller),
@@ -40,6 +41,27 @@ fn faller_on_destroyed_slab_level_falls_roof_occupant_does_not() {
 }
 
 #[test]
+fn a_destroyed_cover_on_the_faller_s_cell_drops_nobody() {
+    let mut app = falls_app(SEED, PerStoreyDamage::new(10));
+    let faller = spawn_faller(app.world_mut(), 2);
+    app.insert_resource(SurfaceGrid::new());
+    app.insert_resource(OccupancyGrid::new());
+
+    destroy_slab_and_settle(&mut app, 2, TerrainPieceKind::Cover);
+
+    assert_eq!(
+        level_of(&app, faller),
+        2,
+        "a destroyed COVER is not a floor going away, so the ganger standing on that cell stays \
+         at level 2",
+    );
+    assert!(
+        fall_signals(&app).is_empty(),
+        "a destroyed cover fires no FallOccurred",
+    );
+}
+
+#[test]
 fn multi_storey_drop_through_absent_lands_on_first_present() {
     let mut app = falls_app(SEED, PerStoreyDamage::new(6));
     let faller = spawn_faller(app.world_mut(), 4);
@@ -51,7 +73,7 @@ fn multi_storey_drop_through_absent_lands_on_first_present() {
     app.insert_resource(surface);
     app.insert_resource(OccupancyGrid::new());
 
-    destroy_slab_and_settle(&mut app, 4);
+    destroy_slab_and_settle(&mut app, 4, TerrainPieceKind::Slab);
 
     assert_eq!(
         level_of(&app, faller),
@@ -78,7 +100,7 @@ fn ganger_on_different_level_does_not_fall() {
     app.insert_resource(surface);
     app.insert_resource(OccupancyGrid::new());
 
-    destroy_slab_and_settle(&mut app, 3);
+    destroy_slab_and_settle(&mut app, 3, TerrainPieceKind::Slab);
 
     assert_eq!(
         level_of(&app, elsewhere),
@@ -101,7 +123,7 @@ fn stair_lower_endpoint_occupant_is_braced() {
     app.insert_resource(occupancy);
     let hp_before = hp_of(&app, braced);
 
-    destroy_slab_and_settle(&mut app, 2);
+    destroy_slab_and_settle(&mut app, 2, TerrainPieceKind::Slab);
 
     assert_eq!(
         level_of(&app, braced),

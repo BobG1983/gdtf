@@ -8,7 +8,7 @@ use bevy::{
 use crate::{
     acts::injury::InjuryInflicted,
     ganger::Position,
-    occupancy_sync::{CoverDestroyed, GroundAccrued, SlabDestroyed},
+    occupancy_sync::{GroundAccrued, TerrainPieceDestroyed},
     shot_fired::ShotFired,
     weapon::ModeKind,
 };
@@ -70,8 +70,7 @@ impl FireDeclaration {
 pub struct FireSignals<'w, 's> {
     pub(super) shots:            MessageWriter<'w, ShotFired>,
     pub(super) declarations:     MessageWriter<'w, FireDeclaration>,
-    pub(super) cover_destroyed:  MessageWriter<'w, CoverDestroyed>,
-    pub(super) slab_destroyed:   MessageWriter<'w, SlabDestroyed>,
+    pub(super) destroyed:        MessageWriter<'w, TerrainPieceDestroyed>,
     pub(super) ground_accrued:   MessageWriter<'w, GroundAccrued>,
     pub(super) injuries:         MessageWriter<'w, InjuryInflicted>,
     pub(super) dots:             MessageWriter<'w, crate::effects::dot::DotApplied>,

@@ -2,9 +2,10 @@
 use bevy::{app::App, asset::AssetPlugin, prelude::MinimalPlugins, scene::ScenePlugin};
 use gdtf_battle_sim::{
     battle::{BattleInProgress, BattleSimPlugin, SetupBattleRequested, TeardownBattleRequested},
+    entity::TerrainPieceKind,
     ganger::GangRegistry,
     metric::{Cell, CellLevel, Level},
-    occupancy_sync::CoverDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     prelude::{Faction, LifeState, Position, Stance, StanceKind},
     rng::BattleSeed,
     situation::Situation,
@@ -236,8 +237,10 @@ fn cover_destroyed_triggers_a_recompute() {
     };
     let explored_before = before.explored_cells().count();
 
-    app.world_mut()
-        .write_message(CoverDestroyed::new(ground(7, 5)));
+    app.world_mut().write_message(TerrainPieceDestroyed::new(
+        ground(7, 5),
+        TerrainPieceKind::Cover,
+    ));
     app.update();
     app.update();
 
@@ -246,11 +249,11 @@ fn cover_destroyed_triggers_a_recompute() {
     };
     assert!(
         after.explored_cells().count() >= explored_before,
-        "a CoverDestroyed recompute must keep EXPLORED monotone (never shrink)",
+        "a destroyed-cover recompute must keep EXPLORED monotone (never shrink)",
     );
     assert!(
         *after.is_cell_visible(&player_at()),
-        "after the CoverDestroyed-triggered recompute, the player still sees its own cell",
+        "after the destroyed-cover recompute, the player still sees its own cell",
     );
 }
 

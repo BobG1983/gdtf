@@ -126,7 +126,10 @@ fn record_afflictions(log: &mut ActLog, messages: &mut ConsequenceMessages) {
         log.append(RecordedAct::new(
             Entity::PLACEHOLDER,
             ProvenanceSources::clock(),
-            ActDeed::CoverSmashed { at: smashed.at },
+            ActDeed::TerrainPieceSmashed {
+                at:   smashed.at,
+                kind: smashed.kind,
+            },
         ));
     }
     for strike in messages.melee_landed.read() {

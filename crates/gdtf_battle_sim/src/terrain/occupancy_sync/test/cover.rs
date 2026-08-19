@@ -1,4 +1,5 @@
-use super::{super::CoverDestroyed, support::*};
+use super::{super::TerrainPieceDestroyed, support::*};
+use crate::terrain::entity::TerrainPieceKind;
 
 #[test]
 fn cover_destroyed_message_marks_the_cell() {
@@ -6,13 +7,14 @@ fn cover_destroyed_message_marks_the_cell() {
     let smashed = key(30, 31, 3);
     let intact = key(0, 0, 0);
 
-    app.world_mut().write_message(CoverDestroyed::new(smashed));
+    app.world_mut()
+        .write_message(TerrainPieceDestroyed::new(smashed, TerrainPieceKind::Cover));
     app.update();
 
     assert_eq!(
         cover_destroyed(&app, smashed),
         Some(true),
-        "a CoverDestroyed message must mark its cell destroyed (C5)",
+        "a destroyed Cover piece must mark its cell destroyed on the occupancy grid",
     );
     assert_eq!(
         cover_destroyed(&app, intact),

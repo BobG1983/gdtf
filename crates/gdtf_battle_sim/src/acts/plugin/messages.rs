@@ -21,7 +21,7 @@ use crate::{
         on_death::OnDeathOccurred,
     },
     falls::FallOccurred,
-    occupancy_sync::{CoverDestroyed, GroundAccrued, SlabDestroyed},
+    occupancy_sync::{GroundAccrued, TerrainPieceDestroyed},
     reaction::InterruptDeclared,
     shot_fired::ShotFired,
     suppression::SuppressionApplied,
@@ -52,8 +52,7 @@ pub(super) fn register_messages(app: &mut App) {
         .add_message::<FallOccurred>()
         .add_message::<EndTurnRequested>()
         .add_message::<ShotFired>()
-        .add_message::<CoverDestroyed>()
-        .add_message::<SlabDestroyed>()
+        .add_message::<TerrainPieceDestroyed>()
         .add_message::<GroundAccrued>()
         .add_message::<ReloadResult>()
         .add_message::<FireDeclaration>()

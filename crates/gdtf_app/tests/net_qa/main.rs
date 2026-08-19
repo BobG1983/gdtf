@@ -56,6 +56,7 @@ mod input_support;
 mod log_read;
 mod magazine_support;
 mod menu_spawned;
+mod occupancy_ordering;
 mod playback_state;
 mod procgen_step;
 mod schedule_support;

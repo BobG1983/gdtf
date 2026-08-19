@@ -5,3 +5,4 @@ mod determinism;
 mod harness;
 mod reaction_provenance;
 mod spawn_quiet;
+mod terrain_smash;

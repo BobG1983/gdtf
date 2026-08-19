@@ -46,8 +46,13 @@ ahead.
   `DrawnVitals`: sim state as played so far, and what the view draws from.
 
 **What this forbids:** a presenter system that reads a raw sim message buffer —
-`CoverDestroyed`, `SlabDestroyed` and their kin — and draws the result on the spot.
+`TerrainPieceDestroyed` and its kin — and draws the result on the spot.
 Destruction is in scope: cover, wall and slab, and whatever replaces a destroyed piece.
+
+**Two exceptions the tree still carries**, both dated 2026-08-18 and both on their way out:
+`swap_destroyed_slab` reads the raw buffer until GTW-1212 moves it onto the played fact, and
+`swap_destroyed_cover` reads the raw buffer until GTW-1175 moves it (clause 15) and then
+deletes both (clause 13). Nothing else may join them.
 
 **Why it is load-bearing:** the sim resolves a whole act while playback is still animating
 the one before it. A system that reads the sim directly is not slightly early, it is an

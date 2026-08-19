@@ -15,8 +15,8 @@ use bevy::{
 };
 use gdtf_assets::ContentFamilyAppExt;
 use gdtf_battle_presenter::{
-    TerrainFogMaterial, TerrainSprite, TopDownAtlases, TopDownRendererPlugin, source_parts,
-    source_urect,
+    StampedGraphic, TerrainFogMaterial, TerrainSprite, TopDownAtlases, TopDownRendererPlugin,
+    source_parts, source_urect,
 };
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
@@ -24,7 +24,7 @@ use gdtf_battle_sim::{
     cover::{CoverEntry, CoverHp, HeightBand},
     entity::{TerrainCell, TerrainPieceKind},
     occupancy::{OccupancyInput, TerrainPlacement},
-    occupancy_sync::{CoverDestroyed, SlabDestroyed},
+    occupancy_sync::TerrainPieceDestroyed,
     piece::{FootfallSound, TerrainGraphicKey},
     prelude::{CellLevel, Level, OccupancyGrid},
 };
@@ -69,8 +69,7 @@ pub(crate) fn headless_renderer_app_at(assets_root: &std::path::Path) -> App {
             }),
     )
     .add_message::<BattleReady>()
-    .add_message::<CoverDestroyed>()
-    .add_message::<SlabDestroyed>()
+    .add_message::<TerrainPieceDestroyed>()
     .add_plugins(TopDownRendererPlugin);
     app.register_content_family::<SpriteDefsFamily>();
     app.set_error_handler(warn);
@@ -134,6 +133,14 @@ pub(crate) fn sprite_rect_at(app: &mut App, key: CellLevel) -> Option<URect> {
         .atlas_layout
         .as_ref()
         .and_then(|layout| layout.textures.get(material.atlas_index).copied())
+}
+
+/// Which tile role a cell's sprite is currently stamped with.
+pub(crate) fn stamped_graphic_at(app: &mut App, key: CellLevel) -> Option<StampedGraphic> {
+    let mut q = app.world_mut().query::<(&TerrainSprite, &StampedGraphic)>();
+    q.iter(app.world())
+        .find(|(t, _)| t.at == key)
+        .map(|(_, stamped)| stamped.clone())
 }
 
 pub(crate) fn sprite_entity_at(app: &mut App, key: CellLevel) -> Option<bevy::ecs::entity::Entity> {

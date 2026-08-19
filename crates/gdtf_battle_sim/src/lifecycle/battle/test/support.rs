@@ -11,7 +11,7 @@ pub(super) use crate::{
     ganger::{Faction, LifeState},
     metric::{Cell, Level},
     occupancy::OccupancyGrid,
-    occupancy_sync::CoverDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     rng::{BattleSeed, ShotRng},
     situation::{BattleRegistries, BattleSetupError, Situation, setup_battle},
     surface::SurfaceGrid,

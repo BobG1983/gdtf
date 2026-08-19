@@ -2,6 +2,7 @@
 
 use bevy::{
     app::App,
+    ecs::message::Messages,
     prelude::{Entity, World},
 };
 use gdtf_battle_sim::{
@@ -14,7 +15,7 @@ use gdtf_battle_sim::{
     magazine::{LoadedRounds, Magazine, ReloadTu},
     march::{MarchDir, MarchGrids, MarchKind, march_vector},
     occupancy::TerrainKind,
-    occupancy_sync::OccupancyMaintenancePlugin,
+    occupancy_sync::{OccupancyMaintenancePlugin, TerrainPieceDestroyed},
     prelude::{
         Cell, CellLevel, Direction, Faction, Level, LifeState, OccupancyGrid, Position, SimPos,
         Stance, StanceKind, Tu,
@@ -96,14 +97,18 @@ fn spawn_shooter(world: &mut World) -> Entity {
     shooter
 }
 
-const fn low_hp_cover() -> CoverEntry {
+const fn low_hp_piece(kind: TerrainPieceKind) -> CoverEntry {
     CoverEntry::seeded(
         CoverHp::new(10),
         HeightBand::High,
         ArmorProtection::new(2),
         ArmorHardness::new(1),
-        TerrainPieceKind::Cover,
+        kind,
     )
+}
+
+const fn low_hp_cover() -> CoverEntry {
+    low_hp_piece(TerrainPieceKind::Cover)
 }
 
 fn probe_stops_on_cover(
@@ -173,7 +178,7 @@ fn fired_round_destroys_cover_and_the_bridge_frees_the_cell() {
     let cover_res = app.world().resource::<CoverLedger>();
     assert!(
         *grid.is_cover_destroyed(&cover_cell()),
-        "AFTER: sync_destroyed_cover must have marked the smashed cell destroyed (the bridge \
+        "AFTER: sync_destroyed_piece must have marked the smashed cell destroyed (the bridge \
          drove the real wiring) — got destroyed-set miss",
     );
     assert!(
@@ -184,5 +189,56 @@ fn fired_round_destroys_cover_and_the_bridge_frees_the_cell() {
         !probe_stops_on_cover(grid, &surface_before, cover_res, &tuning),
         "AFTER: a probe LOS/path must now PASS through the freed cell (a previously-blocked \
          sightline opened)",
+    );
+}
+
+fn fire_and_drain(app: &mut App, shooter: Entity, at: CellLevel) -> Vec<TerrainPieceDestroyed> {
+    if let Some(mut tu) = app.world_mut().get_mut::<Tu>(shooter) {
+        *tu = Tu::new(250);
+    }
+    app.world_mut().write_message(FireRequested::new(
+        shooter,
+        single_mode(0.2, 1),
+        Cell::new(at.x, at.y),
+        Level::new(0),
+    ));
+    app.update();
+    app.world_mut()
+        .resource_mut::<Messages<TerrainPieceDestroyed>>()
+        .drain()
+        .collect()
+}
+
+#[test]
+fn a_fired_round_reports_the_kind_of_the_piece_it_destroyed() {
+    let mut app = bridge_app();
+    let shooter = spawn_shooter(app.world_mut());
+    app.insert_resource(OccupancyGrid::new());
+
+    let wall_at = CellLevel::new(Cell::new(8, 5), Level::new(0));
+    let cover_at = CellLevel::new(Cell::new(10, 5), Level::new(0));
+    let mut cover = CoverLedger::new();
+    cover.insert(wall_at, low_hp_piece(TerrainPieceKind::Wall));
+    cover.insert(cover_at, low_hp_piece(TerrainPieceKind::Cover));
+    app.insert_resource(cover);
+
+    // The wall sits between the shooter and the cover, so it falls first.
+    let mut kinds: Vec<TerrainPieceKind> = Vec::new();
+    for _ in 0..8 {
+        if kinds.len() >= 2 {
+            break;
+        }
+        kinds.extend(
+            fire_and_drain(&mut app, shooter, cover_at)
+                .into_iter()
+                .map(|message| message.kind),
+        );
+    }
+
+    assert_eq!(
+        kinds,
+        vec![TerrainPieceKind::Wall, TerrainPieceKind::Cover],
+        "a destroyed piece reports the kind its ledger entry held — the wall first, then the \
+         cover behind it, found {kinds:?}",
     );
 }

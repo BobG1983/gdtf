@@ -31,7 +31,7 @@ use gdtf_battle_sim::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     entity::{TerrainCell, TerrainPieceKind},
     occupancy::{OccupancyInput, TerrainKind, TerrainPlacement},
-    occupancy_sync::CoverDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     piece::TerrainGraphicKey,
     prelude::{BattleInProgress, Cell, CellLevel, Level, OccupancyGrid},
     surface::SurfaceGrid,
@@ -114,7 +114,7 @@ fn headless_renderer_app() -> App {
             }),
     )
     .add_message::<BattleReady>()
-    .add_message::<CoverDestroyed>()
+    .add_message::<TerrainPieceDestroyed>()
     .add_plugins(TopDownRendererPlugin);
     app.register_content_family::<SpriteDefsFamily>();
     app.set_error_handler(warn);

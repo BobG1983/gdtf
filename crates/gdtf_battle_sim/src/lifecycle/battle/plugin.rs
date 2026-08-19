@@ -18,9 +18,7 @@ use crate::{
     falls::FallsPlugin,
     ganger::{rederive_stats_on_injury_change, rederive_stats_on_tuning_change},
     occupancy::project_vision_blocking,
-    occupancy_sync::{
-        OccupancyMaintenancePlugin, SimSystems, sync_destroyed_cover, sync_destroyed_slab,
-    },
+    occupancy_sync::{OccupancyMaintenancePlugin, SimSystems, sync_destroyed_piece},
     openable::OpenableTogglePlugin,
     peek_sync::{peek_population_needed, sync_peek_offsets},
     visibility::{SquadVisibility, recompute_visibility, should_recompute_visibility},
@@ -57,7 +55,7 @@ impl Plugin for BattleSimPlugin {
                 sync_peek_offsets
                     .in_set(SimSystems::Simulate)
                     .after(advance_walk)
-                    .after(sync_destroyed_cover)
+                    .after(sync_destroyed_piece)
                     .before(recompute_visibility)
                     .run_if(peek_population_needed),
             )
@@ -65,8 +63,7 @@ impl Plugin for BattleSimPlugin {
                 Update,
                 recompute_visibility
                     .in_set(SimSystems::Simulate)
-                    .after(sync_destroyed_cover)
-                    .after(sync_destroyed_slab)
+                    .after(sync_destroyed_piece)
                     .after(advance_walk)
                     .after(project_vision_blocking)
                     .run_if(resource_exists::<SquadVisibility>)

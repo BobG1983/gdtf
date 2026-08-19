@@ -1,6 +1,7 @@
 use bevy::{app::App, math::Vec3};
 use gdtf_battle_sim::{
     cover::CoverLedger,
+    entity::TerrainPieceKind,
     march::{MarchDir, MarchGrids, MarchKind, march_vector},
     prelude::{CellLevel, Level, OccupancyGrid, SimPos},
     surface::{SlabState, SurfaceGrid},
@@ -28,7 +29,7 @@ fn destroyed_slab_stays_non_pathable_and_los_flies_through() {
     );
     let links_before = app.world().resource::<VerticalLinkGraph>().links().count();
 
-    destroy_slab_and_settle(&mut app, 1);
+    destroy_slab_and_settle(&mut app, 1, TerrainPieceKind::Slab);
 
     assert!(
         !probe_stops_on_slab(&app),

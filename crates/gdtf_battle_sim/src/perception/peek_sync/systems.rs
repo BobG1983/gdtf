@@ -4,16 +4,21 @@ use bevy::prelude::{Changed, MessageReader, Query, Res};
 
 use super::corner::corner_lean;
 use crate::{
-    ganger::Position, los::PeekOffset, occupancy::OccupancyGrid, occupancy_sync::CoverDestroyed,
+    ganger::Position, los::PeekOffset, occupancy::OccupancyGrid,
+    occupancy_sync::TerrainPieceDestroyed, terrain::entity::TerrainPieceKind,
 };
 
-/// True when any ganger moved or cover was destroyed this frame.
+/// True when any ganger moved or a piece other than a slab was destroyed this frame.
 #[must_use]
 pub fn peek_population_needed(
     moved: Query<(), Changed<Position>>,
-    mut cover_destroyed: MessageReader<CoverDestroyed>,
+    mut destroyed: MessageReader<TerrainPieceDestroyed>,
 ) -> bool {
-    let cover_changed = cover_destroyed.read().count() > 0;
+    // Read the whole buffer: short-circuiting would leave messages for the next frame.
+    let mut cover_changed = false;
+    for event in destroyed.read() {
+        cover_changed |= event.kind != TerrainPieceKind::Slab;
+    }
     !moved.is_empty() || cover_changed
 }
 

@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     emplacement::EmplacementState,
-    entity::TerrainCell,
-    occupancy_sync::{CoverDestroyed, SlabDestroyed},
+    entity::{TerrainCell, TerrainPieceKind},
+    occupancy_sync::TerrainPieceDestroyed,
     prelude::CellLevel,
 };
 
@@ -47,14 +47,14 @@ fn retarget_tile(
     }
 }
 
-/// Swap cover tiles to rubble when [`CoverDestroyed`] fires.
+/// Swap tiles to rubble when a piece other than a slab is destroyed.
 pub fn swap_destroyed_cover(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
     isolate: Res<IsolateView>,
     resolve: SpriteResolveCtx,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
-    mut destroyed: MessageReader<CoverDestroyed>,
+    mut destroyed: MessageReader<TerrainPieceDestroyed>,
     mut tiles: Query<(
         &TerrainSprite,
         &MeshMaterial2d<TerrainFogMaterial>,
@@ -64,7 +64,7 @@ pub fn swap_destroyed_cover(
 ) {
     let band = drawn_band(*active, StoreyViewMode::new(*view, *isolate));
     for event in destroyed.read() {
-        if !cell_level_in_band(event.at, &band) {
+        if event.kind == TerrainPieceKind::Slab || !cell_level_in_band(event.at, &band) {
             continue;
         }
         retarget_tile(
@@ -77,14 +77,14 @@ pub fn swap_destroyed_cover(
     }
 }
 
-/// Swap slab tiles to the destroyed graphic when [`SlabDestroyed`] fires.
+/// Swap slab tiles to the destroyed graphic when a slab is destroyed.
 pub fn swap_destroyed_slab(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
     isolate: Res<IsolateView>,
     resolve: SpriteResolveCtx,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
-    mut destroyed: MessageReader<SlabDestroyed>,
+    mut destroyed: MessageReader<TerrainPieceDestroyed>,
     mut tiles: Query<(
         &TerrainSprite,
         &MeshMaterial2d<TerrainFogMaterial>,
@@ -94,7 +94,7 @@ pub fn swap_destroyed_slab(
 ) {
     let band = drawn_band(*active, StoreyViewMode::new(*view, *isolate));
     for event in destroyed.read() {
-        if !cell_level_in_band(event.at, &band) {
+        if event.kind != TerrainPieceKind::Slab || !cell_level_in_band(event.at, &band) {
             continue;
         }
         retarget_tile(

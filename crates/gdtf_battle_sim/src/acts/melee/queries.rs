@@ -20,7 +20,7 @@ use crate::{
     inflicted_wound::InflictedWounds,
     injuries::{InflictedInjuries, InjuryRegistry, InjuryTables},
     occupancy::OccupancyGrid,
-    occupancy_sync::CoverDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     rng::{FightRng, InjuryRng, SeverityRng, ShotRng},
     surface::SurfaceGrid,
     tuning::CombatTuning,
@@ -119,5 +119,5 @@ pub struct MeleeOutcomes<'w> {
     pub(super) facts:    MeleeFacts<'w>,
     pub(super) shoves:   MessageWriter<'w, ShoveRequested>,
     pub(super) deaths:   MessageWriter<'w, OnDeathOccurred>,
-    pub(super) cover:    MessageWriter<'w, CoverDestroyed>,
+    pub(super) cover:    MessageWriter<'w, TerrainPieceDestroyed>,
 }

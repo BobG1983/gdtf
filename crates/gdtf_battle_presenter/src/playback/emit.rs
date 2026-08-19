@@ -14,7 +14,7 @@ use gdtf_battle_sim::{
         on_death::OnDeathOccurred,
     },
     falls::FallOccurred,
-    occupancy_sync::CoverDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     shot_fired::ShotFired,
     suppression::SuppressionApplied,
     turn::TurnStarted,
@@ -53,7 +53,7 @@ pub struct PlayedSignals<'w> {
     pub(super) field_tick:    MessageWriter<'w, Played<FieldTicked>>,
     pub(super) bleed_started: MessageWriter<'w, Played<BleedStarted>>,
     pub(super) bleeding:      MessageWriter<'w, Played<Bleeding>>,
-    pub(super) cover:         MessageWriter<'w, Played<CoverDestroyed>>,
+    pub(super) cover:         MessageWriter<'w, Played<TerrainPieceDestroyed>>,
     pub(super) melee_landed:  MessageWriter<'w, Played<MeleeResolved>>,
     pub(super) throw_landed:  MessageWriter<'w, Played<ThrowResolved>>,
 }
@@ -77,7 +77,7 @@ pub(super) fn register_played_messages(app: &mut App) {
         .add_message::<Played<FieldTicked>>()
         .add_message::<Played<BleedStarted>>()
         .add_message::<Played<Bleeding>>()
-        .add_message::<Played<CoverDestroyed>>()
+        .add_message::<Played<TerrainPieceDestroyed>>()
         .add_message::<Played<MeleeResolved>>()
         .add_message::<Played<ThrowResolved>>();
 }

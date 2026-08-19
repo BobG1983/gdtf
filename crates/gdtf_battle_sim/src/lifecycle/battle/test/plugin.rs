@@ -26,8 +26,10 @@ fn plugin_bundles_runtime_and_registers_lifecycle_messages() {
         "BattleSimPlugin must register the BattleReady buffer",
     );
     assert!(
-        world.get_resource::<Messages<CoverDestroyed>>().is_some(),
-        "BattleSimPlugin must bundle OccupancyMaintenancePlugin (CoverDestroyed buffer)",
+        world
+            .get_resource::<Messages<TerrainPieceDestroyed>>()
+            .is_some(),
+        "BattleSimPlugin must bundle OccupancyMaintenancePlugin (TerrainPieceDestroyed buffer)",
     );
     assert!(
         world.get_resource::<Messages<FireRequested>>().is_some(),

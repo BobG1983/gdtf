@@ -4,10 +4,11 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     acts::InjuryInflicted,
+    entity::TerrainPieceKind,
     falls::{FallOccurred, FallsPlugin},
     ganger::{Hp, Luck, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
-    occupancy_sync::{OccupancyMaintenancePlugin, SlabDestroyed},
+    occupancy_sync::{OccupancyMaintenancePlugin, TerrainPieceDestroyed},
     prelude::{Cell, CellLevel, Faction, Level, LifeState, Position, Stance, StanceKind, Tu},
     test_support::SimAppBuilder,
     tuning::{CombatTuning, PerStoreyDamage},
@@ -100,12 +101,11 @@ pub(crate) fn hp_of(app: &App, entity: Entity) -> u16 {
     *app.world().get::<Hp>(entity).copied().unwrap_or(Hp::new(0))
 }
 
-pub(crate) fn destroy_slab_and_settle(app: &mut App, level: u8) {
-    app.world_mut()
-        .write_message(SlabDestroyed::new(CellLevel::new(
-            column_cell(),
-            Level::new(level),
-        )));
+pub(crate) fn destroy_slab_and_settle(app: &mut App, level: u8, kind: TerrainPieceKind) {
+    app.world_mut().write_message(TerrainPieceDestroyed::new(
+        CellLevel::new(column_cell(), Level::new(level)),
+        kind,
+    ));
     app.update();
     app.update();
 }

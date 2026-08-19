@@ -4,14 +4,14 @@ use gdtf_battle_sim::{
     armor_wear::ArmorBroken,
     effects::bleed::Bleeding,
     falls::FallOccurred,
-    occupancy_sync::CoverDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     prelude::BattleInProgress,
     shot_fired::ShotFired,
 };
 
 use crate::{
     ArmorBrokenFct, BleedingFct, ConsequenceFctAppExt, DotFct, EffectRoles, FieldFct,
-    FxReaderAppExt, FxTuning, InjuryFct, OnDeathFct, PresenterSystems, ShotImpactResolved,
+    FxReaderAppExt, FxTuning, InjuryFct, OnDeathFct, Played, PresenterSystems, ShotImpactResolved,
     SuppressionFct, TopDownAtlases, advance_impact_animations, advance_projectiles,
     animate_floating_text, expire_flashes, read_armor_broken, read_bleeding, read_cover_destroyed,
     read_fall_occurred, read_melee_resolved, read_throw_resolved, register_consequence_fct_core,
@@ -22,7 +22,7 @@ pub(super) fn register_fx_flash_systems(app: &mut App) {
     app.add_message::<ShotImpactResolved>();
     app.add_fx_reader::<Bleeding, _>(read_bleeding)
         .add_fx_reader::<ArmorBroken, _>(read_armor_broken)
-        .add_fx_reader::<CoverDestroyed, _>(read_cover_destroyed)
+        .add_fx_reader::<Played<TerrainPieceDestroyed>, _>(read_cover_destroyed)
         .add_fx_reader::<MeleeResolved, _>(read_melee_resolved)
         .add_fx_reader::<FallOccurred, _>(
             read_fall_occurred

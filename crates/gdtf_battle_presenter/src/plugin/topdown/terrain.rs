@@ -1,7 +1,7 @@
 use bevy::{ecs::message::Messages, image::Image, prelude::*};
 use gdtf_battle_sim::{
     cover::CoverLedger,
-    occupancy_sync::SlabDestroyed,
+    occupancy_sync::TerrainPieceDestroyed,
     prelude::{BattleInProgress, OccupancyGrid},
     surface::SurfaceGrid,
     vertical::VerticalLinkGraph,
@@ -40,6 +40,7 @@ pub(super) fn register_destruction_swaps(app: &mut App) {
         Update,
         swap_destroyed_cover
             .in_set(PresenterSystems::Scene)
+            .after(swap_destroyed_slab)
             .run_if(resource_exists::<BattleInProgress>.and_then(sprite_resolution_ready)),
     )
     .add_systems(
@@ -47,7 +48,7 @@ pub(super) fn register_destruction_swaps(app: &mut App) {
         swap_destroyed_slab.in_set(PresenterSystems::Scene).run_if(
             resource_exists::<BattleInProgress>
                 .and_then(sprite_resolution_ready)
-                .and_then(resource_exists::<Messages<SlabDestroyed>>),
+                .and_then(resource_exists::<Messages<TerrainPieceDestroyed>>),
         ),
     )
     .add_systems(

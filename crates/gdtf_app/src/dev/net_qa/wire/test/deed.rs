@@ -4,6 +4,7 @@ use gdtf_battle_sim::{
     acts::{InjuryInflicted, MoveRejection, ReloadOutcome, RoundCount},
     armor::BodyPart,
     effects::fields::FieldDamage,
+    entity::TerrainPieceKind,
     falls::StoreysFallen,
     ganger::{
         Aiming, Direction, Facing, Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, Wounds,
@@ -22,9 +23,11 @@ use gdtf_battle_sim::{
 };
 
 use super::assert_ron_round_trip;
-use crate::dev::net_qa::wire::deed::{ActDeedKindNet, MoveRejectionNet, ReloadOutcomeNet};
+use crate::dev::net_qa::wire::deed::{
+    ActDeedKindNet, MoveRejectionNet, ReloadOutcomeNet, TerrainPieceKindNet,
+};
 
-const KINDS: [ActDeedKindNet; 26] = [
+const KINDS: [ActDeedKindNet; 29] = [
     ActDeedKindNet::TurnBegan,
     ActDeedKindNet::PostureChanged,
     ActDeedKindNet::Stepped,
@@ -51,7 +54,18 @@ const KINDS: [ActDeedKindNet; 26] = [
     ActDeedKindNet::Bled,
     ActDeedKindNet::DotTicked,
     ActDeedKindNet::FieldTicked,
-    ActDeedKindNet::CoverSmashed,
+    ActDeedKindNet::TerrainPieceSmashed {
+        kind: TerrainPieceKindNet::Wall,
+    },
+    ActDeedKindNet::TerrainPieceSmashed {
+        kind: TerrainPieceKindNet::Cover,
+    },
+    ActDeedKindNet::TerrainPieceSmashed {
+        kind: TerrainPieceKindNet::Slab,
+    },
+    ActDeedKindNet::TerrainPieceSmashed {
+        kind: TerrainPieceKindNet::Emplacement,
+    },
     ActDeedKindNet::MeleeLanded,
     ActDeedKindNet::ThrowLanded,
     ActDeedKindNet::LifeChanged,
@@ -116,6 +130,16 @@ const fn a_sim_outcome(outcome: ReloadOutcomeNet) -> ReloadOutcome {
         ReloadOutcomeNet::Reloaded => ReloadOutcome::Reloaded,
         ReloadOutcomeNet::AlreadyFull => ReloadOutcome::AlreadyFull,
         ReloadOutcomeNet::NoTu => ReloadOutcome::NoTu,
+    }
+}
+
+/// The sim kind a wire kind came from. Exhaustive, so a crossed arm shows here.
+const fn a_sim_piece_kind(kind: TerrainPieceKindNet) -> TerrainPieceKind {
+    match kind {
+        TerrainPieceKindNet::Wall => TerrainPieceKind::Wall,
+        TerrainPieceKindNet::Cover => TerrainPieceKind::Cover,
+        TerrainPieceKindNet::Slab => TerrainPieceKind::Slab,
+        TerrainPieceKindNet::Emplacement => TerrainPieceKind::Emplacement,
     }
 }
 
@@ -198,7 +222,10 @@ fn a_deed_for(kind: ActDeedKindNet) -> ActDeed {
             at:     a_cell(),
             amount: FieldDamage::new(2),
         },
-        ActDeedKindNet::CoverSmashed => ActDeed::CoverSmashed { at: a_cell() },
+        ActDeedKindNet::TerrainPieceSmashed { kind } => ActDeed::TerrainPieceSmashed {
+            at:   a_cell(),
+            kind: a_sim_piece_kind(kind),
+        },
         ActDeedKindNet::MeleeLanded => ActDeed::MeleeLanded {
             at:     a_cell(),
             damage: DamageType::Rend,
@@ -281,6 +308,21 @@ fn every_reload_outcome_round_trips_and_mirrors_its_sim_outcome() {
             ActDeedKindNet::Reloaded { outcome },
             "the sim logs a reload it declined and one it made alike, so the kind has to carry \
              the outcome for a client to tell them apart",
+        );
+    }
+}
+
+#[test]
+fn every_terrain_piece_kind_round_trips_and_mirrors_its_sim_kind() {
+    for kind in TerrainPieceKind::ALL {
+        let wire = TerrainPieceKindNet::from_sim(kind);
+        assert_ron_round_trip(&wire);
+        assert_eq!(
+            ActDeedKindNet::from_deed(&ActDeed::TerrainPieceSmashed { at: a_cell(), kind }),
+            ActDeedKindNet::TerrainPieceSmashed { kind: wire },
+            "a smash tells a client which kind of piece went down, so the kind has to carry it \
+             — mirroring `{kind:?}` gave `{:?}`",
+            ActDeedKindNet::from_deed(&ActDeed::TerrainPieceSmashed { at: a_cell(), kind }),
         );
     }
 }

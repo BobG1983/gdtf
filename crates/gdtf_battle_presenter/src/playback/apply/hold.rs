@@ -35,6 +35,6 @@ pub(super) fn hold_for(entry: &ActEntry, tuning: &PlaybackTuning) -> ActHold {
         | ActDeed::FieldTicked { .. }
         | ActDeed::BleedStarted
         | ActDeed::Bled
-        | ActDeed::CoverSmashed { .. } => ActHold::timed(*tuning.minor_seconds),
+        | ActDeed::TerrainPieceSmashed { .. } => ActHold::timed(*tuning.minor_seconds),
     }
 }
