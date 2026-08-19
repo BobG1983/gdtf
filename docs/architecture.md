@@ -49,9 +49,9 @@ ahead.
 `TerrainPieceDestroyed` and its kin — and draws the result on the spot.
 Destruction is in scope: cover, wall and slab, and whatever replaces a destroyed piece.
 
-**Two exceptions the tree carries:** `swap_destroyed_slab` and `swap_destroyed_cover` read the
-raw buffer and draw from it. They are the only two, and nothing else may join them. Each ends the
-same way — the swap reads the played fact instead, and the system goes when nothing needs it.
+**One exception the tree carries:** `swap_destroyed_cover` reads the raw buffer and draws from it.
+It is the only one, and nothing else may join it. It ends the same way — the swap reads the played
+fact instead, and the system goes when nothing needs it.
 
 **What breaks without it:** the sim resolves a whole act while playback is still animating
 the one before it. A system that reads the sim directly is not slightly early, it is an
