@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::EnterEmplacementAct};
 use gdtf_battle_sim::{
     acts::{can_enter_emplacement, enter_emplacement_tu_cost},
-    emplacement::EmplacementState,
+    emplacement::{EmplacementEntrySides, EmplacementFacing, EmplacementState},
     entity::TerrainCell,
     ganger::{Faction, Position, Tu},
     tuning::CombatTuning,
@@ -14,7 +14,7 @@ use crate::states::running::game::battlescape::contextual_panel::seam::{
 };
 
 crate::support_item! {
-    /// Contextual button that mounts an adjacent emplacement.
+    /// Contextual button that mounts an emplacement from one of its rotated entry sides.
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct EnterEmplacementButton;
 }
@@ -29,7 +29,13 @@ impl ContextualPanelAct for EnterEmplacementAct {
     }
 }
 
-type EnterEmplacementReads = (Entity, &'static EmplacementState, &'static TerrainCell);
+type EnterEmplacementReads = (
+    Entity,
+    &'static EmplacementState,
+    &'static TerrainCell,
+    Option<&'static EmplacementEntrySides>,
+    Option<&'static EmplacementFacing>,
+);
 
 type EnterEmplacementActorReads = (&'static Position, Option<&'static Tu>);
 
@@ -59,17 +65,22 @@ fn scan_enter_emplacement(
     emplacements: &Query<EnterEmplacementReads>,
     tuning: &CombatTuning,
 ) -> Option<(Entity, OfferPressable)> {
-    let allowed = |seat: Position, state: &EmplacementState, tu: &Tu| {
-        *can_enter_emplacement(actor, seat, state, tu, tuning)
-    };
+    let allowed =
+        |seat: Position,
+         state: &EmplacementState,
+         sides: Option<&EmplacementEntrySides>,
+         facing: Option<&EmplacementFacing>,
+         tu: &Tu| { *can_enter_emplacement(actor, seat, state, sides, facing, tu, tuning) };
     // Asking with the cost as the pool holds affordability true, so the other terms pick the target.
     let cost = enter_emplacement_tu_cost(tuning);
-    let (entity, seat, state) = emplacements
+    let (entity, seat, state, sides, facing) = emplacements
         .iter()
-        .map(|(entity, state, cell)| (entity, Position::new(**cell), state))
-        .find(|&(_, seat, state)| allowed(seat, state, &cost))?;
+        .map(|(entity, state, cell, sides, facing)| {
+            (entity, Position::new(**cell), state, sides, facing)
+        })
+        .find(|&(_, seat, state, sides, facing)| allowed(seat, state, sides, facing, &cost))?;
     Some((
         entity,
-        OfferPressable::new(pool.is_some_and(|tu| allowed(seat, state, tu))),
+        OfferPressable::new(pool.is_some_and(|tu| allowed(seat, state, sides, facing, tu))),
     ))
 }

@@ -3,14 +3,17 @@
 use bevy::prelude::{Deref, Entity, MessageReader, MessageWriter, Query, Res};
 
 use crate::{
-    acts::{
-        downed::is_8_adjacent,
-        request::{EnterEmplacementRequested, ExitEmplacementRequested},
-    },
+    acts::request::{EnterEmplacementRequested, ExitEmplacementRequested},
     ganger::{Position, Tu},
+    metric::{Cell, CellLevel, Level},
     terrain::{
-        emplacement::{EmplacementOccupant, EmplacementState, SetEmplacement},
+        def::rotated_entry_sides,
+        emplacement::{
+            EmplacementEntrySides, EmplacementFacing, EmplacementOccupant, EmplacementState,
+            SetEmplacement,
+        },
         entity::TerrainCell,
+        facing::TerrainFacing,
     },
     tu::{can_spend_tu, spend_tu},
     tuning::CombatTuning,
@@ -52,18 +55,57 @@ pub fn exit_emplacement_tu_cost(tuning: &CombatTuning) -> Tu {
     Tu::new(*tuning.exit_emplacement_tu)
 }
 
-/// Emplacement is empty, the actor is adjacent, and the pool covers the cost.
+// Whether the actor stands on one of an emplacement's rotated entry sides.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct OnEntrySide(bool);
+
+impl OnEntrySide {
+    // Wrap a boolean.
+    const fn new(standing: bool) -> Self {
+        Self(standing)
+    }
+}
+
+// An emplacement naming no side has no entry cell; an absent facing reads as the default one.
+fn on_an_entry_side(
+    actor: Position,
+    emplacement: Position,
+    sides: Option<&EmplacementEntrySides>,
+    facing: Option<&EmplacementFacing>,
+) -> OnEntrySide {
+    let Some(sides) = sides else {
+        return OnEntrySide::new(false);
+    };
+    let turned = facing.map_or_else(TerrainFacing::default, |placed| **placed);
+    let (seat, level) = emplacement.split();
+    OnEntrySide::new(
+        rotated_entry_sides(sides, turned)
+            .into_iter()
+            .any(|side| entry_cell(seat, level, side.cell_step()) == actor),
+    )
+}
+
+fn entry_cell(seat: Cell, level: Level, step: Cell) -> Position {
+    Position::new(CellLevel::new(
+        Cell::new(seat.x + step.x, seat.y + step.y),
+        level,
+    ))
+}
+
+/// Emplacement is empty, the actor stands on one of its rotated entry sides, and the pool pays.
 #[must_use]
 pub fn can_enter_emplacement(
     actor: Position,
     emplacement: Position,
     state: &EmplacementState,
+    sides: Option<&EmplacementEntrySides>,
+    facing: Option<&EmplacementFacing>,
     tu: &Tu,
     tuning: &CombatTuning,
 ) -> CanEnterEmplacement {
     CanEnterEmplacement::new(
         !*state.is_occupied()
-            && *is_8_adjacent(actor, emplacement)
+            && *on_an_entry_side(actor, emplacement, sides, facing)
             && *can_spend_tu(tu, enter_emplacement_tu_cost(tuning)),
     )
 }
@@ -84,10 +126,15 @@ pub fn can_exit_emplacement(
     )
 }
 
-/// System: occupy an adjacent empty emplacement.
+/// System: occupy an empty emplacement from one of its rotated entry sides.
 pub fn dispatch_enter_emplacement(
     mut requests: MessageReader<EnterEmplacementRequested>,
-    emplacements: Query<(&EmplacementState, &TerrainCell)>,
+    emplacements: Query<(
+        &EmplacementState,
+        &TerrainCell,
+        Option<&EmplacementEntrySides>,
+        Option<&EmplacementFacing>,
+    )>,
     mut actors: Query<(&Position, &mut Tu)>,
     tuning: Option<Res<CombatTuning>>,
     mut toggles: MessageWriter<SetEmplacement>,
@@ -96,14 +143,14 @@ pub fn dispatch_enter_emplacement(
         return;
     };
     for request in requests.read() {
-        let Ok((state, cell)) = emplacements.get(request.emplacement) else {
+        let Ok((state, cell, sides, facing)) = emplacements.get(request.emplacement) else {
             continue;
         };
         let Ok((&actor_pos, mut actor_tu)) = actors.get_mut(request.actor) else {
             continue;
         };
         let seat = Position::new(**cell);
-        if !*can_enter_emplacement(actor_pos, seat, state, &actor_tu, &tuning) {
+        if !*can_enter_emplacement(actor_pos, seat, state, sides, facing, &actor_tu, &tuning) {
             continue;
         }
         if spend_tu(&mut actor_tu, enter_emplacement_tu_cost(&tuning)).is_err() {

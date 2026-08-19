@@ -52,12 +52,13 @@ stops a turned mount being entered through its own armour.
 
 ## What exists today
 
-`can_enter_emplacement` requires 8-adjacency, and mounting leaves the ganger on
-its own cell. Only the occupancy band is set at the emplacement's cell, so an
-occupied emplacement is indistinguishable from an empty one on screen, and the
-ganger keeps whatever cover it was already in. The entry sides are authored on
-the def and reach the spawned piece, but nothing reads them to decide anything.
-There is no remembered origin cell and no exit act.
+`can_enter_emplacement` reads the emplacement's authored entry sides, rotated by
+its facing, and allows the enter only from one of those cells; a mount naming no
+side cannot be entered at all. Mounting still leaves the ganger on its own cell.
+Only the occupancy band is set at the emplacement's cell, so an occupied
+emplacement is indistinguishable from an empty one on screen, and the ganger
+keeps whatever cover it was already in. There is no remembered origin cell and
+no exit act.
 
 The first implementation was wrong. This replaces it rather than extending it.
 
@@ -74,10 +75,10 @@ The first implementation was wrong. This replaces it rather than extending it.
   def the entry sides are authored on.
 - Code sites: `can_enter_emplacement` and the act live in
   `crates/gdtf_battle_sim`. Built: the def's `entry_sides` and the
-  `rotated_entry_sides` rotation (`terrain/def/kind.rs`), plus the
+  `rotated_entry_sides` rotation (`terrain/def/kind.rs`), the
   `EmplacementEntrySides` and `EmplacementFacing` components battle setup puts
-  on the spawned piece (`terrain/emplacement/state.rs`) — nothing reads them.
-  **TBD (Bevy):** the enter gate reading those sides, the remembered origin
-  cell, and the exit act.
+  on the spawned piece (`terrain/emplacement/state.rs`), and the enter gate
+  reading both (`acts/enter_emplacement.rs`). **TBD (Bevy):** the remembered
+  origin cell, and the exit act.
 - Source: owner rulings, given directly in conversation, 2026-08-14. Ticket:
   GTW-1176.

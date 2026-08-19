@@ -113,6 +113,9 @@ const AROUND: [(i32, i32); 8] = [
     (-1, -1),
 ];
 
+/// How many of `AROUND`'s leading offsets are cardinal rather than diagonal.
+const CARDINALS: usize = 4;
+
 /// Whether the map holds `step` as open ground with nothing standing on it or blocking it.
 fn is_clear(grid: &OccupancyGrid, map: &HashSet<CellLevel>, step: &CellLevel) -> bool {
     map.contains(step)
@@ -127,6 +130,17 @@ pub(crate) fn one_step_from(app: &App, at: CellLevelNet) -> Option<CellLevelNet>
     let map: HashSet<CellLevel> = grid.all_cells().collect();
     let (cell, level) = at.to_sim().split();
     AROUND.iter().find_map(|(east, north)| {
+        let step = CellLevel::new(Cell::new(cell.x + east, cell.y + north), level);
+        is_clear(grid, &map, &step).then_some(CellLevelNet::from_sim(step))
+    })
+}
+
+/// A clear cell one CARDINAL step from `at`, when the map offers one.
+pub(crate) fn one_cardinal_step_from(app: &App, at: CellLevelNet) -> Option<CellLevelNet> {
+    let grid = app.world().get_resource::<OccupancyGrid>()?;
+    let map: HashSet<CellLevel> = grid.all_cells().collect();
+    let (cell, level) = at.to_sim().split();
+    AROUND.iter().take(CARDINALS).find_map(|(east, north)| {
         let step = CellLevel::new(Cell::new(cell.x + east, cell.y + north), level);
         is_clear(grid, &map, &step).then_some(CellLevelNet::from_sim(step))
     })

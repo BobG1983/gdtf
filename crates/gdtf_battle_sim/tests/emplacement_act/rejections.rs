@@ -69,7 +69,8 @@ fn non_adjacent_enter_is_rejected_no_charge() {
     assert_eq!(
         state(&app, emplacement),
         Some(EmplacementState::Vacant),
-        "a non-adjacent enter does not man the emplacement (the 8-adjacency gate held)",
+        "the actor at ground(5, 5) is not on an entry cell of the seat at ground(8, 5), so the \
+         enter does not man it (the entry-sides gate held)",
     );
     assert_eq!(
         tu_of(&app, actor),

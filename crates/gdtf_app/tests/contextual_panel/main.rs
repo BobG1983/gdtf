@@ -7,6 +7,8 @@ mod door;
 mod downed_acts;
 mod downed_guards;
 mod emplacement;
+mod emplacement_exit;
+mod emplacement_sides;
 mod harness;
 mod layout_geometry;
 mod melee;

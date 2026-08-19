@@ -80,14 +80,21 @@ pub(super) fn enter_quote(
     row: &ActorRowItem<'_, '_>,
     target: EmplacementToken,
 ) -> Quote {
-    let Some((state, cell, _occupant)) =
+    let Some((state, cell, _occupant, sides, facing)) =
         Entity::try_from_bits(*target).and_then(|seat| rows.emplacements.get(seat).ok())
     else {
         return Quote::refused(CostRefusalNet::NoSuchGanger);
     };
     let cost = enter_emplacement_tu_cost(tuning);
-    let allowed =
-        can_enter_emplacement(*row.position, Position::new(**cell), state, row.tu, tuning);
+    let allowed = can_enter_emplacement(
+        *row.position,
+        Position::new(**cell),
+        state,
+        sides,
+        facing,
+        row.tu,
+        tuning,
+    );
     afforded(*row.tu, cost, CostLegalNet::new(*allowed))
 }
 
@@ -99,7 +106,7 @@ pub(super) fn exit_quote(
     row: &ActorRowItem<'_, '_>,
     target: EmplacementToken,
 ) -> Quote {
-    let Some((state, _cell, occupant)) =
+    let Some((state, _cell, occupant, _sides, _facing)) =
         Entity::try_from_bits(*target).and_then(|seat| rows.emplacements.get(seat).ok())
     else {
         return Quote::refused(CostRefusalNet::NoSuchGanger);

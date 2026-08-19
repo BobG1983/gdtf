@@ -7,7 +7,9 @@ use bevy::{
 use gdtf_battle_sim::{
     battle::PlayerFaction,
     cover::CoverLedger,
-    emplacement::{EmplacementOccupant, EmplacementState},
+    emplacement::{
+        EmplacementEntrySides, EmplacementFacing, EmplacementOccupant, EmplacementState,
+    },
     entity::TerrainCell,
     floor::FloorCostGrid,
     ganger::{Aiming, Facing, Faction, LifeState, Position, Stance, Suppressed, Tu, TuMax},
@@ -53,11 +55,13 @@ pub(super) struct GunRow {
 /// The geometry, allegiance and life a reach check reads off a target ganger.
 pub(super) type TargetRow = (&'static Position, &'static Faction, &'static LifeState);
 
-/// The state, cell and occupant an emplacement act reads.
+/// The state, cell, occupant, entry sides and facing an emplacement act reads.
 pub(super) type EmplacementRow = (
     &'static EmplacementState,
     &'static TerrainCell,
     Option<&'static EmplacementOccupant>,
+    Option<&'static EmplacementEntrySides>,
+    Option<&'static EmplacementFacing>,
 );
 
 /// The battle resources every priced act needs, once all of them are loaded.

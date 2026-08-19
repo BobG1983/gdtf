@@ -17,19 +17,20 @@ use gdtf_battle_sim::{
         enter_emplacement_tu_cost, exit_emplacement_tu_cost, melee_tu_cost, open_door_tu_cost,
         reload_tu_cost, shove_tu_cost, throw_grenade_tu_cost,
     },
-    emplacement::EmplacementState,
+    emplacement::{EmplacementEntrySides, EmplacementFacing, EmplacementState},
     entity::TerrainCell,
     ganger::{Facing, Tu},
     magazine::Magazine,
     openable::OpenState,
     posture::{afforded_turn_tu_cost, set_aiming_tu_cost, stance_tu_cost},
+    terrain::facing::TerrainFacing,
     tuning::CombatTuning,
     weapon::{FightMode, MeleeWeapon, Wields},
 };
 
 use super::support::{cost_body, cost_calls, settle};
 use crate::{
-    battle_reads::{a_player_ganger, an_enemy_ganger, one_step_from},
+    battle_reads::{a_player_ganger, an_enemy_ganger, one_cardinal_step_from},
     command_exchange::exchange_in_battle,
     socket_support::{TestError, TestResult},
 };
@@ -118,6 +119,17 @@ fn every_gear_posture_and_reach_act_quotes_its_own_sim_helper() -> TestResult {
         return Err("the fixture never reported what it lined up to price".into());
     };
     let (actor, acts) = planned?;
+    let (Some(tuning), Some(pool)) = (
+        app.world().get_resource::<CombatTuning>(),
+        part::<Tu>(app.world(), actor),
+    ) else {
+        return Err("the same world must still hold the tuning and the actor's pool".into());
+    };
+    assert!(
+        **pool >= *enter_emplacement_tu_cost(tuning),
+        "the actor's pool must cover the enter cost, or the legality assertion below reads \
+         CannotAfford rather than the entry-sides gate",
+    );
     assert_eq!(
         replies.len(),
         acts.len(),
@@ -135,6 +147,18 @@ fn every_gear_posture_and_reach_act_quotes_its_own_sim_helper() -> TestResult {
             Some(TuNet::new(*expected)),
             "the quote for {act:?} must be exactly what the sim charges: {body:?}",
         );
+        if matches!(act, CostActNet::EnterEmplacement { .. }) {
+            assert_eq!(
+                body.refusal, None,
+                "the seat stands on a cardinal cell beside the actor, so nothing refuses the \
+                 enter — ActNotAllowed would say it is on no entry side: {body:?}",
+            );
+            assert!(
+                *body.legal,
+                "an act the fixture aims at something the battle actually holds is legal: \
+                 {body:?}",
+            );
+        }
     }
     Ok(())
 }
@@ -150,8 +174,12 @@ fn bench(app: &mut App) -> Result<Bench, TestError> {
     let Some(enemy) = an_enemy_ganger(app) else {
         return Err("a running battle must hold a living enemy to aim reach acts at".into());
     };
-    let Some(beside) = one_step_from(app, at) else {
-        return Err("the actor must have a clear cell beside it to stand terrain on".into());
+    let Some(beside) = one_cardinal_step_from(app, at) else {
+        return Err(
+            "the actor must have a clear CARDINAL cell beside it to stand terrain on, or the \
+             emplacement stands on no entry side of its own"
+                .into(),
+        );
     };
     let door = app
         .world_mut()
@@ -159,7 +187,12 @@ fn bench(app: &mut App) -> Result<Bench, TestError> {
         .id();
     let seat = app
         .world_mut()
-        .spawn((TerrainCell::new(beside.to_sim()), EmplacementState::Vacant))
+        .spawn((
+            TerrainCell::new(beside.to_sim()),
+            EmplacementState::Vacant,
+            EmplacementEntrySides::new(TerrainFacing::ALL.to_vec()),
+            EmplacementFacing::new(TerrainFacing::default()),
+        ))
         .id();
     Ok(Bench {
         actor,

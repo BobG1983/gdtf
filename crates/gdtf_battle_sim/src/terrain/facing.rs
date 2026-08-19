@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::metric::Cell;
+
 /// Cardinal facing of a placed terrain piece.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
 pub enum TerrainFacing {
@@ -19,4 +21,15 @@ pub enum TerrainFacing {
 impl TerrainFacing {
     /// All cardinals, in ring order.
     pub const ALL: [Self; 4] = [Self::North, Self::East, Self::South, Self::West];
+
+    /// Integer cell delta for one step this way.
+    #[must_use]
+    pub const fn cell_step(self) -> Cell {
+        match self {
+            Self::North => Cell::new(0, -1),
+            Self::East => Cell::new(1, 0),
+            Self::South => Cell::new(0, 1),
+            Self::West => Cell::new(-1, 0),
+        }
+    }
 }

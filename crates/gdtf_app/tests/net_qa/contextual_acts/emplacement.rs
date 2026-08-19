@@ -1,13 +1,17 @@
 //! The emplacement pair over a real socket: mounting and dismounting what the panel offers.
 
 use bevy::{app::App, ecs::entity::Entity};
-use gdtf_app::qa_wire::{offer::OfferTargetNet, token::EmplacementToken};
+use gdtf_app::qa_wire::{cell::CellLevelNet, offer::OfferTargetNet, token::EmplacementToken};
 use gdtf_battle_sim::{
     acts::downed::is_8_adjacent,
-    emplacement::{EmplacementOccupant, EmplacementState, SetEmplacement},
+    emplacement::{
+        EmplacementEntrySides, EmplacementFacing, EmplacementOccupant, EmplacementState,
+        SetEmplacement,
+    },
     entity::TerrainCell,
     ganger::Position,
     prelude::CellLevel,
+    terrain::facing::TerrainFacing,
 };
 use gdtf_qa_protocol::{command::RunOptions, ports::NetQaPort};
 use gdtf_test_utils::advance_until;
@@ -15,13 +19,13 @@ use gdtf_test_utils::advance_until;
 use super::{
     super::{
         act_support::{assert_caught_up, caught_up, next},
-        battle_reads::clear_cells_away_from,
+        battle_reads::{clear_cells_away_from, one_cardinal_step_from},
         command_exchange::{
             ACT_ENTER_EMPLACEMENT, ACT_EXIT_EMPLACEMENT, WAIT, exchange_inspecting, run,
         },
         socket_support::{TestError, TestResult, battle_app_listening},
     },
-    scene::{a_neighbour, accepted, select_a_player_ganger, settle},
+    scene::{accepted, select_a_player_ganger, settle},
 };
 
 /// Who is manning an emplacement right now.
@@ -75,10 +79,21 @@ pub(super) fn emplacement_beside_the_shooter()
     let (mut app, port) = battle_app_listening()?;
     let (shooter, at) = select_a_player_ganger(&mut app)?;
     clear_emplacements_around(&mut app, at)?;
-    let beside = a_neighbour(&app, at)?;
+    let Some(beside) = one_cardinal_step_from(&app, CellLevelNet::from_sim(at)) else {
+        return Err(
+            "the generated map must offer one clear CARDINAL cell beside the shooter, or the \
+             emplacement stands on no entry side of its own"
+                .into(),
+        );
+    };
     let emplacement = app
         .world_mut()
-        .spawn((TerrainCell::new(beside), EmplacementState::Vacant))
+        .spawn((
+            TerrainCell::new(beside.to_sim()),
+            EmplacementState::Vacant,
+            EmplacementEntrySides::new(TerrainFacing::ALL.to_vec()),
+            EmplacementFacing::new(TerrainFacing::default()),
+        ))
         .id();
     settle(&mut app);
     Ok((app, port, (shooter, emplacement)))

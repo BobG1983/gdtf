@@ -305,11 +305,11 @@ same four-cardinal type a prefab placement's `facing` carries, see
 The sides are authored in the piece's OWN unrotated frame. `rotated_entry_sides`
 (`crates/gdtf_battle_sim/src/terrain/def/kind.rs`) reads them in the frame of a
 piece turned to a given facing, so a mount turned east reports its authored sides
-turned east with it. That is what will stop a turned mount being entered through
-its own armour.
+turned east with it. That is what stops a turned mount being entered through its
+own armour.
 
 The field is `#[serde(default)]`, so a def that omits it names no side — which is
-how a mount is authored as scenery, once the gate reads them
+how a mount is authored as scenery
 ([../combat/emplacements.md](../combat/emplacements.md)).
 
 From the shipped `heavy_bolter_emplacement.terrain_def.ron`:
@@ -330,10 +330,11 @@ the spawned piece as `EmplacementEntrySides` and `EmplacementFacing`
 (`crates/gdtf_battle_sim/src/terrain/emplacement/state.rs`) — the reader rotates,
 the seed does not.
 
-**Nothing reads the sides to decide anything yet.** `can_enter_emplacement`
-(`crates/gdtf_battle_sim/src/acts/enter_emplacement.rs`) still gates on
-8-adjacency, so authoring a side changes no offer and no act today. The data
-lands ahead of the gate that will read it.
+**The sides decide who may enter.** `can_enter_emplacement`
+(`crates/gdtf_battle_sim/src/acts/enter_emplacement.rs`) reads the piece's
+`EmplacementEntrySides` rotated by its `EmplacementFacing` and admits the enter
+only from one of those cells, so authoring a side is what decides the offer and
+the act. A def naming no side cannot be entered from anywhere.
 
 The content editor's Terrain tab carries a four-checkbox picker for the sides,
 drawn only while the kind is `Emplacement`

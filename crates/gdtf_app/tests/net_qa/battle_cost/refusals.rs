@@ -3,15 +3,20 @@
 use bevy::{app::App, ecs::entity::Entity};
 use gdtf_app::qa_wire::{
     act_payload::MeleeTargetNet,
+    cell::CellLevelNet,
     cost::{CostActNet, CostRefusalNet},
-    token::GangerToken,
+    token::{EmplacementToken, GangerToken},
+};
+use gdtf_battle_sim::{
+    acts::enter_emplacement_tu_cost, emplacement::EmplacementState, entity::TerrainCell,
+    ganger::Tu, tuning::CombatTuning,
 };
 
 use super::support::{cost_body, cost_calls, first_body, settle};
 use crate::{
-    battle_reads::{a_player_ganger, an_unreachable_cell},
+    battle_reads::{a_player_ganger, an_unreachable_cell, one_cardinal_step_from},
     command_exchange::exchange_in_battle,
-    socket_support::TestResult,
+    socket_support::{TestError, TestResult},
 };
 
 /// Acts the sim's own legality checks turn down: shoving yourself, and striking a cell out of
@@ -25,6 +30,76 @@ fn rejected_acts(actor: Entity) -> Vec<CostActNet> {
             target: MeleeTargetNet::Structure(an_unreachable_cell()),
         },
     ]
+}
+
+/// Stand a sideless emplacement on a clear cardinal cell beside `at`, and name it.
+fn a_sideless_seat_beside(app: &mut App, at: CellLevelNet) -> Result<EmplacementToken, TestError> {
+    let Some(beside) = one_cardinal_step_from(app, at) else {
+        return Err(
+            "the generated map must offer one clear CARDINAL cell beside the actor, or a \
+             default-sided seat would refuse the enter too and the case would pass either way"
+                .into(),
+        );
+    };
+    let seat = app
+        .world_mut()
+        .spawn((TerrainCell::new(beside.to_sim()), EmplacementState::Vacant))
+        .id();
+    Ok(EmplacementToken::new(seat.to_bits()))
+}
+
+/// The pool the actor holds and what the same world charges for one enter.
+fn pool_and_enter_cost(app: &App, actor: Entity) -> Option<(Tu, Tu)> {
+    let world = app.world();
+    let pool = *world.get_entity(actor).ok()?.get::<Tu>()?;
+    let tuning = world.get_resource::<CombatTuning>()?;
+    Some((pool, enter_emplacement_tu_cost(tuning)))
+}
+
+#[test]
+fn an_emplacement_naming_no_entry_side_is_refused_the_enter() -> TestResult {
+    let mut planned: Option<Result<Entity, TestError>> = None;
+    let (app, replies) = exchange_in_battle(|app: &mut App| {
+        settle(app);
+        let Some((actor, at)) = a_player_ganger(app) else {
+            planned = Some(Err(
+                "a running battle must field a ganger the player commands".into(),
+            ));
+            return Vec::new();
+        };
+        match a_sideless_seat_beside(app, at) {
+            Ok(target) => {
+                planned = Some(Ok(actor));
+                cost_calls(actor, &[CostActNet::EnterEmplacement { target }])
+            }
+            Err(fault) => {
+                planned = Some(Err(fault));
+                Vec::new()
+            }
+        }
+    })?;
+    let Some(planned) = planned else {
+        return Err("the fixture never reported what it lined up to price".into());
+    };
+    let actor = planned?;
+    let Some((pool, cost)) = pool_and_enter_cost(&app, actor) else {
+        return Err("the same world must still hold the actor's pool and the tuning".into());
+    };
+    assert!(
+        *pool >= *cost,
+        "the actor's pool must cover the enter cost, or the refusal below is CannotAfford \
+         rather than the entry-sides gate",
+    );
+
+    let body = first_body(replies)?;
+    assert_eq!(
+        body.refusal,
+        Some(CostRefusalNet::ActNotAllowed),
+        "an emplacement carrying no entry sides names no cell it can be entered from, so the \
+         sim turns the enter down: {body:?}",
+    );
+    assert!(!*body.legal, "a refused act is not legal: {body:?}");
+    Ok(())
 }
 
 #[test]

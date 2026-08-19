@@ -1,6 +1,7 @@
 use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::{
-    ContextualPanelRoot, ExecuteButton, MeleeButton, ShoveButton, StabilizeButton,
+    ContextualPanelRoot, EnterEmplacementButton, ExecuteButton, ExitEmplacementButton, MeleeButton,
+    ShoveButton, StabilizeButton,
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
@@ -117,6 +118,14 @@ pub(crate) fn melee_visible(app: &mut App) -> bool {
 
 pub(crate) fn shove_visible(app: &mut App) -> bool {
     visibility::<ShoveButton>(app) == Some(Visibility::Visible)
+}
+
+pub(crate) fn enter_emplacement_visible(app: &mut App) -> bool {
+    visibility::<EnterEmplacementButton>(app) == Some(Visibility::Visible)
+}
+
+pub(crate) fn exit_emplacement_visible(app: &mut App) -> bool {
+    visibility::<ExitEmplacementButton>(app) == Some(Visibility::Visible)
 }
 
 pub(crate) fn root_visible(app: &mut App) -> bool {

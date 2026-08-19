@@ -8,8 +8,12 @@ use gdtf_battle_sim::{
     magazine::{LoadedRounds, Magazine},
     metric::CellLevel,
     terrain::{
-        emplacement::{EmplacementState, MountedWeaponEntity, MountedWeaponKey},
+        emplacement::{
+            EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedWeaponEntity,
+            MountedWeaponKey,
+        },
         entity::TerrainCell,
+        facing::TerrainFacing,
     },
     test_support::{SituationBuilder, TEST_WEAPON_KEY, test_weapon_spec},
     weapon::{WeaponName, WeaponRegistry, Wields},
@@ -36,6 +40,8 @@ fn spawn_emplacement(app: &mut App, at: CellLevel) -> Entity {
             TerrainCell::new(at),
             EmplacementState::Vacant,
             MountedWeaponKey::new(WeaponName::new(MOUNTED_KEY.to_owned())),
+            EmplacementEntrySides::new(TerrainFacing::ALL.to_vec()),
+            EmplacementFacing::new(TerrainFacing::default()),
         ))
         .id();
     app.world_mut().resource_mut::<CoverLedger>().insert(

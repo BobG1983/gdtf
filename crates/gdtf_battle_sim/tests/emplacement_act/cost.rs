@@ -1,23 +1,63 @@
 //! Enter and exit charge exactly what their cost functions quote.
 
+use bevy::{app::App, prelude::Entity};
 use gdtf_battle_sim::{
     acts::{
-        EnterEmplacementRequested, ExitEmplacementRequested, can_enter_emplacement,
-        can_exit_emplacement, enter_emplacement_tu_cost, exit_emplacement_tu_cost,
+        CanEnterEmplacement, EnterEmplacementRequested, ExitEmplacementRequested,
+        can_enter_emplacement, can_exit_emplacement, enter_emplacement_tu_cost,
+        exit_emplacement_tu_cost,
     },
     ganger::{Direction, Position, Tu},
-    terrain::emplacement::{EmplacementOccupant, EmplacementState},
+    metric::CellLevel,
+    terrain::emplacement::{
+        EmplacementEntrySides, EmplacementFacing, EmplacementOccupant, EmplacementState,
+    },
     test_support::{SituationBuilder, emplacement_at},
     tuning::CombatTuning,
 };
 
 use super::harness::*;
 
-fn tuning_of(app: &bevy::app::App) -> CombatTuning {
+fn tuning_of(app: &App) -> CombatTuning {
     app.world()
         .get_resource::<CombatTuning>()
         .cloned()
         .unwrap_or_default()
+}
+
+/// The authored entry sides and placed facing the gate reads off a seeded seat.
+struct Seat {
+    sides:  Option<EmplacementEntrySides>,
+    facing: Option<EmplacementFacing>,
+}
+
+fn seat_of(app: &App, emplacement: Entity) -> Seat {
+    Seat {
+        sides:  app
+            .world()
+            .get::<EmplacementEntrySides>(emplacement)
+            .cloned(),
+        facing: app.world().get::<EmplacementFacing>(emplacement).copied(),
+    }
+}
+
+/// What the gate answers for an actor with `pool` against that vacant seat.
+fn enter_gate(
+    seat: &Seat,
+    actor: Position,
+    at: CellLevel,
+    pool: Tu,
+    tuning: &CombatTuning,
+) -> CanEnterEmplacement {
+    can_enter_emplacement(
+        actor,
+        Position::new(at),
+        &EmplacementState::Vacant,
+        seat.sides.as_ref(),
+        seat.facing.as_ref(),
+        &pool,
+        tuning,
+    )
 }
 
 #[test]
@@ -48,22 +88,17 @@ fn enter_and_exit_charge_exactly_their_quotes_and_the_predicates_agree() {
     let Some(tu_before) = tu_of(&app, actor) else {
         unreachable!("the spawned ganger carries Tu");
     };
+    let seat = seat_of(&app, emplacement);
     assert!(
-        *can_enter_emplacement(
-            actor_pos,
-            Position::new(emp_cell),
-            &EmplacementState::Vacant,
-            &Tu::new(tu_before),
-            &tuning,
-        ),
-        "an adjacent actor with an ample pool may enter a vacant emplacement",
+        *enter_gate(&seat, actor_pos, emp_cell, Tu::new(tu_before), &tuning),
+        "an actor on one of the seat's entry cells with an ample pool may enter it",
     );
     assert!(
-        !*can_enter_emplacement(
+        !*enter_gate(
+            &seat,
             actor_pos,
-            Position::new(emp_cell),
-            &EmplacementState::Vacant,
-            &Tu::new(enter_quote.saturating_sub(1)),
+            emp_cell,
+            Tu::new(enter_quote.saturating_sub(1)),
             &tuning,
         ),
         "a pool one TU below the enter quote cannot pay for it",

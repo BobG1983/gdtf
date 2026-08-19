@@ -9,14 +9,26 @@ use bevy::{
     ui::BackgroundColor,
 };
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
+use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    ganger::Tu, injuries::InjuryRegistry, tuning::CombatTuning, weapon::WeaponRegistry,
+    emplacement::{
+        EmplacementEntrySides, EmplacementFacing, EmplacementOccupant, EmplacementState,
+    },
+    entity::TerrainCell,
+    ganger::{Tu, TuMax},
+    injuries::InjuryRegistry,
+    prelude::{Cell, CellLevel, Faction, Level},
+    terrain::facing::TerrainFacing,
+    tuning::CombatTuning,
+    weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{
     DisabledButton,
     theme::{GdtfTheme, default_theme},
 };
+
+use super::actors::at;
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
 const ONE_STEP_A_FRAME: u32 = 1;
@@ -69,6 +81,52 @@ pub(crate) fn battle_running_app() -> App {
         battlescape_state(app) == Some(BattleScapeState::BattleRunning)
     });
     app
+}
+
+/// The four cardinals, the entry sides a def-seeded open mount authors.
+pub(crate) fn cardinal_sides() -> EmplacementEntrySides {
+    EmplacementEntrySides::new(TerrainFacing::ALL.to_vec())
+}
+
+/// A placed emplacement turned the way the default cardinal points.
+pub(crate) fn cardinal_facing() -> EmplacementFacing {
+    EmplacementFacing::new(TerrainFacing::default())
+}
+
+/// A selected actor with an ample pool, standing on a cell.
+pub(crate) fn spawn_emplacement_actor(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
+    let actor = app
+        .world_mut()
+        .spawn((at(x, y), Faction::new(gang), Tu::new(100), TuMax::new(100)))
+        .id();
+    app.world_mut().insert_resource(SelectedShooter::new(actor));
+    actor
+}
+
+/// An emplacement on a cell, carrying only the parts the caller hands it.
+pub(crate) fn spawn_emplacement(
+    app: &mut App,
+    x: i32,
+    y: i32,
+    state: EmplacementState,
+    occupant: Option<Entity>,
+    sides: Option<EmplacementEntrySides>,
+    facing: Option<EmplacementFacing>,
+) -> Entity {
+    let mut entity = app.world_mut().spawn((
+        TerrainCell::new(CellLevel::new(Cell::new(x, y), Level::new(0))),
+        state,
+    ));
+    if let Some(occupant) = occupant {
+        entity.insert(EmplacementOccupant::new(occupant));
+    }
+    if let Some(sides) = sides {
+        entity.insert(sides);
+    }
+    if let Some(facing) = facing {
+        entity.insert(facing);
+    }
+    entity.id()
 }
 
 pub(crate) fn all_with<M: Component>(app: &mut App) -> Vec<Entity> {
