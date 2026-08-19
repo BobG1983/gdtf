@@ -9,7 +9,7 @@ use crate::{
     cover::HeightBand,
     ganger::{Direction, Position, Tu},
     metric::CellLevel,
-    occupancy::{GRID_HEIGHT, project_path_blocking},
+    occupancy::{GRID_HEIGHT, project_path_blocking, project_vision_blocking},
     occupancy_sync::{OccupancyMaintenancePlugin, SimSystems},
     openable::{OpenState, OpenableBlocking, apply_openable_toggle},
     surface::{SlabState, SurfaceGrid},
@@ -23,11 +23,13 @@ const DOOR_Y: i32 = 5;
 fn door_brain_app() -> App {
     let mut app = brain_app();
     app.add_plugins(OccupancyMaintenancePlugin);
+    // Both edges, as OpenableTogglePlugin wires them; without the vision one the toggle races it.
     app.add_systems(
         Update,
         apply_openable_toggle
             .in_set(SimSystems::Simulate)
-            .before(project_path_blocking),
+            .before(project_path_blocking)
+            .before(project_vision_blocking),
     );
     app
 }
@@ -81,7 +83,8 @@ fn enemy_x(app: &App, enemy: Entity) -> i32 {
 fn adjacent_closed_door_opens_then_the_enemy_walks_through() {
     let mut app = door_brain_app();
     let door = seal_column(app.world_mut(), DOOR_Y);
-    let player_at = ground(8, 5);
+    // Off the door's row, so an opened door offers the brain no shot in place of the walk.
+    let player_at = ground(8, 9);
     let enemy = spawn_combatant(
         app.world_mut(),
         ground(4, 5),
@@ -93,12 +96,16 @@ fn adjacent_closed_door_opens_then_the_enemy_walks_through() {
     let player = spawn_combatant(app.world_mut(), player_at, PLAYER, Direction::West, 100, 6);
     place_occupant(&mut app, player_at, player);
 
+    let mut opens = Vec::new();
+    let mut moves = Vec::new();
     let mut opened = false;
     let mut walked_through = false;
     let mut returned = false;
     for _ in 0..FRAME_CAP {
         app.update();
-        if drain_opens(&mut app)
+        opens.extend(drain_opens(&mut app));
+        moves.extend(drain_moves(&mut app));
+        if opens
             .iter()
             .any(|open| open.actor == enemy && open.door == door)
         {
@@ -106,7 +113,7 @@ fn adjacent_closed_door_opens_then_the_enemy_walks_through() {
         }
         if opened
             && (door_is_open(&app, door) && enemy_x(&app, enemy) > WALL_X
-                || drain_moves(&mut app)
+                || moves
                     .iter()
                     .any(|step| step.actor == enemy && step.dest.x > WALL_X))
         {
@@ -152,18 +159,22 @@ fn reachable_door_is_walked_to_then_opened() {
     let player = spawn_combatant(app.world_mut(), player_at, PLAYER, Direction::West, 100, 6);
     place_occupant(&mut app, player_at, player);
 
+    let mut opens = Vec::new();
+    let mut moves = Vec::new();
     let mut walked_to_door = false;
     let mut opened = false;
     let mut left = false;
     let mut returned = false;
     for _ in 0..FRAME_CAP {
         app.update();
-        if drain_moves(&mut app).iter().any(|step| {
+        opens.extend(drain_opens(&mut app));
+        moves.extend(drain_moves(&mut app));
+        if moves.iter().any(|step| {
             step.actor == enemy && step.dest.x > 2 && step.dest.x <= WALL_X && step.dest.y == DOOR_Y
         }) {
             walked_to_door = true;
         }
-        if drain_opens(&mut app)
+        if opens
             .iter()
             .any(|open| open.actor == enemy && open.door == door)
         {
@@ -171,7 +182,7 @@ fn reachable_door_is_walked_to_then_opened() {
         }
         if opened
             && (enemy_x(&app, enemy) > WALL_X
-                || drain_moves(&mut app)
+                || moves
                     .iter()
                     .any(|step| step.actor == enemy && step.dest.x > WALL_X))
         {

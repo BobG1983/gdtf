@@ -14,7 +14,7 @@ use crate::{
         on_death::resolve_on_death,
     },
     falls::apply_falls,
-    occupancy::project_path_blocking,
+    occupancy::{project_path_blocking, project_vision_blocking},
     occupancy_sync::SimSystems,
     turn::{ActiveFaction, dispatch_end_turn},
 };
@@ -32,6 +32,8 @@ pub(super) fn wire_turn_clocks(app: &mut App) {
             .run_if(resource_exists::<ActiveFaction>)
             .after(dispatch_end_turn)
             .after(project_path_blocking)
+            // Unordered, the executor decides whether the brain sees this frame's vision.
+            .after(project_vision_blocking)
             .before(dispatch_fire)
             .before(dispatch_melee)
             .before(dispatch_reload)
