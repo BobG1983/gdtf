@@ -873,7 +873,7 @@ coined figure of speech where a literal description works. That applies to text 
 text you add — if a claim you are already fixing carries a GTW id or a clause number, strip it in
 the same pass and say so in its \`claims\` row.
 
-Do NOT commit — /land owns the commit.\`,
+Do NOT commit — /land owns the commit.`,
   { model: 'opus', label: `docs-sync:${TICKET}`, phase: 'Docs-sync', schema: DOCS_RESULT })
 
 phase('Land')
