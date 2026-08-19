@@ -9,7 +9,7 @@ export const meta = {
     { title: 'Gate', detail: '3 read-only lenses, any-non-compliant blocks (/gate skill)' },
     { title: 'Fix', detail: 'bounded repair loop on a red verdict' },
     { title: 'Docs-sync', detail: 're-align docs/ if the change drifted design claims (/docs-sync skill)' },
-    { title: 'Land', detail: 'commit, rebase onto develop, fast-forward, push, close (/land skill)' },
+    { title: 'Land', detail: 'commit, rebase onto develop, fast-forward, push, summarize, close (/land skill)' },
   ],
 }
 
@@ -32,9 +32,10 @@ export const meta = {
 //   gate:*          opus    design-gate lens
 //   fix:*           opus    repair engineering
 //   docs-sync:*     opus    decides doc drift against source
-//   land:*          opus    rebase, suite, and failure judgment
+//   land:*          opus    rebase, suite, and the git facts only
+//   summarize:*     opus    gathers its own evidence; owns every judged field of the result
 //   confirm-land:*  sonnet  compares expected landing state to actual
-//   close:*         sonnet  posts supplied evidence and moves status
+//   close:*         sonnet  posts what summarize wrote and moves status; judges nothing
 //
 // args: { ticket: "GTW-123", slug: "gtw-123-some-slug" }
 // Accept either a real object or a JSON-encoded string — the harness may deliver either.
@@ -273,11 +274,13 @@ const DOCS_RESULT = {
 
 // The land agent holds no Linear tools, so it has no field to guess with. Landing is
 // proven by the confirm step and a first-hand git check, never by this report.
+//
+// It reports only what git printed. Every judged field belongs to the summarize step.
 const LAND_RESULT = {
   type: 'object', additionalProperties: false,
   required: ['committed', 'commitSha', 'pushedRange', 'filesStaged', 'filesLeftUnstaged',
     'carriedCommits', 'rebase', 'conflictedFiles', 'developBefore', 'developAfter',
-    'gatePass', 'branchDeleted', 'suite', 'findings'],
+    'gatePass', 'branchDeleted', 'suite'],
   properties: {
     committed: { type: 'boolean', description: 'Did the commit and push actually run' },
     commitSha: { type: 'string', description: 'Feature commit sha, or empty if none. Empty with committed true is a contradiction the run rejects.' },
@@ -299,16 +302,6 @@ const LAND_RESULT = {
     },
     branchDeleted: { type: 'boolean', description: 'Was the local feature branch deleted. A stale branch is what the next tick reads as live work.' },
     suite: SUITE_ROWS,
-    findings: {
-      type: 'array', description: 'Anything outside this ticket worth a look. Not ticket status — you cannot see the board.',
-      items: {
-        type: 'object', additionalProperties: false, required: ['kind', 'detail'],
-        properties: {
-          kind: { type: 'string', enum: ['out-of-scope', 'process-violation', 'risk'], description: 'process-violation is a rule this land broke or could not honour; it must not arrive looking like a note.' },
-          detail: { type: 'string' },
-        },
-      },
-    },
   },
 }
 
@@ -337,18 +330,16 @@ const CONFIRM_RESULT = {
   },
 }
 
-// The last agent in the run, and the only one that can see the board. Whatever the
-// orchestrator needs to report to the user comes from here — anything left out of this
-// schema is discarded when the run ends.
+// The only agent in the run that can see the board. It posts what summarize wrote and moves the
+// status; it judges nothing, so it has no summary field of its own.
 const CLOSE_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['closed', 'ticketState', 'commentId', 'labelsAfter', 'summary', 'boardEffects', 'report'],
+  required: ['closed', 'ticketState', 'commentId', 'labelsAfter', 'boardEffects', 'report'],
   properties: {
     closed: { type: 'boolean', description: 'Is the ticket Done on the board now' },
     ticketState: { type: 'string', description: 'The state name the board shows for this ticket now, whatever it is.' },
     commentId: { type: 'string', description: 'Id the board returned for the evidence comment. Empty means no comment exists — say so rather than describing one.' },
     labelsAfter: { type: 'array', items: { type: 'string' }, description: 'Labels on the ticket after the close. A process flag left on — Needs User Input, Needs Splitting — is visible here and nowhere else.' },
-    summary: { type: 'string', description: 'Two or three plain sentences a person can read without opening anything: what shipped and what it changes. Not a list of files. plain-language.md applies.' },
     boardEffects: {
       type: 'array', items: { type: 'string' },
       description: 'Anything the close changed beyond this ticket — a child auto-completed, a parent auto-cancelled, a relation that vanished. Empty if none. Check children before and after.',
@@ -750,6 +741,17 @@ phase('Gate')
 let attempt = 1
 let verdicts = await parallel(LENSES.map(l => () => runLens(l, verifyOut, attempt)))
 
+// verifyOut and verdicts are overwritten each round; this is the only record of the earlier ones.
+const roundLog = []
+const recordRound = () => roundLog.push(
+  `round ${attempt}: verify=${verifyOut?.verdict ?? 'MISSING'} `
+  + `suite=${(verifyOut?.suite ?? []).map(r => `${r.command}:${r.exit}`).join(' ')} `
+  + `lenses=${verdicts.map((v, i) => `${LENSES[i].key}:${v?.verdict ?? 'MISSING'}`).join(' ')}`
+  + (verdicts.flatMap(v => v?.findings ?? []).length
+    ? `\n  lens findings this round: ${verdicts.flatMap(v => v?.findings ?? []).map(f => `clause ${f.clause} ${f.symbol}`).join('; ')}`
+    : ''))
+recordRound()
+
 // Both checks are fail-closed: a verdict is believed only when the rows behind it agree. A GREEN
 // with a missing or non-zero suite row, or a COMPLIANT carrying findings, is a disagreement with
 // itself and counts as the failing reading.
@@ -830,6 +832,7 @@ outside the contract in \`outOfScope\`.`,
   verifyOut = await verify(work, attempt)
   phase('Gate')
   verdicts = await parallel(LENSES.map(l => () => runLens(l, verifyOut, attempt)))
+  recordRound()
 }
 
 if (!allPass()) {
@@ -873,13 +876,9 @@ const landed = await agent(`Land ${TICKET} following the /land skill.
 
 Repo: ${REPO} — no worktree; the work is on ${BRANCH} in the main tree.
 
-## VERIFICATION EVIDENCE
-<verify-report verdict="${verifyOut.verdict}">
-${verifyOut.report}
-</verify-report>
-
-## GATE VERDICTS (final round ${attempt})
-${verdicts.map((v, i) => `<gate-lens name="${LENSES[i].key}" verdict="${v?.verdict ?? 'MISSING'}">\n${v?.report ?? '(died)'}\n</gate-lens>`).join('\n')}
+Verify is ${verifyOut.verdict} and all ${LENSES.length} gate lenses are COMPLIANT after ${attempt} round(s).
+The run does not reach you otherwise. You re-run the suite yourself on the tree you commit; their
+reports are not yours to read, and the summarize step re-derives anything anyone needs from them.
 
 ## FILES THAT ARE NOT THIS TICKET'S
 ${(work.foreignDirtyFiles ?? []).length ? work.foreignDirtyFiles.map(f => `- ${f}`).join('\n') : '(none reported)'}
@@ -930,9 +929,11 @@ Every field is something git printed this run, not something you remember.
 - \`gatePass\`: the fingerprint, scope and head you wrote into the file.
 - \`filesLeftUnstaged\`: the dirty paths you deliberately did not stage.
 - \`branchDeleted\`: whether the local feature branch is gone.
-- \`findings\`: each one typed. A rule this land broke or could not honour is \`process-violation\`,
-  not a note. A step another phase owns is neither — steps 6 and 7 are theirs, so their absence is
-  not yours to report.`,
+
+You report no findings, risks or judgements about the code — there is no field for them. Your
+context still holds the rounds of this run that failed, so you cannot tell a live defect from one
+an engineer has since fixed. A later step gathers its own evidence and decides. Land, and report
+what git printed.`,
   { model: 'opus', label: `land:${TICKET}`, phase: 'Land', schema: LAND_RESULT })
 
 const confirm = await agent(`Confirm landing of ${TICKET}.
@@ -977,6 +978,117 @@ if (landed?.rebase === 'conflicts-resolved' && landed.conflictedFiles?.length) {
   log(`${TICKET}: rebase resolved conflicts in ${landed.conflictedFiles.join(', ')} — check none of it was someone else's work`)
 }
 
+// Nothing upstream is trusted here: the land step's context still holds the rounds that failed.
+const SUMMARY_RESULT = {
+  type: 'object', additionalProperties: false,
+  required: ['summary', 'findings', 'rejected', 'followUps', 'nextTickNotes'],
+  properties: {
+    summary: { type: 'string', description: 'What the orchestrator tells the user. Written for someone who has read none of the run.' },
+    findings: {
+      type: 'array', description: 'Things worth a look that you reproduced on the landed tree yourself.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['kind', 'detail', 'evidence'],
+        properties: {
+          kind: { type: 'string', enum: ['out-of-scope', 'process-violation', 'risk'] },
+          detail: { type: 'string' },
+          evidence: { type: 'string', description: 'The command you ran and what it printed.' },
+        },
+      },
+    },
+    rejected: {
+      type: 'array', description: 'Claims you checked and did not keep. Writing each one down is what stops a silent discard; nothing downstream reads them.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['claim', 'why'],
+        properties: {
+          claim: { type: 'string' },
+          why: { type: 'string', description: 'What you ran and what it showed.' },
+        },
+      },
+    },
+    followUps: {
+      type: 'array', description: 'Findings that should become tickets. Only ones you reproduced.',
+      items: {
+        type: 'object', additionalProperties: false, required: ['title', 'label', 'why', 'evidence'],
+        properties: {
+          title: { type: 'string', description: 'The ticket title, as it would be filed.' },
+          label: { type: 'string', description: 'One of the kind labels in linear-discipline.md.' },
+          why: { type: 'string', description: 'What is wrong and where, by symbol or quoted text.' },
+          evidence: { type: 'string', description: 'The run that shows it, with its numbers.' },
+        },
+      },
+    },
+    nextTickNotes: { type: 'string', description: 'What the next tick needs that it cannot read off the tree. Empty if nothing.' },
+  },
+}
+
+const summarized = landedSha
+  ? await agent(`Write the report for ${TICKET}. You own every judged field; gather your own evidence.
+
+Main repo: ${REPO}. Landed commit: ${landedSha}.
+
+The steps below reported to you, but their context also holds every round of this run that failed —
+red suites, gate lenses that failed, defects an engineer then fixed. So anything reading like a
+defect may describe a state that no longer exists. Nothing reaches your output on their word.
+
+**Check the tree before you write a finding.** Open the file, grep the line, re-run the test, read
+\`git -C ${REPO} show ${landedSha} -- <path>\`. Three ways a claim dies, all measured:
+
+1. **Its fix is in the landed diff.** A docs line called stale that this commit corrected.
+2. **A later round fixed it.** The history below gives every round in order. A defect named in a
+   failing round, then a GREEN verify and COMPLIANT lenses, is history unless it still reproduces.
+3. **It will not reproduce.** Re-measure; report your number, not the one you were handed. A flaky
+   test gets run enough times to get a rate.
+
+Everything you checked and dropped goes in \`rejected\` with what you ran. Anything that survives
+and deserves a ticket goes in \`followUps\` — those become real tickets, so each needs a title, a
+symbol or quoted text, and the run behind it.
+
+<land-result>
+${JSON.stringify(landed, null, 2)}
+</land-result>
+
+<confirm-result>
+${JSON.stringify(confirm, null, 2)}
+</confirm-result>
+
+<commits-that-do-not-name-this-ticket>
+${JSON.stringify(carried, null, 2)}
+</commits-that-do-not-name-this-ticket>
+
+<run-history rounds="${attempt}">
+${roundLog.join('\n')}
+</run-history>
+
+<final-verify verdict="${verifyOut?.verdict}">
+${verifyOut?.report ?? ''}
+</final-verify>
+
+<final-gate>
+${verdicts.map((v, i) => `<lens name="${LENSES[i].key}" verdict="${v?.verdict ?? 'MISSING'}"/>`).join('\n')}
+</final-gate>
+
+<audit-corrections>
+${JSON.stringify(audit?.corrections ?? [], null, 2)}
+</audit-corrections>
+
+<implementer-out-of-scope>
+${JSON.stringify(work?.outOfScope ?? [], null, 2)}
+</implementer-out-of-scope>
+
+<foreign-dirty-files>
+${JSON.stringify(work?.foreignDirtyFiles ?? [], null, 2)}
+</foreign-dirty-files>
+
+<docs-sync>
+${JSON.stringify({ changed: docs?.filesChanged ?? [], conflicts: docs?.conflicts ?? [] }, null, 2)}
+</docs-sync>`,
+    { model: 'opus', label: `summarize:${TICKET}`, phase: 'Land', schema: SUMMARY_RESULT })
+  : null
+
+if (summarized?.rejected?.length) {
+  log(`${TICKET}: ${summarized.rejected.length} claim(s) did not survive re-checking against ${landedSha}`)
+}
+
 const closed = landedSha
   ? await agent(`Close ${TICKET} in Linear with evidence.
 
@@ -988,56 +1100,79 @@ the suite result, and which evidence clauses were satisfied.
 Check the ticket's children before AND after the close. Cascades run both ways and are not
 reliable, so report in \`boardEffects\` anything that moved besides this ticket.
 
-This is the last step of the run. Your \`summary\` is what the orchestrator reports to the user,
-so write it for someone who has read none of the below.
-
 Return the board's own id for the comment you post in \`commentId\`, and the ticket's labels after
 the close in \`labelsAfter\` — a process flag left on, like Needs User Input or Needs Splitting, is
 visible nowhere else.
 
-<land-result>
-${JSON.stringify(landed, null, 2)}
-</land-result>
+You judge nothing here. The summary below was written by a step that re-checked the tree; post it
+as it stands rather than rewriting it, and do not add a defect of your own.
 
-<verify-report verdict="${verifyOut.verdict}">
-${verifyOut.report}
-</verify-report>
+<summary>
+${summarized?.summary ?? '(no summary — say so rather than writing one)'}
+</summary>
 
-<gate-verdicts rounds="${attempt}">
-${verdicts.map((v, i) => `<gate-lens name="${LENSES[i].key}" verdict="${v?.verdict ?? 'MISSING'}"/>`).join('\n')}
-</gate-verdicts>`,
+<green-suite>
+${(landed?.suite ?? []).map(r => `${r.command} — exit ${r.exit}`).join('\n') || '(no suite rows reported)'}
+</green-suite>
+
+<gate rounds="${attempt}">
+verify ${verifyOut.verdict}; ${verdicts.map((v, i) => `${LENSES[i].key} ${v?.verdict ?? 'MISSING'}`).join(', ')}
+</gate>
+
+<clauses-satisfied>
+${(verifyOut.clauses ?? []).map(c => `${c.clause}: ${c.met ? 'met' : 'NOT met'}`).join('\n') || '(none reported)'}
+</clauses-satisfied>
+
+<findings-worth-recording>
+${(summarized?.findings ?? []).map(f => `- [${f.kind}] ${f.detail}`).join('\n') || '(none)'}
+</findings-worth-recording>
+
+<follow-ups-the-orchestrator-will-file>
+${(summarized?.followUps ?? []).map(f => `- ${f.title} (${f.label}) — ${f.why}`).join('\n') || '(none)'}
+</follow-ups-the-orchestrator-will-file>
+
+<commits-that-do-not-name-this-ticket>
+${carried.map(c => `${c.sha} ${c.subject}`).join('\n') || '(none)'}
+</commits-that-do-not-name-this-ticket>`,
     { model: 'sonnet', label: `close:${TICKET}`, phase: 'Land', agentType: 'project-manager', schema: CLOSE_RESULT })
   : null
 
 return {
+  // Summarize first: a long result is truncated in the notification, and these are the fields the
+  // orchestrator acts on. The bulky prose sits at the end where losing it costs nothing.
   ticket: TICKET,
   landed: !!landedSha,
   landedSha,
   rounds: attempt,
-  summary: closed?.summary ?? null,
+  summary: summarized?.summary ?? null,
+  findings: summarized?.findings ?? [],
+  followUps: summarized?.followUps ?? [],
+  nextTickNotes: summarized?.nextTickNotes ?? null,
   ticketState: closed?.ticketState ?? 'not closed — landing was not confirmed',
   boardEffects: closed?.boardEffects ?? [],
-  findings: landed?.findings ?? [],
-  reportMatchedTree: verifyOut.reportMatchesTree,
-  filesStaged: landed?.filesStaged ?? [],
-  suite: landed?.suite ?? [],
-  verifySuite: verifyOut.suite ?? [],
-  corrections: audit.corrections ?? [],
-  correctionsAnswered: work.corrections ?? [],
+  labelsAfter: closed?.labelsAfter ?? [],
+  commentId: closed?.commentId ?? null,
+  carriedCommits: carried,
+  docsConflicts: docs?.conflicts ?? [],
   outOfScope: work.outOfScope ?? [],
   foreignDirtyFiles: work.foreignDirtyFiles ?? [],
-  docsConflicts: docs?.conflicts ?? [],
+  roundLog,
+  suite: landed?.suite ?? [],
+  verifySuite: verifyOut.suite ?? [],
+  reportMatchedTree: verifyOut.reportMatchesTree,
+  // Clause numbers only. The rewritten clauses were posted to the ticket by the open step, so
+  // repeating them here is bulk that pushes the fields above out of a truncated notification.
+  correctedClauses: (audit.corrections ?? []).map(c => c.clause),
+  correctionsAnswered: (work.corrections ?? []).map(c => `${c.clause} applied=${c.applied}`),
+  filesStaged: landed?.filesStaged ?? [],
+  filesLeftUnstaged: landed?.filesLeftUnstaged ?? [],
   docsChanged: docs?.filesChanged ?? [],
-  commentId: closed?.commentId ?? null,
-  labelsAfter: closed?.labelsAfter ?? [],
-  carriedCommits: carried,
   rebase: landed?.rebase ?? null,
   conflictedFiles: landed?.conflictedFiles ?? [],
   developBefore: landed?.developBefore ?? null,
   developAfter: landed?.developAfter ?? null,
   gatePass: landed?.gatePass ?? null,
   branchDeleted: landed?.branchDeleted ?? null,
-  filesLeftUnstaged: landed?.filesLeftUnstaged ?? [],
   verify: verifyOut.report,
   close: closed?.report ?? null,
 }
