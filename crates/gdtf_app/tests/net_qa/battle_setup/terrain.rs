@@ -88,7 +88,8 @@ pub(crate) fn battle_with_a_lit_unledgered_wall()
 /// The manned emplacement, with its seat authored into the grid and ledger as a map's is.
 pub(crate) fn manned_emplacement_on_authored_terrain()
 -> Result<(App, NetQaPort, MannedSeat), TestError> {
-    let (mut app, port, (shooter, emplacement)) = manned_emplacement_under_the_shooter()?;
+    let (mut app, port, manned) = manned_emplacement_under_the_shooter()?;
+    let (shooter, emplacement) = (manned.shooter, manned.emplacement);
     let Some(at) = app
         .world()
         .get::<TerrainCell>(emplacement)

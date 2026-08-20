@@ -7,7 +7,7 @@ use bevy::{
 use gdtf_battle_sim::{
     battle::PlayerFaction,
     cover::CoverLedger,
-    emplacement::{EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedBy},
+    emplacement::{EmplacementEntrySides, EmplacementFacing, EmplacementState, Mounted, MountedBy},
     entity::TerrainCell,
     floor::FloorCostGrid,
     ganger::{Aiming, Facing, Faction, LifeState, Position, Stance, Suppressed, Tu, TuMax},
@@ -39,6 +39,7 @@ pub(super) struct ActorRow {
     pub(super) life:     &'static LifeState,
     pub(super) injuries: Option<&'static InflictedInjuries>,
     pub(super) pinned:   Option<&'static Suppressed>,
+    pub(super) mounted:  Option<&'static Mounted>,
 }
 
 /// Everything a cost reads off the wielded ranged weapon.

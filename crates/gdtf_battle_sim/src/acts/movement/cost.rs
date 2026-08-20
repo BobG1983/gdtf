@@ -3,6 +3,7 @@
 use bevy::prelude::Entity;
 
 use super::{
+    mount::DismountSurcharge,
     sight::SightWorld,
     suppression_gate::{BreakAwayMover, suppressed_move_legal},
 };
@@ -35,10 +36,12 @@ pub struct Mover<'a> {
     stance:      &'a Stance,
     facing:      &'a Facing,
     suppression: Option<&'a Suppressed>,
+    surcharge:   DismountSurcharge,
 }
 
 impl<'a> Mover<'a> {
-    /// Build from the mover, its cell and pose, its pool, and its suppression marker if it has one.
+    /// Build from the mover, its cell and pose, its pool, its suppression marker if it has one,
+    /// and what leaving a seat adds to the route.
     #[must_use]
     pub const fn new(
         entity: Entity,
@@ -47,6 +50,7 @@ impl<'a> Mover<'a> {
         stance: &'a Stance,
         facing: &'a Facing,
         suppression: Option<&'a Suppressed>,
+        surcharge: DismountSurcharge,
     ) -> Self {
         Self {
             entity,
@@ -55,6 +59,7 @@ impl<'a> Mover<'a> {
             stance,
             facing,
             suppression,
+            surcharge,
         }
     }
 
@@ -64,16 +69,21 @@ impl<'a> Mover<'a> {
     }
 }
 
-/// TU charged for walking a whole route.
+/// TU charged for walking a whole route, plus the exit act a walk off a seat also pays.
 #[must_use]
-pub const fn move_tu_cost(path: &Path) -> Tu {
-    path.total()
+pub fn move_tu_cost(path: &Path, surcharge: DismountSurcharge) -> Tu {
+    Tu::new((*path.total()).saturating_add(**surcharge))
 }
 
 /// TU charged for each step of the route, in walk order.
+/// A seat's exit rides on the first step, so the steps total [`move_tu_cost`].
 #[must_use]
-pub fn move_step_tu_costs(path: &Path) -> &[Tu] {
-    path.steps()
+pub fn move_step_tu_costs(path: &Path, surcharge: DismountSurcharge) -> Vec<Tu> {
+    let mut steps: Vec<Tu> = path.steps().to_vec();
+    if let Some(first) = steps.first_mut() {
+        *first = Tu::new((**first).saturating_add(**surcharge));
+    }
+    steps
 }
 
 /// Whether this mover may walk this route to `dest`.
@@ -92,7 +102,7 @@ pub fn can_move<F: Fn(Entity) -> bool>(
     if !breaks_away {
         return MoveVerdict::Suppressed;
     }
-    if !*can_spend_tu(mover.tu, move_tu_cost(path)) {
+    if !*can_spend_tu(mover.tu, move_tu_cost(path, mover.surcharge)) {
         return MoveVerdict::Unaffordable;
     }
     MoveVerdict::Allowed

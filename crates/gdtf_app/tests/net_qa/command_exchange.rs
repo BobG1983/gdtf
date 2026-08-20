@@ -229,7 +229,8 @@ pub(crate) fn exchange_around(
     Ok((before, after))
 }
 
-fn greet(app: &mut App, port: NetQaPort) -> Result<Client, TestError> {
+/// Connect and shake hands, so a case can drive its own exchanges one at a time.
+pub(crate) fn greet(app: &mut App, port: NetQaPort) -> Result<Client, TestError> {
     let mut client = Client::connect(port)?;
     let hello = client.exchange(app, &QaRequest::Hello(NET_QA_PROTOCOL_VERSION))?;
     if !matches!(hello, QaResponse::HelloOk(_)) {

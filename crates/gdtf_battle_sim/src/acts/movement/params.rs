@@ -2,19 +2,27 @@
 
 use bevy::{
     ecs::{query::QueryData, system::SystemParam},
-    prelude::{Entity, Query, Res},
+    prelude::{Commands, Entity, Query, Res},
 };
 
-use super::sight::SightWorld;
+use super::{mount::seat_departure, sight::SightWorld, walk::WalkInProgress};
 use crate::{
     battle::PlayerFaction,
     cover::CoverLedger,
     ganger::{Facing, Faction, LifeState, Position, Stance, Suppressed, Tu},
     injuries::InflictedInjuries,
+    metric::CellLevel,
     occupancy::OccupancyGrid,
-    pathfinder::{MoveGrids, PlanningView},
+    pathfinder::{Departure, MoveGrids, PlanningView},
     surface::SurfaceGrid,
-    terrain::floor::FloorCostGrid,
+    terrain::{
+        emplacement::{
+            EmplacementEntrySides, EmplacementFacing, EmplacementState, Mounted,
+            MountedWeaponEntity, clear_seat,
+        },
+        entity::TerrainCell,
+        floor::FloorCostGrid,
+    },
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
     visibility::{FactionRelation, OmniscientFog, SquadVisibility, move_fog},
@@ -29,6 +37,54 @@ pub struct MoverRow {
     pub(super) facing:   &'static Facing,
     pub(super) faction:  &'static Faction,
     pub(super) injuries: Option<&'static InflictedInjuries>,
+    pub(super) mounted:  Option<&'static Mounted>,
+}
+
+/// What a move reads and writes on the seat a mounted mover rides.
+#[derive(QueryData)]
+#[query_data(mutable)]
+pub struct SeatRow {
+    state:  &'static mut EmplacementState,
+    cell:   &'static TerrainCell,
+    sides:  Option<&'static EmplacementEntrySides>,
+    facing: Option<&'static EmplacementFacing>,
+    mount:  Option<&'static MountedWeaponEntity>,
+}
+
+/// What move dispatch reads off a mover's seat, and what it writes when it commits the walk.
+#[derive(SystemParam)]
+pub struct MoveCommit<'w, 's> {
+    seats:    Query<'w, 's, SeatRow>,
+    commands: Commands<'w, 's>,
+}
+
+impl MoveCommit<'_, '_> {
+    /// Where a route off `from` may leave: only this mover's seat entry cells while it rides one.
+    pub(super) fn departure(&self, from: CellLevel, mounted: Option<&Mounted>) -> Departure {
+        let Some(seat) = mounted.and_then(Mounted::emplacement) else {
+            return Departure::anywhere(from);
+        };
+        let Ok(row) = self.seats.get(seat) else {
+            return Departure::anywhere(from);
+        };
+        seat_departure(from, **row.cell, row.sides, row.facing)
+    }
+
+    /// Clear the seat this mover rides, if it rides one, leaving it standing where it is.
+    pub(super) fn vacate(&mut self, mounted: Option<&Mounted>) {
+        let Some(seat) = mounted.and_then(Mounted::emplacement) else {
+            return;
+        };
+        let Ok(mut row) = self.seats.get_mut(seat) else {
+            return;
+        };
+        clear_seat(&mut self.commands, seat, &mut row.state, row.mount);
+    }
+
+    /// Start this actor walking the route it has just committed to.
+    pub(super) fn start_walk(&mut self, actor: Entity, walk: WalkInProgress) {
+        self.commands.entity(actor).insert(walk);
+    }
 }
 
 /// Occupancy, vertical links, floor costs, and tuning a route is planned against.
@@ -41,6 +97,11 @@ pub struct PathfindingGrids<'w> {
 }
 
 impl PathfindingGrids<'_> {
+    /// The tuning every step and every surcharge on this route is priced from.
+    pub(super) fn tuning(&self) -> &CombatTuning {
+        &self.tuning
+    }
+
     pub(super) fn grids(&self) -> MoveGrids<'_> {
         MoveGrids {
             occupancy:   &self.occupancy,

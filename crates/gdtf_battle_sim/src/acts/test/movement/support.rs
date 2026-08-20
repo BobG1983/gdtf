@@ -1,5 +1,12 @@
 pub(super) use super::super::support::*;
-pub(super) use crate::{acts::SightWorld, clearance::silhouette_band, surface::SurfaceGrid};
+pub(super) use crate::{
+    acts::{DismountSurcharge, SightWorld},
+    clearance::silhouette_band,
+    surface::SurfaceGrid,
+};
+
+/// A mover on foot pays no seat's exit on top of its route.
+pub(super) const AFOOT: DismountSurcharge = DismountSurcharge::NONE;
 
 /// The pose a mover holds unless a case poses it otherwise.
 pub(super) const STANDING: Stance = Stance::new(StanceKind::Standing);

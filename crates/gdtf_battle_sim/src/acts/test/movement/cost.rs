@@ -48,13 +48,13 @@ fn move_step_costs_sum_to_the_move_quote() {
         return;
     };
 
-    let stepped: u32 = move_step_tu_costs(&path)
+    let stepped: u32 = move_step_tu_costs(&path, AFOOT)
         .iter()
         .map(|step| u32::from(**step))
         .sum();
     assert_eq!(
         stepped,
-        u32::from(*move_tu_cost(&path)),
+        u32::from(*move_tu_cost(&path, AFOOT)),
         "the per-step charges the walk pops must sum to the move_tu_cost quote",
     );
 }
@@ -69,7 +69,7 @@ fn a_completed_walk_charges_exactly_the_move_quote() {
     let Some(path) = routed else {
         return;
     };
-    let quoted = move_tu_cost(&path);
+    let quoted = move_tu_cost(&path, AFOOT);
     let before = tu_of(&app, actor);
 
     app.world_mut()
@@ -99,7 +99,7 @@ fn can_move_and_the_dispatch_refuse_the_same_pool() {
     let Some(path) = routed else {
         return;
     };
-    let quoted = *move_tu_cost(&path);
+    let quoted = *move_tu_cost(&path, AFOOT);
     assert!(quoted > 0, "a three-cell route costs real TU");
 
     let at = Position::new(ground(10, 10));
@@ -108,7 +108,7 @@ fn can_move_and_the_dispatch_refuse_the_same_pool() {
     let broke = Tu::new(quoted.saturating_sub(1));
     assert_eq!(
         can_move(
-            Mover::new(UNSPAWNED_MOVER, &at, &broke, &STANDING, &NORTH, None),
+            Mover::new(UNSPAWNED_MOVER, &at, &broke, &STANDING, &NORTH, None, AFOOT),
             &dest,
             &path,
             &empty,
@@ -125,7 +125,8 @@ fn can_move_and_the_dispatch_refuse_the_same_pool() {
                 &Tu::new(quoted),
                 &STANDING,
                 &NORTH,
-                None
+                None,
+                AFOOT
             ),
             &dest,
             &path,

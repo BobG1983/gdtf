@@ -1,50 +1,16 @@
 //! An emplacement seeded from a def carries that def's sides and the spawn's facing.
 
-use bevy::asset::uuid::Uuid;
 use gdtf_battle_sim::{
-    armor::{ArmorHardness, ArmorProtection},
-    cover::{CoverHp, HeightBand},
     ganger::Direction,
     situation::CoverSpawn,
     terrain::{
-        def::{TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainUuid},
         emplacement::{EmplacementEntrySides, EmplacementFacing},
         facing::TerrainFacing,
-        piece::TerrainGraphicKey,
     },
-    test_support::{SituationBuilder, TEST_MOUNTED_WEAPON_KEY, test_terrain_registry},
-    weapon::WeaponName,
+    test_support::{SituationBuilder, test_terrain_registry},
 };
 
 use super::harness::*;
-
-const ONE_SIDED: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_1186_0001));
-
-const AUTHORED_SIDE: TerrainFacing = TerrainFacing::North;
-
-const PLACED_FACING: TerrainFacing = TerrainFacing::East;
-
-fn one_sided_emplacement() -> TerrainDef {
-    TerrainDef {
-        key:            ONE_SIDED,
-        display_name:   TerrainDisplayName::new("One-Sided Mount".to_owned()),
-        sim_kind:       TerrainSimKind::Emplacement {
-            hp:               CoverHp::new(45),
-            armor_protection: ArmorProtection::new(0),
-            armor_hardness:   ArmorHardness::new(0),
-            height_band:      HeightBand::High,
-            mounted_weapon:   WeaponName::new(TEST_MOUNTED_WEAPON_KEY.to_owned()),
-            entry_sides:      vec![AUTHORED_SIDE],
-        },
-        presenter_kind: TerrainPresenterKind::Emplacement {
-            graphic_name: TerrainGraphicKey::new("emplacement".to_owned()),
-        },
-        tags:           Vec::new(),
-        on_death:       None,
-        blocks_pathing: None,
-        blocks_los:     None,
-    }
-}
 
 #[test]
 fn a_seeded_emplacement_carries_its_defs_sides_unrotated_and_its_spawn_facing() {

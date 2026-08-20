@@ -4,6 +4,7 @@ use bevy::prelude::Entity;
 
 use super::{
     core::{SearchGrids, StopRule, relax},
+    departure::Departure,
     grids::MoveGrids,
     path::{Path, PathBlocked, PathCost},
     planning::PlanningView,
@@ -38,6 +39,25 @@ pub fn find_path<R>(
 where
     R: Fn(Entity) -> FactionRelation,
 {
+    find_path_leaving(&Departure::anywhere(start), goal, terrain, factor, planning)
+}
+
+/// A* path from `departure`'s start to `goal`, leaving the start only by the cells it admits.
+///
+/// # Errors
+///
+/// Returns [`PathBlocked`] when no admitted departure reaches `goal` under the mover's rules.
+pub fn find_path_leaving<R>(
+    departure: &Departure,
+    goal: CellLevel,
+    terrain: MoveGrids<'_>,
+    factor: MovementCostFactor,
+    planning: &PlanningView<'_, R>,
+) -> Result<Path, PathBlocked>
+where
+    R: Fn(Entity) -> FactionRelation,
+{
+    let start = departure.start();
     let grids = SearchGrids {
         grid: terrain.occupancy,
         links: terrain.links,
@@ -45,6 +65,7 @@ where
         floor_costs: terrain.floor_costs,
         factor,
         planning,
+        departure,
     };
     let field = relax(
         start,
@@ -79,6 +100,7 @@ pub fn reachable_within<R>(
 where
     R: Fn(Entity) -> FactionRelation,
 {
+    let departure = Departure::anywhere(start);
     let grids = SearchGrids {
         grid: terrain.occupancy,
         links: terrain.links,
@@ -86,6 +108,7 @@ where
         floor_costs: terrain.floor_costs,
         factor,
         planning,
+        departure: &departure,
     };
     let budget_cost = PathCost::new(u32::from(*budget));
     let field = relax(

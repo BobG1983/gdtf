@@ -81,6 +81,7 @@ fn verdict(
             &STANDING,
             &NORTH,
             Some(&pinned),
+            AFOOT,
         ),
         &dest,
         &one_step(start, dest),

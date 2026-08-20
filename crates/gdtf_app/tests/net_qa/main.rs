@@ -58,6 +58,7 @@ mod log_fog_read;
 mod log_read;
 mod magazine_support;
 mod menu_spawned;
+mod mounted_move;
 mod occupancy_ordering;
 mod playback_state;
 mod procgen_step;

@@ -50,7 +50,7 @@ fn verdict_in(
     let pool = Tu::new(100);
     let pinned = Suppressed::new(SuppressorCell::new(suppressor));
     can_move(
-        Mover::new(mover, &at, &pool, &STANDING, &NORTH, Some(&pinned)),
+        Mover::new(mover, &at, &pool, &STANDING, &NORTH, Some(&pinned), AFOOT),
         &dest,
         &one_step(start, dest),
         cover,

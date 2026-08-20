@@ -40,7 +40,8 @@ fn can_move_refuses_a_suppressed_step_toward_the_suppressor() {
                 &pool,
                 &STANDING,
                 &NORTH,
-                Some(&pinned)
+                Some(&pinned),
+                AFOOT
             ),
             &dest,
             &one_step(start, dest),
@@ -69,7 +70,8 @@ fn can_move_allows_a_suppressed_step_that_breaks_away_behind_cover() {
                 &pool,
                 &STANDING,
                 &NORTH,
-                Some(&pinned)
+                Some(&pinned),
+                AFOOT
             ),
             &dest,
             &one_step(start, dest),
@@ -97,7 +99,8 @@ fn can_move_names_suppression_when_an_empty_pool_would_also_refuse() {
                 &empty,
                 &STANDING,
                 &NORTH,
-                Some(&pinned)
+                Some(&pinned),
+                AFOOT
             ),
             &dest,
             &one_step(start, dest),

@@ -7,7 +7,7 @@ use std::{
 
 use bevy::{platform::collections::HashMap, prelude::Entity};
 
-use super::{path::PathCost, planning::PlanningView};
+use super::{departure::Departure, path::PathCost, planning::PlanningView};
 use crate::{
     ganger::Tu,
     injuries::MovementCostFactor,
@@ -57,6 +57,7 @@ where
     pub(super) floor_costs: &'a FloorCostGrid,
     pub(super) factor:      MovementCostFactor,
     pub(super) planning:    &'a PlanningView<'a, R>,
+    pub(super) departure:   &'a Departure,
 }
 
 impl<R> SearchGrids<'_, R>
@@ -65,9 +66,11 @@ where
 {
     fn edges(&self, origin: CellLevel) -> Vec<(CellLevel, Tu)> {
         let planar = pathable_neighbors(origin, self.grid, self.floor_costs, self.factor)
-            .filter(|(neighbour, _)| *self.planning.is_routable(*neighbour, self.grid));
+            .filter(|(neighbour, _)| *self.planning.is_routable(*neighbour, self.grid))
+            .filter(|(neighbour, _)| *self.departure.admits(origin, *neighbour));
         let vertical = traversable_links(origin, self.links, self.tuning.link_tu)
-            .filter(|(neighbour, _)| *self.planning.is_routable_link(*neighbour, self.grid));
+            .filter(|(neighbour, _)| *self.planning.is_routable_link(*neighbour, self.grid))
+            .filter(|(neighbour, _)| *self.departure.admits(origin, *neighbour));
         planar.chain(vertical).collect()
     }
 }

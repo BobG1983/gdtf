@@ -10,7 +10,7 @@ mod mounted;
 mod quotes;
 mod refusals;
 mod scope;
-mod support;
+pub(crate) mod support;
 mod suppression;
 mod suppression_sight;
 mod turning;

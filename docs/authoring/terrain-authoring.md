@@ -336,6 +336,12 @@ the seed does not.
 only from one of those cells, so authoring a side is what decides the offer and
 the act. A def naming no side cannot be entered from anywhere.
 
+**The same sides decide the way out.** A mounted ganger given a move walks off
+the seat, and its route has to leave by one of those same rotated cells
+(`seat_departure`, `crates/gdtf_battle_sim/src/acts/movement/mount.rs`). A
+destination no entry side reaches is unreachable. A side is authored once and
+governs both directions.
+
 The content editor's Terrain tab carries a four-checkbox picker for the sides,
 drawn only while the kind is `Emplacement`
 (`crates/gdtf_content_editor/src/egui_shell/terrain_form_ui/entry_sides.rs`),

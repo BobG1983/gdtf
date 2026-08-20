@@ -2,10 +2,13 @@
 
 use bevy::prelude::Entity;
 use gdtf_battle_sim::{
-    acts::{MoveVerdict, Mover, SightWorld, can_move, move_tu_cost},
+    acts::{
+        MoveVerdict, Mover, SightWorld, can_move, dismount_surcharge, move_tu_cost, seat_departure,
+    },
+    emplacement::Mounted,
     ganger::LifeState,
     injuries::{InflictedInjuries, MovementCostFactor},
-    pathfinder::{PlanningView, find_path},
+    pathfinder::{Departure, PlanningView, find_path_leaving},
     visibility::FactionRelation,
 };
 
@@ -33,9 +36,11 @@ pub(super) fn move_quote(
         InflictedInjuries::movement_cost_factor,
     );
     let to = dest.to_sim();
-    let Ok(path) = find_path(**row.position, to, world.grids, factor, &planning) else {
+    let departure = departure_of(rows, row);
+    let Ok(path) = find_path_leaving(&departure, to, world.grids, factor, &planning) else {
         return Quote::refused(CostRefusalNet::NoPathToCell);
     };
+    let surcharge = dismount_surcharge(row.mounted, world.tuning);
     let mover = Mover::new(
         actor,
         row.position,
@@ -43,6 +48,7 @@ pub(super) fn move_quote(
         row.stance,
         row.facing,
         row.pinned,
+        surcharge,
     );
     let sight = SightWorld::new(world.grids.occupancy, world.surface, world.tuning, |dead| {
         rows.targets
@@ -50,9 +56,21 @@ pub(super) fn move_quote(
             .is_ok_and(|(_, _, life)| *life == LifeState::Dead)
     });
     Quote::quoted(
-        move_tu_cost(&path),
+        move_tu_cost(&path, surcharge),
         refused_by(can_move(mover, &to, &path, world.cover, &sight)),
     )
+}
+
+// Where this actor's route may leave: the seat's entry cells while it is riding one.
+fn departure_of(rows: &CostRows, row: &ActorRowItem<'_, '_>) -> Departure {
+    let from = **row.position;
+    let Some(seat) = row.mounted.and_then(Mounted::emplacement) else {
+        return Departure::anywhere(from);
+    };
+    let Ok((_state, cell, _occupant, sides, facing)) = rows.emplacements.get(seat) else {
+        return Departure::anywhere(from);
+    };
+    seat_departure(from, **cell, sides, facing)
 }
 
 // The wire refusal one walk verdict answers with, or nothing when the walk is allowed.

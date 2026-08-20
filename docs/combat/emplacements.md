@@ -12,8 +12,8 @@ pillars: [4, 5]
 it and reach in.**
 
 Status: the entry gate, the move onto the emplacement's cell, the remembered
-origin cell and the exit act are built. "What exists today" records what they
-do.
+origin cell, the exit act and walking off the seat are built. "What exists
+today" records what they do.
 
 ## The claim
 
@@ -29,8 +29,13 @@ emplacement's own cell.
 **Occupying.** A mounted ganger is on the emplacement's cell and is in high
 cover. It is not adjacent to the mount; it is in it.
 
-**Leaving.** A mounted ganger is offered the act to exit, which returns it to
-the cell it entered from. That cell is remembered for as long as it is mounted.
+**Leaving.** There are two ways out. The exit act returns the ganger to the cell
+it entered from; that cell is remembered for as long as it is mounted. Or the
+ganger walks off — being mounted refuses no move, and the step that leaves the
+seat vacates the emplacement. A walk off the seat leaves by one of the same
+rotated entry sides the enter is allowed from, and pays the exit act's TU on top
+of the route. The walker stays where it walked, so the exit act applied
+afterwards does nothing.
 
 **Emplacements nothing can enter.** A def naming no entry side cannot be
 entered, and offers no act. That is how a mount is authored as scenery, or for
@@ -50,7 +55,15 @@ being anywhere else.
 
 Naming the entry sides in the def, rather than deriving them, is what lets a
 firing slit differ from an open pintle. Rotating them with the facing is what
-stops a turned mount being entered through its own armour.
+stops a turned mount being entered through its own armour. The walk out is
+routed through the same sides for the same reason: a turned mount is not climbed
+over its own armour in either direction.
+
+Walking off pays the exit act because leaving the seat is leaving the seat,
+whichever way it was asked for. The exit act is still worth having, because the
+two differ: it puts the ganger back on the cell it entered from for that cost
+alone, while walking off pays the route as well and leaves the ganger wherever
+it walked.
 
 ## What exists today
 
@@ -60,6 +73,22 @@ side cannot be entered at all. Entering writes the ganger's `Position` onto the
 emplacement's cell and records on the emplacement the cell the ganger came from;
 exiting writes that cell back and drops the record. A vacate with no record — an
 emplacement spawned already occupied — leaves the ganger where it is.
+
+A move committed for a mounted ganger vacates the seat in the same step that
+starts the walk, so no tick has a mounted ganger standing off its cell. That
+vacate sets the state back to vacant, drops the occupant record and the
+remembered origin cell, and despawns the mounted weapon. It writes no
+`Position`, so the walker keeps the cell it walked to; only the exit act's
+vacate writes the origin cell back. With the occupant record gone, the exit act
+finds no emplacement the ganger holds and does nothing.
+
+The route out is planned from the seat's rotated entry cells: the first step may
+land only on one of them, and the rest of the route carries on from there. A
+destination no entry side reaches is unreachable, and a pool that cannot cover
+the route plus the exit is refused for cost. The exit TU rides on the first step
+of the walk, so the steps sum to the quoted total and the dismount is charged
+once. The quote, the path preview and the committed move read the same helpers,
+so they agree on both the route and the price.
 
 While it is mounted the ganger is the occupant of that cell like any other. The
 toggle writes no occupancy band of its own, so the band at the emplacement's
@@ -87,8 +116,8 @@ holds for it and the card for a ganger on it the squad can see.
   [resolution.md](resolution.md) for the firing arc,
   [../authoring/terrain-authoring.md](../authoring/terrain-authoring.md) for the
   def the entry sides are authored on.
-- Code sites: all of these live in `crates/gdtf_battle_sim`. The def's
-  `entry_sides` and the `rotated_entry_sides` rotation are in
+- Code sites: these live in `crates/gdtf_battle_sim` unless named otherwise.
+  The def's `entry_sides` and the `rotated_entry_sides` rotation are in
   `terrain/def/kind.rs`. The `EmplacementEntrySides` and `EmplacementFacing`
   components battle setup puts on the spawned piece, and the `EnteredFrom`
   record of the origin cell, are in `terrain/emplacement/state.rs`. The
@@ -96,5 +125,17 @@ holds for it and the card for a ganger on it the squad can see.
   `terrain/emplacement/relationship.rs`. `can_enter_emplacement`,
   `can_exit_emplacement` and their dispatches are in
   `acts/enter_emplacement.rs`, and `apply_emplacement_toggle`, which writes both
-  `Position` moves, is in `terrain/emplacement/toggle.rs`.
+  `Position` moves, is in `terrain/emplacement/toggle.rs`. `clear_seat`
+  (`terrain/emplacement/vacate.rs`) is the vacate the toggle and a move share,
+  and `emplacement_entry_cells` (`terrain/emplacement/entry.rs`) is the rotated
+  entry set the enter gate and the route out share. `dismount_surcharge` and
+  `seat_departure` are in `acts/movement/mount.rs`; the surcharge is added by
+  `move_tu_cost` and `move_step_tu_costs` in `acts/movement/cost.rs`, and the
+  departure reaches the search as a `Departure`
+  (`perception/pathfinder/departure.rs`) handed to `find_path_leaving`
+  (`perception/pathfinder/search.rs`). The path preview
+  (`crates/gdtf_battle_input/src/pointer/selection/path_preview.rs`) and the
+  `battle.cost` walk quote
+  (`crates/gdtf_app/src/dev/net_qa/commands/read/battle_cost/price/walk.rs`)
+  call the same helpers.
 - Source: owner rulings, given directly in conversation, 2026-08-14.

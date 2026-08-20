@@ -8,14 +8,12 @@ use bevy::{
 use crate::{
     acts::request::{EnterEmplacementRequested, ExitEmplacementRequested},
     ganger::{Position, Tu},
-    metric::{Cell, CellLevel, Level},
     terrain::{
-        def::rotated_entry_sides,
         emplacement::{
             EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedBy, SetEmplacement,
+            emplacement_entry_cells,
         },
         entity::TerrainCell,
-        facing::TerrainFacing,
     },
     tu::{can_spend_tu, spend_tu},
     tuning::CombatTuning,
@@ -75,23 +73,7 @@ fn on_an_entry_side(
     sides: Option<&EmplacementEntrySides>,
     facing: Option<&EmplacementFacing>,
 ) -> OnEntrySide {
-    let Some(sides) = sides else {
-        return OnEntrySide::new(false);
-    };
-    let turned = facing.map_or_else(TerrainFacing::default, |placed| **placed);
-    let (seat, level) = emplacement.split();
-    OnEntrySide::new(
-        rotated_entry_sides(sides, turned)
-            .into_iter()
-            .any(|side| entry_cell(seat, level, side.cell_step()) == actor),
-    )
-}
-
-fn entry_cell(seat: Cell, level: Level, step: Cell) -> Position {
-    Position::new(CellLevel::new(
-        Cell::new(seat.x + step.x, seat.y + step.y),
-        level,
-    ))
+    OnEntrySide::new(emplacement_entry_cells(*emplacement, sides, facing).contains(&actor))
 }
 
 /// Emplacement is empty, the actor stands on one of its rotated entry sides, and the pool pays.

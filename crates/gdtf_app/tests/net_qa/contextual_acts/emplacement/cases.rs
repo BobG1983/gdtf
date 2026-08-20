@@ -92,13 +92,14 @@ fn entering_the_offered_emplacement_names_it_and_mans_it_in_the_world() -> TestR
 
 #[test]
 fn exiting_the_manned_emplacement_names_it_and_leaves_it_vacant() -> TestResult {
-    let (mut app, replies, (_shooter, emplacement)) =
+    let (mut app, replies, manned) =
         exchange_inspecting(manned_emplacement_under_the_shooter, |_manned| {
             vec![
                 caught_up(),
                 run(ACT_EXIT_EMPLACEMENT, "()", RunOptions::default()),
             ]
         })?;
+    let emplacement = manned.emplacement;
     let mut replies = replies.into_iter();
     assert_caught_up(next(WAIT, &mut replies)?)?;
     let exited = accepted(

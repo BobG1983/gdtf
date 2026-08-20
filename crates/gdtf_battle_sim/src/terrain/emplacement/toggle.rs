@@ -8,7 +8,10 @@ use bevy::{
     },
 };
 
-use super::{EmplacementState, EnteredFrom, MountedBy, MountedWeaponEntity, MountedWeaponKey};
+use super::{
+    EmplacementState, EnteredFrom, MountedBy, MountedWeaponEntity, MountedWeaponKey,
+    vacate::clear_seat,
+};
 use crate::{
     equipment::attachments::{AttachmentRegistry, resolve_pending_attachments},
     ganger::Position,
@@ -121,22 +124,18 @@ pub fn apply_emplacement_toggle(
                     .insert(MountedWeaponEntity::new(mount));
             }
         } else {
-            commands.entity(request.emplacement()).remove::<MountedBy>();
             let origin = entered_this_run
                 .remove(&request.emplacement())
                 .or_else(|| entered.get(request.emplacement()).ok().map(|from| **from));
             if let (Some(origin), Ok(mut position)) = (origin, positions.get_mut(ganger)) {
                 *position = Position::new(origin);
             }
-            commands
-                .entity(request.emplacement())
-                .remove::<EnteredFrom>();
-            if let Some(mount) = mounted_entity {
-                commands.entity(**mount).despawn();
-                commands
-                    .entity(request.emplacement())
-                    .remove::<MountedWeaponEntity>();
-            }
+            clear_seat(
+                &mut commands,
+                request.emplacement(),
+                &mut state,
+                mounted_entity,
+            );
         }
     }
 }

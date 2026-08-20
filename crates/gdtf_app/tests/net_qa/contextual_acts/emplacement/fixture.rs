@@ -144,13 +144,9 @@ fn survived_the_enter_exchange(app: &App, shooter: Entity) -> Result<(), TestErr
 
 /// The same battle with the shooter already manning that emplacement, through the sim's toggle.
 pub(crate) fn manned_emplacement_under_the_shooter()
--> Result<(App, NetQaPort, (Entity, Entity)), TestError> {
+-> Result<(App, NetQaPort, EmplacementScene), TestError> {
     let (mut app, port, scene) = emplacement_beside_the_shooter()?;
-    let EmplacementScene {
-        shooter,
-        emplacement,
-        ..
-    } = scene;
+    let (shooter, emplacement) = (scene.shooter, scene.emplacement);
     app.world_mut()
         .write_message(SetEmplacement::occupy(emplacement, shooter));
     advance_until(&mut app, |app| {
@@ -158,5 +154,5 @@ pub(crate) fn manned_emplacement_under_the_shooter()
     });
     settle(&mut app);
     survived_the_enter_exchange(&app, shooter)?;
-    Ok((app, port, (shooter, emplacement)))
+    Ok((app, port, scene))
 }

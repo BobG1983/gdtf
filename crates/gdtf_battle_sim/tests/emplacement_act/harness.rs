@@ -1,13 +1,14 @@
 use bevy::{
     app::App,
-    asset::AssetPlugin,
+    asset::{AssetPlugin, uuid::Uuid},
     ecs::relationship::Relationship,
     prelude::{Entity, MinimalPlugins},
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
+    armor::{ArmorHardness, ArmorProtection},
     battle::{BattleSimPlugin, SetupBattleRequested},
-    cover::HeightBand,
+    cover::{CoverHp, HeightBand},
     ganger::{Cool, Direction, Facing, GangRegistry, Grit, Position, Speed, Strength, Toughness},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
@@ -15,16 +16,19 @@ use gdtf_battle_sim::{
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     terrain::{
+        def::{TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainUuid},
         emplacement::{EmplacementState, MountedBy, MountedWeaponEntity},
         entity::TerrainCell,
+        facing::TerrainFacing,
+        piece::TerrainGraphicKey,
     },
     test_support::{
         GangerSpawnBuilder, TEST_MOUNTED_WEAPON_KEY, single_mode, test_armor_registry,
         test_melee_weapon_registry, test_terrain_registry, test_weapon_spec,
     },
     tuning::{
-        CombatTuning, ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin,
-        ReactionTuning, SuppressionRadius, SuppressionStabilityPenalty, ViewRange,
+        CombatTuning, ExitEmplacementTu, ReactionCapBase, ReactionCapPerReactions, ReactionPMax,
+        ReactionPMin, ReactionTuning, SuppressionRadius, SuppressionStabilityPenalty, ViewRange,
     },
     weapon::{
         BaseSpread, DamageType, FatalBias, FireMode, Kickback, MountedWeapon, WeaponName,
@@ -207,5 +211,46 @@ pub(crate) fn wields_mount(app: &mut App, ganger: Entity) -> bool {
 pub(crate) fn step(app: &mut App, ticks: u32) {
     for _ in 0..ticks {
         app.update();
+    }
+}
+
+/// Rewrite the exit-emplacement leaf, which [`battle_app`] otherwise leaves at its default.
+pub(crate) fn set_exit_tu(app: &mut App, tu: u8) {
+    let world = app.world_mut();
+    let Some(mut tuning) = world.get_resource_mut::<CombatTuning>() else {
+        unreachable!("battle_app inserts the combat tuning this harness reads back");
+    };
+    tuning.exit_emplacement_tu = ExitEmplacementTu::new(tu);
+}
+
+/// The one-sided emplacement def, whose single authored side makes a constrained route visible.
+pub(crate) const ONE_SIDED: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_1186_0001));
+
+/// The only side [`one_sided_emplacement`] authors, before a placed facing turns it.
+pub(crate) const AUTHORED_SIDE: TerrainFacing = TerrainFacing::North;
+
+/// The facing that piece is seeded at, which turns its one authored side to East.
+pub(crate) const PLACED_FACING: TerrainFacing = TerrainFacing::East;
+
+/// An emplacement def naming exactly one entry side, so one rotated entry cell reaches it.
+pub(crate) fn one_sided_emplacement() -> TerrainDef {
+    TerrainDef {
+        key:            ONE_SIDED,
+        display_name:   TerrainDisplayName::new("One-Sided Mount".to_owned()),
+        sim_kind:       TerrainSimKind::Emplacement {
+            hp:               CoverHp::new(45),
+            armor_protection: ArmorProtection::new(0),
+            armor_hardness:   ArmorHardness::new(0),
+            height_band:      HeightBand::High,
+            mounted_weapon:   WeaponName::new(TEST_MOUNTED_WEAPON_KEY.to_owned()),
+            entry_sides:      vec![AUTHORED_SIDE],
+        },
+        presenter_kind: TerrainPresenterKind::Emplacement {
+            graphic_name: TerrainGraphicKey::new("emplacement".to_owned()),
+        },
+        tags:           Vec::new(),
+        on_death:       None,
+        blocks_pathing: None,
+        blocks_los:     None,
     }
 }

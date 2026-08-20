@@ -32,8 +32,9 @@ pub use fire::{
 pub use injury::{InjuryInflicted, apply_injury};
 pub use melee::{CanMelee, MeleeAttacker, MeleeReach, can_melee, dispatch_melee, melee_tu_cost};
 pub use movement::{
-    MoveCompleted, MoveRejected, MoveRejection, MoveVerdict, MovementOccurred, Mover, SightWorld,
-    can_move, dispatch_move, move_step_tu_costs, move_tu_cost,
+    DismountSurcharge, MoveCompleted, MoveRejected, MoveRejection, MoveVerdict, MovementOccurred,
+    Mover, SightWorld, can_move, dismount_surcharge, dispatch_move, move_step_tu_costs,
+    move_tu_cost, seat_departure,
 };
 pub use open_door::{CanOpenDoor, can_open_door, dispatch_open_door, open_door_tu_cost};
 pub use plugin::SimActsPlugin;
