@@ -4,7 +4,7 @@ use gdtf_battle_sim::{
     acts::{MoveRejection, ReloadOutcome},
     battle::PlayerFaction,
     falls::StoreysFallen,
-    prelude::{Cell, Faction},
+    prelude::Faction,
     resolve_and_apply::HitReport,
     resolve_hit::HpDamage,
     severity::Severity,
@@ -30,9 +30,7 @@ pub fn classify_log_event(event: &CombatLogEvent) -> Vec<LogLine> {
             target,
             mode,
         } => vec![fire_declaration_line(actor, target.as_ref(), *mode)],
-        CombatLogEvent::MovementOccurred { actor, from, to } => {
-            vec![movement_line(actor, *from, *to)]
-        }
+        CombatLogEvent::MovementOccurred { actor } => vec![movement_line(actor)],
         CombatLogEvent::ShotOutcome { actor, report } => {
             shot_outcome_lines(actor, report.as_deref())
         }
@@ -153,12 +151,11 @@ fn fire_declaration_line(actor: &LogName, target: Option<&LogName>, mode: ModeKi
     LogLine::new(CombatText::new(text), valence_color(FctValence::Neutral))
 }
 
-fn movement_line(actor: &LogName, from: Cell, to: Cell) -> LogLine {
-    let text = format!(
-        "{} moved ({}, {}) -> ({}, {})",
-        **actor, from.x, from.y, to.x, to.y
-    );
-    LogLine::new(CombatText::new(text), valence_color(FctValence::Neutral))
+fn movement_line(actor: &LogName) -> LogLine {
+    LogLine::new(
+        CombatText::new(format!("{} moved", **actor)),
+        valence_color(FctValence::Neutral),
+    )
 }
 
 fn shot_outcome_lines(actor: &LogName, report: Option<&HitReport>) -> Vec<LogLine> {

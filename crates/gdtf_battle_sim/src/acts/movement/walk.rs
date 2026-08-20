@@ -1,13 +1,16 @@
 //! Multi-step walk: one step per frame until the route ends or something stops it.
 
 use bevy::{
-    ecs::{query::QueryData, system::ParamSet},
+    ecs::{
+        query::QueryData,
+        system::{ParamSet, SystemParam},
+    },
     platform::collections::HashSet,
     prelude::{Commands, Deref, Entity, Message, MessageReader, MessageWriter, Query, Res},
 };
 
 use crate::{
-    acts::MovementOccurred,
+    acts::{MoveCompleted, MovementOccurred},
     ganger::{Faction, LifeState, Position, Tu},
     metric::CellLevel,
     occupancy::OccupancyGrid,
@@ -51,12 +54,25 @@ impl ReactionShotFired {
     }
 }
 
+/// Whether a walk has popped a cell yet.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WalkStepped(bool);
+
+impl WalkStepped {
+    /// Wrap a stepped flag.
+    #[must_use]
+    pub const fn new(stepped: bool) -> Self {
+        Self(stepped)
+    }
+}
+
 /// In-progress multi-cell walk with remaining costs and enemy-reveal baseline.
 #[derive(bevy::prelude::Component, Debug, Clone, PartialEq, Eq)]
 pub struct WalkInProgress {
     remaining_cells: Vec<CellLevel>,
     remaining_costs: Vec<Tu>,
     seen_enemies:    Option<HashSet<CellLevel>>,
+    stepped:         WalkStepped,
 }
 
 impl WalkInProgress {
@@ -71,7 +87,14 @@ impl WalkInProgress {
             remaining_cells: cells,
             remaining_costs: costs,
             seen_enemies:    None,
+            stepped:         WalkStepped::new(false),
         }
+    }
+
+    /// Whether this walk has ever moved the mover off its start cell.
+    #[must_use]
+    pub const fn has_stepped(&self) -> WalkStepped {
+        self.stepped
     }
 
     /// True when no steps remain.
@@ -90,6 +113,7 @@ impl WalkInProgress {
     fn pop_next(&mut self) {
         self.remaining_cells.pop();
         self.remaining_costs.pop();
+        self.stepped = WalkStepped::new(true);
     }
 
     fn reveals_new_enemy(&mut self, current: &HashSet<CellLevel>) -> NewEnemyRevealed {
@@ -174,7 +198,7 @@ pub fn advance_walk(
     grid: Res<OccupancyGrid>,
     squad: Res<SquadVisibility>,
     mut reactions: MessageReader<ReactionShotFired>,
-    mut steps: MessageWriter<MovementOccurred>,
+    mut signals: WalkSignals,
     mut commands: Commands,
 ) {
     let interrupted: HashSet<Entity> = reactions.read().map(|shot| shot.mover).collect();
@@ -193,42 +217,65 @@ pub fn advance_walk(
         let mut tu = row.tu;
         let mut walk = row.walk;
         if !matches!(life, LifeState::Alive) {
-            commands.entity(mover).remove::<WalkInProgress>();
+            end_walk(&mut commands, &mut signals, mover, &walk, *position);
             continue;
         }
 
         if interrupted.contains(&mover) {
-            commands.entity(mover).remove::<WalkInProgress>();
+            end_walk(&mut commands, &mut signals, mover, &walk, *position);
             continue;
         }
 
         let visible_now = visible_enemy_cells(mover, faction, &snapshot, &squad);
         if *walk.reveals_new_enemy(&visible_now) {
-            commands.entity(mover).remove::<WalkInProgress>();
+            end_walk(&mut commands, &mut signals, mover, &walk, *position);
             continue;
         }
 
         let Some((next, cost)) = walk.peek_next() else {
-            commands.entity(mover).remove::<WalkInProgress>();
+            end_walk(&mut commands, &mut signals, mover, &walk, *position);
             continue;
         };
 
         if *grid.is_path_blocked(&next) || grid.occupant(&next).is_some() {
-            commands.entity(mover).remove::<WalkInProgress>();
+            end_walk(&mut commands, &mut signals, mover, &walk, *position);
             continue;
         }
 
         if spend_tu(&mut tu, cost).is_err() {
-            commands.entity(mover).remove::<WalkInProgress>();
+            end_walk(&mut commands, &mut signals, mover, &walk, *position);
             continue;
         }
         let from = position.cell();
         *position = Position::new(next);
-        steps.write(MovementOccurred::new(mover, from, next.cell()));
+        signals
+            .steps
+            .write(MovementOccurred::new(mover, from, next.cell()));
         walk.pop_next();
 
         if *walk.is_complete() {
-            commands.entity(mover).remove::<WalkInProgress>();
+            end_walk(&mut commands, &mut signals, mover, &walk, *position);
         }
+    }
+}
+
+/// Both movement buffers a walk writes to, as one bag.
+#[derive(SystemParam)]
+pub struct WalkSignals<'w> {
+    steps: MessageWriter<'w, MovementOccurred>,
+    moves: MessageWriter<'w, MoveCompleted>,
+}
+
+// Drop the walk, announcing a completed move only when the walk ever left its start cell.
+fn end_walk(
+    commands: &mut Commands,
+    signals: &mut WalkSignals,
+    mover: Entity,
+    walk: &WalkInProgress,
+    at: Position,
+) {
+    commands.entity(mover).remove::<WalkInProgress>();
+    if *walk.has_stepped() {
+        signals.moves.write(MoveCompleted::new(mover, *at));
     }
 }

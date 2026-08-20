@@ -287,13 +287,20 @@ Notes an agent relies on:
   to the reply. The shell reads answer before a battle: `settings.read` (the
   Options values), `ui.focus` (the focused widget and the focusable set) and
   `playback.state` (whether the screen has caught up with the act log). The
-  battle reads answer inside a battle and report only what the player can see:
+  battle reads answer inside a battle:
   `battle.roster`, `battle.turn`, `battle.selection`, `battle.offers`,
-  `battle.inspect`, `battle.sightline`, `battle.visible`, `battle.cost` and
-  `log.read`; `battle.cost` is the one that quotes an act before it is taken —
+  `battle.inspect`, `battle.sightline`, `battle.visible`, `battle.cost`,
+  `log.read` and `log.omniscient_read`. `battle.roster`, `battle.inspect`,
+  `battle.visible`, the `can_see` half of `battle.sightline` and `log.read`
+  report only what the player can see; `battle.turn`, `battle.selection`,
+  `battle.offers`, `battle.cost` and the `can_engage` half of
+  `battle.sightline` read live state on purpose.
+  `battle.cost` is the one that quotes an act before it is taken —
   what it would charge in TU and whether the sim would allow it, with nothing in
-  the battle moving. Each one's precondition and reply shape is in
-  [`qa-commands.md`](qa-commands.md).
+  the battle moving. `log.omniscient_read` returns the act log unfiltered and
+  fully identified: using it is cheating, it is for testing only, and it must
+  never back a claim about what a player can see. Each one's precondition and
+  reply shape is in [`qa-commands.md`](qa-commands.md).
   `battle.start` and `battle.flee` start and end a battle, each taking the
   same path its button does. `procgen.step` advances staged generation by one
   stage when the procgen stepper owns it. `wait` holds its reply until one of

@@ -117,7 +117,7 @@ impl LogBody {
         let (from, to) = window;
         self.entries
             .iter()
-            .filter(|entry| entry.actor == actor && entry.seq >= from && entry.seq < to)
+            .filter(|entry| entry.actor == Some(actor) && entry.seq >= from && entry.seq < to)
             .map(|entry| entry.kind)
             .collect()
     }
@@ -126,7 +126,7 @@ impl LogBody {
     pub(crate) fn deeds_from(&self, actor: GangerToken) -> Vec<ActDeedKindNet> {
         self.entries
             .iter()
-            .filter(|entry| entry.actor == actor)
+            .filter(|entry| entry.actor == Some(actor))
             .map(|entry| entry.kind)
             .collect()
     }

@@ -5,7 +5,7 @@ use bevy::{
     ui::Node,
 };
 use gdtf_app::test_support::CombatLogLine;
-use gdtf_battle_sim::{acts::MovementOccurred, prelude::Cell};
+use gdtf_battle_sim::acts::MoveCompleted;
 
 use super::harness::*;
 
@@ -21,12 +21,10 @@ fn max_line_alpha(app: &mut App) -> f32 {
 fn a_fresh_line_fades_in_rather_than_snapping_to_full_opacity() {
     let mut app = battle_running_app();
     let ganger = spawn_named(&mut app, "Vex");
+    let at = a_lit_cell(&app);
     app.update();
 
-    play(
-        &mut app,
-        MovementOccurred::new(ganger, Cell::new(3, 4), Cell::new(3, 6)),
-    );
+    play(&mut app, MoveCompleted::new(ganger, at));
     app.update();
     assert_eq!(
         all_with::<CombatLogLine>(&mut app).len(),
@@ -66,12 +64,10 @@ fn first_line_font_px(app: &mut App) -> Option<f32> {
 fn a_log_line_draws_at_the_larger_tuned_size_not_the_body_text() {
     let mut app = battle_running_app();
     let ganger = spawn_named(&mut app, "Alex Mercer");
+    let at = a_lit_cell(&app);
     app.update();
 
-    play(
-        &mut app,
-        MovementOccurred::new(ganger, Cell::new(15, 11), Cell::new(14, 12)),
-    );
+    play(&mut app, MoveCompleted::new(ganger, at));
     app.update();
 
     let size = first_line_font_px(&mut app);
@@ -93,12 +89,10 @@ fn a_log_line_draws_at_the_larger_tuned_size_not_the_body_text() {
 fn a_log_line_reserves_its_full_glyph_box_so_it_is_not_clipped() {
     let mut app = battle_running_app();
     let ganger = spawn_named(&mut app, "Alex Mercer");
+    let at = a_lit_cell(&app);
     app.update();
 
-    play(
-        &mut app,
-        MovementOccurred::new(ganger, Cell::new(15, 11), Cell::new(14, 12)),
-    );
+    play(&mut app, MoveCompleted::new(ganger, at));
     app.update();
 
     let lines = all_with::<CombatLogLine>(&mut app);

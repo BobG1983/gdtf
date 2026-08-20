@@ -1,7 +1,12 @@
-use super::sources::{LifeSources, ProvenanceSources, cell_order};
+use super::sources::{ActObservation, LifeSources, ProvenanceSources, cell_order};
 use crate::act_log::{ActDeed, ActLog, PositionFacts, RecordedAct};
 
-pub(super) fn record_life(log: &mut ActLog, lives: &LifeSources, provenance: &ProvenanceSources) {
+pub(super) fn record_life(
+    log: &mut ActLog,
+    lives: &LifeSources,
+    provenance: &ProvenanceSources,
+    seen: &ActObservation,
+) {
     let mut rows: Vec<_> = lives
         .gangers
         .iter()
@@ -22,6 +27,7 @@ pub(super) fn record_life(log: &mut ActLog, lives: &LifeSources, provenance: &Pr
                 entity,
                 provenance.of(entity),
                 ActDeed::LifeChanged { from, to: life, at },
+                seen.of_cell(**at),
             ));
         }
     }

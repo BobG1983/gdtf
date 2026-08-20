@@ -3,7 +3,7 @@ use gdtf_battle_presenter::{
     PlaybackCursor, present_fog, promote_shown_fog, resolve_ganger_visibility,
 };
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActLog, ActProvenance, RecordedAct},
+    act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct},
     ganger::Faction,
     prelude::{Cell, CellLevel, Direction, Level},
     test_support::SituationBuilder,
@@ -35,6 +35,7 @@ fn close_gate(app: &mut App) {
         ActDeed::TurnBegan {
             now_active: Faction::new(0),
         },
+        ActWitnesses::unseen(),
     ));
 }
 

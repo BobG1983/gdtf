@@ -4,7 +4,7 @@ use crate::{
     acts::{
         fire::FireDeclaration,
         injury::InjuryInflicted,
-        movement::{MoveRejected, MovementOccurred, ReactionShotFired},
+        movement::{MoveCompleted, MoveRejected, MovementOccurred, ReactionShotFired},
         reload::ReloadResult,
         request::{
             EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
@@ -57,6 +57,7 @@ pub(super) fn register_messages(app: &mut App) {
         .add_message::<ReloadResult>()
         .add_message::<FireDeclaration>()
         .add_message::<MovementOccurred>()
+        .add_message::<MoveCompleted>()
         .add_message::<TurnStarted>()
         .add_message::<MoveRejected>()
         .add_message::<Bleeding>()

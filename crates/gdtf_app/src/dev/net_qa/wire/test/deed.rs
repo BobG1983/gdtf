@@ -27,7 +27,7 @@ use crate::dev::net_qa::wire::deed::{
     ActDeedKindNet, MoveRejectionNet, ReloadOutcomeNet, TerrainPieceKindNet,
 };
 
-const KINDS: [ActDeedKindNet; 29] = [
+const KINDS: [ActDeedKindNet; 30] = [
     ActDeedKindNet::TurnBegan,
     ActDeedKindNet::PostureChanged,
     ActDeedKindNet::Stepped,
@@ -68,6 +68,7 @@ const KINDS: [ActDeedKindNet; 29] = [
     },
     ActDeedKindNet::MeleeLanded,
     ActDeedKindNet::ThrowLanded,
+    ActDeedKindNet::EnteredView,
     ActDeedKindNet::LifeChanged,
 ];
 
@@ -234,6 +235,7 @@ fn a_deed_for(kind: ActDeedKindNet) -> ActDeed {
             at:     a_cell(),
             damage: DamageType::Blast,
         },
+        ActDeedKindNet::EnteredView => ActDeed::EnteredView { at: a_cell() },
         ActDeedKindNet::LifeChanged => ActDeed::LifeChanged {
             from: LifeState::Alive,
             to:   LifeState::Downed,

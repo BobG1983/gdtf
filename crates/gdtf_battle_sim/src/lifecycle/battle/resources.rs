@@ -34,6 +34,11 @@ impl BattleRoster {
         Self(factions.into_iter().collect())
     }
 
+    /// Every faction fielded in this battle, in no particular order.
+    pub fn factions(&self) -> impl Iterator<Item = Faction> + '_ {
+        self.0.iter().copied()
+    }
+
     /// Whether the player faction is present.
     #[must_use]
     pub fn has_player(&self, player: Faction) -> PlayersFielded {

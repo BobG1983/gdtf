@@ -11,6 +11,8 @@ mod walk;
 pub use cost::{MoveVerdict, Mover, can_move, move_step_tu_costs, move_tu_cost};
 pub use dispatch::dispatch_move;
 pub use sight::SightWorld;
-pub use signals::{MoveRejected, MoveRejection, MovementOccurred};
+pub use signals::{MoveCompleted, MoveRejected, MoveRejection, MovementOccurred};
 pub(crate) use suppression_gate::{BreakAwayMover, suppressed_move_legal};
-pub use walk::{ReactionShotFired, RouteComplete, WalkInProgress, advance_walk};
+pub use walk::{
+    ReactionShotFired, RouteComplete, WalkInProgress, WalkSignals, WalkStepped, advance_walk,
+};

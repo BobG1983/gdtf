@@ -4,7 +4,7 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     acts::{
-        FireDeclaration, InjuryInflicted, MeleeStruck, MoveRejected, MovementOccurred, ReloadResult,
+        FireDeclaration, InjuryInflicted, MeleeStruck, MoveCompleted, MoveRejected, ReloadResult,
     },
     armor_wear::ArmorBroken,
     effects::{
@@ -25,7 +25,7 @@ pub(super) fn register_combat_log_forwarders(app: &mut App) {
     app.add_message::<CombatLogEvent>();
 
     app.add_combat_log_source::<FireDeclaration>()
-        .add_combat_log_source::<MovementOccurred>()
+        .add_combat_log_source::<MoveCompleted>()
         .add_combat_log_source::<MoveRejected>()
         .add_live_combat_log_source::<ShotImpactResolved>()
         .add_combat_log_source::<ReloadResult>()

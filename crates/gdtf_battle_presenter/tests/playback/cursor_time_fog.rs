@@ -1,7 +1,7 @@
 use bevy::{ecs::system::RunSystemOnce, platform::collections::HashSet};
 use gdtf_battle_presenter::{PlaybackCursor, ShownSquadVisibility, promote_shown_fog};
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActLog, ActProvenance, RecordedAct},
+    act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct},
     ganger::Faction,
     metric::CellLevel,
     visibility::SquadVisibility,
@@ -26,6 +26,7 @@ fn close_gate(app: &mut bevy::app::App) {
         ActDeed::TurnBegan {
             now_active: Faction::new(0),
         },
+        ActWitnesses::unseen(),
     ));
 }
 

@@ -11,7 +11,7 @@ use gdtf_app::qa_wire::{
 use gdtf_battle_input::{ChosenFireMode, SelectedShooter};
 use gdtf_battle_presenter::DrawnPosition;
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActLog, ActProvenance, RecordedAct},
+    act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct, WatchingFactions},
     battle::{BattleInProgress, PlayerFaction},
     entity::TerrainCell,
     ganger::{Direction, Facing, Faction, GangerName, HpMax, Position, Tu, TuMax},
@@ -217,6 +217,13 @@ fn battle_with_a_log_of(lines: u32) -> Result<(App, NetQaPort, LoggedActor), Tes
     let Some((actor, _)) = a_player_ganger(&app) else {
         return Err("a generated battle must field at least one player ganger".into());
     };
+    let Some(player) = app
+        .world()
+        .get_resource::<PlayerFaction>()
+        .map(|gang| **gang)
+    else {
+        return Err("a running battle names the gang the player commands".into());
+    };
     let Some(mut log) = app.world_mut().get_resource_mut::<ActLog>() else {
         return Err("a running battle carries the sim's act log".into());
     };
@@ -227,9 +234,16 @@ fn battle_with_a_log_of(lines: u32) -> Result<(App, NetQaPort, LoggedActor), Tes
             ActDeed::TurnBegan {
                 now_active: Faction::new(0),
             },
+            watched_by(player),
         ));
     }
     Ok((app, port, LoggedActor { actor }))
+}
+
+/// Witnesses recording one gang as having seen the act and being able to name its actor.
+pub(crate) fn watched_by(gang: Faction) -> ActWitnesses {
+    let watching = WatchingFactions::new([gang]);
+    ActWitnesses::new(watching.clone(), watching)
 }
 
 /// A live battle whose selected shooter faces north holding `tu` time units and `load` rounds.

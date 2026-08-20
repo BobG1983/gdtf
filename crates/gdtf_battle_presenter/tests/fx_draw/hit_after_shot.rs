@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use gdtf_battle_presenter::{FctValence, PlaybackCursor, valence_color};
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActLog, ActProvenance, RecordedAct},
+    act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct},
     acts::RoundCount,
     armor::BodyPart,
     prelude::{BattleInProgress, Cell, CellLevel, Level, LifeState, Position, SimPos},
@@ -113,6 +113,7 @@ fn hit_fct_stays_off_until_the_cursor_plays_the_round() {
                 mode:   ModeKind::Single,
                 rounds: RoundCount::new(1),
             },
+            ActWitnesses::unseen(),
         ));
         log.append(RecordedAct::new(
             shooter,
@@ -120,6 +121,7 @@ fn hit_fct_stays_off_until_the_cursor_plays_the_round() {
             ActDeed::RoundResolved {
                 shot: Box::new(shot),
             },
+            ActWitnesses::unseen(),
         ));
     }
 

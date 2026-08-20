@@ -42,6 +42,7 @@ fn the_game_offers_the_reads_the_lifecycle_the_acts_raw_input_and_the_view_and_b
             CommandName::from_static("battle.visible"),
             CommandName::from_static("battle.cost"),
             CommandName::from_static("log.read"),
+            CommandName::from_static("log.omniscient_read"),
             CommandName::from_static("battle.start"),
             CommandName::from_static("battle.flee"),
             CommandName::from_static("procgen.step"),

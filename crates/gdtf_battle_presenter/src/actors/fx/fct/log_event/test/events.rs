@@ -1,7 +1,7 @@
 use gdtf_battle_sim::{
     acts::{MoveRejection, ReloadOutcome},
     battle::PlayerFaction,
-    prelude::{Cell, Faction},
+    prelude::Faction,
     severity::Severity,
     weapon::ModeKind,
 };
@@ -42,15 +42,21 @@ fn a_fire_declaration_at_no_target_omits_the_target_clause() {
 }
 
 #[test]
-fn a_movement_names_actor_and_both_cells() {
+fn a_movement_names_the_actor_and_prints_no_cells() {
     let event = CombatLogEvent::MovementOccurred {
         actor: LogName::new("Vex"),
-        from:  Cell::new(3, 4),
-        to:    Cell::new(3, 6),
     };
     let lines = classify_log_event(&event);
-    assert_eq!(lines.len(), 1);
-    assert_eq!(&**lines[0].text(), "Vex moved (3, 4) -> (3, 6)");
+    assert_eq!(lines.len(), 1, "a completed move is one line: {lines:?}");
+    let text = &**lines[0].text();
+    assert!(
+        text.starts_with("Vex"),
+        "the movement line opens with the walker's name: {text:?}",
+    );
+    assert!(
+        !text.contains("->"),
+        "the movement line is name-and-verb prose, so it prints no coordinates: {text:?}",
+    );
     assert_eq!(lines[0].color(), valence_color(FctValence::Neutral));
 }
 

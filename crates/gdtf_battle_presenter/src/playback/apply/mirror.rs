@@ -28,6 +28,7 @@ pub(super) fn mirror_drawn(entry: &ActEntry, drawn: &mut DrawnWriters) {
         }
         ActDeed::TurnBegan { .. }
         | ActDeed::MoveRefused { .. }
+        | ActDeed::EnteredView { .. }
         | ActDeed::Fired { .. }
         | ActDeed::RoundResolved { .. }
         | ActDeed::Reloaded { .. }

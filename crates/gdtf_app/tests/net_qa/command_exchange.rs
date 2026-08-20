@@ -36,6 +36,8 @@ pub(crate) const BATTLE_COST: &str = "battle.cost";
 
 pub(crate) const LOG_READ: &str = "log.read";
 
+pub(crate) const LOG_OMNISCIENT_READ: &str = "log.omniscient_read";
+
 pub(crate) const BATTLE_START: &str = "battle.start";
 
 pub(crate) const BATTLE_FLEE: &str = "battle.flee";
@@ -123,6 +125,7 @@ pub(crate) fn published_names() -> Vec<CommandName> {
         BATTLE_VISIBLE,
         BATTLE_COST,
         LOG_READ,
+        LOG_OMNISCIENT_READ,
         BATTLE_START,
         BATTLE_FLEE,
         PROCGEN_STEP,

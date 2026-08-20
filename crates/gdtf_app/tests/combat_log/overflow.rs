@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use gdtf_app::test_support::CombatLogLine;
-use gdtf_battle_sim::{acts::MovementOccurred, prelude::Cell};
+use gdtf_battle_sim::acts::MoveCompleted;
 
 use super::harness::*;
 
@@ -11,15 +11,13 @@ const DEFAULT_MAX_VISIBLE_I32: i32 = 6;
 #[test]
 fn overflow_fifo_despawns_the_oldest_lines() {
     let mut app = battle_running_app();
-    let ganger = spawn_named(&mut app, "Vex");
-    app.update();
+    let at = a_lit_cell(&app);
 
     let total: i32 = DEFAULT_MAX_VISIBLE_I32 + 3;
-    for y in 0..total {
-        play(
-            &mut app,
-            MovementOccurred::new(ganger, Cell::new(0, 0), Cell::new(0, y)),
-        );
+    let names: Vec<String> = (0..total).map(|i| format!("Vex{i}")).collect();
+    for name in &names {
+        let ganger = spawn_named(&mut app, name);
+        play(&mut app, MoveCompleted::new(ganger, at));
     }
     app.update();
     app.update();
@@ -32,17 +30,18 @@ fn overflow_fifo_despawns_the_oldest_lines() {
          lines: {texts:?}",
         texts.len(),
     );
-    let survivors_start = total - DEFAULT_MAX_VISIBLE_I32;
-    for i in survivors_start..total {
-        let expected = format!("Vex moved (0, 0) -> (0, {i})");
+    let survivors_start = usize::try_from(total).unwrap_or(0) - DEFAULT_MAX_VISIBLE;
+    for name in names.iter().skip(survivors_start) {
         assert!(
-            texts.contains(&expected),
-            "the newest line {expected:?} must survive the FIFO trim, got {texts:?}",
+            texts.iter().any(|line| line.starts_with(name)),
+            "the newest line for {name:?} must survive the FIFO trim, got {texts:?}",
         );
     }
-    let oldest = "Vex moved (0, 0) -> (0, 0)".to_owned();
+    let Some(oldest) = names.first() else {
+        unreachable!("the case plays {total} moves, so it named that many gangers");
+    };
     assert!(
-        !texts.contains(&oldest),
-        "the OLDEST line {oldest:?} must have been FIFO-despawned, got {texts:?}",
+        !texts.iter().any(|line| line.starts_with(oldest)),
+        "the OLDEST line, for {oldest:?}, must have been FIFO-despawned, got {texts:?}",
     );
 }

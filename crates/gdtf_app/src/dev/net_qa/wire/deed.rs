@@ -141,6 +141,8 @@ pub enum ActDeedKindNet {
     MeleeLanded,
     /// Thrown weapon or item landed.
     ThrowLanded,
+    /// A ganger the squad could not see came into view.
+    EnteredView,
     /// Life state transition.
     LifeChanged,
 }
@@ -181,6 +183,7 @@ impl ActDeedKindNet {
             },
             ActDeed::MeleeLanded { .. } => Self::MeleeLanded,
             ActDeed::ThrowLanded { .. } => Self::ThrowLanded,
+            ActDeed::EnteredView { .. } => Self::EnteredView,
             ActDeed::LifeChanged { .. } => Self::LifeChanged,
         }
     }

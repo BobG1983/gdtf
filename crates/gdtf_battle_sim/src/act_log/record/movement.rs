@@ -1,12 +1,16 @@
 use bevy::{platform::collections::HashSet, prelude::Entity};
 
-use super::sources::{MovementSources, ProvenanceSources, cell_order};
-use crate::act_log::{ActDeed, ActLog, RecordedAct, facts::PositionFacts};
+use super::sources::{ActObservation, MovementSources, ProvenanceSources, cell_order};
+use crate::{
+    act_log::{ActDeed, ActLog, RecordedAct, facts::PositionFacts},
+    ganger::Position,
+};
 
 pub(super) fn record_movement(
     log: &mut ActLog,
     movement: &mut MovementSources,
     provenance: &ProvenanceSources,
+    seen: &ActObservation,
 ) {
     let mut stepped: HashSet<Entity> = HashSet::default();
     for step in movement.steps.read() {
@@ -22,6 +26,17 @@ pub(super) fn record_movement(
                 to:       step.to,
                 position: PositionFacts::new(*position),
             },
+            seen.of_cell(**position),
+        ));
+    }
+    for completed in movement.moves.read() {
+        log.append(RecordedAct::new(
+            completed.mover,
+            provenance.of(completed.mover),
+            ActDeed::MovedTo {
+                position: PositionFacts::new(Position::new(completed.at)),
+            },
+            seen.of_cell(completed.at),
         ));
     }
     for refusal in movement.refusals.read() {
@@ -31,6 +46,7 @@ pub(super) fn record_movement(
             ActDeed::MoveRefused {
                 reason: refusal.reason,
             },
+            seen.of_actor(refusal.actor),
         ));
     }
 
@@ -46,6 +62,7 @@ pub(super) fn record_movement(
                 entity,
                 provenance.of(entity),
                 ActDeed::MovedTo { position },
+                seen.of_cell(**position),
             ));
         }
     }

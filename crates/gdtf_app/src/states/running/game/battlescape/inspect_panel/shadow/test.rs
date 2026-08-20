@@ -1,7 +1,7 @@
 use bevy::{app::App, ecs::system::RunSystemOnce};
 use gdtf_battle_presenter::{PlaybackCursor, register_playback};
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActLog, ActProvenance, RecordedAct},
+    act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct},
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     entity::TerrainPieceKind,
@@ -36,6 +36,7 @@ fn close_gate(app: &mut App) {
         ActDeed::TurnBegan {
             now_active: Faction::new(0),
         },
+        ActWitnesses::unseen(),
     ));
 }
 

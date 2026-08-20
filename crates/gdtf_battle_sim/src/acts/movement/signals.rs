@@ -2,7 +2,7 @@
 
 use bevy::prelude::{Entity, Message};
 
-use crate::metric::Cell;
+use crate::metric::{Cell, CellLevel};
 
 /// Why a move was rejected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -48,5 +48,22 @@ impl MovementOccurred {
     #[must_use]
     pub const fn new(actor: Entity, from: Cell, to: Cell) -> Self {
         Self { actor, from, to }
+    }
+}
+
+/// A walk finished: one message per completed move, however many cells it stepped.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MoveCompleted {
+    /// Ganger that walked.
+    pub mover: Entity,
+    /// Cell and level the walk ended on.
+    pub at:    CellLevel,
+}
+
+impl MoveCompleted {
+    /// Build a completed-move message.
+    #[must_use]
+    pub const fn new(mover: Entity, at: CellLevel) -> Self {
+        Self { mover, at }
     }
 }

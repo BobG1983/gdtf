@@ -1,4 +1,4 @@
-use gdtf_battle_sim::act_log::{ActDeed, ActLog, ActProvenance, ActSeq, RecordedAct};
+use gdtf_battle_sim::act_log::{ActDeed, ActLog, ActProvenance, ActSeq, ActWitnesses, RecordedAct};
 
 use super::harness::deed_name;
 
@@ -30,9 +30,10 @@ const fn disposition(deed: &ActDeed) -> Disposition {
         | ActDeed::FieldTicked { .. }
         | ActDeed::TerrainPieceSmashed { .. }
         | ActDeed::MeleeLanded { .. }
-        | ActDeed::ThrowLanded { .. } => Disposition::Replayed,
+        | ActDeed::ThrowLanded { .. }
+        | ActDeed::MovedTo { .. } => Disposition::Replayed,
         ActDeed::PostureChanged { .. }
-        | ActDeed::MovedTo { .. }
+        | ActDeed::EnteredView { .. }
         | ActDeed::MagazineChanged { .. }
         | ActDeed::VitalsChanged { .. }
         | ActDeed::LifeChanged { .. } => Disposition::DrawnOnly,
@@ -77,7 +78,12 @@ fn every_sampled_deed_round_trips_through_the_log() {
     let actor = bevy::prelude::Entity::PLACEHOLDER;
     let samples = sample_deeds();
     for deed in samples.clone() {
-        log.append(RecordedAct::new(actor, ActProvenance::Clock, deed));
+        log.append(RecordedAct::new(
+            actor,
+            ActProvenance::Clock,
+            deed,
+            ActWitnesses::unseen(),
+        ));
     }
 
     let read: Vec<&ActDeed> = log

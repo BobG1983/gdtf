@@ -187,6 +187,12 @@ pub enum ActDeed {
         damage: DamageType,
     },
 
+    /// A ganger the player squad could not see came into view.
+    EnteredView {
+        /// Cell it was standing on when it came into view.
+        at: CellLevel,
+    },
+
     /// Life state transition.
     LifeChanged {
         /// Previous life state.

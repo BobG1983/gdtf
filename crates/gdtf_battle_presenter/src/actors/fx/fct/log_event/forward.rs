@@ -3,15 +3,13 @@
 use bevy::{
     ecs::{message::Messages, schedule::SystemCondition},
     prelude::{
-        App, IntoScheduleConfigs, Message, MessageReader, MessageWriter, Query, Res, SystemSet,
-        Update, resource_exists,
+        App, IntoScheduleConfigs, Message, MessageReader, MessageWriter, Res, SystemSet, Update,
+        resource_exists,
     },
 };
-use gdtf_battle_sim::{
-    battle::PlayerFaction, ganger::GangerName, prelude::BattleInProgress, turn::TurnStarted,
-};
+use gdtf_battle_sim::{battle::PlayerFaction, prelude::BattleInProgress, turn::TurnStarted};
 
-use super::event::{CombatLogEvent, LogName};
+use super::{event::CombatLogEvent, sight::PanelSight};
 use crate::playback::Played;
 
 /// System set for combat log forwarders.
@@ -23,24 +21,18 @@ pub enum CombatLogSystems {
 
 /// Something that can become a combat log event.
 pub trait CombatLogSource: Message + Clone {
-    /// Convert to a log event using ganger names.
-    fn to_event(&self, names: &Query<&GangerName>) -> Option<CombatLogEvent>;
-}
-
-pub(super) fn name_of(entity: bevy::prelude::Entity, names: &Query<&GangerName>) -> LogName {
-    names
-        .get(entity)
-        .map_or_else(|_| LogName::new("Someone"), LogName::from_ganger)
+    /// Convert to a log event, or nothing when the screen never saw the act.
+    fn to_event(&self, sight: &PanelSight) -> Option<CombatLogEvent>;
 }
 
 /// Forward `Played<S>` messages into combat log events.
 pub fn forward_log_source<S: CombatLogSource>(
     mut source: MessageReader<Played<S>>,
-    names: Query<&GangerName>,
+    sight: PanelSight,
     mut events: MessageWriter<CombatLogEvent>,
 ) {
     for message in source.read() {
-        if let Some(event) = message.to_event(&names) {
+        if let Some(event) = message.to_event(&sight) {
             events.write(event);
         }
     }
@@ -49,11 +41,11 @@ pub fn forward_log_source<S: CombatLogSource>(
 /// Forward live (non-played) messages into combat log events.
 pub fn forward_live_log_source<S: CombatLogSource>(
     mut source: MessageReader<S>,
-    names: Query<&GangerName>,
+    sight: PanelSight,
     mut events: MessageWriter<CombatLogEvent>,
 ) {
     for message in source.read() {
-        if let Some(event) = message.to_event(&names) {
+        if let Some(event) = message.to_event(&sight) {
             events.write(event);
         }
     }

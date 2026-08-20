@@ -8,7 +8,7 @@ use bevy::{
 };
 use gdtf_battle_presenter::{PlaybackCursor, Played, ShotProjectile};
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActLog, ActProvenance, RecordedAct},
+    act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct},
     shot_fired::ShotFired,
 };
 
@@ -160,6 +160,7 @@ fn the_battle_holds_battlerunning_until_the_cursor_drains_the_log() {
         actor,
         ActProvenance::Clock,
         ActDeed::BleedStarted,
+        ActWitnesses::unseen(),
     ));
     app.insert_resource(log);
 

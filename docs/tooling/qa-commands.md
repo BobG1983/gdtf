@@ -263,7 +263,8 @@ The editor offers eight commands today. They are listed in
 The game offers these commands today: `app.phase`, `capture.screenshot`,
 `settings.read`, `ui.focus`, `playback.state`, `battle.roster`, `battle.turn`,
 `battle.selection`, `battle.offers`, `battle.inspect`, `battle.sightline`, `battle.visible`,
-`battle.cost`, `log.read`, `battle.start`, `battle.flee`, `procgen.step`, `wait`, `act.select`,
+`battle.cost`, `log.read`, `log.omniscient_read`, `battle.start`, `battle.flee`,
+`procgen.step`, `wait`, `act.select`,
 `act.select_next`, `act.select_prev`, `act.select_clear`, `act.move`, `act.fire`,
 `act.reload`, `act.set_stance`, `act.set_aiming`, `act.set_facing`, `act.end_turn`,
 `act.melee`, `act.shove`, `act.stabilize`, `act.execute`, `act.throw_grenade`,
@@ -277,7 +278,12 @@ The game offers these commands today: `app.phase`, `capture.screenshot`,
 `ui.focus` reports the focused widget and the widgets the current screen registered as
 focusable, and `playback.state` reports whether the screen has caught up with the act log.
 
-The battle reads are `Immediate` too, and report only what the player can see.
+The battle reads are `Immediate` too. `battle.roster`, `battle.inspect`, `battle.visible`,
+the `can_see` half of `battle.sightline` and `log.read` are fog-gated and report only what the
+player can see. `battle.turn`, `battle.offers`, `battle.selection`, `battle.cost` and the
+`can_engage` half of `battle.sightline` read live state on purpose, and `log.omniscient_read`
+reads the act log with no filter at all — see the two paragraphs below for which is which and
+why.
 `battle.roster` lists every player card plus the enemies the squad can currently see, each
 card naming the cell its sprite stands on — the
 reduction is which enemies appear, not which fields a card carries, since the stat block
@@ -307,13 +313,22 @@ is bounded rather than obeyed: absent it is 50, and any cap a caller names is cl
 `since`, taking the previous reply's `head` as the next cursor, and compares its cursor
 against `oldest` to see whether the buffer threw lines away in between.
 
+`log.omniscient_read` takes the same arguments over the same log and returns every line
+unfiltered and fully identified. Using it is cheating: it is for testing only, and it must
+never back a claim about what a player can see. Use `log.read` for that.
+
 Every read that answers a fog question reads the same playback-gated shadows the panels
 read — the shown fog, the shown occupancy grid and cover ledger, and each ganger's drawn
 cell and drawn vitals. That covers `battle.roster`, `battle.inspect`, `battle.visible` and
 the `can_see` half of `battle.sightline`. A ganger is therefore reported on the cell its
 sprite stands on, and counts as seen or hidden from that cell, not from the one the sim
-has already moved it to, and no read ever reports fog the screen has not drawn yet. The
-rest read live state on purpose, because what they report is not drawn from a shadow:
+has already moved it to, and no read ever reports fog the screen has not drawn yet.
+`log.read` answers a fog question from a different place: each line records which gangs
+could observe it when it was appended, so the read filters against that fixed record rather
+than the fog as it stands now — a line the asking gang could not observe is dropped rather
+than blanked, and an actor it could not identify comes back with no token, so a reply may
+hold fewer lines than `cap`. The rest read live state on purpose, because what they report
+is not drawn from a shadow:
 `battle.turn` and `battle.offers` report resources the sim and the panel write each frame,
 the `can_engage` half of `battle.sightline` asks the sim's own firing-arc gate and, on the
 gun the shooter fires, the sim's own fire-readiness gate — alive, a round in the magazine,
@@ -322,8 +337,7 @@ answer alike about one shot,
 `battle.selection` reports the pointer's live selection, `battle.cost` prices from the live
 tuning, grids, squad fog, cover and ganger state the act itself would be charged against —
 a quote taken while playback is behind is what the sim would charge now, not what the
-sprite's cell suggests — and `log.read` reads the act log
-with no fog filter, matching a combat log that filters none either.
+sprite's cell suggests. `log.omniscient_read` is the one read that filters nothing.
 
 `battle.sightline` and `battle.cost {Fire}` agree about one shot because they price one spec,
 not one kind. `battle.sightline` takes the kind the gun the shooter fires is set to — a weapon
@@ -333,11 +347,11 @@ gates from it, so a call naming the mode the gun is on gets one answer from both
 entry of that kind — including one carrying no `FireMode` at all — is refused by both:
 `ActNotAllowed` from the quote, `can_engage: false` from the sightline.
 
-Each read refuses `Unavailable` with code `WrongState` off the battle screen. `log.read`
-is the one whose phase gate leaves a window open — the battlescape is up while the battle
-is still generating, and the act log arrives with the rest of the battle runtime — so a
-call inside that window is refused `MissingModel` rather than answered with an empty log
-that would read as "nothing has happened".
+Each read refuses `Unavailable` with code `WrongState` off the battle screen. The two log
+reads are the ones whose phase gate leaves a window open — the battlescape is up while the
+battle is still generating, and the act log arrives with the rest of the battle runtime —
+so a call inside that window is refused `MissingModel` rather than answered with an empty
+log that would read as "nothing has happened".
 `battle.sightline` and `battle.cost` further need the battle's running phase — `battle.cost`
 answers `MissingModel` inside that phase whenever the tuning, grids, fog and cover it
 prices from are not loaded — and `battle.offers`,

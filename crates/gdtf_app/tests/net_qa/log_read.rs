@@ -68,12 +68,12 @@ fn the_lines_the_battle_logged_come_back_as_the_sim_recorded_them() -> TestResul
     let mine: Vec<&LogEntryNet> = uncapped
         .entries
         .iter()
-        .filter(|entry| entry.actor == actor && entry.kind == ActDeedKindNet::TurnBegan)
+        .filter(|entry| entry.actor == Some(actor) && entry.kind == ActDeedKindNet::TurnBegan)
         .collect();
     assert!(
         u32::try_from(mine.len()).unwrap_or(u32::MAX) >= LOG_LINES_WRITTEN,
         "every line the battle logged for this ganger comes back, mirrored deed and all — the \
-         read applies no filter of its own: {uncapped:?}",
+         player's own gang observed each of them, so the fog filter keeps them: {uncapped:?}",
     );
     for entry in mine {
         assert_eq!(

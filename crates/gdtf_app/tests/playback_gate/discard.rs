@@ -1,7 +1,7 @@
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use gdtf_battle_presenter::{ActiveLevel, PlaybackCursor, PlaybackTuning, ViewMode};
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActLog, ActProvenance, RecordedAct},
+    act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct},
     acts::SetStanceRequested,
     ganger::{Aiming, Direction, Facing, Faction, LifeState, Position, Stance, StanceKind},
     metric::{Cell, CellLevel, Level},
@@ -99,6 +99,7 @@ fn close_gate(app: &mut App, actor: Entity) {
         actor,
         ActProvenance::Commanded,
         ActDeed::BleedStarted,
+        ActWitnesses::unseen(),
     ));
     app.insert_resource(log);
 }

@@ -30,6 +30,7 @@ pub(super) fn hold_for(entry: &ActEntry, tuning: &PlaybackTuning) -> ActHold {
         | ActDeed::MeleeLanded { .. }
         | ActDeed::ThrowLanded { .. } => ActHold::timed(*tuning.consequence_seconds),
         ActDeed::MoveRefused { .. }
+        | ActDeed::EnteredView { .. }
         | ActDeed::MagazineChanged { .. }
         | ActDeed::DotTicked { .. }
         | ActDeed::FieldTicked { .. }

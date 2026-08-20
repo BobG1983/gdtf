@@ -2,6 +2,7 @@ mod classify;
 mod event;
 mod forward;
 mod line;
+mod sight;
 mod sources;
 
 #[cfg(test)]
@@ -14,3 +15,4 @@ pub use forward::{
     forward_log_source, forward_turn_started,
 };
 pub use line::LogLine;
+pub use sight::{PanelRow, PanelSight};

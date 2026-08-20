@@ -1,6 +1,6 @@
 use bevy::ecs::relationship::Relationship;
 
-use super::super::sources::{ConsequenceState, ProvenanceSources, cell_order};
+use super::super::sources::{ActObservation, ConsequenceState, ProvenanceSources, cell_order};
 use crate::act_log::{
     ActDeed, ActLog, RecordedAct,
     facts::{MagazineFacts, VitalsFacts},
@@ -10,6 +10,7 @@ pub(in crate::act_log::record) fn record_vitals(
     log: &mut ActLog,
     state: &ConsequenceState,
     provenance: &ProvenanceSources,
+    seen: &ActObservation,
 ) {
     let mut rows: Vec<_> = state
         .vitals
@@ -18,6 +19,7 @@ pub(in crate::act_log::record) fn record_vitals(
             (
                 cell_order(position),
                 entity,
+                **position,
                 VitalsFacts::new(
                     *tu,
                     *hp,
@@ -30,12 +32,13 @@ pub(in crate::act_log::record) fn record_vitals(
         .collect();
     rows.sort_unstable_by_key(|(order, ..)| *order);
 
-    for (_, entity, vitals) in rows {
+    for (_, entity, at, vitals) in rows {
         if log.note_vitals(entity, &vitals) {
             log.append(RecordedAct::new(
                 entity,
                 provenance.of(entity),
                 ActDeed::VitalsChanged { vitals },
+                seen.of_cell(at),
             ));
         }
     }
@@ -45,6 +48,7 @@ pub(in crate::act_log::record) fn record_magazines(
     log: &mut ActLog,
     state: &ConsequenceState,
     provenance: &ProvenanceSources,
+    seen: &ActObservation,
 ) {
     let mut rows: Vec<_> = state
         .magazines
@@ -66,6 +70,7 @@ pub(in crate::act_log::record) fn record_magazines(
                 weapon,
                 provenance.of(wielder),
                 ActDeed::MagazineChanged { magazine },
+                seen.of_actor(wielder),
             ));
         }
     }

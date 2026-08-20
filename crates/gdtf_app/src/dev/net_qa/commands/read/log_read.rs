@@ -1,5 +1,10 @@
 use bevy::prelude::*;
-use gdtf_battle_sim::act_log::{ActLog, ActSeq};
+use gdtf_battle_sim::{
+    act_log::{ActLog, ActSeq},
+    battle::PlayerFaction,
+    ganger::Faction,
+    visibility::classify_act,
+};
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
     command::QaCommand,
@@ -63,7 +68,9 @@ impl QaCommand for LogRead {
          starting at `since` and keeping the newest `cap`, which defaults to 50 and never \
          exceeds 200. `head` and `oldest` bracket what the ring buffer still holds, so a caller \
          can page and can tell its cursor fell off the end; `dropped` counts the lines before \
-         the window. No fog filter, matching the combat log on screen.",
+         the window. Fog-gated the way the combat log on screen is: a line the player's gang \
+         could not observe is dropped, and an actor it could not identify comes back with no \
+         token, so a reply may hold fewer lines than `cap`.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -78,6 +85,7 @@ impl QaCommand for LogRead {
 
 fn handle_log_read(
     log: Option<Res<ActLog>>,
+    player: Option<Res<PlayerFaction>>,
     mut queue: ResMut<PendingQueue<CommandCall<LogRead>>>,
 ) {
     if queue.is_empty() {
@@ -88,27 +96,44 @@ fn handle_log_read(
             responder.unavailable(UnavailableCode::MissingModel, NO_ACT_LOG);
             continue;
         };
-        responder.answer(&window(log, &args));
+        let asking = player.as_deref().map(|player| **player);
+        responder.answer(&window(log, &args, asking));
     }
 }
 
-/// The lines `args` selects, plus the bounds a caller pages against.
-pub(super) fn window(log: &ActLog, args: &LogReadArgs) -> LogReadReply {
-    let cap = args
-        .cap
-        .map_or(DEFAULT_CAP, |asked| LogReadCap::new((*asked).min(*MAX_CAP)));
-    let cursor = args.since.map_or_else(
+/// The cap a read applies: the caller's, clamped to the ceiling, or the default.
+pub(super) fn capped_at(asked: Option<LogReadCap>) -> LogReadCap {
+    asked.map_or(DEFAULT_CAP, |asked| LogReadCap::new((*asked).min(*MAX_CAP)))
+}
+
+/// The sequence a read starts at, never older than the ring buffer still holds.
+pub(super) fn cursor_from(log: &ActLog, since: Option<ActSeqNet>) -> ActSeq {
+    since.map_or_else(
         || log.oldest_seq(),
         |since| ActSeq::new(*since).max(log.oldest_seq()),
-    );
+    )
+}
+
+/// The lines `args` selects that `asking` could observe, plus the bounds a caller pages against.
+/// The cap is applied first, so a filtered reply may hold fewer lines than the cap.
+pub(super) fn window(log: &ActLog, args: &LogReadArgs, asking: Option<Faction>) -> LogReadReply {
+    let cap = capped_at(args.cap);
+    let cursor = cursor_from(log, args.since);
     let selected = log.since(cursor).count();
     let keep = usize::try_from(*cap).unwrap_or(usize::MAX);
     let skipped = selected.saturating_sub(keep);
-    let entries: Vec<LogEntryNet> = log
-        .since(cursor)
-        .skip(skipped)
-        .map(LogEntryNet::from_sim)
-        .collect();
+    let entries: Vec<LogEntryNet> = match asking {
+        Some(asking) => log
+            .since(cursor)
+            .skip(skipped)
+            .filter_map(|entry| {
+                let seen = entry.witnesses();
+                let view = classify_act(seen.observed_by(asking), seen.identifies_actor(asking));
+                LogEntryNet::from_sim(entry, asking, view)
+            })
+            .collect(),
+        None => Vec::new(),
+    };
     let before_window = u32::try_from(skipped).unwrap_or(u32::MAX);
     LogReadReply {
         entries,

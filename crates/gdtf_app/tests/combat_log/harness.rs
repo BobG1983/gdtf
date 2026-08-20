@@ -1,7 +1,13 @@
-use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
+use bevy::{ecs::entity::Entity, platform::collections::HashSet, prelude::*, state::state::State};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
-use gdtf_battle_presenter::Played;
-use gdtf_battle_sim::{ganger::GangerName, injuries::InjuryRegistry, tuning::CombatTuning};
+use gdtf_battle_presenter::{DrawnPosition, Played, ShownSquadVisibility};
+use gdtf_battle_sim::{
+    ganger::{GangerName, Position},
+    injuries::InjuryRegistry,
+    prelude::{Cell, CellLevel, Level},
+    tuning::CombatTuning,
+    visibility::SquadVisibility,
+};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
@@ -56,7 +62,49 @@ pub(crate) fn battle_running_app() -> App {
     advance_until(&mut app, |app| {
         battlescape_state(app) == Some(BattleScapeState::BattleRunning)
     });
+    light_the_fixture_cells(&mut app);
     app
+}
+
+/// A cell the screen is lighting, which the panel therefore reports acts on.
+pub(crate) fn a_lit_cell(_app: &App) -> CellLevel {
+    CellLevel::new(Cell::new(3, 3), Level::new(0))
+}
+
+/// Two different cells the screen is lighting, for a case that needs a move between them.
+pub(crate) fn two_lit_cells(app: &App) -> (CellLevel, CellLevel) {
+    (
+        a_lit_cell(app),
+        CellLevel::new(Cell::new(3, 5), Level::new(0)),
+    )
+}
+
+/// A cell the screen is not lighting, which the panel therefore withholds acts on.
+pub(crate) fn a_dark_cell(_app: &App) -> CellLevel {
+    CellLevel::new(Cell::new(40, 40), Level::new(0))
+}
+
+// Give the squad a fog covering the fixture's lit cells and let the screen promote it.
+fn light_the_fixture_cells(app: &mut App) {
+    let (first, second) = two_lit_cells(app);
+    let visible: HashSet<CellLevel> = [first, second].into_iter().collect();
+    app.world_mut()
+        .insert_resource(SquadVisibility::new(visible.clone(), visible));
+    for _ in 0..4 {
+        app.update();
+    }
+
+    let dark = a_dark_cell(app);
+    let Some(shown) = app.world().get_resource::<ShownSquadVisibility>() else {
+        unreachable!("the presenter registers the fog shadow the panel reads");
+    };
+    assert!(
+        *shown.visibility().is_cell_visible(&first)
+            && *shown.visibility().is_cell_visible(&second)
+            && !*shown.visibility().is_cell_visible(&dark),
+        "the fixture's fog must reach the screen before a case plays anything: {first:?} and \
+         {second:?} lit, {dark:?} dark",
+    );
 }
 
 pub(crate) fn all_with<M: Component>(app: &mut App) -> Vec<Entity> {
@@ -81,6 +129,23 @@ pub(crate) fn play<M: Message + Clone>(app: &mut App, fact: M) {
     );
 }
 
+/// A named ganger standing where the screen can see it, so the panel names its acts.
 pub(crate) fn spawn_named(app: &mut App, name: &str) -> Entity {
-    app.world_mut().spawn(GangerName::new(name.to_owned())).id()
+    let at = a_lit_cell(app);
+    spawn_named_at(app, name, at)
+}
+
+/// A named ganger standing where the screen cannot see it.
+pub(crate) fn spawn_hidden(app: &mut App, name: &str) -> Entity {
+    let at = a_dark_cell(app);
+    spawn_named_at(app, name, at)
+}
+
+fn spawn_named_at(app: &mut App, name: &str, at: CellLevel) -> Entity {
+    app.world_mut()
+        .spawn((
+            GangerName::new(name.to_owned()),
+            DrawnPosition::seeded(Position::new(at)),
+        ))
+        .id()
 }

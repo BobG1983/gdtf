@@ -2,7 +2,7 @@ use bevy::{prelude::*, text::TextColor};
 use gdtf_app::test_support::{CombatLogLine, CombatLogRoot};
 use gdtf_battle_presenter::severity_color;
 use gdtf_battle_sim::{
-    acts::{InjuryInflicted, MovementOccurred},
+    acts::{InjuryInflicted, MoveCompleted, MovementOccurred},
     armor::BodyPart,
     injuries::{GainedInjury, InjuryName, InspectText, LogText, PopupText},
     prelude::Cell,
@@ -36,9 +36,10 @@ fn has_log_line(lines: &[(String, Color)], text: &str, color: Color) -> bool {
 }
 
 #[test]
-fn a_movement_message_appends_a_line_with_the_classified_text() {
+fn a_completed_move_appends_a_line_with_the_classified_text() {
     let mut app = battle_running_app();
     let ganger = spawn_named(&mut app, "Vex");
+    let at = a_lit_cell(&app);
     app.update();
 
     assert_eq!(
@@ -51,6 +52,53 @@ fn a_movement_message_appends_a_line_with_the_classified_text() {
         "the log starts empty",
     );
 
+    play(&mut app, MoveCompleted::new(ganger, at));
+    app.update();
+
+    let texts = line_texts::<CombatLogLine>(&mut app);
+    assert_eq!(
+        texts.len(),
+        1,
+        "one completed move => one log line, got {texts:?}",
+    );
+    assert!(
+        texts[0].starts_with("Vex") && !texts[0].contains("->"),
+        "the line carries the resolved name and the classified movement phrasing, with no \
+         coordinates: {texts:?}",
+    );
+}
+
+#[test]
+fn two_moves_by_one_ganger_read_the_same_however_far_it_walked() {
+    let mut app = battle_running_app();
+    let ganger = spawn_named(&mut app, "Vex");
+    let (first, second) = two_lit_cells(&app);
+    app.update();
+
+    play(&mut app, MoveCompleted::new(ganger, first));
+    app.update();
+    play(&mut app, MoveCompleted::new(ganger, second));
+    app.update();
+
+    let texts = line_texts::<CombatLogLine>(&mut app);
+    assert_eq!(
+        texts.len(),
+        2,
+        "two completed moves append two lines, got {texts:?}",
+    );
+    assert_eq!(
+        texts[0], texts[1],
+        "the movement line names the walker and nothing else, so two moves by one ganger \
+         read alike however far apart they ended: {texts:?}",
+    );
+}
+
+#[test]
+fn a_played_step_appends_no_line_of_its_own() {
+    let mut app = battle_running_app();
+    let ganger = spawn_named(&mut app, "Vex");
+    app.update();
+
     play(
         &mut app,
         MovementOccurred::new(ganger, Cell::new(3, 4), Cell::new(3, 6)),
@@ -58,14 +106,35 @@ fn a_movement_message_appends_a_line_with_the_classified_text() {
     app.update();
 
     let texts = line_texts::<CombatLogLine>(&mut app);
+    assert!(
+        texts.is_empty(),
+        "the panel logs completed moves, not stepped cells, so a played step appends \
+         nothing: {texts:?}",
+    );
+}
+
+#[test]
+fn a_three_cell_walk_appends_exactly_one_movement_line() {
+    let mut app = battle_running_app();
+    let ganger = spawn_named(&mut app, "Vex");
+    let at = a_lit_cell(&app);
+    app.update();
+
+    for step in 0..3 {
+        play(
+            &mut app,
+            MovementOccurred::new(ganger, Cell::new(0, step), Cell::new(0, step + 1)),
+        );
+    }
+    play(&mut app, MoveCompleted::new(ganger, at));
+    app.update();
+
+    let texts = line_texts::<CombatLogLine>(&mut app);
     assert_eq!(
         texts.len(),
         1,
-        "one movement event => one log line, got {texts:?}"
-    );
-    assert_eq!(
-        texts[0], "Vex moved (3, 4) -> (3, 6)",
-        "the line carries the resolved name + the classified movement phrasing",
+        "a three-cell walk is one move, so it appends one line — got {count}: {texts:?}",
+        count = texts.len(),
     );
 }
 

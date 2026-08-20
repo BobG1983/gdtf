@@ -19,6 +19,7 @@ const BATTLE_READS: &[&str] = &[
     "battle.visible",
     "battle.cost",
     "log.read",
+    "log.omniscient_read",
 ];
 
 /// Commands these battle-read cases say nothing about.
@@ -148,6 +149,7 @@ fn the_battle_screen_reads_answer_before_the_battle_is_running() {
             "battle.turn",
             "battle.selection",
             "log.read",
+            "log.omniscient_read",
         ],
     );
 }
@@ -162,6 +164,7 @@ fn the_battle_screen_reads_answer_after_the_battle_is_over() {
             "battle.turn",
             "battle.selection",
             "log.read",
+            "log.omniscient_read",
         ],
     );
 }
@@ -176,6 +179,7 @@ fn the_sightline_and_cost_reads_answer_on_a_running_battle_the_panels_have_not_l
             "battle.turn",
             "battle.selection",
             "log.read",
+            "log.omniscient_read",
             "battle.sightline",
             "battle.cost",
         ],

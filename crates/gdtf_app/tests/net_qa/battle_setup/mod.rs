@@ -4,6 +4,7 @@ mod behind;
 mod catch_up;
 mod expected;
 mod fixtures;
+mod hidden_shot;
 mod map;
 mod modes;
 
@@ -24,5 +25,6 @@ pub(crate) use fixtures::{
     battle_with_an_enemy_beside_an_idle_ganger, battle_with_another_gang_acting,
     battle_with_lit_cover, battle_with_log_lines,
 };
+pub(crate) use hidden_shot::battle_with_a_hidden_enemy_shooting_across_the_lit_area;
 pub(crate) use map::a_cover_cell;
 pub(crate) use modes::battle_with_a_two_mode_gun;

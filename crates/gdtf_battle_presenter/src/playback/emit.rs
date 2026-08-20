@@ -3,7 +3,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::{
     acts::{
-        FireDeclaration, InjuryInflicted, MeleeResolved, MeleeStruck, MoveRejected,
+        FireDeclaration, InjuryInflicted, MeleeResolved, MeleeStruck, MoveCompleted, MoveRejected,
         MovementOccurred, ReloadResult, ThrowResolved,
     },
     armor_wear::ArmorBroken,
@@ -35,32 +35,34 @@ impl<M: Message + Clone> Played<M> {
 /// Message writers for every played fact kind.
 #[derive(SystemParam)]
 pub struct PlayedSignals<'w> {
-    pub(super) turn:          MessageWriter<'w, Played<TurnStarted>>,
-    pub(super) step:          MessageWriter<'w, Played<MovementOccurred>>,
-    pub(super) refusal:       MessageWriter<'w, Played<MoveRejected>>,
-    pub(super) declaration:   MessageWriter<'w, Played<FireDeclaration>>,
-    pub(super) round:         MessageWriter<'w, Played<ShotFired>>,
-    pub(super) reload:        MessageWriter<'w, Played<ReloadResult>>,
-    pub(super) injury:        MessageWriter<'w, Played<InjuryInflicted>>,
-    pub(super) fall:          MessageWriter<'w, Played<FallOccurred>>,
-    pub(super) strike:        MessageWriter<'w, Played<MeleeStruck>>,
-    pub(super) death:         MessageWriter<'w, Played<OnDeathOccurred>>,
-    pub(super) suppression:   MessageWriter<'w, Played<SuppressionApplied>>,
-    pub(super) armor_broken:  MessageWriter<'w, Played<ArmorBroken>>,
-    pub(super) dot:           MessageWriter<'w, Played<DotAfflicted>>,
-    pub(super) dot_tick:      MessageWriter<'w, Played<DotTicked>>,
-    pub(super) field:         MessageWriter<'w, Played<FieldAfflicted>>,
-    pub(super) field_tick:    MessageWriter<'w, Played<FieldTicked>>,
-    pub(super) bleed_started: MessageWriter<'w, Played<BleedStarted>>,
-    pub(super) bleeding:      MessageWriter<'w, Played<Bleeding>>,
-    pub(super) cover:         MessageWriter<'w, Played<TerrainPieceDestroyed>>,
-    pub(super) melee_landed:  MessageWriter<'w, Played<MeleeResolved>>,
-    pub(super) throw_landed:  MessageWriter<'w, Played<ThrowResolved>>,
+    pub(super) turn:           MessageWriter<'w, Played<TurnStarted>>,
+    pub(super) step:           MessageWriter<'w, Played<MovementOccurred>>,
+    pub(super) move_completed: MessageWriter<'w, Played<MoveCompleted>>,
+    pub(super) refusal:        MessageWriter<'w, Played<MoveRejected>>,
+    pub(super) declaration:    MessageWriter<'w, Played<FireDeclaration>>,
+    pub(super) round:          MessageWriter<'w, Played<ShotFired>>,
+    pub(super) reload:         MessageWriter<'w, Played<ReloadResult>>,
+    pub(super) injury:         MessageWriter<'w, Played<InjuryInflicted>>,
+    pub(super) fall:           MessageWriter<'w, Played<FallOccurred>>,
+    pub(super) strike:         MessageWriter<'w, Played<MeleeStruck>>,
+    pub(super) death:          MessageWriter<'w, Played<OnDeathOccurred>>,
+    pub(super) suppression:    MessageWriter<'w, Played<SuppressionApplied>>,
+    pub(super) armor_broken:   MessageWriter<'w, Played<ArmorBroken>>,
+    pub(super) dot:            MessageWriter<'w, Played<DotAfflicted>>,
+    pub(super) dot_tick:       MessageWriter<'w, Played<DotTicked>>,
+    pub(super) field:          MessageWriter<'w, Played<FieldAfflicted>>,
+    pub(super) field_tick:     MessageWriter<'w, Played<FieldTicked>>,
+    pub(super) bleed_started:  MessageWriter<'w, Played<BleedStarted>>,
+    pub(super) bleeding:       MessageWriter<'w, Played<Bleeding>>,
+    pub(super) cover:          MessageWriter<'w, Played<TerrainPieceDestroyed>>,
+    pub(super) melee_landed:   MessageWriter<'w, Played<MeleeResolved>>,
+    pub(super) throw_landed:   MessageWriter<'w, Played<ThrowResolved>>,
 }
 
 pub(super) fn register_played_messages(app: &mut App) {
     app.add_message::<Played<TurnStarted>>()
         .add_message::<Played<MovementOccurred>>()
+        .add_message::<Played<MoveCompleted>>()
         .add_message::<Played<MoveRejected>>()
         .add_message::<Played<FireDeclaration>>()
         .add_message::<Played<ShotFired>>()

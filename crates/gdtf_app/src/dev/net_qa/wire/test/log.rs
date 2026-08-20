@@ -1,4 +1,4 @@
-use gdtf_battle_sim::act_log::ActProvenance;
+use gdtf_battle_sim::{act_log::ActProvenance, visibility::ActorIdentified};
 
 use super::assert_ron_round_trip;
 use crate::dev::net_qa::wire::{
@@ -21,7 +21,7 @@ fn act_provenance_round_trips_every_variant() {
         ActProvenanceNet::Commanded,
         ActProvenanceNet::AiTurn,
         ActProvenanceNet::Reaction {
-            interrupted: GangerToken::new(21),
+            interrupted: Some(GangerToken::new(21)),
         },
         ActProvenanceNet::Clock,
     ] {
@@ -50,9 +50,9 @@ fn log_values_serialize_transparently() {
     assert_eq!(encoded(&LogDroppedCount::new(7)), "7");
     assert_eq!(
         encoded(&ActProvenanceNet::Reaction {
-            interrupted: GangerToken::new(21),
+            interrupted: Some(GangerToken::new(21)),
         }),
-        "Reaction(interrupted:21)",
+        "Reaction(interrupted:Some(21))",
     );
 }
 
@@ -60,9 +60,9 @@ fn log_values_serialize_transparently() {
 fn a_log_entry_round_trips() {
     let entry: LogEntryNet = LogEntryNet {
         seq:        ActSeqNet::new(19),
-        actor:      GangerToken::new(4_294_967_296),
+        actor:      Some(GangerToken::new(4_294_967_296)),
         provenance: ActProvenanceNet::Reaction {
-            interrupted: GangerToken::new(8),
+            interrupted: Some(GangerToken::new(8)),
         },
         kind:       ActDeedKindNet::RoundResolved,
     };
@@ -70,22 +70,49 @@ fn a_log_entry_round_trips() {
 }
 
 #[test]
+fn an_entry_the_asking_gang_could_not_identify_carries_no_token() {
+    let withheld: LogEntryNet = LogEntryNet {
+        seq:        ActSeqNet::new(4),
+        actor:      None,
+        provenance: ActProvenanceNet::Reaction { interrupted: None },
+        kind:       ActDeedKindNet::Fired,
+    };
+    assert_ron_round_trip(&withheld);
+    let text = encoded(&withheld);
+    assert!(
+        !text.contains("Some"),
+        "an unidentified line must put no token on the wire at all: {text}",
+    );
+}
+
+#[test]
 fn a_sim_provenance_mirrors_onto_the_wire() {
+    let known = ActorIdentified::new(true);
     assert_eq!(
-        ActProvenanceNet::from_sim(ActProvenance::AiTurn),
+        ActProvenanceNet::from_sim(ActProvenance::AiTurn, known),
         ActProvenanceNet::AiTurn,
         "the mirror must carry the sim's own provenance",
     );
     assert_eq!(
-        ActProvenanceNet::from_sim(ActProvenance::Clock),
+        ActProvenanceNet::from_sim(ActProvenance::Clock, known),
         ActProvenanceNet::Clock,
         "a clock-driven act mirrors as clock-driven",
+    );
+    assert_eq!(
+        ActProvenanceNet::from_sim(
+            ActProvenance::Reaction {
+                interrupted: bevy::prelude::Entity::PLACEHOLDER,
+            },
+            ActorIdentified::new(false),
+        ),
+        ActProvenanceNet::Reaction { interrupted: None },
+        "a reaction whose interrupted actor the reader never identified names nobody",
     );
 }
 
 #[test]
 fn a_log_entry_refuses_an_unknown_field() {
-    let hostile = "(seq:1,actor:2,provenance:Clock,kind:Bled,extra:3)";
+    let hostile = "(seq:1,actor:Some(2),provenance:Clock,kind:Bled,extra:3)";
     assert!(
         ron::de::from_str::<LogEntryNet>(hostile).is_err(),
         "`{hostile}` carries an unknown field and must not decode",

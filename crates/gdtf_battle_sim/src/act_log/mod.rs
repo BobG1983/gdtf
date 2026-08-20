@@ -8,6 +8,7 @@ mod plugin;
 mod provenance;
 mod record;
 mod seq;
+mod witness;
 
 #[cfg(test)]
 mod test;
@@ -15,8 +16,9 @@ mod test;
 pub use deed::ActDeed;
 pub use entry::{ActEntry, RecordedAct};
 pub use facts::{MagazineFacts, PoseFacts, PositionFacts, SuppressedNow, VitalsFacts};
-pub use log::ActLog;
+pub use log::{ActLog, SquadSees};
 pub use plugin::wire_act_log;
 pub use provenance::ActProvenance;
 pub use record::record_acts;
 pub use seq::{ActLogCapacity, ActLogDropped, ActSeq};
+pub use witness::{ActWitnesses, WatchingFactions};

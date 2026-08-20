@@ -23,6 +23,19 @@ pub struct ActLog {
     prior_magazine: HashMap<Entity, MagazineFacts>,
     prior_life:     HashMap<Entity, LifeState>,
     prior_position: HashMap<Entity, PositionFacts>,
+    prior_seen:     HashMap<Entity, SquadSees>,
+}
+
+/// Whether the player squad could see a ganger the last time the log looked.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SquadSees(bool);
+
+impl SquadSees {
+    /// Wrap a seen flag.
+    #[must_use]
+    pub const fn new(seen: bool) -> Self {
+        Self(seen)
+    }
 }
 
 impl ActLog {
@@ -39,14 +52,20 @@ impl ActLog {
             prior_magazine: HashMap::default(),
             prior_life: HashMap::default(),
             prior_position: HashMap::default(),
+            prior_seen: HashMap::default(),
         }
     }
 
     /// Append an act; returns its sequence. Drops oldest when over capacity.
     pub fn append(&mut self, act: RecordedAct) -> ActSeq {
         let seq = self.next_seq;
-        self.entries
-            .push_back(ActEntry::new(seq, act.actor, act.provenance, act.deed));
+        self.entries.push_back(ActEntry::new(
+            seq,
+            act.actor,
+            act.provenance,
+            act.deed,
+            act.witnesses,
+        ));
         self.next_seq = seq.next();
         while self.entries.len() > *self.capacity {
             if self.entries.pop_front().is_some() {
@@ -131,6 +150,15 @@ impl ActLog {
     pub fn note_position(&mut self, entity: Entity, position: PositionFacts) -> bool {
         match self.prior_position.insert(entity, position) {
             Some(prior) => prior != position,
+            None => false,
+        }
+    }
+
+    /// Note squad sight of a ganger; true when a hidden one has just come into view.
+    /// The first look seeds the map and reports nothing.
+    pub fn note_seen(&mut self, entity: Entity, seen: SquadSees) -> bool {
+        match self.prior_seen.insert(entity, seen) {
+            Some(prior) => !*prior && *seen,
             None => false,
         }
     }

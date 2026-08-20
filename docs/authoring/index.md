@@ -65,7 +65,7 @@ validation window), and the one-owner path-spelling rule.
   valence/severity color model and the add-a-consequence-family pointer.
 - [combat-log-authoring.md](combat-log-authoring.md) — the combat log:
   sources → presenter-side forwarders → classify → the app appender, the
-  all-state-changes coverage contract, and the hot-reloadable feel table.
+  coverage contract and its fog gate, and the hot-reloadable feel table.
 
 ## Engineer-facing recipes (rustdoc is the source of truth — link, never fork)
 

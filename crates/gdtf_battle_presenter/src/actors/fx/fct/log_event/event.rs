@@ -6,7 +6,7 @@ use gdtf_battle_sim::{
     battle::PlayerFaction,
     falls::StoreysFallen,
     ganger::GangerName,
-    prelude::{Cell, Faction},
+    prelude::Faction,
     resolve_and_apply::HitReport,
     resolve_hit::HpDamage,
     severity::Severity,
@@ -55,14 +55,10 @@ pub enum CombatLogEvent {
         /// Fire mode used.
         mode:   ModeKind,
     },
-    /// Someone walked between cells.
+    /// Someone finished a walk.
     MovementOccurred {
         /// Walker name.
         actor: LogName,
-        /// Start cell.
-        from:  Cell,
-        /// End cell.
-        to:    Cell,
     },
     /// A round resolved with an optional hit report.
     ShotOutcome {

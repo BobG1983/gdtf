@@ -2,7 +2,7 @@
 
 use bevy::prelude::Entity;
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActLog, ActProvenance, RecordedAct},
+    act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct, WatchingFactions},
     prelude::Faction,
 };
 
@@ -14,6 +14,23 @@ const WRITTEN: u64 = 512;
 /// Sequence a paging caller resumes from, far enough in to leave lines on both sides.
 const CURSOR: u64 = 500;
 
+/// The gang doing the asking in every case here.
+pub(super) const PLAYER: Faction = Faction::new(0);
+
+/// The gang standing where the asking gang cannot see.
+pub(super) const ENEMY: Faction = Faction::new(1);
+
+/// Witnesses saying `gang` watched the act and could name whoever did it.
+pub(super) fn watched_by(gang: Faction) -> ActWitnesses {
+    let watching = WatchingFactions::new([gang]);
+    ActWitnesses::new(watching.clone(), watching)
+}
+
+/// Witnesses saying `gang` watched the act but could not name whoever did it.
+pub(super) fn watched_unnamed(gang: Faction) -> ActWitnesses {
+    ActWitnesses::new(WatchingFactions::new([gang]), WatchingFactions::nobody())
+}
+
 /// A log holding [`WRITTEN`] lines, sequenced from the start and inside the ring buffer.
 fn a_flooded_log() -> ActLog {
     let mut log = ActLog::default();
@@ -21,16 +38,15 @@ fn a_flooded_log() -> ActLog {
         log.append(RecordedAct::new(
             Entity::PLACEHOLDER,
             ActProvenance::Clock,
-            ActDeed::TurnBegan {
-                now_active: Faction::new(0),
-            },
+            ActDeed::TurnBegan { now_active: PLAYER },
+            watched_by(PLAYER),
         ));
     }
     log
 }
 
 /// Parse arguments the way the wire hands them over, so a case uses the caller's own text.
-fn args(text: &str) -> LogReadArgs {
+pub(super) fn args(text: &str) -> LogReadArgs {
     match ron::de::from_str::<LogReadArgs>(text) {
         Ok(parsed) => parsed,
         Err(fault) => {
@@ -42,7 +58,7 @@ fn args(text: &str) -> LogReadArgs {
 #[test]
 fn a_read_that_names_no_cap_stops_well_short_of_the_whole_log() {
     let log = a_flooded_log();
-    let reply = window(&log, &args("()"));
+    let reply = window(&log, &args("()"), Some(PLAYER));
 
     assert!(
         u64::try_from(reply.entries.len()).unwrap_or(u64::MAX) < WRITTEN,
@@ -58,8 +74,8 @@ fn a_read_that_names_no_cap_stops_well_short_of_the_whole_log() {
 #[test]
 fn a_cap_past_the_ceiling_comes_back_as_the_ceiling() {
     let log = a_flooded_log();
-    let greedy = window(&log, &args("(cap:Some(100000))"));
-    let modest = window(&log, &args("(cap:Some(3))"));
+    let greedy = window(&log, &args("(cap:Some(100000))"), Some(PLAYER));
+    let modest = window(&log, &args("(cap:Some(3))"), Some(PLAYER));
 
     assert!(
         u64::from(*greedy.cap) < WRITTEN,
@@ -80,7 +96,7 @@ fn a_cap_past_the_ceiling_comes_back_as_the_ceiling() {
 #[test]
 fn a_window_keeps_the_newest_lines_and_counts_what_it_left_out() {
     let log = a_flooded_log();
-    let reply = window(&log, &args("(cap:Some(4))"));
+    let reply = window(&log, &args("(cap:Some(4))"), Some(PLAYER));
 
     let Some(newest) = reply.entries.last() else {
         unreachable!("a four-line window over a full log is not empty");
@@ -103,6 +119,7 @@ fn a_cursor_starts_the_window_at_the_sequence_the_caller_named() {
     let reply = window(
         &log,
         &args(&format!("(since:Some({CURSOR}),cap:Some(200))")),
+        Some(PLAYER),
     );
 
     let Some(first) = reply.entries.first() else {
@@ -122,7 +139,7 @@ fn a_cursor_starts_the_window_at_the_sequence_the_caller_named() {
 #[test]
 fn a_read_brackets_the_window_with_what_the_buffer_still_holds() {
     let log = a_flooded_log();
-    let reply = window(&log, &args("(cap:Some(4))"));
+    let reply = window(&log, &args("(cap:Some(4))"), Some(PLAYER));
 
     assert_eq!(
         *reply.head, WRITTEN,

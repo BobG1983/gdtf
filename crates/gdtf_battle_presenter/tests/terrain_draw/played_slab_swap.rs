@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{app::App, ecs::message::Messages, time::TimeUpdateStrategy};
 use gdtf_battle_presenter::{PlaybackCursor, PlaybackTuning, StampedGraphic};
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActLog, ActProvenance, ActSeq, RecordedAct},
+    act_log::{ActDeed, ActLog, ActProvenance, ActSeq, ActWitnesses, RecordedAct},
     battle::BattleReady,
     cover::CoverLedger,
     entity::TerrainPieceKind,
@@ -45,11 +45,13 @@ fn detained_smash_log(app: &mut App, at: CellLevel, kind: TerrainPieceKind) -> A
         actor,
         ActProvenance::Commanded,
         ActDeed::BleedStarted,
+        ActWitnesses::unseen(),
     ));
     let smash = log.append(RecordedAct::new(
         actor,
         ActProvenance::Commanded,
         ActDeed::TerrainPieceSmashed { at, kind },
+        ActWitnesses::unseen(),
     ));
     app.world_mut().insert_resource(log);
     smash

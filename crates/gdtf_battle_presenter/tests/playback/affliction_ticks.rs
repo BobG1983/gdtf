@@ -1,7 +1,5 @@
 use std::time::Duration;
 
-use bevy::ecs::message::Messages;
-use gdtf_battle_presenter::Played;
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActProvenance},
     effects::{
@@ -13,12 +11,6 @@ use gdtf_battle_sim::{
 };
 
 use super::harness::*;
-
-fn played<M: bevy::ecs::message::Message + Clone>(app: &mut bevy::app::App) -> Vec<Played<M>> {
-    app.world_mut()
-        .get_resource_mut::<Messages<Played<M>>>()
-        .map_or_else(Vec::new, |mut messages| messages.drain().collect())
-}
 
 #[test]
 fn a_recorded_dot_drain_is_played_with_its_cell_and_amount() {

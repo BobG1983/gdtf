@@ -6,5 +6,6 @@ mod pass;
 mod posture;
 mod sources;
 mod turn;
+mod view;
 
 pub use pass::record_acts;

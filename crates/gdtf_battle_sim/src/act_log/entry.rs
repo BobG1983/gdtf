@@ -2,7 +2,7 @@
 
 use bevy::prelude::Entity;
 
-use super::{deed::ActDeed, provenance::ActProvenance, seq::ActSeq};
+use super::{deed::ActDeed, provenance::ActProvenance, seq::ActSeq, witness::ActWitnesses};
 
 /// Fully sequenced act stored in the log.
 #[derive(Debug, Clone, PartialEq)]
@@ -11,6 +11,7 @@ pub struct ActEntry {
     actor:      Entity,
     provenance: ActProvenance,
     deed:       ActDeed,
+    witnesses:  ActWitnesses,
 }
 
 impl ActEntry {
@@ -21,12 +22,14 @@ impl ActEntry {
         actor: Entity,
         provenance: ActProvenance,
         deed: ActDeed,
+        witnesses: ActWitnesses,
     ) -> Self {
         Self {
             seq,
             actor,
             provenance,
             deed,
+            witnesses,
         }
     }
 
@@ -53,6 +56,12 @@ impl ActEntry {
     pub const fn deed(&self) -> &ActDeed {
         &self.deed
     }
+
+    /// Who could observe the act when it was appended, and whom they could name.
+    #[must_use]
+    pub const fn witnesses(&self) -> &ActWitnesses {
+        &self.witnesses
+    }
 }
 
 /// Act ready to append (no sequence yet).
@@ -64,16 +73,24 @@ pub struct RecordedAct {
     pub provenance: ActProvenance,
     /// What happened.
     pub deed:       ActDeed,
+    /// Who could observe it, resolved from the cells it touched.
+    pub witnesses:  ActWitnesses,
 }
 
 impl RecordedAct {
-    /// Build a recorded act.
+    /// Build a recorded act from who could observe it.
     #[must_use]
-    pub const fn new(actor: Entity, provenance: ActProvenance, deed: ActDeed) -> Self {
+    pub const fn new(
+        actor: Entity,
+        provenance: ActProvenance,
+        deed: ActDeed,
+        witnesses: ActWitnesses,
+    ) -> Self {
         Self {
             actor,
             provenance,
             deed,
+            witnesses,
         }
     }
 }

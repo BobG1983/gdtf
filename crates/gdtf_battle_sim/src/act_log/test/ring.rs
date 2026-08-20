@@ -1,17 +1,26 @@
 use bevy::prelude::Entity;
 
 use crate::{
-    act_log::{ActDeed, ActEntry, ActLog, ActLogCapacity, ActProvenance, ActSeq, RecordedAct},
+    act_log::{
+        ActDeed, ActEntry, ActLog, ActLogCapacity, ActProvenance, ActSeq, ActWitnesses,
+        RecordedAct, WatchingFactions,
+    },
     ganger::Faction,
 };
 
 fn beat(gang: u8) -> RecordedAct {
+    watched_beat(gang, &[Faction::new(gang)])
+}
+
+fn watched_beat(gang: u8, watching: &[Faction]) -> RecordedAct {
+    let seen = WatchingFactions::new(watching.iter().copied());
     RecordedAct::new(
         Entity::PLACEHOLDER,
         ActProvenance::Clock,
         ActDeed::TurnBegan {
             now_active: Faction::new(gang),
         },
+        ActWitnesses::new(seen.clone(), seen),
     )
 }
 
@@ -97,6 +106,43 @@ fn capacity_drops_oldest_and_counts() {
         retained,
         vec![ActSeq::new(2), ActSeq::new(3), ActSeq::new(4)],
         "a cursor that fell off the window still reads everything retained, oldest first",
+    );
+}
+
+#[test]
+fn each_entry_keeps_the_observers_it_was_appended_with() {
+    let player = Faction::new(0);
+    let enemy = Faction::new(1);
+    let mut log = ActLog::default();
+
+    log.append(watched_beat(0, &[player, enemy]));
+    log.append(watched_beat(1, &[enemy]));
+
+    let entries: Vec<&ActEntry> = log.since(ActSeq::START).collect();
+    let [both, enemy_only] = entries.as_slice() else {
+        unreachable!("two appends retain two entries");
+    };
+
+    assert!(
+        *both.witnesses().observed_by(player) && *both.witnesses().observed_by(enemy),
+        "an act both gangs watched must read as observed by each of them: {:?}",
+        both.witnesses(),
+    );
+    assert!(
+        !*enemy_only.witnesses().observed_by(player),
+        "a gang absent from the record saw nothing — an absent key must never read as \
+         observed: {:?}",
+        enemy_only.witnesses(),
+    );
+    assert!(
+        *enemy_only.witnesses().observed_by(enemy),
+        "the gang the act was recorded against still observes it: {:?}",
+        enemy_only.witnesses(),
+    );
+    assert!(
+        !*enemy_only.witnesses().identifies_actor(player),
+        "a gang that could not observe the act cannot be given the actor's name either: {:?}",
+        enemy_only.witnesses(),
     );
 }
 

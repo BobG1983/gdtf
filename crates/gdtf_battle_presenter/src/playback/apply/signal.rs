@@ -4,8 +4,8 @@ use bevy::prelude::*;
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActEntry},
     acts::{
-        FireDeclaration, MeleeResolved, MeleeStruck, MoveRejected, MovementOccurred, ReloadResult,
-        ThrowResolved,
+        FireDeclaration, MeleeResolved, MeleeStruck, MoveCompleted, MoveRejected, MovementOccurred,
+        ReloadResult, ThrowResolved,
     },
     armor_wear::ArmorBroken,
     effects::{
@@ -28,6 +28,12 @@ pub(super) fn emit_played(entry: &ActEntry, played: &mut PlayedSignals) {
         ActDeed::TurnBegan { now_active } => play(&mut played.turn, TurnStarted::new(*now_active)),
         ActDeed::Stepped { from, to, .. } => {
             play(&mut played.step, MovementOccurred::new(actor, *from, *to));
+        }
+        ActDeed::MovedTo { position } => {
+            play(
+                &mut played.move_completed,
+                MoveCompleted::new(actor, *position.inner()),
+            );
         }
         ActDeed::MoveRefused { reason } => {
             play(&mut played.refusal, MoveRejected::new(actor, *reason));
@@ -91,7 +97,7 @@ pub(super) fn emit_played(entry: &ActEntry, played: &mut PlayedSignals) {
             play(&mut played.throw_landed, ThrowResolved::new(*at, *damage));
         }
         ActDeed::PostureChanged { .. }
-        | ActDeed::MovedTo { .. }
+        | ActDeed::EnteredView { .. }
         | ActDeed::MagazineChanged { .. }
         | ActDeed::VitalsChanged { .. }
         | ActDeed::LifeChanged { .. } => {}

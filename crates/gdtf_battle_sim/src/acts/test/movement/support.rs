@@ -66,6 +66,13 @@ pub(super) fn drain_movements(app: &mut App) -> Vec<MovementOccurred> {
         .collect()
 }
 
+pub(super) fn drain_completed_moves(app: &mut App) -> Vec<MoveCompleted> {
+    app.world_mut()
+        .resource_mut::<Messages<MoveCompleted>>()
+        .drain()
+        .collect()
+}
+
 pub(super) fn spawn_move_actor_of_gang(
     world: &mut World,
     x: i32,

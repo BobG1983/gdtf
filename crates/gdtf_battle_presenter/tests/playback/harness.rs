@@ -1,12 +1,16 @@
 use std::time::Duration;
 
-use bevy::{app::App, ecs::system::RunSystemOnce, prelude::*};
+use bevy::{
+    app::App,
+    ecs::{message::Messages, system::RunSystemOnce},
+    prelude::*,
+};
 use gdtf_battle_presenter::{
-    DrawnLife, DrawnPose, DrawnPosition, DrawnVitals, PlaybackCursor, PlaybackTuning,
+    DrawnLife, DrawnPose, DrawnPosition, DrawnVitals, PlaybackCursor, PlaybackTuning, Played,
     advance_playback, register_playback, seed_drawn_state,
 };
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActLog, ActProvenance, ActSeq, RecordedAct},
+    act_log::{ActDeed, ActLog, ActProvenance, ActSeq, ActWitnesses, RecordedAct},
     acts::RoundCount,
     ganger::{Aiming, Direction, Facing, Hp, LifeState, Position, Stance, StanceKind, Tu, Wounds},
     injuries::InflictedInjuries,
@@ -51,7 +55,12 @@ pub(crate) fn append(app: &mut App, actor: Entity, provenance: ActProvenance, de
     let Some(mut log) = app.world_mut().get_resource_mut::<ActLog>() else {
         unreachable!("the fixture inserts an act log");
     };
-    log.append(RecordedAct::new(actor, provenance, deed));
+    log.append(RecordedAct::new(
+        actor,
+        provenance,
+        deed,
+        ActWitnesses::unseen(),
+    ));
 }
 
 pub(crate) fn append_reaction_fire(app: &mut App, actor: Entity, interrupted: Entity) {
@@ -71,6 +80,12 @@ pub(crate) fn step(app: &mut App, delta: Duration) {
     app.world_mut().resource_mut::<Time>().advance_by(delta);
     let ran = app.world_mut().run_system_once(advance_playback);
     assert!(ran.is_ok(), "the playback cursor must run in the fixture");
+}
+
+pub(crate) fn played<M: bevy::ecs::message::Message + Clone>(app: &mut App) -> Vec<Played<M>> {
+    app.world_mut()
+        .get_resource_mut::<Messages<Played<M>>>()
+        .map_or_else(Vec::new, |mut messages| messages.drain().collect())
 }
 
 pub(crate) fn shown(app: &App) -> ActSeq {

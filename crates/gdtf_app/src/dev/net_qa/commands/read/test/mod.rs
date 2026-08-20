@@ -1,6 +1,7 @@
 mod act_availability;
 mod availability_words;
 mod card;
+mod log_fog;
 mod log_window;
 mod offer_list;
 mod offers;

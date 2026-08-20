@@ -18,7 +18,8 @@ use super::{
     procgen::ProcgenStep,
     read::{
         AppPhase, BattleCost, BattleInspect, BattleOffers, BattleRoster, BattleSelection,
-        BattleSightline, BattleTurn, BattleVisible, LogRead, PlaybackState, SettingsRead, UiFocus,
+        BattleSightline, BattleTurn, BattleVisible, LogOmniscientRead, LogRead, PlaybackState,
+        SettingsRead, UiFocus,
     },
     wait::Wait,
 };
@@ -39,6 +40,7 @@ pub(in crate::dev::net_qa) const GAME_COMMANDS: &[&dyn ErasedCommand<GameFacts>]
     &BattleVisible,
     &BattleCost,
     &LogRead,
+    &LogOmniscientRead,
     &BattleStart,
     &BattleFlee,
     &ProcgenStep,

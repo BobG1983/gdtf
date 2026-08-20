@@ -1,6 +1,7 @@
 mod support;
 
 mod bump_stop;
+mod completed;
 mod cost;
 mod dispatch;
 mod downed_block;

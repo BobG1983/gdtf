@@ -113,6 +113,12 @@ pub(crate) struct RememberedCover {
     pub(crate) at: CellLevelNet,
 }
 
+/// The enemy a fixture stood in the dark and fired across the squad's lit area.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct HiddenShooter {
+    pub(crate) entity: Entity,
+}
+
 /// The ganger every act-log line the fixture wrote names.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct LoggedActor {

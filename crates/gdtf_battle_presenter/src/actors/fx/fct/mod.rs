@@ -15,8 +15,8 @@ pub use families::{
 };
 pub use log_event::{
     CombatLogEvent, CombatLogSource, CombatLogSourceAppExt, CombatLogSystems, InjuryLogText,
-    LogLine, LogName, classify_log_event, forward_live_log_source, forward_log_source,
-    forward_turn_started,
+    LogLine, LogName, PanelRow, PanelSight, classify_log_event, forward_live_log_source,
+    forward_log_source, forward_turn_started,
 };
 pub use palette::{FctValence, severity_color, valence_color};
 pub use pop::{ConsequenceFct, ConsequencePop, PopAnchor};
