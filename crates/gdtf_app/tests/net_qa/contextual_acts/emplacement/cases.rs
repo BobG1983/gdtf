@@ -42,11 +42,12 @@ struct InspectBody {
 
 /// The card the panel drew for one cell, or a failure naming what it showed instead.
 fn inspected_card(reply: QaResponse) -> Result<GangerCardNet, TestError> {
-    match decode::<InspectBody>(BATTLE_INSPECT, reply)?.shown {
-        InspectShownNet::Ganger(card) => Ok(card),
-        other => Err(format!(
+    let shown = decode::<InspectBody>(BATTLE_INSPECT, reply)?.shown;
+    match shown.ganger.clone() {
+        Some(card) => Ok(card),
+        None => Err(format!(
             "`{BATTLE_INSPECT}` must draw the shooter's card on the cell it is standing on; it \
-             showed {other:?} instead, and an emplacement cell with nobody on it answers Nothing"
+             showed {shown:?} instead, and a seat with nobody on it reports no ganger half"
         )
         .into()),
     }

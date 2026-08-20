@@ -7,7 +7,8 @@ use crate::states::{
     BattleScapeState,
     running::game::battlescape::inspect_panel::{
         shadow::{
-            ShownCoverLedger, ShownOccupancyGrid, promote_shown_cover, promote_shown_occupancy,
+            ShownCoverLedger, ShownEmplacements, ShownOccupancyGrid, promote_shown_cover,
+            promote_shown_emplacements, promote_shown_occupancy,
         },
         systems::{despawn_inspect_panel, spawn_inspect_panel, update_inspect_panel},
     },
@@ -19,6 +20,7 @@ impl Plugin for GameBattleScapeInspectPanelScenePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ShownOccupancyGrid>()
             .init_resource::<ShownCoverLedger>()
+            .init_resource::<ShownEmplacements>()
             .add_systems(
                 OnEnter(BattleScapeState::BattleRunning),
                 spawn_inspect_panel,
@@ -29,7 +31,11 @@ impl Plugin for GameBattleScapeInspectPanelScenePlugin {
             )
             .add_systems(
                 Update,
-                (promote_shown_occupancy, promote_shown_cover)
+                (
+                    promote_shown_occupancy,
+                    promote_shown_cover,
+                    promote_shown_emplacements,
+                )
                     .after(PresenterSystems::Compose)
                     .run_if(resource_exists::<BattleInProgress>),
             )
@@ -40,6 +46,7 @@ impl Plugin for GameBattleScapeInspectPanelScenePlugin {
                     .after(PresenterSystems::Compose)
                     .after(promote_shown_occupancy)
                     .after(promote_shown_cover)
+                    .after(promote_shown_emplacements)
                     .run_if(resource_exists::<BattleInProgress>),
             );
     }

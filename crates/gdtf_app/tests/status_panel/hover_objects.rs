@@ -40,6 +40,7 @@ fn hovering_an_object_shows_the_object_block() {
         },
     );
 
+    make_cells_visible(&mut app, &[cell]);
     hover(&mut app, Some(cell));
 
     let block = single_global::<InspectObjectBlock>(&mut app);

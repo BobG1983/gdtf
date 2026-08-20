@@ -16,7 +16,8 @@ use crate::dev::net_qa::{
         cost::{CostActNet, CostLegalNet, CostRefusalNet},
         deed::{ActDeedKindNet, MoveRejectionNet, ReloadOutcomeNet, TerrainPieceKindNet},
         inspect::{
-            CoverBlockNet, CoverHpNet, HardnessNet, HeightBandNet, InspectShownNet, ProtectionNet,
+            CoverBlockNet, CoverHpNet, EmplacementStateNet, HardnessNet, HeightBandNet,
+            InspectShownNet, InspectTerrainNet, MountedWeaponNet, ProtectionNet, TerrainKindNet,
         },
         key::{FocusStepNet, KeyNet, KeyPressNet, KeybindActionNet},
         log::{ActProvenanceNet, LogDroppedCount, LogEntryNet, LogReadCap},
@@ -136,13 +137,6 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<MountedNet>("MountedNet");
     assert_schema_is_usable::<GangerCardNet>("GangerCardNet");
 
-    assert_schema_is_usable::<HardnessNet>("HardnessNet");
-    assert_schema_is_usable::<ProtectionNet>("ProtectionNet");
-    assert_schema_is_usable::<HeightBandNet>("HeightBandNet");
-    assert_schema_is_usable::<CoverHpNet>("CoverHpNet");
-    assert_schema_is_usable::<CoverBlockNet>("CoverBlockNet");
-    assert_schema_is_usable::<InspectShownNet>("InspectShownNet");
-
     assert_schema_is_usable::<DoorOpenNet>("DoorOpenNet");
     assert_schema_is_usable::<VisibleGangerNet>("VisibleGangerNet");
     assert_schema_is_usable::<VisibleDoorNet>("VisibleDoorNet");
@@ -186,6 +180,20 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<ActCountNet>("ActCountNet");
     assert_schema_is_usable::<AppPhaseTargetNet>("AppPhaseTargetNet");
     assert_schema_is_usable::<WaitConditionNet>("WaitConditionNet");
+}
+
+#[test]
+fn every_inspect_wire_type_traces_a_usable_shape() {
+    assert_schema_is_usable::<HardnessNet>("HardnessNet");
+    assert_schema_is_usable::<ProtectionNet>("ProtectionNet");
+    assert_schema_is_usable::<HeightBandNet>("HeightBandNet");
+    assert_schema_is_usable::<CoverHpNet>("CoverHpNet");
+    assert_schema_is_usable::<CoverBlockNet>("CoverBlockNet");
+    assert_schema_is_usable::<TerrainKindNet>("TerrainKindNet");
+    assert_schema_is_usable::<EmplacementStateNet>("EmplacementStateNet");
+    assert_schema_is_usable::<MountedWeaponNet>("MountedWeaponNet");
+    assert_schema_is_usable::<InspectTerrainNet>("InspectTerrainNet");
+    assert_schema_is_usable::<InspectShownNet>("InspectShownNet");
 }
 
 #[test]

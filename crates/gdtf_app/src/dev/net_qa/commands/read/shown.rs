@@ -21,7 +21,7 @@ use crate::{
     states::running::game::battlescape::{
         inspect_panel::{
             decide::ShownBattle,
-            shadow::{ShownCoverLedger, ShownOccupancyGrid},
+            shadow::{ShownCoverLedger, ShownEmplacements, ShownOccupancyGrid},
         },
         stat_block::StatBlockDataItem,
     },
@@ -30,10 +30,11 @@ use crate::{
 /// The shadow resources the inspect panel reads, as one system param.
 #[derive(SystemParam)]
 pub(in crate::dev::net_qa) struct ShownBattleReads<'w> {
-    grid:   Option<Res<'w, ShownOccupancyGrid>>,
-    ledger: Option<Res<'w, ShownCoverLedger>>,
-    squad:  Option<Res<'w, ShownSquadVisibility>>,
-    player: Option<Res<'w, PlayerFaction>>,
+    grid:         Option<Res<'w, ShownOccupancyGrid>>,
+    ledger:       Option<Res<'w, ShownCoverLedger>>,
+    emplacements: Option<Res<'w, ShownEmplacements>>,
+    squad:        Option<Res<'w, ShownSquadVisibility>>,
+    player:       Option<Res<'w, PlayerFaction>>,
 }
 
 impl ShownBattleReads<'_> {
@@ -43,6 +44,7 @@ impl ShownBattleReads<'_> {
         ShownBattle::new(
             self.grid.as_deref().map(ShownOccupancyGrid::grid),
             self.ledger.as_deref().map(ShownCoverLedger::ledger),
+            self.emplacements.as_deref(),
             self.squad.as_deref().map(ShownSquadVisibility::visibility),
             self.player.as_deref(),
         )

@@ -12,7 +12,7 @@ use crate::states::running::game::battlescape::inspect_panel::{
         InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
     },
     decide::ShownBattle,
-    shadow::{ShownCoverLedger, ShownOccupancyGrid},
+    shadow::{ShownCoverLedger, ShownEmplacements, ShownOccupancyGrid},
 };
 
 #[derive(bevy::ecs::system::SystemParam)]
@@ -31,11 +31,12 @@ pub(in crate::states::running::game::battlescape) struct InspectNodes<'w, 's> {
 /// reads as ONE param (the [`too_many_arguments`](clippy::too_many_arguments) idiom). The grid
 #[derive(bevy::ecs::system::SystemParam)]
 pub(in crate::states::running::game::battlescape) struct InspectReads<'w> {
-    pub target: Res<'w, InspectTarget>,
-    pub grid:   Option<Res<'w, ShownOccupancyGrid>>,
-    pub ledger: Option<Res<'w, ShownCoverLedger>>,
-    pub squad:  Option<Res<'w, ShownSquadVisibility>>,
-    pub player: Option<Res<'w, PlayerFaction>>,
+    pub target:       Res<'w, InspectTarget>,
+    pub grid:         Option<Res<'w, ShownOccupancyGrid>>,
+    pub ledger:       Option<Res<'w, ShownCoverLedger>>,
+    pub emplacements: Option<Res<'w, ShownEmplacements>>,
+    pub squad:        Option<Res<'w, ShownSquadVisibility>>,
+    pub player:       Option<Res<'w, PlayerFaction>>,
 }
 
 impl InspectReads<'_> {
@@ -52,6 +53,13 @@ impl InspectReads<'_> {
     }
 
     #[must_use]
+    pub(in crate::states::running::game::battlescape) fn emplacements(
+        &self,
+    ) -> Option<&ShownEmplacements> {
+        self.emplacements.as_deref()
+    }
+
+    #[must_use]
     pub(in crate::states::running::game::battlescape) fn fog(&self) -> Option<&SquadVisibility> {
         self.squad.as_deref().map(ShownSquadVisibility::visibility)
     }
@@ -61,6 +69,7 @@ impl InspectReads<'_> {
         ShownBattle::new(
             self.occupancy(),
             self.cover(),
+            self.emplacements(),
             self.fog(),
             self.player.as_deref(),
         )

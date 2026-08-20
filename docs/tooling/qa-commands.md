@@ -294,10 +294,16 @@ lists the contextual buttons the panel is showing, each with the target it would
 a `pressable` flag that is false when the panel greys the button out — the actor's TU pool
 cannot cover the act's cost, or for melee the actor wields no melee weapon to price a strike
 with,
-`battle.inspect` reads one cell exactly as the inspect panel draws it, `battle.sightline`
+`battle.inspect` reads one cell exactly as the inspect panel draws it — the card for a
+squad-visible ganger standing there and the terrain half for the cell itself (its piece kind,
+the cover stats the ledger holds, and an emplacement's state and mounted weapon), each absent
+when there is nothing to report, and the terrain half absent as well when the fog hides the
+cell, so a cell the squad cannot see reports nothing at all — `battle.sightline`
 answers whether the squad can see a cell and whether the selected shooter could engage it,
 `battle.visible`
-lists the enemies, doors and cover inside the lit area, `battle.cost` quotes what one act
+lists the enemies, doors and cover inside the lit area — a lit cell reaches the cover list
+when the cover ledger holds stats for it, so walls and emplacements are on it too, and a
+cell the ledger has no entry for is left off — `battle.cost` quotes what one act
 would charge one ganger in TU and whether the sim would allow it — every number is the
 sim's own cost helper and every verdict its own legality check, so a melee quote on a
 ganger runs the sim's line-of-sight probe as well as its reach check and refuses
@@ -318,11 +324,12 @@ unfiltered and fully identified. Using it is cheating: it is for testing only, a
 never back a claim about what a player can see. Use `log.read` for that.
 
 Every read that answers a fog question reads the same playback-gated shadows the panels
-read — the shown fog, the shown occupancy grid and cover ledger, and each ganger's drawn
-cell and drawn vitals. That covers `battle.roster`, `battle.inspect`, `battle.visible` and
-the `can_see` half of `battle.sightline`. A ganger is therefore reported on the cell its
-sprite stands on, and counts as seen or hidden from that cell, not from the one the sim
-has already moved it to, and no read ever reports fog the screen has not drawn yet.
+read — the shown fog, the shown occupancy grid, cover ledger and emplacements, and each
+ganger's drawn cell and drawn vitals. That covers `battle.roster`, `battle.inspect`,
+`battle.visible` and the `can_see` half of `battle.sightline`. A ganger is therefore
+reported on the cell its sprite stands on, and counts as seen or hidden from that cell, not
+from the one the sim has already moved it to, and no read ever reports fog the screen has
+not drawn yet.
 `log.read` answers a fog question from a different place: each line records which gangs
 could observe it when it was appended, so the read filters against that fixed record rather
 than the fog as it stands now — a line the asking gang could not observe is dropped rather

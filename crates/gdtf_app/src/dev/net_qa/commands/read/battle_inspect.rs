@@ -18,13 +18,16 @@ use crate::{
         facts::GameFacts,
         wire::{
             cell::CellLevelNet,
-            inspect::{CoverBlockNet, InspectShownNet},
+            inspect::{
+                CoverBlockNet, EmplacementStateNet, InspectShownNet, InspectTerrainNet,
+                MountedWeaponNet, TerrainKindNet,
+            },
         },
     },
     states::running::game::battlescape::{
         inspect_panel::{
-            decide::{InspectShown, inspect_shown},
-            shadow::{promote_shown_cover, promote_shown_occupancy},
+            decide::{InspectShown, InspectTerrain, inspect_shown},
+            shadow::{promote_shown_cover, promote_shown_emplacements, promote_shown_occupancy},
         },
         stat_block::StatBlockData,
     },
@@ -53,9 +56,12 @@ impl QaCommand for BattleInspect {
 
     const NAME: CommandName = CommandName::from_static("battle.inspect");
     const SUMMARY: CommandSummary = CommandSummary::from_static(
-        "Read one cell exactly as the inspect panel would draw it: a squad-visible ganger's \
-         card, else the cover block for destructible terrain, else nothing. Takes the cell to \
-         read; the panel's own hovered and pinned cells come from battle.selection.",
+        "Read one cell exactly as the inspect panel would draw it: the card for a \
+         squad-visible ganger standing there and the terrain half for the cell itself — its \
+         piece kind, the cover stats the ledger holds, and an emplacement's state and mounted \
+         weapon. Either half is absent when there is nothing to report, and a cell the squad \
+         cannot see reports neither. Takes the cell to read; the panel's own hovered and \
+         pinned cells come from battle.selection.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -70,7 +76,8 @@ impl QaCommand for BattleInspect {
                 .after(QaCommandSystems::Claim)
                 .after(PresenterSystems::Compose)
                 .after(promote_shown_occupancy)
-                .after(promote_shown_cover),
+                .after(promote_shown_cover)
+                .after(promote_shown_emplacements),
         );
     }
 }
@@ -92,25 +99,33 @@ fn handle_battle_inspect(
         });
         responder.answer(&BattleInspectReply {
             at:    args.at,
-            shown: on_the_wire(decision, args.at, &rows, &mounts),
+            shown: on_the_wire(&decision, args.at, &rows, &mounts),
         });
     }
 }
 
 fn on_the_wire(
-    decision: InspectShown,
+    decision: &InspectShown,
     at: CellLevelNet,
     rows: &Query<StatBlockData>,
     mounts: &Query<&Mounted>,
 ) -> InspectShownNet {
-    match decision {
-        InspectShown::Ganger(entity) => match rows.get(entity) {
-            Ok(row) => {
-                InspectShownNet::Ganger(ganger_card(entity, at, &row, mounts.get(entity).ok()))
-            }
-            Err(_) => InspectShownNet::Nothing,
-        },
-        InspectShown::Cover(entry) => InspectShownNet::Cover(CoverBlockNet::from_sim(entry)),
-        InspectShown::Nothing => InspectShownNet::Nothing,
+    InspectShownNet {
+        ganger:  decision.ganger().and_then(|entity| {
+            rows.get(entity)
+                .ok()
+                .map(|row| ganger_card(entity, at, &row, mounts.get(entity).ok()))
+        }),
+        terrain: decision.terrain().map(terrain_on_the_wire),
+    }
+}
+
+fn terrain_on_the_wire(terrain: &InspectTerrain) -> InspectTerrainNet {
+    let seat = terrain.emplacement();
+    InspectTerrainNet {
+        kind:   TerrainKindNet::from_sim(terrain.kind()),
+        cover:  terrain.cover().map(CoverBlockNet::from_sim),
+        state:  seat.map(|seat| EmplacementStateNet::from_sim(seat.state())),
+        weapon: seat.map(|seat| MountedWeaponNet::new((***seat.weapon()).clone())),
     }
 }

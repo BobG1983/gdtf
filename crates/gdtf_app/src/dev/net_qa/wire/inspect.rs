@@ -1,7 +1,11 @@
 //! What the inspect panel shows for one cell, on the wire.
 
 use bevy::prelude::Deref;
-use gdtf_battle_sim::cover::{CoverEntry, HeightBand};
+use gdtf_battle_sim::{
+    cover::{CoverEntry, HeightBand},
+    emplacement::EmplacementState,
+    entity::TerrainPieceKind,
+};
 use serde::{Deserialize, Serialize};
 
 use super::roster::GangerCardNet;
@@ -98,13 +102,85 @@ impl CoverBlockNet {
     }
 }
 
-/// The three things the inspect panel can be showing.
+/// Which kind of terrain piece stands on an inspected cell.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum TerrainKindNet {
+    /// Full wall.
+    Wall,
+    /// Partial cover.
+    Cover,
+    /// Floor slab.
+    Slab,
+    /// Weapon emplacement.
+    Emplacement,
+}
+
+impl TerrainKindNet {
+    /// Mirror the sim's own piece kind.
+    #[must_use]
+    pub const fn from_sim(kind: TerrainPieceKind) -> Self {
+        match kind {
+            TerrainPieceKind::Wall => Self::Wall,
+            TerrainPieceKind::Cover => Self::Cover,
+            TerrainPieceKind::Slab => Self::Slab,
+            TerrainPieceKind::Emplacement => Self::Emplacement,
+        }
+    }
+}
+
+/// Whether an emplacement is vacant or manned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum EmplacementStateNet {
+    /// Nobody is manning it.
+    Vacant,
+    /// A ganger is manning it.
+    Occupied,
+}
+
+impl EmplacementStateNet {
+    /// Mirror the sim's own emplacement state.
+    #[must_use]
+    pub const fn from_sim(state: EmplacementState) -> Self {
+        match state {
+            EmplacementState::Vacant => Self::Vacant,
+            EmplacementState::Occupied => Self::Occupied,
+        }
+    }
+}
+
+/// The name of the weapon an emplacement mounts.
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct MountedWeaponNet(String);
+
+impl MountedWeaponNet {
+    /// Wrap a mounted weapon's name.
+    #[must_use]
+    pub const fn new(name: String) -> Self {
+        Self(name)
+    }
+}
+
+/// The terrain half of an inspected cell.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum InspectShownNet {
-    /// A squad-visible ganger stands on the cell.
-    Ganger(GangerCardNet),
-    /// Destructible terrain stands on the cell.
-    Cover(CoverBlockNet),
-    /// The panel is hidden.
-    Nothing,
+#[serde(deny_unknown_fields)]
+pub struct InspectTerrainNet {
+    /// Which kind of piece stands on the cell.
+    pub kind:   TerrainKindNet,
+    /// The cover block, when the ledger holds an entry for the cell.
+    pub cover:  Option<CoverBlockNet>,
+    /// Whether the emplacement is manned, when the cell holds one.
+    pub state:  Option<EmplacementStateNet>,
+    /// The weapon the emplacement mounts, when the cell holds one.
+    pub weapon: Option<MountedWeaponNet>,
+}
+
+/// What the inspect panel shows for one cell: the ganger on it and the terrain under it.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InspectShownNet {
+    /// The card for a squad-visible ganger standing on the cell.
+    pub ganger:  Option<GangerCardNet>,
+    /// What the cell's terrain reports, absent when the fog hides the cell.
+    pub terrain: Option<InspectTerrainNet>,
 }

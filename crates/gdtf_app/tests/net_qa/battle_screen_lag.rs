@@ -160,9 +160,8 @@ fn the_inspect_read_ignores_an_occupant_the_screen_has_not_shown_arriving() -> T
     let inspect = decode::<InspectBody>(BATTLE_INSPECT, replies.into_iter().next())?;
 
     assert_eq!(
-        inspect.shown,
-        InspectShownNet::Nothing,
-        "the panel draws nothing on a cell whose occupant the screen has not shown arriving: \
+        inspect.shown.ganger, None,
+        "the panel draws no card on a cell whose occupant the screen has not shown arriving: \
          {occupant:?} showed as {inspect:?}",
     );
     Ok(())

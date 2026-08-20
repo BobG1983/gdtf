@@ -72,6 +72,10 @@ Which ganger rides which emplacement is a Bevy relationship — `MountedBy` on t
 emplacement, `Mounted` on the ganger, kept in step by the engine. It is
 one-to-one: a ganger cannot be mounted in two emplacements at once.
 
+Inspecting the emplacement's cell reports the piece as an emplacement, whether
+it is manned, and the weapon it mounts, alongside the cover stats the ledger
+holds for it and the card for a ganger on it the squad can see.
+
 ## Links
 
 - Pillars: [4 — permanent stakes](../pillars/4-permanent-stakes.md),

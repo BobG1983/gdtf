@@ -1,8 +1,13 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::PlaybackGate;
-use gdtf_battle_sim::{cover::CoverLedger, prelude::OccupancyGrid};
+use gdtf_battle_sim::{
+    cover::CoverLedger,
+    emplacement::{EmplacementState, MountedWeaponKey},
+    entity::TerrainCell,
+    prelude::OccupancyGrid,
+};
 
-use super::resources::{ShownCoverLedger, ShownOccupancyGrid};
+use super::resources::{ShownCoverLedger, ShownEmplacement, ShownEmplacements, ShownOccupancyGrid};
 
 pub(crate) fn promote_shown_occupancy(
     live: Option<Res<OccupancyGrid>>,
@@ -30,5 +35,25 @@ pub(crate) fn promote_shown_cover(
         && let Some(live) = live
     {
         shadow.promote(&live);
+    }
+}
+
+type EmplacementRow = (
+    &'static TerrainCell,
+    &'static EmplacementState,
+    &'static MountedWeaponKey,
+);
+
+pub(crate) fn promote_shown_emplacements(
+    live: Query<EmplacementRow>,
+    mut shadow: ResMut<ShownEmplacements>,
+    playback: PlaybackGate,
+) {
+    if playback.is_open() {
+        shadow.promote(
+            live.iter().map(|(cell, state, weapon)| {
+                (**cell, ShownEmplacement::new(*state, weapon.clone()))
+            }),
+        );
     }
 }

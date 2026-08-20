@@ -23,20 +23,8 @@ pub(super) fn shown_fog(app: &App) -> Option<&SquadVisibility> {
         .map(ShownSquadVisibility::visibility)
 }
 
-/// The first wall or cover cell of the generated map, which the inspect panel draws a block for.
-pub(crate) fn a_cover_cell(app: &App) -> Option<CellLevelNet> {
-    let grid = app.world().get_resource::<OccupancyGrid>()?;
-    map_cells(grid)
-        .into_iter()
-        .find(|at| {
-            grid.occupant(at).is_none()
-                && matches!(grid.terrain(at), TerrainKind::Wall | TerrainKind::Cover)
-        })
-        .map(CellLevelNet::from_sim)
-}
-
 /// The first wall or cover cell the screen is lighting.
-pub(super) fn a_lit_cover_cell(app: &App) -> Option<CellLevelNet> {
+pub(crate) fn a_lit_cover_cell(app: &App) -> Option<CellLevelNet> {
     let fog = shown_fog(app)?;
     let grid = app.world().get_resource::<OccupancyGrid>()?;
     map_cells(grid)

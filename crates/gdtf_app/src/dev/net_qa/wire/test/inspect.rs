@@ -6,7 +6,8 @@ use gdtf_battle_sim::{
 
 use super::{assert_ron_round_trip, roster::a_card};
 use crate::dev::net_qa::wire::inspect::{
-    CoverBlockNet, CoverHpNet, HardnessNet, HeightBandNet, InspectShownNet, ProtectionNet,
+    CoverBlockNet, CoverHpNet, EmplacementStateNet, HardnessNet, HeightBandNet, InspectShownNet,
+    InspectTerrainNet, MountedWeaponNet, ProtectionNet, TerrainKindNet,
 };
 
 fn a_block() -> CoverBlockNet {
@@ -38,11 +39,64 @@ fn a_cover_block_round_trips() {
     assert_ron_round_trip(&block);
 }
 
+fn a_wall() -> InspectTerrainNet {
+    InspectTerrainNet {
+        kind:   TerrainKindNet::Wall,
+        cover:  Some(a_block()),
+        state:  None,
+        weapon: None,
+    }
+}
+
+fn a_seat() -> InspectTerrainNet {
+    InspectTerrainNet {
+        kind:   TerrainKindNet::Emplacement,
+        cover:  None,
+        state:  Some(EmplacementStateNet::Occupied),
+        weapon: Some(MountedWeaponNet::new("Heavy Stubber".to_owned())),
+    }
+}
+
+#[test]
+fn the_terrain_half_and_its_own_scalars_round_trip() {
+    for kind in [
+        TerrainKindNet::Wall,
+        TerrainKindNet::Cover,
+        TerrainKindNet::Slab,
+        TerrainKindNet::Emplacement,
+    ] {
+        assert_ron_round_trip(&kind);
+    }
+    for state in [EmplacementStateNet::Vacant, EmplacementStateNet::Occupied] {
+        assert_ron_round_trip(&state);
+    }
+    assert_ron_round_trip(&MountedWeaponNet::new("Heavy Stubber".to_owned()));
+    let terrain: InspectTerrainNet = a_seat();
+    assert_ron_round_trip(&terrain);
+}
+
 #[test]
 fn every_inspect_outcome_round_trips() {
-    assert_ron_round_trip(&InspectShownNet::Ganger(a_card()));
-    assert_ron_round_trip(&InspectShownNet::Cover(a_block()));
-    assert_ron_round_trip(&InspectShownNet::Nothing);
+    for shown in [
+        InspectShownNet {
+            ganger:  Some(a_card()),
+            terrain: Some(a_wall()),
+        },
+        InspectShownNet {
+            ganger:  Some(a_card()),
+            terrain: None,
+        },
+        InspectShownNet {
+            ganger:  None,
+            terrain: Some(a_seat()),
+        },
+        InspectShownNet {
+            ganger:  None,
+            terrain: None,
+        },
+    ] {
+        assert_ron_round_trip(&shown);
+    }
 }
 
 #[test]

@@ -27,7 +27,7 @@ use crate::{
     },
     states::running::game::battlescape::inspect_panel::{
         decide::{ShownBattle, object_entry},
-        shadow::{promote_shown_cover, promote_shown_occupancy},
+        shadow::{promote_shown_cover, promote_shown_emplacements, promote_shown_occupancy},
     },
 };
 
@@ -69,7 +69,8 @@ impl QaCommand for BattleVisible {
                 .after(QaCommandSystems::Claim)
                 .after(PresenterSystems::Compose)
                 .after(promote_shown_occupancy)
-                .after(promote_shown_cover),
+                .after(promote_shown_cover)
+                .after(promote_shown_emplacements),
         );
     }
 }
@@ -148,9 +149,12 @@ fn visible_cover(shown: ShownBattle<'_>) -> Vec<VisibleCoverNet> {
     cells
         .into_iter()
         .filter_map(|at| {
-            object_entry(at, shown.grid(), shown.cover()).map(|entry| {
-                VisibleCoverNet::new(CellLevelNet::from_sim(at), CoverBlockNet::from_sim(entry))
-            })
+            // Terrain the cover ledger has no entry for carries no block to draw, so it is left out.
+            let entry = object_entry(at, shown)?.cover()?;
+            Some(VisibleCoverNet::new(
+                CellLevelNet::from_sim(at),
+                CoverBlockNet::from_sim(entry),
+            ))
         })
         .collect()
 }

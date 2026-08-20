@@ -7,6 +7,7 @@ mod fixtures;
 mod hidden_shot;
 mod map;
 mod modes;
+mod terrain;
 
 pub(crate) use behind::{
     battle_with_a_frozen_fog, battle_with_a_ganger_the_screen_has_not_moved,
@@ -26,5 +27,9 @@ pub(crate) use fixtures::{
     battle_with_lit_cover, battle_with_log_lines,
 };
 pub(crate) use hidden_shot::battle_with_a_hidden_enemy_shooting_across_the_lit_area;
-pub(crate) use map::a_cover_cell;
+pub(crate) use map::a_lit_cover_cell;
 pub(crate) use modes::battle_with_a_two_mode_gun;
+pub(crate) use terrain::{
+    battle_with_a_lit_emplacement, battle_with_a_lit_unledgered_wall,
+    manned_emplacement_on_authored_terrain, shown_fog_lights,
+};

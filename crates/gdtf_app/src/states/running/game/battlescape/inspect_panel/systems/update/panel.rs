@@ -8,10 +8,7 @@ use super::{
     params::{FactionTint, InspectNodes, InspectReads},
 };
 use crate::states::running::game::battlescape::{
-    inspect_panel::{
-        components::InspectStatBlockHost,
-        decide::{InspectShown, inspect_shown},
-    },
+    inspect_panel::{components::InspectStatBlockHost, decide::inspect_shown},
     stat_block::{
         StatBlockData, StatBlockRefs, StatBlockWidgets, clear_stat_block, update_stat_block,
     },
@@ -38,28 +35,37 @@ pub(in crate::states::running::game::battlescape) fn update_inspect_panel(
 
     let host = nodes.host.iter().next();
     let object_block = nodes.object_block.iter().next();
+    let ganger = shown.ganger().and_then(|entity| data.get(entity).ok());
+    let terrain = shown.terrain();
 
-    if let InspectShown::Ganger(entity) = shown
-        && let Ok(ganger) = data.get(entity)
-    {
-        toggle(&mut widgets.visibility, &nodes.root, Visibility::Inherited);
-        set_display(&mut nodes.display, host, Display::Flex);
-        set_display(&mut nodes.display, object_block, Display::None);
-        tint_name(refs.name, *ganger.faction, &mut tint);
-        update_stat_block(refs, &ganger, &mut widgets);
-        return;
+    set_display(&mut nodes.display, host, display_for(ganger.as_ref()));
+    set_display(&mut nodes.display, object_block, display_for(terrain));
+    let anything = ganger.is_some() || terrain.is_some();
+    let want = if anything {
+        Visibility::Inherited
+    } else {
+        Visibility::Hidden
+    };
+    toggle(&mut widgets.visibility, &nodes.root, want);
+
+    match ganger {
+        Some(ganger) => {
+            tint_name(refs.name, *ganger.faction, &mut tint);
+            update_stat_block(refs, &ganger, &mut widgets);
+        }
+        None => clear_stat_block(refs, &mut widgets),
     }
-
-    if let InspectShown::Cover(entry) = shown {
-        toggle(&mut widgets.visibility, &nodes.root, Visibility::Inherited);
-        set_display(&mut nodes.display, host, Display::None);
-        set_display(&mut nodes.display, object_block, Display::Flex);
-        clear_stat_block(refs, &mut widgets);
-        fill_object_block(&mut widgets, &nodes, entry);
-        return;
+    if let Some(terrain) = terrain {
+        fill_object_block(&mut widgets, &nodes, terrain);
     }
+}
 
-    toggle(&mut widgets.visibility, &nodes.root, Visibility::Hidden);
+// Flex when the panel has that half to draw, None when it has not.
+const fn display_for<T>(half: Option<&T>) -> Display {
+    match half {
+        Some(_) => Display::Flex,
+        None => Display::None,
+    }
 }
 
 const fn effective_cell(mode: InspectMode) -> Option<gdtf_battle_sim::metric::CellLevel> {
