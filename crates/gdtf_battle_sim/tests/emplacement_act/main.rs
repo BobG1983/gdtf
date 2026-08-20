@@ -7,3 +7,4 @@ mod mounted_fire;
 mod rejections;
 mod seeded_sides;
 mod walk_off;
+mod zero_step;

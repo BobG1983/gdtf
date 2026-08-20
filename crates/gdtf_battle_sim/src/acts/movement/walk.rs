@@ -9,11 +9,13 @@ use bevy::{
     prelude::{Commands, Deref, Entity, Message, MessageReader, MessageWriter, Query, Res},
 };
 
+use super::params::MoveCommit;
 use crate::{
     acts::{MoveCompleted, MovementOccurred},
     ganger::{Faction, LifeState, Position, Tu},
     metric::CellLevel,
     occupancy::OccupancyGrid,
+    terrain::emplacement::Mounted,
     tu::spend_tu,
     visibility::{FactionRelation, SquadVisibility, is_ganger_visible},
 };
@@ -167,6 +169,8 @@ pub struct WalkerRow {
     pub life:     &'static LifeState,
     /// Faction, used to classify revealed gangers.
     pub faction:  &'static Faction,
+    /// The seat this walker still rides, cleared by its first step off it.
+    pub mounted:  Option<&'static Mounted>,
     /// Route and enemy-reveal baseline.
     pub walk:     &'static mut WalkInProgress,
 }
@@ -192,13 +196,15 @@ pub(super) type WalkWorld<'world, 'state> = ParamSet<
 ///
 /// The walk stops when the mover is no longer alive, a reaction shot interrupts it, the step
 /// reveals a new enemy, the route runs out, the next cell is blocked or occupied, the pool
-/// cannot pay for the step, or the walk completes.
+/// cannot pay for the step, or the walk completes. A mounted walker gives its seat up on the
+/// first step it takes off it, so a walk that ends before stepping keeps the seat.
 pub fn advance_walk(
     mut world: WalkWorld,
     grid: Res<OccupancyGrid>,
     squad: Res<SquadVisibility>,
     mut reactions: MessageReader<ReactionShotFired>,
     mut signals: WalkSignals,
+    mut commit: MoveCommit,
     mut commands: Commands,
 ) {
     let interrupted: HashSet<Entity> = reactions.read().map(|shot| shot.mover).collect();
@@ -213,6 +219,7 @@ pub fn advance_walk(
         let mover = row.entity;
         let life = *row.life;
         let faction = *row.faction;
+        let mounted = row.mounted;
         let mut position = row.position;
         let mut tu = row.tu;
         let mut walk = row.walk;
@@ -251,6 +258,7 @@ pub fn advance_walk(
         signals
             .steps
             .write(MovementOccurred::new(mover, from, next.cell()));
+        commit.vacate(mounted);
         walk.pop_next();
 
         if *walk.is_complete() {

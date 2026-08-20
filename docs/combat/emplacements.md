@@ -74,21 +74,25 @@ emplacement's cell and records on the emplacement the cell the ganger came from;
 exiting writes that cell back and drops the record. A vacate with no record — an
 emplacement spawned already occupied — leaves the ganger where it is.
 
-A move committed for a mounted ganger vacates the seat in the same step that
-starts the walk, so no tick has a mounted ganger standing off its cell. That
-vacate sets the state back to vacant, drops the occupant record and the
-remembered origin cell, and despawns the mounted weapon. It writes no
-`Position`, so the walker keeps the cell it walked to; only the exit act's
-vacate writes the origin cell back. With the occupant record gone, the exit act
-finds no emplacement the ganger holds and does nothing.
+A mounted ganger's walk gives the seat up on its first step, written in the
+same system and the same tick as the step off the cell, so no tick has a
+mounted ganger standing off its seat. A walk that ends before it steps keeps
+the seat: a dead mover, a reaction shot, a next cell blocked or occupied, and a
+pool that cannot pay all stop the walk before the vacate. That vacate sets the
+state back to vacant, drops the occupant record and the remembered origin cell,
+and despawns the mounted weapon. It writes no `Position`, so the walker keeps
+the cell it walked to; only the exit act's vacate writes the origin cell back.
+With the occupant record gone, the exit act finds no emplacement the ganger
+holds and does nothing.
 
 The route out is planned from the seat's rotated entry cells: the first step may
 land only on one of them, and the rest of the route carries on from there. A
 destination no entry side reaches is unreachable, and a pool that cannot cover
 the route plus the exit is refused for cost. The exit TU rides on the first step
 of the walk, so the steps sum to the quoted total and the dismount is charged
-once. The quote, the path preview and the committed move read the same helpers,
-so they agree on both the route and the price.
+once; a walk that never takes that step pays neither the step nor the exit. The
+quote, the path preview and the committed move read the same helpers, so they
+agree on both the route and the price.
 
 While it is mounted the ganger is the occupant of that cell like any other. The
 toggle writes no occupancy band of its own, so the band at the emplacement's
@@ -126,12 +130,12 @@ holds for it and the card for a ganger on it the squad can see.
   `can_exit_emplacement` and their dispatches are in
   `acts/enter_emplacement.rs`, and `apply_emplacement_toggle`, which writes both
   `Position` moves, is in `terrain/emplacement/toggle.rs`. `clear_seat`
-  (`terrain/emplacement/vacate.rs`) is the vacate the toggle and a move share,
-  and `emplacement_entry_cells` (`terrain/emplacement/entry.rs`) is the rotated
-  entry set the enter gate and the route out share. `dismount_surcharge` and
-  `seat_departure` are in `acts/movement/mount.rs`; the surcharge is added by
-  `move_tu_cost` and `move_step_tu_costs` in `acts/movement/cost.rs`, and the
-  departure reaches the search as a `Departure`
+  (`terrain/emplacement/vacate.rs`) is the vacate the toggle and a walk's first
+  step share, and `emplacement_entry_cells` (`terrain/emplacement/entry.rs`) is
+  the rotated entry set the enter gate and the route out share.
+  `dismount_surcharge` and `seat_departure` are in `acts/movement/mount.rs`; the
+  surcharge is added by `move_tu_cost` and `move_step_tu_costs` in
+  `acts/movement/cost.rs`, and the departure reaches the search as a `Departure`
   (`perception/pathfinder/departure.rs`) handed to `find_path_leaving`
   (`perception/pathfinder/search.rs`). The path preview
   (`crates/gdtf_battle_input/src/pointer/selection/path_preview.rs`) and the

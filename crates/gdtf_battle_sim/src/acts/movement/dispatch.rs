@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// Pathfind and either reject or insert a walk component.
-/// A mounted mover leaves by a seat entry cell, pays the exit act on top, and dismounts on commit.
+/// A mounted mover leaves by a seat entry cell and pays the exit act on top of the route.
 pub fn dispatch_move(
     mut requests: MessageReader<MoveRequested>,
     actors: Query<MoverRow>,
@@ -74,7 +74,6 @@ pub fn dispatch_move(
 
         let cells = path.cells();
         if cells.len() > 1 {
-            commit.vacate(actor.mounted);
             commit.start_walk(
                 request.actor,
                 WalkInProgress::new(&cells[1..], &move_step_tu_costs(&path, surcharge)),
