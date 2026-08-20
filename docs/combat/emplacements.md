@@ -11,7 +11,9 @@ pillars: [4, 5]
 **A ganger enters an emplacement and occupies its cell; it does not stand beside
 it and reach in.**
 
-Status: decided, not built. "What exists today" records the state this replaces.
+Status: the entry gate, the move onto the emplacement's cell, the remembered
+origin cell and the exit act are built. "What exists today" records what they
+do.
 
 ## The claim
 
@@ -54,32 +56,41 @@ stops a turned mount being entered through its own armour.
 
 `can_enter_emplacement` reads the emplacement's authored entry sides, rotated by
 its facing, and allows the enter only from one of those cells; a mount naming no
-side cannot be entered at all. Mounting still leaves the ganger on its own cell.
-Only the occupancy band is set at the emplacement's cell, so an occupied
-emplacement is indistinguishable from an empty one on screen, and the ganger
-keeps whatever cover it was already in. There is no remembered origin cell, and
-none is needed: the ganger never left its own cell, so the exit act charges its
-cost and clears the emplacement's occupant without moving anything.
+side cannot be entered at all. Entering writes the ganger's `Position` onto the
+emplacement's cell and records on the emplacement the cell the ganger came from;
+exiting writes that cell back and drops the record. A vacate with no record — an
+emplacement spawned already occupied — leaves the ganger where it is.
 
-The first implementation was wrong. This replaces it rather than extending it.
+While it is mounted the ganger is the occupant of that cell like any other. The
+toggle writes no occupancy band of its own, so the band at the emplacement's
+cell is the mounted ganger's own stance silhouette, published by the same system
+that publishes every other ganger's. A shot at that cell is aimed at the
+emplacement's authored cover height rather than at the ganger's silhouette,
+because the cover ledger's entry is read before the occupant band.
+
+Which ganger rides which emplacement is a Bevy relationship — `MountedBy` on the
+emplacement, `Mounted` on the ganger, kept in step by the engine. It is
+one-to-one: a ganger cannot be mounted in two emplacements at once.
 
 ## Links
 
 - Pillars: [4 — permanent stakes](../pillars/4-permanent-stakes.md),
   [5 — readability over fidelity](../pillars/5-readability-over-fidelity.md).
-- Litmus ([litmus-tests.md](../litmus-tests.md)): passes 3 — mounting becomes a
-  decision with a real downside, where today it is a free upgrade. Passes 4 — an
-  occupied mount becomes legible, which it is not now.
+- Litmus ([litmus-tests.md](../litmus-tests.md)): passes 3 — mounting is a
+  decision with a real downside, not a free upgrade. Passes 4 — an occupied
+  mount is legible, because the ganger is standing on it.
 - Related: [combat.md](combat.md) for cover and Time Units,
   [resolution.md](resolution.md) for the firing arc,
   [../authoring/terrain-authoring.md](../authoring/terrain-authoring.md) for the
   def the entry sides are authored on.
-- Code sites: `can_enter_emplacement` and the act live in
-  `crates/gdtf_battle_sim`. Built: the def's `entry_sides` and the
-  `rotated_entry_sides` rotation (`terrain/def/kind.rs`), the
-  `EmplacementEntrySides` and `EmplacementFacing` components battle setup puts
-  on the spawned piece (`terrain/emplacement/state.rs`), and the enter gate
-  reading both (`acts/enter_emplacement.rs`). **TBD (Bevy):** the remembered
-  origin cell, and the exit act.
-- Source: owner rulings, given directly in conversation, 2026-08-14. Ticket:
-  GTW-1176.
+- Code sites: all of these live in `crates/gdtf_battle_sim`. The def's
+  `entry_sides` and the `rotated_entry_sides` rotation are in
+  `terrain/def/kind.rs`. The `EmplacementEntrySides` and `EmplacementFacing`
+  components battle setup puts on the spawned piece, and the `EnteredFrom`
+  record of the origin cell, are in `terrain/emplacement/state.rs`. The
+  `MountedBy` / `Mounted` relationship is in
+  `terrain/emplacement/relationship.rs`. `can_enter_emplacement`,
+  `can_exit_emplacement` and their dispatches are in
+  `acts/enter_emplacement.rs`, and `apply_emplacement_toggle`, which writes both
+  `Position` moves, is in `terrain/emplacement/toggle.rs`.
+- Source: owner rulings, given directly in conversation, 2026-08-14.

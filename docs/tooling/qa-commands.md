@@ -548,8 +548,8 @@ call reads the actor's life state as well as the target's.
 **An empty window still is not proof of a decline for the contextual acts.** `ActDeed` has no
 variant for opening a door or entering and leaving an emplacement, so `act.open_door`,
 `act.enter_emplacement` and `act.exit_emplacement` answer an empty window even when they
-worked. Read the world for those — the door's open state, the emplacement's occupancy —
-not the log.
+worked. Read the world for those — the door's open state, and the `mounted` flag on the
+ganger card `battle.inspect` and `battle.roster` return — not the log.
 
 `act.fire` is the one act that needs more than the selection to build its request: it costs the
 shot against the live `CombatTuning`. A host holding none cannot consider the shot at all, so it

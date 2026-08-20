@@ -5,13 +5,15 @@ use bevy::{
     prelude::*,
 };
 use gdtf_battle_presenter::{DrawnPosition, DrawnVitals, ShownSquadVisibility};
-use gdtf_battle_sim::{battle::PlayerFaction, ganger::Position, prelude::CellLevel};
+use gdtf_battle_sim::{
+    battle::PlayerFaction, emplacement::Mounted, ganger::Position, prelude::CellLevel,
+};
 
 use crate::{
     dev::net_qa::wire::{
         act_payload::StanceNet,
         cell::CellLevelNet,
-        roster::{FactionNet, GangerCardNet, GangerNameNet},
+        roster::{FactionNet, GangerCardNet, GangerNameNet, MountedNet},
         token::GangerToken,
         vitals::{HpMaxNet, HpNet, TuMaxNet, TuNet, WoundsMaxNet, WoundsNet},
         wound::{InjuryNet, WoundNet},
@@ -68,6 +70,7 @@ pub(in crate::dev::net_qa) fn ganger_card(
     entity: Entity,
     at: CellLevelNet,
     row: &StatBlockDataItem<'_, '_>,
+    mounted: Option<&Mounted>,
 ) -> GangerCardNet {
     let tu = row.drawn.map_or(*row.tu, DrawnVitals::tu);
     let hp = row.drawn.map_or(*row.hp, DrawnVitals::hp);
@@ -85,6 +88,7 @@ pub(in crate::dev::net_qa) fn ganger_card(
         name: row.name.map(|name| GangerNameNet::new((**name).clone())),
         faction: FactionNet::from_sim(*row.faction),
         stance: StanceNet::from_sim(*row.stance),
+        mounted: MountedNet::new(mounted.is_some_and(|riding| riding.emplacement().is_some())),
         tu: TuNet::new(*tu),
         tu_max: TuMaxNet::new(**row.tu_max),
         hp: HpNet::new(*hp),

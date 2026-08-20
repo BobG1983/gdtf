@@ -5,7 +5,7 @@ use gdtf_app::test_support::ExitEmplacementButton;
 use gdtf_battle_input::contextual::ContextualActSystems;
 use gdtf_battle_sim::{
     acts::ExitEmplacementRequested,
-    emplacement::{EmplacementOccupant, EmplacementState},
+    emplacement::{EmplacementState, MountedBy},
 };
 use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 
@@ -44,7 +44,7 @@ fn exit_offered_only_to_the_occupant() {
     if let [emplacement] = emplacements.as_slice() {
         app.world_mut()
             .entity_mut(*emplacement)
-            .insert(EmplacementOccupant::new(other));
+            .insert(MountedBy::new(other));
     }
     app.update();
     assert!(

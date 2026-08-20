@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::PresenterSystems;
+use gdtf_battle_sim::emplacement::Mounted;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
     command::QaCommand,
@@ -69,6 +70,7 @@ type RosterRow = (Entity, DrawnCell, StatBlockData);
 fn handle_battle_roster(
     reads: ShownBattleReads,
     rows: Query<RosterRow>,
+    mounts: Query<&Mounted>,
     mut queue: ResMut<PendingQueue<CommandCall<BattleRoster>>>,
 ) {
     if queue.is_empty() {
@@ -83,7 +85,12 @@ fn handle_battle_roster(
         if player != Some(faction) && !visible {
             continue;
         }
-        gangers.push(ganger_card(entity, CellLevelNet::from_sim(cell.at()), &row));
+        gangers.push(ganger_card(
+            entity,
+            CellLevelNet::from_sim(cell.at()),
+            &row,
+            mounts.get(entity).ok(),
+        ));
     }
     gangers.sort_unstable_by_key(|card| *card.token);
 

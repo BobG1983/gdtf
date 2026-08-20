@@ -2,7 +2,7 @@ use bevy::prelude::{App, IntoScheduleConfigs, Update};
 
 use crate::{
     acts::{fire::dispatch_fire, movement::advance_walk},
-    occupancy_sync::SimSystems,
+    occupancy_sync::{SimSystems, sync_moved_gangers},
     reaction::{reaction_trigger, reset_reactions_used},
     suppression::{apply_suppression, reset_suppression, suppression_auto_stance},
     turn::dispatch_end_turn,
@@ -12,6 +12,7 @@ pub(super) fn wire_reaction_suppression(app: &mut App) {
     app.add_systems(
         Update,
         reaction_trigger
+            .after(sync_moved_gangers)
             .before(dispatch_fire)
             .before(advance_walk)
             .in_set(SimSystems::Simulate),

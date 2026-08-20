@@ -5,6 +5,7 @@ use gdtf_battle_presenter::DrawnVitals;
 use gdtf_battle_sim::{
     act_log::VitalsFacts,
     armor::BodyPart,
+    emplacement::Mounted,
     ganger::{GangerName, Hp, HpMax, Stance, StanceKind, Tu, TuMax, Wounds, WoundsMax},
     inflicted_wound::{InflictedWound, InflictedWounds},
     injuries::InflictedInjuries,
@@ -69,10 +70,11 @@ fn a_ganger(world: &mut World, extra: impl Bundle) -> Entity {
 /// Build the card the same way both handlers do: from a `StatBlockData` query row.
 fn card_for(world: &mut World, entity: Entity) -> GangerCardNet {
     let mut rows = world.query::<StatBlockData>();
-    let Ok(row) = rows.get(world, entity) else {
+    let read: &World = world;
+    let Ok(row) = rows.get(read, entity) else {
         unreachable!("the ganger this test just spawned matches the stat block's own query");
     };
-    ganger_card(entity, DRAWN_AT, &row)
+    ganger_card(entity, DRAWN_AT, &row, read.get::<Mounted>(entity))
 }
 
 fn drawn(tu: Tu, hp: Hp, wounds: Wounds, inflicted: InflictedWounds) -> DrawnVitals {

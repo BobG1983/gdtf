@@ -9,9 +9,7 @@ use gdtf_battle_sim::{
     },
     ganger::{Direction, Position, Tu},
     metric::CellLevel,
-    terrain::emplacement::{
-        EmplacementEntrySides, EmplacementFacing, EmplacementOccupant, EmplacementState,
-    },
+    terrain::emplacement::{EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedBy},
     test_support::{SituationBuilder, emplacement_at},
     tuning::CombatTuning,
 };
@@ -126,7 +124,7 @@ fn enter_and_exit_charge_exactly_their_quotes_and_the_predicates_agree() {
         *can_exit_emplacement(
             actor,
             &EmplacementState::Occupied,
-            &EmplacementOccupant::new(actor),
+            &MountedBy::new(actor),
             &Tu::new(after_enter),
             &tuning,
         ),
@@ -136,7 +134,7 @@ fn enter_and_exit_charge_exactly_their_quotes_and_the_predicates_agree() {
         !*can_exit_emplacement(
             actor,
             &EmplacementState::Occupied,
-            &EmplacementOccupant::new(actor),
+            &MountedBy::new(actor),
             &Tu::new(exit_quote.saturating_sub(1)),
             &tuning,
         ),

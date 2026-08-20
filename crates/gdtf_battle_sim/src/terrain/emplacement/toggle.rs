@@ -1,16 +1,18 @@
 //! Occupy / vacate emplacements and spawn or despawn mounted weapons.
 
-use bevy::prelude::{
-    App, Commands, Entity, IntoScheduleConfigs, Message, MessageReader, Plugin, Query, Res, ResMut,
-    Update, With,
+use bevy::{
+    platform::collections::HashMap,
+    prelude::{
+        App, Commands, Entity, IntoScheduleConfigs, Message, MessageReader, Plugin, Query, Res,
+        Update,
+    },
 };
 
-use super::{EmplacementOccupant, EmplacementState, MountedWeaponEntity, MountedWeaponKey};
+use super::{EmplacementState, EnteredFrom, MountedBy, MountedWeaponEntity, MountedWeaponKey};
 use crate::{
-    clearance::silhouette_band,
     equipment::attachments::{AttachmentRegistry, resolve_pending_attachments},
-    ganger::{Stance, StanceKind},
-    occupancy::OccupancyGrid,
+    ganger::Position,
+    metric::CellLevel,
     occupancy_sync::{SimSystems, sync_moved_gangers},
     terrain::entity::TerrainCell,
     weapon::{MountedWeapon, WeaponRegistry, WieldedBy},
@@ -66,7 +68,7 @@ impl SetEmplacement {
     }
 }
 
-/// Apply occupy/vacate: update state, occupant, silhouette band, and mounted weapon.
+/// Apply occupy/vacate: update state, occupant record, the occupant's cell, and the mount.
 pub fn apply_emplacement_toggle(
     mut requests: MessageReader<SetEmplacement>,
     mut emplacements: Query<(
@@ -75,12 +77,14 @@ pub fn apply_emplacement_toggle(
         Option<&MountedWeaponKey>,
         Option<&MountedWeaponEntity>,
     )>,
-    stances: Query<&Stance, With<Stance>>,
+    mut positions: Query<&mut Position>,
+    entered: Query<&EnteredFrom>,
     weapons: Option<Res<WeaponRegistry>>,
     attachments: Option<Res<AttachmentRegistry>>,
-    mut grid: ResMut<OccupancyGrid>,
     mut commands: Commands,
 ) {
+    // The entry cells recorded by occupies in this run, before `Commands` apply them.
+    let mut entered_this_run: HashMap<Entity, CellLevel> = HashMap::new();
     for request in requests.read() {
         let Ok((mut state, cell, mounted_key, mounted_entity)) =
             emplacements.get_mut(request.emplacement())
@@ -92,12 +96,19 @@ pub fn apply_emplacement_toggle(
         }
         *state = request.state();
         let ganger = request.ganger();
-        let key = **cell;
+        let seat = **cell;
         if *request.state().is_occupied() {
             commands
                 .entity(request.emplacement())
-                .insert(EmplacementOccupant::new(ganger));
-            grid.set_occupant_band(key, Some(silhouette_band(StanceKind::Standing)));
+                .insert(MountedBy::new(ganger));
+            if let Ok(mut position) = positions.get_mut(ganger) {
+                let origin = **position;
+                commands
+                    .entity(request.emplacement())
+                    .insert(EnteredFrom::new(origin));
+                entered_this_run.insert(request.emplacement(), origin);
+                *position = Position::new(seat);
+            }
             if let Some(mount) = spawn_mounted_weapon(
                 &mut commands,
                 ganger,
@@ -110,13 +121,16 @@ pub fn apply_emplacement_toggle(
                     .insert(MountedWeaponEntity::new(mount));
             }
         } else {
+            commands.entity(request.emplacement()).remove::<MountedBy>();
+            let origin = entered_this_run
+                .remove(&request.emplacement())
+                .or_else(|| entered.get(request.emplacement()).ok().map(|from| **from));
+            if let (Some(origin), Ok(mut position)) = (origin, positions.get_mut(ganger)) {
+                *position = Position::new(origin);
+            }
             commands
                 .entity(request.emplacement())
-                .remove::<EmplacementOccupant>();
-            let stance = stances
-                .get(ganger)
-                .map_or(StanceKind::Standing, |stance| **stance);
-            grid.set_occupant_band(key, Some(silhouette_band(stance)));
+                .remove::<EnteredFrom>();
             if let Some(mount) = mounted_entity {
                 commands.entity(**mount).despawn();
                 commands
@@ -155,7 +169,7 @@ impl Plugin for EmplacementTogglePlugin {
             Update,
             apply_emplacement_toggle
                 .in_set(SimSystems::Simulate)
-                .after(sync_moved_gangers),
+                .before(sync_moved_gangers),
         );
     }
 }

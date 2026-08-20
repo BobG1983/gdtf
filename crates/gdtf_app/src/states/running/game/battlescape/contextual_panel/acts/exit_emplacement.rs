@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::ExitEmplacementAct};
 use gdtf_battle_sim::{
     acts::{can_exit_emplacement, exit_emplacement_tu_cost},
-    emplacement::{EmplacementOccupant, EmplacementState},
+    emplacement::{EmplacementState, MountedBy},
     ganger::{Faction, Position, Tu},
     tuning::CombatTuning,
 };
@@ -30,11 +30,7 @@ impl ContextualPanelAct for ExitEmplacementAct {
 
 type ExitEmplacementActorFilter = (With<Position>, With<Faction>);
 
-type ExitEmplacementReads = (
-    Entity,
-    &'static EmplacementState,
-    &'static EmplacementOccupant,
-);
+type ExitEmplacementReads = (Entity, &'static EmplacementState, &'static MountedBy);
 
 pub(in crate::states::running::game::battlescape) fn offer_exit_emplacement(
     selected: Res<SelectedShooter>,
@@ -62,7 +58,7 @@ fn scan_exit_emplacement(
     emplacements: &Query<ExitEmplacementReads>,
     tuning: &CombatTuning,
 ) -> Option<(Entity, OfferPressable)> {
-    let allowed = |state: &EmplacementState, occupant: &EmplacementOccupant, tu: &Tu| {
+    let allowed = |state: &EmplacementState, occupant: &MountedBy, tu: &Tu| {
         *can_exit_emplacement(actor, state, occupant, tu, tuning)
     };
     // Asking with the cost as the pool holds affordability true, so the other terms pick the target.

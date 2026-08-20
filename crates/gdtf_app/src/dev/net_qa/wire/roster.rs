@@ -44,6 +44,19 @@ impl FactionNet {
     }
 }
 
+/// Whether this ganger is riding an emplacement.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct MountedNet(bool);
+
+impl MountedNet {
+    /// Build from a mounted flag.
+    #[must_use]
+    pub const fn new(mounted: bool) -> Self {
+        Self(mounted)
+    }
+}
+
 /// One roster card, carrying the values the stat block is drawing.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -58,6 +71,8 @@ pub struct GangerCardNet {
     pub faction:      FactionNet,
     /// Posture.
     pub stance:       StanceNet,
+    /// Whether this ganger is riding an emplacement.
+    pub mounted:      MountedNet,
     /// Remaining time units.
     pub tu:           TuNet,
     /// Time units at the start of a turn.

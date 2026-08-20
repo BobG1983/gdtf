@@ -7,9 +7,7 @@ use bevy::{
 use gdtf_battle_sim::{
     battle::PlayerFaction,
     cover::CoverLedger,
-    emplacement::{
-        EmplacementEntrySides, EmplacementFacing, EmplacementOccupant, EmplacementState,
-    },
+    emplacement::{EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedBy},
     entity::TerrainCell,
     floor::FloorCostGrid,
     ganger::{Aiming, Facing, Faction, LifeState, Position, Stance, Suppressed, Tu, TuMax},
@@ -59,7 +57,7 @@ pub(super) type TargetRow = (&'static Position, &'static Faction, &'static LifeS
 pub(super) type EmplacementRow = (
     &'static EmplacementState,
     &'static TerrainCell,
-    Option<&'static EmplacementOccupant>,
+    Option<&'static MountedBy>,
     Option<&'static EmplacementEntrySides>,
     Option<&'static EmplacementFacing>,
 );

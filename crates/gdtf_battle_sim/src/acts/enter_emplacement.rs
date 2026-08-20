@@ -1,6 +1,9 @@
 //! Enter and exit weapon emplacements.
 
-use bevy::prelude::{Deref, Entity, MessageReader, MessageWriter, Query, Res};
+use bevy::{
+    ecs::relationship::Relationship,
+    prelude::{Deref, Entity, MessageReader, MessageWriter, Query, Res},
+};
 
 use crate::{
     acts::request::{EnterEmplacementRequested, ExitEmplacementRequested},
@@ -9,8 +12,7 @@ use crate::{
     terrain::{
         def::rotated_entry_sides,
         emplacement::{
-            EmplacementEntrySides, EmplacementFacing, EmplacementOccupant, EmplacementState,
-            SetEmplacement,
+            EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedBy, SetEmplacement,
         },
         entity::TerrainCell,
         facing::TerrainFacing,
@@ -115,13 +117,13 @@ pub fn can_enter_emplacement(
 pub fn can_exit_emplacement(
     actor: Entity,
     state: &EmplacementState,
-    occupant: &EmplacementOccupant,
+    occupant: &MountedBy,
     tu: &Tu,
     tuning: &CombatTuning,
 ) -> CanExitEmplacement {
     CanExitEmplacement::new(
         *state.is_occupied()
-            && **occupant == actor
+            && occupant.get() == actor
             && *can_spend_tu(tu, exit_emplacement_tu_cost(tuning)),
     )
 }
@@ -163,7 +165,7 @@ pub fn dispatch_enter_emplacement(
 /// System: vacate an emplacement the actor currently occupies.
 pub fn dispatch_exit_emplacement(
     mut requests: MessageReader<ExitEmplacementRequested>,
-    emplacements: Query<(&EmplacementState, &EmplacementOccupant)>,
+    emplacements: Query<(&EmplacementState, &MountedBy)>,
     mut actors: Query<&mut Tu>,
     tuning: Option<Res<CombatTuning>>,
     mut toggles: MessageWriter<SetEmplacement>,

@@ -1,11 +1,14 @@
 //! Taking a mount: which seats offer the Enter button, what it costs, and what pressing it does.
 
-use bevy::{ecs::entity::Entity, prelude::*};
+use bevy::{
+    ecs::{entity::Entity, relationship::Relationship},
+    prelude::*,
+};
 use gdtf_app::test_support::EnterEmplacementButton;
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     acts::enter_emplacement_tu_cost,
-    emplacement::{EmplacementOccupant, EmplacementState},
+    emplacement::{EmplacementState, MountedBy},
     ganger::Tu,
     prelude::Position,
     tuning::CombatTuning,
@@ -179,14 +182,14 @@ fn pressing_enter_mans_the_emplacement() {
 
     let occupant = app
         .world()
-        .get::<EmplacementOccupant>(emplacement)
-        .map(|occupant| **occupant);
+        .get::<MountedBy>(emplacement)
+        .map(Relationship::get);
     let selected = app
         .world()
         .get_resource::<SelectedShooter>()
         .and_then(|selection| **selection);
     assert_eq!(
         occupant, selected,
-        "the recorded EmplacementOccupant is the acting selection",
+        "the ganger the emplacement records as mounting it is the acting selection",
     );
 }

@@ -1,27 +1,31 @@
 use bevy::{
     app::App,
     asset::AssetPlugin,
+    ecs::relationship::Relationship,
     prelude::{Entity, MinimalPlugins},
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
     battle::{BattleSimPlugin, SetupBattleRequested},
     cover::HeightBand,
-    ganger::{Cool, Direction, Facing, GangRegistry, Grit, Speed, Strength, Toughness},
+    ganger::{Cool, Direction, Facing, GangRegistry, Grit, Position, Speed, Strength, Toughness},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     prelude::{Faction, Stance, StanceKind, Tu},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     terrain::{
-        emplacement::{EmplacementOccupant, EmplacementState, MountedWeaponEntity},
+        emplacement::{EmplacementState, MountedBy, MountedWeaponEntity},
         entity::TerrainCell,
     },
     test_support::{
         GangerSpawnBuilder, TEST_MOUNTED_WEAPON_KEY, single_mode, test_armor_registry,
         test_melee_weapon_registry, test_terrain_registry, test_weapon_spec,
     },
-    tuning::{CombatTuning, ViewRange},
+    tuning::{
+        CombatTuning, ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin,
+        ReactionTuning, SuppressionRadius, SuppressionStabilityPenalty, ViewRange,
+    },
     weapon::{
         BaseSpread, DamageType, FatalBias, FireMode, Kickback, MountedWeapon, WeaponName,
         WeaponRegistry, WeaponSpec, WieldedBy,
@@ -64,6 +68,18 @@ pub(crate) fn test_ranged_registry() -> WeaponRegistry {
             gun_spec(MOUNT_DAMAGE_TYPE),
         ),
     ])
+}
+
+/// Reaction tuning whose interrupt is certain rather than a roll: `p_min == p_max == 1.0`.
+pub(crate) const fn forced_reaction_tuning(cap: u32) -> ReactionTuning {
+    ReactionTuning {
+        cap_base:            ReactionCapBase::new(cap as f32),
+        cap_per_reactions:   ReactionCapPerReactions::new(0.0),
+        p_min:               ReactionPMin::new(1.0),
+        p_max:               ReactionPMax::new(1.0),
+        suppression_radius:  SuppressionRadius::new(0),
+        suppression_penalty: SuppressionStabilityPenalty::new(0.0),
+    }
 }
 
 pub(crate) fn battle_app(seed: u64) -> (App, u64) {
@@ -145,7 +161,12 @@ pub(crate) fn state(app: &App, entity: Entity) -> Option<EmplacementState> {
 }
 
 pub(crate) fn occupant(app: &App, entity: Entity) -> Option<Entity> {
-    app.world().get::<EmplacementOccupant>(entity).map(|o| **o)
+    app.world().get::<MountedBy>(entity).map(Relationship::get)
+}
+
+/// Where a ganger stands right now.
+pub(crate) fn pos_of(app: &App, entity: Entity) -> Option<CellLevel> {
+    app.world().get::<Position>(entity).map(|at| **at)
 }
 
 pub(crate) fn mount_entity(app: &App, entity: Entity) -> Option<Entity> {

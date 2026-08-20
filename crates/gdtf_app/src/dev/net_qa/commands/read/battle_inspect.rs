@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::PresenterSystems;
+use gdtf_battle_sim::emplacement::Mounted;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
     command::QaCommand,
@@ -77,6 +78,7 @@ impl QaCommand for BattleInspect {
 fn handle_battle_inspect(
     reads: ShownBattleReads,
     rows: Query<StatBlockData>,
+    mounts: Query<&Mounted>,
     mut queue: ResMut<PendingQueue<CommandCall<BattleInspect>>>,
 ) {
     if queue.is_empty() {
@@ -90,7 +92,7 @@ fn handle_battle_inspect(
         });
         responder.answer(&BattleInspectReply {
             at:    args.at,
-            shown: on_the_wire(decision, args.at, &rows),
+            shown: on_the_wire(decision, args.at, &rows, &mounts),
         });
     }
 }
@@ -99,10 +101,13 @@ fn on_the_wire(
     decision: InspectShown,
     at: CellLevelNet,
     rows: &Query<StatBlockData>,
+    mounts: &Query<&Mounted>,
 ) -> InspectShownNet {
     match decision {
         InspectShown::Ganger(entity) => match rows.get(entity) {
-            Ok(row) => InspectShownNet::Ganger(ganger_card(entity, at, &row)),
+            Ok(row) => {
+                InspectShownNet::Ganger(ganger_card(entity, at, &row, mounts.get(entity).ok()))
+            }
             Err(_) => InspectShownNet::Nothing,
         },
         InspectShown::Cover(entry) => InspectShownNet::Cover(CoverBlockNet::from_sim(entry)),

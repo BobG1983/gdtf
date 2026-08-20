@@ -2,7 +2,7 @@
 
 use bevy::prelude::{Component, Deref, Entity};
 
-use crate::{terrain::facing::TerrainFacing, weapon::WeaponName};
+use crate::{metric::CellLevel, terrain::facing::TerrainFacing, weapon::WeaponName};
 
 /// Whether the emplacement is vacant or occupied.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -34,15 +34,15 @@ impl EmplacementState {
     }
 }
 
-/// The ganger currently manning this emplacement.
+/// The cell the occupant stood on before it entered, held while the seat is occupied.
 #[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EmplacementOccupant(Entity);
+pub struct EnteredFrom(CellLevel);
 
-impl EmplacementOccupant {
-    /// Wrap the occupant entity.
+impl EnteredFrom {
+    /// Wrap the cell the occupant entered from.
     #[must_use]
-    pub const fn new(entity: Entity) -> Self {
-        Self(entity)
+    pub const fn new(at: CellLevel) -> Self {
+        Self(at)
     }
 }
 

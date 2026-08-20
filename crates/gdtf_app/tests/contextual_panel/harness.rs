@@ -11,9 +11,7 @@ use bevy::{
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    emplacement::{
-        EmplacementEntrySides, EmplacementFacing, EmplacementOccupant, EmplacementState,
-    },
+    emplacement::{EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedBy},
     entity::TerrainCell,
     ganger::{Tu, TuMax},
     injuries::InjuryRegistry,
@@ -118,7 +116,7 @@ pub(crate) fn spawn_emplacement(
         state,
     ));
     if let Some(occupant) = occupant {
-        entity.insert(EmplacementOccupant::new(occupant));
+        entity.insert(MountedBy::new(occupant));
     }
     if let Some(sides) = sides {
         entity.insert(sides);

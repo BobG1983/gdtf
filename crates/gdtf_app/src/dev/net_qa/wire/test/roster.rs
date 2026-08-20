@@ -2,7 +2,7 @@ use super::assert_ron_round_trip;
 use crate::dev::net_qa::wire::{
     act_payload::StanceNet,
     cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet},
-    roster::{FactionNet, GangerCardNet, GangerNameNet},
+    roster::{FactionNet, GangerCardNet, GangerNameNet, MountedNet},
     token::GangerToken,
     vitals::{HpMaxNet, HpNet, TuMaxNet, TuNet, WoundsMaxNet, WoundsNet},
     wound::{BodyPartNet, InjuryNameNet, InjuryNet, SeverityNet, WoundNet},
@@ -18,6 +18,7 @@ pub(in crate::dev::net_qa::wire::test) fn a_card() -> GangerCardNet {
         name:         Some(GangerNameNet::new("Vex".to_owned())),
         faction:      FactionNet::new(0),
         stance:       StanceNet::Crouching,
+        mounted:      MountedNet::new(true),
         tu:           TuNet::new(31),
         tu_max:       TuMaxNet::new(60),
         hp:           HpNet::new(8),
@@ -37,6 +38,8 @@ pub(in crate::dev::net_qa::wire::test) fn a_card() -> GangerCardNet {
 fn roster_scalars_round_trip() {
     assert_ron_round_trip(&GangerNameNet::new("Vex".to_owned()));
     assert_ron_round_trip(&FactionNet::new(1));
+    assert_ron_round_trip(&MountedNet::new(true));
+    assert_ron_round_trip(&MountedNet::new(false));
 }
 
 #[test]

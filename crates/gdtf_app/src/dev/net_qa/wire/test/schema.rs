@@ -31,7 +31,7 @@ use crate::dev::net_qa::{
         },
         pointer::{MouseButtonNet, PointerPosNet, PointerXNet, PointerYNet},
         refusal::{FacingRefusalNet, ReloadRefusalNet, ShotRefusalNet, StanceRefusalNet},
-        roster::{FactionNet, GangerCardNet, GangerNameNet},
+        roster::{FactionNet, GangerCardNet, GangerNameNet, MountedNet},
         shell::{CaughtUpNet, SoundNet},
         sight::{CanEngageNet, CanSeeNet, SightlineNet},
         token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
@@ -133,6 +133,7 @@ fn every_wire_type_traces_a_usable_shape() {
 
     assert_schema_is_usable::<GangerNameNet>("GangerNameNet");
     assert_schema_is_usable::<FactionNet>("FactionNet");
+    assert_schema_is_usable::<MountedNet>("MountedNet");
     assert_schema_is_usable::<GangerCardNet>("GangerCardNet");
 
     assert_schema_is_usable::<HardnessNet>("HardnessNet");

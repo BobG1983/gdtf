@@ -1,101 +1,8 @@
-use bevy::{app::App, ecs::relationship::RelationshipTarget as _, prelude::Entity};
-use gdtf_battle_sim::{
-    acts::{EnterEmplacementRequested, MoveRequested},
-    armor::{ArmorHardness, ArmorProtection},
-    cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
-    entity::TerrainPieceKind,
-    ganger::Direction,
-    magazine::{LoadedRounds, Magazine},
-    metric::CellLevel,
-    terrain::{
-        emplacement::{
-            EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedWeaponEntity,
-            MountedWeaponKey,
-        },
-        entity::TerrainCell,
-        facing::TerrainFacing,
-    },
-    test_support::{SituationBuilder, TEST_WEAPON_KEY, test_weapon_spec},
-    weapon::{WeaponName, WeaponRegistry, Wields},
-};
+//! A mounted reactor whose MOUNT cannot fire is skipped, and never charged for its carried gun.
+
+use gdtf_battle_sim::{acts::MoveRequested, ganger::Direction, test_support::SituationBuilder};
 
 use super::{harness::*, support::*};
-
-const MOUNTED_KEY: &str = "test-mounted-gun";
-
-fn two_gun_registry() -> WeaponRegistry {
-    WeaponRegistry::new([
-        (
-            WeaponName::new(TEST_WEAPON_KEY.to_owned()),
-            test_weapon_spec(),
-        ),
-        (WeaponName::new(MOUNTED_KEY.to_owned()), test_weapon_spec()),
-    ])
-}
-
-fn spawn_emplacement(app: &mut App, at: CellLevel) -> Entity {
-    let entity = app
-        .world_mut()
-        .spawn((
-            TerrainCell::new(at),
-            EmplacementState::Vacant,
-            MountedWeaponKey::new(WeaponName::new(MOUNTED_KEY.to_owned())),
-            EmplacementEntrySides::new(TerrainFacing::ALL.to_vec()),
-            EmplacementFacing::new(TerrainFacing::default()),
-        ))
-        .id();
-    app.world_mut().resource_mut::<CoverLedger>().insert(
-        at,
-        CoverEntry::seeded(
-            CoverHp::new(45),
-            HeightBand::High,
-            ArmorProtection::new(0),
-            ArmorHardness::new(0),
-            TerrainPieceKind::Emplacement,
-        ),
-    );
-    entity
-}
-
-fn man_emplacement(app: &mut App, ganger: Entity, emplacement: Entity) -> Entity {
-    app.world_mut()
-        .write_message(EnterEmplacementRequested::new(ganger, emplacement));
-    step(app, 3);
-    let Some(mount) = app
-        .world()
-        .get::<MountedWeaponEntity>(emplacement)
-        .map(|m| **m)
-    else {
-        unreachable!("the enter act spawns + records the mounted weapon");
-    };
-    mount
-}
-
-fn empty_magazine(app: &mut App, weapon: Entity) {
-    let Some(magazine) = app.world().get::<Magazine>(weapon).copied() else {
-        unreachable!("the weapon entity carries a Magazine");
-    };
-    let Some(mut live) = app.world_mut().get_mut::<Magazine>(weapon) else {
-        unreachable!("the weapon entity carries a Magazine");
-    };
-    *live = Magazine::new(LoadedRounds::new(0), magazine.size(), magazine.reload_tu());
-}
-
-fn carried_gun_loaded(app: &mut App, ganger: Entity, mount: Entity) -> bool {
-    let world = app.world_mut();
-    let wielded: Vec<Entity> = {
-        let Some(wields) = world.get::<Wields>(ganger) else {
-            unreachable!("the fixture ganger wields weapons at setup");
-        };
-        wields.iter().collect()
-    };
-    wielded.into_iter().any(|entity| {
-        entity != mount
-            && world
-                .get::<Magazine>(entity)
-                .is_some_and(|magazine| !*magazine.is_empty())
-    })
-}
 
 #[test]
 fn empty_mounted_gun_offer_is_skipped_without_cap_spend() {
@@ -127,19 +34,19 @@ fn empty_mounted_gun_offer_is_skipped_without_cap_spend() {
         carried_gun_loaded(&mut app, reactor, mount),
         "fixture precondition: the carried gun is loaded (only the mount is empty)",
     );
-    let cost = single_fire_cost(&mut app, reactor);
-    assert!(
-        tu_of(&app, reactor).is_some_and(|tu| tu >= cost),
-        "fixture precondition: the pool affords a single-mode interrupt after the \
-         enter cost, else affordability (not the magazine) would gate the offer",
-    );
+
+    settle_the_enter_exchange(&mut app, &[reactor], mover);
+    let baseline = shots_by(&app, reactor);
+    let walks_from = walking_from(&app, mover);
 
     app.world_mut()
         .write_message(MoveRequested::new(mover, ground(11, 4)));
     step(&mut app, 16);
 
+    assert_the_mover_walked(&app, mover, mover_start);
+    assert_the_mover_walked(&app, mover, walks_from);
     assert_eq!(
-        shots_by(&app, reactor),
+        shots_by(&app, reactor) - baseline,
         0,
         "the empty mounted gun dispatches no interrupt shot",
     );
@@ -185,13 +92,21 @@ fn mixed_tick_mounted_empty_and_carried_eligible_spend_tracks_shots() {
         "fixture precondition: the mounted reactor's carried gun is loaded",
     );
 
+    settle_the_enter_exchange(&mut app, &[mounted_reactor, eligible], mover);
+    let mounted_baseline = shots_by(&app, mounted_reactor);
+    let eligible_baseline = shots_by(&app, eligible);
+    let walks_from = walking_from(&app, mover);
+
     app.world_mut()
         .write_message(MoveRequested::new(mover, ground(11, 5)));
     step(&mut app, 16);
 
+    assert_the_mover_walked(&app, mover, mover_start);
+    assert_the_mover_walked(&app, mover, walks_from);
+    let eligible_shots = shots_by(&app, eligible) - eligible_baseline;
+    let mounted_shots = shots_by(&app, mounted_reactor) - mounted_baseline;
     assert_eq!(
-        shots_by(&app, eligible),
-        1,
+        eligible_shots, 1,
         "the carried-eligible reactor dispatched exactly one interrupt (cap == 1)",
     );
     assert_eq!(
@@ -200,8 +115,7 @@ fn mixed_tick_mounted_empty_and_carried_eligible_spend_tracks_shots() {
         "the carried-eligible reactor's counter moved exactly once — 1:1 with its shot",
     );
     assert_eq!(
-        shots_by(&app, mounted_reactor),
-        0,
+        mounted_shots, 0,
         "the mounted-empty reactor dispatched no reaction shot",
     );
     assert_eq!(
@@ -214,12 +128,8 @@ fn mixed_tick_mounted_empty_and_carried_eligible_spend_tracks_shots() {
         .into_iter()
         .filter_map(|entity| used_of(&app, entity))
         .sum();
-    let total_shots: usize = [mounted_reactor, eligible]
-        .into_iter()
-        .map(|entity| shots_by(&app, entity))
-        .sum();
     assert_eq!(
-        u32::try_from(total_shots).ok(),
+        u32::try_from(mounted_shots + eligible_shots).ok(),
         Some(total_used),
         "ReactionsUsed increments correspond 1:1 with dispatched \
          reaction shots across the mounted-empty + carried-eligible mixed tick",
