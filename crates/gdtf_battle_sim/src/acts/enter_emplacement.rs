@@ -6,7 +6,10 @@ use bevy::{
 };
 
 use crate::{
-    acts::request::{EnterEmplacementRequested, ExitEmplacementRequested},
+    acts::{
+        pending_state::PendingStates,
+        request::{EnterEmplacementRequested, ExitEmplacementRequested},
+    },
     ganger::{Position, Tu},
     occupancy::OccupancyGrid,
     terrain::{
@@ -131,6 +134,7 @@ pub fn can_exit_emplacement(
 }
 
 /// System: occupy an empty emplacement from one of its rotated entry sides.
+/// A repeat request in the same frame reads the seat this run already manned, so it pays nothing.
 pub fn dispatch_enter_emplacement(
     mut requests: MessageReader<EnterEmplacementRequested>,
     emplacements: Query<(
@@ -146,6 +150,7 @@ pub fn dispatch_enter_emplacement(
     let Some(tuning) = tuning else {
         return;
     };
+    let mut pending: PendingStates<EmplacementState> = PendingStates::new();
     for request in requests.read() {
         let Ok((state, cell, sides, facing)) = emplacements.get(request.emplacement) else {
             continue;
@@ -154,17 +159,20 @@ pub fn dispatch_enter_emplacement(
             continue;
         };
         let seat = Position::new(**cell);
-        if !*can_enter_emplacement(actor_pos, seat, state, sides, facing, &actor_tu, &tuning) {
+        let state = pending.state_of(request.emplacement, *state);
+        if !*can_enter_emplacement(actor_pos, seat, &state, sides, facing, &actor_tu, &tuning) {
             continue;
         }
         if spend_tu(&mut actor_tu, enter_emplacement_tu_cost(&tuning)).is_err() {
             continue;
         }
+        pending.record(request.emplacement, EmplacementState::Occupied);
         toggles.write(SetEmplacement::occupy(request.emplacement, request.actor));
     }
 }
 
 /// System: vacate an emplacement the actor currently occupies.
+/// A repeat request in the same frame reads the seat this run already vacated, so it pays nothing.
 pub fn dispatch_exit_emplacement(
     mut requests: MessageReader<ExitEmplacementRequested>,
     emplacements: Query<(&EmplacementState, &MountedBy, Option<&EnteredFrom>)>,
@@ -176,6 +184,7 @@ pub fn dispatch_exit_emplacement(
     let Some(tuning) = tuning else {
         return;
     };
+    let mut pending: PendingStates<EmplacementState> = PendingStates::new();
     for request in requests.read() {
         let Ok((state, occupant, entered)) = emplacements.get(request.emplacement) else {
             continue;
@@ -183,9 +192,10 @@ pub fn dispatch_exit_emplacement(
         let Ok(mut actor_tu) = actors.get_mut(request.actor) else {
             continue;
         };
+        let state = pending.state_of(request.emplacement, *state);
         if !*can_exit_emplacement(
             request.actor,
-            state,
+            &state,
             occupant,
             entered,
             &grid,
@@ -197,6 +207,7 @@ pub fn dispatch_exit_emplacement(
         if spend_tu(&mut actor_tu, exit_emplacement_tu_cost(&tuning)).is_err() {
             continue;
         }
+        pending.record(request.emplacement, EmplacementState::Vacant);
         toggles.write(SetEmplacement::vacate(request.emplacement, request.actor));
     }
 }

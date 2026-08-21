@@ -7,6 +7,7 @@ mod injury;
 mod melee;
 pub mod movement;
 mod open_door;
+mod pending_state;
 mod plugin;
 mod posture;
 mod reload;

@@ -103,6 +103,12 @@ holds and does nothing. Its dispatch is ordered after the walk step, so an exit
 asked for in the same frame as the move reads the seat after that vacate. It
 charges nothing, and the dismount is paid once, on the step.
 
+Two enter requests, or two exit requests, written in the same frame charge once.
+Each dispatch remembers the seat it has already written this run and gates the
+next request on that rather than on the queried state, so a repeat enter reads
+the seat as occupied and a repeat exit reads it as vacant. Both are refused, and
+nothing is spent on them.
+
 `clear_seat_on_death` (`terrain/emplacement/death.rs`) reads the gangers whose
 life state changed to dead this frame and gives up the seat each one rides,
 through the same `clear_seat` a walk off the seat uses: the state goes back to
@@ -161,9 +167,11 @@ holds for it and the card for a ganger on it the squad can see.
   `MountedBy` / `Mounted` relationship is in
   `terrain/emplacement/relationship.rs`. `can_enter_emplacement`,
   `can_exit_emplacement` and their dispatches are in
-  `acts/enter_emplacement.rs`; `wire_acts` (`acts/plugin/acts.rs`) orders
-  `dispatch_exit_emplacement` after `advance_walk`. `apply_emplacement_toggle`,
-  which writes both `Position` moves, is in `terrain/emplacement/toggle.rs`.
+  `acts/enter_emplacement.rs`, and the `PendingStates` map the dispatches read
+  their own writes back from is in `acts/pending_state.rs`; `wire_acts`
+  (`acts/plugin/acts.rs`) orders `dispatch_exit_emplacement` after
+  `advance_walk`. `apply_emplacement_toggle`, which writes both `Position`
+  moves, is in `terrain/emplacement/toggle.rs`.
   `clear_seat` (`terrain/emplacement/vacate.rs`) is the vacate the toggle, a
   walk's first step and `clear_seat_on_death` (`terrain/emplacement/death.rs`)
   share, and `emplacement_entry_cells`

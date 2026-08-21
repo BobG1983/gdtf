@@ -3,7 +3,7 @@
 use bevy::prelude::{Deref, MessageReader, MessageWriter, Query, Res};
 
 use crate::{
-    acts::{downed::is_8_adjacent, request::OpenDoorRequested},
+    acts::{downed::is_8_adjacent, pending_state::PendingStates, request::OpenDoorRequested},
     ganger::{Position, Tu},
     terrain::{
         entity::TerrainCell,
@@ -48,6 +48,7 @@ pub fn can_open_door(
 }
 
 /// System: open adjacent closed doors when TU allows.
+/// A repeat request in the same frame reads the door this run already opened, so it pays nothing.
 pub fn dispatch_open_door(
     mut requests: MessageReader<OpenDoorRequested>,
     doors: Query<(&OpenState, &TerrainCell)>,
@@ -58,6 +59,7 @@ pub fn dispatch_open_door(
     let Some(tuning) = tuning else {
         return;
     };
+    let mut pending: PendingStates<OpenState> = PendingStates::new();
     for request in requests.read() {
         let Ok((open_state, door_cell)) = doors.get(request.door) else {
             continue;
@@ -66,12 +68,14 @@ pub fn dispatch_open_door(
             continue;
         };
         let door_pos = Position::new(**door_cell);
-        if !*can_open_door(actor_pos, door_pos, *open_state, &actor_tu, &tuning) {
+        let open_state = pending.state_of(request.door, *open_state);
+        if !*can_open_door(actor_pos, door_pos, open_state, &actor_tu, &tuning) {
             continue;
         }
         if spend_tu(&mut actor_tu, open_door_tu_cost(&tuning)).is_err() {
             continue;
         }
-        toggles.write(SetOpenable::toggle(request.door, *open_state));
+        pending.record(request.door, open_state.toggled());
+        toggles.write(SetOpenable::toggle(request.door, open_state));
     }
 }

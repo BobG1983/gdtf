@@ -136,3 +136,45 @@ fn open_door_charges_exactly_the_quote_and_can_open_door_agrees() {
         "the act charged exactly what open_door_tu_cost quoted",
     );
 }
+
+#[test]
+fn two_open_door_requests_in_one_frame_charge_the_door_leaf_once() {
+    let mut app = open_door_app();
+    let actor_cell = ground(5, 5);
+    let door_cell = ground(6, 5);
+    let actor = spawn_actor(app.world_mut(), actor_cell, 100);
+    let door = spawn_closed_door(app.world_mut(), door_cell);
+    app.update();
+
+    let quoted = open_door_tu_cost(&shipped_tuning());
+    assert!(
+        *quoted > 0,
+        "PRECONDITION: the shipped open-door leaf must be positive, or the charge assertion \
+         below holds whatever the dispatcher does; it reads {}",
+        *quoted,
+    );
+
+    let before = app.world().get::<Tu>(actor).map_or(0, |tu| **tu);
+    for _ in 0..2 {
+        app.world_mut()
+            .write_message(OpenDoorRequested::new(actor, door));
+    }
+    app.update();
+    app.update();
+
+    let lost = before.saturating_sub(app.world().get::<Tu>(actor).map_or(0, |tu| **tu));
+    assert_eq!(
+        lost, *quoted,
+        "two open-door requests in one frame must charge the door leaf once: the actor lost \
+         {lost} TU against a leaf of {}",
+        *quoted,
+    );
+    assert_eq!(
+        app.world().get::<OpenState>(door).copied(),
+        Some(OpenState::Open),
+        "the one charge must buy the one opening, so the door ends Open against a leaf of {}; it \
+         reads {:?}",
+        *quoted,
+        app.world().get::<OpenState>(door).copied(),
+    );
+}
