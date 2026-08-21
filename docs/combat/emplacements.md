@@ -37,9 +37,12 @@ rotated entry sides the enter is allowed from, and pays the exit act's TU on top
 of the route. The walker stays where it walked, so the exit act applied
 afterwards does nothing. While another ganger stands on the remembered cell the
 exit act is refused: two gangers are never on one cell, so the occupant stays
-mounted and spends nothing, and the Exit button is not offered. The refusal
-reads that one cell, so walking off by the other entry sides is still open, at
-the route price plus the exit.
+mounted and spends nothing, and the Exit button is not offered. Walking off
+stays open while one of the seat's rotated entry cells is free, at the route
+price plus the exit. A seat naming one entry side has one such cell, and its
+occupant entered from that cell, so a ganger standing there closes both ways
+out: no exit, and no first step the walk may take. The occupant stays mounted
+until that ganger moves or dies.
 
 **Dying.** A ganger killed in the seat leaves its body there. The corpse stays
 on the mount cell and the emplacement goes vacant, so another ganger can climb

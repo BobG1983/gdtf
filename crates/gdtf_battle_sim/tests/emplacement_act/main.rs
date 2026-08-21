@@ -9,5 +9,6 @@ mod mounted_fire;
 mod rejections;
 mod same_frame;
 mod seeded_sides;
+mod trapped;
 mod walk_off;
 mod zero_step;

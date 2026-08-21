@@ -2,10 +2,11 @@ use bevy::{
     app::App,
     asset::{AssetPlugin, uuid::Uuid},
     ecs::relationship::Relationship,
-    prelude::{Entity, MinimalPlugins},
+    prelude::{Entity, Messages, MinimalPlugins},
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
+    acts::{EnterEmplacementRequested, MovementOccurred, movement::WalkInProgress},
     armor::{ArmorHardness, ArmorProtection},
     battle::{BattleSimPlugin, SetupBattleRequested},
     cover::{CoverHp, HeightBand},
@@ -221,6 +222,58 @@ pub(crate) fn set_exit_tu(app: &mut App, tu: u8) {
         unreachable!("battle_app inserts the combat tuning this harness reads back");
     };
     tuning.exit_emplacement_tu = ExitEmplacementTu::new(tu);
+}
+
+/// The one player ganger standing on `at`, or a failure naming the cell and the count found.
+pub(crate) fn player_on(app: &mut App, at: CellLevel) -> Entity {
+    let world = app.world_mut();
+    let mut query = world.query::<(Entity, &Faction, &Position)>();
+    let found: Vec<Entity> = query
+        .iter(world)
+        .filter(|(_, faction, position)| ***faction == PLAYER && ***position == at)
+        .map(|(entity, ..)| entity)
+        .collect();
+    assert_eq!(
+        found.len(),
+        1,
+        "exactly one player ganger must stand on {at:?}, found {}",
+        found.len(),
+    );
+    let [entity] = found[..] else {
+        unreachable!("the count above is one");
+    };
+    entity
+}
+
+/// Enter the seat, and fail unless the enter actually manned it.
+pub(crate) fn mount(app: &mut App, actor: Entity, emplacement: Entity) {
+    app.world_mut()
+        .write_message(EnterEmplacementRequested::new(actor, emplacement));
+    step(app, 3);
+    assert_eq!(
+        state(app, emplacement),
+        Some(EmplacementState::Occupied),
+        "PRECONDITION: the enter must man the seat, or nothing below is about a mounted ganger",
+    );
+    assert_eq!(
+        occupant(app, emplacement),
+        Some(actor),
+        "PRECONDITION: the seat must name this actor as its occupant — a failed enter leaves \
+         MountedBy absent and every assertion below passes while proving nothing",
+    );
+}
+
+/// Whether this actor is still walking a committed route.
+pub(crate) fn is_walking(app: &App, actor: Entity) -> bool {
+    app.world().get::<WalkInProgress>(actor).is_some()
+}
+
+/// Every `MovementOccurred` written since the buffer was last drained.
+pub(crate) fn drain_movements(app: &mut App) -> Vec<MovementOccurred> {
+    app.world_mut()
+        .resource_mut::<Messages<MovementOccurred>>()
+        .drain()
+        .collect()
 }
 
 /// The one-sided emplacement def, whose single authored side makes a constrained route visible.

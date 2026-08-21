@@ -1,14 +1,8 @@
 //! Walking off a seat: the dismount rides the commit, and the exit act it replaces does nothing.
 
-use bevy::{
-    app::App,
-    prelude::{Entity, Messages},
-};
+use bevy::{app::App, prelude::Entity};
 use gdtf_battle_sim::{
-    acts::{
-        EnterEmplacementRequested, ExitEmplacementRequested, MoveRequested, MovementOccurred,
-        movement::WalkInProgress,
-    },
+    acts::{ExitEmplacementRequested, MoveRequested, MovementOccurred},
     ganger::Direction,
     metric::{Cell, CellLevel},
     situation::CoverSpawn,
@@ -91,37 +85,6 @@ fn one_sided_entry() -> CellLevel {
 /// A cell the one-sided seat's shortest unconstrained route would leave by a different neighbour.
 fn north_of_the_seat() -> CellLevel {
     ground(6, 2)
-}
-
-/// Enter the seat, and fail unless the enter actually manned it.
-fn mount(app: &mut App, actor: Entity, emplacement: Entity) {
-    app.world_mut()
-        .write_message(EnterEmplacementRequested::new(actor, emplacement));
-    step(app, 3);
-    assert_eq!(
-        state(app, emplacement),
-        Some(EmplacementState::Occupied),
-        "PRECONDITION: the enter must man the seat, or nothing below is about a mounted ganger",
-    );
-    assert_eq!(
-        occupant(app, emplacement),
-        Some(actor),
-        "PRECONDITION: the seat must name this actor as its occupant — a failed enter leaves \
-         MountedBy absent and every assertion below passes while proving nothing",
-    );
-}
-
-/// Whether this actor is still walking a committed route.
-fn is_walking(app: &App, actor: Entity) -> bool {
-    app.world().get::<WalkInProgress>(actor).is_some()
-}
-
-/// Every `MovementOccurred` written since the buffer was last drained.
-fn drain_movements(app: &mut App) -> Vec<MovementOccurred> {
-    app.world_mut()
-        .resource_mut::<Messages<MovementOccurred>>()
-        .drain()
-        .collect()
 }
 
 /// Send the actor to `dest` and step one tick at a time until the walk settles.

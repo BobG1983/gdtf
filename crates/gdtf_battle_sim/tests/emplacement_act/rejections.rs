@@ -1,7 +1,7 @@
-use bevy::{app::App, prelude::Entity};
+use bevy::prelude::Entity;
 use gdtf_battle_sim::{
     acts::{EnterEmplacementRequested, ExitEmplacementRequested, MoveRequested},
-    ganger::{Direction, Position},
+    ganger::Direction,
     metric::CellLevel,
     prelude::{Faction, Tu},
     terrain::emplacement::EmplacementState,
@@ -143,27 +143,6 @@ const HELD_CELL_EXIT_TU: u8 = 3;
 
 /// Ticks the one-step walk onto the entry cell is given to settle.
 const WALK_TICKS: u32 = 16;
-
-/// The one player ganger standing on `at`, or a failure naming the cell and the count found.
-fn player_on(app: &mut App, at: CellLevel) -> Entity {
-    let world = app.world_mut();
-    let mut query = world.query::<(Entity, &Faction, &Position)>();
-    let found: Vec<Entity> = query
-        .iter(world)
-        .filter(|(_, faction, position)| ***faction == PLAYER && ***position == at)
-        .map(|(entity, ..)| entity)
-        .collect();
-    assert_eq!(
-        found.len(),
-        1,
-        "exactly one player ganger must stand on {at:?}, found {}",
-        found.len(),
-    );
-    let [entity] = found[..] else {
-        unreachable!("the count above is one");
-    };
-    entity
-}
 
 #[test]
 fn an_exit_onto_a_cell_another_ganger_holds_is_refused_and_charges_nothing() {
