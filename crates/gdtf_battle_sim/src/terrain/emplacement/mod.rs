@@ -1,5 +1,6 @@
 //! Weapon emplacements: vacant/occupied state and mount/dismount.
 
+mod death;
 pub mod entry;
 pub mod relationship;
 pub mod state;

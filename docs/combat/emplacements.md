@@ -12,8 +12,8 @@ pillars: [4, 5]
 it and reach in.**
 
 Status: the entry gate, the move onto the emplacement's cell, the remembered
-origin cell, the exit act and walking off the seat are built. "What exists
-today" records what they do.
+origin cell, the exit act, walking off the seat and a death freeing the seat
+are built. "What exists today" records what they do.
 
 ## The claim
 
@@ -40,6 +40,12 @@ exit act is refused: two gangers are never on one cell, so the occupant stays
 mounted and spends nothing, and the Exit button is not offered. The refusal
 reads that one cell, so walking off by the other entry sides is still open, at
 the route price plus the exit.
+
+**Dying.** A ganger killed in the seat leaves its body there. The corpse stays
+on the mount cell and the emplacement goes vacant, so another ganger can climb
+in and take the gun: a body slumped over the gun is flavour, one death taking a
+heavy weapon out of the fight is not. What a *downed* occupant should do is not
+settled.
 
 **Emplacements nothing can enter.** A def naming no entry side cannot be
 entered, and offers no act. That is how a mount is authored as scenery, or for
@@ -84,16 +90,33 @@ seat holding no record has no cell to test, so it still exits.
 
 A mounted ganger's walk gives the seat up on its first step, written in the
 same system and the same tick as the step off the cell, so no tick has a
-mounted ganger standing off its seat. A walk that ends before it steps keeps
-the seat: a dead mover, a reaction shot, a next cell blocked or occupied, and a
-pool that cannot pay all stop the walk before the vacate. That vacate sets the
-state back to vacant, drops the occupant record and the remembered origin cell,
-and despawns the mounted weapon. It writes no `Position`, so the walker keeps
-the cell it walked to; only the exit act's vacate writes the origin cell back.
+mounted ganger standing off its seat. A walk that ends before it steps does not
+vacate: a dead mover, a reaction shot, a next cell blocked or occupied, and a
+pool that cannot pay all stop the walk before the vacate. A living mover stays
+mounted; a mover killed before its first step gives the seat up to the death
+instead. The walk's vacate sets the state back to vacant, drops the occupant
+record and the remembered origin cell, and despawns the mounted weapon. It
+writes no `Position`, so the walker keeps the cell it walked to; only the exit
+act's vacate writes the origin cell back.
 With the occupant record gone, the exit act finds no emplacement the ganger
 holds and does nothing. Its dispatch is ordered after the walk step, so an exit
 asked for in the same frame as the move reads the seat after that vacate. It
 charges nothing, and the dismount is paid once, on the step.
+
+`clear_seat_on_death` (`terrain/emplacement/death.rs`) reads the gangers whose
+life state changed to dead this frame and gives up the seat each one rides,
+through the same `clear_seat` a walk off the seat uses: the state goes back to
+vacant, the occupant record and the remembered origin cell are dropped, and the
+mounted weapon is despawned. It writes no `Position`, so the body is left on the
+mount cell. It runs after `apply_emplacement_toggle`, after `resolve_on_death`
+and after `sync_dead_gangers` — so the death fans its effect while the mount is
+still there, and the grid has already released the corpse's slot by the time the
+seat frees. Writing the corpse's cell back would re-claim that slot with nothing
+left to release it, which is why the system touches no position. A mounted
+weapon carries the on-death effect its spec authors, the way a carried one
+does, so a gunner killed at the mount fires the mount's effect rather than the
+gun on their back. Only death is handled: a downed occupant keeps its seat and
+its grid slot both.
 
 The route out is planned from the seat's rotated entry cells: the first step may
 land only on one of them, and the rest of the route carries on from there. A
@@ -141,8 +164,9 @@ holds for it and the card for a ganger on it the squad can see.
   `acts/enter_emplacement.rs`; `wire_acts` (`acts/plugin/acts.rs`) orders
   `dispatch_exit_emplacement` after `advance_walk`. `apply_emplacement_toggle`,
   which writes both `Position` moves, is in `terrain/emplacement/toggle.rs`.
-  `clear_seat` (`terrain/emplacement/vacate.rs`) is the vacate the toggle and a
-  walk's first step share, and `emplacement_entry_cells`
+  `clear_seat` (`terrain/emplacement/vacate.rs`) is the vacate the toggle, a
+  walk's first step and `clear_seat_on_death` (`terrain/emplacement/death.rs`)
+  share, and `emplacement_entry_cells`
   (`terrain/emplacement/entry.rs`) is the rotated entry set the enter gate and
   the route out share.
   `dismount_surcharge` and `seat_departure` are in `acts/movement/mount.rs`; the

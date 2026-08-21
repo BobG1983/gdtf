@@ -72,6 +72,10 @@ report.
   piece died (cover and slab are separate keys); an entity death is deduped by
   its cell. So a cover and a slab destroyed on the same cell in the same frame
   each fan their own authored effect.
+- **A mounted gun's effect is the one that fans.** An emplacement's mounted
+  weapon carries the `on_death:` its own spec authors, and the death read picks
+  the mounted gun over the carried one, so a gunner killed at the mount fans the
+  mount's effect.
 - A cone authored on a corpse degenerates to the full disc (a corpse has no
   meaningful fire direction).
 

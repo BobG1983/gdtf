@@ -10,13 +10,14 @@ use bevy::{
 
 use super::{
     EmplacementState, EnteredFrom, MountedBy, MountedWeaponEntity, MountedWeaponKey,
-    vacate::clear_seat,
+    death::clear_seat_on_death, vacate::clear_seat,
 };
 use crate::{
+    effects::on_death::resolve_on_death,
     equipment::attachments::{AttachmentRegistry, resolve_pending_attachments},
     ganger::Position,
     metric::CellLevel,
-    occupancy_sync::{SimSystems, sync_moved_gangers},
+    occupancy_sync::{SimSystems, sync_dead_gangers, sync_moved_gangers},
     terrain::entity::TerrainCell,
     weapon::{MountedWeapon, WeaponRegistry, WieldedBy},
 };
@@ -150,12 +151,14 @@ fn spawn_mounted_weapon(
     let key = mounted_key?;
     let spec = weapons?.spec(key)?;
     let pending = resolve_pending_attachments(&spec.slots, &spec.attachments, attachments);
-    let (bundle, _siblings) = spec.clone().into_bundle((**key).clone());
-    Some(
-        commands
-            .spawn((bundle, WieldedBy::new(occupant), MountedWeapon, pending))
-            .id(),
-    )
+    let (bundle, siblings) = spec.clone().into_bundle((**key).clone());
+    let mount = commands
+        .spawn((bundle, WieldedBy::new(occupant), MountedWeapon, pending))
+        .id();
+    if let Some(on_death) = siblings.on_death() {
+        commands.entity(mount).insert(on_death.clone());
+    }
+    Some(mount)
 }
 
 /// Plugin that registers the emplacement toggle system.
@@ -164,11 +167,20 @@ pub struct EmplacementTogglePlugin;
 
 impl Plugin for EmplacementTogglePlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<SetEmplacement>().add_systems(
-            Update,
-            apply_emplacement_toggle
-                .in_set(SimSystems::Simulate)
-                .before(sync_moved_gangers),
-        );
+        app.add_message::<SetEmplacement>()
+            .add_systems(
+                Update,
+                apply_emplacement_toggle
+                    .in_set(SimSystems::Simulate)
+                    .before(sync_moved_gangers),
+            )
+            .add_systems(
+                Update,
+                clear_seat_on_death
+                    .in_set(SimSystems::Simulate)
+                    .after(apply_emplacement_toggle)
+                    .after(resolve_on_death)
+                    .after(sync_dead_gangers),
+            );
     }
 }

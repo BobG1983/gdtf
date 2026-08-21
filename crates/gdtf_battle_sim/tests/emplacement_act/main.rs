@@ -1,5 +1,6 @@
 //! HARNESS NOTE (the `melee_cover_smash` idiom): the sim crate is the LOW crate, so it drives
 mod cost;
+mod death;
 mod enter_exit;
 mod entry_sides;
 mod harness;
