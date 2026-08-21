@@ -9,6 +9,7 @@ use gdtf_battle_sim::{
     },
     ganger::{Direction, Position, Tu},
     metric::CellLevel,
+    occupancy::OccupancyGrid,
     terrain::emplacement::{EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedBy},
     test_support::{SituationBuilder, emplacement_at},
     tuning::CombatTuning,
@@ -120,11 +121,16 @@ fn enter_and_exit_charge_exactly_their_quotes_and_the_predicates_agree() {
     let Some(after_enter) = tu_of(&app, actor) else {
         unreachable!("the occupant still carries Tu");
     };
+    let Some(grid) = app.world().get_resource::<OccupancyGrid>() else {
+        unreachable!("a running battle holds the occupancy grid the exit gate reads");
+    };
     assert!(
         *can_exit_emplacement(
             actor,
             &EmplacementState::Occupied,
             &MountedBy::new(actor),
+            None,
+            grid,
             &Tu::new(after_enter),
             &tuning,
         ),
@@ -135,6 +141,8 @@ fn enter_and_exit_charge_exactly_their_quotes_and_the_predicates_agree() {
             actor,
             &EmplacementState::Occupied,
             &MountedBy::new(actor),
+            None,
+            grid,
             &Tu::new(exit_quote.saturating_sub(1)),
             &tuning,
         ),

@@ -2,8 +2,9 @@ use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::ExitEmplacementAct};
 use gdtf_battle_sim::{
     acts::{can_exit_emplacement, exit_emplacement_tu_cost},
-    emplacement::{EmplacementState, MountedBy},
+    emplacement::{EmplacementState, EnteredFrom, MountedBy},
     ganger::{Faction, Position, Tu},
+    occupancy::OccupancyGrid,
     tuning::CombatTuning,
 };
 use gdtf_ui::ButtonLabel;
@@ -30,20 +31,26 @@ impl ContextualPanelAct for ExitEmplacementAct {
 
 type ExitEmplacementActorFilter = (With<Position>, With<Faction>);
 
-type ExitEmplacementReads = (Entity, &'static EmplacementState, &'static MountedBy);
+type ExitEmplacementReads = (
+    Entity,
+    &'static EmplacementState,
+    &'static MountedBy,
+    Option<&'static EnteredFrom>,
+);
 
 pub(in crate::states::running::game::battlescape) fn offer_exit_emplacement(
     selected: Res<SelectedShooter>,
     actors: Query<Option<&Tu>, ExitEmplacementActorFilter>,
     emplacements: Query<ExitEmplacementReads>,
     tuning: Option<Res<CombatTuning>>,
+    grid: Option<Res<OccupancyGrid>>,
     mut offer: ResMut<ContextualOffer<ExitEmplacementAct>>,
 ) {
     let scanned = (**selected)
         .and_then(|actor| actors.get(actor).ok().map(|tu| (actor, tu)))
-        .zip(tuning.as_deref())
-        .and_then(|((actor, pool), tuning)| {
-            scan_exit_emplacement(actor, pool, &emplacements, tuning)
+        .zip(tuning.as_deref().zip(grid.as_deref()))
+        .and_then(|((actor, pool), (tuning, grid))| {
+            scan_exit_emplacement(actor, pool, &emplacements, grid, tuning)
         });
     let (target, pressable) = scanned
         .map_or((None, OfferPressable::new(false)), |(entity, pressable)| {
@@ -56,18 +63,20 @@ fn scan_exit_emplacement(
     actor: Entity,
     pool: Option<&Tu>,
     emplacements: &Query<ExitEmplacementReads>,
+    grid: &OccupancyGrid,
     tuning: &CombatTuning,
 ) -> Option<(Entity, OfferPressable)> {
-    let allowed = |state: &EmplacementState, occupant: &MountedBy, tu: &Tu| {
-        *can_exit_emplacement(actor, state, occupant, tu, tuning)
-    };
+    let allowed =
+        |state: &EmplacementState, occupant: &MountedBy, entered: Option<&EnteredFrom>, tu: &Tu| {
+            *can_exit_emplacement(actor, state, occupant, entered, grid, tu, tuning)
+        };
     // Asking with the cost as the pool holds affordability true, so the other terms pick the target.
     let cost = exit_emplacement_tu_cost(tuning);
-    let (entity, state, occupant) = emplacements
+    let (entity, state, occupant, entered) = emplacements
         .iter()
-        .find(|&(_, state, occupant)| allowed(state, occupant, &cost))?;
+        .find(|&(_, state, occupant, entered)| allowed(state, occupant, entered, &cost))?;
     Some((
         entity,
-        OfferPressable::new(pool.is_some_and(|tu| allowed(state, occupant, tu))),
+        OfferPressable::new(pool.is_some_and(|tu| allowed(state, occupant, entered, tu))),
     ))
 }

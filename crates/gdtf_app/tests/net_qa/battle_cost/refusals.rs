@@ -8,14 +8,18 @@ use gdtf_app::qa_wire::{
     token::{EmplacementToken, GangerToken},
 };
 use gdtf_battle_sim::{
-    acts::enter_emplacement_tu_cost, emplacement::EmplacementState, entity::TerrainCell,
-    ganger::Tu, tuning::CombatTuning,
+    acts::{enter_emplacement_tu_cost, exit_emplacement_tu_cost},
+    emplacement::EmplacementState,
+    entity::TerrainCell,
+    ganger::Tu,
+    tuning::CombatTuning,
 };
 
 use super::support::{cost_body, cost_calls, first_body, settle};
 use crate::{
     battle_reads::{a_player_ganger, an_unreachable_cell, one_cardinal_step_from},
-    command_exchange::exchange_in_battle,
+    command_exchange::{exchange_in_battle, exchange_inspecting},
+    contextual_acts::emplacement::a_held_entry_cell_under_the_manned_emplacement,
     socket_support::{TestError, TestResult},
 };
 
@@ -97,6 +101,47 @@ fn an_emplacement_naming_no_entry_side_is_refused_the_enter() -> TestResult {
         Some(CostRefusalNet::ActNotAllowed),
         "an emplacement carrying no entry sides names no cell it can be entered from, so the \
          sim turns the enter down: {body:?}",
+    );
+    assert!(!*body.legal, "a refused act is not legal: {body:?}");
+    Ok(())
+}
+
+/// The pool the actor holds and what the same world charges for one exit.
+fn pool_and_exit_cost(app: &App, actor: Entity) -> Option<(Tu, Tu)> {
+    let world = app.world();
+    let pool = *world.get_entity(actor).ok()?.get::<Tu>()?;
+    let tuning = world.get_resource::<CombatTuning>()?;
+    Some((pool, exit_emplacement_tu_cost(tuning)))
+}
+
+#[test]
+fn an_exit_onto_a_cell_another_ganger_holds_is_priced_and_then_refused() -> TestResult {
+    let (app, replies, held) =
+        exchange_inspecting(a_held_entry_cell_under_the_manned_emplacement, |held| {
+            cost_calls(
+                held.shooter,
+                &[CostActNet::ExitEmplacement {
+                    target: EmplacementToken::new(held.emplacement.to_bits()),
+                }],
+            )
+        })?;
+    let Some((pool, cost)) = pool_and_exit_cost(&app, held.shooter) else {
+        return Err("the same world must still hold the shooter's pool and the tuning".into());
+    };
+    assert!(
+        *pool >= *cost,
+        "the shooter's pool of {} must cover the {} the exit costs, or the refusal below is \
+         CannotAfford rather than the held cell",
+        *pool,
+        *cost,
+    );
+
+    let body = first_body(replies)?;
+    assert_eq!(
+        body.refusal,
+        Some(CostRefusalNet::ActNotAllowed),
+        "the cell the shooter entered from holds another ganger, so the sim turns the exit \
+         down: {body:?}",
     );
     assert!(!*body.legal, "a refused act is not legal: {body:?}");
     Ok(())

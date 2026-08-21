@@ -7,7 +7,9 @@ use bevy::{
 use gdtf_battle_sim::{
     battle::PlayerFaction,
     cover::CoverLedger,
-    emplacement::{EmplacementEntrySides, EmplacementFacing, EmplacementState, Mounted, MountedBy},
+    emplacement::{
+        EmplacementEntrySides, EmplacementFacing, EmplacementState, EnteredFrom, Mounted, MountedBy,
+    },
     entity::TerrainCell,
     floor::FloorCostGrid,
     ganger::{Aiming, Facing, Faction, LifeState, Position, Stance, Suppressed, Tu, TuMax},
@@ -54,14 +56,16 @@ pub(super) struct GunRow {
 /// The geometry, allegiance and life a reach check reads off a target ganger.
 pub(super) type TargetRow = (&'static Position, &'static Faction, &'static LifeState);
 
-/// The state, cell, occupant, entry sides and facing an emplacement act reads.
-pub(super) type EmplacementRow = (
-    &'static EmplacementState,
-    &'static TerrainCell,
-    Option<&'static MountedBy>,
-    Option<&'static EmplacementEntrySides>,
-    Option<&'static EmplacementFacing>,
-);
+/// The state, cell, occupant, remembered cell, entry sides and facing an emplacement act reads.
+#[derive(QueryData)]
+pub(super) struct EmplacementRow {
+    pub(super) state:   &'static EmplacementState,
+    pub(super) cell:    &'static TerrainCell,
+    pub(super) held_by: Option<&'static MountedBy>,
+    pub(super) entered: Option<&'static EnteredFrom>,
+    pub(super) sides:   Option<&'static EmplacementEntrySides>,
+    pub(super) facing:  Option<&'static EmplacementFacing>,
+}
 
 /// The battle resources every priced act needs, once all of them are loaded.
 pub(super) struct LoadedWorld<'a> {

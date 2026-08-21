@@ -2,6 +2,7 @@
 
 use bevy::{app::App, ecs::entity::Entity};
 use gdtf_app::qa_wire::{
+    act::ActRefusalNet,
     cell::CellLevelNet,
     inspect::InspectShownNet,
     offer::OfferTargetNet,
@@ -17,7 +18,8 @@ use gdtf_test_utils::advance_until;
 use serde::Deserialize;
 
 use super::fixture::{
-    emplacement_beside_the_shooter, manned_emplacement_under_the_shooter, occupant_of,
+    a_held_entry_cell_under_the_manned_emplacement, emplacement_beside_the_shooter,
+    manned_emplacement_under_the_shooter, occupant_of,
 };
 use crate::{
     act_support::{assert_caught_up, caught_up, decode, next},
@@ -25,7 +27,7 @@ use crate::{
     command_exchange::{
         ACT_ENTER_EMPLACEMENT, ACT_EXIT_EMPLACEMENT, BATTLE_INSPECT, WAIT, exchange_inspecting, run,
     },
-    contextual_acts::scene::accepted,
+    contextual_acts::scene::{accepted, refused},
     socket_support::{TestError, TestResult},
 };
 
@@ -120,6 +122,32 @@ fn exiting_the_manned_emplacement_names_it_and_leaves_it_vacant() -> TestResult 
         None,
         "dismounting clears the occupant; a command wired to the enter family would have \
          re-manned it instead",
+    );
+    Ok(())
+}
+
+#[test]
+fn the_exit_is_not_offered_while_another_ganger_holds_the_cell_the_shooter_entered_from()
+-> TestResult {
+    let (_app, replies, _held) =
+        exchange_inspecting(a_held_entry_cell_under_the_manned_emplacement, |_held| {
+            vec![
+                caught_up(),
+                run(ACT_EXIT_EMPLACEMENT, "()", RunOptions::default()),
+            ]
+        })?;
+    let mut replies = replies.into_iter();
+    assert_caught_up(next(WAIT, &mut replies)?)?;
+    let reason = refused(
+        ACT_EXIT_EMPLACEMENT,
+        next(ACT_EXIT_EMPLACEMENT, &mut replies)?,
+    )?;
+
+    assert_eq!(
+        reason,
+        ActRefusalNet::NoOffer,
+        "the panel offers no Exit while the cell the shooter entered from holds another ganger, \
+         so the command answers the one refusal it has rather than firing at the seat",
     );
     Ok(())
 }

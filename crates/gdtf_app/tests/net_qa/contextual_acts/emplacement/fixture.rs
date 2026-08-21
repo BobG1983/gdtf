@@ -12,6 +12,7 @@ use gdtf_battle_sim::{
     },
     entity::TerrainCell,
     ganger::{LifeState, Position, Tu},
+    occupancy::OccupancyGrid,
     prelude::CellLevel,
     terrain::facing::TerrainFacing,
     tuning::CombatTuning,
@@ -20,8 +21,8 @@ use gdtf_qa_protocol::ports::NetQaPort;
 use gdtf_test_utils::advance_until;
 
 use crate::{
-    battle_reads::{clear_cells_away_from, one_cardinal_step_from},
-    contextual_acts::scene::{select_a_player_ganger, settle},
+    battle_reads::{clear_cells_away_from, one_cardinal_step_from, player_gangers},
+    contextual_acts::scene::{place, select_a_player_ganger, settle},
     socket_support::{TestError, battle_app_listening},
 };
 
@@ -154,5 +155,40 @@ pub(crate) fn manned_emplacement_under_the_shooter()
     });
     settle(&mut app);
     survived_the_enter_exchange(&app, shooter)?;
+    Ok((app, port, scene))
+}
+
+/// Who the occupancy grid names on a cell right now.
+fn occupant_at(app: &App, at: CellLevel) -> Option<Entity> {
+    app.world()
+        .get_resource::<OccupancyGrid>()
+        .and_then(|grid| grid.occupant(&at))
+}
+
+/// The manned battle with a second player ganger standing on the cell the shooter entered from.
+pub(crate) fn a_held_entry_cell_under_the_manned_emplacement()
+-> Result<(App, NetQaPort, EmplacementScene), TestError> {
+    let (mut app, port, scene) = manned_emplacement_under_the_shooter()?;
+    let Some(other) = player_gangers(&app)
+        .into_iter()
+        .find(|ganger| *ganger != scene.shooter)
+    else {
+        return Err(
+            "the battle must field a second living player ganger to stand on the cell the \
+             shooter entered from"
+                .into(),
+        );
+    };
+    place(&mut app, other, scene.entry)?;
+    settle(&mut app);
+    if occupant_at(&app, scene.entry) != Some(other) {
+        return Err(format!(
+            "the grid must name the second ganger on the cell the shooter entered from at {:?}; \
+             it names {:?} — the fixture, not a missing offer",
+            scene.entry,
+            occupant_at(&app, scene.entry),
+        )
+        .into());
+    }
     Ok((app, port, scene))
 }

@@ -15,7 +15,7 @@ use super::quote::{Quote, afforded};
 use crate::dev::net_qa::{
     commands::{
         act::support::a_ganger,
-        read::battle_cost::reads::{ActorRowItem, CostRows},
+        read::battle_cost::reads::{ActorRowItem, CostRows, LoadedWorld},
     },
     wire::{
         cost::{CostLegalNet, CostRefusalNet},
@@ -80,7 +80,7 @@ pub(super) fn enter_quote(
     row: &ActorRowItem<'_, '_>,
     target: EmplacementToken,
 ) -> Quote {
-    let Some((state, cell, _occupant, sides, facing)) =
+    let Some(seat) =
         Entity::try_from_bits(*target).and_then(|seat| rows.emplacements.get(seat).ok())
     else {
         return Quote::refused(CostRefusalNet::NoSuchGanger);
@@ -88,10 +88,10 @@ pub(super) fn enter_quote(
     let cost = enter_emplacement_tu_cost(tuning);
     let allowed = can_enter_emplacement(
         *row.position,
-        Position::new(**cell),
-        state,
-        sides,
-        facing,
+        Position::new(**seat.cell),
+        seat.state,
+        seat.sides,
+        seat.facing,
         row.tu,
         tuning,
     );
@@ -100,19 +100,29 @@ pub(super) fn enter_quote(
 
 /// Price leaving the emplacement `target` names.
 pub(super) fn exit_quote(
+    world: &LoadedWorld,
     rows: &CostRows,
-    tuning: &CombatTuning,
     actor: Entity,
     row: &ActorRowItem<'_, '_>,
     target: EmplacementToken,
 ) -> Quote {
-    let Some((state, _cell, occupant, _sides, _facing)) =
+    let Some(seat) =
         Entity::try_from_bits(*target).and_then(|seat| rows.emplacements.get(seat).ok())
     else {
         return Quote::refused(CostRefusalNet::NoSuchGanger);
     };
+    let tuning = world.tuning;
     let cost = exit_emplacement_tu_cost(tuning);
-    let allowed =
-        occupant.is_some_and(|held| *can_exit_emplacement(actor, state, held, row.tu, tuning));
+    let allowed = seat.held_by.is_some_and(|held| {
+        *can_exit_emplacement(
+            actor,
+            seat.state,
+            held,
+            seat.entered,
+            world.grids.occupancy,
+            row.tu,
+            tuning,
+        )
+    });
     afforded(*row.tu, cost, CostLegalNet::new(allowed))
 }

@@ -67,10 +67,10 @@ fn departure_of(rows: &CostRows, row: &ActorRowItem<'_, '_>) -> Departure {
     let Some(seat) = row.mounted.and_then(Mounted::emplacement) else {
         return Departure::anywhere(from);
     };
-    let Ok((_state, cell, _occupant, sides, facing)) = rows.emplacements.get(seat) else {
+    let Ok(row) = rows.emplacements.get(seat) else {
         return Departure::anywhere(from);
     };
-    seat_departure(from, **cell, sides, facing)
+    seat_departure(from, **row.cell, row.sides, row.facing)
 }
 
 // The wire refusal one walk verdict answers with, or nothing when the walk is allowed.

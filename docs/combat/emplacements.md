@@ -35,7 +35,11 @@ ganger walks off — being mounted refuses no move, and the step that leaves the
 seat vacates the emplacement. A walk off the seat leaves by one of the same
 rotated entry sides the enter is allowed from, and pays the exit act's TU on top
 of the route. The walker stays where it walked, so the exit act applied
-afterwards does nothing.
+afterwards does nothing. While another ganger stands on the remembered cell the
+exit act is refused: two gangers are never on one cell, so the occupant stays
+mounted and spends nothing, and the Exit button is not offered. The refusal
+reads that one cell, so walking off by the other entry sides is still open, at
+the route price plus the exit.
 
 **Emplacements nothing can enter.** A def naming no entry side cannot be
 entered, and offers no act. That is how a mount is authored as scenery, or for
@@ -73,6 +77,10 @@ side cannot be entered at all. Entering writes the ganger's `Position` onto the
 emplacement's cell and records on the emplacement the cell the ganger came from;
 exiting writes that cell back and drops the record. A vacate with no record — an
 emplacement spawned already occupied — leaves the ganger where it is.
+`can_exit_emplacement` reads the occupancy grid at that remembered cell, and
+refuses while another ganger stands there: no TU is spent, the seat keeps its
+occupant, the panel offers no Exit and `battle.cost` prices the act as refused. A
+seat holding no record has no cell to test, so it still exits.
 
 A mounted ganger's walk gives the seat up on its first step, written in the
 same system and the same tick as the step off the cell, so no tick has a
@@ -145,5 +153,10 @@ holds for it and the card for a ganger on it the squad can see.
   (`crates/gdtf_battle_input/src/pointer/selection/path_preview.rs`) and the
   `battle.cost` walk quote
   (`crates/gdtf_app/src/dev/net_qa/commands/read/battle_cost/price/walk.rs`)
-  call the same helpers.
+  call the same helpers. The two callers of the exit gate outside the sim are
+  `offer_exit_emplacement`
+  (`crates/gdtf_app/src/states/running/game/battlescape/contextual_panel/acts/exit_emplacement.rs`)
+  and `exit_quote`
+  (`crates/gdtf_app/src/dev/net_qa/commands/read/battle_cost/price/reach.rs`);
+  both hand it the `OccupancyGrid`.
 - Source: owner rulings, given directly in conversation, 2026-08-14.

@@ -93,7 +93,7 @@ fn priced(
         CostActNet::OpenDoor { target } => reach::open_door_quote(rows, tuning, row, target),
         CostActNet::EnterEmplacement { target } => reach::enter_quote(rows, tuning, row, target),
         CostActNet::ExitEmplacement { target } => {
-            reach::exit_quote(rows, tuning, actor, row, target)
+            reach::exit_quote(world, rows, actor, row, target)
         }
         CostActNet::ThrowGrenade { .. } => gear::throw_quote(rows, tuning, actor, row),
         CostActNet::Melee { target } => gear::melee_quote(world, rows, actor, row, target),

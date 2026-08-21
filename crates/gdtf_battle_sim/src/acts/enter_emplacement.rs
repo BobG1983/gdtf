@@ -8,10 +8,11 @@ use bevy::{
 use crate::{
     acts::request::{EnterEmplacementRequested, ExitEmplacementRequested},
     ganger::{Position, Tu},
+    occupancy::OccupancyGrid,
     terrain::{
         emplacement::{
-            EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedBy, SetEmplacement,
-            emplacement_entry_cells,
+            EmplacementEntrySides, EmplacementFacing, EmplacementState, EnteredFrom, MountedBy,
+            SetEmplacement, emplacement_entry_cells,
         },
         entity::TerrainCell,
     },
@@ -94,18 +95,37 @@ pub fn can_enter_emplacement(
     )
 }
 
-/// The actor holds this emplacement and the pool covers the cost.
+// Whether the cell the occupant entered from is free for it to be put back on.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct EntryCellFree(bool);
+
+impl EntryCellFree {
+    // Wrap a boolean.
+    const fn new(free: bool) -> Self {
+        Self(free)
+    }
+}
+
+// A seat holding no remembered cell has none to test, so nothing stands in the way.
+fn remembered_cell_is_free(entered: Option<&EnteredFrom>, grid: &OccupancyGrid) -> EntryCellFree {
+    EntryCellFree::new(entered.is_none_or(|from| grid.occupant(from).is_none()))
+}
+
+/// The actor holds this emplacement, the cell it entered from is free, and the pool pays.
 #[must_use]
 pub fn can_exit_emplacement(
     actor: Entity,
     state: &EmplacementState,
     occupant: &MountedBy,
+    entered: Option<&EnteredFrom>,
+    grid: &OccupancyGrid,
     tu: &Tu,
     tuning: &CombatTuning,
 ) -> CanExitEmplacement {
     CanExitEmplacement::new(
         *state.is_occupied()
             && occupant.get() == actor
+            && *remembered_cell_is_free(entered, grid)
             && *can_spend_tu(tu, exit_emplacement_tu_cost(tuning)),
     )
 }
@@ -147,8 +167,9 @@ pub fn dispatch_enter_emplacement(
 /// System: vacate an emplacement the actor currently occupies.
 pub fn dispatch_exit_emplacement(
     mut requests: MessageReader<ExitEmplacementRequested>,
-    emplacements: Query<(&EmplacementState, &MountedBy)>,
+    emplacements: Query<(&EmplacementState, &MountedBy, Option<&EnteredFrom>)>,
     mut actors: Query<&mut Tu>,
+    grid: Res<OccupancyGrid>,
     tuning: Option<Res<CombatTuning>>,
     mut toggles: MessageWriter<SetEmplacement>,
 ) {
@@ -156,13 +177,21 @@ pub fn dispatch_exit_emplacement(
         return;
     };
     for request in requests.read() {
-        let Ok((state, occupant)) = emplacements.get(request.emplacement) else {
+        let Ok((state, occupant, entered)) = emplacements.get(request.emplacement) else {
             continue;
         };
         let Ok(mut actor_tu) = actors.get_mut(request.actor) else {
             continue;
         };
-        if !*can_exit_emplacement(request.actor, state, occupant, &actor_tu, &tuning) {
+        if !*can_exit_emplacement(
+            request.actor,
+            state,
+            occupant,
+            entered,
+            &grid,
+            &actor_tu,
+            &tuning,
+        ) {
             continue;
         }
         if spend_tu(&mut actor_tu, exit_emplacement_tu_cost(&tuning)).is_err() {
