@@ -5,6 +5,7 @@ mod entry_sides;
 mod harness;
 mod mounted_fire;
 mod rejections;
+mod same_frame;
 mod seeded_sides;
 mod walk_off;
 mod zero_step;

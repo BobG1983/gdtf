@@ -83,7 +83,9 @@ state back to vacant, drops the occupant record and the remembered origin cell,
 and despawns the mounted weapon. It writes no `Position`, so the walker keeps
 the cell it walked to; only the exit act's vacate writes the origin cell back.
 With the occupant record gone, the exit act finds no emplacement the ganger
-holds and does nothing.
+holds and does nothing. Its dispatch is ordered after the walk step, so an exit
+asked for in the same frame as the move reads the seat after that vacate. It
+charges nothing, and the dismount is paid once, on the step.
 
 The route out is planned from the seat's rotated entry cells: the first step may
 land only on one of them, and the rest of the route carries on from there. A
@@ -128,11 +130,13 @@ holds for it and the card for a ganger on it the squad can see.
   `MountedBy` / `Mounted` relationship is in
   `terrain/emplacement/relationship.rs`. `can_enter_emplacement`,
   `can_exit_emplacement` and their dispatches are in
-  `acts/enter_emplacement.rs`, and `apply_emplacement_toggle`, which writes both
-  `Position` moves, is in `terrain/emplacement/toggle.rs`. `clear_seat`
-  (`terrain/emplacement/vacate.rs`) is the vacate the toggle and a walk's first
-  step share, and `emplacement_entry_cells` (`terrain/emplacement/entry.rs`) is
-  the rotated entry set the enter gate and the route out share.
+  `acts/enter_emplacement.rs`; `wire_acts` (`acts/plugin/acts.rs`) orders
+  `dispatch_exit_emplacement` after `advance_walk`. `apply_emplacement_toggle`,
+  which writes both `Position` moves, is in `terrain/emplacement/toggle.rs`.
+  `clear_seat` (`terrain/emplacement/vacate.rs`) is the vacate the toggle and a
+  walk's first step share, and `emplacement_entry_cells`
+  (`terrain/emplacement/entry.rs`) is the rotated entry set the enter gate and
+  the route out share.
   `dismount_surcharge` and `seat_departure` are in `acts/movement/mount.rs`; the
   surcharge is added by `move_tu_cost` and `move_step_tu_costs` in
   `acts/movement/cost.rs`, and the departure reaches the search as a `Departure`

@@ -32,7 +32,6 @@ pub(super) fn wire_acts(app: &mut App) {
             dispatch_melee,
             dispatch_open_door,
             dispatch_enter_emplacement,
-            dispatch_exit_emplacement,
         )
             .in_set(SimSystems::Simulate),
     );
@@ -51,6 +50,13 @@ pub(super) fn wire_acts(app: &mut App) {
             .after(dispatch_move)
             .after(sync_destroyed_piece)
             .after(project_path_blocking)
+            .in_set(SimSystems::Simulate),
+    );
+    // The walk's first step clears the seat, so a same-frame exit finds nothing left to charge.
+    app.add_systems(
+        Update,
+        dispatch_exit_emplacement
+            .after(advance_walk)
             .in_set(SimSystems::Simulate),
     );
     app.add_systems(
