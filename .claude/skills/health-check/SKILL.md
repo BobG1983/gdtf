@@ -1,40 +1,58 @@
 ---
 name: health-check
 description: >-
-  Periodic repo health sweep — dead code, real bugs, test gaps — fanned out as
-  parallel read-only sub-agents, with mandatory adversarial refutation before
-  any finding becomes a ticket or change.
+  Periodic repo health sweep for dead code, real bugs and test gaps, run as
+  parallel read-only sub-agents. A finding becomes a ticket or a change only
+  after it survives an adversarial refutation pass.
 argument-hint: "[optional scope, e.g. crates/gdtf_battle_sim]"
 ---
 
-# /health-check — dead code / bugs / test gaps, adversarially verified
+# /health-check
 
-> **You MUST read and follow [plain-language.md](../../rules/plain-language.md) before writing anything
-> here. It is binding on every word, and it is not optional.**
+> **You MUST read and follow [plain-language.md](../../rules/plain-language.md) before writing anything here. It is
+> binding on every word, and it is not optional.**
 
 Evidence rules: [`.claude/rules/verification.md`](../../rules/verification.md). Design contract: `docs/` + `design-fidelity.md`.
 
 ## Hard rules
 
-- **Refute-before-act:** no ticket, deletion, or fix until an independent refutation pass confirms the finding. Uncertain = refuted = dropped.
-- Sweep and refutation sub-agents are **read-only**.
-- This skill files tickets; it does not fix. Fixes go through `/next-task` → `/gate` → `/docs-sync` → `/land`, one ticket per branch.
+Do not file a ticket, delete code, or fix anything until an independent refutation pass confirms
+the finding. If the refuter is unsure, the finding is refuted and dropped.
+
+The sweep and refutation sub-agents are read-only.
+
+This skill files tickets. It does not fix. Fixes go through `/next-task` → `/gate` → `/docs-sync` →
+`/land`, one ticket per branch.
 
 ## Steps
 
-1. **Scope.** Argument or full `crates/` + `bins/` (skip `target/`).
+1. Use the argument as the scope, if given. Otherwise sweep `crates/` and `bins/`, skipping
+   `target/`.
 
-2. **Fan out the sweep** — three parallel read-only sub-agents:
-   - **Dead code.** Only after full reference sweep (compiler warnings, cargo machete/udeps, name greps, Bevy indirection: `add_systems`/`add_plugins`/`init_resource`/`register_type`/`run_if`, asset/string paths). A hit or skipped check = not dead.
-   - **Bugs.** Trace real scenarios end-to-end. Name the symbol, quote the line, give a concrete scenario. No smells or style notes.
-   - **Test gaps.** Grade public surface COVERED / WEAK / UNCOVERED. Happy-path-only = WEAK. Highest-risk first.
+2. Run the sweep as three sub-agents in parallel, one per lens.
 
-3. **Refutation pass (mandatory).** For every finding, independent adversarial sub-agent: "REFUTE this. Hunt hidden references, guards, existing tests." CONFIRMED or REFUTED with evidence. Uncertain = REFUTED.
+   Dead code: call a symbol dead only after a full reference sweep: compiler warnings,
+   cargo machete/udeps, name greps, and how Bevy reaches code indirectly (`add_systems`,
+   `add_plugins`, `init_resource`, `register_type`, `run_if`, asset and string paths). If any check
+   hits, or was skipped, the symbol is not dead.
 
-4. **Keep-vs-delete (confirmed dead only).** Delete accidental/superseded. KEEP designed-dormant surface specified in `docs/` — ticket a dormancy comment instead.
+   Bugs: trace real scenarios end to end. Name the symbol, quote the line, and give a concrete
+   scenario. No smells, no style notes.
 
-5. **File tickets.** Bugs via `/file-bug`. Dead-code removals, dormancy comments, test-gap work via project-manager (project GDTF). Put evidence + refuter verdict in the body.
+   Test gaps: grade each public item COVERED, WEAK or UNCOVERED. Happy path only is WEAK. Report
+   the highest-risk gaps first.
 
-6. **Fix later via the standard loop.** `/next-task` → implement → `/gate` → `/docs-sync` → `/land`. Never batch unrelated findings.
+3. Hand every finding to an independent adversarial sub-agent: "REFUTE this. Hunt hidden
+   references, guards, existing tests." It answers CONFIRMED or REFUTED with evidence.
 
-7. **Report.** Per lens: swept / refuted / confirmed / tickets filed, plus designed-dormant items left alone and why.
+4. For confirmed dead code only, delete what is accidental or superseded. Keep code that `docs/`
+   says is deliberately dormant, and file a ticket for a comment saying so instead.
+
+5. Bugs go through `/file-bug`. Removing dead code, adding a dormancy comment and filling a test
+   gap go through project-manager (project GDTF). Put the evidence and the refuter's verdict in the
+   body.
+
+6. Never batch unrelated findings into one ticket.
+
+7. Report per lens: what was swept, refuted and confirmed, and which tickets were filed. List the
+   deliberately dormant items you left alone, and why.

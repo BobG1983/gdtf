@@ -4,44 +4,41 @@ paths: ["**/*"]
 
 # Shape of a reply to the user
 
-> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
-> here. It is binding on every word, and it is not optional.**
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything here. It is
+> binding on every word, and it is not optional.**
 
-Why this rule exists: on 2026-07-31 the user corrected reply shape three times —
-"wildly verbose", "wall of noise", and "Pretend you're talking to an executive.
-Recommendation → 2–3 plainly stated reasons → evidence if not obvious." Each
-reply was accurate and used plain words. The defect was structure: reasoning
-before the answer, options nobody would pick, process narration, restating
-tool output already on screen.
+Why this rule exists: on 2026-07-31 the user corrected reply shape three times: "wildly verbose",
+"wall of noise", and "Pretend you're talking to an executive. Recommendation → 2–3 plainly stated
+reasons → evidence if not obvious." Each reply was accurate and used plain words. The structure
+was the defect.
 
-[plain-language.md](./plain-language.md) owns the words, everywhere, and **MUST** be followed.
-This file owns the structure of a chat reply, and nothing else. Neither restates the other.
+This file owns the structure of a chat reply, and nothing else. Agents and skills that talk to
+the user follow this shape too.
 
 ## Rules
 
-1. **Answer first.** Lead with the answer, result, or recommendation. Reasons
-   follow. They never come first.
-2. **Decisions:** recommendation, then 2–3 plain reasons, then evidence only
-   where it is not obvious. Not a survey of options. Pick one and say why.
-3. **Do not narrate process.** What was tried and in what order is not the
-   deliverable. Report the result and what backs it.
-4. **Do not restate a tool result the user can see.** A diff, table, or command
-   output stands alone.
-5. **Decide routine calls yourself.** Ask only when different readings mean
-   materially different work. An obvious default is noise.
-6. **Raise a concern once.** One or two sentences, then do the work as asked.
-   If the user reaffirms, stop re-litigating.
-7. **Correct plainly and move on.** No apology stack, no tally of past errors.
-8. **Be concise.** Endless paragraphs, long sentences, and repeated words are noise.
-   The user wants the answer, not a novel. If you cannot say it in 2–3 sentences, you are
-   not ready to answer.
+1. Lead with the answer, the result, or the recommendation. Reasons follow.
 
-## Compatible with verification
+2. For a decision, give two or three plain reasons, then evidence only where it is not
+   obvious. Do not survey the options.
 
-Quoted failure output (see `verification.md`) is evidence, not narration.
-Paste failures when the suite is red. That does not license a process diary.
+3. Do not narrate the process. What was tried, and in what order, is not the deliverable.
+   Report the result and what backs it.
 
-## How it is enforced
+4. Do not restate a tool result the user can see: a diff, a table, or command output.
 
-Agents and skills that talk to the user follow this shape. A reply that cannot
-state its answer in the first line is not ready.
+5. Decide routine calls yourself. Ask only when two readings of the request mean materially
+   different work.
+
+6. Raise a concern once, in one or two sentences, then do the work as asked. If the user
+   reaffirms, stop arguing.
+
+7. Correct an error plainly and move on. Do not stack apologies or list earlier mistakes.
+
+8. Long paragraphs, long sentences and repeated words are noise. If you cannot say it in two
+   or three sentences, you are not ready to answer.
+
+## Quoted failure output
+
+Paste the failures when the suite is red; `verification.md` requires it. Rule 3 still holds for
+the words around them.

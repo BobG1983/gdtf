@@ -1,19 +1,19 @@
 ---
-paths: 
+paths:
   - "**/*.rs"
   - "**/*.ron"
 ---
 
 # Comment hygiene
 
-> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
-> here. It is binding on every word, and it is not optional.**
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything here. It is
+> binding on every word, and it is not optional.**
 
-- '///' / '//!' are for public API documentation. Use them for all public items.
-- '//' is for private implementation notes. Use them for all private items.
-- '///' / '//!' rule: Max 2 lines. State what the item is and what it does. Then stop.
-- '//' rule: Max 1 line. Only non-obvious implementation notes. Prefer no comment.
-- No "GTW-n" (or any ticket ID) in any comment.
-- No design rationale in any comment. Design rationale belongs in the ticket, not in code.
-- Prefer deleting a comment over rewriting it badly.
-- Comments **MUST** follow Plain language rules: see [plain-language.md](./plain-language.md).
+- Use `///` and `//!` on all public items.
+- Use `//` on all private items.
+- Keep a `///` or `//!` to 2 lines. Say what the item is and what it does.
+- Keep a `//` to 1 line. Write one only where the implementation is not obvious. Prefer
+  no comment.
+- Never put a ticket ID such as `GTW-n` in a comment.
+- Design rationale belongs on the ticket, never in a comment.
+- Delete a comment rather than rewrite it badly.

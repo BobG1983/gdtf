@@ -3,18 +3,21 @@ paths:
   - "**/*"
 ---
 
-# Verification — the definition of done
+# Verification: the definition of done
 
-> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
-> here. It is binding on every word, and it is not optional.**
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything here. It is
+> binding on every word, and it is not optional.**
 
-Done means the suite was observed green in **this** session, after the final edit. "It should work" is not evidence.
+Done means the suite was observed green in **this** session, after the final edit. "It should
+work" is not evidence.
 
 ## The one definition of green
 
-**This file is the only authority.** Skills, agents, workflows, and `CLAUDE.md` point here. Do not invent a shorter or longer suite.
+This file is the only authority. Skills, agents, workflows, and `CLAUDE.md` point here. Do not
+invent a shorter or longer suite.
 
-Run from the repo root. Green means every command below exits 0. Use the `.cargo/config.toml` **aliases** — never hand-type the expanded feature lists.
+Run from the repo root. Green means every command below exits 0. Use the `.cargo/config.toml`
+**aliases**. Never hand-type the expanded feature lists.
 
 ```bash
 cargo fmt
@@ -34,46 +37,78 @@ cargo doc-full
 | `doc` | Default-feature rustdoc. Workspace rustdoc lints are deny. |
 | `doc-full` | Same + dev_tools so feature-gated modules are checked. |
 
-Running one test or one suite uses the same aliases —
-[cargo-commands.md](./cargo-commands.md) owns that, and a bare cargo command is
-blocked by a hook.
+Running one test or one suite uses the same aliases.
+[cargo-commands.md](./cargo-commands.md) owns that, and a hook blocks a bare cargo command.
 
-QA modules compile under `debug_assertions` (no `net_qa` feature). Protocol schema derives are always on (no `schema` feature / no separate schema suite steps).
+QA modules compile under `debug_assertions`, with no `net_qa` feature. Protocol schema derives
+are always on, so there is no `schema` feature and no separate schema steps in the suite.
 
-`cargo nextest run` may replace the test step when available; default is `cargo dtest`.
+`cargo nextest run` may replace `cargo dtest` when available.
 
 ### Pre-commit subset
 
-`.claude/hooks/pre-commit-gate.sh` runs a **fast subset** (`fmt`, `dclippy`, `dtest`, `dbuild`) as a deterministic backstop. Full green is still every command above, via `/gate`.
+`.claude/hooks/pre-commit-gate.sh` runs a fast subset: `fmt`, `dclippy`, `dtest`, `dbuild`. Full
+green is still every command above, run by `/gate`.
 
 ### Suite scope (docs-only skip)
 
-Scope is agent judgment in the `/gate` skill (and re-checked by `/land`), not a script. Default **FULL**. **DOCS** only when every changed path is allowlisted markdown under `docs/`, `.claude/`, or the repo root — except this file, which always forces FULL. Pre-commit always runs its cargo subset. This does not change the list above.
+The `/gate` skill decides the scope, and `/land` re-checks it. It is a judgment call, not a
+script. The default is **FULL**. Use **DOCS** only when every changed path is allowlisted
+markdown under `docs/`, `.claude/`, or the repo root. A change to this file always forces FULL.
+Pre-commit always runs its cargo subset. None of this changes the command list above.
 
 ## Rules
 
-1. **Done = full green observed after the final edit.** Anything less is in progress.
-2. **New behavior needs real-path tests.** Same systems/components the app runs; never a reimplementation inside the test. Stub only true externals. Sim logic in `gdtf_battle_sim` is unit-testable with injected seeded RNG.
-3. **Scene / state / app behavior** needs a headless integration test (`gdtf_test_utils::GdtfTestAppBuilder`) asserting on `State` / `World`. Reserve live app runs (`cargo drun`) for rendering, real input, and layout.
-4. **Report failures verbatim** — paste the assert, compiler, or clippy output.
-5. **`/gate` is the gatekeeper** — this suite plus the design-gate audit. No gate-pass, no commit.
+1. Anything less than full green is in progress.
 
-6. **A flaky test is a broken test.** A test that passes only sometimes was never green, and a passing re-run is not evidence — it is the same test disagreeing with itself. Fix the cause so it cannot race: remove the clock, the shared path, the ordering assumption. A wider timeout, a sleep, a retry, or a larger random range makes a collision less likely and is therefore the wrong fix. If you cannot make it deterministic, you're wrong; never re-run until it passes and report green.
+2. New behavior needs tests that run the app's own systems and components. Never reimplement the
+   behavior inside the test. Stub only what lives outside the app. Sim logic in
+   `gdtf_battle_sim` is unit-testable with a seeded RNG injected.
 
-7. **Prove it the cheap way first.** An integration test is about as good as a unit test; both beat reading the code; every one of them beats building tooling to demonstrate behaviour. **Read the existing tests before writing anything** — the invariant you are about to prove is often already asserted, and a numeric difference is not a defect until you have searched the tests for it.
+3. Scene, state and app behavior need a headless integration test
+   (`gdtf_test_utils::GdtfTestAppBuilder`) that asserts on `State` and `World`. Keep live app
+   runs (`cargo drun`) for rendering, real input, and layout.
 
-8. **Do not pin changeable literals in tests.** If an ordinary content or tuning edit (new weapon file, renamed stem, magnitude tweak) turns a test red, the test is pinning a changeable literal — assert the **property** instead (non-empty registry, deserializes a `Cone` somewhere, gate waits on the resource). Exact filenames, counts, and magnitudes belong in content data, not in `assert!`. Dedicated guard crates under `gdtf_test_utils/tests/` are the exception: they pin repo structure on purpose.
+4. Paste the assert, compiler, or clippy output verbatim.
+
+5. `/gate` runs this suite plus the design-gate audit. No gate-pass, no commit.
+
+6. A flaky test is a broken test. A passing re-run is not evidence. Fix the cause so it cannot
+   race: remove the clock, the shared path, the ordering assumption. A wider timeout, a sleep, a
+   retry, or a larger random range only makes a collision less likely, so every one of them is
+   the wrong fix. If you cannot make it deterministic, you're wrong. Never re-run until it
+   passes and then report green.
+
+7. Prove it the cheap way first. An integration test is about as good as a unit test. Both beat
+   reading the code. Every one of them beats building tooling to demonstrate behavior. Read the
+   existing tests before writing anything. The invariant you are about to prove is often already
+   asserted, and a numeric difference is not a defect until you have searched the tests for it.
+
+8. Do not pin changeable literals in tests. If an ordinary content or tuning edit turns a test
+   red (a new weapon file, a renamed stem, a magnitude tweak), the test is pinning a changeable
+   literal. Assert the property instead: the registry is non-empty, a `Cone` deserializes
+   somewhere, the gate waits on the resource. Exact filenames, counts, and magnitudes belong in
+   content data, not in `assert!`. Dedicated guard crates under `gdtf_test_utils/tests/` are the
+   exception: they pin repo structure on purpose.
 
 ### Gate-pass fingerprint
 
-`.claude/.gate-pass` records the tree `/land` is committing. **`/land` writes it; `/gate` does not.** Fields: `TICKET`, `BRANCH`, `HEAD`, `FINGERPRINT`, `SCOPE`.
+`.claude/.gate-pass` records the tree `/land` is committing. **`/land` writes it; `/gate` does
+not.** Fields: `TICKET`, `BRANCH`, `HEAD`, `FINGERPRINT`, `SCOPE`.
 
-`FINGERPRINT` is a content hash of the **uncommitted tree** (staged + unstaged + untracked names) relative to `HEAD`. It is **not** a hash of `HEAD` itself — `HEAD` is a separate field. Pre-commit only checks `BRANCH` / `HEAD` (ancestor-or-equal after land's per-concern commits). `/land` runs this command on the tree it is about to commit and writes the result, so the file says what was committed. Nothing re-checks it: `/docs-sync` runs between `/gate` and `/land` and normally moves the tree. The check that the committed tree is good is `/land` re-running the full suite on it.
+`FINGERPRINT` is a content hash of the uncommitted tree (staged, unstaged, and untracked names)
+relative to `HEAD`. It is **not** a hash of `HEAD` itself; `HEAD` is a separate field.
+Pre-commit checks only `BRANCH` and `HEAD`, ancestor-or-equal, after land's per-concern commits.
+`/land` runs the command below on the tree it is about to commit and writes the result, so the
+file says what was committed. Nothing re-checks the fingerprint: `/docs-sync` runs between
+`/gate` and `/land` and normally moves the tree. Instead, `/land` re-runs the full suite on the
+tree it commits.
 
-**The one command** (run from the repo root — nowhere else invents a recipe):
+Run this from the repo root.
 
 ```bash
 { git diff HEAD; git ls-files -o --exclude-standard; } | shasum -a 256 | awk '{print $1}'
 ```
 
-Write the 64-character hex only, e.g. `FINGERPRINT=a1b2c3…`. `/land` cites this section; do not invent a different hash, path list, or tool.
+Write the 64-character hex only, e.g. `FINGERPRINT=a1b2c3…`. Do not invent a different hash, path
+list, or tool.
