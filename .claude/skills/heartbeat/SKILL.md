@@ -8,6 +8,9 @@ argument-hint: ""
 
 # /heartbeat — recovery tick for autonomous builds
 
+> **You MUST read and follow [plain-language.md](../../rules/plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Run-state is read and written by the **`/run-state` skill**, which owns the file's sections and
 their formats. This tick never states a run-state format itself.
 Build workflow: [`.claude/workflows/build-ticket.js`](../../workflows/build-ticket.js).

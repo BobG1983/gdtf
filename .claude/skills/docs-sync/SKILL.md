@@ -9,6 +9,9 @@ argument-hint: "[system or docs/ path]"
 
 # /docs-sync — re-align docs/ with the code
 
+> **You MUST read and follow [plain-language.md](../../rules/plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 **`.claude/rules/plain-language.md` governs every word this skill writes.** Read it before writing a ticket, a doc, or a comment. `.claude/rules/comment-hygiene.md` governs any comment you touch in the same pass.
 
 ## A doc says what is true, never who is going to change it

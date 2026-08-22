@@ -22,6 +22,9 @@ user-invocable: true
 
 # /design-notes — capture canon into docs/
 
+> **You MUST read and follow [plain-language.md](../../rules/plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 **`.claude/rules/plain-language.md` governs every word this skill writes.** Read it before writing a ticket, a doc, or a comment.
 
 This kit's failure mode is design knowledge that lives in a chat transcript, a

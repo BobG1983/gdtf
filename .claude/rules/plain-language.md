@@ -2,123 +2,103 @@
 paths: ["**/*"]
 ---
 
-# Write Like an Engineer, Not a Consultant
+# Plain language
 
-Writing exists to communicate, not to sound sophisticated.
+Binding on every word written anywhere: chat, code comments, docs, tickets, commit
+messages, rules files, agent prompts. [reply-shape.md](./reply-shape.md) owns the
+structure of a chat reply. This file owns the words.
 
-This file owns wording and length in every artifact (code comments, docs,
-tickets, commit messages, chat). Reply structure in chat is `reply-shape.md`.
+## The test
 
-## Rules
+After writing a sentence, ask whether a competent engineer would say it out loud to a
+colleague. If not, rewrite it.
 
-- Prefer plain English over technical-sounding language.
-- Use technical terms only when they are the correct, precise term.
-- State what changed before explaining why.
-- Write the shortest text that conveys all necessary information.
-- Delete filler, narration, and obvious observations.
-- Never use abstractions where a concrete noun or verb works
-- Never use metaphors when a literal description is possible.
-- Prefer short sentences over long ones. Break up long sentences into multiple sentences.
-- More sentences with simpler words is better than fewer sentences with complex words with dense meaning.
-- Never use a word whose only job is to make a sentence sound considered. The test is
-  mechanical: delete the word. If the meaning does not change, it was one of these. By
-  example — genuinely, precisely, crucially, fundamentally, essentially, notably,
-  importantly, ultimately, effectively, arguably, meaningfully, inherently, clearly,
-  obviously, simply. The list names a category, not a blocklist: a synonym you reach for
-  instead is the same violation. A listed word is allowed only where it is the exact
-  technical term for what is being described.
-- Do not invent a name for something that already has one. Established technical terms are
-  usually the precise ones — queue, tree, socket, buffer, pipeline, bus, handle, drain — so
-  use them. What is banned is coining a fresh figure of speech in their place. A Bevy
-  `SystemSet` is a system set, not a "band". `gdtf_qa_mcp` is the MCP server, not "the
-  courier". A file many modules read is a file many modules read, not "load-bearing".
-  Before naming anything, ask whether Rust, Bevy, or this repo already calls it something.
-  If so, that is its name. A word can be right in one place and coined in another:
-  `module-layout.md` uses "band" for a line-count range, which is that file's own
-  vocabulary — borrowing it for a system set is the invention.
-- Assume the reader is competent. Do not over-explain.
+Then delete the sentence and ask whether the reader lost anything. If not, leave it
+deleted.
 
-## Avoid
+## Banned
 
-Do not inflate ordinary ideas into architectural prose.
+### Coined vocabulary
 
-Bad:
+Do not invent a name for something. Use the name Rust, Bevy or this repo already uses.
+A `SystemSet` is a system set. `gdtf_qa_mcp` is the MCP server. A file many modules read
+is a file many modules read.
 
-- "The seam between these components..."
-- "The integration surface..."
-- "The operating envelope..."
-- "This enables a first-class experience..."
-- "Leverage..."
-- "Mental model..."
-- "Canonical..."
-- "Orthogonal..."
-- "Byte-identical..." (unless literal bytes are being discussed)
-- "Paradigm", "synergy", "holistic", "robust" when a simpler word is accurate.
+Real failures: "the trapped test's control leg", "load-bearing", "the seam", "a pool
+that cannot pay", "the junk gate". Each was invented mid-sentence and then used as if
+the reader already knew it.
 
-Instead write what actually happens.
+### Em dashes
 
-Bad:
-> Introduce a typed boundary between the host and the application.
+Use a full stop. Two short sentences beat one long one.
 
-Good:
-> The host calls the app through a typed interface.
+### "Not X, it's Y"
 
-Bad:
-> This change reduces the cognitive load required to reason about the system.
+It sounds like insight and carries none. Say what the thing is.
 
-Good:
-> This makes the code easier to understand.
+### Bold lead-in bullets
 
-Bad:
-> We leverage a shared abstraction.
+A list of `**Term:** explanation` lines. This is the most recognisable AI-writing
+pattern there is. Write sentences, or use headings.
 
-Good:
-> Both systems use the same interface.
+### Words that only add weight
 
-Bad:
-> Delete the legacy QA surface.
+genuinely, precisely, crucially, fundamentally, essentially, notably, importantly,
+ultimately, effectively, arguably, meaningfully, inherently, clearly, obviously, simply.
 
-Good:
-> Remove the old QA API.
+Delete the word. If the meaning is unchanged, it was one of these. A synonym reached for
+instead is the same violation.
 
-Every sentence should earn its place. If removing it loses no information, remove it.
+### Consultant nouns
 
-## The "Normal Engineer" Test
+seam, surface, envelope, paradigm, synergy, mental model, canonical, orthogonal,
+holistic, first-class, leverage, robust. Use the plain word.
 
-Before writing a sentence, ask:
+### Editorialising
 
-"Would an experienced engineer naturally say this in a code review?"
+"The genuinely useful catch", "worth knowing", "rough edges worth knowing", "the
+interesting part". State the finding. The reader decides whether it is interesting.
 
-If not, rewrite it.
+### Portentous closers
 
-Prefer:
+"That becomes the rule." "The gate held." A last line that sounds like a conclusion and
+states nothing. Stop when the information stops.
 
-- "use"
-over
-- "leverage"
+### Compressed half-sentences
 
-Prefer:
+"The clause-audit correction premise." Nouns stacked as adjectives with the verb
+removed. Write a sentence with a verb in it.
 
-- "remove"
-over
-- "deprecate" (unless you mean "keep but discourage")
+## Required
 
-Prefer:
+Say what changed before why it changed.
 
-- "works with"
-over
-- "integrates with"
+Use short sentences. More sentences with plain words beats fewer sentences with dense
+ones.
 
-Prefer:
+Use the concrete noun and the concrete verb. Never a metaphor where a literal
+description exists.
 
-- "limit"
-over
-- "operating envelope"
+Assume the reader is competent. Do not explain what they already know.
 
-Prefer:
+Prefer use over leverage, remove over deprecate, works with over integrates with, limit
+over envelope, interface over seam.
 
-- "connection" or "interface"
-over
-- "seam"
+## Headings and titles
 
-Write like you're explaining the code to a teammate sitting next to you, not presenting at a software architecture conference.
+A heading names its subject. "Authentication", not "Auth, the deliberate gap". "Known
+issues", not "Rough edges worth knowing".
+
+A ticket title says what changes, using names from the tree. "Split
+`a_held_entry_cell_leaves_the_occupant_stuck` into two tests", not "Split the trapped
+test's control leg". A long real name beats a short invented one.
+
+## Why this is strict
+
+Measured across one session on 2026-08-21, the user corrected wording eleven times, and
+every correction was one of the bans above. The pattern has a name outside this repo and
+a browser extension exists to translate it back into English.
+
+The failure underneath is writing to show the reasoning instead of writing to inform.
+Before sending, ask what the reader now knows that they did not before. If the answer is
+nothing, delete it.

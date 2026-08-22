@@ -9,6 +9,9 @@ argument-hint: "[GTW-N ...]"
 
 # /land — finish the feature into develop
 
+> **You MUST read and follow [plain-language.md](../../rules/plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Binding background: `.claude/rules/git-workflow.md`, `.claude/rules/linear-discipline.md`.
 
 Resolve `GTW-N` from argument or branch. It is the ticket `/gate` passed, and the `TICKET=` you write into `.claude/.gate-pass` in step 1.

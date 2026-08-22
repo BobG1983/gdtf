@@ -4,6 +4,9 @@ paths: ["**/*.rs"]
 
 # Module layout — a module is a DIRECTORY; mod.rs is wiring-only; files stay small
 
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Why this rule exists: GTW-583's census found 117 files past the 400-line block
 line and 4 logic-bearing mod.rs files. A monolith file lumps unrelated
 change-reasons, so every edit collides with every other and review/bisect decay.

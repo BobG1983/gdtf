@@ -1,5 +1,8 @@
 # Background work — never poll, always relay
 
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Backgrounding is not the problem. Not relaying the result is. Spawn everything in
 the background, keep working, and report every result that lands.
 
@@ -28,6 +31,17 @@ the background, keep working, and report every result that lands.
 6. **Never idle on a blocking question.** Put it on the ticket per
    [linear-discipline.md](./linear-discipline.md) — comment, `Needs User Input`,
    status stays Backlog — then pick up unblocked work.
+7. **Never call `AskUserQuestion` unless the user asked for it.** It stops the whole
+   harness until someone answers, and the user is often away. Everything queued behind
+   it waits — including builds that have already been launched.
+
+   Measured 2026-08-21: three build workflows sat unstarted for between ninety minutes
+   and two and a half hours each, and every one of them was behind an
+   `AskUserQuestion` nobody had asked for. A tick blamed the project-manager agents
+   before the user named the real cause.
+
+   A question the user has not asked for goes on the ticket, under rule 6. That costs
+   nothing while they are away, and they answer it when they get to the board.
 
 ## Inside a sub-agent, run everything in the foreground
 

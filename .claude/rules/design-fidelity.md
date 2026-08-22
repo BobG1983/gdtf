@@ -1,5 +1,8 @@
 # Design fidelity — build what was specified
 
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Why this rule exists: this kit's history includes agents quietly NARROWING a
 user-specified design (e.g. "right-sizing" a hard resolution down to something
 simpler) because it was easier or faster. That is the number-one failure mode.

@@ -1,5 +1,8 @@
 # Clause writing — a clause a builder can satisfy and a run can prove
 
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Why this rule exists: the clause audit keeps correcting the same five things, and every one of
 them was decided when the ticket was written. The audit knew what a bad clause looked like; the
 writer had no list. This is that list.
@@ -73,6 +76,11 @@ Measured on GTW-1183. Clause 2 said moving two helpers "takes about 30 lines off
 count. The file went to 323, because the same clause's mandated signature turned each of eight call
 sites in that file from one line into nine. Verify read the gap as a deviation and reddened a run
 whose suite was green and whose every clause was met.
+
+## The title
+
+[plain-language.md](./plain-language.md) owns it. Measured here: GTW-1251 was titled "Split the
+trapped-emplacement test's control leg into its own test", and the user had to ask what it meant.
 
 ## Length
 

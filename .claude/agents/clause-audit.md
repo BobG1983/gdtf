@@ -9,6 +9,9 @@ tools: Read, Grep, Glob, Bash, ToolSearch, LSP, Agent
 model: opus
 ---
 
+> **You MUST read and follow [plain-language.md](../rules/plain-language.md) before writing
+> anything here. It is binding on every word, and it is not optional.**
+
 ## Read these first
 
 - [`plain-language.md`](../rules/plain-language.md) — how you write

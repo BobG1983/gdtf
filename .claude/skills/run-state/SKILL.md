@@ -8,6 +8,9 @@ argument-hint: ""
 
 # /run-state — read and rewrite the run-state file
 
+> **You MUST read and follow [plain-language.md](../../rules/plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 The file is [`.claude/run-state.md`](../../run-state.md). It is **gitignored and machine-local**,
 so a tick on another machine starts blind and nothing here survives a wiped checkout.
 

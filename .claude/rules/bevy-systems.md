@@ -4,6 +4,9 @@ paths: ["**/*.rs"]
 
 # Bevy systems — SystemParam, queries, no arity expects
 
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Why this rule exists: fat system signatures get silenced with
 `#[expect(clippy::too_many_arguments)]` instead of being shaped. That hides
 the real access set and trains agents to paper over structure debt. Bevy already

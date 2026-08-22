@@ -6,6 +6,9 @@ paths:
 
 # Comment hygiene
 
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 - '///' / '//!' are for public API documentation. Use them for all public items.
 - '//' is for private implementation notes. Use them for all private items.
 - '///' / '//!' rule: Max 2 lines. State what the item is and what it does. Then stop.

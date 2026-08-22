@@ -1,5 +1,8 @@
 # Git workflow — branch per ticket, commit on gate-pass
 
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Why this rule exists: giant multi-ticket uncommitted working trees that nobody
 can review, bisect, or land are a recurring failure. One ticket = one branch =
 one reviewable change.

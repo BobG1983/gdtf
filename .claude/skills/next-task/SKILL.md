@@ -9,6 +9,9 @@ argument-hint: "[GTW-N]"
 
 # /next-task — start the next ticket the disciplined way
 
+> **You MUST read and follow [plain-language.md](../../rules/plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 **`.claude/rules/plain-language.md` governs every word this skill writes.** Read it before writing a ticket, a doc, or a comment.
 
 **[`.claude/rules/clause-writing.md`](../../rules/clause-writing.md) governs the clauses.** Every one says what changes, where, and what goes red if it is wrong.

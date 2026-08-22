@@ -9,6 +9,9 @@ argument-hint: "[optional scope, e.g. crates/gdtf_battle_sim]"
 
 # /health-check — dead code / bugs / test gaps, adversarially verified
 
+> **You MUST read and follow [plain-language.md](../../rules/plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Evidence rules: [`.claude/rules/verification.md`](../../rules/verification.md). Design contract: `docs/` + `design-fidelity.md`.
 
 ## Hard rules

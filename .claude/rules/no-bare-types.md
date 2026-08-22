@@ -4,6 +4,9 @@ paths: ["**/*.rs"]
 
 # No bare types — every domain value gets a named newtype
 
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Why this rule exists: a field or signature of `u32`/`f32`/`String` tells you
 nothing and lets the compiler wave through nonsense — passing hit points where
 time units belong, a column where a row was meant. A name is a contract. In

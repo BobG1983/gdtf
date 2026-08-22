@@ -5,6 +5,9 @@ paths:
 
 # Verification — the definition of done
 
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Done means the suite was observed green in **this** session, after the final edit. "It should work" is not evidence.
 
 ## The one definition of green

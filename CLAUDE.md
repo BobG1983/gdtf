@@ -34,7 +34,7 @@ Short files under `.claude/rules/` — read and follow them:
 - [`clause-writing.md`](.claude/rules/clause-writing.md) — a clause says what changes, where, and what goes red if it is wrong.
 - [`no-bare-types.md`](.claude/rules/no-bare-types.md) — no bare Rust/std type for a domain value; named newtype that `Deref`s.
 - [`module-layout.md`](.claude/rules/module-layout.md) — module is a directory; mod.rs is wiring-only; size limits.
-- [`plain-language.md`](.claude/rules/plain-language.md) — plain wording and length; name the real mechanism. **CRITICAL**
+- [`plain-language.md`](.claude/rules/plain-language.md) — the words. What is banned, what is required, every artifact. **CRITICAL**
 - [`reply-shape.md`](.claude/rules/reply-shape.md) — chat reply structure - **HOW TO SPEAK TO THE USER**: answer first, no process narration. **CRITICAL**
 - [`comment-hygiene.md`](.claude/rules/comment-hygiene.md) — short docs; no ticket ids in comments.
 - [`code-navigation.md`](.claude/rules/code-navigation.md) — symbol questions go to the LSP; a grep count is not a caller count.

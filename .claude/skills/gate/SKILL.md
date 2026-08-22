@@ -10,6 +10,9 @@ argument-hint: "[GTW-N ...]"
 
 # /gate — contract check before landing
 
+> **You MUST read and follow [plain-language.md](../../rules/plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Binding background: `.claude/rules/design-fidelity.md`, `.claude/rules/verification.md`, and `docs/`.
 
 ## Suite scope (docs-only skip)

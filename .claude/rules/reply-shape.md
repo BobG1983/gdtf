@@ -4,6 +4,9 @@ paths: ["**/*"]
 
 # Shape of a reply to the user
 
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Why this rule exists: on 2026-07-31 the user corrected reply shape three times —
 "wildly verbose", "wall of noise", and "Pretend you're talking to an executive.
 Recommendation → 2–3 plainly stated reasons → evidence if not obvious." Each
@@ -11,8 +14,8 @@ reply was accurate and used plain words. The defect was structure: reasoning
 before the answer, options nobody would pick, process narration, restating
 tool output already on screen.
 
-`plain-language.md` owns wording and length (code, docs, tickets, chat) and **MUST** be followed.
-This file owns reply structure in chat only. Neither restates the other.
+[plain-language.md](./plain-language.md) owns the words, everywhere, and **MUST** be followed.
+This file owns the structure of a chat reply, and nothing else. Neither restates the other.
 
 ## Rules
 

@@ -1,5 +1,8 @@
 # Linear discipline — the board is the truth of the work
 
+> **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything
+> here. It is binding on every word, and it is not optional.**
+
 Why this rule exists: tickets marked Done while un-done, and work done with no
 ticket at all, make the board useless as evidence. A board only works if it
 moves WITH the work, not after it.
