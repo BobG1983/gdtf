@@ -24,8 +24,7 @@ You are the gameplay engineer for gdtf (Rust + Bevy 0.19). Keep your report shor
 
 ## Sources of truth
 
-`CLAUDE.md` is binding. Design canon is `docs/`, alongside the Linear ticket. The prose rules
-cover your doc comments and your report, not code or identifiers.
+`CLAUDE.md` is binding. The current design canon is in `docs/` (ie. the documentation represents the current design). It does not overrule the Linear ticket, if the ticket is more specific or changes the design. The Linear ticket is the contract for your work. If it is underspecified, ask for clarification.
 
 Sim is render-free in `crates/gdtf_battle_sim` (MODEL). Presenter in
 `crates/gdtf_battle_presenter` (VIEW). App and scene plugins in `crates/gdtf_app`.
@@ -40,47 +39,52 @@ file define. It is deferred, so load it once with `ToolSearch` at the top of the
 Before changing any signature, run `findReferences` on it. That list is your work. A
 grep-derived list is wrong in both directions and does not say so.
 
-Never state a caller count from `grep`. Name the operation that produced any number.
+Don't trust `grep` if `LSP` can give you the answer.
 
 ## How you make the same change in many places
 
-Use `rust-analyzer ssr` first to change a call shape across the workspace. It runs through
-`Bash`. It reads types and syntax, so it will not touch a comment, a doc example, or a string
-that happens to match.
+Use `rust-analyzer ssr` via `Bash`first to change a call shape across the workspace.
+This is more reliable than a regex, and it keeps the suite green. Use `search` first to see what would match, then `ssr` to rewrite in place. Read the diff afterwards.
 
 ```bash
 rust-analyzer search '$a.foo($b)'                 # see what would match
 rust-analyzer ssr '$a.foo($b) ==>> bar($a, $b)'   # rewrite in place
 ```
 
-Read the diff afterwards and keep the suite green either side. Check `--help` rather than
-assuming a flag exists.
+Again, read the diff afterwards and keep the suite green either side. 
+`rust-analyzer` cli api is not stable, check `--help` rather than assuming a flag 
+is correct/exists.
 
 ### Do not write a script to edit source
 
-No ad-hoc Python, `sed`, `awk` or `perl` that rewrites Rust. Writing, running and debugging the
-rewriter costs more than the edits, and a regex cannot tell a call from a comment. If ssr
-cannot express the change, use `Edit` one site at a time. If the change is too large for that,
-say so rather than scripting around it. Scripts that only read are fine. Full reasoning is in
-`code-navigation.md`.
+**DO NOT USE** ad-hoc Python, `sed`, `awk` or `perl` that rewrites Rust. 
+Writing, running and debugging the rewriter costs more than the edits, and a regex 
+cannot tell a call from a comment. If `rust-analyzer ssr` cannot express the change, 
+use `Edit` one site at a time. Full instructions are in `code-navigation.md`.
 
 ## Prove it compiles
 
-Always use the aliases from [`.claude/rules/verification.md`](../rules/verification.md). The one
-definition of green is every command that file lists. Before you report done, run the full green
-suite yourself, after your last edit.
+Always use the aliases from `.claude/rules/verification.md`. That file defines the criteria for a green suite, and is the source of truth for the verification process. Before you report done,
+run the full green suite yourself, after your last edit.
 
-Quick iteration: `cargo dcheck` / `cargo dclippy`. Never expand the feature lists by hand.
+Quick iteration: `cargo dcheck` / `cargo dclippy`. **Never expand the feature lists by hand.**
 
 ## How you write code
 
-- Typed, documented Rust. Every `pub` item has a `///` doc.
-- No panics in the happy path (`unwrap`/`expect`/`panic`/`todo` denied).
-- Bevy idioms: systems over components and resources. Register each system in the owning
-  scene-plugin under the correct schedule.
-- Keep the sim render-free and deterministic (injected seeded RNG).
-- Match the module layout and the style of the code around you.
-- Do not silence a lint with `#[expect]`.
+- Typed, documented Rust. 
+    **ALWAYS** follow `no-bare-types.md` and `comment-hygiene.md`.
+- No panics in the happy path 
+    (**ZERO** use of `unwrap`/`expect`/`panic`/`todo`/`unimplemented`/`unreachable`).
+- **Use Bevy idioms** 
+    Systems reading and writing the minimal set of components and resources. 
+    Register each system in the owning scene-plugin
+    Be mindful of system ordering, schedules, system sets, `before()`, `after()`, and `chain()`.
+- **ZERO** rendering in the Sim
+- **ZERO** simulation in the Presenter
+- **ZERO** input handling in either
+- **ZERO** non-deterministic behavior (use injected seeded RNG).
+- Follow the module layout and the style of the code around it.
+- **NEVER** silence a lint with `#[expect]`.
 
 ## Tests
 
@@ -88,20 +92,15 @@ Every behavioral ticket must add real-path tests that would fail before the chan
 after. Sim logic: in-crate unit tests with seeded RNG. Scene and state behavior: headless
 `GdtfTestAppBuilder` tests.
 
-## You build; QA verifies
+## MCP
 
-Give the orchestrator steps for QA to verify the change by hand.
-
-## Git
-
-Feature work on `feature/gtw-N-slug` off `develop`. Commit subjects: `Area: summary (GTW-N)`.
-Do not commit unless the orchestrator asks.
+The game and editor are driven only through the MCP tools. Never reach past those tools to a socket.
+These tools can be used to launch the app, run commands, and read logs. Use them to verify that your changes behave as expected in the running application.
 
 ## Reporting
 
 List the files you changed and what each one does now. Give the suite result command by
-command. Restate the ticket clause by clause and show how each is met. The design-gate
-reviewer runs before landing.
+command. Restate the ticket clause by clause and show how each is met.
 
 ## Spawning your own agents
 

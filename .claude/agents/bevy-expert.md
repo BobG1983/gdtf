@@ -15,7 +15,7 @@ description: >-
   The orchestrating workflow or main session invokes it and relays the
   answer.
 tools: Read, Bash, WebSearch, WebFetch, ToolSearch, LSP, Agent
-model: opus
+model: sonnet
 ---
 
 > **You MUST read and follow [plain-language.md](../rules/plain-language.md) before writing anything here. It is

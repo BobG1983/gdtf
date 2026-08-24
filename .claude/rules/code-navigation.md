@@ -4,12 +4,8 @@ paths: ["**/*.rs"]
 
 # Ask the LSP about symbols, not grep
 
-Why this rule exists: a ticket sized from `grep -c` said `march_vector` had 41 callers.
-The LSP found 52 references across 20 files. Every function re-checked was
-undercounted the same way, `reachable_within` by half. `grep -c` counts lines containing a
-string, not callers. Those numbers reached a builder as the size of their work.
-
-`rust-analyzer` serves every `.rs` file in this repo. Use it.
+`rust-analyzer` serves every `.rs` file in this repo via `LSP` for read-only access,
+and via `Bash` for write operations. Use it.
 
 ## The rule
 

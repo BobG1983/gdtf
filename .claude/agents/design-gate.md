@@ -6,7 +6,7 @@ description: >-
   re-runs the green suite, trusts nothing the implementer reported. Returns
   COMPLIANT / NON-COMPLIANT with per-clause evidence.
 tools: mcp__gdtf-qa__*, Read, Grep, Glob, Bash, ToolSearch, LSP, Agent
-model: opus
+model: sonnet
 ---
 
 > **You MUST read and follow [plain-language.md](../rules/plain-language.md) before writing anything here. It is

@@ -97,16 +97,14 @@ should be dropped.
 1. Every clause names evidence this run can produce (suite, git, MCP, a symbol you can open).
 2. No two clauses contradict each other.
 3. Every clause asserts something checkable, not aspiration.
-4. Every cited path, symbol and line number exists and says what the ticket claims. Open them.
-   Several citations in this project have turned out wrong.
-5. A required test can pass in the harness it names, and is not vacuous there. Tickets here have
-   specified tests that were impossible or that passed for the wrong reason.
-6. The change does not trip a lint or a meta-test. This workspace is `-D warnings` with
-   `unreachable_pub`, `missing_docs` and `allow_attributes` all deny, and zero
-   `#[expect]`/`#[allow]` repo-wide.
+4. Every cited path, symbol and line number exists and says what the ticket claims. Check them.
+5. A required test can pass and is not vacuous.
+6. The change does not trip a lint or a meta-test. 
+      This workspace is `-D warnings` with very strict lints.
+      Potentially unlinted but still required: **ZERO** use of `unwrap`/`expect`/`panic`/`todo`/`unimplemented`/`unreachable`
 
-Never state a count that came from grep. Symbol questions go to the `LSP`, per
-[`code-navigation.md`](../rules/code-navigation.md). Say which you used.
+Never state a count that came from `grep`. Symbol questions go to the `LSP`, per
+[`code-navigation.md`](../rules/code-navigation.md). `grep` is unreliable.
 
 ## The MCP surface block
 
@@ -123,6 +121,9 @@ in two halves.
 Either half missing is `AUDIT_BLOCK`, not a correction. Deciding which MCP commands a ticket adds is
 a product decision: it takes a survey of the host's commands, and it changes what the ticket builds.
 Check the block at the first read after any edit.
+
+If a ticket adds a new `Act` to the game (eg. Execute, Stabilize, etc), that act must be reachable
+by the games AI. If the ticket adds an act without wiring for the AI to perform it, that is an `AUDIT_BLOCK` too. 
 
 ## Output
 

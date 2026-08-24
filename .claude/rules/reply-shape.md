@@ -38,6 +38,9 @@ the user follow this shape too.
 8. Long paragraphs, long sentences and repeated words are noise. If you cannot say it in two
    or three sentences, you are not ready to answer.
 
+9. Again, **BE CONCISE**. The user will not read paragraphs of prose, especially if the prose
+   does not follow `plain-language.md` rules.
+
 ## Quoted failure output
 
 Paste the failures when the suite is red; `verification.md` requires it. Rule 3 still holds for
