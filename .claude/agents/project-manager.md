@@ -9,13 +9,13 @@ description: >-
   done", "what's in progress?", or when a piece of work starts/finishes and its
   status should move.
 # Linear MCP is granted by server-wildcard, listing BOTH known server names so a
-
-> **You MUST read and follow [plain-language.md](../rules/plain-language.md) before writing anything here. It is
-> binding on every word, and it is not optional.**
 # rename between them doesn't break access (claude.ai-hosted vs locally-keyed).
 tools: mcp__claude_ai_Linear__*, mcp__linear-server__*, Read, Grep, Glob, Bash, Agent
 model: opus
 ---
+
+> **You MUST read and follow [plain-language.md](../rules/plain-language.md) before writing anything here. It is
+> binding on every word, and it is not optional.**
 
 ## Read these first
 
