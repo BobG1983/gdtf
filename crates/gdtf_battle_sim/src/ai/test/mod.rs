@@ -7,4 +7,5 @@ mod melee;
 mod mounted;
 mod posture;
 mod reload;
+mod seated;
 mod suppressed;

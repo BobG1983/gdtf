@@ -12,6 +12,7 @@ use crate::{
     },
     injuries::{HandsAvailable, InflictedInjuries, MovementCostFactor},
     metric::CellLevel,
+    terrain::emplacement::Mounted,
 };
 
 /// Whether the ganger is mid-walk this frame.
@@ -39,6 +40,7 @@ pub struct CombatantColumns {
     walking:    Has<WalkInProgress>,
     injuries:   Option<&'static InflictedInjuries>,
     suppressed: Option<&'static Suppressed>,
+    mounted:    Option<&'static Mounted>,
 }
 
 /// Query of all combatants for the enemy turn.
@@ -61,6 +63,8 @@ pub(super) struct GangerRow {
     pub(super) factor:    MovementCostFactor,
     /// Where the fire pinning this ganger came from, when it is pinned at all.
     pub(super) pinned_by: Option<SuppressorCell>,
+    /// The seat this ganger rides, when it rides one. `Mounted` itself is not `Copy`.
+    pub(super) seat:      Option<Entity>,
 }
 
 /// Snapshot every combatant into decision rows for this turn.
@@ -86,6 +90,7 @@ pub(super) fn ganger_rows(gangers: &EnemyTurnGangers) -> Vec<GangerRow> {
                 InflictedInjuries::movement_cost_factor,
             ),
             pinned_by: columns.suppressed.map(|suppressed| suppressed.from),
+            seat:      columns.mounted.and_then(Mounted::emplacement),
         })
         .collect()
 }

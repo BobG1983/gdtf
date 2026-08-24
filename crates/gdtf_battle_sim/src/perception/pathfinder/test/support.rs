@@ -3,11 +3,12 @@ use bevy::{platform::collections::HashSet, prelude::Entity};
 
 pub(super) use crate::test_support::full_vision;
 use crate::{
+    acts::DismountSurcharge,
     ganger::Tu,
     injuries::MovementCostFactor,
     metric::CellLevel,
     occupancy::{OccupancyGrid, TerrainKind},
-    pathfinder::{MoveGrids, Path, PlanningView, find_path, reachable_within},
+    pathfinder::{Departure, MoveGrids, Path, PlanningView, find_path, reachable_within},
     terrain::floor::FloorCostGrid,
     test_support::{SituationBuilder, key},
     tuning::CombatTuning,
@@ -149,8 +150,9 @@ pub(super) fn reachable_triples(
     let planning = PlanningView::new(&squad, all_other);
     let floor_costs = default_floor_costs(tuning);
     reachable_within(
-        start,
+        &Departure::anywhere(start),
         budget,
+        DismountSurcharge::NONE,
         MoveGrids {
             occupancy: grid,
             links,
@@ -178,8 +180,9 @@ where
 {
     let floor_costs = default_floor_costs(tuning);
     reachable_within(
-        start,
+        &Departure::anywhere(start),
         budget,
+        DismountSurcharge::NONE,
         MoveGrids {
             occupancy: grid,
             links,

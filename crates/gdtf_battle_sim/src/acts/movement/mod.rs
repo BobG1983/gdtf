@@ -11,7 +11,7 @@ mod walk;
 
 pub use cost::{MoveVerdict, Mover, can_move, move_step_tu_costs, move_tu_cost};
 pub use dispatch::dispatch_move;
-pub use mount::{DismountSurcharge, dismount_surcharge, seat_departure};
+pub use mount::{DismountSurcharge, dismount_surcharge, seat_departure, seat_surcharge};
 pub use sight::SightWorld;
 pub use signals::{MoveCompleted, MoveRejected, MoveRejection, MovementOccurred};
 pub(crate) use suppression_gate::{BreakAwayMover, suppressed_move_legal};

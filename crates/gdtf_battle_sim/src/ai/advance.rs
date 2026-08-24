@@ -7,8 +7,9 @@ use super::{
     snapshot::{GangerRow, row_cell_level},
 };
 use crate::{
+    acts::DismountSurcharge,
     metric::CellLevel,
-    pathfinder::{MoveGrids, PlanningView, reachable_within},
+    pathfinder::{Departure, MoveGrids, PlanningView, reachable_within},
     visibility::{FactionRelation, SquadVisibility},
 };
 
@@ -19,6 +20,8 @@ pub(super) fn plan_reposition(
     rows: &[GangerRow],
     omniscient: &SquadVisibility,
     terrain: MoveGrids<'_>,
+    departure: &Departure,
+    surcharge: DismountSurcharge,
 ) -> Option<CellLevel> {
     let enemy_cell_level = row_cell_level(&enemy.position);
     let relation_of = |occupant: Entity| {
@@ -33,6 +36,13 @@ pub(super) fn plan_reposition(
             })
     };
     let planning = PlanningView::new(omniscient, relation_of);
-    let reachable = reachable_within(enemy_cell_level, enemy.tu, terrain, enemy.factor, &planning);
+    let reachable = reachable_within(
+        departure,
+        enemy.tu,
+        surcharge,
+        terrain,
+        enemy.factor,
+        &planning,
+    );
     plan_advance(enemy_cell_level, goal.cell, &reachable)
 }

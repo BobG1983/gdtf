@@ -10,8 +10,8 @@ use super::{
     planning::PlanningView,
 };
 use crate::{
-    ganger::Tu, injuries::MovementCostFactor, metric::CellLevel, tuning::MoveCost,
-    visibility::FactionRelation,
+    acts::DismountSurcharge, ganger::Tu, injuries::MovementCostFactor, metric::CellLevel,
+    tuning::MoveCost, visibility::FactionRelation,
 };
 
 /// Minimum per-step move cost used by the heuristic.
@@ -88,11 +88,18 @@ where
     Ok(Path::new(cells, steps, total))
 }
 
-/// All cells reachable from `start` within the TU budget.
+// What a cell is quoted at: the route to it plus the exit act a walk off a seat also pays.
+fn quoted(route: PathCost, exit: PathCost) -> PathCost {
+    PathCost::new((*route).saturating_add(*exit))
+}
+
+/// Cells reachable from `departure`'s start within the TU budget, each quoted at its route
+/// plus `surcharge`, leaving the start only by the cells `departure` admits.
 #[must_use]
 pub fn reachable_within<R>(
-    start: CellLevel,
+    departure: &Departure,
     budget: Tu,
+    surcharge: DismountSurcharge,
     terrain: MoveGrids<'_>,
     factor: MovementCostFactor,
     planning: &PlanningView<'_, R>,
@@ -100,7 +107,7 @@ pub fn reachable_within<R>(
 where
     R: Fn(Entity) -> FactionRelation,
 {
-    let departure = Departure::anywhere(start);
+    let start = departure.start();
     let grids = SearchGrids {
         grid: terrain.occupancy,
         links: terrain.links,
@@ -108,15 +115,16 @@ where
         floor_costs: terrain.floor_costs,
         factor,
         planning,
-        departure: &departure,
+        departure,
     };
     let budget_cost = PathCost::new(u32::from(*budget));
+    let exit = PathCost::new(u32::from(**surcharge));
     let field = relax(
         start,
         grids,
         |_cell| PathCost::ZERO,
         move |_cell, cost| {
-            if cost > budget_cost {
+            if quoted(cost, exit) > budget_cost {
                 StopRule::Prune
             } else {
                 StopRule::Expand
@@ -127,7 +135,8 @@ where
     field
         .settled_sorted()
         .into_iter()
-        .filter(|(_, cost)| *cost <= budget_cost)
-        .map(|(cell, cost)| (cell, cost.to_tu()))
+        .map(|(cell, cost)| (cell, quoted(cost, exit)))
+        .filter(|(_, quote)| *quote <= budget_cost)
+        .map(|(cell, quote)| (cell, quote.to_tu()))
         .collect()
 }

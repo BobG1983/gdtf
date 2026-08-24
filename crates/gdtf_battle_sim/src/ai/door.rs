@@ -96,6 +96,8 @@ pub(super) fn plan_door(
 
     let omniscient = omniscient?;
     let occupancy = grids.routes().occupancy;
+    let departure = grids.departure(*enemy.position, enemy.seat);
+    let surcharge = grids.surcharge(enemy.seat);
     for door in &closed {
         let door_pos = Position::new(door.cell);
         if *is_8_adjacent(enemy.position, door_pos) {
@@ -109,6 +111,8 @@ pub(super) fn plan_door(
             rows,
             omniscient,
             grids.routes(),
+            &departure,
+            surcharge,
         )?;
         if let Some(suppressor) = enemy.pinned_by {
             let mover =

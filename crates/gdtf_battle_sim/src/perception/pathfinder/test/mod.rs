@@ -3,6 +3,7 @@ mod blocked;
 mod budget;
 mod cross_storey;
 mod determinism;
+mod mounted;
 mod same_storey;
 mod support;
 mod tag_blocking;

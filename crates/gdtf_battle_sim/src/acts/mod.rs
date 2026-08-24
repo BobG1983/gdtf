@@ -35,7 +35,7 @@ pub use melee::{CanMelee, MeleeAttacker, MeleeReach, can_melee, dispatch_melee, 
 pub use movement::{
     DismountSurcharge, MoveCompleted, MoveRejected, MoveRejection, MoveVerdict, MovementOccurred,
     Mover, SightWorld, can_move, dismount_surcharge, dispatch_move, move_step_tu_costs,
-    move_tu_cost, seat_departure,
+    move_tu_cost, seat_departure, seat_surcharge,
 };
 pub use open_door::{CanOpenDoor, can_open_door, dispatch_open_door, open_door_tu_cost};
 pub use plugin::SimActsPlugin;

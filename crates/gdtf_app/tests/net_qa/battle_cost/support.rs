@@ -8,12 +8,13 @@ use gdtf_app::qa_wire::{
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
+    acts::DismountSurcharge,
     floor::FloorCostGrid,
     ganger::{Aiming, Facing, Faction, Position, Stance, Tu, TuMax},
     injuries::{InflictedInjuries, MovementCostFactor},
     magazine::mode_tu_cost,
     occupancy::OccupancyGrid,
-    pathfinder::{MoveGrids, PlanningView, find_path, reachable_within},
+    pathfinder::{Departure, MoveGrids, PlanningView, find_path, reachable_within},
     prelude::CellLevel,
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
@@ -139,10 +140,17 @@ pub(crate) fn a_reachable_cell_where(
     let (grids, squad) = terrain(app)?;
     let mover = mover(world, actor)?;
     let planning = planning_view(world, squad, mover.faction);
-    reachable_within(mover.start, mover.budget, grids, mover.factor, &planning)
-        .into_iter()
-        .find(|(cell, cost)| *cell != mover.start && **cost > 0 && wanted(cell))
-        .map(|(cell, _)| cell)
+    reachable_within(
+        &Departure::anywhere(mover.start),
+        mover.budget,
+        DismountSurcharge::NONE,
+        grids,
+        mover.factor,
+        &planning,
+    )
+    .into_iter()
+    .find(|(cell, cost)| *cell != mover.start && **cost > 0 && wanted(cell))
+    .map(|(cell, _)| cell)
 }
 
 /// A player ganger holding a ranged weapon, with every mode that weapon offers.

@@ -133,8 +133,14 @@ destination no entry side reaches is unreachable, and a pool that cannot cover
 the route plus the exit is refused for cost. The exit TU rides on the first step
 of the walk, so the steps sum to the quoted total and the dismount is charged
 once; a walk that never takes that step pays neither the step nor the exit. The
-quote, the path preview and the committed move read the same helpers, so they
-agree on both the route and the price.
+quote, the path preview, the committed move and the set of cells reachable
+within a budget read the same helpers, so they agree on both the route and the
+price. The reachable set leaves the seat by those same entry cells, and quotes
+every cell it offers at the route plus the exit, so a cell the budget covers
+only while the dismount goes uncounted is not offered. Two readers ask for it:
+the reachable-range debug overlay, and the enemy AI choosing where to
+reposition. Nothing in the AI enters an emplacement, so it plans off a seat only
+when the battle was set up with a ganger already in one.
 
 While it is mounted the ganger is the occupant of that cell like any other. The
 toggle writes no occupancy band of its own, so the band at the emplacement's
@@ -180,16 +186,22 @@ holds for it and the card for a ganger on it the squad can see.
   share, and `emplacement_entry_cells`
   (`terrain/emplacement/entry.rs`) is the rotated entry set the enter gate and
   the route out share.
-  `dismount_surcharge` and `seat_departure` are in `acts/movement/mount.rs`; the
-  surcharge is added by `move_tu_cost` and `move_step_tu_costs` in
-  `acts/movement/cost.rs`, and the departure reaches the search as a `Departure`
-  (`perception/pathfinder/departure.rs`) handed to `find_path_leaving`
-  (`perception/pathfinder/search.rs`). The path preview
+  `dismount_surcharge`, `seat_surcharge` and `seat_departure` are in
+  `acts/movement/mount.rs`; the surcharge is added by `move_tu_cost` and
+  `move_step_tu_costs` in `acts/movement/cost.rs`, and the departure reaches the
+  search as a `Departure` (`perception/pathfinder/departure.rs`) handed to
+  `find_path_leaving` and to `reachable_within`
+  (`perception/pathfinder/search.rs`). `reachable_within` takes the surcharge as
+  well, and adds it to every cell it quotes before testing the budget. The path
+  preview
   (`crates/gdtf_battle_input/src/pointer/selection/path_preview.rs`) and the
   `battle.cost` walk quote
   (`crates/gdtf_app/src/dev/net_qa/commands/read/battle_cost/price/walk.rs`)
-  call the same helpers. The two callers of the exit gate outside the sim are
-  `offer_exit_emplacement`
+  call the same helpers. `reachable_within`'s two callers read the seat from the
+  selected ganger in `populate_reachable_overlay`
+  (`crates/gdtf_battle_input/src/pointer/selection/reachable.rs`) and from the
+  enemy turn's snapshot row in `plan_reposition` (`ai/advance.rs`). The two
+  callers of the exit gate outside the sim are `offer_exit_emplacement`
   (`crates/gdtf_app/src/states/running/game/battlescape/contextual_panel/acts/exit_emplacement.rs`)
   and `exit_quote`
   (`crates/gdtf_app/src/dev/net_qa/commands/read/battle_cost/price/reach.rs`);

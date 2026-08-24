@@ -2,39 +2,53 @@
 
 use bevy::{
     ecs::system::SystemParam,
-    prelude::{Entity, MessageWriter, Res},
+    prelude::{Entity, MessageWriter, Query, Res},
 };
 
 use crate::{
     acts::{
-        EndTurnRequested, FireRequested, MeleeRequested, MoveRequested, OpenDoorRequested,
-        ReloadRequested, SetAimingRequested, SetStanceRequested, SightWorld,
+        DismountSurcharge, EndTurnRequested, FireRequested, MeleeRequested, MoveRequested,
+        OpenDoorRequested, ReloadRequested, SetAimingRequested, SetStanceRequested, SightWorld,
+        seat_departure, seat_surcharge,
     },
     battle::PlayerFaction,
     cover::CoverLedger,
     ganger::Faction,
     march::MarchGrids,
+    metric::CellLevel,
     occupancy::OccupancyGrid,
-    pathfinder::MoveGrids,
+    pathfinder::{Departure, MoveGrids},
     surface::SurfaceGrid,
-    terrain::floor::FloorCostGrid,
+    terrain::{
+        emplacement::{EmplacementEntrySides, EmplacementFacing},
+        entity::TerrainCell,
+        floor::FloorCostGrid,
+    },
     tuning::CombatTuning,
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
 };
 
-/// The grids and tuning the enemy AI plans sight and routes against.
+/// What the enemy turn reads off a seat one of its gangers rides.
+type AiSeatRow = (
+    &'static TerrainCell,
+    Option<&'static EmplacementEntrySides>,
+    Option<&'static EmplacementFacing>,
+);
+
+/// The grids, tuning and seats the enemy AI plans sight and routes against.
 #[derive(SystemParam)]
-pub struct AiPlanningGrids<'w> {
+pub struct AiPlanningGrids<'w, 's> {
     occupancy:   Res<'w, OccupancyGrid>,
     surface:     Res<'w, SurfaceGrid>,
     cover:       Res<'w, CoverLedger>,
     links:       Res<'w, VerticalLinkGraph>,
     floor_costs: Res<'w, FloorCostGrid>,
     tuning:      Res<'w, CombatTuning>,
+    seats:       Query<'w, 's, AiSeatRow>,
 }
 
-impl AiPlanningGrids<'_> {
+impl AiPlanningGrids<'_, '_> {
     /// Grids a line of sight marches through.
     pub(super) fn march(&self) -> MarchGrids<'_> {
         MarchGrids {
@@ -52,6 +66,22 @@ impl AiPlanningGrids<'_> {
             floor_costs: &self.floor_costs,
             tuning:      &self.tuning,
         }
+    }
+
+    /// Where a route off `from` may leave: the seat's entry cells while the mover rides one.
+    pub(super) fn departure(&self, from: CellLevel, seat: Option<Entity>) -> Departure {
+        let Some(seat) = seat else {
+            return Departure::anywhere(from);
+        };
+        let Ok((cell, sides, facing)) = self.seats.get(seat) else {
+            return Departure::anywhere(from);
+        };
+        seat_departure(from, **cell, sides, facing)
+    }
+
+    /// The exit act a route off `seat` also pays.
+    pub(super) fn surcharge(&self, seat: Option<Entity>) -> DismountSurcharge {
+        seat_surcharge(seat, &self.tuning)
     }
 
     /// Combat tuning.

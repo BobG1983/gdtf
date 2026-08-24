@@ -3,10 +3,11 @@ use super::support::{
     reachable_triples, stair, tuning,
 };
 use crate::{
+    acts::DismountSurcharge,
     ganger::Tu,
     injuries::MovementCostFactor,
     occupancy::TerrainKind,
-    pathfinder::{MoveGrids, PlanningView, find_path, reachable_within},
+    pathfinder::{Departure, MoveGrids, PlanningView, find_path, reachable_within},
 };
 
 #[test]
@@ -89,8 +90,9 @@ fn reachable_within_is_byte_identical_across_replays() {
     let squad = full_vision();
     let planning = PlanningView::new(&squad, all_other);
     let first = reachable_within(
-        start,
+        &Departure::anywhere(start),
         budget,
+        DismountSurcharge::NONE,
         MoveGrids {
             occupancy:   &grid,
             links:       &links,
@@ -101,8 +103,9 @@ fn reachable_within_is_byte_identical_across_replays() {
         &planning,
     );
     let second = reachable_within(
-        start,
+        &Departure::anywhere(start),
         budget,
+        DismountSurcharge::NONE,
         MoveGrids {
             occupancy:   &grid,
             links:       &links,

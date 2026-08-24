@@ -8,12 +8,16 @@ use gdtf_battle_presenter::{
     ActiveLevel, PathPreview, ReachableCells, ReachableOverlayEnabled, ViewMode,
 };
 use gdtf_battle_sim::{
+    acts::{DismountSurcharge, dismount_surcharge, seat_departure},
     battle::PlayerFaction,
+    emplacement::{EmplacementEntrySides, EmplacementFacing, Mounted, MountedBy},
+    entity::TerrainCell,
     floor::FloorCostGrid,
     metric::MAX_LEVELS,
     occupancy::{GRID_HEIGHT, GRID_WIDTH},
-    pathfinder::{MoveGrids, PlanningView, reachable_within},
+    pathfinder::{Departure, MoveGrids, PlanningView, reachable_within},
     prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid, Position, Tu},
+    terrain::facing::TerrainFacing,
     test_support::{SituationBuilder, key},
     tuning::CombatTuning,
     vertical::{VerticalLink, VerticalLinkGraph, build_vertical_link_graph},
@@ -150,8 +154,9 @@ fn populates_reachable_cells_matching_reachable_within_including_l1() {
         let floor_costs = app.world().resource::<FloorCostGrid>().clone();
         let planning = PlanningView::new(&squad, all_other);
         reachable_within(
-            foot,
+            &Departure::anywhere(foot),
             BUDGET,
+            DismountSurcharge::NONE,
             MoveGrids {
                 occupancy:   &grid,
                 links:       &links,
@@ -184,6 +189,89 @@ fn populates_reachable_cells_matching_reachable_within_including_l1() {
          (the populate system reuses the sim search); populated={populated_cells:?}, \
          expected={expected_cells:?}",
     );
+}
+
+#[test]
+fn a_mounted_selection_reaches_only_what_its_seat_lets_it_leave_by() {
+    let mut app = reachable_app(VerticalLinkGraph::default(), true);
+
+    let seat_cell = cell(5, 5, 0);
+    let step = *app.world().resource::<CombatTuning>().move_costs.open;
+    let budget = Tu::new(step.saturating_mul(4));
+
+    let ganger = app
+        .world_mut()
+        .spawn((Position::new(seat_cell), budget, PLAYER_FACTION))
+        .id();
+    let sides = EmplacementEntrySides::new(vec![TerrainFacing::North]);
+    let facing = EmplacementFacing::new(TerrainFacing::default());
+    app.world_mut().spawn((
+        TerrainCell::new(seat_cell),
+        MountedBy::new(ganger),
+        sides.clone(),
+        facing,
+    ));
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(ganger));
+
+    assert!(
+        app.world().get::<Mounted>(ganger).is_some(),
+        "the seat's MountedBy must give the ganger its Mounted before the overlay runs",
+    );
+
+    let departure = seat_departure(seat_cell, seat_cell, Some(&sides), Some(&facing));
+    let expected = direct_reachable(&app, ganger, &departure, budget);
+    let unconstrained = direct_reachable(&app, ganger, &Departure::anywhere(seat_cell), budget);
+
+    advance_until(&mut app, |app| {
+        !app.world().resource::<ReachableCells>().is_empty()
+    });
+
+    let populated: Vec<(CellLevel, Tu)> =
+        app.world().resource::<ReachableCells>().cells().collect();
+    assert_eq!(
+        populated, expected,
+        "the overlay must offer exactly what reachable_within offers for the seat's departure \
+         and exit; populated={populated:?}, expected={expected:?}",
+    );
+
+    assert!(
+        unconstrained
+            .iter()
+            .any(|(cell, _)| !expected.iter().any(|(offered, _)| offered == cell)),
+        "the fixture must discriminate: leaving anywhere must offer a cell the seat's one entry \
+         side does not reach; anywhere={unconstrained:?}, seated={expected:?}",
+    );
+}
+
+/// The reachable set a direct `reachable_within` call gives this ganger for `departure`.
+fn direct_reachable(
+    app: &App,
+    ganger: Entity,
+    departure: &Departure,
+    budget: Tu,
+) -> Vec<(CellLevel, Tu)> {
+    let world = app.world();
+    let grid = world.resource::<OccupancyGrid>().clone();
+    let links = world.resource::<VerticalLinkGraph>().clone();
+    let squad = world.resource::<SquadVisibility>().clone();
+    let tuning = world.resource::<CombatTuning>().clone();
+    let floor_costs = world.resource::<FloorCostGrid>().clone();
+    let surcharge = dismount_surcharge(world.get::<Mounted>(ganger), &tuning);
+    let planning = PlanningView::new(&squad, all_other);
+    reachable_within(
+        departure,
+        budget,
+        surcharge,
+        MoveGrids {
+            occupancy:   &grid,
+            links:       &links,
+            floor_costs: &floor_costs,
+            tuning:      &tuning,
+        },
+        gdtf_battle_sim::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    )
 }
 
 #[test]

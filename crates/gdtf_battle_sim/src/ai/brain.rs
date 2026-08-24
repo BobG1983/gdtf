@@ -126,7 +126,16 @@ fn plan_step(
     is_dead: &impl Fn(Entity) -> bool,
 ) -> Option<MoveRequested> {
     let goal = pick_nearest(enemy.position.cell(), enemy.position.level(), all_targets)?;
-    let dest = plan_reposition(enemy, &goal, rows, omniscient?, grids.routes())?;
+    let departure = grids.departure(*enemy.position, enemy.seat);
+    let dest = plan_reposition(
+        enemy,
+        &goal,
+        rows,
+        omniscient?,
+        grids.routes(),
+        &departure,
+        grids.surcharge(enemy.seat),
+    )?;
     if let Some(suppressor) = enemy.pinned_by {
         let mover =
             BreakAwayMover::new(enemy.entity, &enemy.position, &enemy.stance, &enemy.facing);
