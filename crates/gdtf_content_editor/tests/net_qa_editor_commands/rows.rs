@@ -8,6 +8,19 @@ pub(crate) struct SetModeReplyRow {
     pub(crate) mode: ModeRow,
 }
 
+/// A client's own reading of the Injury tab's sub-tab, decoded from the wire by name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum SubTabRow {
+    Def,
+    Tables,
+}
+
+/// `editor.select_injury_tab`'s reply body.
+#[derive(Debug, Deserialize)]
+pub(crate) struct SelectInjuryTabReplyRow {
+    pub(crate) tab: SubTabRow,
+}
+
 /// One registry member as `editor.families` answers it.
 #[derive(Debug, Deserialize)]
 pub(crate) struct FamilyEntryRow {

@@ -23,7 +23,7 @@ use crate::{
     hovered_cell::HoveredCell,
     injury_form::{InjuryDraft, WeightingDraft},
     melee_weapon_form::MeleeWeaponDraft,
-    mode::EditorMode,
+    mode::{EditorMode, InjurySubTab},
     preview::{target::PreviewTarget, view::PreviewPan},
     save_record::LastSaveRecord,
     session::MapEditorSession,
@@ -98,6 +98,7 @@ pub(crate) struct ArmorParams<'w> {
 
 #[derive(bevy::ecs::system::SystemParam)]
 pub(crate) struct InjuryParams<'w> {
+    pub(super) sub_tab:   Option<ResMut<'w, InjurySubTab>>,
     pub(super) draft:     Option<ResMut<'w, InjuryDraft>>,
     pub(super) weighting: Option<ResMut<'w, WeightingDraft>>,
     pub(super) registry:  Option<Res<'w, InjuryRegistry>>,

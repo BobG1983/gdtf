@@ -63,7 +63,7 @@ pub use melee_weapon_form::{
 };
 #[cfg(debug_assertions)]
 pub use melee_weapon_form::{write_melee_weapon, write_melee_weapon_in};
-pub use mode::EditorMode;
+pub use mode::{EditorMode, InjurySubTab};
 #[cfg(debug_assertions)]
 pub use net_qa::{
     EDITOR_QA_SERVER_NAME, EditorNetQaSystems, EditorQaAssetsRoot, NetQaEditorPlugin,

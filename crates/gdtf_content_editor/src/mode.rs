@@ -2,6 +2,33 @@
 
 use bevy::prelude::*;
 
+#[cfg(test)]
+mod test;
+
+/// Which record the Injury tab's central panel is editing.
+#[derive(Resource, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum InjurySubTab {
+    /// The injury def form.
+    #[default]
+    Def,
+    /// The weighting table form.
+    Tables,
+}
+
+impl InjurySubTab {
+    /// Sub-tab bar order left-to-right.
+    pub const TAB_ORDER: [Self; 2] = [Self::Def, Self::Tables];
+
+    /// Short label for the sub-tab button.
+    #[must_use]
+    pub const fn tab_label(self) -> &'static str {
+        match self {
+            Self::Def => "Injury",
+            Self::Tables => "Injury tables",
+        }
+    }
+}
+
 /// Active authoring workflow in the content editor.
 #[derive(Resource, Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub enum EditorMode {

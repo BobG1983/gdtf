@@ -278,9 +278,11 @@ run(host="editor", command="editor.select_tile", arguments="(key: \"00000000-000
 run(host="editor", command="editor.set_level", arguments="(level: 1)")
 run(host="editor", command="editor.paint", arguments="(x: 2, y: 3)")
 run(host="editor", command="editor.map", arguments="(level: 1)")
+run(host="editor", command="editor.set_mode", arguments="(mode: Injury)")
+run(host="editor", command="editor.select_injury_tab", arguments="(tab: Tables)")
 ```
 
-The editor offers twenty commands today. They are listed in
+The editor offers twenty-one commands today. They are listed in
 [The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
@@ -718,13 +720,13 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## The editor host
 
-The editor publishes twenty commands, all `Immediate`, all in `EDITOR_COMMANDS`
+The editor publishes twenty-one commands, all `Immediate`, all in `EDITOR_COMMANDS`
 ([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
 
 Three reads answer at every point in the lifecycle: `editor.phase`, `editor.last_save` and
 `editor.validation`. Four more reads need the authoring scene: `editor.families`,
 `editor.session`, `editor.draft` and `editor.map`. `editor.draft` also needs a form tab
-open, and `editor.map` needs the Prefab tab. All thirteen writes need the authoring scene
+open, and `editor.map` needs the Prefab tab. All fourteen writes need the authoring scene
 too. During the editor's Load pass every scene-scoped
 command answers `Unavailable { code: WrongState }`. `EditorMode`, `MapEditorSession` and
 every draft are state-scoped to `EditorState::Editing` by the `init_state_scoped_resource`
@@ -758,6 +760,7 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.select_tile` | Editing + the Prefab tab | Selects the tile the canvas paints, from the same rows the palette draws. [`commands/write/select_tile.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_tile.rs) |
 | `editor.set_level` | Editing + the Prefab tab | Jumps the storey the canvas paints on, the way clicking a row of the level rail does, clamping to the grid's extent. [`commands/write/set_level.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_level.rs) |
 | `editor.paint` | Editing + the Prefab tab | Paints the selected tile in one cell of the storey being edited, through the same placement and connector pairing a canvas click runs. [`commands/write/paint/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/paint) |
+| `editor.select_injury_tab` | Editing + the Injury tab | Opens the Injury def form or the Injury weighting table, writing the same `InjurySubTab` resource the sub-tab row writes. [`commands/write/select_injury_tab.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_injury_tab.rs) |
 
 `editor.set_field` and `editor.list_op` need more than the authoring scene. Every field and
 list they offer today belongs to the Terrain draft, so they also need the Terrain tab open
@@ -769,6 +772,8 @@ five prefab-canvas commands are scoped to the Prefab tab for the same reason: th
 the size fields, the level rail and the viewport are drawn only in the Prefab arm, and the
 painted map is that canvas's own model. The Prefab tab carries `EditorMode`'s own default,
 so a fresh process reaches them with no `editor.set_mode` first.
+`editor.select_injury_tab` is scoped to the Injury tab, because the sub-tab row it writes is
+drawn only in the Injury arm of the central panel.
 `editor.select_theme` needs no particular tab, because the top bar draws its picker on every
 one. The phase is checked first
 ([`commands/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/availability.rs)),

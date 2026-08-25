@@ -72,8 +72,11 @@ pub(crate) const EDITOR_SET_LEVEL: &str = "editor.set_level";
 /// The canvas write the editor host publishes.
 pub(crate) const EDITOR_PAINT: &str = "editor.paint";
 
+/// The Injury sub-tab write the editor host publishes.
+pub(crate) const EDITOR_SELECT_INJURY_TAB: &str = "editor.select_injury_tab";
+
 /// Every command name the editor host publishes today.
-pub(crate) const EDITOR_COMMAND_NAMES: [&str; 20] = [
+pub(crate) const EDITOR_COMMAND_NAMES: [&str; 21] = [
     EDITOR_PHASE,
     EDITOR_LAST_SAVE,
     EDITOR_VALIDATION,
@@ -94,6 +97,7 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 20] = [
     EDITOR_SELECT_TILE,
     EDITOR_SET_LEVEL,
     EDITOR_PAINT,
+    EDITOR_SELECT_INJURY_TAB,
 ];
 
 /// Command names that need the authoring scene, so they refuse the editor's Load pass.
@@ -120,6 +124,9 @@ pub(crate) const EDITOR_TERRAIN_TAB_ONLY: [&str; 2] = [EDITOR_SET_FIELD, EDITOR_
 /// Command names that also need the Theme tab, so they refuse every other tab.
 pub(crate) const EDITOR_THEME_TAB_ONLY: [&str; 2] =
     [EDITOR_TOGGLE_TERRAIN, EDITOR_SET_DEFAULT_FLOOR];
+
+/// Command names that also need the Injury tab, so they refuse every other tab.
+pub(crate) const EDITOR_INJURY_TAB_ONLY: [&str; 1] = [EDITOR_SELECT_INJURY_TAB];
 
 /// Command names that need any form tab, so they refuse the default Prefab tab.
 pub(crate) const EDITOR_FORM_TAB_ONLY: [&str; 1] = [EDITOR_DRAFT];

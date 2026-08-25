@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_content_editor::{
     ArmorDraft, AttachmentDraft, CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, GangDraft,
-    HoveredCell, InjuryDraft, MapEditorSession, MeleeWeaponDraft, PreviewPan, SpriteDraft,
-    TerrainDraft, ThemeDraft, WeaponDraft, WeightingDraft,
+    HoveredCell, InjuryDraft, InjurySubTab, MapEditorSession, MeleeWeaponDraft, PreviewPan,
+    SpriteDraft, TerrainDraft, ThemeDraft, WeaponDraft, WeightingDraft,
 };
 
 pub(crate) fn assert_all_scoped_resources_absent(app: &App, when: &str) {
@@ -67,6 +67,10 @@ pub(crate) fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     assert!(
         world.get_resource::<WeightingDraft>().is_none(),
         "WeightingDraft {when}"
+    );
+    assert!(
+        world.get_resource::<InjurySubTab>().is_none(),
+        "InjurySubTab {when}"
     );
     assert!(
         world.get_resource::<SpriteDraft>().is_none(),
@@ -153,6 +157,11 @@ pub(crate) fn assert_all_scoped_resources_seeded(app: &App) {
         world.get_resource::<WeightingDraft>(),
         Some(&WeightingDraft::default()),
         "WeightingDraft seeds to the pristine autoload-pending form ",
+    );
+    assert_eq!(
+        world.get_resource::<InjurySubTab>(),
+        Some(&InjurySubTab::default()),
+        "InjurySubTab seeds to Def, so a fresh authoring session opens the def form ",
     );
     assert_eq!(
         world.get_resource::<SpriteDraft>(),

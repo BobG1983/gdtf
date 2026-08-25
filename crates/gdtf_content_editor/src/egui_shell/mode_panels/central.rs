@@ -3,7 +3,9 @@ use bevy_egui::egui;
 use super::ctx::ModePanelsCtx;
 use crate::{
     egui_shell::{
-        armor_form_ui, attachment_form_ui, gang_form_ui, injury_form_ui, melee_weapon_form_ui,
+        armor_form_ui, attachment_form_ui, gang_form_ui,
+        injury_form_ui::{self, InjuryPanelsCtx},
+        melee_weapon_form_ui,
         prefab::{viewport_ui, viewport_ui::ViewportCtx},
         sprite_form_ui,
         terrain_form_ui::{self, TerrainSaveContext},
@@ -59,7 +61,7 @@ pub(in crate::egui_shell) fn central_panel(
                 armor_form_ui::pieces_panel(ui, draft);
             }
         }
-        EditorMode::Injury => injury_stack(ui, ctx),
+        EditorMode::Injury => injury_sub_tabs(ui, ctx),
         EditorMode::Sprite => {
             if let Some(draft) = ctx.sprite.draft.as_deref_mut() {
                 sprite_form_ui::primary_panel(
@@ -104,27 +106,22 @@ pub(in crate::egui_shell) fn central_panel(
     });
 }
 
-fn injury_stack(
+fn injury_sub_tabs(
     ui: &mut egui::Ui,
     ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
-    egui::ScrollArea::vertical()
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            if let Some(draft) = ctx.injury.draft.as_deref_mut() {
-                injury_form_ui::def_panel(ui, draft);
-            }
-            if let Some(weighting) = ctx.injury.weighting.as_deref_mut() {
-                ui.separator();
-                injury_form_ui::weighting_panel(
-                    ui,
-                    weighting,
-                    ctx.injury.registry.as_deref(),
-                    ctx.injury.tables.as_deref(),
-                    ctx.last_save,
-                );
-            }
-        });
+    let Some(sub_tab) = ctx.injury.sub_tab.as_deref_mut() else {
+        return;
+    };
+    let mut panels = InjuryPanelsCtx {
+        sub_tab,
+        draft: ctx.injury.draft.as_deref_mut(),
+        weighting: ctx.injury.weighting.as_deref_mut(),
+        injuries: ctx.injury.registry.as_deref(),
+        tables: ctx.injury.tables.as_deref(),
+        last_save: ctx.last_save,
+    };
+    injury_form_ui::injury_panels(ui, &mut panels);
 }
 
 fn prefab_viewport(

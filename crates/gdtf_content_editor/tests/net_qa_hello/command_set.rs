@@ -62,6 +62,7 @@ fn the_editor_offers_the_reads_the_lifecycle_the_form_writes_the_theme_helpers_a
             CommandName::from_static("editor.select_tile"),
             CommandName::from_static("editor.set_level"),
             CommandName::from_static("editor.paint"),
+            CommandName::from_static("editor.select_injury_tab"),
         ],
         "the published list is part of the wire contract: dropping a name, adding one, or \
          publishing them in another order all change what a client reads back",

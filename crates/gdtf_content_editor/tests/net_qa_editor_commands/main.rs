@@ -1,5 +1,5 @@
-//! The editor's three theme helpers over the editor net-QA listener:
-//! `editor.select_theme`, `editor.toggle_terrain` and `editor.set_default_floor`.
+//! The editor's theme helpers and its Injury sub-tab write, driven over the editor
+//! net-QA listener.
 #![cfg(debug_assertions)]
 
 mod drafts;
@@ -14,6 +14,7 @@ mod names;
 #[path = "../net_qa_shared/outcome.rs"]
 mod outcome;
 mod rows;
+mod select_injury_tab_command;
 mod select_theme_command;
 mod set_default_floor_command;
 mod setup;

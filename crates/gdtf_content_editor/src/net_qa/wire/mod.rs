@@ -7,6 +7,7 @@ mod facing;
 mod family;
 mod field;
 mod grid;
+mod injury_sub_tab;
 mod key;
 mod last_save;
 mod list;
@@ -37,6 +38,7 @@ pub(in crate::net_qa) use field::EditorFieldNet;
 pub(in crate::net_qa) use grid::{
     EditorGridHeightNet, EditorGridLevelsNet, EditorGridSizeNet, EditorGridWidthNet,
 };
+pub(in crate::net_qa) use injury_sub_tab::InjurySubTabNet;
 pub(in crate::net_qa) use key::{
     EditorContentNameNet, EditorKeyNet, SavedPathNet, TerrainKeyNet, ThemeKeyNet,
 };

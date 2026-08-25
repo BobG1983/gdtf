@@ -8,9 +8,9 @@ use super::{
         EditorValidation,
     },
     write::{
-        EditorListOp, EditorLoad, EditorNew, EditorPaint, EditorSave, EditorSelectTheme,
-        EditorSelectTile, EditorSetDefaultFloor, EditorSetField, EditorSetGridSize, EditorSetLevel,
-        EditorSetMode, EditorToggleTerrain,
+        EditorListOp, EditorLoad, EditorNew, EditorPaint, EditorSave, EditorSelectInjuryTab,
+        EditorSelectTheme, EditorSelectTile, EditorSetDefaultFloor, EditorSetField,
+        EditorSetGridSize, EditorSetLevel, EditorSetMode, EditorToggleTerrain,
     },
 };
 use crate::net_qa::facts::EditorFacts;
@@ -36,4 +36,5 @@ pub(in crate::net_qa) const EDITOR_COMMANDS: &[&dyn ErasedCommand<EditorFacts>] 
     &EditorSelectTile,
     &EditorSetLevel,
     &EditorPaint,
+    &EditorSelectInjuryTab,
 ];

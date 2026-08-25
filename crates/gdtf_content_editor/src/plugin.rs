@@ -18,7 +18,7 @@ use crate::{
     injury_form::{InjuryDraft, WeightingDraft},
     load::register_load,
     melee_weapon_form::MeleeWeaponDraft,
-    mode::{EditorMode, mode_hotkeys},
+    mode::{EditorMode, InjurySubTab, mode_hotkeys},
     preview::{register_preview, view::PreviewPan},
     right_panel::seed_default_theme,
     save_record::LastSaveRecord,
@@ -55,6 +55,7 @@ impl Plugin for MapEditorPlugin {
         app.init_state_scoped_resource(EditorState::Editing, ArmorDraft::default);
         app.init_state_scoped_resource(EditorState::Editing, InjuryDraft::default);
         app.init_state_scoped_resource(EditorState::Editing, WeightingDraft::default);
+        app.init_state_scoped_resource(EditorState::Editing, InjurySubTab::default);
         app.init_state_scoped_resource(EditorState::Editing, SpriteDraft::default);
         app.init_state_scoped_resource(EditorState::Editing, AttachmentDraft::default);
         app.init_state_scoped_resource(EditorState::Editing, WeaponDraft::default);

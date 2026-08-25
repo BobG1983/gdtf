@@ -4,6 +4,7 @@ mod draft;
 mod facing;
 mod family;
 mod grid;
+mod injury_sub_tab;
 mod key;
 mod last_save;
 mod mode;
