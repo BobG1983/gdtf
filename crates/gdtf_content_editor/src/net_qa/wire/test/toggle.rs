@@ -6,7 +6,8 @@ const BOTH_WAYS: [TerrainToggleNet; 2] = [TerrainToggleNet::Added, TerrainToggle
 
 #[test]
 fn both_toggle_directions_round_trip() {
-    for direction in BOTH_WAYS {
+    let directions: [TerrainToggleNet; 2] = BOTH_WAYS;
+    for direction in directions {
         assert_ron_round_trip(&direction);
     }
 }

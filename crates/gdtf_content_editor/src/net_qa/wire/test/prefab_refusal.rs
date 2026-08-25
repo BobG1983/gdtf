@@ -9,7 +9,8 @@ const BOTH_CONDITIONS: [SelectTileRefusalNet; 2] = [
 
 #[test]
 fn both_select_tile_refusals_round_trip() {
-    for refusal in BOTH_CONDITIONS {
+    let conditions: [SelectTileRefusalNet; 2] = BOTH_CONDITIONS;
+    for refusal in conditions {
         assert_ron_round_trip(&refusal);
     }
 }

@@ -42,7 +42,8 @@ fn the_terrain_key_traces_a_usable_shape() {
 
 #[test]
 fn a_content_name_round_trips() {
-    assert_ron_round_trip(&content_name("\"east corridor\""));
+    let name: EditorContentNameNet = content_name("\"east corridor\"");
+    assert_ron_round_trip(&name);
 }
 
 #[test]

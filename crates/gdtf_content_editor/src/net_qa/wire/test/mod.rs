@@ -1,12 +1,15 @@
 mod camera;
 mod cell;
+mod coverage;
 mod draft;
 mod facing;
 mod family;
+mod field;
 mod grid;
 mod injury_sub_tab;
 mod key;
 mod last_save;
+mod list;
 mod mode;
 mod outcome;
 mod painted;

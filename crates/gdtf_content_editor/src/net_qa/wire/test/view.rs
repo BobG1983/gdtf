@@ -57,7 +57,8 @@ fn an_isolated_view_carries_the_depth_it_mirrored() {
 
 #[test]
 fn a_whole_view_round_trips() {
-    assert_ron_round_trip(&a_view());
+    let view: EditorViewNet = a_view();
+    assert_ron_round_trip(&view);
 }
 
 #[test]

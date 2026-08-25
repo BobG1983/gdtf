@@ -38,7 +38,7 @@ fn a_family_label_round_trips() {
 
 #[test]
 fn a_family_entry_round_trips_and_keeps_its_key() {
-    let member = entry("ash_optic", "Ash Optic");
+    let member: EditorFamilyEntryNet = entry("ash_optic", "Ash Optic");
     assert_ron_round_trip(&member);
     assert_eq!(
         **member.key(),

@@ -10,7 +10,8 @@ fn projected() -> EditorDraftRonNet {
 
 #[test]
 fn projected_ron_text_round_trips() {
-    assert_ron_round_trip(&projected());
+    let text: EditorDraftRonNet = projected();
+    assert_ron_round_trip(&text);
 }
 
 #[test]
