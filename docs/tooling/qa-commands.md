@@ -64,13 +64,16 @@ what is in view.
    the whole entry is `&YourCommand`.
 3. **A test.** The suite for the game's command layer is
    [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs).
-   The editor has two. Hello and the lifecycle commands are in
+   The editor has three. Hello and the lifecycle commands are in
    [`crates/gdtf_content_editor/tests/net_qa_hello/`](../../crates/gdtf_content_editor/tests/net_qa_hello),
-   and the shared reads are in
-   [`crates/gdtf_content_editor/tests/net_qa_editor_reads/`](../../crates/gdtf_content_editor/tests/net_qa_editor_reads).
-   Both build their app, their client and their load-pass case from
+   the shared reads are in
+   [`crates/gdtf_content_editor/tests/net_qa_editor_reads/`](../../crates/gdtf_content_editor/tests/net_qa_editor_reads),
+   and the theme helpers are in
+   [`crates/gdtf_content_editor/tests/net_qa_editor_commands/`](../../crates/gdtf_content_editor/tests/net_qa_editor_commands).
+   All three build their app and their client from
    [`crates/gdtf_content_editor/tests/net_qa_shared/`](../../crates/gdtf_content_editor/tests/net_qa_shared),
-   which each target includes by `#[path]`. All of them use a real socket, a real listener,
+   which each target includes by `#[path]`, and the two that answer during the Load pass take
+   that case from there too. All of them use a real socket, a real listener,
    and the real router.
 
 ## The file
@@ -265,9 +268,13 @@ run(host="editor", command="editor.draft", arguments="()")
 run(host="editor", command="editor.set_mode", arguments="(mode: Terrain)")
 run(host="editor", command="editor.set_field", arguments="(field: Kind(Emplacement))")
 run(host="editor", command="editor.list_op", arguments="(list: EntrySides, op: Toggle(East))")
+run(host="editor", command="editor.select_theme", arguments="(key: \"00000000-0000-0000-0000-01840a900001\")")
+run(host="editor", command="editor.set_mode", arguments="(mode: Theme)")
+run(host="editor", command="editor.toggle_terrain", arguments="(key: \"00000000-0000-0000-0000-01840a910005\")")
+run(host="editor", command="editor.set_default_floor", arguments="(key: \"00000000-0000-0000-0000-01840a910004\")")
 ```
 
-The editor offers twelve commands today. They are listed in
+The editor offers fifteen commands today. They are listed in
 [The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
@@ -705,12 +712,12 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## The editor host
 
-The editor publishes twelve commands, all `Immediate`, all in `EDITOR_COMMANDS`
+The editor publishes fifteen commands, all `Immediate`, all in `EDITOR_COMMANDS`
 ([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
 
 Three reads answer at every point in the lifecycle: `editor.phase`, `editor.last_save` and
 `editor.validation`. Three more reads need the authoring scene: `editor.families`,
-`editor.session` and `editor.draft`, and `editor.draft` also needs a form tab open. All six
+`editor.session` and `editor.draft`, and `editor.draft` also needs a form tab open. All nine
 writes need the authoring scene too. During the editor's Load pass every scene-scoped
 command answers `Unavailable { code: WrongState }`. `EditorMode`, `MapEditorSession` and
 every draft are state-scoped to `EditorState::Editing` by the `init_state_scoped_resource`
@@ -736,10 +743,18 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.save` | Editing | Writes a mode's draft through the same `write_*_in` its save button calls. [`commands/write/save/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save) |
 | `editor.set_field` | Editing + the Terrain tab | Writes one single-value field of the active mode's draft — today the Terrain draft's kind. [`commands/write/set_field.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_field.rs) |
 | `editor.list_op` | Editing + the Terrain tab | Edits one list-valued field through the form's own setter — today the Terrain draft's emplacement entry sides. [`commands/write/list_op.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/list_op.rs) |
+| `editor.select_theme` | Editing | Selects a theme in the authoring session, taking that theme's own default floor with it, the way the top bar's picker does. [`commands/write/select_theme.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_theme.rs) |
+| `editor.toggle_terrain` | Editing + the Theme tab | Adds or removes one terrain in the Theme draft's list, the way ticking its row in the terrain library does. [`commands/write/toggle_terrain.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/toggle_terrain.rs) |
+| `editor.set_default_floor` | Editing + the Theme tab | Sets the Theme draft's default floor from the slabs the draft already holds. [`commands/write/set_default_floor.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_default_floor.rs) |
 
 `editor.set_field` and `editor.list_op` need more than the authoring scene. Every field and
 list they offer today belongs to the Terrain draft, so they also need the Terrain tab open
-and answer `Unavailable { code: WrongState }` on any other tab. The phase is checked first
+and answer `Unavailable { code: WrongState }` on any other tab. `editor.toggle_terrain` and
+`editor.set_default_floor` are scoped the same way to the Theme tab, because the terrain
+library and the default-floor picker are both drawn only in the Theme arm of the central
+and right panels, and both answer `Unavailable { code: WrongState }` on any other tab.
+`editor.select_theme` needs no particular tab, because the top bar draws its picker on every
+one. The phase is checked first
 ([`commands/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/availability.rs)),
 so a call during Load carries the phase note and not the tab note. Each value rides on its
 variant — `Kind(Emplacement)`, `EntrySides`, `Toggle(East)` — so an unknown field or list
@@ -755,6 +770,23 @@ sync reloads the session theme's def over any draft whose key differs, so a blan
 draft would not survive a frame. `editor.load` refuses Terrain and Prefab, which load
 nothing by key. A key no registry holds answers `NoSuchKey` with the keys it does hold, and
 leaves the draft untouched.
+
+The three theme helpers take one key and no mode, so they have no typed outcome to carry a
+miss. All three answer `Unavailable { code: MissingModel }` for a key that is not UUID text.
+`editor.select_theme` and `editor.toggle_terrain` answer it again for UUID text their
+registry does not hold, leaving the session or the draft as it was.
+`editor.set_default_floor` refuses on a narrower test, so it answers
+`Unavailable { code: WrongState }` for every key outside `slab_floor_candidates`
+([`theme_form/resolve.rs`](../../crates/gdtf_content_editor/src/theme_form/resolve.rs)), the
+list the form's own picker offers. That one code covers all three misses: a terrain the
+draft does not hold, a terrain the draft holds that is not a slab, and UUID text no registry
+holds. `ThemeDraft::set_default_floor` writes nothing when the draft does not hold the key,
+so answering `Ran` there would report a write that never happened. A non-slab key the draft
+does hold it would write, and refusing that one keeps the command from authoring a floor the
+form's picker would never offer.
+`editor.toggle_terrain`'s reply says which way the tick went, `Added` or `Removed`, and
+carries the draft's default floor afterwards, because removing the terrain that was the
+default floor clears it.
 
 `editor.save` writes under `EditorQaAssetsRoot`
 ([`net_qa/assets_root.rs`](../../crates/gdtf_content_editor/src/net_qa/assets_root.rs)),

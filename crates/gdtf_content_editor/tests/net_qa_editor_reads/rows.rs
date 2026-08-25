@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::mirror::{ModeRow, SaveFaultRow};
+use crate::{mirror::ModeRow, save_fault::SaveFaultRow};
 
 /// `editor.validation`'s reply body as a client decodes it.
 #[derive(Debug, Deserialize)]

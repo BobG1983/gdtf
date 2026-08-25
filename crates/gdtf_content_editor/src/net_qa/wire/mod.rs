@@ -18,6 +18,7 @@ mod save_fault;
 mod terrain_kind;
 #[cfg(test)]
 mod test;
+mod toggle;
 mod validation;
 mod view;
 
@@ -30,7 +31,9 @@ pub(in crate::net_qa) use family::{
 };
 pub(in crate::net_qa) use field::EditorFieldNet;
 pub(in crate::net_qa) use grid::EditorGridSizeNet;
-pub(in crate::net_qa) use key::{EditorContentNameNet, EditorKeyNet, SavedPathNet};
+pub(in crate::net_qa) use key::{
+    EditorContentNameNet, EditorKeyNet, SavedPathNet, TerrainKeyNet, ThemeKeyNet,
+};
 pub(in crate::net_qa) use last_save::{EditorLastSaveRowNet, LastSaveOutcomeNet};
 pub(in crate::net_qa) use list::{EditorListMemberNet, EditorListNet, EditorListOpNet};
 pub(in crate::net_qa) use mode::EditorModeNet;
@@ -41,6 +44,7 @@ pub(in crate::net_qa) use phase::EditorPhaseNet;
 pub(in crate::net_qa) use refusal::EditorRefusalNet;
 pub(in crate::net_qa) use save_fault::EditorSaveFaultNet;
 pub(in crate::net_qa) use terrain_kind::TerrainKindNet;
+pub(in crate::net_qa) use toggle::TerrainToggleNet;
 pub(in crate::net_qa) use validation::{
     ChecksCompleteNet, ValidationFindingNet, ValidationPublishedNet,
 };

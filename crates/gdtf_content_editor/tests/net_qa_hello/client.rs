@@ -48,8 +48,17 @@ pub(crate) const EDITOR_SET_FIELD: &str = "editor.set_field";
 /// The list-field write the editor host publishes.
 pub(crate) const EDITOR_LIST_OP: &str = "editor.list_op";
 
+/// The session's theme write the editor host publishes.
+pub(crate) const EDITOR_SELECT_THEME: &str = "editor.select_theme";
+
+/// The theme draft's terrain-list write the editor host publishes.
+pub(crate) const EDITOR_TOGGLE_TERRAIN: &str = "editor.toggle_terrain";
+
+/// The theme draft's default-floor write the editor host publishes.
+pub(crate) const EDITOR_SET_DEFAULT_FLOOR: &str = "editor.set_default_floor";
+
 /// Every command name the editor host publishes today.
-pub(crate) const EDITOR_COMMAND_NAMES: [&str; 12] = [
+pub(crate) const EDITOR_COMMAND_NAMES: [&str; 15] = [
     EDITOR_PHASE,
     EDITOR_LAST_SAVE,
     EDITOR_VALIDATION,
@@ -62,10 +71,13 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 12] = [
     EDITOR_SAVE,
     EDITOR_SET_FIELD,
     EDITOR_LIST_OP,
+    EDITOR_SELECT_THEME,
+    EDITOR_TOGGLE_TERRAIN,
+    EDITOR_SET_DEFAULT_FLOOR,
 ];
 
 /// Command names that need the authoring scene, so they refuse the editor's Load pass.
-pub(crate) const EDITOR_EDITING_ONLY: [&str; 8] = [
+pub(crate) const EDITOR_EDITING_ONLY: [&str; 9] = [
     EDITOR_FAMILIES,
     EDITOR_SESSION,
     EDITOR_SET_MODE,
@@ -74,10 +86,15 @@ pub(crate) const EDITOR_EDITING_ONLY: [&str; 8] = [
     EDITOR_SAVE,
     EDITOR_SET_FIELD,
     EDITOR_LIST_OP,
+    EDITOR_SELECT_THEME,
 ];
 
 /// Command names that also need the Terrain tab, so they refuse every other tab.
 pub(crate) const EDITOR_TERRAIN_TAB_ONLY: [&str; 2] = [EDITOR_SET_FIELD, EDITOR_LIST_OP];
+
+/// Command names that also need the Theme tab, so they refuse every other tab.
+pub(crate) const EDITOR_THEME_TAB_ONLY: [&str; 2] =
+    [EDITOR_TOGGLE_TERRAIN, EDITOR_SET_DEFAULT_FLOOR];
 
 /// Command names that need any form tab, so they refuse the default Prefab tab.
 pub(crate) const EDITOR_FORM_TAB_ONLY: [&str; 1] = [EDITOR_DRAFT];

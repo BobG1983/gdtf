@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::mirror::{ModeRow, SaveFaultRow};
+use crate::{mirror::ModeRow, save_fault::SaveFaultRow};
 
 /// A client's own reading of why an editor write turned a mode down.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

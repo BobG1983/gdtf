@@ -13,6 +13,7 @@ mod refusal;
 mod save_fault;
 mod support;
 mod terrain_kind;
+mod toggle;
 mod validation;
 mod view;
 

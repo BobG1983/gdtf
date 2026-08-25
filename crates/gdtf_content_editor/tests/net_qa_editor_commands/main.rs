@@ -1,26 +1,24 @@
-//! The editor's four shared reads: validation, families, session and draft, over the editor
-//! net-QA listener.
+//! The editor's three theme helpers over the editor net-QA listener:
+//! `editor.select_theme`, `editor.toggle_terrain` and `editor.set_default_floor`.
 #![cfg(debug_assertions)]
 
-mod draft_command;
-mod families_command;
 #[path = "../net_qa_shared/harness.rs"]
 mod harness;
 #[path = "../net_qa_shared/hello.rs"]
 mod hello;
-#[path = "../net_qa_shared/load_case.rs"]
-mod load_case;
+mod keys;
 #[path = "../net_qa_shared/mirror.rs"]
 mod mirror;
 mod names;
 #[path = "../net_qa_shared/outcome.rs"]
 mod outcome;
 mod rows;
-#[path = "../net_qa_shared/save_fault.rs"]
-mod save_fault;
-mod session_command;
+mod select_theme_command;
+mod set_default_floor_command;
+mod setup;
 #[path = "../net_qa_shared/socket.rs"]
 mod socket;
 #[path = "../net_qa_shared/support.rs"]
 mod support;
-mod validation_command;
+mod toggle_terrain_command;
+mod world;

@@ -18,6 +18,32 @@ impl EditorKeyNet {
     }
 }
 
+/// A theme registry key, as the UUID text a client sends.
+#[derive(Deref, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub(in crate::net_qa) struct ThemeKeyNet(String);
+
+impl ThemeKeyNet {
+    /// Wrap a theme key string.
+    #[must_use]
+    pub(in crate::net_qa) const fn new(key: String) -> Self {
+        Self(key)
+    }
+}
+
+/// A terrain registry key, as the UUID text a client sends.
+#[derive(Deref, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub(in crate::net_qa) struct TerrainKeyNet(String);
+
+impl TerrainKeyNet {
+    /// Wrap a terrain key string.
+    #[must_use]
+    pub(in crate::net_qa) const fn new(key: String) -> Self {
+        Self(key)
+    }
+}
+
 /// The name a Prefab save writes its file under.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]

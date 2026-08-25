@@ -1,9 +1,10 @@
 use crate::{
     client::{EDITOR_LAST_SAVE, EDITOR_SAVE},
     lifecycle::{ArmorSaveCase, armor_save_case, save_mode, written_path},
-    mirror::{ModeRow, SaveFaultRow},
+    mirror::ModeRow,
     outcome::ran_body,
     rows::{LastSaveOutcomeRow, LastSaveReplyRow, LastSaveRow, SaveOutcomeRow, SaveReplyRow},
+    save_fault::SaveFaultRow,
     socket::run_editor,
     support::{TestError, TestResult},
 };

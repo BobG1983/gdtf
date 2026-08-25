@@ -56,7 +56,7 @@ mod tests {
         terrain::def::TerrainUuid,
     };
 
-    use super::sync_theme_draft;
+    use super::{load_theme_into_form, sync_theme_draft};
     use crate::{mode::EditorMode, theme_form::ThemeDraft};
 
     fn theme_key(n: u128) -> ThemeUuid {
@@ -74,6 +74,51 @@ mod tests {
             default_floor: floor,
             terrain: vec![floor],
         }
+    }
+
+    // A theme whose list holds a second terrain, so a draft can move its floor off the first.
+    fn theme_def_with(
+        key: ThemeUuid,
+        name: &str,
+        floor: TerrainUuid,
+        second: TerrainUuid,
+    ) -> UuidThemeDef {
+        UuidThemeDef {
+            key,
+            display_name: ThemeDisplayName::new(name.to_owned()),
+            default_floor: floor,
+            terrain: vec![floor, second],
+        }
+    }
+
+    #[test]
+    fn a_sync_leaves_a_written_terrain_list_and_default_floor_alone() {
+        let floor = terrain_key(4);
+        let second = terrain_key(5);
+        let added = terrain_key(6);
+        let session = theme_key(4);
+        let def = theme_def_with(session, "Industrial", floor, second);
+        let registry = UuidThemeRegistry::new([(session, def.clone())]);
+
+        let mut draft = ThemeDraft::default();
+        load_theme_into_form(&mut draft, &def);
+        draft.toggle_terrain(added);
+        draft.set_default_floor(second);
+
+        sync_theme_draft(EditorMode::Theme, session, &registry, &mut draft);
+
+        assert!(
+            draft.has_terrain(added),
+            "the sync runs on every frame the Theme tab is drawn, so a terrain a write just \
+             added must still be in the list one frame later: {:?}",
+            draft.terrain(),
+        );
+        assert_eq!(
+            draft.default_floor(),
+            Some(second),
+            "a default floor a write just moved must still be where the write put it, not back \
+             on the registry def's own floor",
+        );
     }
 
     #[test]

@@ -24,6 +24,8 @@ mod phase_command;
 mod phase_rows;
 mod rows;
 mod save_command;
+#[path = "../net_qa_shared/save_fault.rs"]
+mod save_fault;
 mod set_field_command;
 mod set_mode_command;
 #[path = "../net_qa_shared/socket.rs"]

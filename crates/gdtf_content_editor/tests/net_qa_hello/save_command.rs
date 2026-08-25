@@ -5,9 +5,9 @@ use crate::{
     harness::editing_app_and_client,
     lifecycle::{ArmorSaveCase, armor_save_case, save_mode, written_path},
     load_case::reply_answered_during_load,
-    mirror::SaveFaultRow,
     outcome::{ran_body, unavailable_code},
     rows::{RefusalRow, SaveOutcomeRow, SaveReplyRow},
+    save_fault::SaveFaultRow,
     socket::run_editor,
     support::TestResult,
 };
