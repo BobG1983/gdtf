@@ -400,6 +400,14 @@ function renderCorrections(a) {
 ${c.replacementText}`).join('\n\n')
 }
 
+function renderDeviations(work) {
+  const ds = work?.deviations ?? []
+  if (!ds.length) return '<declared-deviations>\n(none declared)\n</declared-deviations>'
+  return `<declared-deviations>
+${ds.map(d => `- clause ${d.clause}\n  built: ${d.built}\n  why it could not be built as written: ${d.why}`).join('\n')}
+</declared-deviations>`
+}
+
 function renderFindings(v, lensKey) {
   if (!v) return `<gate-lens name="${lensKey}">\n(died — nothing to act on)\n</gate-lens>`
   const rows = v.findings?.length
@@ -591,8 +599,8 @@ Every test you add or change gets a \`tests\` row naming the mutation it turns r
 name one, the test does not discriminate — do not write it.
 
 \`deviations\` is expected to be empty. A clause you could not build as written goes there with the
-reason, and the run treats it as a blocker; leaving it out and reporting success is a defect under
-design-fidelity.md.
+reason, and a gate lens judges whether it was forced; leaving it out and reporting success is a
+defect under design-fidelity.md.
 
 Dirty files that are not this ticket's work go in \`foreignDirtyFiles\`. Anything ticket-worthy you
 noticed outside this contract goes in \`outOfScope\` — you cannot file it, the orchestrator does.`,
@@ -638,6 +646,14 @@ nothing registers. Check docs/ against the same clauses.` },
 assertion-bearing test that discriminates — name the mutation that would slip past each one. A clause with
 no test is NON-COMPLIANT, not a note. Reject MinimalPlugins stand-ins where the claim is about the real app,
 and reject exact-magnitude asserts on tunable data. Run ZERO cargo.` },
+  {
+    key: 'deviations', focus: `Are the implementer's declared deviations legitimate? Judge each one on its
+own. COMPLIANT means every deviation is forced: the contract asks for something that does not exist,
+contradicts itself, or contradicts another clause, and what was built serves the same purpose and is proven
+by the same mutation. Open the API, the crate source, or the clauses said to conflict, and confirm it — the
+implementer's reasoning is a claim, not evidence. NON-COMPLIANT means at least one deviation is avoidable:
+the contract could have been built as written, or what was built does not do the same job. Give that one a
+findings row. Run ZERO cargo.` },
   {
     key: 'rules', focus: `Does it obey the house? no-bare-types, module-layout (including files over 400 lines
 with mixed responsibilities), bevy-systems scheduling and ordering, plain-language, comment-hygiene.
@@ -720,7 +736,7 @@ ${HOUSE_RULES}`,
     { model: 'opus', label: `verify:${TICKET}#${attempt}`, phase: 'Verify', schema: VERIFY_RESULT })
 }
 
-async function runLens(lens, verifyOut, attempt) {
+async function runLens(lens, verifyOut, attempt, work) {
   return await agent(`Adversarial read-only review of ${TICKET} in ${REPO}.
 
 <ticket id="${TICKET}">
@@ -734,6 +750,8 @@ ${lens.focus}
 <verify-report verdict="${verifyOut?.verdict ?? 'MISSING'}">
 ${verifyOut?.report ?? '(verify died — treat cargo claims as UNPROVEN)'}
 </verify-report>
+
+${lens.key === 'deviations' ? renderDeviations(work) : ''}
 
 ${HOUSE_RULES}
 
@@ -755,14 +773,17 @@ let verifyOut = await verify(work, 1)
 
 phase('Gate')
 let attempt = 1
-let verdicts = await parallel(LENSES.map(l => () => runLens(l, verifyOut, attempt)))
+// The deviations lens has nothing to judge when none were declared, so it is not spawned.
+const lensesFor = (w) => LENSES.filter(l => l.key !== 'deviations' || (w?.deviations?.length ?? 0) > 0)
+let activeLenses = lensesFor(work)
+let verdicts = await parallel(activeLenses.map(l => () => runLens(l, verifyOut, attempt, work)))
 
 // verifyOut and verdicts are overwritten each round; this is the only record of the earlier ones.
 const roundLog = []
 const recordRound = () => roundLog.push(
   `round ${attempt}: verify=${verifyOut?.verdict ?? 'MISSING'} `
   + `suite=${(verifyOut?.suite ?? []).map(r => `${r.command}:${r.exit}`).join(' ')} `
-  + `lenses=${verdicts.map((v, i) => `${LENSES[i].key}:${v?.verdict ?? 'MISSING'}`).join(' ')}`
+  + `lenses=${verdicts.map((v, i) => `${activeLenses[i].key}:${v?.verdict ?? 'MISSING'}`).join(' ')}`
   + (verdicts.flatMap(v => v?.findings ?? []).length
     ? `\n  lens findings this round: ${verdicts.flatMap(v => v?.findings ?? []).map(f => `clause ${f.clause} ${f.symbol}`).join('; ')}`
     : ''))
@@ -775,7 +796,6 @@ const green = () => verifyOut?.verdict === 'GREEN'
   && suiteGreen(verifyOut.suite)
   && (verifyOut.unansweredCorrections?.length ?? 0) === 0
   && (verifyOut.undeclaredDeviations?.length ?? 0) === 0
-  && (work?.deviations?.length ?? 0) === 0
 const compliant = (v) => v?.verdict === 'COMPLIANT' && (v.findings?.length ?? 0) === 0
 const allPass = () => green() && verdicts.every(compliant)
 const reviewersHeardFrom = () => (verifyOut ? 1 : 0) + verdicts.filter(Boolean).length
@@ -796,9 +816,6 @@ while (!allPass() && attempt < 5) {
     (verifyOut?.undeclaredDeviations ?? []).length
       ? `undeclared deviations:\n${verifyOut.undeclaredDeviations.map(d => `- clause ${d.clause}: ${d.differs}`).join('\n')}`
       : null,
-    (work?.deviations ?? []).length
-      ? `deviations you declared last round, which block the land until the code matches the contract:\n${work.deviations.map(d => `- clause ${d.clause}: built ${d.built} — ${d.why}`).join('\n')}`
-      : null,
   ].filter(Boolean).join('\n\n')
 
   const problems = [
@@ -811,7 +828,7 @@ ${verifyOut.report}
 </verify-report>`
       : `<verify-report>\n(died — nothing to act on)\n</verify-report>`,
     contractGaps ? `<contract-gaps>\n${contractGaps}\n</contract-gaps>` : null,
-    ...verdicts.map((v, i) => compliant(v) ? null : renderFindings(v, LENSES[i].key)),
+    ...verdicts.map((v, i) => compliant(v) ? null : renderFindings(v, activeLenses[i].key)),
   ].filter(Boolean).join('\n\n')
 
   log(`${TICKET}: round ${attempt} — repairing`)
@@ -847,7 +864,8 @@ outside the contract in \`outOfScope\`.`,
   phase('Verify')
   verifyOut = await verify(work, attempt)
   phase('Gate')
-  verdicts = await parallel(LENSES.map(l => () => runLens(l, verifyOut, attempt)))
+  activeLenses = lensesFor(work)
+  verdicts = await parallel(activeLenses.map(l => () => runLens(l, verifyOut, attempt, work)))
   recordRound()
 }
 
@@ -858,7 +876,7 @@ if (!allPass()) {
     verifySuite: verifyOut?.suite ?? [],
     unmetClauses: (verifyOut?.clauses ?? []).filter(c => !c.met),
     gate: verdicts.map((v, i) => ({
-      lens: LENSES[i].key,
+      lens: activeLenses[i].key,
       verdict: v?.verdict ?? 'MISSING',
       findings: v?.findings ?? [],
       report: v?.report ?? null,
@@ -898,7 +916,7 @@ const landed = await agent(`Land ${TICKET} following the /land skill.
 
 Repo: ${REPO} — no worktree; the work is on ${BRANCH} in the main tree.
 
-Verify is ${verifyOut.verdict} and all ${LENSES.length} gate lenses are COMPLIANT after ${attempt} round(s).
+Verify is ${verifyOut.verdict} and all ${activeLenses.length} gate lenses are COMPLIANT after ${attempt} round(s).
 The run does not reach you otherwise. You re-run the suite yourself on the tree you commit; their
 reports are not yours to read, and the summarize step re-derives anything anyone needs from them.
 
@@ -1086,7 +1104,7 @@ ${verifyOut?.report ?? ''}
 </final-verify>
 
 <final-gate>
-${verdicts.map((v, i) => `<lens name="${LENSES[i].key}" verdict="${v?.verdict ?? 'MISSING'}"/>`).join('\n')}
+${verdicts.map((v, i) => `<lens name="${activeLenses[i].key}" verdict="${v?.verdict ?? 'MISSING'}"/>`).join('\n')}
 </final-gate>
 
 <audit-corrections>
@@ -1138,7 +1156,7 @@ ${(landed?.suite ?? []).map(r => `${r.command} — exit ${r.exit}`).join('\n') |
 </green-suite>
 
 <gate rounds="${attempt}">
-verify ${verifyOut.verdict}; ${verdicts.map((v, i) => `${LENSES[i].key} ${v?.verdict ?? 'MISSING'}`).join(', ')}
+verify ${verifyOut.verdict}; ${verdicts.map((v, i) => `${activeLenses[i].key} ${v?.verdict ?? 'MISSING'}`).join(', ')}
 </gate>
 
 <clauses-satisfied>
