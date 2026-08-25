@@ -22,8 +22,6 @@ pub(in crate::net_qa::commands) fn only_while_editing(
 }
 
 /// The phase check first, then the open tab must be Terrain.
-///
-/// Phase first because the tab is absent during Load, and that call carries the phase note.
 pub(in crate::net_qa::commands) fn only_on_the_terrain_tab(
     facts: EditorFacts,
     phase_note: RefusalNote,
@@ -42,8 +40,6 @@ pub(in crate::net_qa::commands) fn only_on_the_terrain_tab(
 }
 
 /// The phase check first, then the open tab must be Theme.
-///
-/// Phase first because the tab is absent during Load, and that call carries the phase note.
 pub(in crate::net_qa::commands) fn only_on_the_theme_tab(
     facts: EditorFacts,
     phase_note: RefusalNote,
@@ -62,8 +58,6 @@ pub(in crate::net_qa::commands) fn only_on_the_theme_tab(
 }
 
 /// The phase check first, then the open tab must be Prefab.
-///
-/// Phase first because the tab is absent during Load, and that call carries the phase note.
 pub(in crate::net_qa::commands) fn only_on_the_prefab_tab(
     facts: EditorFacts,
     phase_note: RefusalNote,
@@ -82,8 +76,6 @@ pub(in crate::net_qa::commands) fn only_on_the_prefab_tab(
 }
 
 /// The phase check first, then the open tab must be one of the nine form modes.
-///
-/// Phase first because the tab is absent during Load, and that call carries the phase note.
 pub(in crate::net_qa::commands) fn only_in_a_form_mode(
     facts: EditorFacts,
     phase_note: RefusalNote,
