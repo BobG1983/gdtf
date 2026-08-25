@@ -2,9 +2,9 @@ use gdtf_content_editor::EditorState;
 use gdtf_qa_protocol::message::{ProtocolVersion, QaRequest, QaResponse};
 
 use crate::{
-    assertions::assert_hello_ok,
-    client::Client,
     harness::{editor_app_listening, editor_state},
+    hello::assert_hello_ok,
+    socket::Client,
     support::TestError,
 };
 

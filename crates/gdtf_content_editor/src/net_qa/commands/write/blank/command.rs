@@ -16,7 +16,7 @@ use super::{
     refusal::refusal_for,
 };
 use crate::net_qa::{
-    commands::write::availability::only_while_editing,
+    commands::availability::only_while_editing,
     facts::EditorFacts,
     forms::EditorForms,
     schedule::EditorNetQaSystems,

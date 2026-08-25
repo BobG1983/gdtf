@@ -3,11 +3,12 @@ use gdtf_battle_sim::terrain::facing::TerrainFacing;
 use gdtf_content_editor::TerrainDraft;
 
 use crate::{
-    client::{Client, EDITOR_LIST_OP, EDITOR_SET_FIELD, EDITOR_SET_MODE, run_editor},
+    client::{EDITOR_LIST_OP, EDITOR_SET_FIELD, EDITOR_SET_MODE},
     harness::editing_app_and_client,
-    lifecycle::unavailable_code,
     load_case::reply_answered_during_load,
-    rows::{FacingRow, ListOpReplyRow, ListRow, ran_body},
+    outcome::{ran_body, unavailable_code},
+    rows::{FacingRow, ListOpReplyRow, ListRow},
+    socket::{Client, run_editor},
     support::{TestError, TestResult},
 };
 

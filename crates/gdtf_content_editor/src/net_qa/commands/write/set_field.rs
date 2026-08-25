@@ -11,8 +11,8 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::availability::only_on_the_terrain_tab;
 use crate::net_qa::{
+    commands::availability::only_on_the_terrain_tab,
     facts::EditorFacts,
     forms::EditorForms,
     schedule::EditorNetQaSystems,

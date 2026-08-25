@@ -3,7 +3,9 @@
 use gdtf_qa_command::command::ErasedCommand;
 
 use super::{
-    read::{EditorLastSave, EditorPhase},
+    read::{
+        EditorDraft, EditorFamilies, EditorLastSave, EditorPhase, EditorSession, EditorValidation,
+    },
     write::{EditorListOp, EditorLoad, EditorNew, EditorSave, EditorSetField, EditorSetMode},
 };
 use crate::net_qa::facts::EditorFacts;
@@ -11,6 +13,10 @@ use crate::net_qa::facts::EditorFacts;
 pub(in crate::net_qa) const EDITOR_COMMANDS: &[&dyn ErasedCommand<EditorFacts>] = &[
     &EditorPhase,
     &EditorLastSave,
+    &EditorValidation,
+    &EditorFamilies,
+    &EditorSession,
+    &EditorDraft,
     &EditorSetMode,
     &EditorNew,
     &EditorLoad,

@@ -15,7 +15,7 @@ use super::dispatch::{SaveAttempt, name_refusal, save_for_mode};
 use crate::{
     net_qa::{
         assets_root::EditorQaAssetsRoot,
-        commands::write::availability::only_while_editing,
+        commands::availability::only_while_editing,
         facts::EditorFacts,
         forms::{EditorForms, EditorRegistries},
         schedule::EditorNetQaSystems,

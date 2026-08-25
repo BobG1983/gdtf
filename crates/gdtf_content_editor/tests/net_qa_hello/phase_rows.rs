@@ -2,22 +2,7 @@ use gdtf_content_editor::{EditorMode, EditorState};
 use gdtf_qa_protocol::{command::CommandOutcome, message::QaResponse};
 use serde::Deserialize;
 
-use crate::support::TestError;
-
-/// A client's own reading of the editor's mode tab, decoded from the wire by name.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-pub(crate) enum ModeRow {
-    Terrain,
-    Theme,
-    Prefab,
-    Gang,
-    Armor,
-    Injury,
-    Sprite,
-    Attachment,
-    Weapon,
-    MeleeWeapon,
-}
+use crate::{mirror::ModeRow, support::TestError};
 
 /// A client's own reading of the editor's lifecycle phase.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]

@@ -16,7 +16,7 @@ use super::{
     families::KeyLookup,
 };
 use crate::net_qa::{
-    commands::write::availability::only_while_editing,
+    commands::availability::only_while_editing,
     facts::EditorFacts,
     forms::{EditorForms, EditorRegistries},
     schedule::EditorNetQaSystems,

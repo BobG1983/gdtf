@@ -1,7 +1,6 @@
-use gdtf_qa_protocol::{command::CommandOutcome, message::QaResponse};
-use serde::{Deserialize, de::DeserializeOwned};
+use serde::Deserialize;
 
-use crate::{phase_rows::ModeRow, support::TestError};
+use crate::mirror::{ModeRow, SaveFaultRow};
 
 /// A client's own reading of why an editor write turned a mode down.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -11,27 +10,6 @@ pub(crate) enum RefusalRow {
     NoLoadAction,
     NameBelongsToPrefabOnly,
     PrefabNeedsAName,
-}
-
-/// A painted cell as an illegal-cell fault names it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-pub(crate) struct CellRow {
-    pub(crate) x:     i32,
-    pub(crate) y:     i32,
-    pub(crate) level: u8,
-}
-
-/// A client's own reading of why a save wrote no file.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub(crate) enum SaveFaultRow {
-    EmptyName,
-    MissingMountedWeapon,
-    NoTerrain,
-    DefaultFloorNotInTerrain,
-    IllegalCell(CellRow),
-    NoWorkspaceRoot,
-    Serialize(String),
-    Write(String),
 }
 
 /// `editor.set_mode`'s reply body.
@@ -142,15 +120,4 @@ pub(crate) struct LastSaveRow {
 #[derive(Debug, Deserialize)]
 pub(crate) struct LastSaveReplyRow {
     pub(crate) records: Vec<LastSaveRow>,
-}
-
-/// Decode the RON body of a `Ran` outcome, or say which outcome came back instead.
-pub(crate) fn ran_body<T: DeserializeOwned>(
-    reply: &QaResponse,
-    command: &str,
-) -> Result<T, TestError> {
-    let QaResponse::Outcome(CommandOutcome::Ran { reply: body, .. }) = reply else {
-        return Err(format!("expected a Ran outcome for `{command}`, got {reply:?}").into());
-    };
-    Ok(ron::de::from_str::<T>(body.as_str())?)
 }

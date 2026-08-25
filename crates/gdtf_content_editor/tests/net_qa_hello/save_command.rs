@@ -1,11 +1,14 @@
 use std::path::Path;
 
 use crate::{
-    client::{EDITOR_SAVE, run_editor},
+    client::EDITOR_SAVE,
     harness::editing_app_and_client,
-    lifecycle::{ArmorSaveCase, armor_save_case, save_mode, unavailable_code, written_path},
+    lifecycle::{ArmorSaveCase, armor_save_case, save_mode, written_path},
     load_case::reply_answered_during_load,
-    rows::{RefusalRow, SaveFaultRow, SaveOutcomeRow, SaveReplyRow, ran_body},
+    mirror::SaveFaultRow,
+    outcome::{ran_body, unavailable_code},
+    rows::{RefusalRow, SaveOutcomeRow, SaveReplyRow},
+    socket::run_editor,
     support::TestResult,
 };
 

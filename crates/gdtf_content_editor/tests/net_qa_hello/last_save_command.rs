@@ -1,17 +1,16 @@
 use crate::{
-    client::{EDITOR_LAST_SAVE, EDITOR_SAVE, run_editor},
+    client::{EDITOR_LAST_SAVE, EDITOR_SAVE},
     lifecycle::{ArmorSaveCase, armor_save_case, save_mode, written_path},
-    phase_rows::ModeRow,
-    rows::{
-        LastSaveOutcomeRow, LastSaveReplyRow, LastSaveRow, SaveFaultRow, SaveOutcomeRow,
-        SaveReplyRow, ran_body,
-    },
+    mirror::{ModeRow, SaveFaultRow},
+    outcome::ran_body,
+    rows::{LastSaveOutcomeRow, LastSaveReplyRow, LastSaveRow, SaveOutcomeRow, SaveReplyRow},
+    socket::run_editor,
     support::{TestError, TestResult},
 };
 
 fn read_records(
     app: &mut bevy::app::App,
-    client: &mut crate::client::Client,
+    client: &mut crate::socket::Client,
     arguments: &str,
 ) -> Result<Vec<LastSaveRow>, TestError> {
     let reply = client.exchange(app, &run_editor(EDITOR_LAST_SAVE, arguments))?;
@@ -21,7 +20,7 @@ fn read_records(
 
 fn read_last_save(
     app: &mut bevy::app::App,
-    client: &mut crate::client::Client,
+    client: &mut crate::socket::Client,
 ) -> Result<Vec<LastSaveRow>, TestError> {
     read_records(app, client, "()")
 }

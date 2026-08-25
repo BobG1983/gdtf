@@ -2,11 +2,12 @@ use bevy::app::App;
 use gdtf_content_editor::{TerrainDraft, TerrainKindChoice};
 
 use crate::{
-    client::{EDITOR_SET_FIELD, EDITOR_SET_MODE, run_editor},
+    client::{EDITOR_SET_FIELD, EDITOR_SET_MODE},
     harness::editing_app_and_client,
-    lifecycle::unavailable_code,
     load_case::reply_answered_during_load,
-    rows::{FieldRow, SetFieldReplyRow, TerrainKindRow, ran_body},
+    outcome::{ran_body, unavailable_code},
+    rows::{FieldRow, SetFieldReplyRow, TerrainKindRow},
+    socket::run_editor,
     support::{TestError, TestResult},
 };
 

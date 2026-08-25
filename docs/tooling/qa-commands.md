@@ -63,10 +63,15 @@ what is in view.
    [its own `commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs);
    the whole entry is `&YourCommand`.
 3. **A test.** The suite for the game's command layer is
-   [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs)
-   and the editor's is
-   [`crates/gdtf_content_editor/tests/net_qa_hello/`](../../crates/gdtf_content_editor/tests/net_qa_hello) —
-   a real socket, a real listener, and the real router.
+   [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs).
+   The editor has two. Hello and the lifecycle commands are in
+   [`crates/gdtf_content_editor/tests/net_qa_hello/`](../../crates/gdtf_content_editor/tests/net_qa_hello),
+   and the shared reads are in
+   [`crates/gdtf_content_editor/tests/net_qa_editor_reads/`](../../crates/gdtf_content_editor/tests/net_qa_editor_reads).
+   Both build their app, their client and their load-pass case from
+   [`crates/gdtf_content_editor/tests/net_qa_shared/`](../../crates/gdtf_content_editor/tests/net_qa_shared),
+   which each target includes by `#[path]`. All of them use a real socket, a real listener,
+   and the real router.
 
 ## The file
 
@@ -252,12 +257,17 @@ run(host="editor", command="editor.new", arguments="(mode: Armor)")
 run(host="editor", command="editor.load", arguments="(mode: Armor, key: \"flak_vest\")")
 run(host="editor", command="editor.save", arguments="(mode: Armor)")
 run(host="editor", command="editor.last_save", arguments="()")
+run(host="editor", command="editor.validation", arguments="()")
+run(host="editor", command="editor.families", arguments="()")
+run(host="editor", command="editor.families", arguments="(family: Some(Armor))")
+run(host="editor", command="editor.session", arguments="()")
+run(host="editor", command="editor.draft", arguments="()")
 run(host="editor", command="editor.set_mode", arguments="(mode: Terrain)")
 run(host="editor", command="editor.set_field", arguments="(field: Kind(Emplacement))")
 run(host="editor", command="editor.list_op", arguments="(list: EntrySides, op: Toggle(East))")
 ```
 
-The editor offers eight commands today. They are listed in
+The editor offers twelve commands today. They are listed in
 [The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
@@ -695,20 +705,31 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## The editor host
 
-The editor publishes eight commands, all `Immediate`, all in `EDITOR_COMMANDS`
+The editor publishes twelve commands, all `Immediate`, all in `EDITOR_COMMANDS`
 ([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
-Two are reads that answer at every point in the lifecycle; six write, and each needs the
-authoring scene, so during the editor's Load pass they answer
-`Unavailable { code: WrongState }`. That is not a policy choice — `EditorMode` and every
-draft are state-scoped to `EditorState::Editing` by the `init_state_scoped_resource` calls
-in `MapEditorPlugin::build`
+
+Three reads answer at every point in the lifecycle: `editor.phase`, `editor.last_save` and
+`editor.validation`. Three more reads need the authoring scene: `editor.families`,
+`editor.session` and `editor.draft`, and `editor.draft` also needs a form tab open. All six
+writes need the authoring scene too. During the editor's Load pass every scene-scoped
+command answers `Unavailable { code: WrongState }`. `EditorMode`, `MapEditorSession` and
+every draft are state-scoped to `EditorState::Editing` by the `init_state_scoped_resource`
+calls in `MapEditorPlugin::build`
 ([`crates/gdtf_content_editor/src/plugin.rs`](../../crates/gdtf_content_editor/src/plugin.rs)),
-so during Load there is nothing to write.
+so during Load none of them is in the world. The content registries are not state-scoped.
+They arrive one at a time as the editor loads them, and Editing starts only once every one
+of them is present (`transition_to_editing` and `GateResources::all_present` in
+[`crates/gdtf_content_editor/src/load/transition.rs`](../../crates/gdtf_content_editor/src/load/transition.rs)),
+which is why `editor.families` waits for Editing instead of answering a half-loaded set.
 
 | Command | Availability | What it does |
 | --- | --- | --- |
 | `editor.phase` | always | The lifecycle phase, the mode tab open now, and every tab in tab-bar order. [`commands/read/editor_phase.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/editor_phase.rs) |
-| `editor.last_save` | always | What the newest save per mode did — the file it wrote, or the fault it reported. [`commands/read/last_save.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/last_save.rs) |
+| `editor.last_save` | always | What the newest save per mode did: the file it wrote, or the fault it reported. [`commands/read/last_save.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/last_save.rs) |
+| `editor.validation` | always | The content integrity report: every finding, plus whether the reference checks have run and whether the report has been published. [`commands/read/validation.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/validation.rs) |
+| `editor.families` | Editing | The registry keys an author can pick, family by family, each with the label the editor's own picker shows. [`commands/read/families/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/families) |
+| `editor.session` | Editing | The theme and its default floor, the grid extent, the selected paint tile, the storey being edited, and the view: draw mode, isolation, zoom and pan. [`commands/read/session.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/session.rs) |
+| `editor.draft` | Editing + any form tab | The open form's draft as the RON text its save would write. [`commands/read/draft/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/draft) |
 | `editor.set_mode` | Editing | Opens a mode tab, writing the same `EditorMode` resource the tab bar and the number hotkeys write. [`commands/write/set_mode.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_mode.rs) |
 | `editor.new` | Editing | Replaces a mode's draft with that form's own blank-draft constructor. [`commands/write/blank/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/blank) |
 | `editor.load` | Editing | Loads a registry entry by key through that draft's own `load_*` method. [`commands/write/load/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load) |
@@ -719,7 +740,7 @@ so during Load there is nothing to write.
 `editor.set_field` and `editor.list_op` need more than the authoring scene. Every field and
 list they offer today belongs to the Terrain draft, so they also need the Terrain tab open
 and answer `Unavailable { code: WrongState }` on any other tab. The phase is checked first
-([`commands/write/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/availability.rs)),
+([`commands/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/availability.rs)),
 so a call during Load carries the phase note and not the tab note. Each value rides on its
 variant — `Kind(Emplacement)`, `EntrySides`, `Toggle(East)` — so an unknown field or list
 name is a decode failure answering `BadArguments` with the schema, and neither command adds
@@ -746,6 +767,35 @@ carries its own name field; a name on any other mode is refused rather than drop
 that all eleven of the editor's own save buttons write, so a QA-driven save and a
 button-driven save are indistinguishable to it. The record is keyed by mode and is not
 state-scoped, so it survives a Load ↔ Editing round trip.
+
+`editor.validation` answers from the moment the process boots, because
+`ContentIntegrityReport` is inserted at plugin build. The report starts empty, so the reply
+carries two more flags beside the findings: `checks_complete` says whether
+`ContentChecksComplete` is in the world, and `published` says whether `ContentValidationDone`
+is. Both start false, and the checks only run once every registry they read is loaded, so a
+reply taken early in Load carries `checks_complete: false` and `published: false`. An empty
+findings list on its own is not a clean bill of health. Each finding is one line, rendered
+through the same `Display` the editor's own log prints.
+
+`editor.families` sorts every family's entries by rendered key before replying, because each
+registry is a `HashMap` underneath and its own order changes between runs. A `family`
+argument narrows the reply to that family; without one, all nine answer. For the two
+UUID-keyed families the label is the def's display name, which is what the editor's own theme
+picker shows; for the seven name-keyed families the label is the key.
+
+`editor.draft` reads the active tab and takes no mode argument. The RON is the mode's own
+`draft_to_*` conversion followed by `gdtf_assets::serialize_ron_pretty`, the two calls
+`write_ron_pretty` makes, so the text is what `editor.save` writes to the file. The Terrain
+tab has one difference. The read takes the key route the terrain form's own preview pane
+takes, `TerrainDraft::uuid` falling back to the nil UUID, while `editor.save` calls
+`TerrainDraft::ensure_uuid` and mints a key. So a terrain draft that has never been saved
+reads back with a nil `key` and is saved under a fresh one. Every other field matches, and a
+draft loaded by key already carries its own.
+
+On the Prefab tab `editor.draft` answers `Unavailable { code: WrongState }` with a note
+naming `editor.map`, because Prefab holds no draft. A draft that will not convert, such as
+an Emplacement terrain with no mounted weapon, answers a successful reply carrying
+`NotSavable` with the fault, never a refusal and never an empty string.
 
 ## Why the shape is what it is
 

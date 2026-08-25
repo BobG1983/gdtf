@@ -5,30 +5,41 @@
 mod assertions;
 mod client;
 mod command_set;
+#[path = "../net_qa_shared/harness.rs"]
 mod harness;
+#[path = "../net_qa_shared/hello.rs"]
+mod hello;
 mod last_save_command;
 mod lifecycle;
 mod list_op_command;
+#[path = "../net_qa_shared/load_case.rs"]
 mod load_case;
 mod load_command;
+#[path = "../net_qa_shared/mirror.rs"]
+mod mirror;
 mod new_command;
+#[path = "../net_qa_shared/outcome.rs"]
+mod outcome;
 mod phase_command;
 mod phase_rows;
 mod rows;
 mod save_command;
 mod set_field_command;
 mod set_mode_command;
+#[path = "../net_qa_shared/socket.rs"]
+mod socket;
+#[path = "../net_qa_shared/support.rs"]
 mod support;
 
 use gdtf_qa_protocol::message::{ProtocolVersion, QaRequest};
 
 use crate::{
     assertions::{
-        AnsweringPhase, assert_editor_catalogue, assert_hello_ok, assert_unknown_command,
-        assert_version_mismatch,
+        AnsweringPhase, assert_editor_catalogue, assert_unknown_command, assert_version_mismatch,
     },
     client::{exchange_while_editing, wrong_version},
     harness::{advance_to_editing, editor_app_listening},
+    hello::assert_hello_ok,
     load_case::reply_answered_during_load,
     support::TestResult,
 };

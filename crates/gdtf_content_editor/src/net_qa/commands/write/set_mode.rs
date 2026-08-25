@@ -11,10 +11,12 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::availability::only_while_editing;
 use crate::{
     EditorMode,
-    net_qa::{facts::EditorFacts, schedule::EditorNetQaSystems, wire::EditorModeNet},
+    net_qa::{
+        commands::availability::only_while_editing, facts::EditorFacts,
+        schedule::EditorNetQaSystems, wire::EditorModeNet,
+    },
 };
 
 const NO_TAB_BAR: RefusalNote = RefusalNote::from_static(

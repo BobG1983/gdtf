@@ -1,16 +1,16 @@
 use bevy::app::App;
 use gdtf_battle_sim::{armor::ArmorRegistry, weapon::WeaponRegistry};
 use gdtf_content_editor::{ArmorDraft, EditorQaAssetsRoot, WeaponDraft};
-use gdtf_qa_protocol::{command::CommandOutcome, message::QaResponse};
 use tempfile::TempDir;
 
 use crate::{
-    client::{Client, EDITOR_LOAD, EDITOR_NEW, EDITOR_SAVE, run_editor},
+    client::{EDITOR_LOAD, EDITOR_NEW, EDITOR_SAVE},
     harness::editing_app_and_client,
+    outcome::ran_body,
     rows::{
         LoadOutcomeRow, LoadReplyRow, NewOutcomeRow, NewReplyRow, SaveOutcomeRow, SaveReplyRow,
-        ran_body,
     },
+    socket::{Client, run_editor},
     support::TestError,
 };
 
@@ -118,12 +118,4 @@ pub(crate) fn written_path(outcome: SaveOutcomeRow) -> Result<String, TestError>
         SaveOutcomeRow::Wrote { path } => Ok(path),
         other => Err(format!("expected a written file, got {other:?}").into()),
     }
-}
-
-/// The refusal code a run answered with, or why the reply was not a refusal.
-pub(crate) fn unavailable_code(reply: &QaResponse) -> Result<String, TestError> {
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, .. }) = reply else {
-        return Err(format!("expected an Unavailable outcome, got {reply:?}").into());
-    };
-    Ok(format!("{code:?}"))
 }

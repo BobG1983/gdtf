@@ -1,8 +1,10 @@
 use crate::{
-    client::{EDITOR_NEW, run_editor},
+    client::EDITOR_NEW,
     harness::editing_app_and_client,
     lifecycle::{armor_draft, first_armor_key, load_by_key, new_mode},
-    rows::{LoadOutcomeRow, NewOutcomeRow, NewReplyRow, RefusalRow, ran_body},
+    outcome::ran_body,
+    rows::{LoadOutcomeRow, NewOutcomeRow, NewReplyRow, RefusalRow},
+    socket::run_editor,
     support::TestResult,
 };
 

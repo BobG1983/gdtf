@@ -1,5 +1,6 @@
 //! The editor's typed command layer: the set, its registration, its conformance checks.
 
+mod availability;
 mod conformance;
 mod read;
 mod register;

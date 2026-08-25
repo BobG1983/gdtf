@@ -1,12 +1,14 @@
 use gdtf_content_editor::EditorMode;
 
 use crate::{
-    client::{EDITOR_SET_MODE, run_editor, run_editor_phase},
+    client::{EDITOR_SET_MODE, run_editor_phase},
     harness::editing_app_and_client,
-    lifecycle::unavailable_code,
     load_case::reply_answered_during_load,
-    phase_rows::{ModeRow, decoded_ran},
-    rows::{SetModeReplyRow, ran_body},
+    mirror::ModeRow,
+    outcome::{ran_body, unavailable_code},
+    phase_rows::decoded_ran,
+    rows::SetModeReplyRow,
+    socket::run_editor,
     support::{TestError, TestResult},
 };
 

@@ -6,7 +6,7 @@ use gdtf_qa_protocol::{
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
-use crate::{assertions::assert_hello_ok, client::Client, support::TestError};
+use crate::{hello::assert_hello_ok, socket::Client, support::TestError};
 
 pub(crate) fn editor_app_listening() -> Result<(App, NetQaPort), TestError> {
     let (plugin, port) = NetQaEditorPlugin::listening(NetQaPort::new(0))?;

@@ -1,10 +1,12 @@
 use gdtf_content_editor::{EDITOR_QA_SERVER_NAME, EditorState};
 use gdtf_qa_protocol::{
     command::{CommandAvailability, CommandName, CommandOutcome, CommandTiming, UnavailableCode},
-    message::{ProtocolVersion, QaError, QaResponse},
+    message::{QaError, QaResponse},
 };
 
-use crate::client::{EDITOR_COMMAND_NAMES, EDITOR_EDITING_ONLY, EDITOR_TERRAIN_TAB_ONLY};
+use crate::client::{
+    EDITOR_COMMAND_NAMES, EDITOR_EDITING_ONLY, EDITOR_FORM_TAB_ONLY, EDITOR_TERRAIN_TAB_ONLY,
+};
 
 /// The lifecycle phase a reply says the frame that answered it was in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,19 +25,6 @@ impl AnsweringPhase {
             _ => Self::Load,
         }
     }
-}
-
-/// The handshake facts the editor answers a matching client version with.
-pub(crate) fn assert_hello_ok(reply: &QaResponse) {
-    assert!(
-        matches!(
-            reply,
-            QaResponse::HelloOk(facts)
-                if facts.protocol == ProtocolVersion::CURRENT
-                    && *facts.server == EDITOR_QA_SERVER_NAME
-        ),
-        "expected the editor's HelloOk handshake facts, got {reply:?}",
-    );
 }
 
 pub(crate) fn assert_version_mismatch(reply: &QaResponse) {
@@ -90,18 +79,18 @@ pub(crate) fn assert_editor_catalogue(reply: &QaResponse, phase: AnsweringPhase)
     }
 }
 
-// Writes refuse the Load pass with WrongState; the reads answer throughout. The two tab-scoped
-// writes refuse every tab but Terrain, and the editor opens on Prefab.
+// Which list a name is on decides whether it must be Available in this phase.
 fn assert_availability(name: &str, availability: &CommandAvailability, phase: AnsweringPhase) {
     let editing = phase == AnsweringPhase::Editing;
-    let tab_scoped = EDITOR_TERRAIN_TAB_ONLY.contains(&name);
+    let tab_scoped =
+        EDITOR_TERRAIN_TAB_ONLY.contains(&name) || EDITOR_FORM_TAB_ONLY.contains(&name);
     if !tab_scoped && (editing || !EDITOR_EDITING_ONLY.contains(&name)) {
         assert_eq!(
             *availability,
             CommandAvailability::Available,
-            "`{name}` must be Available in {phase:?} — a read answers at every point in the \
-             lifecycle, and every command that is not tab-scoped answers once the authoring \
-             scene is live",
+            "`{name}` must be Available in {phase:?}. A read that needs nothing from the \
+             authoring scene answers at every point in the lifecycle, and every command that is \
+             not tab-scoped answers once the scene is live",
         );
         return;
     }
