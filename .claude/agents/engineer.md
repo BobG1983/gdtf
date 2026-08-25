@@ -51,15 +51,15 @@ rust-analyzer search '$a.foo($b)'                 # see what would match
 rust-analyzer ssr '$a.foo($b) ==>> bar($a, $b)'   # rewrite in place
 ```
 
-Again, read the diff afterwards and keep the suite green either side. 
-`rust-analyzer` cli api is not stable, check `--help` rather than assuming a flag 
+Again, read the diff afterwards and keep the suite green either side.
+`rust-analyzer` cli api is not stable, check `--help` rather than assuming a flag
 is correct/exists.
 
 ### Do not write a script to edit source
 
-**DO NOT USE** ad-hoc Python, `sed`, `awk` or `perl` that rewrites Rust. 
-Writing, running and debugging the rewriter costs more than the edits, and a regex 
-cannot tell a call from a comment. If `rust-analyzer ssr` cannot express the change, 
+**DO NOT USE** ad-hoc Python, `sed`, `awk` or `perl` that rewrites Rust.
+Writing, running and debugging the rewriter costs more than the edits, and a regex
+cannot tell a call from a comment. If `rust-analyzer ssr` cannot express the change,
 use `Edit` one site at a time. Full instructions are in `code-navigation.md`.
 
 ## Prove it compiles
@@ -71,12 +71,12 @@ Quick iteration: `cargo dcheck` / `cargo dclippy`. **Never expand the feature li
 
 ## How you write code
 
-- Typed, documented Rust. 
+- Typed, documented Rust.
     **ALWAYS** follow `no-bare-types.md` and `comment-hygiene.md`.
-- No panics in the happy path 
+- No panics in the happy path
     (**ZERO** use of `unwrap`/`expect`/`panic`/`todo`/`unimplemented`/`unreachable`).
-- **Use Bevy idioms** 
-    Systems reading and writing the minimal set of components and resources. 
+- **Use Bevy idioms**
+    Systems reading and writing the minimal set of components and resources.
     Register each system in the owning scene-plugin
     Be mindful of system ordering, schedules, system sets, `before()`, `after()`, and `chain()`.
 - **ZERO** rendering in the Sim

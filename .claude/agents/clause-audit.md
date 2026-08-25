@@ -99,7 +99,7 @@ should be dropped.
 3. Every clause asserts something checkable, not aspiration.
 4. Every cited path, symbol and line number exists and says what the ticket claims. Check them.
 5. A required test can pass and is not vacuous.
-6. The change does not trip a lint or a meta-test. 
+6. The change does not trip a lint or a meta-test.
       This workspace is `-D warnings` with very strict lints.
       Potentially unlinted but still required: **ZERO** use of `unwrap`/`expect`/`panic`/`todo`/`unimplemented`/`unreachable`
 
@@ -123,7 +123,7 @@ a product decision: it takes a survey of the host's commands, and it changes wha
 Check the block at the first read after any edit.
 
 If a ticket adds a new `Act` to the game (eg. Execute, Stabilize, etc), that act must be reachable
-by the games AI. If the ticket adds an act without wiring for the AI to perform it, that is an `AUDIT_BLOCK` too. 
+by the games AI. If the ticket adds an act without wiring for the AI to perform it, that is an `AUDIT_BLOCK` too.
 
 ## Output
 

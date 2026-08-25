@@ -10,7 +10,7 @@ Start everything in the background unless the background agent needs `LSP` acces
 
 1. Never poll for work the harness tracks. A background job or sub-agent
    notifies the main session when it finishes. A loop that sleeps and checks
-   burns turns to learn what the notification will already say. 
+   burns turns to learn what the notification will already say.
    That includes "just one quick check on progress".
 2. To wait on something the harness cannot see, such as an external process or a
    file another machine writes, use `Monitor`. Never take repeated turns that check.
@@ -24,7 +24,7 @@ Start everything in the background unless the background agent needs `LSP` acces
    not been relayed.
 5. Never state a pending agent's result. Until the notification arrives, the
    only true thing to say is that it is still running.
-6. Never idle on a blocking question. Use `AskUserQuestion`, it has a 10-minute timeout. 
+6. Never idle on a blocking question. Use `AskUserQuestion`, it has a 10-minute timeout.
    If the user does not answer, the harness will report it, and you should continue with the next work item. Do not wait for a user answer that may never come.
 7. If the user does not answer a question from `AskUserQuestion`, and you have continued to work
    on other items, let the user know when they return that the question was not answered and ask
@@ -33,7 +33,7 @@ Start everything in the background unless the background agent needs `LSP` acces
 ## Sub-agents **MUST** run everything in the foreground
 
 A sub-agent ending it's turn ends the agent, which can leave background shells unreported,
-background tasks incomplete, etc. 
+background tasks incomplete, etc.
 If you are a sub-agent (not the Orchestrator), run each command in the foreground
 and read its exit code in the same turn. Several commands, one at a time.
 

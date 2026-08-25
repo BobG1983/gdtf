@@ -14,7 +14,7 @@ kit's number-one failure mode. One agent "right-sized" a hard resolution to some
    you believe is an improvement. A silent deviation is a defect: file it with `/file-bug`.
 3. Linear "Done" is NOT evidence the work exists or matches its spec. Audit the code against
    the ticket text before building on it.
-4. `docs/` is the contract ALONGSIDE the ticket. The current design canon is `docs/`. 
+4. `docs/` is the contract ALONGSIDE the ticket. The current design canon is `docs/`.
    Tickets will change the design and may disagree with `docs/`. The ticket is the source of truth for the current change, `docs/` will be updated accordingly.
 5. Ambiguous spec? Ask the user, or route the question through the `design-gate` agent. Never
    resolve ambiguity by choosing the cheapest interpretation. For example, a ticket says "the

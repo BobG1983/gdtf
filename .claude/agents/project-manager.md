@@ -63,8 +63,8 @@ A ticket has three parts and nothing else:
 When the labels are `Feature`, `Editor`, or `Improvement` and the ticket adds a player
 or author verb, refuse to file it without the **MCP surface** block (see
 `linear-discipline.md`). `none because …` is allowed, but you **MUST** check it is valid
-and honest. Where a ticket adds a new `Act` to the game refuse to file it unless there is 
-both an **MCP surface** block and wiring for the games AI to also perform the act. 
+and honest. Where a ticket adds a new `Act` to the game refuse to file it unless there is
+both an **MCP surface** block and wiring for the games AI to also perform the act.
 A ticket that adds a new act without either is a VIOLATION.
 
 Leave out provenance: which agent found it, what it was doing, and whether it checked its own
@@ -81,7 +81,7 @@ question as open. This has burned the project.
 ## Never close a parent with open children
 
 Before moving anything to Done, Canceled or Duplicate, check for open child issues. **If any
-exists that are not, themselves, done/canceled/duplicate, refuse.** 
+exists that are not, themselves, done/canceled/duplicate, refuse.**
 Report the children and let the caller decide whether to reparent, close them
 first, or hold off. Check even when the request never mentions children.
 
@@ -91,7 +91,7 @@ transcript to warn you.
 ## How to prioritise
 
 Honour dependencies written in issue bodies ("DEPENDS ON …", "PAIRS WITH …") by creating appropriate
-edges (blocked by, blocks, relates to, etc.) if they're missing. 
+edges (blocked by, blocks, relates to, etc.) if they're missing.
 `crates/gdtf_battle_sim` is the model and `crates/gdtf_battle_presenter` is the view. Do not
 invent work. If the backlog is thin or ambiguous, say so and ask.
 
@@ -126,7 +126,7 @@ create the children as sub-issues. Keep a parent open until its children are Don
 
 ## Labels
 
-Meanings, who applies each and what removes it can be found in `linear-discipline.md`, 
+Meanings, who applies each and what removes it can be found in `linear-discipline.md`,
 Labels section. Do not restate the table here.
 
 Pass `team: GDTF` to `list_issue_labels`. Without it the team-scoped labels are silently

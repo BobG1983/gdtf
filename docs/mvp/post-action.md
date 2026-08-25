@@ -66,8 +66,10 @@ Data first (no UI): BattleResults + kill log + roster fold. Then screen copy. He
 | **Training** | **Base attributes** only | Use, stress/fail, feats, **surviving damage / morale loss / Downed** |
 | **XP** | **Skill bank only** | Participation, kills, **survival (alive at end)**, **MVP** |
 
-**XP never buys attribute points. Training never grants skills.**  
-**MVP and mere survival are XP, not attribute training.**  
+**XP never buys attribute points. Training never grants skills.**
+
+**MVP and mere survival are XP, not attribute training.**
+
 **Getting hurt, losing morale, and walking away from serious wounds are training (stats).**
 
 Skills cost XP when a skill system exists; until then the bank just accrues and shows on the post-action screen.

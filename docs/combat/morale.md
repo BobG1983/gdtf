@@ -158,10 +158,10 @@ Data-driven, same shape as injuries:
 
 ### Roll procedure
 
-1. Shock applies Morale (and maybe Bottle) damage.  
-2. If Bottled → stop.  
-3. If trigger says “nerve roll” and ganger is active: sample weighting for (severity, trigger).  
-4. Apply one effect per §5 stacking rules.  
+1. Shock applies Morale (and maybe Bottle) damage.
+2. If Bottled → stop.
+3. If trigger says “nerve roll” and ganger is active: sample weighting for (severity, trigger).
+4. Apply one effect per §5 stacking rules.
 5. Emit messages for act log + FCT.
 
 Cool can shift severity band down one step (tunable), not delete the roll.
@@ -184,24 +184,24 @@ Cool can shift severity band down one step (tunable), not delete the roll.
 
 ## 7. What we are not doing (v0)
 
-- Copying UFO panic % tables or Xenonauts bravery formulas wholesale  
-- Psi / mind control  
-- Gang rout as automatic loss condition  
-- Lasting nerve injuries across battles (later)  
-- Replacing suppression with panic  
+- Copying UFO panic % tables or Xenonauts bravery formulas wholesale
+- Psi / mind control
+- Gang rout as automatic loss condition
+- Lasting nerve injuries across battles (later)
+- Replacing suppression with panic
 
 ---
 
 ## 8. Implementation order
 
-1. Morale/Bottle current+max, damage API, re-derive clamp  
-2. `LifeState::Bottled` (or marker) + act gates  
-3. Suppression → Morale tick  
-4. Nerve registry + hesitant / shaken_aim / hunkered / bottled  
-5. Ally casualty shocks in LOS  
-6. Reckless, jumpy, dropped_focus  
-7. Recover ticks + UI pips + FCT/act log  
-8. Authoring guide `docs/authoring/nerve-authoring.md`  
+1. Morale/Bottle current+max, damage API, re-derive clamp
+2. `LifeState::Bottled` (or marker) + act gates
+3. Suppression → Morale tick
+4. Nerve registry + hesitant / shaken_aim / hunkered / bottled
+5. Ally casualty shocks in LOS
+6. Reckless, jumpy, dropped_focus
+7. Recover ticks + UI pips + FCT/act log
+8. Authoring guide `docs/authoring/nerve-authoring.md`
 
 All core logic in `gdtf_battle_sim`, headless tests, seeded RNG.
 
@@ -213,11 +213,11 @@ File single-responsibility build tickets from this list under the battlescape an
 
 **Accepted 2026-08-04** as written, including §5 defaults:
 
-1. Suppression stays separate; may deal Morale damage  
-2. Morale + Bottle as psych HP / Wounds  
-3. One nerve effect at a time; soft vs hard duration as table  
-4. v0 effect list as table  
-5. Reckless without friendly fire  
-6. No gang-wide bottle in v0  
-7. Mid-battle Morale recover from kill / stabilize / quiet cover  
-8. Player Flee button remains voluntary mission abort  
+1. Suppression stays separate; may deal Morale damage
+2. Morale + Bottle as psych HP / Wounds
+3. One nerve effect at a time; soft vs hard duration as table
+4. v0 effect list as table
+5. Reckless without friendly fire
+6. No gang-wide bottle in v0
+7. Mid-battle Morale recover from kill / stabilize / quiet cover
+8. Player Flee button remains voluntary mission abort
