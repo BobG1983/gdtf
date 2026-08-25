@@ -1,6 +1,6 @@
 use bevy::app::App;
 use gdtf_battle_sim::{level::UuidThemeRegistry, terrain::def::TerrainDefRegistry};
-use gdtf_content_editor::{EditorMode, MapEditorSession, ThemeDraft};
+use gdtf_content_editor::{EditorMode, MapEditorSession};
 
 use crate::support::TestError;
 
@@ -10,14 +10,6 @@ pub(crate) fn session(app: &App) -> Result<MapEditorSession, TestError> {
         return Err("the session is a resource the editor creates on entering Editing".into());
     };
     Ok(session.clone())
-}
-
-/// The theme draft the world holds right now.
-pub(crate) fn theme_draft(app: &App) -> Result<ThemeDraft, TestError> {
-    let Some(draft) = app.world().get_resource::<ThemeDraft>() else {
-        return Err("the theme draft is a resource the editor creates on entering Editing".into());
-    };
-    Ok(draft.clone())
 }
 
 /// The mode tab the world has open right now.

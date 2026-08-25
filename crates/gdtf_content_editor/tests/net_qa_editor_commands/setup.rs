@@ -2,6 +2,7 @@ use bevy::app::App;
 use gdtf_content_editor::EditorMode;
 
 use crate::{
+    drafts::theme_draft,
     harness::editing_app_and_client,
     mirror::ModeRow,
     names::{EDITOR_LOAD, EDITOR_SET_MODE},
@@ -9,7 +10,7 @@ use crate::{
     rows::SetModeReplyRow,
     socket::{Client, run_editor},
     support::TestError,
-    world::{editor_mode, session, theme_draft},
+    world::{editor_mode, session},
 };
 
 /// An editing app on the Theme tab with the session theme's def loaded into the draft.

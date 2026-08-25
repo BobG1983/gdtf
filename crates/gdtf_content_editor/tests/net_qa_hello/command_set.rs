@@ -37,6 +37,38 @@ fn the_editor_offers_the_lifecycle_commands() {
 }
 
 #[test]
+fn the_editor_offers_the_reads_the_lifecycle_the_form_writes_the_theme_helpers_and_the_prefab_canvas()
+ {
+    assert_eq!(
+        editor_command_names(),
+        vec![
+            CommandName::from_static("editor.phase"),
+            CommandName::from_static("editor.last_save"),
+            CommandName::from_static("editor.validation"),
+            CommandName::from_static("editor.families"),
+            CommandName::from_static("editor.session"),
+            CommandName::from_static("editor.draft"),
+            CommandName::from_static("editor.set_mode"),
+            CommandName::from_static("editor.new"),
+            CommandName::from_static("editor.load"),
+            CommandName::from_static("editor.save"),
+            CommandName::from_static("editor.set_field"),
+            CommandName::from_static("editor.list_op"),
+            CommandName::from_static("editor.select_theme"),
+            CommandName::from_static("editor.toggle_terrain"),
+            CommandName::from_static("editor.set_default_floor"),
+            CommandName::from_static("editor.map"),
+            CommandName::from_static("editor.set_grid_size"),
+            CommandName::from_static("editor.select_tile"),
+            CommandName::from_static("editor.set_level"),
+            CommandName::from_static("editor.paint"),
+        ],
+        "the published list is part of the wire contract: dropping a name, adding one, or \
+         publishing them in another order all change what a client reads back",
+    );
+}
+
+#[test]
 fn exactly_one_system_drains_the_net_inbox() -> TestResult {
     let net_qa = crate_root().join("src/net_qa");
     let mut drain_sites: Vec<String> = Vec::new();

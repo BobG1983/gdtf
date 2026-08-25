@@ -61,6 +61,26 @@ pub(in crate::net_qa::commands) fn only_on_the_theme_tab(
     }
 }
 
+/// The phase check first, then the open tab must be Prefab.
+///
+/// Phase first because the tab is absent during Load, and that call carries the phase note.
+pub(in crate::net_qa::commands) fn only_on_the_prefab_tab(
+    facts: EditorFacts,
+    phase_note: RefusalNote,
+    tab_note: RefusalNote,
+) -> CommandAvailability {
+    match only_while_editing(facts, phase_note) {
+        CommandAvailability::Available if matches!(facts.mode(), Some(EditorModeNet::Prefab)) => {
+            CommandAvailability::Available
+        }
+        CommandAvailability::Available => CommandAvailability::Unavailable {
+            code: UnavailableCode::WrongState,
+            note: tab_note,
+        },
+        refused @ CommandAvailability::Unavailable { .. } => refused,
+    }
+}
+
 /// The phase check first, then the open tab must be one of the nine form modes.
 ///
 /// Phase first because the tab is absent during Load, and that call carries the phase note.

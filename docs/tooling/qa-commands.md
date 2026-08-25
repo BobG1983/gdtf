@@ -272,9 +272,15 @@ run(host="editor", command="editor.select_theme", arguments="(key: \"00000000-00
 run(host="editor", command="editor.set_mode", arguments="(mode: Theme)")
 run(host="editor", command="editor.toggle_terrain", arguments="(key: \"00000000-0000-0000-0000-01840a910005\")")
 run(host="editor", command="editor.set_default_floor", arguments="(key: \"00000000-0000-0000-0000-01840a910004\")")
+run(host="editor", command="editor.set_mode", arguments="(mode: Prefab)")
+run(host="editor", command="editor.set_grid_size", arguments="(width: 5, height: 5, levels: 3)")
+run(host="editor", command="editor.select_tile", arguments="(key: \"00000000-0000-0000-0000-01840a910004\")")
+run(host="editor", command="editor.set_level", arguments="(level: 1)")
+run(host="editor", command="editor.paint", arguments="(x: 2, y: 3)")
+run(host="editor", command="editor.map", arguments="(level: 1)")
 ```
 
-The editor offers fifteen commands today. They are listed in
+The editor offers twenty commands today. They are listed in
 [The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
@@ -712,13 +718,14 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## The editor host
 
-The editor publishes fifteen commands, all `Immediate`, all in `EDITOR_COMMANDS`
+The editor publishes twenty commands, all `Immediate`, all in `EDITOR_COMMANDS`
 ([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
 
 Three reads answer at every point in the lifecycle: `editor.phase`, `editor.last_save` and
-`editor.validation`. Three more reads need the authoring scene: `editor.families`,
-`editor.session` and `editor.draft`, and `editor.draft` also needs a form tab open. All nine
-writes need the authoring scene too. During the editor's Load pass every scene-scoped
+`editor.validation`. Four more reads need the authoring scene: `editor.families`,
+`editor.session`, `editor.draft` and `editor.map`. `editor.draft` also needs a form tab
+open, and `editor.map` needs the Prefab tab. All thirteen writes need the authoring scene
+too. During the editor's Load pass every scene-scoped
 command answers `Unavailable { code: WrongState }`. `EditorMode`, `MapEditorSession` and
 every draft are state-scoped to `EditorState::Editing` by the `init_state_scoped_resource`
 calls in `MapEditorPlugin::build`
@@ -746,13 +753,22 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.select_theme` | Editing | Selects a theme in the authoring session, taking that theme's own default floor with it, the way the top bar's picker does. [`commands/write/select_theme.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_theme.rs) |
 | `editor.toggle_terrain` | Editing + the Theme tab | Adds or removes one terrain in the Theme draft's list, the way ticking its row in the terrain library does. [`commands/write/toggle_terrain.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/toggle_terrain.rs) |
 | `editor.set_default_floor` | Editing + the Theme tab | Sets the Theme draft's default floor from the slabs the draft already holds. [`commands/write/set_default_floor.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_default_floor.rs) |
+| `editor.map` | Editing + the Prefab tab | Every painted cell on one storey with its tile and facing, plus the grid extent. Nothing is filtered out, so a slot a shrink left outside the grid is still listed. [`commands/read/painted_map.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/painted_map.rs) |
+| `editor.set_grid_size` | Editing + the Prefab tab | Sets the grid's width, height and storey count through the same commit the size fields call, clamping each span and re-clamping the edit storey. [`commands/write/set_grid_size.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_grid_size.rs) |
+| `editor.select_tile` | Editing + the Prefab tab | Selects the tile the canvas paints, from the same rows the palette draws. [`commands/write/select_tile.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_tile.rs) |
+| `editor.set_level` | Editing + the Prefab tab | Jumps the storey the canvas paints on, the way clicking a row of the level rail does, clamping to the grid's extent. [`commands/write/set_level.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_level.rs) |
+| `editor.paint` | Editing + the Prefab tab | Paints the selected tile in one cell of the storey being edited, through the same placement and connector pairing a canvas click runs. [`commands/write/paint/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/paint) |
 
 `editor.set_field` and `editor.list_op` need more than the authoring scene. Every field and
 list they offer today belongs to the Terrain draft, so they also need the Terrain tab open
 and answer `Unavailable { code: WrongState }` on any other tab. `editor.toggle_terrain` and
 `editor.set_default_floor` are scoped the same way to the Theme tab, because the terrain
 library and the default-floor picker are both drawn only in the Theme arm of the central
-and right panels, and both answer `Unavailable { code: WrongState }` on any other tab.
+and right panels, and both answer `Unavailable { code: WrongState }` on any other tab. The
+five prefab-canvas commands are scoped to the Prefab tab for the same reason: the palette,
+the size fields, the level rail and the viewport are drawn only in the Prefab arm, and the
+painted map is that canvas's own model. The Prefab tab carries `EditorMode`'s own default,
+so a fresh process reaches them with no `editor.set_mode` first.
 `editor.select_theme` needs no particular tab, because the top bar draws its picker on every
 one. The phase is checked first
 ([`commands/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/availability.rs)),
@@ -787,6 +803,18 @@ form's picker would never offer.
 `editor.toggle_terrain`'s reply says which way the tick went, `Added` or `Removed`, and
 carries the draft's default floor afterwards, because removing the terrain that was the
 default floor clears it.
+
+The prefab canvas commands answer their own misses the same way. `editor.select_tile` and
+`editor.paint` carry a typed refusal in the `Ran` body: which of the palette's two
+conditions a key failed, and whether a paint had no tile selected. `editor.select_tile`
+still answers `Unavailable { code: MissingModel }` for a key that is not UUID text, as the
+theme helpers do. An illegal paint is a `Ran` reply whose verdict is
+`Illegal(OutOfBounds)` or `Illegal(SlabSealsLadder)`, because the verdict is the reply's
+content, not a fact about the host. That verdict is read before the write, so a placement
+that clears a slab above names the slot it is about to empty. The reply also carries what
+the connector pairing pass did, and `PairPlaced` names the down connector and the slot one
+storey up it landed in, so the next `editor.map` read holds no cell the caller cannot
+account for.
 
 `editor.save` writes under `EditorQaAssetsRoot`
 ([`net_qa/assets_root.rs`](../../crates/gdtf_content_editor/src/net_qa/assets_root.rs)),

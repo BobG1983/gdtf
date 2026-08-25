@@ -194,7 +194,9 @@ does not know. That list is `EDITOR_COMMANDS` in
 `editor.families`, `editor.session`, `editor.draft`,
 `editor.set_mode`, `editor.new`, `editor.load`, `editor.save`,
 `editor.set_field`, `editor.list_op`, `editor.select_theme`,
-`editor.toggle_terrain` and `editor.set_default_floor`.
+`editor.toggle_terrain`, `editor.set_default_floor`, `editor.map`,
+`editor.set_grid_size`, `editor.select_tile`, `editor.set_level` and
+`editor.paint`.
 Capture is not wired here yet: `crates/gdtf_content_editor/Cargo.toml` does not
 depend on `gdtf_screenshot`, and the QA plugin registers no capture systems. The
 shared pipeline in `crates/gdtf_screenshot/src/capture/` is the path the editor
@@ -346,24 +348,28 @@ Notes an agent relies on:
   level keys and the action bar's level buttons take. `battle.set_fire_mode`
   picks a fire mode on the weapon the selected shooter fires, the same weapon the
   action bar's mode panel sets it on, through the same lookup.
-  The EDITOR host publishes fifteen commands. `editor.phase` reports the phase
+  The EDITOR host publishes twenty commands. `editor.phase` reports the phase
   the editor is in, the mode tab open right now — absent while it is still
   loading — and every mode tab in tab-bar order, `editor.last_save` reports what
   the newest save per mode did, and `editor.validation` reports the content
   integrity report. All three answer at every point in the lifecycle.
-  `editor.families`, `editor.session` and `editor.draft` read the authoring
-  scene: the registry keys an author can pick, the session and the view, and the
-  open form's draft as the RON its save would write. `editor.set_mode`,
-  `editor.new`, `editor.load`, `editor.save`, `editor.set_field`,
-  `editor.list_op`, `editor.select_theme`, `editor.toggle_terrain` and
-  `editor.set_default_floor` drive the authoring forms. All twelve need the
-  authoring scene, so during the editor's Load pass they answer
+  `editor.families`, `editor.session`, `editor.draft` and `editor.map` read the
+  authoring scene: the registry keys an author can pick, the session and the
+  view, the open form's draft as the RON its save would write, and every painted
+  cell on one storey of the prefab canvas. `editor.set_mode`, `editor.new`,
+  `editor.load`, `editor.save`, `editor.set_field`, `editor.list_op`,
+  `editor.select_theme`, `editor.toggle_terrain` and `editor.set_default_floor`
+  drive the authoring forms, and `editor.set_grid_size`, `editor.select_tile`,
+  `editor.set_level` and `editor.paint` drive the prefab canvas. All seventeen
+  need the authoring scene, so during the editor's Load pass they answer
   `Unavailable { code: WrongState }`. `editor.draft` needs a form tab open on
   top of that, because the default Prefab tab carries no draft,
   `editor.set_field` and `editor.list_op` need the Terrain tab, because every
-  field and list they offer today belongs to the Terrain draft, and
+  field and list they offer today belongs to the Terrain draft,
   `editor.toggle_terrain` and `editor.set_default_floor` need the Theme tab,
-  because the terrain library and the default-floor picker are drawn only there.
+  because the terrain library and the default-floor picker are drawn only there,
+  and the five canvas commands need the Prefab tab, because the palette, the
+  size fields, the level rail and the viewport are drawn only there.
   A name it does not know answers `Unknown`, listing what it does offer. The
   editor-host section of [qa-commands.md](qa-commands.md) has the whole list.
 - **`logs` is the first thing to try when a launch came up but the app is not

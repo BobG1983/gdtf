@@ -57,8 +57,23 @@ pub(crate) const EDITOR_TOGGLE_TERRAIN: &str = "editor.toggle_terrain";
 /// The theme draft's default-floor write the editor host publishes.
 pub(crate) const EDITOR_SET_DEFAULT_FLOOR: &str = "editor.set_default_floor";
 
+/// The painted-map read the editor host publishes.
+pub(crate) const EDITOR_MAP: &str = "editor.map";
+
+/// The prefab grid-extent write the editor host publishes.
+pub(crate) const EDITOR_SET_GRID_SIZE: &str = "editor.set_grid_size";
+
+/// The paint-tile write the editor host publishes.
+pub(crate) const EDITOR_SELECT_TILE: &str = "editor.select_tile";
+
+/// The edit-storey write the editor host publishes.
+pub(crate) const EDITOR_SET_LEVEL: &str = "editor.set_level";
+
+/// The canvas write the editor host publishes.
+pub(crate) const EDITOR_PAINT: &str = "editor.paint";
+
 /// Every command name the editor host publishes today.
-pub(crate) const EDITOR_COMMAND_NAMES: [&str; 15] = [
+pub(crate) const EDITOR_COMMAND_NAMES: [&str; 20] = [
     EDITOR_PHASE,
     EDITOR_LAST_SAVE,
     EDITOR_VALIDATION,
@@ -74,10 +89,15 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 15] = [
     EDITOR_SELECT_THEME,
     EDITOR_TOGGLE_TERRAIN,
     EDITOR_SET_DEFAULT_FLOOR,
+    EDITOR_MAP,
+    EDITOR_SET_GRID_SIZE,
+    EDITOR_SELECT_TILE,
+    EDITOR_SET_LEVEL,
+    EDITOR_PAINT,
 ];
 
 /// Command names that need the authoring scene, so they refuse the editor's Load pass.
-pub(crate) const EDITOR_EDITING_ONLY: [&str; 9] = [
+pub(crate) const EDITOR_EDITING_ONLY: [&str; 14] = [
     EDITOR_FAMILIES,
     EDITOR_SESSION,
     EDITOR_SET_MODE,
@@ -87,6 +107,11 @@ pub(crate) const EDITOR_EDITING_ONLY: [&str; 9] = [
     EDITOR_SET_FIELD,
     EDITOR_LIST_OP,
     EDITOR_SELECT_THEME,
+    EDITOR_MAP,
+    EDITOR_SET_GRID_SIZE,
+    EDITOR_SELECT_TILE,
+    EDITOR_SET_LEVEL,
+    EDITOR_PAINT,
 ];
 
 /// Command names that also need the Terrain tab, so they refuse every other tab.

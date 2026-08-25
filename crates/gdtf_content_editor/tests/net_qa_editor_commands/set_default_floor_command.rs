@@ -1,4 +1,5 @@
 use crate::{
+    drafts::theme_draft,
     keys::{A_KEY_THAT_IS_NOT_UUID_TEXT, a_non_slab_in_the_draft, a_slab_in_the_draft, key_args},
     names::EDITOR_SET_DEFAULT_FLOOR,
     outcome::{ran_body, unavailable_code},
@@ -6,7 +7,6 @@ use crate::{
     setup::theme_tab_app_and_client,
     socket::run_editor,
     support::TestResult,
-    world::theme_draft,
 };
 
 #[test]

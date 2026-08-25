@@ -8,12 +8,13 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
+    drafts::theme_draft,
     names::EDITOR_FAMILIES,
     outcome::ran_body,
     rows::FamiliesReplyRow,
     socket::{Client, run_editor},
     support::TestError,
-    world::{session, terrain_registry, theme_draft, theme_registry},
+    world::{session, terrain_registry, theme_registry},
 };
 
 /// Text no UUID parser accepts, so a helper refuses it before it reaches any registry.
