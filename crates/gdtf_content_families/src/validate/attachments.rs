@@ -24,7 +24,7 @@ pub fn check_weapon_attachment_refs(
         .iter()
         .map(|(name, spec)| ("melee weapon", name, &spec.attachments));
     for (kind, name, keys) in ranged.chain(melee) {
-        for key in keys {
+        for key in keys.iter() {
             if attachments.spec(key).is_none() {
                 report.record(ContentFinding::DanglingRef {
                     referrer: FindingReferrer::new(format!("{kind} `{}` attachments", **name)),

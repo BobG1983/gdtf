@@ -8,8 +8,8 @@ use gdtf_battle_sim::{
     battle::{BattleSimPlugin, SetupBattleRequested},
     effects::attachments::AttachmentEffect,
     equipment::attachments::{
-        AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec, SlotCapacity,
-        WeaponSlots,
+        AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec, FittedAttachments,
+        SlotCapacity, WeaponSlots,
     },
     ganger::{Cool, Direction, Facing, GangRegistry, Grit, Speed, Strength, Toughness},
     magazine::{Magazine, ReloadTu},
@@ -52,7 +52,7 @@ pub(crate) fn ranged_spec(attachment_keys: Vec<AttachmentName>) -> WeaponSpec {
         magazine: Magazine::loaded(MagazineSize::new(20), ReloadTu::new(20)),
         fire_mode: FireMode::new(vec![single_mode(0.2, 1)]),
         slots: WeaponSlots::new(vec![(AttachmentSlot::Rail, SlotCapacity::new(1))]),
-        attachments: attachment_keys,
+        attachments: FittedAttachments::new(attachment_keys),
         ..test_weapon_spec()
     }
 }

@@ -1,7 +1,9 @@
 use std::path::Path;
 
 use gdtf_battle_sim::{
-    equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity, WeaponSlots},
+    equipment::attachments::{
+        AttachmentName, AttachmentSlot, FittedAttachments, SlotCapacity, WeaponSlots,
+    },
     weapon::{
         DamageType, FightMode, FightModeKind, FightModeSpec, Handedness, Reach, Strikes, TuCost,
         WeaponName,
@@ -39,7 +41,8 @@ fn load_is_verbatim_and_projection_trims_the_name() {
     let mut authored = MeleeWeaponDraft::new_melee_weapon();
     authored.spec_mut().handedness = Handedness::TwoHanded;
     authored.spec_mut().reach = Reach::new(2);
-    authored.spec_mut().attachments = vec![AttachmentName::new("butchers_weight".to_owned())];
+    authored.spec_mut().attachments =
+        FittedAttachments::new(vec![AttachmentName::new("butchers_weight".to_owned())]);
     let authored = authored.spec().clone();
     let key = WeaponName::new("pit_cleaver".to_owned());
 
@@ -116,5 +119,55 @@ fn save_path_derives_from_the_family_consts() {
         melee_weapon_file_name(&WeaponName::new("!!!".to_owned())),
         "unnamed_melee_weapon.melee_weapon.ron",
         "a name that sanitizes to nothing falls back to the documented stem",
+    );
+}
+
+#[test]
+fn the_last_fight_mode_cannot_be_removed() {
+    let mut draft = MeleeWeaponDraft::new_melee_weapon();
+    assert_eq!(draft.fight_modes().len(), 1, "a fresh draft holds one mode");
+
+    assert!(
+        !draft.remove_fight_mode(0),
+        "the only fight mode reports nothing removed",
+    );
+    assert_eq!(
+        draft.fight_modes().len(),
+        1,
+        "the refused removal leaves the list untouched",
+    );
+
+    draft.add_fight_mode();
+    assert!(
+        draft.remove_fight_mode(0),
+        "with two modes authored, one may go",
+    );
+    assert_eq!(
+        draft.fight_modes().len(),
+        1,
+        "the removal stops at the structural minimum",
+    );
+}
+
+#[test]
+fn set_fight_mode_writes_only_in_bounds() {
+    let mut draft = MeleeWeaponDraft::new_melee_weapon();
+    let thrust = FightModeSpec::new(FightModeKind::Thrust, TuCost::new(0), Strikes::new(1));
+
+    assert!(
+        !draft.set_fight_mode(1, thrust),
+        "index 1 is past the end of a one-mode list",
+    );
+    assert_eq!(
+        draft.fight_modes()[0].kind,
+        FightModeKind::Swing,
+        "the refused write left the seeded mode alone",
+    );
+
+    assert!(draft.set_fight_mode(0, thrust), "index 0 is in bounds");
+    assert_eq!(
+        draft.fight_modes()[0].kind,
+        FightModeKind::Thrust,
+        "the in-bounds write folded back through the loader ctor",
     );
 }

@@ -85,7 +85,7 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
 | `handedness` | `Handedness` | enum variant | `OneHanded` or `TwoHanded` |
 | `trajectory` | `TrajectoryStyle` | enum variant, optional | `Straight` (default) or `Arc` (see 1i) |
 | `slots` | `WeaponSlots` | pair list, optional | Offered attachment slots + capacities; omitted = none fit (see 1j) |
-| `attachments` | `Vec<AttachmentName>` | string list, optional | Fitted attachment ITEM keys; omitted = `[]` (see 1j) |
+| `attachments` | `FittedAttachments` | string list, optional | Fitted attachment ITEM keys; omitted = `[]` (see 1j) |
 | `dot` | `Option<DotProfile>` | `Some((…))`, optional | Damage-over-time profile; omitted = `None` (see 1k) |
 | `on_death` | `Option<OnDeathEffect>` | `Some(…)`, optional | Wielder-death effect; omitted = `None` (see 1l) |
 
@@ -383,7 +383,7 @@ there is deliberately no melee mirror vocabulary. The melee-only fields:
 |-------|-----------|----------|-------|
 | `reach` | `Reach` | bare integer, optional | Cells away a strike can land. `#[serde(default)]` → `1` |
 | `fight_mode` | `FightMode` | list of `FightModeSpec` | The offered fight modes: `kind` (`Swing` \| `Thrust`), `tu_cost` (flat TU), `strikes` (count) |
-| `slots` / `attachments` | `WeaponSlots` / `Vec<AttachmentName>` | as ranged §1j, optional | Melee weapons get FULL attachment support — melee slots are `Counterweight` / `Pommel` |
+| `slots` / `attachments` | `WeaponSlots` / `FittedAttachments` | as ranged §1j, optional | Melee weapons get FULL attachment support — melee slots are `Counterweight` / `Pommel` |
 
 Unlike a ranged fire mode (a TU *percentage*), a fight mode charges a FLAT
 `tu_cost`. The mode label (`"swing"` / `"thrust"`) derives from

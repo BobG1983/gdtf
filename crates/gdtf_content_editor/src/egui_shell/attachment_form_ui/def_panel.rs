@@ -10,10 +10,13 @@ use gdtf_battle_sim::{
     },
 };
 
-use crate::{attachment_form::AttachmentDraft, egui_shell::fire_mode_edit};
+use crate::{
+    attachment_form::{AttachmentDraft, DEFAULT_EFFECT},
+    egui_shell::fire_mode_edit,
+};
 
 const EFFECT_TEMPLATES: [AttachmentEffect; 13] = [
-    AttachmentEffect::Aim(AimDelta::new(0.0)),
+    DEFAULT_EFFECT,
     AttachmentEffect::Stability(WeaponBraceBonus::none()),
     AttachmentEffect::GainFireMode(FireModeSpec::new(
         ModeKind::Single,
@@ -83,7 +86,7 @@ fn identity_fields(ui: &mut egui::Ui, draft: &mut AttachmentDraft) {
 
 fn effects_list(ui: &mut egui::Ui, draft: &mut AttachmentDraft) {
     ui.label("Effects (empty = cosmetic)");
-    let effects = &mut draft.spec_mut().effects;
+    let mut effects: Vec<AttachmentEffect> = draft.effects().to_vec();
     let mut remove: Option<usize> = None;
     for (index, effect) in effects.iter_mut().enumerate() {
         ui.group(|ui| {
@@ -96,11 +99,14 @@ fn effects_list(ui: &mut egui::Ui, draft: &mut AttachmentDraft) {
             payload_fields(ui, index, effect);
         });
     }
+    for (index, effect) in effects.into_iter().enumerate() {
+        draft.set_effect(index, effect);
+    }
     if let Some(index) = remove {
-        effects.remove(index);
+        draft.remove_effect(index);
     }
     if ui.button("Add effect").clicked() {
-        effects.push(EFFECT_TEMPLATES[0].clone());
+        draft.add_effect();
     }
 }
 

@@ -131,3 +131,27 @@ fn save_file_name_and_path_derive_from_the_one_owner_spellings() {
     let unnameable = ArmorName::new("!!!///".to_owned());
     assert_eq!(armor_file_name(&unnameable), "unnamed_armor.armor.ron");
 }
+
+#[test]
+fn stat_and_integrity_ranges_hold_the_seeded_pieces() {
+    let draft = ArmorDraft::new_armor();
+
+    for piece in draft.spec().pieces() {
+        assert!(
+            ArmorDraft::STAT_RANGE.contains(&*piece.floor),
+            "the seeded floor sits inside the range the form offers",
+        );
+        assert!(
+            ArmorDraft::STAT_RANGE.contains(&*piece.protection),
+            "the seeded protection sits inside the range the form offers",
+        );
+        assert!(
+            ArmorDraft::INTEGRITY_RANGE.contains(&*piece.integrity),
+            "the seeded integrity sits inside the range the form offers",
+        );
+        assert!(
+            ArmorDraft::STAT_RANGE.contains(&*piece.hardness),
+            "the seeded hardness sits inside the range the form offers",
+        );
+    }
+}

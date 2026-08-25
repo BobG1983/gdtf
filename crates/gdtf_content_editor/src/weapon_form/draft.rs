@@ -4,7 +4,7 @@ use std::num::NonZeroU8;
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    equipment::attachments::WeaponSlots,
+    equipment::attachments::{FittedAttachments, WeaponSlots},
     magazine::Magazine,
     weapon::{
         Accuracy, AmmoType, BaseSpread, DamageType, DotTurns, FatalBias, FireMode, FireModeSpec,
@@ -31,7 +31,7 @@ fn seed_spec() -> WeaponSpec {
         handedness:  Handedness::OneHanded,
         trajectory:  TrajectoryStyle::Straight,
         slots:       WeaponSlots::default(),
-        attachments: Vec::new(),
+        attachments: FittedAttachments::default(),
         dot:         None,
         on_death:    None,
     }
@@ -117,6 +117,49 @@ impl WeaponDraft {
     /// Mutable access to the weapon spec.
     pub const fn spec_mut(&mut self) -> &mut WeaponSpec {
         &mut self.spec
+    }
+
+    /// Authored fire modes.
+    #[must_use]
+    pub fn fire_modes(&self) -> &[FireModeSpec] {
+        &self.spec.fire_mode
+    }
+
+    /// Whether a fire mode may be removed. A weapon keeps at least one.
+    #[must_use]
+    pub fn can_remove_fire_mode(&self) -> bool {
+        self.spec.fire_mode.len() > 1
+    }
+
+    /// Append the structural single-shot mode.
+    pub fn add_fire_mode(&mut self) {
+        let mut modes = self.spec.fire_mode.to_vec();
+        modes.push(structural_single_mode());
+        self.spec.fire_mode = FireMode::new(modes);
+    }
+
+    /// Remove a fire mode by index. Returns whether one was removed.
+    pub fn remove_fire_mode(&mut self, index: usize) -> bool {
+        if !self.can_remove_fire_mode() || index >= self.spec.fire_mode.len() {
+            return false;
+        }
+        let mut modes = self.spec.fire_mode.to_vec();
+        modes.remove(index);
+        self.spec.fire_mode = FireMode::new(modes);
+        true
+    }
+
+    /// Rewrite a fire mode by index. Returns whether one was written.
+    pub fn set_fire_mode(&mut self, index: usize, mode: FireModeSpec) -> bool {
+        let mut modes = self.spec.fire_mode.to_vec();
+        match modes.get_mut(index) {
+            Some(slot) => {
+                *slot = mode;
+                self.spec.fire_mode = FireMode::new(modes);
+                true
+            }
+            None => false,
+        }
     }
 }
 

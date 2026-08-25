@@ -3,7 +3,6 @@ mod draft;
 mod save;
 
 pub use draft::MeleeWeaponDraft;
-pub(crate) use draft::structural_swing_mode;
 pub use save::{draft_to_melee_weapon_spec, melee_weapon_file_name, melee_weapon_save_path_in};
 #[cfg(debug_assertions)]
 pub use save::{write_melee_weapon, write_melee_weapon_in};

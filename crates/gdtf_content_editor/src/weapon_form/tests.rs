@@ -1,7 +1,9 @@
 use std::path::Path;
 
 use gdtf_battle_sim::{
-    equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity, WeaponSlots},
+    equipment::attachments::{
+        AttachmentName, AttachmentSlot, FittedAttachments, SlotCapacity, WeaponSlots,
+    },
     weapon::{
         DamageType, DotDamage, DotProfile, FireMode, FireModeSpec, Handedness, ModeConeMult,
         ModeKind, ModeShots, ModeTuPercent, TrajectoryStyle, WeaponName,
@@ -37,7 +39,8 @@ fn new_weapon_seeds_the_structural_minimum() {
 fn load_is_verbatim_and_projection_trims_the_name() {
     let mut authored = WeaponDraft::new_weapon();
     authored.spec_mut().handedness = Handedness::TwoHanded;
-    authored.spec_mut().attachments = vec![AttachmentName::new("suppressor".to_owned())];
+    authored.spec_mut().attachments =
+        FittedAttachments::new(vec![AttachmentName::new("suppressor".to_owned())]);
     let authored = authored.spec().clone();
     let key = WeaponName::new("scrap_rifle".to_owned());
 
@@ -118,5 +121,60 @@ fn save_path_derives_from_the_family_consts() {
         weapon_file_name(&WeaponName::new("!!!".to_owned())),
         "unnamed_weapon.weapon.ron",
         "a name that sanitizes to nothing falls back to the documented stem",
+    );
+}
+
+#[test]
+fn the_last_fire_mode_cannot_be_removed() {
+    let mut draft = WeaponDraft::new_weapon();
+    assert_eq!(draft.fire_modes().len(), 1, "a fresh draft holds one mode");
+
+    assert!(
+        !draft.remove_fire_mode(0),
+        "the only fire mode reports nothing removed",
+    );
+    assert_eq!(
+        draft.fire_modes().len(),
+        1,
+        "the refused removal leaves the list untouched",
+    );
+
+    draft.add_fire_mode();
+    assert!(
+        draft.remove_fire_mode(0),
+        "with two modes authored, one may go",
+    );
+    assert_eq!(
+        draft.fire_modes().len(),
+        1,
+        "the removal stops at the structural minimum",
+    );
+}
+
+#[test]
+fn set_fire_mode_writes_only_in_bounds() {
+    let mut draft = WeaponDraft::new_weapon();
+    let burst = FireModeSpec::new(
+        ModeKind::Burst,
+        ModeConeMult::new(1.0),
+        ModeTuPercent::new(0.0),
+        ModeShots::new(3),
+    );
+
+    assert!(
+        !draft.set_fire_mode(1, burst),
+        "index 1 is past the end of a one-mode list",
+    );
+    assert_eq!(
+        draft.fire_modes()[0].kind,
+        ModeKind::Single,
+        "the refused write left the seeded mode alone",
+    );
+
+    assert!(draft.set_fire_mode(0, burst), "index 0 is in bounds");
+    assert_eq!(
+        draft.fire_modes()[0].kind,
+        ModeKind::Burst,
+        "the in-bounds write folded back through the loader ctor",
     );
 }

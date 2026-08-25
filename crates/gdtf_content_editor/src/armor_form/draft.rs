@@ -29,6 +29,12 @@ pub struct ArmorDraft {
 }
 
 impl ArmorDraft {
+    /// Range a floor, protection or hardness input offers.
+    pub const STAT_RANGE: core::ops::RangeInclusive<i32> = 0..=100;
+
+    /// Range an integrity input offers.
+    pub const INTEGRITY_RANGE: core::ops::RangeInclusive<i32> = 0..=1000;
+
     /// Empty draft ready for new armor.
     #[must_use]
     pub const fn new_armor() -> Self {

@@ -5,10 +5,6 @@ use gdtf_battle_sim::armor::{
 
 use crate::armor_form::ArmorDraft;
 
-const STAT_RANGE: core::ops::RangeInclusive<i32> = 0..=100;
-
-const INTEGRITY_RANGE: core::ops::RangeInclusive<i32> = 0..=1000;
-
 const TYPE_ORDER: [ArmorType; 7] = ArmorType::ALL;
 
 const fn part_label(part: BodyPart) -> &'static str {
@@ -59,16 +55,16 @@ pub(crate) fn pieces_panel(ui: &mut egui::Ui, draft: &mut ArmorDraft) {
 fn piece_row(ui: &mut egui::Ui, part: BodyPart, draft: &mut ArmorDraft) {
     let piece = draft.piece_mut(part);
     ui.label(part_label(part));
-    if let Some(v) = stat_drag(ui, *piece.floor, STAT_RANGE) {
+    if let Some(v) = stat_drag(ui, *piece.floor, ArmorDraft::STAT_RANGE) {
         piece.floor = ArmorFloor::new(v);
     }
-    if let Some(v) = stat_drag(ui, *piece.protection, STAT_RANGE) {
+    if let Some(v) = stat_drag(ui, *piece.protection, ArmorDraft::STAT_RANGE) {
         piece.protection = ArmorProtection::new(v);
     }
-    if let Some(v) = stat_drag(ui, *piece.integrity, INTEGRITY_RANGE) {
+    if let Some(v) = stat_drag(ui, *piece.integrity, ArmorDraft::INTEGRITY_RANGE) {
         piece.integrity = ArmorIntegrity::new(v);
     }
-    if let Some(v) = stat_drag(ui, *piece.hardness, STAT_RANGE) {
+    if let Some(v) = stat_drag(ui, *piece.hardness, ArmorDraft::STAT_RANGE) {
         piece.hardness = ArmorHardness::new(v);
     }
     if let Some(t) = type_combo(ui, part, piece.armor_type) {

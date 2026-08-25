@@ -44,7 +44,9 @@ pub(crate) fn def_panel(
         .show(ui, |ui| handling_group(ui, spec));
     egui::CollapsingHeader::new("Fight modes")
         .default_open(true)
-        .show(ui, |ui| fight_modes::fight_modes_list(ui, spec));
+        .show(ui, |ui| fight_modes::fight_modes_list(ui, draft));
+
+    let spec = draft.spec_mut();
     egui::CollapsingHeader::new("Slots")
         .default_open(true)
         .show(ui, |ui| {

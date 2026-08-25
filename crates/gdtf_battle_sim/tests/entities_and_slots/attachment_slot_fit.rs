@@ -10,8 +10,8 @@ use gdtf_battle_sim::{
     battle::{BattleSimPlugin, SetupBattleRequested},
     effects::attachments::{AimDelta, AttachmentEffect},
     equipment::attachments::{
-        AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec, SlotCapacity,
-        WeaponSlots,
+        AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec, FittedAttachments,
+        SlotCapacity, WeaponSlots,
     },
     ganger::{Cool, Direction, Facing, Grit, Speed, Strength},
     magazine::{Magazine, ReloadTu},
@@ -101,7 +101,7 @@ fn ranged_spec(slots: WeaponSlots, keys: Vec<AttachmentName>) -> WeaponSpec {
         magazine: Magazine::loaded(MagazineSize::new(BASE_MAG), ReloadTu::new(20)),
         fire_mode: FireMode::new(vec![single_mode(0.2, 1)]),
         slots,
-        attachments: keys,
+        attachments: FittedAttachments::new(keys),
         ..test_weapon_spec()
     }
 }
@@ -110,7 +110,7 @@ fn melee_spec(slots: WeaponSlots, keys: Vec<AttachmentName>) -> MeleeWeaponSpec 
     MeleeWeaponSpec {
         damage: WeaponDamage::new(BASE_MELEE_DAMAGE),
         slots,
-        attachments: keys,
+        attachments: FittedAttachments::new(keys),
         ..test_melee_weapon_spec()
     }
 }

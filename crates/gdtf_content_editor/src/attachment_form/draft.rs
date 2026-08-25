@@ -2,9 +2,13 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
+    effects::attachments::{AimDelta, AttachmentEffect},
     equipment::attachments::{AttachmentName, AttachmentSlot, AttachmentSpec},
     weapon::WeaponName,
 };
+
+/// Default effect used when a new one is added to a draft.
+pub(crate) const DEFAULT_EFFECT: AttachmentEffect = AttachmentEffect::Aim(AimDelta::new(0.0));
 
 const fn seed_spec() -> AttachmentSpec {
     AttachmentSpec {
@@ -77,6 +81,38 @@ impl AttachmentDraft {
     /// Mutable access to the attachment spec.
     pub const fn spec_mut(&mut self) -> &mut AttachmentSpec {
         &mut self.spec
+    }
+
+    /// Authored effects. An empty list is the cosmetic identity.
+    #[must_use]
+    pub fn effects(&self) -> &[AttachmentEffect] {
+        &self.spec.effects
+    }
+
+    /// Append the form's default effect.
+    pub fn add_effect(&mut self) {
+        self.spec.effects.push(DEFAULT_EFFECT);
+    }
+
+    /// Remove an effect by index. Returns whether one was removed.
+    pub fn remove_effect(&mut self, index: usize) -> bool {
+        if index < self.spec.effects.len() {
+            self.spec.effects.remove(index);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Rewrite an effect by index. Returns whether one was written.
+    pub fn set_effect(&mut self, index: usize, effect: AttachmentEffect) -> bool {
+        match self.spec.effects.get_mut(index) {
+            Some(slot) => {
+                *slot = effect;
+                true
+            }
+            None => false,
+        }
     }
 }
 

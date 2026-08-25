@@ -16,7 +16,9 @@ use gdtf_battle_sim::{
         fields::FieldKey,
         on_death::{ExplodeDamage, OnDeathEffect},
     },
-    equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity, WeaponSlots},
+    equipment::attachments::{
+        AttachmentName, AttachmentSlot, FittedAttachments, SlotCapacity, WeaponSlots,
+    },
     weapon::{
         Accuracy, AmmoType, AoeRange, BaseSpread, BlastRadius, ConeHalfAngle, DamageType,
         DotDamage, DotProfile, DotTurns, FatalBias, FireMode, FireModeSpec, Handedness, HitType,
@@ -123,10 +125,10 @@ fn maximal_draft() -> WeaponDraft {
         (AttachmentSlot::Muzzle, SlotCapacity::new(1)),
         (AttachmentSlot::Rail, SlotCapacity::new(3)),
     ]);
-    spec.attachments = vec![
+    spec.attachments = FittedAttachments::new(vec![
         AttachmentName::new("suppressor".to_owned()),
         AttachmentName::new("scoped_sight".to_owned()),
-    ];
+    ]);
     spec.dot = Some(DotProfile::new(
         DotDamage::new(3),
         DamageType::Chem,

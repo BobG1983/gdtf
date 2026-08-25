@@ -1,6 +1,8 @@
 //! Melee weapon mode: maximal-spec authoring round-trips through save and reload.
 use gdtf_battle_sim::{
-    equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity, WeaponSlots},
+    equipment::attachments::{
+        AttachmentName, AttachmentSlot, FittedAttachments, SlotCapacity, WeaponSlots,
+    },
     weapon::{
         DamageType, FatalBias, FightMode, FightModeKind, FightModeSpec, Handedness,
         MeleeWeaponRegistry, Reach, Shove, Strikes, TuCost, WeaponDamage, WeaponName, WeaponPunch,
@@ -31,10 +33,10 @@ fn maximal_draft() -> MeleeWeaponDraft {
         (AttachmentSlot::Counterweight, SlotCapacity::new(1)),
         (AttachmentSlot::Pommel, SlotCapacity::new(2)),
     ]);
-    spec.attachments = vec![
+    spec.attachments = FittedAttachments::new(vec![
         AttachmentName::new("butchers_weight".to_owned()),
         AttachmentName::new("serrated_edge".to_owned()),
-    ];
+    ]);
     draft
 }
 

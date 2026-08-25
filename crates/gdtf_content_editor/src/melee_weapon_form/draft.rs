@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    equipment::attachments::WeaponSlots,
+    equipment::attachments::{FittedAttachments, WeaponSlots},
     weapon::{
         DamageType, FatalBias, FightMode, FightModeKind, FightModeSpec, Handedness,
         MeleeWeaponSpec, Reach, Shove, Strikes, TuCost, WeaponDamage, WeaponName, WeaponPunch,
@@ -22,7 +22,7 @@ fn seed_spec() -> MeleeWeaponSpec {
         fight_mode:  FightMode::new(vec![structural_swing_mode()]),
         shove:       Shove::new(false),
         slots:       WeaponSlots::default(),
-        attachments: Vec::new(),
+        attachments: FittedAttachments::default(),
     }
 }
 
@@ -95,6 +95,49 @@ impl MeleeWeaponDraft {
     /// Mutable access to the melee weapon spec.
     pub const fn spec_mut(&mut self) -> &mut MeleeWeaponSpec {
         &mut self.spec
+    }
+
+    /// Authored fight modes.
+    #[must_use]
+    pub fn fight_modes(&self) -> &[FightModeSpec] {
+        &self.spec.fight_mode
+    }
+
+    /// Whether a fight mode may be removed. A melee weapon keeps at least one.
+    #[must_use]
+    pub fn can_remove_fight_mode(&self) -> bool {
+        self.spec.fight_mode.len() > 1
+    }
+
+    /// Append the structural swing mode.
+    pub fn add_fight_mode(&mut self) {
+        let mut modes = self.spec.fight_mode.to_vec();
+        modes.push(structural_swing_mode());
+        self.spec.fight_mode = FightMode::new(modes);
+    }
+
+    /// Remove a fight mode by index. Returns whether one was removed.
+    pub fn remove_fight_mode(&mut self, index: usize) -> bool {
+        if !self.can_remove_fight_mode() || index >= self.spec.fight_mode.len() {
+            return false;
+        }
+        let mut modes = self.spec.fight_mode.to_vec();
+        modes.remove(index);
+        self.spec.fight_mode = FightMode::new(modes);
+        true
+    }
+
+    /// Rewrite a fight mode by index. Returns whether one was written.
+    pub fn set_fight_mode(&mut self, index: usize, mode: FightModeSpec) -> bool {
+        let mut modes = self.spec.fight_mode.to_vec();
+        match modes.get_mut(index) {
+            Some(slot) => {
+                *slot = mode;
+                self.spec.fight_mode = FightMode::new(modes);
+                true
+            }
+            None => false,
+        }
     }
 }
 

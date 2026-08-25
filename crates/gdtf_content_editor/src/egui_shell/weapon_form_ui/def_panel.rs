@@ -48,7 +48,9 @@ pub(crate) fn def_panel(
         .show(ui, |ui| stats::magazine_group(ui, spec));
     egui::CollapsingHeader::new("Fire modes")
         .default_open(true)
-        .show(ui, |ui| lists::fire_modes_list(ui, spec));
+        .show(ui, |ui| lists::fire_modes_list(ui, draft));
+
+    let spec = draft.spec_mut();
     egui::CollapsingHeader::new("Slots")
         .default_open(true)
         .show(ui, |ui| {

@@ -10,7 +10,7 @@ use super::{
 };
 use crate::{
     effects::attachments::AttachmentEffect,
-    equipment::attachments::{AttachmentName, WeaponSlots},
+    equipment::attachments::{FittedAttachments, WeaponSlots},
     magazine::Magazine,
 };
 
@@ -55,7 +55,7 @@ pub struct WeaponSpec {
     pub slots:       WeaponSlots,
     /// Pre-fitted attachment names.
     #[serde(default)]
-    pub attachments: Vec<AttachmentName>,
+    pub attachments: FittedAttachments,
     /// Optional DOT on hit.
     #[serde(default)]
     pub dot:         Option<DotProfile>,

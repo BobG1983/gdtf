@@ -24,10 +24,6 @@ pub(in crate::egui_shell) struct TerrainSaveContext<'a> {
     pub(in crate::egui_shell) last_save: &'a mut LastSaveRecord,
 }
 
-const HP_RANGE: core::ops::RangeInclusive<u32> = 0..=1000;
-
-const ARMOR_RANGE: core::ops::RangeInclusive<i32> = 0..=100;
-
 const TAG_ORDER: [TerrainTag; 4] = [
     TerrainTag::Openable,
     TerrainTag::BlocksVision,
@@ -122,7 +118,7 @@ fn hp_field(ui: &mut egui::Ui, draft: &mut TerrainDraft) {
     ui.label("Max HP");
     let mut hp = *draft.cover_hp();
     if ui
-        .add(egui::DragValue::new(&mut hp).range(HP_RANGE))
+        .add(egui::DragValue::new(&mut hp).range(TerrainDraft::HP_RANGE))
         .changed()
     {
         let value = *HpInput::new(hp);
@@ -135,7 +131,7 @@ fn armor_fields(ui: &mut egui::Ui, draft: &mut TerrainDraft) {
     ui.label("Armor protection");
     let mut protection = *draft.armor_protection();
     if ui
-        .add(egui::DragValue::new(&mut protection).range(ARMOR_RANGE))
+        .add(egui::DragValue::new(&mut protection).range(TerrainDraft::ARMOR_RANGE))
         .changed()
     {
         draft.set_armor_protection(ArmorProtection::new(*ArmorInput::new(protection)));
@@ -144,7 +140,7 @@ fn armor_fields(ui: &mut egui::Ui, draft: &mut TerrainDraft) {
     ui.label("Armor hardness");
     let mut hardness = *draft.armor_hardness();
     if ui
-        .add(egui::DragValue::new(&mut hardness).range(ARMOR_RANGE))
+        .add(egui::DragValue::new(&mut hardness).range(TerrainDraft::ARMOR_RANGE))
         .changed()
     {
         draft.set_armor_hardness(ArmorHardness::new(*ArmorInput::new(hardness)));

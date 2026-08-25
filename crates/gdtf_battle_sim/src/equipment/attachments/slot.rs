@@ -71,4 +71,34 @@ impl WeaponSlots {
     pub fn declarations(&self) -> &[(AttachmentSlot, SlotCapacity)] {
         &self.0
     }
+
+    /// Declaration a newly added slot starts from.
+    pub const DEFAULT_DECLARATION: (AttachmentSlot, SlotCapacity) =
+        (AttachmentSlot::Muzzle, SlotCapacity::new(1));
+
+    /// Append [`Self::DEFAULT_DECLARATION`].
+    pub fn add_slot(&mut self) {
+        self.0.push(Self::DEFAULT_DECLARATION);
+    }
+
+    /// Remove a declaration by index. Returns whether one was removed.
+    pub fn remove_slot(&mut self, index: usize) -> bool {
+        if index < self.0.len() {
+            self.0.remove(index);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Rewrite a declaration by index. Returns whether one was written.
+    pub fn set_slot(&mut self, index: usize, slot: AttachmentSlot, capacity: SlotCapacity) -> bool {
+        match self.0.get_mut(index) {
+            Some(declaration) => {
+                *declaration = (slot, capacity);
+                true
+            }
+            None => false,
+        }
+    }
 }

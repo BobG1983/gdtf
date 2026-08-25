@@ -240,3 +240,25 @@ fn blocking_overrides_project_and_round_trip() {
         "the reloaded TerrainDef must carry both authored overrides (AC3)",
     );
 }
+
+#[test]
+fn hp_and_armor_ranges_hold_the_seeded_draft() {
+    let draft = TerrainDraft::default();
+
+    assert!(
+        TerrainDraft::HP_RANGE.contains(&*draft.cover_hp()),
+        "the seeded cover HP sits inside the range the form offers",
+    );
+    assert!(
+        TerrainDraft::HP_RANGE.contains(&*draft.slab_hp()),
+        "the seeded slab HP sits inside the range the form offers",
+    );
+    assert!(
+        TerrainDraft::ARMOR_RANGE.contains(&*draft.armor_protection()),
+        "the seeded armor protection sits inside the range the form offers",
+    );
+    assert!(
+        TerrainDraft::ARMOR_RANGE.contains(&*draft.armor_hardness()),
+        "the seeded armor hardness sits inside the range the form offers",
+    );
+}

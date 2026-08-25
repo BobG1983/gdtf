@@ -3,6 +3,7 @@
 mod apply;
 mod commands;
 mod fit;
+mod fitted;
 mod key;
 mod registry;
 mod slot;
@@ -14,6 +15,7 @@ mod tests;
 pub use apply::apply_pending_attachments;
 pub use commands::AttachToWeaponExt;
 pub use fit::{FitRejection, attachment_fits, resolve_pending_attachments};
+pub use fitted::FittedAttachments;
 pub use key::AttachmentName;
 pub use registry::AttachmentRegistry;
 pub use slot::{AttachmentSlot, SlotCapacity, WeaponSlots};

@@ -38,6 +38,12 @@ pub struct TerrainDraft {
 }
 
 impl TerrainDraft {
+    /// Range a cover or slab HP input offers.
+    pub const HP_RANGE: core::ops::RangeInclusive<u32> = 0..=1000;
+
+    /// Range an armor protection or hardness input offers.
+    pub const ARMOR_RANGE: core::ops::RangeInclusive<i32> = 0..=100;
+
     /// Display name.
     #[must_use]
     pub fn display_name(&self) -> &str {

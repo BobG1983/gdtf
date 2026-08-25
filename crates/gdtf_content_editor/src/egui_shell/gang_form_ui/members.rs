@@ -11,8 +11,6 @@ use gdtf_battle_sim::{
 
 use crate::gang_form::GangDraft;
 
-const ATTRIBUTE_MIN: f32 = 0.0;
-const ATTRIBUTE_MAX: f32 = 100.0;
 const SKILL_DECIMALS: usize = 1;
 const MELEE_DEFAULT_LABEL: &str = "(default: fists)";
 
@@ -191,7 +189,7 @@ fn attribute_drag(ui: &mut egui::Ui, label: &str, value: f32) -> Option<f32> {
         .add(
             egui::DragValue::new(&mut edited)
                 .speed(0.1)
-                .range(ATTRIBUTE_MIN..=ATTRIBUTE_MAX),
+                .range(GangDraft::ATTRIBUTE_RANGE),
         )
         .changed();
     ui.end_row();

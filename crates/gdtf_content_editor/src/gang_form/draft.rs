@@ -24,6 +24,9 @@ pub struct GangDraft {
 }
 
 impl GangDraft {
+    /// Range a member attribute input offers.
+    pub const ATTRIBUTE_RANGE: core::ops::RangeInclusive<f32> = 0.0..=100.0;
+
     /// Empty draft ready for a new gang.
     #[must_use]
     pub const fn new_gang() -> Self {

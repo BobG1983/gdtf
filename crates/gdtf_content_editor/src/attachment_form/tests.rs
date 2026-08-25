@@ -52,6 +52,41 @@ fn empty_effects_list_is_legal_and_reachable() {
 }
 
 #[test]
+fn attachment_effects_remove_down_to_empty() {
+    let mut draft = AttachmentDraft::new_attachment();
+    draft.add_effect();
+    draft.add_effect();
+    assert_eq!(draft.effects().len(), 2, "both added effects landed");
+
+    assert!(
+        draft.set_effect(0, AttachmentEffect::Silence),
+        "index 0 is in bounds",
+    );
+    assert!(
+        matches!(draft.effects()[0], AttachmentEffect::Silence),
+        "the in-bounds write landed on the first row",
+    );
+    assert!(
+        !draft.set_effect(9, AttachmentEffect::Silence),
+        "index 9 is past the end of a two-effect list",
+    );
+
+    assert!(draft.remove_effect(0), "the first removal takes a row out");
+    assert!(
+        draft.remove_effect(0),
+        "the second removal takes the last row out. This list has no minimum",
+    );
+    assert!(
+        draft.effects().is_empty(),
+        "an empty list is the cosmetic identity",
+    );
+    assert!(
+        !draft.remove_effect(0),
+        "removing from an empty list reports nothing removed",
+    );
+}
+
+#[test]
 fn load_is_verbatim_and_projection_trims_the_name() {
     let authored = authored_spec();
     let key = AttachmentName::new("whisper_choke".to_owned());

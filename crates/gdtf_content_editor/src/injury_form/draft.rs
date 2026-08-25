@@ -94,6 +94,43 @@ impl InjuryDraft {
     pub const fn def_mut(&mut self) -> &mut InjuryDef {
         &mut self.def
     }
+
+    /// Authored effects.
+    #[must_use]
+    pub fn effects(&self) -> &[InjuryEffect] {
+        &self.def.effects
+    }
+
+    /// Whether an effect may be removed. An injury keeps at least one.
+    #[must_use]
+    pub const fn can_remove_effect(&self) -> bool {
+        self.def.effects.len() > 1
+    }
+
+    /// Append the form's default effect.
+    pub fn add_effect(&mut self) {
+        self.def.effects.push(DEFAULT_EFFECT);
+    }
+
+    /// Remove an effect by index. Returns whether one was removed.
+    pub fn remove_effect(&mut self, index: usize) -> bool {
+        if !self.can_remove_effect() || index >= self.def.effects.len() {
+            return false;
+        }
+        self.def.effects.remove(index);
+        true
+    }
+
+    /// Rewrite an effect by index. Returns whether one was written.
+    pub fn set_effect(&mut self, index: usize, effect: InjuryEffect) -> bool {
+        match self.def.effects.get_mut(index) {
+            Some(slot) => {
+                *slot = effect;
+                true
+            }
+            None => false,
+        }
+    }
 }
 
 impl Default for InjuryDraft {

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{FightMode, MeleeDamageProfile, MeleeWeaponBundle, Reach};
 use crate::{
-    equipment::attachments::{AttachmentName, WeaponSlots},
+    equipment::attachments::{FittedAttachments, WeaponSlots},
     weapon::{
         DamageType, FatalBias, Handedness, Shove, WeaponDamage, WeaponName, WeaponPunch,
         WeaponShred,
@@ -40,7 +40,7 @@ pub struct MeleeWeaponSpec {
     pub slots:       WeaponSlots,
     /// Pre-fitted attachments.
     #[serde(default)]
-    pub attachments: Vec<AttachmentName>,
+    pub attachments: FittedAttachments,
 }
 
 impl MeleeWeaponSpec {

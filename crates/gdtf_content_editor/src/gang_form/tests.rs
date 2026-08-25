@@ -155,3 +155,29 @@ fn save_file_name_and_path_derive_from_the_one_owner_spellings() {
     let unnameable = GangName::new("!!!///".to_owned());
     assert_eq!(gang_file_name(&unnameable), "unnamed_gang.gang.ron");
 }
+
+#[test]
+fn the_attribute_range_holds_a_freshly_added_member() {
+    let mut draft = GangDraft::new_gang();
+    draft.add_member();
+
+    let Some(member) = draft.members().first() else {
+        unreachable!("add_member must append exactly one member")
+    };
+    let attributes = [
+        ("speed", *member.speed),
+        ("aim", *member.aim),
+        ("strength", *member.strength),
+        ("toughness", *member.toughness),
+        ("reflexes", *member.reflexes),
+        ("cool", *member.cool),
+        ("grit", *member.grit),
+        ("luck", *member.luck),
+    ];
+    for (label, value) in attributes {
+        assert!(
+            GangDraft::ATTRIBUTE_RANGE.contains(&value),
+            "the seeded {label} sits inside the range the form offers",
+        );
+    }
+}

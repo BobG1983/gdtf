@@ -2,7 +2,7 @@ use bevy::prelude::{App, Entity, Update, World};
 
 use super::{
     AttachToWeaponExt, AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec,
-    apply_pending_attachments,
+    FittedAttachments, SlotCapacity, WeaponSlots, apply_pending_attachments,
 };
 use crate::{
     effects::attachments::{AimDelta, AttachmentEffect},
@@ -211,5 +211,72 @@ fn empty_pending_list_is_the_identity() {
             .get::<PendingAttachments>()
             .is_none(),
         "the (empty) PendingAttachments marker is still removed (one-shot)",
+    );
+}
+
+#[test]
+fn slot_declarations_add_and_remove_by_index() {
+    let mut slots = WeaponSlots::default();
+
+    slots.add_slot();
+    assert_eq!(
+        slots.declarations().len(),
+        1,
+        "add_slot appends exactly one declaration",
+    );
+    assert_eq!(
+        slots.capacity(AttachmentSlot::Muzzle),
+        Some(SlotCapacity::new(1)),
+        "the appended declaration is the default Muzzle/1",
+    );
+
+    assert!(
+        slots.set_slot(0, AttachmentSlot::Rail, SlotCapacity::new(3)),
+        "set_slot writes in bounds",
+    );
+    assert_eq!(
+        slots.capacity(AttachmentSlot::Muzzle),
+        None,
+        "the rewritten declaration no longer answers for Muzzle",
+    );
+    assert_eq!(
+        slots.capacity(AttachmentSlot::Rail),
+        Some(SlotCapacity::new(3)),
+        "the rewritten declaration answers for Rail at the written capacity",
+    );
+
+    assert!(
+        !slots.remove_slot(1),
+        "remove_slot refuses an out-of-range index",
+    );
+    assert!(slots.remove_slot(0), "remove_slot removes the only row");
+    assert!(
+        slots.declarations().is_empty(),
+        "a slot list with no minimum empties out",
+    );
+}
+
+#[test]
+fn fitted_attachments_add_and_remove_by_index() {
+    let mut fitted = FittedAttachments::default();
+    let first = AttachmentName::new("suppressor".to_owned());
+    let second = AttachmentName::new("bionic_sight".to_owned());
+
+    fitted.add(first);
+    assert_eq!(fitted.len(), 1, "add appends exactly one key");
+
+    assert!(fitted.set(0, second.clone()), "set writes in bounds");
+    assert_eq!(
+        fitted.first(),
+        Some(&second),
+        "the written key replaced the appended one",
+    );
+    assert!(!fitted.set(1, second), "set refuses an out-of-range index");
+
+    assert!(fitted.remove(0), "remove takes the only key out");
+    assert!(fitted.is_empty(), "the list has no minimum");
+    assert!(
+        !fitted.remove(0),
+        "removing from an empty list reports nothing removed",
     );
 }

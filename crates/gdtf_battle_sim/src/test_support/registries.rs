@@ -5,7 +5,7 @@ use crate::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
         ArmorRegistry, ArmorSpec, ArmorType,
     },
-    equipment::attachments::WeaponSlots,
+    equipment::attachments::{FittedAttachments, WeaponSlots},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     weapon::{
@@ -60,7 +60,7 @@ pub fn test_weapon_spec() -> WeaponSpec {
         handedness:  Handedness::OneHanded,
         trajectory:  TrajectoryStyle::Straight,
         slots:       WeaponSlots::default(),
-        attachments: Vec::new(),
+        attachments: FittedAttachments::default(),
         dot:         None,
         on_death:    None,
     }
@@ -99,7 +99,7 @@ pub fn test_melee_weapon_spec() -> MeleeWeaponSpec {
         )]),
         shove:       Shove::new(false),
         slots:       WeaponSlots::default(),
-        attachments: Vec::new(),
+        attachments: FittedAttachments::default(),
     }
 }
 

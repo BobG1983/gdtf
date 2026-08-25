@@ -108,8 +108,8 @@ fn text_fields(ui: &mut egui::Ui, draft: &mut InjuryDraft) {
 
 fn effects_list(ui: &mut egui::Ui, draft: &mut InjuryDraft) {
     ui.label("Effects");
-    let effects = &mut draft.def_mut().effects;
-    let removable = effects.len() > 1;
+    let mut effects: Vec<InjuryEffect> = draft.effects().to_vec();
+    let removable = draft.can_remove_effect();
     let mut remove: Option<usize> = None;
     for (index, effect) in effects.iter_mut().enumerate() {
         ui.horizontal(|ui| {
@@ -123,11 +123,14 @@ fn effects_list(ui: &mut egui::Ui, draft: &mut InjuryDraft) {
             }
         });
     }
+    for (index, effect) in effects.iter().enumerate() {
+        draft.set_effect(index, *effect);
+    }
     if let Some(index) = remove {
-        effects.remove(index);
+        draft.remove_effect(index);
     }
     if ui.button("Add effect").clicked() {
-        effects.push(DEFAULT_EFFECT);
+        draft.add_effect();
     }
 }
 
