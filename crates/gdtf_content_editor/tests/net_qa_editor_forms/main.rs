@@ -35,3 +35,7 @@ mod terrain_fields;
 mod terrain_gates;
 mod values;
 mod walk;
+mod weapon_attachments;
+mod weapon_fields;
+mod weapon_lists;
+mod weapon_on_death;

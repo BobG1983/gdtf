@@ -10,7 +10,7 @@ use crate::{
 #[test]
 fn a_footfall_write_off_slab_is_refused() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: Kind(Wall))")?;
+    set_field(&mut app, &mut client, "(field: TerrainKind(Wall))")?;
     let before = terrain_draft(&app)?.footfall();
 
     let reply = try_set_field(&mut app, &mut client, "(field: TerrainFootfall(Metal))")?;
@@ -35,7 +35,7 @@ fn a_footfall_write_off_slab_is_refused() -> TestResult {
 #[test]
 fn a_mounted_weapon_write_off_emplacement_is_refused() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: Kind(Cover))")?;
+    set_field(&mut app, &mut client, "(field: TerrainKind(Cover))")?;
     let before = terrain_draft(&app)?.mounted_weapon().cloned();
 
     let reply = try_set_field(
@@ -64,7 +64,7 @@ fn a_mounted_weapon_write_off_emplacement_is_refused() -> TestResult {
 #[test]
 fn a_height_band_write_off_a_banded_kind_is_refused() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: Kind(Slab))")?;
+    set_field(&mut app, &mut client, "(field: TerrainKind(Slab))")?;
     let before = terrain_draft(&app)?.height_band();
 
     let reply = try_set_field(&mut app, &mut client, "(field: TerrainHeightBand(Low))")?;
@@ -89,13 +89,13 @@ fn a_height_band_write_off_a_banded_kind_is_refused() -> TestResult {
 #[test]
 fn an_entry_side_toggle_off_emplacement_is_refused() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
     crate::setup::list_op(
         &mut app,
         &mut client,
         "(list: EntrySides, op: Toggle(EntrySide(East)))",
     )?;
-    set_field(&mut app, &mut client, "(field: Kind(Wall))")?;
+    set_field(&mut app, &mut client, "(field: TerrainKind(Wall))")?;
     let before = terrain_draft(&app)?.entry_sides().to_vec();
 
     let reply = try_list_op(

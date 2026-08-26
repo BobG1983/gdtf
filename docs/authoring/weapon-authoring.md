@@ -114,6 +114,11 @@ The `fire_mode:` field is a **RON list** of `FireModeSpec` entries. A weapon
 may offer any non-empty subset of `{Single, Burst, Full}` in authored order.
 Convention: `Single` first; the selector shows modes in the order authored.
 
+The editor's Weapon form holds the same non-empty rule on its own path.
+`WeaponDraft::can_remove_fire_mode` is what greys out its Remove button, and
+`editor.list_op` refuses a `Remove` on `WeaponFireModes` through the same method
+while one mode remains.
+
 Each mode entry:
 
 ```ron
@@ -216,11 +221,17 @@ dot: Some((
 )),
 ```
 
-`turns` must be **at least 1** — a zero-turn DOT makes no sense and is
-unrepresentable (`DotTurns` wraps `NonZeroU8`). A file authoring
-`turns: 0` FAILS to load: the per-file salvage rejects it loudly as a
+`turns` must be **at least 1**. A zero-turn DOT makes no sense and is
+unrepresentable (`DotTurns` wraps `NonZeroU8`).
+
+The two paths that reach `turns` answer a zero differently. Loading a **file**
+that authors `turns: 0` FAILS: the per-file salvage rejects it loudly as a
 `MalformedFile` finding on the `ContentIntegrityReport` and the weapon never
-enters the registry (no silent clamp-to-1).
+enters the registry (no silent clamp-to-1). Editing the **form**
+cannot reach zero at all: its drag is ranged `1..=u8::MAX`, and it commits through
+`weapon_form::dot_turns_from_raw`, which turns a 0 into a 1. `editor.set_field`
+writes `WeaponDotTurns` through that same function, so a 0 sent over the wire
+answers `Ran` and reads back as 1.
 
 ### 1l. `on_death` — wielder-death effect (optional)
 

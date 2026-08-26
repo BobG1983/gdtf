@@ -184,7 +184,7 @@ fn removing_the_last_sprite_frame_is_refused_bad_arguments() -> TestResult {
 fn a_write_naming_another_forms_field_is_refused_with_the_open_tab_named() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Injury)?;
 
-    let reply = try_set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    let reply = try_set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
     assert_eq!(
         unavailable_code(&reply)?,
         "WrongState",
@@ -207,7 +207,7 @@ fn a_terrain_field_on_the_gang_tab_is_refused_with_the_gang_tab_named() -> TestR
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Gang)?;
     let before = crate::setup::terrain_draft(&app)?;
 
-    let reply = try_set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    let reply = try_set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
     assert_eq!(
         unavailable_code(&reply)?,
         "WrongState",

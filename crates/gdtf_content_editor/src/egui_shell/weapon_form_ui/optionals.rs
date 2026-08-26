@@ -5,12 +5,12 @@ use gdtf_battle_sim::{
         fields::FieldKey,
         on_death::{ExplodeDamage, OnDeathEffect},
     },
-    weapon::{DotDamage, DotProfile, HitType, WeaponSpec},
+    weapon::{DotDamage, DotProfile, WeaponSpec},
 };
 
 use crate::{
     egui_shell::{damage_edit::damage_type_combo, fire_mode_edit},
-    weapon_form::dot_turns_from_raw,
+    weapon_form::{dot_turns_from_raw, explode_template, leave_field_template},
 };
 
 pub(super) fn dot_form(ui: &mut egui::Ui, spec: &mut WeaponSpec) {
@@ -76,20 +76,6 @@ pub(super) fn on_death_form(ui: &mut egui::Ui, spec: &mut WeaponSpec) {
                 }
             });
         }
-    }
-}
-
-const fn explode_template() -> OnDeathEffect {
-    OnDeathEffect::Explode {
-        hit_type:    HitType::Single,
-        damage:      ExplodeDamage::new(0),
-        damage_type: gdtf_battle_sim::weapon::DamageType::Kinetic,
-    }
-}
-
-const fn leave_field_template() -> OnDeathEffect {
-    OnDeathEffect::LeaveField {
-        field: FieldKey::new(String::new()),
     }
 }
 

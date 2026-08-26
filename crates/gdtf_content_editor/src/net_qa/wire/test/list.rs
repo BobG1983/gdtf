@@ -3,6 +3,7 @@ use gdtf_battle_sim::{
     equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity},
     injuries::InjuryEffect,
     terrain::facing::TerrainFacing,
+    weapon::{AoeRange, FireModeSpec, HitType, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
 };
 use gdtf_content_families::sprites::{SpriteImagePath, SpriteSource};
 
@@ -10,8 +11,8 @@ use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::net_qa::wire::{
     AttachmentEffectNet, AttachmentKeyNet, AttachmentSlotNet, EditorDraftNameNet,
     EditorListIndexNet, EditorListMemberNet, EditorListNet, EditorListOpNet, FightModeKindNet,
-    FightModeSpecNet, InjuryEffectNet, SlotCapacityNet, SpriteSourceNet, StrikesNet,
-    TerrainFacingNet, TerrainTagNet, TuCostNet, WeaponSlotNet,
+    FightModeSpecNet, FireModeSpecNet, InjuryEffectNet, SlotCapacityNet, SpriteSourceNet,
+    StrikesNet, TerrainFacingNet, TerrainTagNet, TuCostNet, WeaponSlotNet,
 };
 
 fn a_frame_source() -> SpriteSourceNet {
@@ -26,6 +27,18 @@ fn a_fight_mode() -> FightModeSpecNet {
         TuCostNet::new(0),
         StrikesNet::new(1),
     )
+}
+
+fn a_fire_mode() -> FireModeSpecNet {
+    FireModeSpecNet::from_spec(FireModeSpec::with_hit_type(
+        ModeKind::Burst,
+        ModeConeMult::new(1.5),
+        ModeTuPercent::new(0.4),
+        ModeShots::new(3),
+        HitType::Line {
+            range: AoeRange::new(4),
+        },
+    ))
 }
 
 fn a_slot() -> WeaponSlotNet {
@@ -47,6 +60,9 @@ fn the_named_list_round_trips() {
         EditorListNet::MeleeWeaponSlots,
         EditorListNet::MeleeWeaponAttachments,
         EditorListNet::GangMembers,
+        EditorListNet::WeaponFireModes,
+        EditorListNet::WeaponSlots,
+        EditorListNet::WeaponAttachments,
     ] {
         assert_ron_round_trip(&list);
     }
@@ -104,6 +120,7 @@ fn every_member_round_trips() {
     assert_ron_round_trip(&EditorListMemberNet::GangMember(EditorDraftNameNet::new(
         "Kez",
     )));
+    assert_ron_round_trip(&EditorListMemberNet::FireMode(a_fire_mode()));
 }
 
 #[test]

@@ -7,6 +7,7 @@ use super::{
     attachment::AttachmentEffectNet,
     facing::TerrainFacingNet,
     field::EditorDraftNameNet,
+    fire_mode::FireModeSpecNet,
     injury::InjuryEffectNet,
     melee_weapon::{AttachmentKeyNet, FightModeSpecNet, WeaponSlotNet},
     sprite::SpriteSourceNet,
@@ -46,6 +47,12 @@ pub(in crate::net_qa) enum EditorListNet {
     MeleeWeaponAttachments,
     /// The Gang draft's roster of members.
     GangMembers,
+    /// The Weapon draft's fire modes.
+    WeaponFireModes,
+    /// The Weapon draft's slot declarations.
+    WeaponSlots,
+    /// The Weapon draft's fitted attachment keys.
+    WeaponAttachments,
 }
 
 /// What a write does to the named list.
@@ -86,4 +93,6 @@ pub(in crate::net_qa) enum EditorListMemberNet {
     Attachment(AttachmentKeyNet),
     /// One member of the Gang draft's roster, named the way its header names it.
     GangMember(EditorDraftNameNet),
+    /// One mode of the Weapon draft's fire-mode list, every field its row draws.
+    FireMode(FireModeSpecNet),
 }

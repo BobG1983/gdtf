@@ -239,6 +239,20 @@ pub(crate) enum GangAttributeRow {
     Luck,
 }
 
+/// A client's own reading of a weapon's shot trajectory.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum TrajectoryRow {
+    Straight,
+    Arc,
+}
+
+/// A client's own reading of which on-death effect a weapon draft is on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum OnDeathVariantRow {
+    Explode,
+    LeaveField,
+}
+
 /// A client's own reading of one slot declaration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub(crate) struct SlotDeclRow {

@@ -1,7 +1,7 @@
 use bevy::app::App;
 use gdtf_content_editor::{
     ArmorDraft, AttachmentDraft, EditorMode, GangDraft, InjuryDraft, MeleeWeaponDraft, SpriteDraft,
-    TerrainDraft,
+    TerrainDraft, WeaponDraft,
 };
 use gdtf_qa_protocol::message::QaResponse;
 
@@ -86,6 +86,14 @@ pub(crate) fn melee_weapon_draft(app: &App) -> Result<MeleeWeaponDraft, TestErro
         return Err(
             "the Melee Weapon draft is a resource the editor creates on entering Editing".into(),
         );
+    };
+    Ok(draft.clone())
+}
+
+/// The Weapon draft the world holds right now.
+pub(crate) fn weapon_draft(app: &App) -> Result<WeaponDraft, TestError> {
+    let Some(draft) = app.world().get_resource::<WeaponDraft>() else {
+        return Err("the Weapon draft is a resource the editor creates on entering Editing".into());
     };
     Ok(draft.clone())
 }

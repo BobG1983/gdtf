@@ -150,9 +150,9 @@ pub(super) fn write(
     field: EditorFieldNet,
 ) -> Result<EditorFieldNet, FormWriteFault> {
     match field {
-        EditorFieldNet::Kind(kind) => {
+        EditorFieldNet::TerrainKind(kind) => {
             draft.set_kind(kind.to_choice());
-            Ok(EditorFieldNet::Kind(TerrainKindNet::from_choice(
+            Ok(EditorFieldNet::TerrainKind(TerrainKindNet::from_choice(
                 draft.kind(),
             )))
         }

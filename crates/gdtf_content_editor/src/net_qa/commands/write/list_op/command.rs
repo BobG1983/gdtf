@@ -11,7 +11,7 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{attachment, gang, injury, melee_weapon, sprite, terrain};
+use super::{attachment, gang, injury, melee_weapon, sprite, terrain, weapon};
 use crate::{
     EditorMode,
     net_qa::{
@@ -147,6 +147,17 @@ fn edit(
             let draft = present(forms.melee_weapon.as_mut())?;
             melee_weapon::apply(draft, registry, list, op)?;
             Ok(melee_weapon::members(draft, list))
+        }
+        (
+            EditorModeNet::Weapon,
+            EditorListNet::WeaponFireModes
+            | EditorListNet::WeaponSlots
+            | EditorListNet::WeaponAttachments,
+        ) => {
+            let registry = registries.attachments.as_deref();
+            let draft = present(forms.weapon.as_mut())?;
+            weapon::apply(draft, registry, list, op)?;
+            Ok(weapon::members(draft, list))
         }
         (EditorModeNet::Attachment, EditorListNet::AttachmentEffects) => {
             let draft = present(forms.attachment.as_mut())?;

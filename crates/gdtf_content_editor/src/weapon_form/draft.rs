@@ -4,12 +4,16 @@ use std::num::NonZeroU8;
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
+    effects::{
+        fields::FieldKey,
+        on_death::{ExplodeDamage, OnDeathEffect},
+    },
     equipment::attachments::{FittedAttachments, WeaponSlots},
     magazine::Magazine,
     weapon::{
         Accuracy, AmmoType, BaseSpread, DamageType, DotTurns, FatalBias, FireMode, FireModeSpec,
-        Handedness, Kickback, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Shove, Stable,
-        TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponSpec,
+        Handedness, HitType, Kickback, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Shove,
+        Stable, TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponSpec,
     },
 };
 
@@ -52,6 +56,24 @@ pub(crate) const fn structural_single_mode() -> FireModeSpec {
 #[must_use]
 pub(crate) fn dot_turns_from_raw(raw: u8) -> DotTurns {
     DotTurns::new(NonZeroU8::new(raw).unwrap_or(NonZeroU8::MIN))
+}
+
+/// The blank explode effect the on-death tick box and its variant combo seed.
+#[must_use]
+pub(crate) const fn explode_template() -> OnDeathEffect {
+    OnDeathEffect::Explode {
+        hit_type:    HitType::Single,
+        damage:      ExplodeDamage::new(0),
+        damage_type: DamageType::Kinetic,
+    }
+}
+
+/// The blank leave-field effect the on-death variant combo seeds.
+#[must_use]
+pub(crate) const fn leave_field_template() -> OnDeathEffect {
+    OnDeathEffect::LeaveField {
+        field: FieldKey::new(String::new()),
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

@@ -11,7 +11,7 @@ use crate::{
 #[test]
 fn a_none_mounted_weapon_write_unmounts_the_weapon() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
     let weapon = a_mounted_weapon(&app)?;
     let arguments = format!(
         "(field: TerrainMountedWeapon(Some(\"{}\")))",

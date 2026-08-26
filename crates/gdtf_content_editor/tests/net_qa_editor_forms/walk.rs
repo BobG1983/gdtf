@@ -17,10 +17,10 @@ use crate::{
 fn one_connection_walks_terrain_injury_and_melee_weapon_in_turn() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
 
-    let kind = set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    let kind = set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
     assert_eq!(
         kind.field,
-        FieldRow::Kind(crate::values::TerrainKindRow::Emplacement)
+        FieldRow::TerrainKind(crate::values::TerrainKindRow::Emplacement)
     );
     assert_eq!(terrain_draft(&app)?.kind(), TerrainKindChoice::Emplacement);
     list_op(

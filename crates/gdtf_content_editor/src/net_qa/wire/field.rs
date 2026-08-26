@@ -12,6 +12,8 @@ use super::{
         AttachmentEffectNet, AttachmentSlotNet, DamageTypeNet, FatalBiasNet, WeaponDamageNet,
         WeaponPunchNet, WeaponShredNet,
     },
+    fire_mode::HitTypeNet,
+    gang::{GangAttributeNet, GangAttributeValueNet},
     injury::{InjuryCategoryNet, InjuryEffectNet, InjuryKeyNet, InjurySeverityNet, InjuryTextNet},
     key::EditorKeyNet,
     list::EditorListIndexNet,
@@ -23,6 +25,11 @@ use super::{
     },
     terrain_kind::TerrainKindNet,
     tile_role::TileRoleNet,
+    weapon::{
+        AccuracyNet, BaseSpreadNet, DotDamageNet, DotEnabledNet, DotTurnsNet, ExplodeDamageNet,
+        FieldKeyNet, KickbackNet, MagazineSizeNet, OnDeathEnabledNet, OnDeathVariantNet,
+        ReloadTuNet, StableNet, TrajectoryStyleNet,
+    },
 };
 
 /// The name a form's own name field holds, for whichever form named it.
@@ -37,59 +44,11 @@ impl EditorDraftNameNet {
     }
 }
 
-/// Which of a gang member's eight attributes a write names.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub(in crate::net_qa) enum GangAttributeNet {
-    /// The member's movement attribute.
-    Speed,
-    /// The member's ranged accuracy.
-    Aim,
-    /// The member's melee power.
-    Strength,
-    /// The member's resilience.
-    Toughness,
-    /// The member's reaction speed.
-    Reflexes,
-    /// The member's composure under fire.
-    Cool,
-    /// The member's grit.
-    Grit,
-    /// The member's luck.
-    Luck,
-}
-
-impl GangAttributeNet {
-    /// Every attribute the member grid draws, for a case that walks them all.
-    #[cfg(test)]
-    pub(in crate::net_qa) const ALL: [Self; 8] = [
-        Self::Speed,
-        Self::Aim,
-        Self::Strength,
-        Self::Toughness,
-        Self::Reflexes,
-        Self::Cool,
-        Self::Grit,
-        Self::Luck,
-    ];
-}
-
-/// The number one attribute drag holds.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[serde(transparent)]
-pub(in crate::net_qa) struct GangAttributeValueNet(f32);
-
-impl GangAttributeValueNet {
-    /// Wrap an attribute value a client sent or a member holds.
-    pub(in crate::net_qa) const fn new(value: f32) -> Self {
-        Self(value)
-    }
-}
-
 /// One field of the active mode's draft, carrying the value it is set to.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(in crate::net_qa) enum EditorFieldNet {
     /// The Terrain draft's kind pick.
-    Kind(TerrainKindNet),
+    TerrainKind(TerrainKindNet),
     /// The Armor draft's name.
     ArmorName(EditorDraftNameNet),
     /// The Sprite draft's name.
@@ -264,4 +223,54 @@ pub(in crate::net_qa) enum EditorFieldNet {
         /// The melee registry key it is set to, or none for the fists default.
         key:   Option<EditorKeyNet>,
     },
+    /// The Weapon draft's display name.
+    WeaponName(EditorDraftNameNet),
+    /// The Weapon draft's base cone spread.
+    WeaponBaseSpread(BaseSpreadNet),
+    /// The Weapon draft's accuracy.
+    WeaponAccuracy(AccuracyNet),
+    /// The Weapon draft's kickback.
+    WeaponKickback(KickbackNet),
+    /// The Weapon draft's damage.
+    WeaponDamage(WeaponDamageNet),
+    /// The Weapon draft's punch.
+    WeaponPunch(WeaponPunchNet),
+    /// The Weapon draft's shred.
+    WeaponShred(WeaponShredNet),
+    /// The Weapon draft's damage channel.
+    WeaponDamageType(DamageTypeNet),
+    /// The Weapon draft's fatal bias.
+    WeaponFatalBias(FatalBiasNet),
+    /// The Weapon draft's handedness.
+    WeaponHandedness(HandednessNet),
+    /// The Weapon draft's shot trajectory.
+    WeaponTrajectory(TrajectoryStyleNet),
+    /// Whether the Weapon draft is braced by design.
+    WeaponStable(StableNet),
+    /// Whether the Weapon draft shoves on connect.
+    WeaponShove(ShoveNet),
+    /// The Weapon draft's magazine size.
+    WeaponMagazineSize(MagazineSizeNet),
+    /// The Weapon draft's reload cost in time units.
+    WeaponMagazineReloadTu(ReloadTuNet),
+    /// Whether the Weapon draft authors a damage-over-time profile.
+    WeaponDot(DotEnabledNet),
+    /// The DOT profile's per-turn damage, behind the DOT tick box.
+    WeaponDotDamage(DotDamageNet),
+    /// The DOT profile's duration, behind the DOT tick box, where the form turns zero into one.
+    WeaponDotTurns(DotTurnsNet),
+    /// The DOT profile's damage channel, behind the DOT tick box.
+    WeaponDotDamageType(DamageTypeNet),
+    /// Whether the Weapon draft authors an on-death effect.
+    WeaponOnDeath(OnDeathEnabledNet),
+    /// Which on-death effect the draft is on, behind the on-death tick box.
+    WeaponOnDeathVariant(OnDeathVariantNet),
+    /// The explode effect's hit geometry, behind the on-death tick box.
+    WeaponOnDeathHitType(HitTypeNet),
+    /// The explode effect's blast damage, behind the on-death tick box.
+    WeaponOnDeathDamage(ExplodeDamageNet),
+    /// The explode effect's damage channel, behind the on-death tick box.
+    WeaponOnDeathDamageType(DamageTypeNet),
+    /// The leave-field effect's field key, behind the on-death tick box.
+    WeaponOnDeathField(FieldKeyNet),
 }

@@ -9,6 +9,7 @@ mod facing;
 mod family;
 mod field;
 mod fire_mode;
+mod gang;
 mod grid;
 mod injury;
 mod injury_sub_tab;
@@ -35,6 +36,7 @@ mod tile_role;
 mod toggle;
 mod validation;
 mod view;
+mod weapon;
 
 pub(in crate::net_qa) use armor::{
     ArmorFloorNet, ArmorHardnessNet, ArmorIntegrityNet, ArmorProtectionNet, ArmorTypeNet,
@@ -51,9 +53,9 @@ pub(in crate::net_qa) use facing::TerrainFacingNet;
 pub(in crate::net_qa) use family::{
     EditorFamilyEntryNet, EditorFamilyLabelNet, EditorFamilyNet, EditorFamilyRowNet,
 };
-pub(in crate::net_qa) use field::{
-    EditorDraftNameNet, EditorFieldNet, GangAttributeNet, GangAttributeValueNet,
-};
+pub(in crate::net_qa) use field::{EditorDraftNameNet, EditorFieldNet};
+pub(in crate::net_qa) use fire_mode::{FireModeSpecNet, HitTypeNet};
+pub(in crate::net_qa) use gang::{GangAttributeNet, GangAttributeValueNet};
 pub(in crate::net_qa) use grid::{
     EditorGridHeightNet, EditorGridLevelsNet, EditorGridSizeNet, EditorGridWidthNet,
 };
@@ -104,3 +106,8 @@ pub(in crate::net_qa) use validation::{
     ChecksCompleteNet, ValidationFindingNet, ValidationPublishedNet,
 };
 pub(in crate::net_qa) use view::{EditorIsolateViewNet, EditorViewModeNet, EditorViewNet};
+pub(in crate::net_qa) use weapon::{
+    AccuracyNet, BaseSpreadNet, DotDamageNet, DotEnabledNet, DotTurnsNet, ExplodeDamageNet,
+    FieldKeyNet, KickbackNet, MagazineSizeNet, OnDeathEnabledNet, OnDeathVariantNet, ReloadTuNet,
+    StableNet, TrajectoryStyleNet,
+};

@@ -266,7 +266,7 @@ run(host="editor", command="editor.families", arguments="(family: Some(Armor))")
 run(host="editor", command="editor.session", arguments="()")
 run(host="editor", command="editor.draft", arguments="()")
 run(host="editor", command="editor.set_mode", arguments="(mode: Terrain)")
-run(host="editor", command="editor.set_field", arguments="(field: Kind(Emplacement))")
+run(host="editor", command="editor.set_field", arguments="(field: TerrainKind(Emplacement))")
 run(host="editor", command="editor.list_op", arguments="(list: EntrySides, op: Toggle(EntrySide(East)))")
 run(host="editor", command="editor.set_field", arguments="(field: ArmorFloor(part: Head, value: 12))")
 run(host="editor", command="editor.list_op", arguments="(list: SpriteFrames, op: MoveUp(2))")
@@ -788,7 +788,7 @@ one. The phase is checked first
 ([`commands/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/availability.rs)),
 so a call during Load carries the phase note and not the tab note.
 
-Each value rides on its own variant. `Kind(Emplacement)`,
+Each value rides on its own variant. `TerrainKind(Emplacement)`,
 `ArmorFloor(part: Head, value: 12)`, `SpriteFrame(index: 1, source: File("a.png"))`,
 `Toggle(EntrySide(East))` and `MoveUp(2)` are five of them. So an unknown field or list name is
 a decode failure answering `BadArguments` with the schema. Each arm also names the form it belongs
@@ -805,18 +805,25 @@ to, and neither command adds a protocol variant. What the handler answers itself
    are rows of tick boxes, so each takes `Toggle` alone and refuses `Add`, `Remove`, `SetAt`,
    `MoveUp` and `MoveDown`, and a toggle carrying a member of the other list is refused too.
    Every other list refuses `Toggle`: the attachment effects, the sprite frames, the injury
-   effects and all three Melee Weapon lists. Every list outside the sprite frames refuses a
-   reorder. The Gang member list takes `Add` and `Remove` alone, so it refuses `Toggle`,
-   `SetAt`, `MoveUp` and `MoveDown`. When a list reads its own options from a registry and that
-   registry is absent, the answer is `Unavailable { code: MissingModel }` instead.
+   effects, all three Melee Weapon lists and all three Weapon lists. Every list outside the
+   sprite frames refuses a reorder. The Gang member list takes `Add` and `Remove` alone, so
+   it refuses `Toggle`, `SetAt`, `MoveUp` and `MoveDown`. When a list reads its own options
+   from a registry and that registry is absent, the answer is
+   `Unavailable { code: MissingModel }` instead.
 5. A closed gate: `Unavailable { code: WrongState }`, with a note naming the gate.
    `editor.list_op` refuses a `Toggle` on the entry sides while the draft's kind is not
    `Emplacement`, because `TerrainDraft::set_entry_sides` commits only at that kind and the
    write would otherwise do nothing. The Sprite fps, every frame operation and every
-   per-frame source refuse the same way while `SpriteDraft::is_animated` is false. A `Remove`
-   on the injury effects or the melee fight modes while one entry remains refuses here too,
-   with a note naming the minimum, because it is the condition that greys out the form's own
-   Remove button. The sprite frames answer that case as `BadArguments` instead, under item 6.
+   per-frame source refuse the same way while `SpriteDraft::is_animated` is false. The Weapon
+   form has three gates of the same kind: the three DOT rows refuse while its `dot` tick box
+   is off, the on-death variant and every payload row refuse while its `on_death` tick box is
+   off, and a payload row belonging to the other variant refuses too, so `WeaponOnDeathField`
+   refuses while the effect is `Explode` and `WeaponOnDeathHitType`, `WeaponOnDeathDamage` and
+   `WeaponOnDeathDamageType` refuse while it is `LeaveField`. No refused payload write turns a
+   profile on as a side effect. A `Remove` on the injury effects, the melee fight modes or the
+   weapon fire modes while one entry remains refuses here too, with a note naming the minimum,
+   because it is the condition that greys out the form's own Remove button. The sprite frames
+   answer that case as `BadArguments` instead, under item 6.
 6. A stat outside its range, an index past the end of a list, a `Remove` on a sprite frame
    list holding one frame, a `MoveUp` at index 0 and a `MoveDown` at the last index:
    `BadArguments`. A Gang member key answers the same way when the registry the combo reads
@@ -824,7 +831,9 @@ to, and neither command adds a protocol variant. What the handler answers itself
    `MeleeWeaponRegistry` and armor against `ArmorRegistry`, and the detail names the key. A
    registry that is absent, or present and empty, offers the combo no row at all, so that one
    answers `Unavailable { code: MissingModel }`. Clearing `GangMemberMeleeWeapon` with `None`
-   reads no registry, so it lands with `MeleeWeaponRegistry` out of the world.
+   reads no registry, so it lands with `MeleeWeaponRegistry` out of the world. A fitted
+   attachment key the `AttachmentRegistry` holds no spec for answers `BadArguments` too, on
+   the Weapon lists as on the Melee Weapon ones.
 
 Every write that lands answers `Ran`, and the reply carries the mode, the field or list the
 write named, and the value as the draft stores it. The one setter that clamps still clamps:
@@ -838,10 +847,11 @@ rect's width answers `Ran` and reads the clamped value back.
 | Armor | `ArmorName`; per `BodyPart`, `ArmorFloor`, `ArmorProtection`, `ArmorHardness` (`ArmorDraft::STAT_RANGE`, `0..=100`), `ArmorIntegrity` (`ArmorDraft::INTEGRITY_RANGE`, `0..=1000`) and `ArmorType` (one of `ArmorType::ALL`) |
 | Sprite | `SpriteName`; `SpriteBaseSource`; `SpriteAnchorX` and `SpriteAnchorY` (clamped to the sheet rect); `SpriteAnimated`; and behind that gate `SpriteFps` (`SpriteDraft::FPS_RANGE`), `SpriteFrame`; `SpriteFacingOverride`, set to a source or cleared with `None` |
 | Attachment | `AttachmentName`; `AttachmentDisplayName`; `AttachmentSlot` (one of `AttachmentSlot::ALL`); `AttachmentEffect`, variant and payload together |
-| Terrain | `Kind` (Wall, Cover, Slab, Emplacement); `TerrainDisplayName`; `TerrainHp`, which writes both the cover and the slab field, clamped to `TerrainDraft::HP_RANGE`; `TerrainArmorProtection` and `TerrainArmorHardness`, clamped to `TerrainDraft::ARMOR_RANGE`; `TerrainHeightBand`, on a kind whose `has_height_band` is true; `TerrainGraphic`, one of `offered_graphic_roles()`; `TerrainFootfall`, on a kind whose `offers_footfall` is true; `TerrainMountedWeapon`, a `WeaponRegistry` key or `None`, on an `Emplacement` kind; `TerrainBlocksPathing` and `TerrainBlocksLos`, each set or cleared with `None` |
+| Terrain | `TerrainKind` (Wall, Cover, Slab, Emplacement); `TerrainDisplayName`; `TerrainHp`, which writes both the cover and the slab field, clamped to `TerrainDraft::HP_RANGE`; `TerrainArmorProtection` and `TerrainArmorHardness`, clamped to `TerrainDraft::ARMOR_RANGE`; `TerrainHeightBand`, on a kind whose `has_height_band` is true; `TerrainGraphic`, one of `offered_graphic_roles()`; `TerrainFootfall`, on a kind whose `offers_footfall` is true; `TerrainMountedWeapon`, a `WeaponRegistry` key or `None`, on an `Emplacement` kind; `TerrainBlocksPathing` and `TerrainBlocksLos`, each set or cleared with `None` |
 | Injury | `InjuryKey`; `InjuryName`; `InjuryCategory` (one of `InjuryCategory::ALL`); `InjurySeverity` (Minor, Major or Critical, so `None` and `Fatal` fail to decode); `InjuryPopupText`, `InjuryLogText`, `InjuryInspectText`; `InjuryEffect`, an index with that effect's variant and payload |
 | Melee Weapon | `MeleeWeaponName`; `MeleeWeaponDamage`, `MeleeWeaponPunch`, `MeleeWeaponShred`, `MeleeWeaponDamageType` (one of `DamageType::ALL`), `MeleeWeaponFatalBias`, `MeleeWeaponHandedness`; `MeleeWeaponReach`, clamped at 1; `MeleeWeaponShove` |
 | Gang | `GangName`; per member index, `GangMemberName`; `GangMemberAttribute`, naming one of `Speed`, `Aim`, `Strength`, `Toughness`, `Reflexes`, `Cool`, `Grit` and `Luck`, with a value inside `GangDraft::ATTRIBUTE_RANGE` (`0.0..=100.0`); `GangMemberWeapon`, a `WeaponRegistry` key; `GangMemberArmor`, an `ArmorRegistry` key; `GangMemberMeleeWeapon`, a `MeleeWeaponRegistry` key or `None` for the fists default |
+| Weapon | `WeaponName`; `WeaponBaseSpread`, `WeaponAccuracy`, `WeaponKickback`; `WeaponDamage`, `WeaponPunch`, `WeaponShred`, `WeaponDamageType` (one of `DamageType::ALL`), `WeaponFatalBias`, `WeaponHandedness`; `WeaponTrajectory` (Straight or Arc), `WeaponStable`, `WeaponShove`; `WeaponMagazineSize`, `WeaponMagazineReloadTu`; `WeaponDot`, and behind that tick box `WeaponDotDamage`, `WeaponDotTurns` (zero is stored as 1) and `WeaponDotDamageType`; `WeaponOnDeath`, and behind that tick box `WeaponOnDeathVariant` (Explode or LeaveField), then `WeaponOnDeathHitType`, `WeaponOnDeathDamage` and `WeaponOnDeathDamageType` while the effect is `Explode`, and `WeaponOnDeathField` while it is `LeaveField`. There is no `accepts` arm, because the form draws no control for it |
 
 | Form | List | Operations |
 | --- | --- | --- |
@@ -855,6 +865,9 @@ rect's width answers `Ran` and reads the clamped value back.
 | Melee Weapon | `MeleeWeaponSlots` | `Add` (seeds `WeaponSlots::DEFAULT_DECLARATION`), `Remove`, `SetAt`. An empty list is legal |
 | Melee Weapon | `MeleeWeaponAttachments` | `Add` (seeds the registry's first key by name), `Remove`, `SetAt` naming a key the registry holds. An absent `AttachmentRegistry` answers `MissingModel` on `Add` and on `SetAt`. An empty one answers `MissingModel` on `Add`, because there is no key to seed, and `BadArguments` on `SetAt`, because the key it names is not one the registry holds |
 | Gang | `GangMembers` | `Add` (appends the form's own default member), `Remove`. No minimum, so an empty list is legal, and no reorder |
+| Weapon | `WeaponFireModes` | `Add` (appends through `WeaponDraft::add_fire_mode`), `Remove`, `SetAt` rewriting all five fields the row draws, `hit_type` included. The list keeps at least one mode |
+| Weapon | `WeaponSlots` | `Add` (seeds `WeaponSlots::DEFAULT_DECLARATION`), `Remove`, `SetAt`. An empty list is legal |
+| Weapon | `WeaponAttachments` | `Add` (seeds the registry's first key by name), `Remove`, `SetAt` naming a key the registry holds. An absent `AttachmentRegistry` answers `MissingModel` on `Add` and on `SetAt`. An empty one answers `MissingModel` on `Add`, because there is no key to seed, and `BadArguments` on `SetAt`, because the key it names is not one the registry holds |
 
 Reorder exists only for the sprite frames.
 

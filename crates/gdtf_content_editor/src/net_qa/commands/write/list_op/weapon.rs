@@ -1,4 +1,4 @@
-//! The Melee Weapon draft's three lists: fight modes, slot declarations and fitted keys.
+//! The Weapon draft's three lists: fire modes, slot declarations and fitted keys.
 
 use gdtf_battle_sim::equipment::attachments::AttachmentRegistry;
 use gdtf_qa_protocol::command::RefusalNote;
@@ -8,55 +8,55 @@ use super::shared::{
     slot_members, wrong_member,
 };
 use crate::{
-    melee_weapon_form::MeleeWeaponDraft,
     net_qa::{
         commands::write::form_fault::FormWriteFault,
-        wire::{EditorListMemberNet, EditorListNet, EditorListOpNet, FightModeSpecNet},
+        wire::{EditorListMemberNet, EditorListNet, EditorListOpNet, FireModeSpecNet},
     },
+    weapon_form::WeaponDraft,
 };
 
 const KEEPS_ONE_MODE: RefusalNote = RefusalNote::from_static(
-    "a melee weapon keeps at least one fight mode, so the form disables its own Remove button \
+    "a weapon keeps at least one fire mode, so the form disables its own Remove mode button \
      while one remains",
 );
 
 /// The members of the named list, as the reply reads them back.
-pub(super) fn members(draft: &MeleeWeaponDraft, list: EditorListNet) -> Vec<EditorListMemberNet> {
+pub(super) fn members(draft: &WeaponDraft, list: EditorListNet) -> Vec<EditorListMemberNet> {
     match list {
-        EditorListNet::MeleeWeaponSlots => slot_members(&draft.spec().slots),
-        EditorListNet::MeleeWeaponAttachments => attachment_members(&draft.spec().attachments),
+        EditorListNet::WeaponSlots => slot_members(&draft.spec().slots),
+        EditorListNet::WeaponAttachments => attachment_members(&draft.spec().attachments),
         _ => draft
-            .fight_modes()
+            .fire_modes()
             .iter()
-            .map(|mode| EditorListMemberNet::FightMode(FightModeSpecNet::from_spec(*mode)))
+            .map(|mode| EditorListMemberNet::FireMode(FireModeSpecNet::from_spec(*mode)))
             .collect(),
     }
 }
 
-fn fight_modes(draft: &mut MeleeWeaponDraft, op: EditorListOpNet) -> Result<(), FormWriteFault> {
-    let list = EditorListNet::MeleeWeaponFightModes;
+fn fire_modes(draft: &mut WeaponDraft, op: EditorListOpNet) -> Result<(), FormWriteFault> {
+    let list = EditorListNet::WeaponFireModes;
     match op {
         EditorListOpNet::Add => {
-            draft.add_fight_mode();
+            draft.add_fire_mode();
             Ok(())
         }
         EditorListOpNet::Remove(index) => {
-            if !draft.can_remove_fight_mode() {
+            if !draft.can_remove_fire_mode() {
                 return Err(FormWriteFault::Gated(KEEPS_ONE_MODE));
             }
-            let held = draft.fight_modes().len();
-            if draft.remove_fight_mode(*index) {
+            let held = draft.fire_modes().len();
+            if draft.remove_fire_mode(*index) {
                 Ok(())
             } else {
                 Err(past_the_end(list, *index, held))
             }
         }
         EditorListOpNet::SetAt(index, member) => {
-            let EditorListMemberNet::FightMode(spec) = member else {
+            let EditorListMemberNet::FireMode(spec) = member else {
                 return Err(wrong_member(list));
             };
-            let held = draft.fight_modes().len();
-            if draft.set_fight_mode(*index, spec.to_spec()) {
+            let held = draft.fire_modes().len();
+            if draft.set_fire_mode(*index, spec.to_spec()) {
                 Ok(())
             } else {
                 Err(past_the_end(list, *index, held))
@@ -69,18 +69,18 @@ fn fight_modes(draft: &mut MeleeWeaponDraft, op: EditorListOpNet) -> Result<(), 
     }
 }
 
-/// Apply one operation to the fight modes, the slots, or the fitted attachments.
+/// Apply one operation to the fire modes, the slots, or the fitted attachments.
 pub(super) fn apply(
-    draft: &mut MeleeWeaponDraft,
+    draft: &mut WeaponDraft,
     registry: Option<&AttachmentRegistry>,
     list: EditorListNet,
     op: EditorListOpNet,
 ) -> Result<(), FormWriteFault> {
     match list {
-        EditorListNet::MeleeWeaponSlots => apply_to_slots(&mut draft.spec_mut().slots, list, op),
-        EditorListNet::MeleeWeaponAttachments => {
+        EditorListNet::WeaponSlots => apply_to_slots(&mut draft.spec_mut().slots, list, op),
+        EditorListNet::WeaponAttachments => {
             apply_to_attachments(&mut draft.spec_mut().attachments, registry, list, op)
         }
-        _ => fight_modes(draft, op),
+        _ => fire_modes(draft, op),
     }
 }

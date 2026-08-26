@@ -42,10 +42,10 @@ fn set_field_writes_the_terrain_kind_the_reply_and_the_world_agree() -> TestResu
          handler that writes nothing",
     );
 
-    let body = set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    let body = set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
     assert_eq!(
         body.field,
-        FieldRow::Kind(TerrainKindRow::Emplacement),
+        FieldRow::TerrainKind(TerrainKindRow::Emplacement),
         "the reply names the field that was written, read back off the draft",
     );
     assert_eq!(
@@ -109,7 +109,7 @@ fn every_terrain_field_writes_the_draft_and_reads_back_as_stored() -> TestResult
         Some(LosBlocking::UpToHeightBand)
     );
 
-    set_field(&mut app, &mut client, "(field: Kind(Slab))")?;
+    set_field(&mut app, &mut client, "(field: TerrainKind(Slab))")?;
     let footfall = set_field(&mut app, &mut client, "(field: TerrainFootfall(Grate))")?;
     assert_eq!(
         footfall.field,
@@ -117,7 +117,7 @@ fn every_terrain_field_writes_the_draft_and_reads_back_as_stored() -> TestResult
     );
     assert_eq!(terrain_draft(&app)?.footfall(), FootfallChoice::Grate);
 
-    set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
     let band = set_field(&mut app, &mut client, "(field: TerrainHeightBand(Low))")?;
     assert_eq!(band.field, FieldRow::TerrainHeightBand(BandRow::Low));
     assert_eq!(terrain_draft(&app)?.height_band(), HeightBand::Low);
@@ -220,7 +220,7 @@ fn a_graphic_role_the_picker_does_not_offer_is_bad_arguments() -> TestResult {
 fn set_field_is_refused_on_the_prefab_tab() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Prefab)?;
 
-    let reply = try_set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    let reply = try_set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
     assert_eq!(
         unavailable_code(&reply)?,
         "WrongState",
@@ -238,7 +238,7 @@ fn set_field_is_refused_on_the_prefab_tab() -> TestResult {
 #[test]
 fn set_field_is_refused_while_the_editor_is_still_loading() -> TestResult {
     let reply = crate::load_case::reply_answered_during_load(
-        run_editor(EDITOR_SET_FIELD, "(field: Kind(Emplacement))"),
+        run_editor(EDITOR_SET_FIELD, "(field: TerrainKind(Emplacement))"),
         "the editor.set_field run",
     )?;
     assert_eq!(
@@ -253,7 +253,7 @@ fn set_field_is_refused_while_the_editor_is_still_loading() -> TestResult {
 #[test]
 fn a_mounted_weapon_key_no_registry_holds_is_bad_arguments() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
     let before = terrain_draft(&app)?.mounted_weapon().cloned();
 
     let reply = try_set_field(
@@ -273,7 +273,7 @@ fn a_mounted_weapon_key_no_registry_holds_is_bad_arguments() -> TestResult {
 #[test]
 fn a_mounted_weapon_write_with_no_registry_is_missing_model() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
     app.world_mut().remove_resource::<WeaponRegistry>();
     // The content family rebuilds a registry that left the world while its folder handle is held.
     app.world_mut()

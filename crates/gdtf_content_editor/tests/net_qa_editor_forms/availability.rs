@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use gdtf_content_editor::{EditorMode, GangDraft, InjuryDraft, SpriteDraft};
+use gdtf_content_editor::{EditorMode, GangDraft, InjuryDraft, SpriteDraft, WeaponDraft};
 use gdtf_qa_command::dispatch::{CommandInbox, QaCommandSystems};
 use gdtf_qa_protocol::{
     command::{CommandAvailability, CommandName, CommandOutcome, UnavailableCode},
@@ -102,12 +102,13 @@ fn neither_write_commands_summary_names_a_single_form() -> TestResult {
 }
 
 #[test]
-fn the_catalogue_offers_both_writes_on_each_of_the_four_tabs() -> TestResult {
+fn the_catalogue_offers_both_writes_on_every_form_tab_that_draws_a_draft() -> TestResult {
     for mode in [
         EditorMode::Terrain,
         EditorMode::Injury,
         EditorMode::MeleeWeapon,
         EditorMode::Gang,
+        EditorMode::Weapon,
     ] {
         let (mut app, mut client) = form_tab_app_and_client(mode)?;
         let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
@@ -158,6 +159,45 @@ fn the_gang_tab_with_no_draft_refuses_both_the_catalogue_row_and_the_write() -> 
         !refusal_note(&reply)?.is_empty(),
         "the write's refusal carries the line that tells a client what is missing",
     );
+    Ok(())
+}
+
+#[test]
+fn the_weapon_tab_with_no_draft_refuses_both_the_catalogue_row_and_the_write() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Weapon)?;
+    app.world_mut().remove_resource::<WeaponDraft>();
+
+    let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    for command in [EDITOR_SET_FIELD, EDITOR_LIST_OP] {
+        let CommandAvailability::Unavailable { code, note } = availability_of(&catalogue, command)?
+        else {
+            return Err(format!(
+                "with the Weapon draft out of the world `{command}` must publish as Unavailable"
+            )
+            .into());
+        };
+        assert_eq!(
+            code,
+            UnavailableCode::WrongState,
+            "the Weapon tab is open but its draft is gone, which is what WrongState names",
+        );
+        assert!(
+            !note.as_str().is_empty(),
+            "the refusal carries the line that tells a client what is missing",
+        );
+    }
+
+    let field = try_set_field(&mut app, &mut client, "(field: WeaponDamage(9))")?;
+    assert_eq!(
+        unavailable_code(&field)?,
+        "WrongState",
+        "a missing draft is host state, so the handler names the code the catalogue names, not \
+         MissingModel",
+    );
+    assert!(!refusal_note(&field)?.is_empty());
+
+    let list = try_list_op(&mut app, &mut client, "(list: WeaponFireModes, op: Add)")?;
+    assert_eq!(unavailable_code(&list)?, "WrongState");
     Ok(())
 }
 

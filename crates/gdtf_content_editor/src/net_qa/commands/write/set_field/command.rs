@@ -11,7 +11,7 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{armor, attachment, gang, injury, melee_weapon, sprite, terrain};
+use super::{armor, attachment, gang, injury, melee_weapon, sprite, terrain, weapon};
 use crate::{
     EditorMode,
     net_qa::{
@@ -139,7 +139,7 @@ fn write_to(
             registries.armor.as_deref(),
             field,
         )?),
-        EditorModeNet::Weapon => no_fields_of_its_own(forms.weapon.as_mut()),
+        EditorModeNet::Weapon => Ok(weapon::write(present(forms.weapon.as_mut())?, field)?),
         EditorModeNet::Prefab => Err(SetFieldRefusal::Fault(FormWriteFault::ForeignArm)),
     }
 }

@@ -8,5 +8,6 @@ mod injury;
 mod melee_weapon;
 mod sprite;
 mod terrain;
+mod weapon;
 
 pub(in crate::net_qa) use command::EditorSetField;

@@ -5,7 +5,9 @@ mod command;
 mod gang;
 mod injury;
 mod melee_weapon;
+mod shared;
 mod sprite;
 mod terrain;
+mod weapon;
 
 pub(in crate::net_qa) use command::EditorListOp;

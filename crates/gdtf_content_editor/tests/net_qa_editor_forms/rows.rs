@@ -2,8 +2,9 @@ use serde::Deserialize;
 
 use crate::values::{
     ArmorTypeRow, BandRow, BodyPartRow, CategoryRow, DamageTypeRow, EffectRow, FacingRow,
-    FightModeRow, FootfallRow, GangAttributeRow, HandednessRow, InjuryEffectRow, LosRow,
-    SeverityRow, SlotDeclRow, SlotRow, SourceRow, TagRow, TerrainKindRow, TileRoleRow,
+    FightModeRow, FireModeRow, FootfallRow, GangAttributeRow, HandednessRow, HitTypeRow,
+    InjuryEffectRow, LosRow, OnDeathVariantRow, SeverityRow, SlotDeclRow, SlotRow, SourceRow,
+    TagRow, TerrainKindRow, TileRoleRow, TrajectoryRow,
 };
 
 /// Which single-value field a write named, carrying the value read back off the draft.
@@ -51,7 +52,7 @@ pub(crate) enum FieldRow {
         index:  usize,
         effect: EffectRow,
     },
-    Kind(TerrainKindRow),
+    TerrainKind(TerrainKindRow),
     TerrainDisplayName(String),
     TerrainHp(u32),
     TerrainArmorProtection(i32),
@@ -104,6 +105,31 @@ pub(crate) enum FieldRow {
         index: usize,
         key:   Option<String>,
     },
+    WeaponName(String),
+    WeaponBaseSpread(f32),
+    WeaponAccuracy(f32),
+    WeaponKickback(f32),
+    WeaponDamage(i32),
+    WeaponPunch(i32),
+    WeaponShred(i32),
+    WeaponDamageType(DamageTypeRow),
+    WeaponFatalBias(f32),
+    WeaponHandedness(HandednessRow),
+    WeaponTrajectory(TrajectoryRow),
+    WeaponStable(bool),
+    WeaponShove(bool),
+    WeaponMagazineSize(u16),
+    WeaponMagazineReloadTu(u8),
+    WeaponDot(bool),
+    WeaponDotDamage(u16),
+    WeaponDotTurns(u8),
+    WeaponDotDamageType(DamageTypeRow),
+    WeaponOnDeath(bool),
+    WeaponOnDeathVariant(OnDeathVariantRow),
+    WeaponOnDeathHitType(HitTypeRow),
+    WeaponOnDeathDamage(u16),
+    WeaponOnDeathDamageType(DamageTypeRow),
+    WeaponOnDeathField(String),
 }
 
 /// Which list a write named.
@@ -118,6 +144,9 @@ pub(crate) enum ListRow {
     MeleeWeaponSlots,
     MeleeWeaponAttachments,
     GangMembers,
+    WeaponFireModes,
+    WeaponSlots,
+    WeaponAttachments,
 }
 
 /// One member of the list a reply reads back.
@@ -132,6 +161,7 @@ pub(crate) enum ListMemberRow {
     Slot(SlotDeclRow),
     Attachment(String),
     GangMember(String),
+    FireMode(FireModeRow),
 }
 
 /// `editor.set_field`'s reply body.

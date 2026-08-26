@@ -163,7 +163,7 @@ fn sprite_frames_move_up_and_down_and_the_world_agrees() -> TestResult {
 #[test]
 fn a_toggle_adds_the_entry_side_then_takes_it_back_off() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
     assert!(
         terrain_draft(&app)?.entry_sides().is_empty(),
         "a fresh Emplacement draft names no entry side, or the toggles below would prove nothing",
