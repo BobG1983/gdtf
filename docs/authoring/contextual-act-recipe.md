@@ -148,7 +148,7 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
   — the bands already carry the edges to the panel's offer scan, to the contextual drain and
   to `SimSystems::Record`. Wire the module + re-export in `contextual/mod.rs`.
 - **One line** in `crates/gdtf_app/src/dev/net_qa/commands/set.rs` (`GAME_COMMANDS`), plus
-  the matching name in `tests/net_qa/command_exchange.rs`, the expected lists in
+  the matching name in `tests/net_qa/command_exchange/names.rs`, the expected lists in
   `tests/net_qa/command_set.rs` and `tests/net_qa/commands.rs`, and the timing row in
   `tests/net_qa/catalogue_acts.rs`.
 - **The command may never act on a target the panel is not offering.** The panel offers
