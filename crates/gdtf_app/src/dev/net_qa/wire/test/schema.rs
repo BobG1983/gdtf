@@ -31,6 +31,7 @@ use crate::dev::net_qa::{
             RunningPhaseNet,
         },
         pointer::{MouseButtonNet, PointerPosNet, PointerXNet, PointerYNet},
+        reachable::ReachableCellNet,
         refusal::{FacingRefusalNet, ReloadRefusalNet, ShotRefusalNet, StanceRefusalNet},
         roster::{FactionNet, GangerCardNet, GangerNameNet, MountedNet},
         shell::{CaughtUpNet, SoundNet},
@@ -141,6 +142,8 @@ fn every_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<VisibleGangerNet>("VisibleGangerNet");
     assert_schema_is_usable::<VisibleDoorNet>("VisibleDoorNet");
     assert_schema_is_usable::<VisibleCoverNet>("VisibleCoverNet");
+
+    assert_schema_is_usable::<ReachableCellNet>("ReachableCellNet");
 
     assert_schema_is_usable::<ContextualActNet>("ContextualActNet");
     assert_schema_is_usable::<OfferTargetNet>("OfferTargetNet");

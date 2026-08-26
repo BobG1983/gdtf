@@ -8,6 +8,7 @@ use gdtf_app::qa_wire::{
     token::GangerToken,
     vitals::{HpMaxNet, TuMaxNet},
 };
+use gdtf_battle_sim::prelude::CellLevel;
 
 /// Act-log lines the log fixture appends before the read.
 pub(crate) const LOG_LINES_WRITTEN: u32 = 5;
@@ -49,6 +50,14 @@ pub(crate) struct SplitEnemy {
     pub(crate) entity: Entity,
     pub(crate) drawn:  CellLevelNet,
     pub(crate) live:   CellLevelNet,
+}
+
+/// A player ganger the sim and the screen disagree about, with both cells as the sim spells them.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct SplitMover {
+    pub(crate) entity: Entity,
+    pub(crate) drawn:  CellLevel,
+    pub(crate) live:   CellLevel,
 }
 
 /// An enemy standing where only the screen's frozen fog still reaches.

@@ -40,6 +40,7 @@ fn the_game_offers_the_reads_the_lifecycle_the_acts_raw_input_and_the_view_and_b
             CommandName::from_static("battle.inspect"),
             CommandName::from_static("battle.sightline"),
             CommandName::from_static("battle.visible"),
+            CommandName::from_static("battle.reachable"),
             CommandName::from_static("battle.cost"),
             CommandName::from_static("log.read"),
             CommandName::from_static("log.omniscient_read"),

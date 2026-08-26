@@ -11,8 +11,9 @@ mod terrain;
 
 pub(crate) use behind::{
     battle_with_a_frozen_fog, battle_with_a_ganger_the_screen_has_not_moved,
+    battle_with_a_player_ganger_the_screen_has_not_moved,
     battle_with_an_occupant_the_screen_has_not_seen, battle_with_remembered_cover,
-    hold_the_screen_still,
+    forget_on_screen_only, hold_the_screen_still,
 };
 pub(crate) use catch_up::{let_the_screen_catch_up, the_screen_has_caught_up};
 pub(crate) use expected::{

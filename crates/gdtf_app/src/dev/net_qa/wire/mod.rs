@@ -25,6 +25,8 @@ pub mod offer;
 pub(crate) mod phase;
 /// Pointer position and mouse buttons.
 pub mod pointer;
+/// Cells a ganger can walk to, each with what reaching it costs.
+pub mod reachable;
 /// Why the sim turned an act down, one reason type per act.
 pub mod refusal;
 /// Roster cards.

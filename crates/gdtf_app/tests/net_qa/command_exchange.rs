@@ -32,6 +32,8 @@ pub(crate) const BATTLE_SIGHTLINE: &str = "battle.sightline";
 
 pub(crate) const BATTLE_VISIBLE: &str = "battle.visible";
 
+pub(crate) const BATTLE_REACHABLE: &str = "battle.reachable";
+
 pub(crate) const BATTLE_COST: &str = "battle.cost";
 
 pub(crate) const LOG_READ: &str = "log.read";
@@ -123,6 +125,7 @@ pub(crate) fn published_names() -> Vec<CommandName> {
         BATTLE_INSPECT,
         BATTLE_SIGHTLINE,
         BATTLE_VISIBLE,
+        BATTLE_REACHABLE,
         BATTLE_COST,
         LOG_READ,
         LOG_OMNISCIENT_READ,

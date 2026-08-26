@@ -21,6 +21,7 @@ mod battle_fixture;
 mod battle_flee;
 mod battle_inspect;
 mod battle_offers;
+mod battle_reachable;
 mod battle_reads;
 mod battle_roster;
 mod battle_screen_lag;

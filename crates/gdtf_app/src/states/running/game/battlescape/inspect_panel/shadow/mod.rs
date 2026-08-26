@@ -7,6 +7,6 @@ mod test;
 pub(crate) use promote::{
     promote_shown_cover, promote_shown_emplacements, promote_shown_occupancy,
 };
-pub(crate) use resources::{
-    ShownCoverLedger, ShownEmplacement, ShownEmplacements, ShownOccupancyGrid,
-};
+pub(crate) use resources::{ShownCoverLedger, ShownEmplacement, ShownEmplacements};
+
+crate::support_use!(resources::ShownOccupancyGrid;);

@@ -17,6 +17,7 @@ const BATTLE_READS: &[&str] = &[
     "battle.inspect",
     "battle.sightline",
     "battle.visible",
+    "battle.reachable",
     "battle.cost",
     "log.read",
     "log.omniscient_read",

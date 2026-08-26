@@ -10,12 +10,12 @@ use gdtf_battle_sim::{
 use gdtf_qa_protocol::ports::NetQaPort;
 
 use super::{
-    expected::{FrozenFog, LateOccupant, RememberedCover, SplitEnemy, Standing},
+    expected::{FrozenFog, LateOccupant, RememberedCover, SplitEnemy, SplitMover, Standing},
     fixtures::stand_at,
     map::{a_free_open_cell, a_lit_cover_cell, settle, shown_fog},
 };
 use crate::{
-    battle_reads::an_enemy_ganger,
+    battle_reads::{a_player_ganger, an_enemy_ganger},
     socket_support::{TestError, battle_app_listening},
 };
 
@@ -46,6 +46,36 @@ pub(crate) fn battle_with_a_ganger_the_screen_has_not_moved(
             entity,
             drawn: CellLevelNet::from_sim(drawn_at),
             live: CellLevelNet::from_sim(live_at),
+        },
+    ))
+}
+
+/// A battle where the sim has moved a player ganger but the screen still draws it where it was.
+///
+/// The drawn cell stands inside the area the screen lights and the live cell outside it, so a
+/// read planned from one answers differently from a read planned from the other.
+pub(crate) fn battle_with_a_player_ganger_the_screen_has_not_moved()
+-> Result<(App, NetQaPort, SplitMover), TestError> {
+    let (mut app, port) = battle_app_listening()?;
+    settle(&mut app);
+    let Some((entity, _)) = a_player_ganger(&app) else {
+        return Err("a generated battle must field at least one player ganger".into());
+    };
+    let (Some(drawn_at), Some(live_at)) = (
+        a_free_open_cell(&app, Standing::Lit),
+        a_free_open_cell(&app, Standing::Hidden),
+    ) else {
+        return Err("the generated map must offer a free open cell on each side of the fog".into());
+    };
+    hold_the_screen_still(&mut app)?;
+    stand_at(&mut app, entity, live_at, drawn_at)?;
+    Ok((
+        app,
+        port,
+        SplitMover {
+            entity,
+            drawn: drawn_at,
+            live: live_at,
         },
     ))
 }
@@ -121,6 +151,28 @@ pub(crate) fn hold_the_screen_still(app: &mut App) -> Result<(), TestError> {
         return Err("a battle presenter carries the playback cursor".into());
     };
     cursor.hold_for(ActHold::timed(GATE_HOLD_SECONDS));
+    Ok(())
+}
+
+/// Drop one cell out of the screen's frozen fog entirely, so it is neither lit nor remembered.
+///
+/// `darken_on_screen_only` leaves the cell explored, and a route is planned through anything
+/// the fog still remembers, so only forgetting it takes the cell off a reachable set.
+pub(crate) fn forget_on_screen_only(app: &mut App, at: CellLevel) -> Result<(), TestError> {
+    let Some(fog) = shown_fog(app) else {
+        return Err("the presenter carries the fog the screen draws".into());
+    };
+    let mut visible: HashSet<CellLevel> = fog.visible_cells().copied().collect();
+    let mut explored: HashSet<CellLevel> = fog.explored_cells().copied().collect();
+    if !explored.remove(&at) {
+        return Err("the screen's fog must remember the chosen cell for the case to bite".into());
+    }
+    visible.remove(&at);
+    let forgotten = SquadVisibility::new(visible, explored);
+    let Some(mut shadow) = app.world_mut().get_resource_mut::<ShownSquadVisibility>() else {
+        return Err("the presenter carries the fog the screen draws".into());
+    };
+    shadow.promote(&forgotten);
     Ok(())
 }
 

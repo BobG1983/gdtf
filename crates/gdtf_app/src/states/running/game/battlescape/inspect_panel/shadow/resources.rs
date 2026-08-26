@@ -5,8 +5,11 @@ use gdtf_battle_sim::{
     prelude::{CellLevel, OccupancyGrid},
 };
 
-#[derive(Resource, Debug, Clone, Default, Deref)]
-pub(crate) struct ShownOccupancyGrid(OccupancyGrid);
+crate::support_item! {
+    /// The occupancy grid the screen is drawing, which lags the sim while an act plays out.
+    #[derive(Resource, Debug, Clone, Default, Deref)]
+    pub(crate) struct ShownOccupancyGrid(OccupancyGrid);
+}
 
 impl ShownOccupancyGrid {
     pub(crate) fn promote(&mut self, live: &OccupancyGrid) {

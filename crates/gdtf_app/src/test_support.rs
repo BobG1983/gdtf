@@ -76,6 +76,7 @@ pub use crate::states::{
             inspect_panel::test_support::{
                 InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
                 InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
+                ShownOccupancyGrid,
             },
             select_cycle::test_support::{SelectCycleRoot, SelectNextButton, SelectPrevButton},
             stat_block::test_support::{

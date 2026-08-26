@@ -137,10 +137,12 @@ quote, the path preview, the committed move and the set of cells reachable
 within a budget read the same helpers, so they agree on both the route and the
 price. The reachable set leaves the seat by those same entry cells, and quotes
 every cell it offers at the route plus the exit, so a cell the budget covers
-only while the dismount goes uncounted is not offered. Two readers ask for it:
-the reachable-range debug overlay, and the enemy AI choosing where to
-reposition. Nothing in the AI enters an emplacement, so it plans off a seat only
-when the battle was set up with a ganger already in one.
+only while the dismount goes uncounted is not offered. Three readers ask for
+it: the reachable-range debug overlay, the enemy AI choosing where to
+reposition, and the `battle.reachable` QA read, which runs the search over the
+picture on screen rather than the live sim. Nothing in the AI enters an
+emplacement, so it plans off a seat only when the battle was set up with a
+ganger already in one.
 
 While it is mounted the ganger is the occupant of that cell like any other. The
 toggle writes no occupancy band of its own, so the band at the emplacement's
@@ -197,11 +199,13 @@ holds for it and the card for a ganger on it the squad can see.
   (`crates/gdtf_battle_input/src/pointer/selection/path_preview.rs`) and the
   `battle.cost` walk quote
   (`crates/gdtf_app/src/dev/net_qa/commands/read/battle_cost/price/walk.rs`)
-  call the same helpers. `reachable_within`'s two callers read the seat from the
-  selected ganger in `populate_reachable_overlay`
-  (`crates/gdtf_battle_input/src/pointer/selection/reachable.rs`) and from the
-  enemy turn's snapshot row in `plan_reposition` (`ai/advance.rs`). The two
-  callers of the exit gate outside the sim are `offer_exit_emplacement`
+  call the same helpers. `reachable_within`'s three callers read the seat from
+  the selected ganger in `populate_reachable_overlay`
+  (`crates/gdtf_battle_input/src/pointer/selection/reachable.rs`), from the
+  enemy turn's snapshot row in `plan_reposition` (`ai/advance.rs`), and from the
+  named ganger's row in `ReachableRows::departure`
+  (`crates/gdtf_app/src/dev/net_qa/commands/read/battle_reachable/reads.rs`).
+  The two callers of the exit gate outside the sim are `offer_exit_emplacement`
   (`crates/gdtf_app/src/states/running/game/battlescape/contextual_panel/acts/exit_emplacement.rs`)
   and `exit_quote`
   (`crates/gdtf_app/src/dev/net_qa/commands/read/battle_cost/price/reach.rs`);

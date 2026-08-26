@@ -11,6 +11,7 @@ mod keybind;
 mod log;
 mod offer;
 mod phase;
+mod reachable;
 mod roster;
 mod scalars;
 mod schema;
