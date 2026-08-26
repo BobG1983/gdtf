@@ -203,6 +203,72 @@ fn a_write_naming_another_forms_field_is_refused_with_the_open_tab_named() -> Te
 }
 
 #[test]
+fn a_field_arm_on_the_armor_tab_is_refused_with_the_armor_tab_named() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Armor)?;
+    let before = crate::setup::field_draft(&app)?;
+
+    let write = try_set_field(&mut app, &mut client, "(field: FieldDamage(6))")?;
+    assert_eq!(
+        unavailable_code(&write)?,
+        "WrongState",
+        "the Damage arm belongs to the Field form, so the Armor tab refuses it",
+    );
+    assert!(
+        refusal_note(&write)?.contains("Armor"),
+        "the note names the tab that is open",
+    );
+
+    let list = try_list_op(
+        &mut app,
+        &mut client,
+        "(list: FieldImmuneArmorTypes, op: Toggle(ImmuneArmorType(Flak)))",
+    )?;
+    bad_arguments_detail(&list)?;
+    assert_eq!(
+        crate::setup::field_draft(&app)?,
+        before,
+        "an Armor-tab writer that fell through to the Field draft would write it here",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_field_write_before_the_autoload_settles_is_refused_and_names_the_gate() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Field)?;
+    let before = crate::setup::field_draft(&app)?;
+    assert!(
+        before.autoload_pending(),
+        "a fresh Field draft has not settled its first-frame autoload, which is the gate this \
+         case needs",
+    );
+
+    let write = try_set_field(&mut app, &mut client, "(field: FieldDamage(6))")?;
+    assert_eq!(
+        unavailable_code(&write)?,
+        "WrongState",
+        "a write onto an unsettled draft would be seeded over by the form's own sync, so it is \
+         refused rather than run",
+    );
+    assert!(
+        refusal_note(&write)?.contains("autoload"),
+        "the note names the gate that is closed",
+    );
+
+    let list = try_list_op(
+        &mut app,
+        &mut client,
+        "(list: FieldImmuneArmorTypes, op: Toggle(ImmuneArmorType(Flak)))",
+    )?;
+    assert_eq!(unavailable_code(&list)?, "WrongState");
+    assert_eq!(
+        crate::setup::field_draft(&app)?,
+        before,
+        "both refused writes left the Field draft exactly as it was",
+    );
+    Ok(())
+}
+
+#[test]
 fn a_terrain_field_on_the_gang_tab_is_refused_with_the_gang_tab_named() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Gang)?;
     let before = crate::setup::terrain_draft(&app)?;

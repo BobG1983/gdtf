@@ -282,6 +282,12 @@ run(host="editor", command="editor.paint", arguments="(x: 2, y: 3)")
 run(host="editor", command="editor.map", arguments="(level: 1)")
 run(host="editor", command="editor.set_mode", arguments="(mode: Injury)")
 run(host="editor", command="editor.select_injury_tab", arguments="(tab: Tables)")
+run(host="editor", command="editor.set_mode", arguments="(mode: Field)")
+run(host="editor", command="editor.new", arguments="(mode: Field)")
+run(host="editor", command="editor.set_field", arguments="(field: FieldDamage(3))")
+run(host="editor", command="editor.set_field", arguments="(field: FieldDuration(Turns(2)))")
+run(host="editor", command="editor.list_op", arguments="(list: FieldImmuneArmorTypes, op: Toggle(ImmuneArmorType(Flak)))")
+run(host="editor", command="editor.save", arguments="(mode: Field)")
 ```
 
 The editor offers twenty-one commands today. They are listed in
@@ -783,6 +789,11 @@ painted map is that canvas's own model. The Prefab tab carries `EditorMode`'s ow
 so a fresh process reaches them with no `editor.set_mode` first.
 `editor.select_injury_tab` is scoped to the Injury tab, because the sub-tab row it writes is
 drawn only in the Injury arm of the central panel.
+The Field tab has one gate of its own, and it is a per-form refusal rather than an
+availability rule: while `FieldDraft::autoload_pending` is true the form's own sync has not
+run its first-frame seed yet, so every Field write answers
+`Unavailable { code: WrongState }` with a note naming the autoload, and a QA write can never
+be seeded over on the next egui frame. `editor.new` with `(mode: Field)` settles it.
 `editor.select_theme` needs no particular tab, because the top bar draws its picker on every
 one. The phase is checked first
 ([`commands/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/availability.rs)),
@@ -801,9 +812,10 @@ to, and neither command adds a protocol variant. What the handler answers itself
    fixed pieces and no list, so no list name could be right there.
 3. A field or list arm belonging to another form than the open tab:
    `Unavailable { code: WrongState }`, with a note naming the tab that is open.
-4. An operation the named list does not draw: `BadArguments`. `TerrainTags` and `EntrySides`
-   are rows of tick boxes, so each takes `Toggle` alone and refuses `Add`, `Remove`, `SetAt`,
-   `MoveUp` and `MoveDown`, and a toggle carrying a member of the other list is refused too.
+4. An operation the named list does not draw: `BadArguments`. `TerrainTags`, `EntrySides` and
+   `FieldImmuneArmorTypes` are rows of tick boxes, so each takes `Toggle` alone and refuses
+   `Add`, `Remove`, `SetAt`, `MoveUp` and `MoveDown`, and a toggle carrying a member one of
+   the other tick-box rows draws is refused too.
    Every other list refuses `Toggle`: the attachment effects, the sprite frames, the injury
    effects, all three Melee Weapon lists and all three Weapon lists. Every list outside the
    sprite frames refuses a reorder. The Gang member list takes `Add` and `Remove` alone, so
@@ -820,8 +832,12 @@ to, and neither command adds a protocol variant. What the handler answers itself
    off, and a payload row belonging to the other variant refuses too, so `WeaponOnDeathField`
    refuses while the effect is `Explode` and `WeaponOnDeathHitType`, `WeaponOnDeathDamage` and
    `WeaponOnDeathDamageType` refuse while it is `LeaveField`. No refused payload write turns a
-   profile on as a side effect. A `Remove` on the injury effects, the melee fight modes or the
-   weapon fire modes while one entry remains refuses here too, with a note naming the minimum,
+   profile on as a side effect. The Field form's one gate is read ahead of item 4 rather than
+   after it: while `FieldDraft::autoload_pending` is true, every Field field and every
+   operation on the immune list refuses here, whatever the write names, because the form's own
+   sync would seed the first registry entry over it. A `Remove` on the injury effects, the
+   melee fight modes or the weapon fire modes while one entry remains refuses here too, with a
+   note naming the minimum,
    because it is the condition that greys out the form's own Remove button. The sprite frames
    answer that case as `BadArguments` instead, under item 6.
 6. A stat outside its range, an index past the end of a list, a `Remove` on a sprite frame
@@ -851,6 +867,7 @@ rect's width answers `Ran` and reads the clamped value back.
 | Injury | `InjuryKey`; `InjuryName`; `InjuryCategory` (one of `InjuryCategory::ALL`); `InjurySeverity` (Minor, Major or Critical, so `None` and `Fatal` fail to decode); `InjuryPopupText`, `InjuryLogText`, `InjuryInspectText`; `InjuryEffect`, an index with that effect's variant and payload |
 | Melee Weapon | `MeleeWeaponName`; `MeleeWeaponDamage`, `MeleeWeaponPunch`, `MeleeWeaponShred`, `MeleeWeaponDamageType` (one of `DamageType::ALL`), `MeleeWeaponFatalBias`, `MeleeWeaponHandedness`; `MeleeWeaponReach`, clamped at 1; `MeleeWeaponShove` |
 | Gang | `GangName`; per member index, `GangMemberName`; `GangMemberAttribute`, naming one of `Speed`, `Aim`, `Strength`, `Toughness`, `Reflexes`, `Cool`, `Grit` and `Luck`, with a value inside `GangDraft::ATTRIBUTE_RANGE` (`0.0..=100.0`); `GangMemberWeapon`, a `WeaponRegistry` key; `GangMemberArmor`, an `ArmorRegistry` key; `GangMemberMeleeWeapon`, a `MeleeWeaponRegistry` key or `None` for the fists default |
+| Field | `FieldName`, the save stem; `FieldDamage`, the flat HP drained per tick; `FieldDamageType` (one of `DamageType::ALL`); `FieldDuration`, `Permanent` or `Turns(n)` where `n` is at least 1, and `Turns(0)` answers `BadArguments` rather than being clamped |
 | Weapon | `WeaponName`; `WeaponBaseSpread`, `WeaponAccuracy`, `WeaponKickback`; `WeaponDamage`, `WeaponPunch`, `WeaponShred`, `WeaponDamageType` (one of `DamageType::ALL`), `WeaponFatalBias`, `WeaponHandedness`; `WeaponTrajectory` (Straight or Arc), `WeaponStable`, `WeaponShove`; `WeaponMagazineSize`, `WeaponMagazineReloadTu`; `WeaponDot`, and behind that tick box `WeaponDotDamage`, `WeaponDotTurns` (zero is stored as 1) and `WeaponDotDamageType`; `WeaponOnDeath`, and behind that tick box `WeaponOnDeathVariant` (Explode or LeaveField), then `WeaponOnDeathHitType`, `WeaponOnDeathDamage` and `WeaponOnDeathDamageType` while the effect is `Explode`, and `WeaponOnDeathField` while it is `LeaveField`. There is no `accepts` arm, because the form draws no control for it |
 
 | Form | List | Operations |
@@ -864,6 +881,7 @@ rect's width answers `Ran` and reads the clamped value back.
 | Melee Weapon | `MeleeWeaponFightModes` | `Add` (seeds the form's own structural swing), `Remove`, `SetAt`. The list keeps at least one mode |
 | Melee Weapon | `MeleeWeaponSlots` | `Add` (seeds `WeaponSlots::DEFAULT_DECLARATION`), `Remove`, `SetAt`. An empty list is legal |
 | Melee Weapon | `MeleeWeaponAttachments` | `Add` (seeds the registry's first key by name), `Remove`, `SetAt` naming a key the registry holds. An absent `AttachmentRegistry` answers `MissingModel` on `Add` and on `SetAt`. An empty one answers `MissingModel` on `Add`, because there is no key to seed, and `BadArguments` on `SetAt`, because the key it names is not one the registry holds |
+| Field | `FieldImmuneArmorTypes` | `Toggle(ImmuneArmorType(..))` alone. The form draws one tick box per `ArmorType::ALL`, so the list has no append, no position and no order, and every other operation answers `BadArguments`. An empty list is legal and means the field drains everyone |
 | Gang | `GangMembers` | `Add` (appends the form's own default member), `Remove`. No minimum, so an empty list is legal, and no reorder |
 | Weapon | `WeaponFireModes` | `Add` (appends through `WeaponDraft::add_fire_mode`), `Remove`, `SetAt` rewriting all five fields the row draws, `hit_type` included. The list keeps at least one mode |
 | Weapon | `WeaponSlots` | `Add` (seeds `WeaponSlots::DEFAULT_DECLARATION`), `Remove`, `SetAt`. An empty list is legal |
@@ -916,7 +934,7 @@ carries its own name field; a name on any other mode is refused rather than drop
 
 `editor.last_save` reads the same `LastSaveRecord`
 ([`crates/gdtf_content_editor/src/save_record/`](../../crates/gdtf_content_editor/src/save_record))
-that all eleven of the editor's own save buttons write, so a QA-driven save and a
+that all twelve of the editor's own save buttons write, so a QA-driven save and a
 button-driven save are indistinguishable to it. The record is keyed by mode and is not
 state-scoped, so it survives a Load ↔ Editing round trip.
 
@@ -931,9 +949,9 @@ through the same `Display` the editor's own log prints.
 
 `editor.families` sorts every family's entries by rendered key before replying, because each
 registry is a `HashMap` underneath and its own order changes between runs. A `family`
-argument narrows the reply to that family; without one, all nine answer. For the two
+argument narrows the reply to that family; without one, all ten answer. For the two
 UUID-keyed families the label is the def's display name, which is what the editor's own theme
-picker shows; for the seven name-keyed families the label is the key.
+picker shows; for the eight name-keyed families the label is the key.
 
 `editor.draft` reads the active tab and takes no mode argument. The RON is the mode's own
 `draft_to_*` conversion followed by `gdtf_assets::serialize_ron_pretty`, the two calls

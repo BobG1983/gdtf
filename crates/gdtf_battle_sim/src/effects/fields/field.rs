@@ -2,7 +2,7 @@
 //! [`FieldDef`] is the catalog side: damage, damage type, immune armor types, duration.
 
 use bevy::reflect::TypePath;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     effects::fields::{FieldDamage, FieldDuration, ImmuneArmorTypes},
@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// Authored definition of a placeable field type.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 pub struct FieldDef {
     /// Damage per tick.
     pub damage:             FieldDamage,

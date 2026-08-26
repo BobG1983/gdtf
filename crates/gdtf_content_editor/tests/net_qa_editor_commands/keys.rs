@@ -11,7 +11,7 @@ use crate::{
     drafts::theme_draft,
     names::EDITOR_FAMILIES,
     outcome::ran_body,
-    rows::FamiliesReplyRow,
+    rows::{FamiliesReplyRow, FamilyRow},
     socket::{Client, run_editor},
     support::TestError,
     world::{session, terrain_registry, theme_registry},
@@ -42,6 +42,52 @@ fn theme_keys(app: &mut App, client: &mut Client) -> Result<Vec<String>, TestErr
         .flat_map(|family| family.entries)
         .map(|entry| entry.key)
         .collect())
+}
+
+#[test]
+fn an_unfiltered_families_read_carries_the_field_family_with_the_registrys_own_keys()
+-> Result<(), TestError> {
+    let (mut app, mut client) = crate::harness::editing_app_and_client()?;
+    let reply = client.exchange(&mut app, &run_editor(EDITOR_FAMILIES, "()"))?;
+    let body: FamiliesReplyRow = ran_body(&reply, EDITOR_FAMILIES)?;
+
+    let Some(fields) = body
+        .families
+        .iter()
+        .find(|family| family.family == FamilyRow::Field)
+    else {
+        return Err("an unfiltered families read answers every family, Field among them".into());
+    };
+    let mut reported: Vec<String> = fields
+        .entries
+        .iter()
+        .map(|entry| entry.key.clone())
+        .collect();
+    reported.sort();
+    assert!(
+        !reported.is_empty(),
+        "the Field family reads the loaded FieldDefRegistry, so an arm that answers an empty \
+         list leaves the right rail's picker with nothing the wire can see",
+    );
+
+    let mut held: Vec<String> = field_registry(&app)?;
+    held.sort();
+    assert_eq!(
+        reported, held,
+        "the reply's entries are the registry's own keys",
+    );
+    Ok(())
+}
+
+// The keys the loaded field registry holds, so no case pins a content file name.
+fn field_registry(app: &App) -> Result<Vec<String>, TestError> {
+    let Some(registry) = app
+        .world()
+        .get_resource::<gdtf_battle_sim::effects::fields::FieldDefRegistry>()
+    else {
+        return Err("the editor reached Editing, so its field registry is loaded".into());
+    };
+    Ok(registry.keys().map(|key| key.as_str().to_owned()).collect())
 }
 
 /// A theme key the host reports that the session is not already on.

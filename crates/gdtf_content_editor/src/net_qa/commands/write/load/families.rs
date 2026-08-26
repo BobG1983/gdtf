@@ -2,6 +2,7 @@
 
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry},
+    effects::fields::{FieldDefRegistry, FieldKey},
     equipment::attachments::{AttachmentName, AttachmentRegistry},
     ganger::{GangName, GangRegistry},
     injuries::{InjuryName, InjuryRegistry},
@@ -10,9 +11,9 @@ use gdtf_battle_sim::{
 use gdtf_content_families::sprites::{SpriteDefRegistry, SpriteName};
 
 use crate::{
-    armor_form::ArmorDraft, attachment_form::AttachmentDraft, gang_form::GangDraft,
-    injury_form::InjuryDraft, melee_weapon_form::MeleeWeaponDraft, net_qa::wire::EditorKeyNet,
-    sprite_form::SpriteDraft, weapon_form::WeaponDraft,
+    armor_form::ArmorDraft, attachment_form::AttachmentDraft, field_form::FieldDraft,
+    gang_form::GangDraft, injury_form::InjuryDraft, melee_weapon_form::MeleeWeaponDraft,
+    net_qa::wire::EditorKeyNet, sprite_form::SpriteDraft, weapon_form::WeaponDraft,
 };
 
 /// Whether the key was found and loaded, or the registry holds no such entry.
@@ -141,6 +142,24 @@ pub(in crate::net_qa::commands::write::load) fn load_weapon(
     };
     let spec = spec.clone();
     draft.load_weapon(&name, &spec);
+    KeyLookup::Loaded
+}
+
+pub(in crate::net_qa::commands::write::load) fn load_field(
+    draft: &mut FieldDraft,
+    registry: &FieldDefRegistry,
+    key: &EditorKeyNet,
+) -> KeyLookup {
+    let wanted = FieldKey::new(asked_for(key));
+    let Some(def) = registry.def(&wanted) else {
+        return KeyLookup::NoSuchKey(known_keys(
+            registry
+                .keys()
+                .map(|key| EditorKeyNet::new(key.as_str().to_owned())),
+        ));
+    };
+    let def = def.clone();
+    draft.load_field(&wanted, &def);
     KeyLookup::Loaded
 }
 

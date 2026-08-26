@@ -53,7 +53,9 @@ pub(in crate::net_qa) use facing::TerrainFacingNet;
 pub(in crate::net_qa) use family::{
     EditorFamilyEntryNet, EditorFamilyLabelNet, EditorFamilyNet, EditorFamilyRowNet,
 };
-pub(in crate::net_qa) use field::{EditorDraftNameNet, EditorFieldNet};
+pub(in crate::net_qa) use field::{
+    EditorDraftNameNet, EditorFieldNet, FieldDamageNet, FieldDurationNet,
+};
 pub(in crate::net_qa) use fire_mode::{FireModeSpecNet, HitTypeNet};
 pub(in crate::net_qa) use gang::{GangAttributeNet, GangAttributeValueNet};
 pub(in crate::net_qa) use grid::{

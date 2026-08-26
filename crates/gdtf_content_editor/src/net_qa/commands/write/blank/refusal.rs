@@ -15,6 +15,7 @@ pub(in crate::net_qa::commands::write::blank) const fn refusal_for(
         | EditorMode::Sprite
         | EditorMode::Attachment
         | EditorMode::Weapon
-        | EditorMode::MeleeWeapon => None,
+        | EditorMode::MeleeWeapon
+        | EditorMode::Field => None,
     }
 }

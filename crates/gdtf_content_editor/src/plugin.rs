@@ -13,6 +13,7 @@ use crate::{
     canvas::{CanvasZoom, CurrentEditLevel},
     editor_map::EditorMap,
     egui_shell::{editor_egui_ui, level_nav_hotkeys, view_mode_hotkey},
+    field_form::FieldDraft,
     gang_form::GangDraft,
     hovered_cell::HoveredCell,
     injury_form::{InjuryDraft, WeightingDraft},
@@ -60,6 +61,7 @@ impl Plugin for MapEditorPlugin {
         app.init_state_scoped_resource(EditorState::Editing, AttachmentDraft::default);
         app.init_state_scoped_resource(EditorState::Editing, WeaponDraft::default);
         app.init_state_scoped_resource(EditorState::Editing, MeleeWeaponDraft::default);
+        app.init_state_scoped_resource(EditorState::Editing, FieldDraft::default);
         app.init_state_scoped_resource(EditorState::Editing, HoveredCell::new);
         app.init_state_scoped_resource(EditorState::Editing, PreviewPan::origin);
         app.init_state_scoped_resource(EditorState::Editing, ViewMode::default);

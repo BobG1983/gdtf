@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use gdtf_battle_presenter::{IsolateView, ViewMode};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
+    effects::fields::FieldDefRegistry,
     equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
@@ -19,6 +20,7 @@ use crate::{
     canvas::{CanvasZoom, CurrentEditLevel},
     editor_map::EditorMap,
     egui_shell::{prefab::level_rail::RailUiState, sprite_form_ui::SpritePreviewCache},
+    field_form::FieldDraft,
     gang_form::GangDraft,
     hovered_cell::HoveredCell,
     injury_form::{InjuryDraft, WeightingDraft},
@@ -79,6 +81,7 @@ pub(crate) struct ContentForms<'w, 's> {
     pub(super) attachment:   AttachmentParams<'w>,
     pub(super) weapon:       WeaponParams<'w>,
     pub(super) melee_weapon: MeleeWeaponParams<'w>,
+    pub(super) field:        FieldParams<'w>,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
@@ -133,4 +136,10 @@ pub(crate) struct MeleeWeaponParams<'w> {
     pub(super) draft:       Option<ResMut<'w, MeleeWeaponDraft>>,
     pub(super) registry:    Option<Res<'w, MeleeWeaponRegistry>>,
     pub(super) attachments: Option<Res<'w, AttachmentRegistry>>,
+}
+
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct FieldParams<'w> {
+    pub(super) draft:    Option<ResMut<'w, FieldDraft>>,
+    pub(super) registry: Option<Res<'w, FieldDefRegistry>>,
 }

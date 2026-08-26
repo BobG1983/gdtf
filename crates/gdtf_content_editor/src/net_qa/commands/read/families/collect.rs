@@ -85,5 +85,9 @@ pub(super) fn entries_of(
             .melee_weapon
             .as_deref()
             .map_or_else(Vec::new, |registry| registry.keys().map(keyed).collect()),
+        EditorFamilyNet::Field => registries
+            .fields
+            .as_deref()
+            .map_or_else(Vec::new, |registry| registry.keys().map(keyed).collect()),
     }
 }

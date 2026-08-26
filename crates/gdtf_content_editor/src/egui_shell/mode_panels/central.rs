@@ -3,7 +3,7 @@ use bevy_egui::egui;
 use super::ctx::ModePanelsCtx;
 use crate::{
     egui_shell::{
-        armor_form_ui, attachment_form_ui, gang_form_ui,
+        armor_form_ui, attachment_form_ui, field_form_ui, gang_form_ui,
         injury_form_ui::{self, InjuryPanelsCtx},
         melee_weapon_form_ui,
         prefab::{viewport_ui, viewport_ui::ViewportCtx},
@@ -17,7 +17,7 @@ use crate::{
 pub(in crate::egui_shell) fn central_panel(
     viewport_ui: &mut egui::Ui,
     mode: EditorMode,
-    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
+    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
     egui::CentralPanel::default().show(viewport_ui, |ui| match mode {
         EditorMode::Terrain => {
@@ -103,12 +103,21 @@ pub(in crate::egui_shell) fn central_panel(
                     }
                 });
         }
+        EditorMode::Field => {
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    if let Some(draft) = ctx.field.draft.as_deref_mut() {
+                        field_form_ui::def_panel(ui, draft);
+                    }
+                });
+        }
     });
 }
 
 fn injury_sub_tabs(
     ui: &mut egui::Ui,
-    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
+    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
     let Some(sub_tab) = ctx.injury.sub_tab.as_deref_mut() else {
         return;
@@ -126,7 +135,7 @@ fn injury_sub_tabs(
 
 fn prefab_viewport(
     ui: &mut egui::Ui,
-    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
+    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
     if let (Some(map), Some(edit_level), Some(hovered), Some(zoom), Some(pan)) = (
         ctx.prefab.map.as_deref_mut(),

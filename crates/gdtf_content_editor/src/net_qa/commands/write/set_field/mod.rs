@@ -3,6 +3,7 @@
 mod armor;
 mod attachment;
 mod command;
+mod field;
 mod gang;
 mod injury;
 mod melee_weapon;

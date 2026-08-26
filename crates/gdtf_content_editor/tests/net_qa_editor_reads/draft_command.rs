@@ -12,12 +12,12 @@ use gdtf_qa_protocol::{command::CommandOutcome, message::QaResponse};
 use serde::de::DeserializeOwned;
 
 use crate::{
+    draft_reply::{DraftOutcomeRow, DraftReplyRow},
     harness::editing_app_and_client,
     load_case::reply_answered_during_load,
     mirror::ModeRow,
     names::{EDITOR_DRAFT, EDITOR_SET_FIELD, EDITOR_SET_MODE},
     outcome::{ran_body, unavailable_code},
-    rows::{DraftOutcomeRow, DraftReplyRow},
     save_fault::SaveFaultRow,
     socket::{Client, run_editor},
     support::{TestError, TestResult},

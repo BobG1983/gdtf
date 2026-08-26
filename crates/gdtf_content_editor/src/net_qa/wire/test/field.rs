@@ -2,7 +2,7 @@ use gdtf_battle_sim::{
     armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart},
     effects::{
         attachments::{AimDelta, AttachmentEffect},
-        fields::FieldKey,
+        fields::{FieldDamage, FieldKey},
     },
     equipment::attachments::AttachmentSlot,
     weapon::{BlastRadius, DamageType, Handedness, HitType, TrajectoryStyle},
@@ -18,10 +18,11 @@ use crate::{
         ArmorTypeNet, AttachmentEffectNet, AttachmentSlotNet, BaseSpreadNet, BodyPartNet,
         DamageTypeNet, DotDamageNet, DotEnabledNet, DotTurnsNet, EditorDraftNameNet,
         EditorFieldNet, EditorKeyNet, EditorListIndexNet, ExplodeDamageNet, FatalBiasNet,
-        FieldKeyNet, GangAttributeNet, GangAttributeValueNet, HandednessNet, HitTypeNet,
-        KickbackNet, MagazineSizeNet, OnDeathEnabledNet, OnDeathVariantNet, ReloadTuNet, ShoveNet,
-        SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet, SpritePxNet, SpriteSourceNet, StableNet,
-        TerrainKindNet, TrajectoryStyleNet, WeaponDamageNet, WeaponPunchNet, WeaponShredNet,
+        FieldDamageNet, FieldDurationNet, FieldKeyNet, GangAttributeNet, GangAttributeValueNet,
+        HandednessNet, HitTypeNet, KickbackNet, MagazineSizeNet, OnDeathEnabledNet,
+        OnDeathVariantNet, ReloadTuNet, ShoveNet, SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet,
+        SpritePxNet, SpriteSourceNet, StableNet, TerrainKindNet, TrajectoryStyleNet,
+        WeaponDamageNet, WeaponPunchNet, WeaponShredNet,
     },
     terrain_form::TerrainKindChoice,
 };
@@ -240,6 +241,39 @@ fn every_weapon_on_death_field_arm_round_trips() {
 }
 
 #[test]
+fn every_field_form_field_arm_round_trips() {
+    assert_ron_round_trip(&EditorFieldNet::FieldName(a_name()));
+    assert_ron_round_trip(&EditorFieldNet::FieldDamage(FieldDamageNet::from_damage(
+        FieldDamage::new(4),
+    )));
+    for damage_type in DamageType::ALL {
+        assert_ron_round_trip(&EditorFieldNet::FieldDamageType(
+            DamageTypeNet::from_damage_type(damage_type),
+        ));
+    }
+    assert_ron_round_trip(&EditorFieldNet::FieldDuration(FieldDurationNet::Permanent));
+    assert_ron_round_trip(&EditorFieldNet::FieldDuration(FieldDurationNet::Turns(3)));
+    assert_ron_round_trip(&FieldDurationNet::Turns(0));
+}
+
+#[test]
+fn a_zero_turn_duration_crosses_the_wire_and_is_refused_by_the_reader() {
+    assert_eq!(
+        FieldDurationNet::Turns(0).to_duration(),
+        None,
+        "the wire carries the turn count a client sent, and the reader is what refuses zero. \
+         Clamping it to one here would hide the refusal the handler owes the client",
+    );
+    assert_eq!(
+        FieldDurationNet::Turns(1)
+            .to_duration()
+            .map(FieldDurationNet::from_duration),
+        Some(FieldDurationNet::Turns(1)),
+        "one turn is the smallest count the sim loads, and it round-trips unchanged",
+    );
+}
+
+#[test]
 fn the_field_traces_a_usable_shape() {
     assert_schema_is_usable::<EditorFieldNet>("EditorFieldNet");
     assert_schema_is_usable::<EditorDraftNameNet>("EditorDraftNameNet");
@@ -263,4 +297,10 @@ fn the_weapon_values_trace_usable_shapes() {
     assert_schema_is_usable::<OnDeathVariantNet>("OnDeathVariantNet");
     assert_schema_is_usable::<ExplodeDamageNet>("ExplodeDamageNet");
     assert_schema_is_usable::<FieldKeyNet>("FieldKeyNet");
+}
+
+#[test]
+fn the_field_form_values_trace_usable_shapes() {
+    assert_schema_is_usable::<FieldDamageNet>("FieldDamageNet");
+    assert_schema_is_usable::<FieldDurationNet>("FieldDurationNet");
 }

@@ -14,6 +14,24 @@ fn injury_owns_exactly_one_top_level_tab() {
 }
 
 #[test]
+fn field_owns_exactly_one_tab_that_the_tab_index_round_trips() {
+    let field_tabs = EditorMode::TAB_ORDER
+        .iter()
+        .filter(|mode| mode.tab_label() == "FIELD")
+        .count();
+    assert_eq!(
+        field_tabs, 1,
+        "the Field workflow is one top-level tab, so dropping its TAB_ORDER entry while keeping \
+         the label arm leaves the tab bar unable to reach it, got {field_tabs}",
+    );
+    assert_eq!(
+        EditorMode::from_tab_index(EditorMode::Field.tab_index()),
+        Some(EditorMode::Field),
+        "the Field tab's own index reads back as the Field tab, so no other tab shares its slot",
+    );
+}
+
+#[test]
 fn only_the_injury_tab_itself_carries_a_sub_tab_label() {
     let promoted: Vec<(&'static str, &'static str)> = InjurySubTab::TAB_ORDER
         .iter()

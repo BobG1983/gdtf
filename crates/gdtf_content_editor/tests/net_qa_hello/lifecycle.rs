@@ -1,6 +1,8 @@
 use bevy::app::App;
-use gdtf_battle_sim::{armor::ArmorRegistry, weapon::WeaponRegistry};
-use gdtf_content_editor::{ArmorDraft, EditorQaAssetsRoot, WeaponDraft};
+use gdtf_battle_sim::{
+    armor::ArmorRegistry, effects::fields::FieldDefRegistry, weapon::WeaponRegistry,
+};
+use gdtf_content_editor::{ArmorDraft, EditorQaAssetsRoot, FieldDraft, WeaponDraft};
 use tempfile::TempDir;
 
 use crate::{
@@ -38,6 +40,45 @@ pub(crate) fn first_weapon_key(app: &App) -> Result<String, TestError> {
         return Err("the loaded weapon registry is empty, so no key can be loaded".into());
     };
     Ok(first.clone())
+}
+
+/// A key the live field registry actually holds.
+pub(crate) fn first_field_key(app: &App) -> Result<String, TestError> {
+    let Some(registry) = app.world().get_resource::<FieldDefRegistry>() else {
+        return Err(
+            "the editor reached Editing, so its field registry is loaded. It only is once the \
+             fields family is registered in the editor's own load pass"
+                .into(),
+        );
+    };
+    let mut keys: Vec<String> = registry.keys().map(|key| key.as_str().to_owned()).collect();
+    keys.sort();
+    let Some(first) = keys.first() else {
+        return Err("the loaded field registry is empty, so no key can be loaded".into());
+    };
+    Ok(first.clone())
+}
+
+/// The field draft the world holds right now.
+pub(crate) fn field_draft(app: &App) -> Result<FieldDraft, TestError> {
+    let Some(draft) = app.world().get_resource::<FieldDraft>() else {
+        return Err("the field draft is a resource the editor creates on entering Editing".into());
+    };
+    Ok(draft.clone())
+}
+
+/// Stand up the field save case: load a real field, then point QA saves at a temp root.
+pub(crate) fn field_save_case() -> Result<DraftSaveCase, TestError> {
+    let (mut app, mut client) = editing_app_and_client()?;
+    let key = first_field_key(&app)?;
+    let loaded = load_by_key(&mut app, &mut client, "Field", &key)?;
+    let LoadOutcomeRow::Loaded { .. } = loaded else {
+        return Err(format!("`{key}` came from the live registry, got {loaded:?}").into());
+    };
+    let root = TempDir::new()?;
+    app.world_mut()
+        .insert_resource(EditorQaAssetsRoot::new(root.path().to_path_buf()));
+    Ok(DraftSaveCase { app, client, root })
 }
 
 /// The armor draft the world holds right now.
@@ -80,15 +121,15 @@ pub(crate) fn load_by_key(
     Ok(body.outcome)
 }
 
-/// An editing app whose QA saves land in a temp root, with an armor draft loaded from content.
-pub(crate) struct ArmorSaveCase {
+/// An editing app whose QA saves land in a temp root, with one draft loaded from content.
+pub(crate) struct DraftSaveCase {
     pub(crate) app:    App,
     pub(crate) client: Client,
     pub(crate) root:   TempDir,
 }
 
 /// Stand up the armor save case: load a real armor, then point QA saves at a temp root.
-pub(crate) fn armor_save_case() -> Result<ArmorSaveCase, TestError> {
+pub(crate) fn armor_save_case() -> Result<DraftSaveCase, TestError> {
     let (mut app, mut client) = editing_app_and_client()?;
     let key = first_armor_key(&app)?;
     let loaded = load_by_key(&mut app, &mut client, "Armor", &key)?;
@@ -98,7 +139,7 @@ pub(crate) fn armor_save_case() -> Result<ArmorSaveCase, TestError> {
     let root = TempDir::new()?;
     app.world_mut()
         .insert_resource(EditorQaAssetsRoot::new(root.path().to_path_buf()));
-    Ok(ArmorSaveCase { app, client, root })
+    Ok(DraftSaveCase { app, client, root })
 }
 
 /// Run `editor.save` with no name argument at all.

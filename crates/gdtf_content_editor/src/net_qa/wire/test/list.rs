@@ -1,4 +1,5 @@
 use gdtf_battle_sim::{
+    armor::ArmorType,
     effects::attachments::{AimDelta, AttachmentEffect},
     equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity},
     injuries::InjuryEffect,
@@ -9,7 +10,7 @@ use gdtf_content_families::sprites::{SpriteImagePath, SpriteSource};
 
 use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::net_qa::wire::{
-    AttachmentEffectNet, AttachmentKeyNet, AttachmentSlotNet, EditorDraftNameNet,
+    ArmorTypeNet, AttachmentEffectNet, AttachmentKeyNet, AttachmentSlotNet, EditorDraftNameNet,
     EditorListIndexNet, EditorListMemberNet, EditorListNet, EditorListOpNet, FightModeKindNet,
     FightModeSpecNet, FireModeSpecNet, InjuryEffectNet, SlotCapacityNet, SpriteSourceNet,
     StrikesNet, TerrainFacingNet, TerrainTagNet, TuCostNet, WeaponSlotNet,
@@ -63,6 +64,7 @@ fn the_named_list_round_trips() {
         EditorListNet::WeaponFireModes,
         EditorListNet::WeaponSlots,
         EditorListNet::WeaponAttachments,
+        EditorListNet::FieldImmuneArmorTypes,
     ] {
         assert_ron_round_trip(&list);
     }
@@ -79,6 +81,11 @@ fn every_toggle_arm_round_trips() {
         assert_ron_round_trip(&EditorListOpNet::Toggle(EditorListMemberNet::TerrainTag(
             tag,
         )));
+    }
+    for armor_type in ArmorType::ALL {
+        assert_ron_round_trip(&EditorListOpNet::Toggle(
+            EditorListMemberNet::ImmuneArmorType(ArmorTypeNet::from_type(armor_type)),
+        ));
     }
 }
 
@@ -121,6 +128,11 @@ fn every_member_round_trips() {
         "Kez",
     )));
     assert_ron_round_trip(&EditorListMemberNet::FireMode(a_fire_mode()));
+    for armor_type in ArmorType::ALL {
+        assert_ron_round_trip(&EditorListMemberNet::ImmuneArmorType(
+            ArmorTypeNet::from_type(armor_type),
+        ));
+    }
 }
 
 #[test]

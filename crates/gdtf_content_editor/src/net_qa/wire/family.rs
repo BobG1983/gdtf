@@ -26,11 +26,13 @@ pub(in crate::net_qa) enum EditorFamilyNet {
     Weapon,
     /// Melee weapon specs.
     MeleeWeapon,
+    /// Field defs.
+    Field,
 }
 
 impl EditorFamilyNet {
     /// Every family a read without a filter answers, in reply order.
-    pub(in crate::net_qa) const ALL: [Self; 9] = [
+    pub(in crate::net_qa) const ALL: [Self; 10] = [
         Self::Terrain,
         Self::Theme,
         Self::Gang,
@@ -40,6 +42,7 @@ impl EditorFamilyNet {
         Self::Attachment,
         Self::Weapon,
         Self::MeleeWeapon,
+        Self::Field,
     ];
 }
 

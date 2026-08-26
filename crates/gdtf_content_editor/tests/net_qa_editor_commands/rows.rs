@@ -27,9 +27,25 @@ pub(crate) struct FamilyEntryRow {
     pub(crate) key: String,
 }
 
+/// A client's own reading of which registry a families row names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum FamilyRow {
+    Terrain,
+    Theme,
+    Gang,
+    Armor,
+    Injury,
+    Sprite,
+    Attachment,
+    Weapon,
+    MeleeWeapon,
+    Field,
+}
+
 /// One family and every member it holds.
 #[derive(Debug, Deserialize)]
 pub(crate) struct FamilyRowEntries {
+    pub(crate) family:  FamilyRow,
     pub(crate) entries: Vec<FamilyEntryRow>,
 }
 

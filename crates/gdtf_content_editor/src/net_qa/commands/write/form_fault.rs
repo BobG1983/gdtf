@@ -17,6 +17,13 @@ pub(in crate::net_qa::commands::write) const NOT_AN_EMPLACEMENT: RefusalNote =
          Emplacement, so this write would silently do nothing",
     );
 
+/// The note a Field write onto a draft the first egui frame has not settled is refused with.
+pub(in crate::net_qa::commands::write) const FIELD_AUTOLOAD_PENDING: RefusalNote =
+    RefusalNote::from_static(
+        "the Field draft has not settled its first-frame autoload, and the form's own sync would \
+         seed the first registry entry over anything written now",
+    );
+
 /// The note a foreign arm is refused with, naming the tab that is actually open.
 pub(in crate::net_qa::commands::write) fn foreign_arm_note(mode: EditorModeNet) -> RefusalNote {
     RefusalNote::from_owned(format!(

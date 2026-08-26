@@ -2,8 +2,8 @@
 
 use super::{
     families::{
-        KeyLookup, load_armor, load_attachment, load_gang, load_injury, load_melee_weapon,
-        load_sprite, load_weapon,
+        KeyLookup, load_armor, load_attachment, load_field, load_gang, load_injury,
+        load_melee_weapon, load_sprite, load_weapon,
     },
     theme::load_theme,
 };
@@ -80,6 +80,12 @@ pub(in crate::net_qa::commands::write::load) fn load_for_mode(
         EditorMode::Weapon => match (forms.weapon.as_deref_mut(), registries.weapons.as_deref()) {
             (Some(draft), Some(registry)) => {
                 LoadAttempt::Answered(load_weapon(draft, registry, key))
+            }
+            _ => LoadAttempt::Missing,
+        },
+        EditorMode::Field => match (forms.field.as_deref_mut(), registries.fields.as_deref()) {
+            (Some(draft), Some(registry)) => {
+                LoadAttempt::Answered(load_field(draft, registry, key))
             }
             _ => LoadAttempt::Missing,
         },

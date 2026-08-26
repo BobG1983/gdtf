@@ -1,6 +1,9 @@
 //! Which single-value field a write names, with the value on its own variant.
 
+use std::num::NonZeroU8;
+
 use bevy::prelude::Deref;
+use gdtf_battle_sim::effects::fields::{FieldDamage, FieldDuration, FieldTurns};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -41,6 +44,53 @@ impl EditorDraftNameNet {
     /// Wrap a name a client sent or a draft holds.
     pub(in crate::net_qa) fn new(name: &str) -> Self {
         Self(name.to_owned())
+    }
+}
+
+/// The flat HP a field drains from an occupant each tick.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub(in crate::net_qa) struct FieldDamageNet(u16);
+
+impl FieldDamageNet {
+    /// Mirror the sim's own field damage.
+    pub(in crate::net_qa) fn from_damage(damage: FieldDamage) -> Self {
+        Self(*damage)
+    }
+
+    /// Read a client's field damage back as the sim's own.
+    pub(in crate::net_qa) const fn to_damage(self) -> FieldDamage {
+        FieldDamage::new(self.0)
+    }
+}
+
+/// How long a placement of a field lasts, with the turn count a client sent unvalidated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub(in crate::net_qa) enum FieldDurationNet {
+    /// A finite number of turns, which the sim requires to be at least one.
+    Turns(u8),
+    /// Never expires.
+    Permanent,
+}
+
+impl FieldDurationNet {
+    /// Mirror the sim's own duration.
+    pub(in crate::net_qa) fn from_duration(duration: FieldDuration) -> Self {
+        match duration {
+            FieldDuration::Turns(turns) => Self::Turns((*turns).get()),
+            FieldDuration::Permanent => Self::Permanent,
+        }
+    }
+
+    /// Read a client's duration back as the sim's own, or `None` for a zero turn count.
+    pub(in crate::net_qa) const fn to_duration(self) -> Option<FieldDuration> {
+        match self {
+            Self::Permanent => Some(FieldDuration::Permanent),
+            Self::Turns(count) => match NonZeroU8::new(count) {
+                Some(count) => Some(FieldDuration::Turns(FieldTurns::new(count))),
+                None => None,
+            },
+        }
     }
 }
 
@@ -273,4 +323,12 @@ pub(in crate::net_qa) enum EditorFieldNet {
     WeaponOnDeathDamageType(DamageTypeNet),
     /// The leave-field effect's field key, behind the on-death tick box.
     WeaponOnDeathField(FieldKeyNet),
+    /// The Field draft's save stem.
+    FieldName(EditorDraftNameNet),
+    /// The Field draft's drain per tick.
+    FieldDamage(FieldDamageNet),
+    /// The Field draft's damage channel.
+    FieldDamageType(DamageTypeNet),
+    /// The Field draft's lifetime, where a zero turn count is refused rather than clamped.
+    FieldDuration(FieldDurationNet),
 }

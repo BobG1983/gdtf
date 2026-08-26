@@ -3,12 +3,14 @@
 use std::num::NonZeroU8;
 
 use bevy::prelude::Deref;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{ApplyFieldEffect, FieldExpired};
 
 /// Non-zero remaining turns for a field.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
+#[derive(
+    Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize,
+)]
 #[serde(transparent)]
 pub struct FieldTurns(NonZeroU8);
 
@@ -30,7 +32,7 @@ impl FieldTurns {
 }
 
 /// How long a field lasts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum FieldDuration {
     /// Finite turn count.
     Turns(FieldTurns),

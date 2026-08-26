@@ -3,6 +3,8 @@
 #![cfg(debug_assertions)]
 
 mod draft_command;
+#[path = "../net_qa_shared/draft_reply.rs"]
+mod draft_reply;
 mod families_command;
 #[path = "../net_qa_shared/harness.rs"]
 mod harness;

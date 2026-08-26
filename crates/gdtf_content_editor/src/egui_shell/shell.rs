@@ -48,6 +48,7 @@ pub(crate) fn editor_egui_ui(
             attachment:   &mut forms.attachment,
             weapon:       &mut forms.weapon,
             melee_weapon: &mut forms.melee_weapon,
+            field:        &mut forms.field,
         },
     );
 
@@ -98,7 +99,8 @@ pub(crate) fn editor_egui_ui(
         | EditorMode::Sprite
         | EditorMode::Attachment
         | EditorMode::Weapon
-        | EditorMode::MeleeWeapon => {}
+        | EditorMode::MeleeWeapon
+        | EditorMode::Field => {}
     });
 
     let mut panel_ctx = ModePanelsCtx {
@@ -118,6 +120,7 @@ pub(crate) fn editor_egui_ui(
         attachment: &mut forms.attachment,
         weapon: &mut forms.weapon,
         melee_weapon: &mut forms.melee_weapon,
+        field: &mut forms.field,
     };
     right_panel(&mut viewport_ui, *mode, &mut panel_ctx);
     central_panel(&mut viewport_ui, *mode, &mut panel_ctx);

@@ -11,7 +11,7 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{attachment, gang, injury, melee_weapon, sprite, terrain, weapon};
+use super::{attachment, field, gang, injury, melee_weapon, sprite, terrain, weapon};
 use crate::{
     EditorMode,
     net_qa::{
@@ -174,6 +174,12 @@ fn edit(
             sprite::apply(draft, op)?;
             Ok(sprite::members(draft))
         }
+        (EditorModeNet::Field, EditorListNet::FieldImmuneArmorTypes) => {
+            let draft = present(forms.field.as_mut())?;
+            field::apply(draft, op)?;
+            Ok(field::members(draft))
+        }
+        (EditorModeNet::Field, _) => no_list_of_its_own(forms.field.as_mut()),
         (EditorModeNet::Terrain, _) => no_list_of_its_own(forms.terrain.as_mut()),
         (EditorModeNet::Attachment, _) => no_list_of_its_own(forms.attachment.as_mut()),
         (EditorModeNet::Sprite, _) => no_list_of_its_own(forms.sprite.as_mut()),

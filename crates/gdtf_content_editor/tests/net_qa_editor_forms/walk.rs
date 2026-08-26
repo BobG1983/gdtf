@@ -1,12 +1,12 @@
-use gdtf_battle_sim::{severity::Severity, terrain::def::TerrainTag};
+use gdtf_battle_sim::{armor::ArmorType, severity::Severity, terrain::def::TerrainTag};
 use gdtf_content_editor::{EditorMode, TerrainKindChoice};
 
 use crate::{
-    names::EDITOR_SET_MODE,
+    names::{EDITOR_NEW, EDITOR_SET_MODE},
     rows::FieldRow,
     setup::{
-        editor_mode, form_tab_app_and_client, injury_draft, list_op, melee_weapon_draft, set_field,
-        terrain_draft,
+        editor_mode, field_draft, form_tab_app_and_client, injury_draft, list_op,
+        melee_weapon_draft, set_field, terrain_draft,
     },
     socket::run_editor,
     support::TestResult,
@@ -59,10 +59,28 @@ fn one_connection_walks_terrain_injury_and_melee_weapon_in_turn() -> TestResult 
     )?;
     assert_eq!(melee_weapon_draft(&app)?.fight_modes().len(), 2);
 
+    client.exchange(&mut app, &run_editor(EDITOR_SET_MODE, "(mode: Field)"))?;
+    assert_eq!(editor_mode(&app)?, EditorMode::Field);
+    client.exchange(&mut app, &run_editor(EDITOR_NEW, "(mode: Field)"))?;
+    let damage = set_field(&mut app, &mut client, "(field: FieldDamage(6))")?;
+    assert_eq!(damage.field, FieldRow::FieldDamage(6));
+    list_op(
+        &mut app,
+        &mut client,
+        "(list: FieldImmuneArmorTypes, op: Toggle(ImmuneArmorType(Flak)))",
+    )?;
+    assert!(field_draft(&app)?.is_immune(ArmorType::Flak));
+
+    client.exchange(&mut app, &run_editor(EDITOR_SET_MODE, "(mode: Terrain)"))?;
     assert_eq!(
         terrain_draft(&app)?.kind(),
         TerrainKindChoice::Emplacement,
         "walking away from a tab leaves its draft where the earlier writes left it",
+    );
+    assert_eq!(
+        *field_draft(&app)?.damage(),
+        6,
+        "walking off the Field tab leaves its own writes in place too",
     );
     Ok(())
 }

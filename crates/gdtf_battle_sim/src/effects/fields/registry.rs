@@ -48,6 +48,11 @@ impl FieldDefRegistry {
         self.0.get(key)
     }
 
+    /// Iterate keys.
+    pub fn keys(&self) -> impl Iterator<Item = &FieldKey> {
+        self.0.keys()
+    }
+
     /// Number of entries.
     #[must_use]
     pub fn len(&self) -> usize {

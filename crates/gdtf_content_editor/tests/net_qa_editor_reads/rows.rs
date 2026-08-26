@@ -1,7 +1,5 @@
 use serde::Deserialize;
 
-use crate::{mirror::ModeRow, save_fault::SaveFaultRow};
-
 /// `editor.validation`'s reply body as a client decodes it.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ValidationReplyRow {
@@ -22,6 +20,7 @@ pub(crate) enum FamilyRow {
     Attachment,
     Weapon,
     MeleeWeapon,
+    Field,
 }
 
 /// One registry member: the key a load takes, and the label a picker shows.
@@ -91,18 +90,4 @@ pub(crate) struct SessionReplyRow {
     pub(crate) selected_tile: Option<String>,
     pub(crate) level:         u8,
     pub(crate) view:          ViewRow,
-}
-
-/// What projecting the active draft produced.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub(crate) enum DraftOutcomeRow {
-    Ron(String),
-    NotSavable(SaveFaultRow),
-}
-
-/// `editor.draft`'s reply body.
-#[derive(Debug, Deserialize)]
-pub(crate) struct DraftReplyRow {
-    pub(crate) mode:    ModeRow,
-    pub(crate) outcome: DraftOutcomeRow,
 }

@@ -1,7 +1,7 @@
 //! Field drain: flat HP damage to occupants.
 
 use bevy::prelude::{Deref, Entity};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{ApplyFieldEffect, OccupantDrain};
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Flat HP damage dealt by a field tick.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct FieldDamage(u16);
 

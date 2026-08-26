@@ -6,8 +6,8 @@ use gdtf_battle_sim::{
 use crate::{
     egui_shell::{
         params::{
-            ArmorParams, AttachmentParams, GangParams, InjuryParams, MeleeWeaponParams,
-            PrefabParams, SpriteParams, WeaponParams,
+            ArmorParams, AttachmentParams, FieldParams, GangParams, InjuryParams,
+            MeleeWeaponParams, PrefabParams, SpriteParams, WeaponParams,
         },
         textures::ResolvedTextures,
     },
@@ -32,6 +32,7 @@ pub(in crate::egui_shell) struct ModePanelsCtx<
     'attach,
     'weapon,
     'melee,
+    'field,
 > {
     pub(in crate::egui_shell) session:          &'a mut ResMut<'sess, MapEditorSession>,
     pub(in crate::egui_shell) last_save:        &'a mut LastSaveRecord,
@@ -49,4 +50,5 @@ pub(in crate::egui_shell) struct ModePanelsCtx<
     pub(in crate::egui_shell) attachment:       &'a mut AttachmentParams<'attach>,
     pub(in crate::egui_shell) weapon:           &'a mut WeaponParams<'weapon>,
     pub(in crate::egui_shell) melee_weapon:     &'a mut MeleeWeaponParams<'melee>,
+    pub(in crate::egui_shell) field:            &'a mut FieldParams<'field>,
 }

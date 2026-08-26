@@ -5,6 +5,7 @@ use std::path::Path;
 use crate::{
     armor_form::{self, ArmorDraft},
     attachment_form::{self, AttachmentDraft},
+    field_form::{self, FieldDraft},
     gang_form::{self, GangDraft},
     injury_form::{self, InjuryDraft},
     melee_weapon_form::{self, MeleeWeaponDraft},
@@ -51,6 +52,14 @@ pub(in crate::net_qa::commands::write::save) fn save_attachment(
 ) -> SaveOutcome {
     let (name, spec) = attachment_form::draft_to_attachment_spec(draft);
     SaveOutcome::from_result(attachment_form::write_attachment_in(root, &name, &spec))
+}
+
+pub(in crate::net_qa::commands::write::save) fn save_field(
+    draft: &FieldDraft,
+    root: &Path,
+) -> SaveOutcome {
+    let (key, def) = field_form::draft_to_field(draft);
+    SaveOutcome::from_result(field_form::write_field_in(root, &key, &def))
 }
 
 pub(in crate::net_qa::commands::write::save) fn save_weapon(

@@ -6,7 +6,7 @@ use serde::Serialize;
 
 use super::drafts::FormDrafts;
 use crate::{
-    EditorMode, armor_form, attachment_form, gang_form, injury_form, melee_weapon_form,
+    EditorMode, armor_form, attachment_form, field_form, gang_form, injury_form, melee_weapon_form,
     net_qa::wire::{EditorDraftOutcomeNet, EditorDraftRonNet, EditorSaveFaultNet},
     save_record::EditorSaveFault,
     sprite_form,
@@ -91,6 +91,12 @@ pub(super) fn project(mode: EditorMode, drafts: &FormDrafts<'_>) -> DraftProject
                 .weapon
                 .as_deref()
                 .map(|draft| ron_of(&weapon_form::draft_to_weapon_spec(draft).1)),
+        ),
+        EditorMode::Field => made(
+            drafts
+                .field
+                .as_deref()
+                .map(|draft| ron_of(&field_form::draft_to_field(draft).1)),
         ),
         EditorMode::MeleeWeapon => made(
             drafts

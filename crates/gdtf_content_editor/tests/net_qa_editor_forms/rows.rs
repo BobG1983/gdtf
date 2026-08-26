@@ -1,8 +1,8 @@
 use serde::Deserialize;
 
 use crate::values::{
-    ArmorTypeRow, BandRow, BodyPartRow, CategoryRow, DamageTypeRow, EffectRow, FacingRow,
-    FightModeRow, FireModeRow, FootfallRow, GangAttributeRow, HandednessRow, HitTypeRow,
+    ArmorTypeRow, BandRow, BodyPartRow, CategoryRow, DamageTypeRow, DurationRow, EffectRow,
+    FacingRow, FightModeRow, FireModeRow, FootfallRow, GangAttributeRow, HandednessRow, HitTypeRow,
     InjuryEffectRow, LosRow, OnDeathVariantRow, SeverityRow, SlotDeclRow, SlotRow, SourceRow,
     TagRow, TerrainKindRow, TileRoleRow, TrajectoryRow,
 };
@@ -130,6 +130,10 @@ pub(crate) enum FieldRow {
     WeaponOnDeathDamage(u16),
     WeaponOnDeathDamageType(DamageTypeRow),
     WeaponOnDeathField(String),
+    FieldName(String),
+    FieldDamage(u16),
+    FieldDamageType(DamageTypeRow),
+    FieldDuration(DurationRow),
 }
 
 /// Which list a write named.
@@ -147,6 +151,7 @@ pub(crate) enum ListRow {
     WeaponFireModes,
     WeaponSlots,
     WeaponAttachments,
+    FieldImmuneArmorTypes,
 }
 
 /// One member of the list a reply reads back.
@@ -162,6 +167,7 @@ pub(crate) enum ListMemberRow {
     Attachment(String),
     GangMember(String),
     FireMode(FireModeRow),
+    ImmuneArmorType(ArmorTypeRow),
 }
 
 /// `editor.set_field`'s reply body.

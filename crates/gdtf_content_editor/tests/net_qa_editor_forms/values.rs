@@ -204,6 +204,13 @@ pub(crate) enum DamageTypeRow {
     Las,
 }
 
+/// A client's own reading of how long a placed field lasts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum DurationRow {
+    Turns(u8),
+    Permanent,
+}
+
 /// A client's own reading of how many hands a weapon takes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub(crate) enum HandednessRow {

@@ -9,7 +9,7 @@ use crate::{
 };
 
 // Every family the wire enum names, so the count is the enum's own and not a content count.
-const EVERY_FAMILY: [FamilyRow; 9] = [
+const EVERY_FAMILY: [FamilyRow; 10] = [
     FamilyRow::Terrain,
     FamilyRow::Theme,
     FamilyRow::Gang,
@@ -19,6 +19,7 @@ const EVERY_FAMILY: [FamilyRow; 9] = [
     FamilyRow::Attachment,
     FamilyRow::Weapon,
     FamilyRow::MeleeWeapon,
+    FamilyRow::Field,
 ];
 
 fn keys(row: &FamilyRowEntries) -> Vec<String> {

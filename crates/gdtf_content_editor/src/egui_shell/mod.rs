@@ -3,6 +3,7 @@ mod attachment_form_ui;
 mod autoload;
 mod chrome;
 mod damage_edit;
+mod field_form_ui;
 mod fire_mode_edit;
 mod gang_form_ui;
 mod injury_form_ui;

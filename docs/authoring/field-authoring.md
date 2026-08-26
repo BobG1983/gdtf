@@ -10,6 +10,12 @@ effects family in).
 
 ## Part 1 — Creating a new field type (content authoring)
 
+The content editor has a FIELD tab that writes the same
+`assets/content/fields/<key>.field.ron` this part describes, so hand-editing the RON is no
+longer the only route. Click FIELD in the tab bar to open it; the ten digit hotkeys are
+taken by the older tabs, so the Field tab has none. The RON reference below stays the source
+of truth for the schema.
+
 ### 1a. Where the `.ron` file goes
 
 Field CATALOG entries live under `assets/content/fields/` — one file per field

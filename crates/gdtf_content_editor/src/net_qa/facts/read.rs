@@ -7,6 +7,7 @@ use crate::{
     EditorMode, EditorState,
     armor_form::ArmorDraft,
     attachment_form::AttachmentDraft,
+    field_form::FieldDraft,
     gang_form::GangDraft,
     injury_form::InjuryDraft,
     melee_weapon_form::MeleeWeaponDraft,
@@ -31,6 +32,7 @@ pub(in crate::net_qa) struct EditorFactsParam<'w> {
     attachment:   Option<Res<'w, AttachmentDraft>>,
     weapon:       Option<Res<'w, WeaponDraft>>,
     melee_weapon: Option<Res<'w, MeleeWeaponDraft>>,
+    field:        Option<Res<'w, FieldDraft>>,
 }
 
 impl EditorFactsParam<'_> {
@@ -60,6 +62,7 @@ impl EditorFactsParam<'_> {
             Some(EditorModeNet::Attachment) => self.attachment.is_some(),
             Some(EditorModeNet::Weapon) => self.weapon.is_some(),
             Some(EditorModeNet::MeleeWeapon) => self.melee_weapon.is_some(),
+            Some(EditorModeNet::Field) => self.field.is_some(),
             Some(EditorModeNet::Prefab) | None => false,
         };
         DraftInWorld::new(present)

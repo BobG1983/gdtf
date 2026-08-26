@@ -1,5 +1,6 @@
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
+    effects::fields::FieldDefRegistry,
     equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
@@ -12,13 +13,15 @@ use crate::{
     armor_form::ArmorDraft,
     attachment_form::AttachmentDraft,
     egui_shell::{
-        armor_form_ui, attachment_form_ui, gang_form_ui, injury_form_ui, melee_weapon_form_ui,
+        armor_form_ui, attachment_form_ui, field_form_ui, gang_form_ui, injury_form_ui,
+        melee_weapon_form_ui,
         params::{
-            ArmorParams, AttachmentParams, GangParams, InjuryParams, MeleeWeaponParams,
-            SpriteParams, WeaponParams,
+            ArmorParams, AttachmentParams, FieldParams, GangParams, InjuryParams,
+            MeleeWeaponParams, SpriteParams, WeaponParams,
         },
         sprite_form_ui, theme_form_ui, weapon_form_ui,
     },
+    field_form::FieldDraft,
     gang_form::GangDraft,
     injury_form::{InjuryDraft, WeightingDraft},
     melee_weapon_form::MeleeWeaponDraft,
@@ -29,8 +32,18 @@ use crate::{
     weapon_form::WeaponDraft,
 };
 
-pub(super) struct ModeSyncBundles<'a, 'gang, 'armor, 'injury, 'sprite, 'attach, 'weapon, 'melee, 's>
-{
+pub(super) struct ModeSyncBundles<
+    'a,
+    'gang,
+    'armor,
+    'injury,
+    'sprite,
+    'attach,
+    'weapon,
+    'melee,
+    'field,
+    's,
+> {
     pub(super) gang:         &'a mut GangParams<'gang>,
     pub(super) armor:        &'a mut ArmorParams<'armor>,
     pub(super) injury:       &'a mut InjuryParams<'injury>,
@@ -38,6 +51,7 @@ pub(super) struct ModeSyncBundles<'a, 'gang, 'armor, 'injury, 'sprite, 'attach, 
     pub(super) attachment:   &'a mut AttachmentParams<'attach>,
     pub(super) weapon:       &'a mut WeaponParams<'weapon>,
     pub(super) melee_weapon: &'a mut MeleeWeaponParams<'melee>,
+    pub(super) field:        &'a mut FieldParams<'field>,
 }
 
 pub(super) fn run_form_syncs(
@@ -45,7 +59,7 @@ pub(super) fn run_form_syncs(
     session: &MapEditorSession,
     themes: Option<&UuidThemeRegistry>,
     theme_draft: &mut ThemeDraft,
-    bundles: ModeSyncBundles<'_, '_, '_, '_, '_, '_, '_, '_, '_>,
+    bundles: ModeSyncBundles<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
     theme_form_sync(mode, session, themes, theme_draft);
     gang_form_sync(
@@ -84,6 +98,11 @@ pub(super) fn run_form_syncs(
         mode,
         bundles.melee_weapon.draft.as_deref_mut(),
         bundles.melee_weapon.registry.as_deref(),
+    );
+    field_form_sync(
+        mode,
+        bundles.field.draft.as_deref_mut(),
+        bundles.field.registry.as_deref(),
     );
 }
 
@@ -182,5 +201,17 @@ fn melee_weapon_form_sync(
         && let (Some(draft), Some(registry)) = (draft, registry)
     {
         melee_weapon_form_ui::autoload_first_melee_weapon(draft, registry);
+    }
+}
+
+fn field_form_sync(
+    mode: EditorMode,
+    draft: Option<&mut FieldDraft>,
+    registry: Option<&FieldDefRegistry>,
+) {
+    if mode == EditorMode::Field
+        && let (Some(draft), Some(registry)) = (draft, registry)
+    {
+        field_form_ui::autoload_first_field(draft, registry);
     }
 }

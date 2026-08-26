@@ -53,11 +53,13 @@ pub enum EditorMode {
     Weapon,
     /// Melee weapon form.
     MeleeWeapon,
+    /// Field def form.
+    Field,
 }
 
 impl EditorMode {
     /// Tab bar order left-to-right.
-    pub const TAB_ORDER: [Self; 10] = [
+    pub const TAB_ORDER: [Self; 11] = [
         Self::Terrain,
         Self::Theme,
         Self::Prefab,
@@ -68,6 +70,7 @@ impl EditorMode {
         Self::Attachment,
         Self::Weapon,
         Self::MeleeWeapon,
+        Self::Field,
     ];
 
     /// Mode for a tab index, if in range.
@@ -99,6 +102,7 @@ impl EditorMode {
             Self::Attachment => "ATTACHMENT",
             Self::Weapon => "WEAPON",
             Self::MeleeWeapon => "MELEE",
+            Self::Field => "FIELD",
         }
     }
 }
@@ -107,6 +111,7 @@ pub(crate) fn mode_hotkeys(keys: Res<ButtonInput<KeyCode>>, mode: Option<ResMut<
     let Some(mut mode) = mode else {
         return;
     };
+    // No digit is free, so FIELD is reached only by clicking its tab.
     let pressed = if keys.just_pressed(KeyCode::Digit1) {
         Some(EditorMode::Terrain)
     } else if keys.just_pressed(KeyCode::Digit2) {

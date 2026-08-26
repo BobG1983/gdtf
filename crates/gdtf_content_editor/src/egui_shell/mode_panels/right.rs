@@ -3,7 +3,8 @@ use bevy_egui::egui;
 use super::ctx::ModePanelsCtx;
 use crate::{
     egui_shell::{
-        armor_form_ui, attachment_form_ui, gang_form_ui, injury_form_ui, melee_weapon_form_ui,
+        armor_form_ui, attachment_form_ui, field_form_ui, gang_form_ui, injury_form_ui,
+        melee_weapon_form_ui,
         prefab::controls_ui::{self, EditedPrefab, StoreyToggles, TerrainLibrary},
         sprite_form_ui, theme_form_ui, weapon_form_ui,
     },
@@ -13,7 +14,7 @@ use crate::{
 pub(in crate::egui_shell) fn right_panel(
     viewport_ui: &mut egui::Ui,
     mode: EditorMode,
-    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
+    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
     egui::Panel::right("editor_mode_form").show(viewport_ui, |ui| match mode {
         EditorMode::Terrain => {}
@@ -103,6 +104,11 @@ pub(in crate::egui_shell) fn right_panel(
                     ctx.melee_weapon.registry.as_deref(),
                     ctx.last_save,
                 );
+            }
+        }
+        EditorMode::Field => {
+            if let Some(draft) = ctx.field.draft.as_deref_mut() {
+                field_form_ui::field_stack(ui, draft, ctx.field.registry.as_deref(), ctx.last_save);
             }
         }
     });

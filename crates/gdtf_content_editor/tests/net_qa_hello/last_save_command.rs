@@ -1,6 +1,6 @@
 use crate::{
     client::{EDITOR_LAST_SAVE, EDITOR_SAVE},
-    lifecycle::{ArmorSaveCase, armor_save_case, save_mode, written_path},
+    lifecycle::{DraftSaveCase, armor_save_case, save_mode, written_path},
     mirror::ModeRow,
     outcome::ran_body,
     rows::{LastSaveOutcomeRow, LastSaveReplyRow, LastSaveRow, SaveOutcomeRow, SaveReplyRow},
@@ -28,7 +28,7 @@ fn read_last_save(
 
 #[test]
 fn last_save_is_empty_until_something_saves_then_carries_that_path() -> TestResult {
-    let ArmorSaveCase {
+    let DraftSaveCase {
         mut app,
         mut client,
         root: _root,
@@ -56,7 +56,7 @@ fn last_save_is_empty_until_something_saves_then_carries_that_path() -> TestResu
 }
 
 /// Record a failed Prefab save and a written Armor save, and hand back that Armor path.
-fn a_failure_then_a_write() -> Result<(ArmorSaveCase, String), TestError> {
+fn a_failure_then_a_write() -> Result<(DraftSaveCase, String), TestError> {
     let mut case = armor_save_case()?;
 
     let refused = case.client.exchange(

@@ -1,13 +1,13 @@
 use bevy::app::App;
 use gdtf_content_editor::{
-    ArmorDraft, AttachmentDraft, EditorMode, GangDraft, InjuryDraft, MeleeWeaponDraft, SpriteDraft,
-    TerrainDraft, WeaponDraft,
+    ArmorDraft, AttachmentDraft, EditorMode, FieldDraft, GangDraft, InjuryDraft, MeleeWeaponDraft,
+    SpriteDraft, TerrainDraft, WeaponDraft,
 };
 use gdtf_qa_protocol::message::QaResponse;
 
 use crate::{
     harness::editing_app_and_client,
-    names::{EDITOR_LIST_OP, EDITOR_SET_FIELD, EDITOR_SET_MODE},
+    names::{EDITOR_LIST_OP, EDITOR_NEW, EDITOR_SET_FIELD, EDITOR_SET_MODE},
     outcome::ran_body,
     rows::{ListOpReplyRow, SetFieldReplyRow},
     socket::{Client, run_editor},
@@ -96,6 +96,24 @@ pub(crate) fn weapon_draft(app: &App) -> Result<WeaponDraft, TestError> {
         return Err("the Weapon draft is a resource the editor creates on entering Editing".into());
     };
     Ok(draft.clone())
+}
+
+/// The Field draft the world holds right now.
+pub(crate) fn field_draft(app: &App) -> Result<FieldDraft, TestError> {
+    let Some(draft) = app.world().get_resource::<FieldDraft>() else {
+        return Err("the Field draft is a resource the editor creates on entering Editing".into());
+    };
+    Ok(draft.clone())
+}
+
+/// The Field tab open with its draft settled, which every Field write needs.
+pub(crate) fn settled_field_app_and_client() -> Result<(App, Client), TestError> {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Field)?;
+    client.exchange(&mut app, &run_editor(EDITOR_NEW, "(mode: Field)"))?;
+    if field_draft(&app)?.autoload_pending() {
+        return Err("editor.new must settle the Field draft's autoload before a case runs".into());
+    }
+    Ok((app, client))
 }
 
 /// The Gang draft the world holds right now.

@@ -27,6 +27,8 @@ pub(in crate::net_qa) enum EditorModeNet {
     Weapon,
     /// Melee weapon form.
     MeleeWeapon,
+    /// Field def form.
+    Field,
 }
 
 impl EditorModeNet {
@@ -43,6 +45,7 @@ impl EditorModeNet {
             EditorMode::Attachment => Self::Attachment,
             EditorMode::Weapon => Self::Weapon,
             EditorMode::MeleeWeapon => Self::MeleeWeapon,
+            EditorMode::Field => Self::Field,
         }
     }
 
@@ -59,6 +62,7 @@ impl EditorModeNet {
             Self::Attachment => EditorMode::Attachment,
             Self::Weapon => EditorMode::Weapon,
             Self::MeleeWeapon => EditorMode::MeleeWeapon,
+            Self::Field => EditorMode::Field,
         }
     }
 }

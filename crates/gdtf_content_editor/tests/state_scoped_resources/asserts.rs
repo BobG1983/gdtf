@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_content_editor::{
-    ArmorDraft, AttachmentDraft, CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, GangDraft,
-    HoveredCell, InjuryDraft, InjurySubTab, MapEditorSession, MeleeWeaponDraft, PreviewPan,
-    SpriteDraft, TerrainDraft, ThemeDraft, WeaponDraft, WeightingDraft,
+    ArmorDraft, AttachmentDraft, CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, FieldDraft,
+    GangDraft, HoveredCell, InjuryDraft, InjurySubTab, MapEditorSession, MeleeWeaponDraft,
+    PreviewPan, SpriteDraft, TerrainDraft, ThemeDraft, WeaponDraft, WeightingDraft,
 };
 
 pub(crate) fn assert_all_scoped_resources_absent(app: &App, when: &str) {
@@ -87,6 +87,10 @@ pub(crate) fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     assert!(
         world.get_resource::<MeleeWeaponDraft>().is_none(),
         "MeleeWeaponDraft {when}"
+    );
+    assert!(
+        world.get_resource::<FieldDraft>().is_none(),
+        "FieldDraft {when}"
     );
 }
 
@@ -182,6 +186,11 @@ pub(crate) fn assert_all_scoped_resources_seeded(app: &App) {
         world.get_resource::<MeleeWeaponDraft>(),
         Some(&MeleeWeaponDraft::default()),
         "MeleeWeaponDraft seeds to the pristine autoload-pending form ",
+    );
+    assert_eq!(
+        world.get_resource::<FieldDraft>(),
+        Some(&FieldDraft::default()),
+        "FieldDraft seeds to the pristine autoload-pending form ",
     );
     assert_minted_seeds(world);
 }

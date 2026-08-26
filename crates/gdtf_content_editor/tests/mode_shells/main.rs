@@ -1,7 +1,8 @@
-//! Editor mode shells: armor, attachment, gang, injury, sprite, terrain, theme, weapon.
+//! Editor mode shells: armor, attachment, field, gang, injury, sprite, terrain, theme, weapon.
 
 mod armor_mode;
 mod attachment_mode;
+mod field_mode;
 mod gang_mode;
 mod injury_mode;
 mod sprite_mode;

@@ -13,4 +13,5 @@ pub(crate) enum ModeRow {
     Attachment,
     Weapon,
     MeleeWeapon,
+    Field,
 }

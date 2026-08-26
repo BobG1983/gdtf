@@ -8,6 +8,7 @@ mod canvas;
 mod connector_pairing;
 mod editor_map;
 mod egui_shell;
+mod field_form;
 mod gang_form;
 mod hovered_cell;
 mod injury_form;
@@ -48,6 +49,9 @@ pub use connector_pairing::{
 };
 pub use editor_map::{EditorMap, PaintedPiece};
 pub use egui_shell::prefab::size_fields::SizeFieldSpans;
+pub use field_form::{FieldDraft, draft_to_field, field_file_name, field_save_path_in};
+#[cfg(debug_assertions)]
+pub use field_form::{write_field, write_field_in};
 pub use gang_form::{GangDraft, draft_to_roster, gang_file_name, gang_save_path_in};
 #[cfg(debug_assertions)]
 pub use gang_form::{write_gang, write_gang_in};

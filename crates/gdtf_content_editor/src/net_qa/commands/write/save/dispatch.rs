@@ -4,8 +4,8 @@ use std::path::Path;
 
 use super::{
     families::{
-        save_armor, save_attachment, save_gang, save_injury, save_melee_weapon, save_sprite,
-        save_weapon,
+        save_armor, save_attachment, save_field, save_gang, save_injury, save_melee_weapon,
+        save_sprite, save_weapon,
     },
     map_forms::{save_prefab, save_terrain, save_theme},
 };
@@ -95,6 +95,10 @@ pub(in crate::net_qa::commands::write::save) fn save_for_mode(
         },
         EditorMode::MeleeWeapon => match forms.melee_weapon.as_deref() {
             Some(draft) => SaveAttempt::Wrote(save_melee_weapon(draft, root)),
+            None => SaveAttempt::Missing,
+        },
+        EditorMode::Field => match forms.field.as_deref() {
+            Some(draft) => SaveAttempt::Wrote(save_field(draft, root)),
             None => SaveAttempt::Missing,
         },
     }

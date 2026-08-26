@@ -1,9 +1,13 @@
 use std::path::Path;
 
+use gdtf_battle_sim::effects::fields::FieldDef;
+
 use crate::{
     client::EDITOR_SAVE,
     harness::editing_app_and_client,
-    lifecycle::{ArmorSaveCase, armor_save_case, save_mode, written_path},
+    lifecycle::{
+        DraftSaveCase, armor_save_case, field_draft, field_save_case, save_mode, written_path,
+    },
     load_case::reply_answered_during_load,
     outcome::{ran_body, unavailable_code},
     rows::{RefusalRow, SaveOutcomeRow, SaveReplyRow},
@@ -14,7 +18,7 @@ use crate::{
 
 #[test]
 fn save_writes_the_armor_draft_under_the_qa_assets_root() -> TestResult {
-    let ArmorSaveCase {
+    let DraftSaveCase {
         mut app,
         mut client,
         root,
@@ -32,6 +36,38 @@ fn save_writes_the_armor_draft_under_the_qa_assets_root() -> TestResult {
     assert!(
         Path::new(&path).is_file(),
         "the writer left a real file behind at `{path}`",
+    );
+    Ok(())
+}
+
+#[test]
+fn save_writes_the_field_draft_and_the_file_parses_back_as_a_field_def() -> TestResult {
+    let DraftSaveCase {
+        mut app,
+        mut client,
+        root,
+    } = field_save_case()?;
+
+    let outcome = save_mode(&mut app, &mut client, "Field")?;
+
+    let path = written_path(outcome)?;
+    assert!(
+        Path::new(&path).starts_with(root.path()),
+        "the save wrote under the QA assets root it was pointed at, not the workspace `assets/`: \
+         `{path}` is not under `{}`",
+        root.path().display(),
+    );
+    let text = std::fs::read_to_string(&path)?;
+    let parsed = ron::de::from_str::<FieldDef>(&text);
+    assert!(
+        parsed.is_ok(),
+        "the written file must parse back through the loader's own FieldDef deserializer: {:?}",
+        parsed.as_ref().err(),
+    );
+    assert_eq!(
+        parsed.ok().as_ref(),
+        Some(field_draft(&app)?.def()),
+        "the file holds the def the draft would save, field for field",
     );
     Ok(())
 }

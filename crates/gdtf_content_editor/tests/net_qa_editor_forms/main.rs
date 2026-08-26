@@ -5,6 +5,10 @@
 mod armor_fields;
 mod attachment_fields;
 mod availability;
+#[path = "../net_qa_shared/draft_reply.rs"]
+mod draft_reply;
+mod field_fields;
+mod field_lists;
 mod gang_fields;
 mod gang_lists;
 #[path = "../net_qa_shared/harness.rs"]
@@ -19,11 +23,15 @@ mod load_case;
 mod melee_weapon_attachments;
 mod melee_weapon_fields;
 mod melee_weapon_lists;
+#[path = "../net_qa_shared/mirror.rs"]
+mod mirror;
 mod names;
 #[path = "../net_qa_shared/outcome.rs"]
 mod outcome;
 mod refusal;
 mod rows;
+#[path = "../net_qa_shared/save_fault.rs"]
+mod save_fault;
 mod setup;
 #[path = "../net_qa_shared/socket.rs"]
 mod socket;

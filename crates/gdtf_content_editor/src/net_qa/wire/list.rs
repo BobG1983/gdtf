@@ -4,6 +4,7 @@ use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
 
 use super::{
+    armor::ArmorTypeNet,
     attachment::AttachmentEffectNet,
     facing::TerrainFacingNet,
     field::EditorDraftNameNet,
@@ -53,6 +54,8 @@ pub(in crate::net_qa) enum EditorListNet {
     WeaponSlots,
     /// The Weapon draft's fitted attachment keys.
     WeaponAttachments,
+    /// The Field draft's immune-armor tick boxes.
+    FieldImmuneArmorTypes,
 }
 
 /// What a write does to the named list.
@@ -95,4 +98,6 @@ pub(in crate::net_qa) enum EditorListMemberNet {
     GangMember(EditorDraftNameNet),
     /// One mode of the Weapon draft's fire-mode list, every field its row draws.
     FireMode(FireModeSpecNet),
+    /// One armor type of the Field draft's immunity tick-box row.
+    ImmuneArmorType(ArmorTypeNet),
 }

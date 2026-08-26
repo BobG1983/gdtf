@@ -1,9 +1,9 @@
 //! Replace one form's draft with that form's own blank-draft constructor.
 
 use crate::{
-    EditorMode, armor_form::ArmorDraft, attachment_form::AttachmentDraft, gang_form::GangDraft,
-    injury_form::InjuryDraft, melee_weapon_form::MeleeWeaponDraft, net_qa::forms::EditorForms,
-    sprite_form::SpriteDraft, weapon_form::WeaponDraft,
+    EditorMode, armor_form::ArmorDraft, attachment_form::AttachmentDraft, field_form::FieldDraft,
+    gang_form::GangDraft, injury_form::InjuryDraft, melee_weapon_form::MeleeWeaponDraft,
+    net_qa::forms::EditorForms, sprite_form::SpriteDraft, weapon_form::WeaponDraft,
 };
 
 /// Whether the mode's draft was blanked, or its resource was absent from the world.
@@ -15,7 +15,7 @@ pub(in crate::net_qa::commands::write::blank) enum BlankResult {
     NoDraft,
 }
 
-/// Blank the seven drafts whose form draws a New button; every other mode is refused earlier.
+/// Blank the eight drafts whose form draws a New button; every other mode is refused earlier.
 pub(in crate::net_qa::commands::write::blank) fn blank_draft(
     mode: EditorMode,
     forms: &mut EditorForms<'_>,
@@ -28,6 +28,7 @@ pub(in crate::net_qa::commands::write::blank) fn blank_draft(
         EditorMode::Attachment => forms.attachment.as_deref_mut().map(blank_attachment),
         EditorMode::Weapon => forms.weapon.as_deref_mut().map(blank_weapon),
         EditorMode::MeleeWeapon => forms.melee_weapon.as_deref_mut().map(blank_melee_weapon),
+        EditorMode::Field => forms.field.as_deref_mut().map(blank_field),
         EditorMode::Terrain | EditorMode::Theme | EditorMode::Prefab => None,
     };
     match blanked {
@@ -62,4 +63,8 @@ pub(in crate::net_qa::commands::write::blank) fn blank_weapon(draft: &mut Weapon
 
 pub(in crate::net_qa::commands::write::blank) fn blank_melee_weapon(draft: &mut MeleeWeaponDraft) {
     *draft = MeleeWeaponDraft::new_melee_weapon();
+}
+
+pub(in crate::net_qa::commands::write::blank) fn blank_field(draft: &mut FieldDraft) {
+    *draft = FieldDraft::new_field();
 }

@@ -1,7 +1,7 @@
 //! Field immunity by armor type.
 
 use bevy::platform::collections::HashSet;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize, Serializer};
 
 use super::{ApplyFieldEffect, DrainExempt, OccupantArmor};
 use crate::armor::ArmorType;
@@ -28,6 +28,20 @@ impl ImmuneArmorTypes {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// The listed types in [`ArmorType::ALL`] order, so a reader never sees hash order.
+    pub fn iter(&self) -> impl Iterator<Item = ArmorType> + '_ {
+        ArmorType::ALL
+            .into_iter()
+            .filter(|armor_type| self.0.contains(armor_type))
+    }
+}
+
+/// Written in [`ArmorType::ALL`] order so the same set always writes the same bytes.
+impl Serialize for ImmuneArmorTypes {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_seq(self.iter())
     }
 }
 

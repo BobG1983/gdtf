@@ -3,6 +3,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
+    effects::fields::FieldDefRegistry,
     equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::InjuryRegistry,
@@ -24,4 +25,5 @@ pub(in crate::net_qa) struct EditorRegistries<'w> {
     pub(in crate::net_qa) attachments:  Option<Res<'w, AttachmentRegistry>>,
     pub(in crate::net_qa) weapons:      Option<Res<'w, WeaponRegistry>>,
     pub(in crate::net_qa) melee_weapon: Option<Res<'w, MeleeWeaponRegistry>>,
+    pub(in crate::net_qa) fields:       Option<Res<'w, FieldDefRegistry>>,
 }

@@ -92,7 +92,7 @@ pub(in crate::net_qa::commands) fn only_in_a_form_mode_with_its_draft(
     }
 }
 
-/// The phase check first, then the open tab must be one of the nine form modes.
+/// The phase check first, then the open tab must be one of the ten form modes.
 pub(in crate::net_qa::commands) fn only_in_a_form_mode(
     facts: EditorFacts,
     phase_note: RefusalNote,
