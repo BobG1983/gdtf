@@ -268,6 +268,8 @@ run(host="editor", command="editor.draft", arguments="()")
 run(host="editor", command="editor.set_mode", arguments="(mode: Terrain)")
 run(host="editor", command="editor.set_field", arguments="(field: Kind(Emplacement))")
 run(host="editor", command="editor.list_op", arguments="(list: EntrySides, op: Toggle(East))")
+run(host="editor", command="editor.set_field", arguments="(field: ArmorFloor(part: Head, value: 12))")
+run(host="editor", command="editor.list_op", arguments="(list: SpriteFrames, op: MoveUp(2))")
 run(host="editor", command="editor.select_theme", arguments="(key: \"00000000-0000-0000-0000-01840a900001\")")
 run(host="editor", command="editor.set_mode", arguments="(mode: Theme)")
 run(host="editor", command="editor.toggle_terrain", arguments="(key: \"00000000-0000-0000-0000-01840a910005\")")
@@ -703,9 +705,11 @@ MCP envelope itself stays JSON-RPC — the RON is opaque text riding inside it.
 `commands` reads the catalogue from the RUNNING host, so its `availability` column is the
 live answer rather than a static claim. Each of these can go wrong, and each tells you how to
 fix it in one round trip: `Unknown` lists every name the host does offer, `BadArguments`
-carries the schema your body failed against, `Unavailable` names the precondition that is
+carries the schema your body was read against, `Unavailable` names the precondition that is
 missing. `BadArguments` names the offending field in its `detail`, which is what
-`deny_unknown_fields` really buys.
+`deny_unknown_fields` really buys. A handler answers it too, through
+`CommandResponder::bad_arguments`, for a body that decoded but named a value the command
+cannot take: a stat outside its range, an index past the end of a list.
 
 `run`'s two riders both work. `await_ready` holds a call its command refuses right now and
 tests admission again every frame until the command admits; when the seconds run out the
@@ -750,8 +754,8 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.new` | Editing | Replaces a mode's draft with that form's own blank-draft constructor. [`commands/write/blank/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/blank) |
 | `editor.load` | Editing | Loads a registry entry by key through that draft's own `load_*` method. [`commands/write/load/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load) |
 | `editor.save` | Editing | Writes a mode's draft through the same `write_*_in` its save button calls. [`commands/write/save/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save) |
-| `editor.set_field` | Editing + the Terrain tab | Writes one single-value field of the active mode's draft — today the Terrain draft's kind. [`commands/write/set_field.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_field.rs) |
-| `editor.list_op` | Editing + the Terrain tab | Edits one list-valued field through the form's own setter — today the Terrain draft's emplacement entry sides. [`commands/write/list_op.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/list_op.rs) |
+| `editor.set_field` | Editing + any form tab | Writes one single-value field of the open form's draft, the way that form's own widget writes it. [`commands/write/set_field/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_field) |
+| `editor.list_op` | Editing + any form tab | Edits one list-valued field of the open form's draft through that form's own setter. [`commands/write/list_op/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/list_op) |
 | `editor.select_theme` | Editing | Selects a theme in the authoring session, taking that theme's own default floor with it, the way the top bar's picker does. [`commands/write/select_theme.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_theme.rs) |
 | `editor.toggle_terrain` | Editing + the Theme tab | Adds or removes one terrain in the Theme draft's list, the way ticking its row in the terrain library does. [`commands/write/toggle_terrain.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/toggle_terrain.rs) |
 | `editor.set_default_floor` | Editing + the Theme tab | Sets the Theme draft's default floor from the slabs the draft already holds. [`commands/write/set_default_floor.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_default_floor.rs) |
@@ -762,9 +766,14 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.paint` | Editing + the Prefab tab | Paints the selected tile in one cell of the storey being edited, through the same placement and connector pairing a canvas click runs. [`commands/write/paint/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/paint) |
 | `editor.select_injury_tab` | Editing + the Injury tab | Opens the Injury def form or the Injury weighting table, writing the same `InjurySubTab` resource the sub-tab row writes. [`commands/write/select_injury_tab.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_injury_tab.rs) |
 
-`editor.set_field` and `editor.list_op` need more than the authoring scene. Every field and
-list they offer today belongs to the Terrain draft, so they also need the Terrain tab open
-and answer `Unavailable { code: WrongState }` on any other tab. `editor.toggle_terrain` and
+`editor.set_field` and `editor.list_op` need more than the authoring scene. Both write the
+open form's own draft, so they need a form tab open and that tab's draft resource in the
+world. The Prefab tab is the map canvas and holds no draft, so it answers
+`Unavailable { code: WrongState }`, and so does a form tab whose draft has left the world
+(`only_in_a_form_mode_with_its_draft` in
+[`commands/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/availability.rs),
+reading the draft-presence fact `EditorFactsParam::sample` takes for the mode that is open).
+`editor.toggle_terrain` and
 `editor.set_default_floor` are scoped the same way to the Theme tab, because the terrain
 library and the default-floor picker are both drawn only in the Theme arm of the central
 and right panels, and both answer `Unavailable { code: WrongState }` on any other tab. The
@@ -777,12 +786,54 @@ drawn only in the Injury arm of the central panel.
 `editor.select_theme` needs no particular tab, because the top bar draws its picker on every
 one. The phase is checked first
 ([`commands/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/availability.rs)),
-so a call during Load carries the phase note and not the tab note. Each value rides on its
-variant — `Kind(Emplacement)`, `EntrySides`, `Toggle(East)` — so an unknown field or list
-name is a decode failure answering `BadArguments` with the schema, and neither command adds
-a protocol variant. `editor.list_op` refuses a `Toggle` on the entry sides while the draft's
-kind is not `Emplacement`, because `TerrainDraft::set_entry_sides` commits only at that kind
-and the write would otherwise do nothing.
+so a call during Load carries the phase note and not the tab note.
+
+Each value rides on its own variant. `Kind(Emplacement)`,
+`ArmorFloor(part: Head, value: 12)`, `SpriteFrame(index: 1, source: File("a.png"))`,
+`Toggle(East)` and `MoveUp(2)` are five of them. So an unknown field or list name is a decode
+failure answering `BadArguments` with the schema. Each arm also names the form it belongs
+to, and neither command adds a protocol variant. What the handler answers itself, in the order it checks:
+
+1. The open mode's draft resource left the world between the availability check and the
+   handler: `Unavailable { code: MissingModel }`, with a note naming that mode's draft.
+2. Any `editor.list_op` while the Armor tab is open: `BadArguments`. The Armor form draws six
+   fixed pieces and no list, so no list name could be right there.
+3. A field or list arm belonging to another form than the open tab:
+   `Unavailable { code: WrongState }`, with a note naming the tab that is open.
+4. An operation the named list does not draw: `BadArguments`. That covers `Toggle` on the
+   attachment effects or the sprite frames, any of `Add`, `Remove`, `MoveUp` or `MoveDown` on
+   the entry sides, and any reorder outside the sprite frames.
+5. A closed gate: `Unavailable { code: WrongState }`, with a note naming the gate.
+   `editor.list_op` refuses a `Toggle` on the entry sides while the draft's kind is not
+   `Emplacement`, because `TerrainDraft::set_entry_sides` commits only at that kind and the
+   write would otherwise do nothing. The Sprite fps, every frame operation and every
+   per-frame source refuse the same way while `SpriteDraft::is_animated` is false.
+6. A stat outside its range, an index past the end of a list, a `Remove` on a sprite frame
+   list holding one frame, a `MoveUp` at index 0 and a `MoveDown` at the last index:
+   `BadArguments`.
+
+Every write that lands answers `Ran`, and the reply carries the mode, the field or list the
+write named, and the value as the draft stores it. The one setter that clamps still clamps:
+`SpriteDraft::set_anchor` holds each axis inside the sheet rect, so an anchor beyond the
+rect's width answers `Ran` and reads the clamped value back.
+
+### The fields and lists each form offers
+
+| Form | Fields |
+| --- | --- |
+| Armor | `ArmorName`; per `BodyPart`, `ArmorFloor`, `ArmorProtection`, `ArmorHardness` (`ArmorDraft::STAT_RANGE`, `0..=100`), `ArmorIntegrity` (`ArmorDraft::INTEGRITY_RANGE`, `0..=1000`) and `ArmorType` (one of `ArmorType::ALL`) |
+| Sprite | `SpriteName`; `SpriteBaseSource`; `SpriteAnchorX` and `SpriteAnchorY` (clamped to the sheet rect); `SpriteAnimated`; and behind that gate `SpriteFps` (`SpriteDraft::FPS_RANGE`), `SpriteFrame`; `SpriteFacingOverride`, set to a source or cleared with `None` |
+| Attachment | `AttachmentName`; `AttachmentDisplayName`; `AttachmentSlot` (one of `AttachmentSlot::ALL`); `AttachmentEffect`, variant and payload together |
+| Terrain | `Kind` |
+
+| Form | List | Operations |
+| --- | --- | --- |
+| Armor | none | The six pieces are fixed, so every `editor.list_op` answers `BadArguments` |
+| Sprite | `SpriteFrames` | `Add` (copies the last frame, else the base source), `Remove`, `MoveUp`, `MoveDown`. Animation must be on, and the list keeps at least one frame |
+| Attachment | `AttachmentEffects` | `Add` (seeds the form's own default effect), `Remove`. An empty list is legal and means cosmetic |
+| Terrain | `EntrySides` | `Toggle`, on an `Emplacement` kind |
+
+Reorder exists only for the sprite frames.
 
 A mode a command does not handle is a **typed outcome inside a successful reply**, never
 `Unavailable` — that is reserved for host state. `editor.new` refuses Terrain and Prefab

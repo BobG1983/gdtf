@@ -1,12 +1,14 @@
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::{
     command::{
-        ArtifactPath, AttachmentKind, CommandOutcome, RefusalNote, ReplyAttachment, UnavailableCode,
+        ArgumentFault, ArtifactPath, AttachmentKind, CommandOutcome, RefusalNote, ReplyAttachment,
+        UnavailableCode, shape_text,
     },
     message::QaResponse,
 };
 
 use crate::{
+    command::QaCommand,
     dispatch::CommandResponder,
     test_support::{FakeLevel, FakePhase, FakePhaseReply, FakeReady},
 };
@@ -58,6 +60,28 @@ fn answer_with_carries_the_attachments_through() {
     assert_eq!(
         ron::de::from_str::<FakePhaseReply>(reply.as_str()).ok(),
         Some(a_reply())
+    );
+}
+
+#[test]
+fn bad_arguments_produces_the_handler_discovered_argument_fault() {
+    let detail = ArgumentFault::new("the fake host cannot write that value".to_owned());
+    let (raw, channel) = Responder::channel();
+    CommandResponder::<FakePhase>::new(raw).bad_arguments(detail.clone());
+
+    let Ok(QaResponse::Outcome(CommandOutcome::BadArguments {
+        detail: sent,
+        schema,
+    })) = channel.try_recv()
+    else {
+        unreachable!("bad_arguments must produce a BadArguments outcome");
+    };
+    assert_eq!(sent, detail, "the handler's own detail reaches the client");
+    assert_eq!(
+        schema.as_str(),
+        shape_text::<<FakePhase as QaCommand>::Args>(),
+        "a refusal the handler discovered carries the same argument shape a decode failure \
+         carries, so one round trip tells a client what it may send",
     );
 }
 

@@ -54,11 +54,17 @@ pub(crate) struct SetFieldReplyRow {
     pub(crate) field: FieldRow,
 }
 
+/// One member of a list a reply reads back. This suite drives only the entry-sides list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum ListMemberRow {
+    EntrySide(FacingRow),
+}
+
 /// `editor.list_op`'s reply body.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ListOpReplyRow {
     pub(crate) list:    ListRow,
-    pub(crate) members: Vec<FacingRow>,
+    pub(crate) members: Vec<ListMemberRow>,
 }
 
 /// What `editor.new` did.

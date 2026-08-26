@@ -6,7 +6,7 @@ use gdtf_qa_protocol::{
 
 use crate::client::{
     EDITOR_COMMAND_NAMES, EDITOR_EDITING_ONLY, EDITOR_FORM_TAB_ONLY, EDITOR_INJURY_TAB_ONLY,
-    EDITOR_TERRAIN_TAB_ONLY, EDITOR_THEME_TAB_ONLY,
+    EDITOR_THEME_TAB_ONLY,
 };
 
 /// The lifecycle phase a reply says the frame that answered it was in.
@@ -83,8 +83,7 @@ pub(crate) fn assert_editor_catalogue(reply: &QaResponse, phase: AnsweringPhase)
 // Which list a name is on decides whether it must be Available in this phase.
 fn assert_availability(name: &str, availability: &CommandAvailability, phase: AnsweringPhase) {
     let editing = phase == AnsweringPhase::Editing;
-    let tab_scoped = EDITOR_TERRAIN_TAB_ONLY.contains(&name)
-        || EDITOR_THEME_TAB_ONLY.contains(&name)
+    let tab_scoped = EDITOR_THEME_TAB_ONLY.contains(&name)
         || EDITOR_INJURY_TAB_ONLY.contains(&name)
         || EDITOR_FORM_TAB_ONLY.contains(&name);
     if !tab_scoped && (editing || !EDITOR_EDITING_ONLY.contains(&name)) {

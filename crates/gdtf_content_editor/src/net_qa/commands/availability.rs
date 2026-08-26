@@ -21,24 +21,6 @@ pub(in crate::net_qa::commands) fn only_while_editing(
     }
 }
 
-/// The phase check first, then the open tab must be Terrain.
-pub(in crate::net_qa::commands) fn only_on_the_terrain_tab(
-    facts: EditorFacts,
-    phase_note: RefusalNote,
-    tab_note: RefusalNote,
-) -> CommandAvailability {
-    match only_while_editing(facts, phase_note) {
-        CommandAvailability::Available if matches!(facts.mode(), Some(EditorModeNet::Terrain)) => {
-            CommandAvailability::Available
-        }
-        CommandAvailability::Available => CommandAvailability::Unavailable {
-            code: UnavailableCode::WrongState,
-            note: tab_note,
-        },
-        refused @ CommandAvailability::Unavailable { .. } => refused,
-    }
-}
-
 /// The phase check first, then the open tab must be Theme.
 pub(in crate::net_qa::commands) fn only_on_the_theme_tab(
     facts: EditorFacts,
@@ -88,6 +70,23 @@ pub(in crate::net_qa::commands) fn only_on_the_injury_tab(
         CommandAvailability::Available => CommandAvailability::Unavailable {
             code: UnavailableCode::WrongState,
             note: tab_note,
+        },
+        refused @ CommandAvailability::Unavailable { .. } => refused,
+    }
+}
+
+/// The form-mode check first, then that mode's own draft must be in the world.
+pub(in crate::net_qa::commands) fn only_in_a_form_mode_with_its_draft(
+    facts: EditorFacts,
+    phase_note: RefusalNote,
+    prefab_note: RefusalNote,
+    draft_note: RefusalNote,
+) -> CommandAvailability {
+    match only_in_a_form_mode(facts, phase_note, prefab_note) {
+        CommandAvailability::Available if *facts.draft() => CommandAvailability::Available,
+        CommandAvailability::Available => CommandAvailability::Unavailable {
+            code: UnavailableCode::WrongState,
+            note: draft_note,
         },
         refused @ CommandAvailability::Unavailable { .. } => refused,
     }

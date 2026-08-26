@@ -118,9 +118,6 @@ pub(crate) const EDITOR_EDITING_ONLY: [&str; 14] = [
     EDITOR_PAINT,
 ];
 
-/// Command names that also need the Terrain tab, so they refuse every other tab.
-pub(crate) const EDITOR_TERRAIN_TAB_ONLY: [&str; 2] = [EDITOR_SET_FIELD, EDITOR_LIST_OP];
-
 /// Command names that also need the Theme tab, so they refuse every other tab.
 pub(crate) const EDITOR_THEME_TAB_ONLY: [&str; 2] =
     [EDITOR_TOGGLE_TERRAIN, EDITOR_SET_DEFAULT_FLOOR];
@@ -129,7 +126,7 @@ pub(crate) const EDITOR_THEME_TAB_ONLY: [&str; 2] =
 pub(crate) const EDITOR_INJURY_TAB_ONLY: [&str; 1] = [EDITOR_SELECT_INJURY_TAB];
 
 /// Command names that need any form tab, so they refuse the default Prefab tab.
-pub(crate) const EDITOR_FORM_TAB_ONLY: [&str; 1] = [EDITOR_DRAFT];
+pub(crate) const EDITOR_FORM_TAB_ONLY: [&str; 3] = [EDITOR_DRAFT, EDITOR_SET_FIELD, EDITOR_LIST_OP];
 
 pub(crate) fn run_editor_phase(arguments: &str) -> QaRequest {
     run_editor(EDITOR_PHASE, arguments)

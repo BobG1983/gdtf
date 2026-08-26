@@ -7,7 +7,7 @@ use crate::{
     harness::editing_app_and_client,
     load_case::reply_answered_during_load,
     outcome::{ran_body, unavailable_code},
-    rows::{FacingRow, ListOpReplyRow, ListRow},
+    rows::{FacingRow, ListMemberRow, ListOpReplyRow, ListRow},
     socket::{Client, run_editor},
     support::{TestError, TestResult},
 };
@@ -50,7 +50,7 @@ fn a_toggle_adds_the_side_then_takes_it_back_off_reply_and_world_agree() -> Test
     );
     assert_eq!(
         body.members,
-        vec![FacingRow::East],
+        vec![ListMemberRow::EntrySide(FacingRow::East)],
         "the reply reads back the list the write left, holding only the toggled side",
     );
     assert_eq!(
@@ -96,16 +96,16 @@ fn a_toggle_on_a_non_emplacement_kind_is_refused() -> TestResult {
 }
 
 #[test]
-fn a_toggle_is_refused_on_another_tab() -> TestResult {
+fn a_toggle_is_refused_on_the_prefab_tab() -> TestResult {
     let (mut app, mut client) = terrain_emplacement_case()?;
-    client.exchange(&mut app, &run_editor(EDITOR_SET_MODE, "(mode: Armor)"))?;
+    client.exchange(&mut app, &run_editor(EDITOR_SET_MODE, "(mode: Prefab)"))?;
 
     let reply = client.exchange(&mut app, &run_editor(EDITOR_LIST_OP, TOGGLE_EAST))?;
     assert_eq!(
         unavailable_code(&reply)?,
         "WrongState",
-        "every list this command offers belongs to the Terrain draft, so another open tab is \
-         refused rather than written through",
+        "this command edits the open form's draft, and the Prefab tab is the map canvas and \
+         holds no draft, so it is refused rather than written through",
     );
     assert!(
         entry_sides(&app)?.is_empty(),

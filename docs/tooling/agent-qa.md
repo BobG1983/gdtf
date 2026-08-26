@@ -268,8 +268,9 @@ Notes an agent relies on:
   is `"()"`.
 - **`run`'s refusals each self-correct in one round trip.** A name the host
   does not know comes back `Unknown` listing every name it does offer; arguments
-  it will not decode come back `BadArguments` carrying the shape they failed
-  against and naming the field that broke; a command that cannot run in this state
+  it will not decode come back `BadArguments` carrying the shape they were read
+  against and naming the field that broke, and so does a body that decoded but
+  named a value the command cannot take; a command that cannot run in this state
   comes back `Unavailable` with the precondition named.
 - **`run`'s riders** are `await_ready` (keep re-testing admission for that
   many seconds instead of deciding once) and `capture` (take a screenshot after
@@ -365,8 +366,8 @@ Notes an agent relies on:
   eighteen need the authoring scene, so during the editor's Load pass they answer
   `Unavailable { code: WrongState }`. `editor.draft` needs a form tab open on
   top of that, because the default Prefab tab carries no draft,
-  `editor.set_field` and `editor.list_op` need the Terrain tab, because every
-  field and list they offer today belongs to the Terrain draft,
+  `editor.set_field` and `editor.list_op` need a form tab whose draft is in the
+  world, because both write the open form's own draft,
   `editor.toggle_terrain` and `editor.set_default_floor` need the Theme tab,
   because the terrain library and the default-floor picker are drawn only there,
   the five canvas commands need the Prefab tab, because the palette, the

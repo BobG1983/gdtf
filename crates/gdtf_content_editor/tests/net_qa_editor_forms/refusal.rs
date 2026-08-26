@@ -1,0 +1,181 @@
+use gdtf_content_editor::EditorMode;
+use gdtf_qa_protocol::{command::CommandOutcome, message::QaResponse};
+
+use crate::{
+    outcome::unavailable_code,
+    setup::{
+        armor_draft, attachment_draft, form_tab_app_and_client, set_field, sprite_draft,
+        try_list_op, try_set_field,
+    },
+    support::{TestError, TestResult},
+};
+
+/// The detail a run answered `BadArguments` with, or why the reply was not that refusal.
+pub(crate) fn bad_arguments_detail(reply: &QaResponse) -> Result<String, TestError> {
+    let QaResponse::Outcome(CommandOutcome::BadArguments { detail, schema }) = reply else {
+        return Err(format!("expected a BadArguments outcome, got {reply:?}").into());
+    };
+    if schema.as_str().is_empty() {
+        return Err(
+            "a BadArguments carries the shape a client may send, and this one is empty"
+                .to_owned()
+                .into(),
+        );
+    }
+    Ok(detail.as_str().to_owned())
+}
+
+/// The refusal note a run answered with, or why the reply was not a refusal.
+pub(crate) fn refusal_note(reply: &QaResponse) -> Result<String, TestError> {
+    let QaResponse::Outcome(CommandOutcome::Unavailable { note, .. }) = reply else {
+        return Err(format!("expected an Unavailable outcome, got {reply:?}").into());
+    };
+    Ok(note.as_str().to_owned())
+}
+
+#[test]
+fn an_attachment_field_on_the_sprite_tab_is_refused_and_the_note_names_the_active_mode()
+-> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Sprite)?;
+    let before = sprite_draft(&app)?;
+
+    let reply = try_set_field(&mut app, &mut client, "(field: AttachmentSlot(Rail))")?;
+    assert_eq!(
+        unavailable_code(&reply)?,
+        "WrongState",
+        "a field arm belonging to another form is refused rather than written",
+    );
+    assert!(
+        refusal_note(&reply)?.contains("Sprite"),
+        "the note names the tab that is open, so a client can see which form it reached",
+    );
+    assert_eq!(
+        sprite_draft(&app)?,
+        before,
+        "the refused write left the Sprite draft exactly as it was",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_frame_op_while_animation_is_off_is_refused_and_the_note_names_the_gate() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Sprite)?;
+    assert!(
+        !sprite_draft(&app)?.is_animated(),
+        "a fresh Sprite draft is not animated, which is the closed gate this case needs",
+    );
+
+    let reply = try_list_op(&mut app, &mut client, "(list: SpriteFrames, op: Add)")?;
+    assert_eq!(
+        unavailable_code(&reply)?,
+        "WrongState",
+        "the frame controls are drawn only while animation is on, so the write is refused \
+         rather than run through a setter that would silently do nothing",
+    );
+    assert!(
+        refusal_note(&reply)?.contains("animation"),
+        "the note names the gate that is closed",
+    );
+    assert!(
+        sprite_draft(&app)?.def().animation.is_none(),
+        "the refused op created no animation",
+    );
+    Ok(())
+}
+
+#[test]
+fn an_armor_stat_over_its_range_is_refused_bad_arguments() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Armor)?;
+    set_field(
+        &mut app,
+        &mut client,
+        "(field: ArmorFloor(part: Head, value: 9))",
+    )?;
+
+    let reply = try_set_field(
+        &mut app,
+        &mut client,
+        "(field: ArmorFloor(part: Head, value: 101))",
+    )?;
+    let detail = bad_arguments_detail(&reply)?;
+    assert!(
+        detail.contains("101"),
+        "the detail names the value that was out of range, got `{detail}`",
+    );
+    assert_eq!(
+        *armor_draft(&app)?.spec().head.floor,
+        9,
+        "the piece still holds the value the last write in range left",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_list_op_on_the_armor_tab_is_refused_bad_arguments() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Armor)?;
+    let before = armor_draft(&app)?;
+
+    let reply = try_list_op(&mut app, &mut client, "(list: SpriteFrames, op: Add)")?;
+    bad_arguments_detail(&reply)?;
+    assert_eq!(
+        armor_draft(&app)?,
+        before,
+        "the refused op left the Armor draft exactly as it was",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_toggle_on_the_sprite_frames_list_is_refused_bad_arguments() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Sprite)?;
+    set_field(&mut app, &mut client, "(field: SpriteAnimated(true))")?;
+    let before = sprite_draft(&app)?;
+
+    let reply = try_list_op(
+        &mut app,
+        &mut client,
+        "(list: SpriteFrames, op: Toggle(East))",
+    )?;
+    bad_arguments_detail(&reply)?;
+    assert_eq!(
+        sprite_draft(&app)?,
+        before,
+        "the refused op left the Sprite draft exactly as it was",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_reorder_on_the_attachment_effects_list_is_refused_bad_arguments() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Attachment)?;
+    let before = attachment_draft(&app)?;
+
+    let reply = try_list_op(
+        &mut app,
+        &mut client,
+        "(list: AttachmentEffects, op: MoveUp(0))",
+    )?;
+    bad_arguments_detail(&reply)?;
+    assert_eq!(
+        attachment_draft(&app)?,
+        before,
+        "the refused op left the Attachment draft exactly as it was",
+    );
+    Ok(())
+}
+
+#[test]
+fn removing_the_last_sprite_frame_is_refused_bad_arguments() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Sprite)?;
+    set_field(&mut app, &mut client, "(field: SpriteAnimated(true))")?;
+    let before = sprite_draft(&app)?;
+
+    let reply = try_list_op(&mut app, &mut client, "(list: SpriteFrames, op: Remove(0))")?;
+    bad_arguments_detail(&reply)?;
+    assert_eq!(
+        sprite_draft(&app)?,
+        before,
+        "an animation keeps at least one frame, so the refused op left the one it had",
+    );
+    Ok(())
+}

@@ -10,7 +10,7 @@ pub(super) fn animation_section(
     cache: &mut SpritePreviewCache,
 ) {
     ui.heading("Animation");
-    let mut enabled = draft.def().animation.is_some();
+    let mut enabled = draft.is_animated();
     if ui.checkbox(&mut enabled, "Animated").changed() {
         if enabled {
             draft.enable_animation();
@@ -28,7 +28,7 @@ pub(super) fn animation_section(
         if ui
             .add(
                 egui::DragValue::new(&mut fps)
-                    .range(0.0..=f32::MAX)
+                    .range(SpriteDraft::FPS_RANGE)
                     .speed(0.1),
             )
             .changed()

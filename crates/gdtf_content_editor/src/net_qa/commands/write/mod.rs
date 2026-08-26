@@ -1,6 +1,7 @@
 //! Editor writes that change a draft, a mode tab, or a file on disk.
 
 mod blank;
+mod form_fault;
 mod list_op;
 mod load;
 mod paint;

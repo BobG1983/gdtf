@@ -5,7 +5,10 @@ use core::marker::PhantomData;
 use bevy::prelude::*;
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::{
-    command::{CommandOutcome, CommandReplyRon, RefusalNote, ReplyAttachment, UnavailableCode},
+    command::{
+        ArgSchemaRon, ArgumentFault, CommandOutcome, CommandReplyRon, RefusalNote, ReplyAttachment,
+        UnavailableCode, shape_text,
+    },
     message::{QaError, QaResponse},
 };
 
@@ -48,6 +51,15 @@ impl<C: QaCommand> CommandResponder<C> {
                 self.inner.reply(QaResponse::Error(QaError::Malformed));
             }
         }
+    }
+
+    /// Send a bad-arguments outcome the handler discovered, with the command's own shape.
+    pub fn bad_arguments(self, detail: ArgumentFault) {
+        self.inner
+            .reply(QaResponse::Outcome(CommandOutcome::BadArguments {
+                detail,
+                schema: ArgSchemaRon::new(shape_text::<C::Args>()),
+            }));
     }
 
     /// Send an unavailable outcome.

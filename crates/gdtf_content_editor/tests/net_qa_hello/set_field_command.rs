@@ -52,9 +52,9 @@ fn set_field_writes_the_terrain_kind_the_reply_and_the_world_agree() -> TestResu
 }
 
 #[test]
-fn set_field_is_refused_on_another_tab() -> TestResult {
+fn set_field_is_refused_on_the_prefab_tab() -> TestResult {
     let (mut app, mut client) = editing_app_and_client()?;
-    client.exchange(&mut app, &run_editor(EDITOR_SET_MODE, "(mode: Armor)"))?;
+    client.exchange(&mut app, &run_editor(EDITOR_SET_MODE, "(mode: Prefab)"))?;
 
     let reply = client.exchange(
         &mut app,
@@ -63,8 +63,8 @@ fn set_field_is_refused_on_another_tab() -> TestResult {
     assert_eq!(
         unavailable_code(&reply)?,
         "WrongState",
-        "every field this command offers belongs to the Terrain draft, so another open tab is \
-         refused rather than written through",
+        "this command writes the open form's draft, and the Prefab tab is the map canvas and \
+         holds no draft, so it is refused rather than written through",
     );
     assert_eq!(
         terrain_draft(&app)?.kind(),

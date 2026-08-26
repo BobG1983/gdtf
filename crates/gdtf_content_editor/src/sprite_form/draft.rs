@@ -35,6 +35,15 @@ pub struct SpriteDraft {
 }
 
 impl SpriteDraft {
+    /// Range the animation's FPS input offers.
+    pub const FPS_RANGE: core::ops::RangeInclusive<f32> = 0.0..=f32::MAX;
+
+    /// Whether the draft's animation is switched on.
+    #[must_use]
+    pub const fn is_animated(&self) -> bool {
+        self.def.animation.is_some()
+    }
+
     /// Empty draft ready for a new sprite.
     #[must_use]
     pub const fn new_sprite() -> Self {
