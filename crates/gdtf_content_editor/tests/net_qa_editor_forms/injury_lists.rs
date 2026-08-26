@@ -1,8 +1,9 @@
 use gdtf_content_editor::{DEFAULT_EFFECT, EditorMode};
 
 use crate::{
+    bad_arguments::bad_arguments_detail,
     outcome::unavailable_code,
-    refusal::{bad_arguments_detail, refusal_note},
+    refusal::refusal_note,
     rows::ListRow,
     setup::{form_tab_app_and_client, injury_draft, list_op, try_list_op},
     support::TestResult,

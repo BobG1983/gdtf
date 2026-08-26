@@ -6,7 +6,7 @@ use gdtf_battle_sim::{
 use gdtf_content_editor::EditorMode;
 
 use crate::{
-    refusal::bad_arguments_detail,
+    bad_arguments::bad_arguments_detail,
     rows::FieldRow,
     setup::{form_tab_app_and_client, injury_draft, list_op, set_field, try_set_field},
     support::TestResult,

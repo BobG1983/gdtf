@@ -5,11 +5,11 @@ use gdtf_battle_sim::{
 use gdtf_content_editor::{EditorMode, draft_to_field};
 
 use crate::{
+    bad_arguments::bad_arguments_detail,
     draft_reply::{DraftOutcomeRow, DraftReplyRow},
     mirror::ModeRow,
     names::EDITOR_DRAFT,
     outcome::ran_body,
-    refusal::bad_arguments_detail,
     rows::FieldRow,
     setup::{editor_mode, field_draft, set_field, settled_field_app_and_client, try_set_field},
     socket::run_editor,

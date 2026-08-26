@@ -3,48 +3,7 @@
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
 
-use super::key::EditorKeyNet;
-
-/// Which registry a families read names.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub(in crate::net_qa) enum EditorFamilyNet {
-    /// Terrain defs, keyed by UUID.
-    Terrain,
-    /// Theme defs, keyed by UUID.
-    Theme,
-    /// Gang rosters.
-    Gang,
-    /// Armor specs.
-    Armor,
-    /// Injury defs.
-    Injury,
-    /// Sprite defs.
-    Sprite,
-    /// Attachment specs.
-    Attachment,
-    /// Ranged weapon specs.
-    Weapon,
-    /// Melee weapon specs.
-    MeleeWeapon,
-    /// Field defs.
-    Field,
-}
-
-impl EditorFamilyNet {
-    /// Every family a read without a filter answers, in reply order.
-    pub(in crate::net_qa) const ALL: [Self; 10] = [
-        Self::Terrain,
-        Self::Theme,
-        Self::Gang,
-        Self::Armor,
-        Self::Injury,
-        Self::Sprite,
-        Self::Attachment,
-        Self::Weapon,
-        Self::MeleeWeapon,
-        Self::Field,
-    ];
-}
+use super::{key::EditorKeyNet, mode::EditorModeNet};
 
 /// The text the editor's own picker shows beside a key.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -87,8 +46,8 @@ impl EditorFamilyEntryNet {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(in crate::net_qa) struct EditorFamilyRowNet {
-    /// The family named.
-    family:  EditorFamilyNet,
+    /// The family named, from the same vocabulary a mode tab uses.
+    family:  EditorModeNet,
     /// Its members, sorted by rendered key.
     entries: Vec<EditorFamilyEntryNet>,
 }
@@ -97,7 +56,7 @@ impl EditorFamilyRowNet {
     /// Build a family row.
     #[must_use]
     pub(in crate::net_qa) const fn new(
-        family: EditorFamilyNet,
+        family: EditorModeNet,
         entries: Vec<EditorFamilyEntryNet>,
     ) -> Self {
         Self { family, entries }

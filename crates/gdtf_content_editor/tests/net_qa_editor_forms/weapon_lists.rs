@@ -7,8 +7,9 @@ use gdtf_battle_sim::{
 use gdtf_content_editor::EditorMode;
 
 use crate::{
+    bad_arguments::bad_arguments_detail,
     outcome::unavailable_code,
-    refusal::{bad_arguments_detail, refusal_note},
+    refusal::refusal_note,
     rows::{ListMemberRow, ListRow},
     setup::{form_tab_app_and_client, list_op, try_list_op, weapon_draft},
     support::TestResult,

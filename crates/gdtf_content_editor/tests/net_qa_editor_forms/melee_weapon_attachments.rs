@@ -7,8 +7,8 @@ use gdtf_content_editor::EditorMode;
 use gdtf_content_families::AttachmentsFamily;
 
 use crate::{
+    bad_arguments::bad_arguments_detail,
     outcome::unavailable_code,
-    refusal::bad_arguments_detail,
     rows::ListMemberRow,
     setup::{form_tab_app_and_client, list_op, melee_weapon_draft, try_list_op},
     support::{TestError, TestResult},

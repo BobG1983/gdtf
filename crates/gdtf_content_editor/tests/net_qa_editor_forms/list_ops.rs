@@ -7,7 +7,7 @@ use gdtf_content_editor::EditorMode;
 use gdtf_content_families::sprites::{SpriteImagePath, SpriteSource};
 
 use crate::{
-    refusal::bad_arguments_detail,
+    bad_arguments::bad_arguments_detail,
     rows::{ListMemberRow, ListRow},
     setup::{
         attachment_draft, form_tab_app_and_client, list_op, set_field, sprite_draft, terrain_draft,

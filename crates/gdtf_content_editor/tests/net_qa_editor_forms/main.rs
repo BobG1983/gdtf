@@ -5,6 +5,8 @@
 mod armor_fields;
 mod attachment_fields;
 mod availability;
+#[path = "../net_qa_shared/bad_arguments.rs"]
+mod bad_arguments;
 #[path = "../net_qa_shared/draft_reply.rs"]
 mod draft_reply;
 mod field_fields;

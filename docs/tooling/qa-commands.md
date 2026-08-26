@@ -64,15 +64,19 @@ what is in view.
    the whole entry is `&YourCommand`.
 3. **A test.** The suite for the game's command layer is
    [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs).
-   The editor has three. Hello and the lifecycle commands are in
+   The editor has five. Hello and the lifecycle commands are in
    [`crates/gdtf_content_editor/tests/net_qa_hello/`](../../crates/gdtf_content_editor/tests/net_qa_hello),
    the shared reads are in
    [`crates/gdtf_content_editor/tests/net_qa_editor_reads/`](../../crates/gdtf_content_editor/tests/net_qa_editor_reads),
-   and the theme helpers are in
-   [`crates/gdtf_content_editor/tests/net_qa_editor_commands/`](../../crates/gdtf_content_editor/tests/net_qa_editor_commands).
-   All three build their app and their client from
+   the theme helpers and the Injury sub-tab write are in
+   [`crates/gdtf_content_editor/tests/net_qa_editor_commands/`](../../crates/gdtf_content_editor/tests/net_qa_editor_commands),
+   the draft writes over every form tab are in
+   [`crates/gdtf_content_editor/tests/net_qa_editor_forms/`](../../crates/gdtf_content_editor/tests/net_qa_editor_forms),
+   and the prefab-canvas commands are in
+   [`crates/gdtf_content_editor/tests/net_qa_editor_prefab/`](../../crates/gdtf_content_editor/tests/net_qa_editor_prefab).
+   All five build their app and their client from
    [`crates/gdtf_content_editor/tests/net_qa_shared/`](../../crates/gdtf_content_editor/tests/net_qa_shared),
-   which each target includes by `#[path]`, and the two that answer during the Load pass take
+   which each target includes by `#[path]`, and the four that answer during the Load pass take
    that case from there too. All of them use a real socket, a real listener,
    and the real router.
 
@@ -762,12 +766,12 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.phase` | always | The lifecycle phase, the mode tab open now, and every tab in tab-bar order. [`commands/read/editor_phase.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/editor_phase.rs) |
 | `editor.last_save` | always | What the newest save per mode did: the file it wrote, or the fault it reported. [`commands/read/last_save.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/last_save.rs) |
 | `editor.validation` | always | The content integrity report: every finding, plus whether the reference checks have run and whether the report has been published. [`commands/read/validation.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/validation.rs) |
-| `editor.families` | Editing | The registry keys an author can pick, family by family, each with the label the editor's own picker shows. [`commands/read/families/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/families) |
+| `editor.families` | Editing | The registry keys an author can pick, family by family, each with the label the editor's own picker shows. Its `family` argument names a form with the same names `editor.load`'s `mode` uses, and `Prefab` answers `BadArguments`, because that tab is the map canvas and carries no content family. [`commands/read/families/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/families) |
 | `editor.session` | Editing | The theme and its default floor, the grid extent, the selected paint tile, the storey being edited, and the view: draw mode, isolation, zoom and pan. [`commands/read/session.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/session.rs) |
 | `editor.draft` | Editing + any form tab | The open form's draft as the RON text its save would write. [`commands/read/draft/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/draft) |
 | `editor.set_mode` | Editing | Opens a mode tab, writing the same `EditorMode` resource the tab bar and the number hotkeys write. [`commands/write/set_mode.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_mode.rs) |
 | `editor.new` | Editing | Replaces a mode's draft with that form's own blank-draft constructor. [`commands/write/blank/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/blank) |
-| `editor.load` | Editing | Loads a registry entry by key through that draft's own `load_*` method. [`commands/write/load/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load) |
+| `editor.load` | Editing | Loads a registry entry by key through that draft's own `load_*` method. Its `mode` argument names a form with the same names `editor.families`'s `family` uses. [`commands/write/load/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load) |
 | `editor.save` | Editing | Writes a mode's draft through the same `write_*_in` its save button calls. [`commands/write/save/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save) |
 | `editor.set_field` | Editing + any form tab | Writes one single-value field of the open form's draft, the way that form's own widget writes it. [`commands/write/set_field/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_field) |
 | `editor.list_op` | Editing + any form tab | Edits one list-valued field of the open form's draft through that form's own setter. [`commands/write/list_op/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/list_op) |
@@ -958,9 +962,12 @@ through the same `Display` the editor's own log prints.
 
 `editor.families` sorts every family's entries by rendered key before replying, because each
 registry is a `HashMap` underneath and its own order changes between runs. A `family`
-argument narrows the reply to that family; without one, all ten answer. For the two
-UUID-keyed families the label is the def's display name, which is what the editor's own theme
-picker shows; for the eight name-keyed families the label is the key.
+argument narrows the reply to that family; without one, all ten answer. The argument takes
+the same form names `editor.load`'s `mode` takes, so one set of names picks a form across
+the whole editor. The one name it will not answer is `Prefab`: that tab is the map canvas
+and owns no registry, so it comes back as `BadArguments` with a detail saying so. For the
+two UUID-keyed families the label is the def's display name, which is what the editor's own
+theme picker shows; for the eight name-keyed families the label is the key.
 
 `editor.draft` reads the active tab and takes no mode argument. The RON is the mode's own
 `draft_to_*` conversion followed by `gdtf_assets::serialize_ron_pretty`, the two calls

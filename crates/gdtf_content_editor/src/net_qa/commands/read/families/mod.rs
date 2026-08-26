@@ -2,6 +2,7 @@
 
 mod collect;
 mod command;
+mod filter;
 mod sort;
 #[cfg(test)]
 mod test;

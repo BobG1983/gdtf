@@ -2,6 +2,8 @@
 //! net-QA listener.
 #![cfg(debug_assertions)]
 
+#[path = "../net_qa_shared/bad_arguments.rs"]
+mod bad_arguments;
 mod draft_command;
 #[path = "../net_qa_shared/draft_reply.rs"]
 mod draft_reply;

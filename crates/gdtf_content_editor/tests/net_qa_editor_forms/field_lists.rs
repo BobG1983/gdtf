@@ -1,7 +1,7 @@
 use gdtf_battle_sim::armor::ArmorType;
 
 use crate::{
-    refusal::bad_arguments_detail,
+    bad_arguments::bad_arguments_detail,
     rows::{ListMemberRow, ListRow},
     setup::{field_draft, list_op, settled_field_app_and_client, try_list_op},
     support::TestResult,

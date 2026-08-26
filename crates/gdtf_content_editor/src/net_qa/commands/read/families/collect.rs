@@ -6,7 +6,7 @@ use bevy::asset::uuid::Uuid;
 
 use crate::net_qa::{
     forms::EditorRegistries,
-    wire::{EditorFamilyEntryNet, EditorFamilyLabelNet, EditorFamilyNet, EditorKeyNet},
+    wire::{EditorFamilyEntryNet, EditorFamilyLabelNet, EditorKeyNet, EditorModeNet},
 };
 
 // A name-keyed family shows its key as the label; that is what the editor's pickers show.
@@ -31,22 +31,20 @@ where
 
 /// Every member `family` holds, unordered. A missing registry answers as an empty family.
 pub(super) fn entries_of(
-    family: EditorFamilyNet,
+    family: EditorModeNet,
     registries: &EditorRegistries<'_>,
 ) -> Vec<EditorFamilyEntryNet> {
     match family {
-        EditorFamilyNet::Terrain => {
-            registries
-                .terrain
-                .as_deref()
-                .map_or_else(Vec::new, |registry| {
-                    registry
-                        .defs()
-                        .map(|(key, def)| titled(key, &def.display_name))
-                        .collect()
-                })
-        }
-        EditorFamilyNet::Theme => registries
+        EditorModeNet::Terrain => registries
+            .terrain
+            .as_deref()
+            .map_or_else(Vec::new, |registry| {
+                registry
+                    .defs()
+                    .map(|(key, def)| titled(key, &def.display_name))
+                    .collect()
+            }),
+        EditorModeNet::Theme => registries
             .themes
             .as_deref()
             .map_or_else(Vec::new, |registry| {
@@ -55,39 +53,41 @@ pub(super) fn entries_of(
                     .map(|(key, def)| titled(key, &def.display_name))
                     .collect()
             }),
-        EditorFamilyNet::Gang => registries
+        EditorModeNet::Gang => registries
             .gangs
             .as_deref()
             .map_or_else(Vec::new, |registry| registry.keys().map(keyed).collect()),
-        EditorFamilyNet::Armor => registries
+        EditorModeNet::Armor => registries
             .armor
             .as_deref()
             .map_or_else(Vec::new, |registry| registry.keys().map(keyed).collect()),
-        EditorFamilyNet::Injury => registries
+        EditorModeNet::Injury => registries
             .injuries
             .as_deref()
             .map_or_else(Vec::new, |registry| {
                 registry.iter().map(|(key, _)| keyed(key)).collect()
             }),
-        EditorFamilyNet::Sprite => registries
+        EditorModeNet::Sprite => registries
             .sprites
             .as_deref()
             .map_or_else(Vec::new, |registry| registry.keys().map(keyed).collect()),
-        EditorFamilyNet::Attachment => registries
+        EditorModeNet::Attachment => registries
             .attachments
             .as_deref()
             .map_or_else(Vec::new, |registry| registry.keys().map(keyed).collect()),
-        EditorFamilyNet::Weapon => registries
+        EditorModeNet::Weapon => registries
             .weapons
             .as_deref()
             .map_or_else(Vec::new, |registry| registry.keys().map(keyed).collect()),
-        EditorFamilyNet::MeleeWeapon => registries
+        EditorModeNet::MeleeWeapon => registries
             .melee_weapon
             .as_deref()
             .map_or_else(Vec::new, |registry| registry.keys().map(keyed).collect()),
-        EditorFamilyNet::Field => registries
+        EditorModeNet::Field => registries
             .fields
             .as_deref()
             .map_or_else(Vec::new, |registry| registry.keys().map(keyed).collect()),
+        // The Prefab tab is the map canvas and owns no registry; `families_to_answer` refuses it.
+        EditorModeNet::Prefab => Vec::new(),
     }
 }

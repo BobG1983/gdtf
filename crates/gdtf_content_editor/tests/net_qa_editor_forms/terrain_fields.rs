@@ -207,7 +207,7 @@ fn a_graphic_role_the_picker_does_not_offer_is_bad_arguments() -> TestResult {
     let before = terrain_draft(&app)?.graphic();
 
     let reply = try_set_field(&mut app, &mut client, "(field: TerrainGraphic(Door))")?;
-    crate::refusal::bad_arguments_detail(&reply)?;
+    crate::bad_arguments::bad_arguments_detail(&reply)?;
     assert_eq!(
         terrain_draft(&app)?.graphic(),
         before,
@@ -261,7 +261,7 @@ fn a_mounted_weapon_key_no_registry_holds_is_bad_arguments() -> TestResult {
         &mut client,
         "(field: TerrainMountedWeapon(Some(\"no_such_weapon\")))",
     )?;
-    crate::refusal::bad_arguments_detail(&reply)?;
+    crate::bad_arguments::bad_arguments_detail(&reply)?;
     assert_eq!(
         terrain_draft(&app)?.mounted_weapon().cloned(),
         before,

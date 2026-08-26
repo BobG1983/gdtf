@@ -28,6 +28,39 @@ fn every_editor_mode_arm_round_trips() {
 }
 
 #[test]
+fn every_family_arm_round_trips() {
+    for family in EditorModeNet::CONTENT_FAMILIES {
+        assert_ron_round_trip(&family);
+    }
+}
+
+#[test]
+fn every_family_arm_is_listed_once_and_the_prefab_tab_is_not_one() {
+    let mut seen: Vec<String> = Vec::with_capacity(EditorModeNet::CONTENT_FAMILIES.len());
+    for family in EditorModeNet::CONTENT_FAMILIES {
+        let named = format!("{family:?}");
+        assert!(
+            !seen.contains(&named),
+            "{named} appears twice in EditorModeNet::CONTENT_FAMILIES, so a full read would \
+             answer that family twice and leave another one out",
+        );
+        assert_ne!(
+            family,
+            EditorModeNet::Prefab,
+            "the Prefab tab is the map canvas and owns no registry, so a families read that \
+             walked it would answer an empty row instead of refusing",
+        );
+        seen.push(named);
+    }
+    assert_eq!(
+        EditorModeNet::CONTENT_FAMILIES.len() + 1,
+        EditorMode::TAB_ORDER.len(),
+        "every tab but Prefab owns a content family, so a new tab nobody classified is missing \
+         from CONTENT_FAMILIES",
+    );
+}
+
+#[test]
 fn the_editor_mode_traces_a_usable_shape() {
     assert_schema_is_usable::<EditorModeNet>("EditorModeNet");
 }

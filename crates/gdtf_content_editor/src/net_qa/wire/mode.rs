@@ -32,6 +32,21 @@ pub(in crate::net_qa) enum EditorModeNet {
 }
 
 impl EditorModeNet {
+    /// Every mode that owns a content registry, in the order a families read answers them.
+    /// The Prefab tab is the map canvas, so it is not one of them.
+    pub(in crate::net_qa) const CONTENT_FAMILIES: [Self; 10] = [
+        Self::Terrain,
+        Self::Theme,
+        Self::Gang,
+        Self::Armor,
+        Self::Injury,
+        Self::Sprite,
+        Self::Attachment,
+        Self::Weapon,
+        Self::MeleeWeapon,
+        Self::Field,
+    ];
+
     /// Mirror the editor's own mode, with no wildcard arm.
     pub(in crate::net_qa) const fn from_mode(mode: EditorMode) -> Self {
         match mode {

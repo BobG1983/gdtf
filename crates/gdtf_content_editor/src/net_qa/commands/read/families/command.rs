@@ -11,13 +11,13 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{collect::entries_of, sort::sorted_by_key};
+use super::{collect::entries_of, filter::families_to_answer, sort::sorted_by_key};
 use crate::net_qa::{
     commands::availability::only_while_editing,
     facts::EditorFacts,
     forms::EditorRegistries,
     schedule::EditorNetQaSystems,
-    wire::{EditorFamilyNet, EditorFamilyRowNet},
+    wire::{EditorFamilyRowNet, EditorModeNet},
 };
 
 const NO_REGISTRIES: RefusalNote = RefusalNote::from_static(
@@ -29,7 +29,7 @@ const NO_REGISTRIES: RefusalNote = RefusalNote::from_static(
 #[serde(deny_unknown_fields)]
 pub(in crate::net_qa) struct EditorFamiliesArgs {
     #[serde(default)]
-    family: Option<EditorFamilyNet>,
+    family: Option<EditorModeNet>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -49,7 +49,8 @@ impl QaCommand for EditorFamilies {
     const SUMMARY: CommandSummary = CommandSummary::from_static(
         "Read the keys an author can pick from, family by family, each with the label the \
          editor's own picker shows. A `family` argument narrows the reply to that one family; \
-         without it every family answers. Entries come back sorted by key.",
+         without it every family answers. `Prefab` names the map canvas rather than a family, \
+         so it is refused. Entries come back sorted by key.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -67,14 +68,13 @@ impl QaCommand for EditorFamilies {
     }
 }
 
-// A filter narrows the reply to one family; without one, every family answers in `ALL` order.
+// One row per family the filter chose, each sorted by key.
 fn rows(
-    only: Option<EditorFamilyNet>,
+    families: Vec<EditorModeNet>,
     registries: &EditorRegistries<'_>,
 ) -> Vec<EditorFamilyRowNet> {
-    EditorFamilyNet::ALL
+    families
         .into_iter()
-        .filter(|family| only.is_none_or(|wanted| wanted == *family))
         .map(|family| {
             EditorFamilyRowNet::new(family, sorted_by_key(entries_of(family, registries)))
         })
@@ -89,8 +89,11 @@ fn handle_editor_families(
         return;
     }
     for (args, responder) in take_calls::<EditorFamilies>(&mut queue) {
-        responder.answer(&EditorFamiliesReply {
-            families: rows(args.family, &registries),
-        });
+        match families_to_answer(args.family) {
+            Ok(families) => responder.answer(&EditorFamiliesReply {
+                families: rows(families, &registries),
+            }),
+            Err(detail) => responder.bad_arguments(detail),
+        }
     }
 }

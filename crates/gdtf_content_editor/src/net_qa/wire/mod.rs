@@ -51,7 +51,7 @@ pub(in crate::net_qa) use cell::{EditorCellXNet, EditorCellYNet, EditorLevelNet}
 pub(in crate::net_qa) use draft::{EditorDraftOutcomeNet, EditorDraftRonNet};
 pub(in crate::net_qa) use facing::TerrainFacingNet;
 pub(in crate::net_qa) use family::{
-    EditorFamilyEntryNet, EditorFamilyLabelNet, EditorFamilyNet, EditorFamilyRowNet,
+    EditorFamilyEntryNet, EditorFamilyLabelNet, EditorFamilyRowNet,
 };
 pub(in crate::net_qa) use field::{
     EditorDraftNameNet, EditorFieldNet, FieldDamageNet, FieldDurationNet,

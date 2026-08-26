@@ -1,4 +1,5 @@
 use crate::{
+    bad_arguments::bad_arguments_detail,
     harness::editing_app_and_client,
     load_case::reply_answered_during_load,
     names::EDITOR_FAMILIES,
@@ -46,20 +47,55 @@ fn a_read_without_a_filter_answers_every_family_exactly_once() -> TestResult {
 }
 
 #[test]
-fn a_filter_narrows_the_reply_to_that_family_alone() -> TestResult {
+fn a_filter_narrows_the_reply_to_that_family_alone_and_answers_the_same_entries() -> TestResult {
     let (mut app, mut client) = editing_app_and_client()?;
-    let reply = client.exchange(
+    let filtered_reply = client.exchange(
         &mut app,
         &run_editor(EDITOR_FAMILIES, "(family: Some(Armor))"),
     )?;
-    let body: FamiliesReplyRow = ran_body(&reply, EDITOR_FAMILIES)?;
+    let filtered: FamiliesReplyRow = ran_body(&filtered_reply, EDITOR_FAMILIES)?;
+    let whole_reply = client.exchange(&mut app, &run_editor(EDITOR_FAMILIES, "()"))?;
+    let whole: FamiliesReplyRow = ran_body(&whole_reply, EDITOR_FAMILIES)?;
 
-    let answered: Vec<FamilyRow> = body.families.iter().map(|row| row.family).collect();
+    let answered: Vec<FamilyRow> = filtered.families.iter().map(|row| row.family).collect();
     assert_eq!(
         answered,
         vec![FamilyRow::Armor],
         "a filtered read answers the named family and nothing else. A client asking for one \
          family must not have to sift eight others out",
+    );
+    let unfiltered_armor: Vec<&FamilyRowEntries> = whole
+        .families
+        .iter()
+        .filter(|row| row.family == FamilyRow::Armor)
+        .collect();
+    assert_eq!(
+        filtered.families.iter().collect::<Vec<_>>(),
+        unfiltered_armor,
+        "the filter chooses which rows answer and nothing else, so the Armor row reads the same \
+         either way",
+    );
+    assert!(
+        filtered.families.iter().any(|row| !row.entries.is_empty()),
+        "the Armor registry answered no keys, so this case could not tell a filter that keeps \
+         the entries from one that drops them: {filtered:?}",
+    );
+    Ok(())
+}
+
+#[test]
+fn the_prefab_tab_is_refused_because_it_carries_no_content_family() -> TestResult {
+    let (mut app, mut client) = editing_app_and_client()?;
+    let reply = client.exchange(
+        &mut app,
+        &run_editor(EDITOR_FAMILIES, "(family: Some(Prefab))"),
+    )?;
+
+    let detail = bad_arguments_detail(&reply)?;
+    assert!(
+        detail.contains("Prefab"),
+        "the mode vocabulary spells Prefab, so the refusal names that tab and says it carries no \
+         content family, got `{detail}`",
     );
     Ok(())
 }

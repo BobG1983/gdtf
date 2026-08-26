@@ -3,7 +3,7 @@
 use gdtf_content_editor::{EditorMode, GangDraft};
 
 use crate::{
-    refusal::bad_arguments_detail,
+    bad_arguments::bad_arguments_detail,
     rows::{ListMemberRow, ListRow},
     setup::{form_tab_app_and_client, gang_draft, list_op, try_list_op},
     support::TestResult,
