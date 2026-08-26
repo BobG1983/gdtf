@@ -1,6 +1,10 @@
 use serde::Deserialize;
 
-use crate::values::{ArmorTypeRow, BodyPartRow, EffectRow, FacingRow, SlotRow, SourceRow};
+use crate::values::{
+    ArmorTypeRow, BandRow, BodyPartRow, CategoryRow, DamageTypeRow, EffectRow, FacingRow,
+    FightModeRow, FootfallRow, HandednessRow, InjuryEffectRow, LosRow, SeverityRow, SlotDeclRow,
+    SlotRow, SourceRow, TagRow, TerrainKindRow, TileRoleRow,
+};
 
 /// Which single-value field a write named, carrying the value read back off the draft.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -47,22 +51,63 @@ pub(crate) enum FieldRow {
         index:  usize,
         effect: EffectRow,
     },
+    Kind(TerrainKindRow),
+    TerrainDisplayName(String),
+    TerrainHp(u32),
+    TerrainArmorProtection(i32),
+    TerrainArmorHardness(i32),
+    TerrainHeightBand(BandRow),
+    TerrainGraphic(TileRoleRow),
+    TerrainFootfall(FootfallRow),
+    TerrainMountedWeapon(Option<String>),
+    TerrainBlocksPathing(Option<bool>),
+    TerrainBlocksLos(Option<LosRow>),
+    InjuryKey(String),
+    InjuryName(String),
+    InjuryCategory(CategoryRow),
+    InjurySeverity(SeverityRow),
+    InjuryPopupText(String),
+    InjuryLogText(String),
+    InjuryInspectText(String),
+    InjuryEffect {
+        index:  usize,
+        effect: InjuryEffectRow,
+    },
+    MeleeWeaponName(String),
+    MeleeWeaponDamage(i32),
+    MeleeWeaponPunch(i32),
+    MeleeWeaponShred(i32),
+    MeleeWeaponDamageType(DamageTypeRow),
+    MeleeWeaponFatalBias(f32),
+    MeleeWeaponHandedness(HandednessRow),
+    MeleeWeaponReach(u16),
+    MeleeWeaponShove(bool),
 }
 
 /// Which list a write named.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub(crate) enum ListRow {
     EntrySides,
+    TerrainTags,
     AttachmentEffects,
     SpriteFrames,
+    InjuryEffects,
+    MeleeWeaponFightModes,
+    MeleeWeaponSlots,
+    MeleeWeaponAttachments,
 }
 
 /// One member of the list a reply reads back.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub(crate) enum ListMemberRow {
     EntrySide(FacingRow),
+    TerrainTag(TagRow),
     AttachmentEffect(EffectRow),
     SpriteFrame(SourceRow),
+    InjuryEffect(InjuryEffectRow),
+    FightMode(FightModeRow),
+    Slot(SlotDeclRow),
+    Attachment(String),
 }
 
 /// `editor.set_field`'s reply body.

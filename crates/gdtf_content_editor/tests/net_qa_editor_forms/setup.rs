@@ -1,5 +1,8 @@
 use bevy::app::App;
-use gdtf_content_editor::{ArmorDraft, AttachmentDraft, EditorMode, SpriteDraft};
+use gdtf_content_editor::{
+    ArmorDraft, AttachmentDraft, EditorMode, InjuryDraft, MeleeWeaponDraft, SpriteDraft,
+    TerrainDraft,
+};
 use gdtf_qa_protocol::message::QaResponse;
 
 use crate::{
@@ -54,6 +57,34 @@ pub(crate) fn attachment_draft(app: &App) -> Result<AttachmentDraft, TestError> 
     let Some(draft) = app.world().get_resource::<AttachmentDraft>() else {
         return Err(
             "the Attachment draft is a resource the editor creates on entering Editing".into(),
+        );
+    };
+    Ok(draft.clone())
+}
+
+/// The Terrain draft the world holds right now.
+pub(crate) fn terrain_draft(app: &App) -> Result<TerrainDraft, TestError> {
+    let Some(draft) = app.world().get_resource::<TerrainDraft>() else {
+        return Err(
+            "the Terrain draft is a resource the editor creates on entering Editing".into(),
+        );
+    };
+    Ok(draft.clone())
+}
+
+/// The Injury draft the world holds right now.
+pub(crate) fn injury_draft(app: &App) -> Result<InjuryDraft, TestError> {
+    let Some(draft) = app.world().get_resource::<InjuryDraft>() else {
+        return Err("the Injury draft is a resource the editor creates on entering Editing".into());
+    };
+    Ok(draft.clone())
+}
+
+/// The Melee Weapon draft the world holds right now.
+pub(crate) fn melee_weapon_draft(app: &App) -> Result<MeleeWeaponDraft, TestError> {
+    let Some(draft) = app.world().get_resource::<MeleeWeaponDraft>() else {
+        return Err(
+            "the Melee Weapon draft is a resource the editor creates on entering Editing".into(),
         );
     };
     Ok(draft.clone())

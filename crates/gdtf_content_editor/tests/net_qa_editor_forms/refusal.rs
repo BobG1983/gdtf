@@ -134,7 +134,7 @@ fn a_toggle_on_the_sprite_frames_list_is_refused_bad_arguments() -> TestResult {
     let reply = try_list_op(
         &mut app,
         &mut client,
-        "(list: SpriteFrames, op: Toggle(East))",
+        "(list: SpriteFrames, op: Toggle(EntrySide(East)))",
     )?;
     bad_arguments_detail(&reply)?;
     assert_eq!(
@@ -176,6 +176,47 @@ fn removing_the_last_sprite_frame_is_refused_bad_arguments() -> TestResult {
         sprite_draft(&app)?,
         before,
         "an animation keeps at least one frame, so the refused op left the one it had",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_write_naming_another_forms_field_is_refused_with_the_open_tab_named() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Injury)?;
+
+    let reply = try_set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    assert_eq!(
+        unavailable_code(&reply)?,
+        "WrongState",
+        "the Kind arm belongs to the Terrain form, so the Injury tab refuses it",
+    );
+    assert!(
+        refusal_note(&reply)?.contains("Injury"),
+        "the note names the tab that is open, so a client can see which form it reached",
+    );
+    assert_eq!(
+        crate::setup::terrain_draft(&app)?.kind(),
+        gdtf_content_editor::TerrainKindChoice::default(),
+        "an Injury writer that falls through to the Terrain draft would write it here",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_list_naming_another_forms_list_is_refused_with_the_open_tab_named() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::MeleeWeapon)?;
+    let before = crate::setup::injury_draft(&app)?;
+
+    let reply = try_list_op(&mut app, &mut client, "(list: InjuryEffects, op: Add)")?;
+    assert_eq!(unavailable_code(&reply)?, "WrongState");
+    assert!(
+        refusal_note(&reply)?.contains("MeleeWeapon"),
+        "the note names the tab that is open",
+    );
+    assert_eq!(
+        crate::setup::injury_draft(&app)?,
+        before,
+        "the refused op left the Injury draft exactly as it was",
     );
     Ok(())
 }

@@ -10,6 +10,13 @@ pub(in crate::net_qa::commands::write) const ANIMATION_OFF: RefusalNote = Refusa
      are drawn only while it is on",
 );
 
+/// The note the Terrain form's emplacement-only controls are refused with.
+pub(in crate::net_qa::commands::write) const NOT_AN_EMPLACEMENT: RefusalNote =
+    RefusalNote::from_static(
+        "the Terrain draft commits its mounted weapon and its entry sides only while its kind is \
+         Emplacement, so this write would silently do nothing",
+    );
+
 /// The note a foreign arm is refused with, naming the tab that is actually open.
 pub(in crate::net_qa::commands::write) fn foreign_arm_note(mode: EditorModeNet) -> RefusalNote {
     RefusalNote::from_owned(format!(
@@ -24,6 +31,8 @@ pub(in crate::net_qa::commands::write) enum FormWriteFault {
     ForeignArm,
     /// A gate the form draws the control behind is closed, so the setter would do nothing.
     Gated(RefusalNote),
+    /// A registry the control reads its own options from is absent or empty.
+    MissingModel(RefusalNote),
     /// The value, index or operation cannot be written as asked.
     BadArguments(ArgumentFault),
 }

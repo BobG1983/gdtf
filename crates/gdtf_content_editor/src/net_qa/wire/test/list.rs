@@ -1,13 +1,17 @@
 use gdtf_battle_sim::{
     effects::attachments::{AimDelta, AttachmentEffect},
+    equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity},
+    injuries::InjuryEffect,
     terrain::facing::TerrainFacing,
 };
 use gdtf_content_families::sprites::{SpriteImagePath, SpriteSource};
 
 use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::net_qa::wire::{
-    AttachmentEffectNet, EditorListIndexNet, EditorListMemberNet, EditorListNet, EditorListOpNet,
-    SpriteSourceNet, TerrainFacingNet,
+    AttachmentEffectNet, AttachmentKeyNet, AttachmentSlotNet, EditorListIndexNet,
+    EditorListMemberNet, EditorListNet, EditorListOpNet, FightModeKindNet, FightModeSpecNet,
+    InjuryEffectNet, SlotCapacityNet, SpriteSourceNet, StrikesNet, TerrainFacingNet, TerrainTagNet,
+    TuCostNet, WeaponSlotNet,
 };
 
 fn a_frame_source() -> SpriteSourceNet {
@@ -16,12 +20,32 @@ fn a_frame_source() -> SpriteSourceNet {
     )))
 }
 
+fn a_fight_mode() -> FightModeSpecNet {
+    FightModeSpecNet::new(
+        FightModeKindNet::Swing,
+        TuCostNet::new(0),
+        StrikesNet::new(1),
+    )
+}
+
+fn a_slot() -> WeaponSlotNet {
+    WeaponSlotNet::new(
+        AttachmentSlotNet::from_slot(AttachmentSlot::Muzzle),
+        SlotCapacityNet::new(*SlotCapacity::new(1)),
+    )
+}
+
 #[test]
 fn the_named_list_round_trips() {
     for list in [
         EditorListNet::EntrySides,
+        EditorListNet::TerrainTags,
         EditorListNet::AttachmentEffects,
         EditorListNet::SpriteFrames,
+        EditorListNet::InjuryEffects,
+        EditorListNet::MeleeWeaponFightModes,
+        EditorListNet::MeleeWeaponSlots,
+        EditorListNet::MeleeWeaponAttachments,
     ] {
         assert_ron_round_trip(&list);
     }
@@ -30,8 +54,13 @@ fn the_named_list_round_trips() {
 #[test]
 fn every_toggle_arm_round_trips() {
     for facing in TerrainFacing::ALL {
-        assert_ron_round_trip(&EditorListOpNet::Toggle(TerrainFacingNet::from_facing(
-            facing,
+        assert_ron_round_trip(&EditorListOpNet::Toggle(EditorListMemberNet::EntrySide(
+            TerrainFacingNet::from_facing(facing),
+        )));
+    }
+    for tag in TerrainTagNet::ALL {
+        assert_ron_round_trip(&EditorListOpNet::Toggle(EditorListMemberNet::TerrainTag(
+            tag,
         )));
     }
 }
@@ -41,6 +70,10 @@ fn every_list_op_arm_round_trips() {
     let index = EditorListIndexNet::new(2);
     assert_ron_round_trip(&EditorListOpNet::Add);
     assert_ron_round_trip(&EditorListOpNet::Remove(index));
+    assert_ron_round_trip(&EditorListOpNet::SetAt(
+        index,
+        EditorListMemberNet::FightMode(a_fight_mode()),
+    ));
     assert_ron_round_trip(&EditorListOpNet::MoveUp(index));
     assert_ron_round_trip(&EditorListOpNet::MoveDown(index));
 }
@@ -52,10 +85,21 @@ fn every_member_round_trips() {
             TerrainFacingNet::from_facing(facing),
         ));
     }
+    for tag in TerrainTagNet::ALL {
+        assert_ron_round_trip(&EditorListMemberNet::TerrainTag(tag));
+    }
     assert_ron_round_trip(&EditorListMemberNet::AttachmentEffect(
         AttachmentEffectNet::from_effect(&AttachmentEffect::Aim(AimDelta::new(0.0))),
     ));
     assert_ron_round_trip(&EditorListMemberNet::SpriteFrame(a_frame_source()));
+    assert_ron_round_trip(&EditorListMemberNet::InjuryEffect(
+        InjuryEffectNet::from_effect(InjuryEffect::DisableHand),
+    ));
+    assert_ron_round_trip(&EditorListMemberNet::FightMode(a_fight_mode()));
+    assert_ron_round_trip(&EditorListMemberNet::Slot(a_slot()));
+    assert_ron_round_trip(&EditorListMemberNet::Attachment(
+        AttachmentKeyNet::from_key(&AttachmentName::new("chain_teeth".to_owned())),
+    ));
 }
 
 #[test]

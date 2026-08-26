@@ -53,13 +53,14 @@ pub use gang_form::{GangDraft, draft_to_roster, gang_file_name, gang_save_path_i
 pub use gang_form::{write_gang, write_gang_in};
 pub use hovered_cell::HoveredCell;
 pub use injury_form::{
-    InjuryDraft, WeightingDraft, draft_to_def, draft_to_weighting, injury_file_name,
-    injury_save_path_in, weighting_file_name, weighting_save_path_in,
+    DEFAULT_EFFECT, InjuryDraft, WeightingDraft, draft_to_def, draft_to_weighting,
+    injury_file_name, injury_save_path_in, weighting_file_name, weighting_save_path_in,
 };
 #[cfg(debug_assertions)]
 pub use injury_form::{write_injury, write_injury_in, write_weighting, write_weighting_in};
 pub use melee_weapon_form::{
-    MeleeWeaponDraft, draft_to_melee_weapon_spec, melee_weapon_file_name, melee_weapon_save_path_in,
+    MeleeWeaponDraft, draft_to_melee_weapon_spec, melee_weapon_file_name,
+    melee_weapon_save_path_in, structural_swing_mode,
 };
 #[cfg(debug_assertions)]
 pub use melee_weapon_form::{write_melee_weapon, write_melee_weapon_in};

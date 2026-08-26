@@ -2,6 +2,8 @@
 
 mod attachment;
 mod command;
+mod injury;
+mod melee_weapon;
 mod sprite;
 mod terrain;
 

@@ -11,7 +11,6 @@ mod harness;
 mod hello;
 mod last_save_command;
 mod lifecycle;
-mod list_op_command;
 #[path = "../net_qa_shared/load_case.rs"]
 mod load_case;
 mod load_command;
@@ -26,7 +25,6 @@ mod rows;
 mod save_command;
 #[path = "../net_qa_shared/save_fault.rs"]
 mod save_fault;
-mod set_field_command;
 mod set_mode_command;
 #[path = "../net_qa_shared/socket.rs"]
 mod socket;

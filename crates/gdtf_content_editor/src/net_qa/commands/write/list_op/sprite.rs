@@ -90,6 +90,11 @@ pub(super) fn apply(draft: &mut SpriteDraft, op: EditorListOpNet) -> Result<(), 
              no toggle"
                 .to_owned(),
         )),
+        EditorListOpNet::SetAt(..) => Err(FormWriteFault::bad(
+            "one frame source is rewritten through the SpriteFrame field arm, not through the \
+             list"
+                .to_owned(),
+        )),
         EditorListOpNet::Add => {
             behind_the_gate(draft)?;
             draft.add_frame();

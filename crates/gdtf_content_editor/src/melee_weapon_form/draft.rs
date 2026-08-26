@@ -28,7 +28,7 @@ fn seed_spec() -> MeleeWeaponSpec {
 
 /// Default swing fight mode used by a new draft.
 #[must_use]
-pub(crate) const fn structural_swing_mode() -> FightModeSpec {
+pub const fn structural_swing_mode() -> FightModeSpec {
     FightModeSpec::new(FightModeKind::Swing, TuCost::new(0), Strikes::new(1))
 }
 

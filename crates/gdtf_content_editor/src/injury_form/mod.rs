@@ -3,8 +3,7 @@ mod draft;
 mod save;
 mod weighting;
 
-pub(crate) use draft::DEFAULT_EFFECT;
-pub use draft::InjuryDraft;
+pub use draft::{DEFAULT_EFFECT, InjuryDraft};
 pub use save::{
     draft_to_def, draft_to_weighting, injury_file_name, injury_save_path_in, weighting_file_name,
     weighting_save_path_in,

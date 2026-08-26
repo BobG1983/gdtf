@@ -92,3 +92,143 @@ pub(crate) enum EffectRow {
     GainFireMode(FireModeRow),
     Silence,
 }
+
+/// A client's own reading of the Terrain draft's kind pick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum TerrainKindRow {
+    Wall,
+    Cover,
+    Slab,
+    Emplacement,
+}
+
+/// A client's own reading of one Terrain tag.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum TagRow {
+    Openable,
+    BlocksVision,
+    BlocksPathfinding,
+    Indestructible,
+}
+
+/// A client's own reading of a piece's height band.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum BandRow {
+    Low,
+    Mid,
+    High,
+}
+
+/// A client's own reading of a slab's footfall sound.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum FootfallRow {
+    None,
+    Metal,
+    Grate,
+}
+
+/// A client's own reading of a line-of-sight override.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum LosRow {
+    Full,
+    UpToHeightBand,
+    None,
+}
+
+/// A client's own reading of a graphic role, for the arms this suite drives.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum TileRoleRow {
+    Floor,
+    Wall,
+    Cover,
+    Slab,
+    Rubble,
+}
+
+/// A client's own reading of an injury's category.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum CategoryRow {
+    Head,
+    Torso,
+    Arm,
+    Leg,
+}
+
+/// A client's own reading of an injury's severity rank.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum SeverityRow {
+    Minor,
+    Major,
+    Critical,
+}
+
+/// A client's own reading of the stat a Modify effect names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum StatRow {
+    Speed,
+    Aim,
+    Strength,
+    Toughness,
+    Reflexes,
+    Cool,
+    Grit,
+    Luck,
+    Shooting,
+    Fight,
+    Reactions,
+    Morale,
+    Tu,
+    Hp,
+    Wounds,
+    Bottle,
+}
+
+/// A client's own reading of one injury effect.
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+pub(crate) enum InjuryEffectRow {
+    Modify { stat: StatRow, amount: i8 },
+    Bleeding { amount: u8 },
+    DisableHand,
+    MovementCostMul(f32),
+}
+
+/// A client's own reading of a melee weapon's damage channel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum DamageTypeRow {
+    Shock,
+    Blast,
+    Chem,
+    Kinetic,
+    Plasma,
+    Rend,
+    Las,
+}
+
+/// A client's own reading of how many hands a weapon takes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum HandednessRow {
+    OneHanded,
+    TwoHanded,
+}
+
+/// A client's own reading of one fight mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) struct FightModeRow {
+    pub(crate) kind:    FightModeKindRow,
+    pub(crate) tu_cost: u16,
+    pub(crate) strikes: u16,
+}
+
+/// A client's own reading of a fight mode's swing or thrust.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum FightModeKindRow {
+    Swing,
+    Thrust,
+}
+
+/// A client's own reading of one slot declaration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) struct SlotDeclRow {
+    pub(crate) slot:     SlotRow,
+    pub(crate) capacity: u8,
+}

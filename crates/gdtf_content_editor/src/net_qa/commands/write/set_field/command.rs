@@ -11,7 +11,7 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{armor, attachment, sprite, terrain};
+use super::{armor, attachment, injury, melee_weapon, sprite, terrain};
 use crate::{
     EditorMode,
     net_qa::{
@@ -20,7 +20,7 @@ use crate::{
             write::form_fault::{FormWriteFault, foreign_arm_note},
         },
         facts::EditorFacts,
-        forms::EditorForms,
+        forms::{EditorForms, EditorRegistries},
         schedule::EditorNetQaSystems,
         wire::{EditorFieldNet, EditorModeNet},
     },
@@ -110,22 +110,30 @@ fn no_fields_of_its_own<T>(draft: Option<&mut T>) -> Result<EditorFieldNet, SetF
 
 fn write_to(
     forms: &mut EditorForms,
+    registries: &EditorRegistries,
     mode: EditorModeNet,
     field: EditorFieldNet,
 ) -> Result<EditorFieldNet, SetFieldRefusal> {
     match mode {
-        EditorModeNet::Terrain => Ok(terrain::write(present(forms.terrain.as_mut())?, field)?),
+        EditorModeNet::Terrain => Ok(terrain::write(
+            present(forms.terrain.as_mut())?,
+            registries.weapons.as_deref(),
+            field,
+        )?),
         EditorModeNet::Armor => Ok(armor::write(present(forms.armor.as_mut())?, field)?),
         EditorModeNet::Sprite => Ok(sprite::write(present(forms.sprite.as_mut())?, field)?),
         EditorModeNet::Attachment => Ok(attachment::write(
             present(forms.attachment.as_mut())?,
             field,
         )?),
+        EditorModeNet::Injury => Ok(injury::write(present(forms.injury.as_mut())?, field)?),
+        EditorModeNet::MeleeWeapon => Ok(melee_weapon::write(
+            present(forms.melee_weapon.as_mut())?,
+            field,
+        )?),
         EditorModeNet::Theme => no_fields_of_its_own(forms.theme.as_mut()),
         EditorModeNet::Gang => no_fields_of_its_own(forms.gang.as_mut()),
-        EditorModeNet::Injury => no_fields_of_its_own(forms.injury.as_mut()),
         EditorModeNet::Weapon => no_fields_of_its_own(forms.weapon.as_mut()),
-        EditorModeNet::MeleeWeapon => no_fields_of_its_own(forms.melee_weapon.as_mut()),
         EditorModeNet::Prefab => Err(SetFieldRefusal::Fault(FormWriteFault::ForeignArm)),
     }
 }
@@ -133,6 +141,7 @@ fn write_to(
 fn handle_editor_set_field(
     mode: Option<Res<EditorMode>>,
     mut forms: EditorForms,
+    registries: EditorRegistries,
     mut queue: ResMut<PendingQueue<CommandCall<EditorSetField>>>,
 ) {
     if queue.is_empty() {
@@ -145,10 +154,10 @@ fn handle_editor_set_field(
         return;
     };
     for (args, responder) in take_calls::<EditorSetField>(&mut queue) {
-        match write_to(&mut forms, mode, args.field) {
+        match write_to(&mut forms, &registries, mode, args.field) {
             Ok(field) => responder.answer(&EditorSetFieldReply { mode, field }),
             Err(SetFieldRefusal::DraftGone) => responder.unavailable(
-                UnavailableCode::MissingModel,
+                UnavailableCode::WrongState,
                 RefusalNote::from_owned(format!("the {mode:?} draft resource is not in the world")),
             ),
             Err(SetFieldRefusal::Fault(FormWriteFault::ForeignArm)) => {
@@ -156,6 +165,9 @@ fn handle_editor_set_field(
             }
             Err(SetFieldRefusal::Fault(FormWriteFault::Gated(note))) => {
                 responder.unavailable(UnavailableCode::WrongState, note);
+            }
+            Err(SetFieldRefusal::Fault(FormWriteFault::MissingModel(note))) => {
+                responder.unavailable(UnavailableCode::MissingModel, note);
             }
             Err(SetFieldRefusal::Fault(FormWriteFault::BadArguments(detail))) => {
                 responder.bad_arguments(detail);

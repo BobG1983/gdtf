@@ -11,7 +11,7 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{attachment, sprite, terrain};
+use super::{attachment, injury, melee_weapon, sprite, terrain};
 use crate::{
     EditorMode,
     net_qa::{
@@ -20,7 +20,7 @@ use crate::{
             write::form_fault::{FormWriteFault, foreign_arm_note},
         },
         facts::EditorFacts,
-        forms::EditorForms,
+        forms::{EditorForms, EditorRegistries},
         schedule::EditorNetQaSystems,
         wire::{EditorListMemberNet, EditorListNet, EditorListOpNet, EditorModeNet},
     },
@@ -115,6 +115,7 @@ fn no_list_of_its_own<T>(draft: Option<&mut T>) -> Result<Vec<EditorListMemberNe
 
 fn edit(
     forms: &mut EditorForms,
+    registries: &EditorRegistries,
     mode: EditorModeNet,
     list: EditorListNet,
     op: EditorListOpNet,
@@ -126,10 +127,26 @@ fn edit(
                 ARMOR_HAS_NO_LIST.to_owned(),
             )))
         }
-        (EditorModeNet::Terrain, EditorListNet::EntrySides) => {
+        (EditorModeNet::Terrain, EditorListNet::EntrySides | EditorListNet::TerrainTags) => {
             let draft = present(forms.terrain.as_mut())?;
-            terrain::apply(draft, op)?;
-            Ok(terrain::members(draft))
+            terrain::apply(draft, list, op)?;
+            Ok(terrain::members(draft, list))
+        }
+        (EditorModeNet::Injury, EditorListNet::InjuryEffects) => {
+            let draft = present(forms.injury.as_mut())?;
+            injury::apply(draft, op)?;
+            Ok(injury::members(draft))
+        }
+        (
+            EditorModeNet::MeleeWeapon,
+            EditorListNet::MeleeWeaponFightModes
+            | EditorListNet::MeleeWeaponSlots
+            | EditorListNet::MeleeWeaponAttachments,
+        ) => {
+            let registry = registries.attachments.as_deref();
+            let draft = present(forms.melee_weapon.as_mut())?;
+            melee_weapon::apply(draft, registry, list, op)?;
+            Ok(melee_weapon::members(draft, list))
         }
         (EditorModeNet::Attachment, EditorListNet::AttachmentEffects) => {
             let draft = present(forms.attachment.as_mut())?;
@@ -156,6 +173,7 @@ fn edit(
 fn handle_editor_list_op(
     mode: Option<Res<EditorMode>>,
     mut forms: EditorForms,
+    registries: EditorRegistries,
     mut queue: ResMut<PendingQueue<CommandCall<EditorListOp>>>,
 ) {
     if queue.is_empty() {
@@ -168,14 +186,14 @@ fn handle_editor_list_op(
         return;
     };
     for (args, responder) in take_calls::<EditorListOp>(&mut queue) {
-        match edit(&mut forms, mode, args.list, args.op) {
+        match edit(&mut forms, &registries, mode, args.list, args.op) {
             Ok(members) => responder.answer(&EditorListOpReply {
                 mode,
                 list: args.list,
                 members,
             }),
             Err(ListOpRefusal::DraftGone) => responder.unavailable(
-                UnavailableCode::MissingModel,
+                UnavailableCode::WrongState,
                 RefusalNote::from_owned(format!("the {mode:?} draft resource is not in the world")),
             ),
             Err(ListOpRefusal::Fault(FormWriteFault::ForeignArm)) => {
@@ -183,6 +201,9 @@ fn handle_editor_list_op(
             }
             Err(ListOpRefusal::Fault(FormWriteFault::Gated(note))) => {
                 responder.unavailable(UnavailableCode::WrongState, note);
+            }
+            Err(ListOpRefusal::Fault(FormWriteFault::MissingModel(note))) => {
+                responder.unavailable(UnavailableCode::MissingModel, note);
             }
             Err(ListOpRefusal::Fault(FormWriteFault::BadArguments(detail))) => {
                 responder.bad_arguments(detail);

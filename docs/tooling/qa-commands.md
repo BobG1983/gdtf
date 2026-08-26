@@ -267,7 +267,7 @@ run(host="editor", command="editor.session", arguments="()")
 run(host="editor", command="editor.draft", arguments="()")
 run(host="editor", command="editor.set_mode", arguments="(mode: Terrain)")
 run(host="editor", command="editor.set_field", arguments="(field: Kind(Emplacement))")
-run(host="editor", command="editor.list_op", arguments="(list: EntrySides, op: Toggle(East))")
+run(host="editor", command="editor.list_op", arguments="(list: EntrySides, op: Toggle(EntrySide(East)))")
 run(host="editor", command="editor.set_field", arguments="(field: ArmorFloor(part: Head, value: 12))")
 run(host="editor", command="editor.list_op", arguments="(list: SpriteFrames, op: MoveUp(2))")
 run(host="editor", command="editor.select_theme", arguments="(key: \"00000000-0000-0000-0000-01840a900001\")")
@@ -790,24 +790,32 @@ so a call during Load carries the phase note and not the tab note.
 
 Each value rides on its own variant. `Kind(Emplacement)`,
 `ArmorFloor(part: Head, value: 12)`, `SpriteFrame(index: 1, source: File("a.png"))`,
-`Toggle(East)` and `MoveUp(2)` are five of them. So an unknown field or list name is a decode
-failure answering `BadArguments` with the schema. Each arm also names the form it belongs
+`Toggle(EntrySide(East))` and `MoveUp(2)` are five of them. So an unknown field or list name is
+a decode failure answering `BadArguments` with the schema. Each arm also names the form it belongs
 to, and neither command adds a protocol variant. What the handler answers itself, in the order it checks:
 
 1. The open mode's draft resource left the world between the availability check and the
-   handler: `Unavailable { code: MissingModel }`, with a note naming that mode's draft.
+   handler: `Unavailable { code: WrongState }`, with a note naming that mode's draft. A
+   missing draft is host state, so the handler names the code the catalogue already names.
 2. Any `editor.list_op` while the Armor tab is open: `BadArguments`. The Armor form draws six
    fixed pieces and no list, so no list name could be right there.
 3. A field or list arm belonging to another form than the open tab:
    `Unavailable { code: WrongState }`, with a note naming the tab that is open.
-4. An operation the named list does not draw: `BadArguments`. That covers `Toggle` on the
-   attachment effects or the sprite frames, any of `Add`, `Remove`, `MoveUp` or `MoveDown` on
-   the entry sides, and any reorder outside the sprite frames.
+4. An operation the named list does not draw: `BadArguments`. `TerrainTags` and `EntrySides`
+   are rows of tick boxes, so each takes `Toggle` alone and refuses `Add`, `Remove`, `SetAt`,
+   `MoveUp` and `MoveDown`, and a toggle carrying a member of the other list is refused too.
+   Every other list refuses `Toggle`: the attachment effects, the sprite frames, the injury
+   effects and all three Melee Weapon lists. Every list outside the sprite frames refuses a
+   reorder. When a list reads its own options from a registry and that registry is absent, the
+   answer is `Unavailable { code: MissingModel }` instead.
 5. A closed gate: `Unavailable { code: WrongState }`, with a note naming the gate.
    `editor.list_op` refuses a `Toggle` on the entry sides while the draft's kind is not
    `Emplacement`, because `TerrainDraft::set_entry_sides` commits only at that kind and the
    write would otherwise do nothing. The Sprite fps, every frame operation and every
-   per-frame source refuse the same way while `SpriteDraft::is_animated` is false.
+   per-frame source refuse the same way while `SpriteDraft::is_animated` is false. A `Remove`
+   on the injury effects or the melee fight modes while one entry remains refuses here too,
+   with a note naming the minimum, because it is the condition that greys out the form's own
+   Remove button. The sprite frames answer that case as `BadArguments` instead, under item 6.
 6. A stat outside its range, an index past the end of a list, a `Remove` on a sprite frame
    list holding one frame, a `MoveUp` at index 0 and a `MoveDown` at the last index:
    `BadArguments`.
@@ -824,14 +832,21 @@ rect's width answers `Ran` and reads the clamped value back.
 | Armor | `ArmorName`; per `BodyPart`, `ArmorFloor`, `ArmorProtection`, `ArmorHardness` (`ArmorDraft::STAT_RANGE`, `0..=100`), `ArmorIntegrity` (`ArmorDraft::INTEGRITY_RANGE`, `0..=1000`) and `ArmorType` (one of `ArmorType::ALL`) |
 | Sprite | `SpriteName`; `SpriteBaseSource`; `SpriteAnchorX` and `SpriteAnchorY` (clamped to the sheet rect); `SpriteAnimated`; and behind that gate `SpriteFps` (`SpriteDraft::FPS_RANGE`), `SpriteFrame`; `SpriteFacingOverride`, set to a source or cleared with `None` |
 | Attachment | `AttachmentName`; `AttachmentDisplayName`; `AttachmentSlot` (one of `AttachmentSlot::ALL`); `AttachmentEffect`, variant and payload together |
-| Terrain | `Kind` |
+| Terrain | `Kind` (Wall, Cover, Slab, Emplacement); `TerrainDisplayName`; `TerrainHp`, which writes both the cover and the slab field, clamped to `TerrainDraft::HP_RANGE`; `TerrainArmorProtection` and `TerrainArmorHardness`, clamped to `TerrainDraft::ARMOR_RANGE`; `TerrainHeightBand`, on a kind whose `has_height_band` is true; `TerrainGraphic`, one of `offered_graphic_roles()`; `TerrainFootfall`, on a kind whose `offers_footfall` is true; `TerrainMountedWeapon`, a `WeaponRegistry` key or `None`, on an `Emplacement` kind; `TerrainBlocksPathing` and `TerrainBlocksLos`, each set or cleared with `None` |
+| Injury | `InjuryKey`; `InjuryName`; `InjuryCategory` (one of `InjuryCategory::ALL`); `InjurySeverity` (Minor, Major or Critical, so `None` and `Fatal` fail to decode); `InjuryPopupText`, `InjuryLogText`, `InjuryInspectText`; `InjuryEffect`, an index with that effect's variant and payload |
+| Melee Weapon | `MeleeWeaponName`; `MeleeWeaponDamage`, `MeleeWeaponPunch`, `MeleeWeaponShred`, `MeleeWeaponDamageType` (one of `DamageType::ALL`), `MeleeWeaponFatalBias`, `MeleeWeaponHandedness`; `MeleeWeaponReach`, clamped at 1; `MeleeWeaponShove` |
 
 | Form | List | Operations |
 | --- | --- | --- |
 | Armor | none | The six pieces are fixed, so every `editor.list_op` answers `BadArguments` |
 | Sprite | `SpriteFrames` | `Add` (copies the last frame, else the base source), `Remove`, `MoveUp`, `MoveDown`. Animation must be on, and the list keeps at least one frame |
 | Attachment | `AttachmentEffects` | `Add` (seeds the form's own default effect), `Remove`. An empty list is legal and means cosmetic |
-| Terrain | `EntrySides` | `Toggle`, on an `Emplacement` kind |
+| Terrain | `EntrySides` | `Toggle(EntrySide(..))`, on an `Emplacement` kind |
+| Terrain | `TerrainTags` | `Toggle(TerrainTag(..))` |
+| Injury | `InjuryEffects` | `Add` (seeds the form's own default effect), `Remove`. The list keeps at least one effect |
+| Melee Weapon | `MeleeWeaponFightModes` | `Add` (seeds the form's own structural swing), `Remove`, `SetAt`. The list keeps at least one mode |
+| Melee Weapon | `MeleeWeaponSlots` | `Add` (seeds `WeaponSlots::DEFAULT_DECLARATION`), `Remove`, `SetAt`. An empty list is legal |
+| Melee Weapon | `MeleeWeaponAttachments` | `Add` (seeds the registry's first key by name), `Remove`, `SetAt` naming a key the registry holds. An absent `AttachmentRegistry` answers `MissingModel` on `Add` and on `SetAt`. An empty one answers `MissingModel` on `Add`, because there is no key to seed, and `BadArguments` on `SetAt`, because the key it names is not one the registry holds |
 
 Reorder exists only for the sprite frames.
 

@@ -11,7 +11,7 @@ use gdtf_battle_sim::{
 };
 
 /// Default effect used by a new injury draft.
-pub(crate) const DEFAULT_EFFECT: InjuryEffect = InjuryEffect::Modify {
+pub const DEFAULT_EFFECT: InjuryEffect = InjuryEffect::Modify {
     stat:   StatTarget::Speed,
     amount: StatDelta::new(-1),
 };

@@ -8,10 +8,20 @@ use super::{
         ArmorFloorNet, ArmorHardnessNet, ArmorIntegrityNet, ArmorProtectionNet, ArmorTypeNet,
         BodyPartNet,
     },
-    attachment::{AttachmentEffectNet, AttachmentSlotNet},
+    attachment::{
+        AttachmentEffectNet, AttachmentSlotNet, DamageTypeNet, FatalBiasNet, WeaponDamageNet,
+        WeaponPunchNet, WeaponShredNet,
+    },
+    injury::{InjuryCategoryNet, InjuryEffectNet, InjuryKeyNet, InjurySeverityNet, InjuryTextNet},
     list::EditorListIndexNet,
+    melee_weapon::{HandednessNet, ReachNet, ShoveNet},
     sprite::{SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet, SpritePxNet, SpriteSourceNet},
+    terrain::{
+        BlocksPathingNet, FootfallNet, HeightBandNet, LosBlockingNet, MountedWeaponNet,
+        TerrainHpNet,
+    },
     terrain_kind::TerrainKindNet,
+    tile_role::TileRoleNet,
 };
 
 /// The name a form's own name field holds, for whichever form named it.
@@ -107,4 +117,63 @@ pub(in crate::net_qa) enum EditorFieldNet {
         /// The effect it is set to.
         effect: AttachmentEffectNet,
     },
+    /// The Terrain draft's display name.
+    TerrainDisplayName(EditorDraftNameNet),
+    /// The Terrain draft's hit points, written to both the cover and the slab field.
+    TerrainHp(TerrainHpNet),
+    /// The Terrain draft's armor protection.
+    TerrainArmorProtection(ArmorProtectionNet),
+    /// The Terrain draft's armor hardness.
+    TerrainArmorHardness(ArmorHardnessNet),
+    /// The Terrain draft's height band, for the kinds that carry one.
+    TerrainHeightBand(HeightBandNet),
+    /// The Terrain draft's graphic role.
+    TerrainGraphic(TileRoleNet),
+    /// The Terrain draft's footfall sound, on a Slab.
+    TerrainFootfall(FootfallNet),
+    /// The Terrain draft's mounted weapon, on an Emplacement, set or cleared.
+    TerrainMountedWeapon(Option<MountedWeaponNet>),
+    /// The Terrain draft's pathing override, set or cleared.
+    TerrainBlocksPathing(Option<BlocksPathingNet>),
+    /// The Terrain draft's line-of-sight override, set or cleared.
+    TerrainBlocksLos(Option<LosBlockingNet>),
+    /// The Injury draft's key.
+    InjuryKey(InjuryKeyNet),
+    /// The Injury draft's display name.
+    InjuryName(EditorDraftNameNet),
+    /// The Injury draft's category.
+    InjuryCategory(InjuryCategoryNet),
+    /// The Injury draft's severity rank.
+    InjurySeverity(InjurySeverityNet),
+    /// The Injury draft's popup text.
+    InjuryPopupText(InjuryTextNet),
+    /// The Injury draft's log text.
+    InjuryLogText(InjuryTextNet),
+    /// The Injury draft's inspect text.
+    InjuryInspectText(InjuryTextNet),
+    /// One authored injury effect, variant and payload together.
+    InjuryEffect {
+        /// Which effect.
+        index:  EditorListIndexNet,
+        /// The effect it is set to.
+        effect: InjuryEffectNet,
+    },
+    /// The Melee Weapon draft's display name.
+    MeleeWeaponName(EditorDraftNameNet),
+    /// The Melee Weapon draft's damage.
+    MeleeWeaponDamage(WeaponDamageNet),
+    /// The Melee Weapon draft's punch.
+    MeleeWeaponPunch(WeaponPunchNet),
+    /// The Melee Weapon draft's shred.
+    MeleeWeaponShred(WeaponShredNet),
+    /// The Melee Weapon draft's damage channel.
+    MeleeWeaponDamageType(DamageTypeNet),
+    /// The Melee Weapon draft's fatal bias.
+    MeleeWeaponFatalBias(FatalBiasNet),
+    /// The Melee Weapon draft's handedness.
+    MeleeWeaponHandedness(HandednessNet),
+    /// The Melee Weapon draft's reach, which the form clamps at one.
+    MeleeWeaponReach(ReachNet),
+    /// Whether the Melee Weapon draft shoves on connect.
+    MeleeWeaponShove(ShoveNet),
 }
