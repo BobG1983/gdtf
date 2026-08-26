@@ -226,6 +226,19 @@ pub(crate) enum FightModeKindRow {
     Thrust,
 }
 
+/// A client's own reading of which attribute a member write named.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum GangAttributeRow {
+    Speed,
+    Aim,
+    Strength,
+    Toughness,
+    Reflexes,
+    Cool,
+    Grit,
+    Luck,
+}
+
 /// A client's own reading of one slot declaration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub(crate) struct SlotDeclRow {

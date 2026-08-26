@@ -203,6 +203,52 @@ fn a_write_naming_another_forms_field_is_refused_with_the_open_tab_named() -> Te
 }
 
 #[test]
+fn a_terrain_field_on_the_gang_tab_is_refused_with_the_gang_tab_named() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Gang)?;
+    let before = crate::setup::terrain_draft(&app)?;
+
+    let reply = try_set_field(&mut app, &mut client, "(field: Kind(Emplacement))")?;
+    assert_eq!(
+        unavailable_code(&reply)?,
+        "WrongState",
+        "the Kind arm belongs to the Terrain form, so the Gang tab refuses it",
+    );
+    assert!(
+        refusal_note(&reply)?.contains("Gang"),
+        "the note names the tab that is open",
+    );
+    assert_eq!(
+        crate::setup::terrain_draft(&app)?,
+        before,
+        "a Gang writer that fell through to the Terrain draft would write it here",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_terrain_list_on_the_gang_tab_is_refused_with_the_gang_tab_named() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Gang)?;
+    let before = crate::setup::terrain_draft(&app)?;
+
+    let reply = try_list_op(
+        &mut app,
+        &mut client,
+        "(list: EntrySides, op: Toggle(EntrySide(East)))",
+    )?;
+    assert_eq!(unavailable_code(&reply)?, "WrongState");
+    assert!(
+        refusal_note(&reply)?.contains("Gang"),
+        "the note names the tab that is open",
+    );
+    assert_eq!(
+        crate::setup::terrain_draft(&app)?,
+        before,
+        "a Gang list editor that fell through to the Terrain draft would edit it here",
+    );
+    Ok(())
+}
+
+#[test]
 fn a_list_naming_another_forms_list_is_refused_with_the_open_tab_named() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::MeleeWeapon)?;
     let before = crate::setup::injury_draft(&app)?;

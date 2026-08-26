@@ -12,8 +12,9 @@ use crate::{
     net_qa::wire::{
         ArmorFloorNet, ArmorHardnessNet, ArmorIntegrityNet, ArmorProtectionNet, ArmorTypeNet,
         AttachmentEffectNet, AttachmentSlotNet, BodyPartNet, EditorDraftNameNet, EditorFieldNet,
-        EditorListIndexNet, SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet, SpritePxNet,
-        SpriteSourceNet, TerrainKindNet,
+        EditorKeyNet, EditorListIndexNet, GangAttributeNet, GangAttributeValueNet,
+        SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet, SpritePxNet, SpriteSourceNet,
+        TerrainKindNet,
     },
     terrain_form::TerrainKindChoice,
 };
@@ -32,6 +33,10 @@ fn a_source() -> SpriteSourceNet {
 
 fn a_name() -> EditorDraftNameNet {
     EditorDraftNameNet::new("scarred plate")
+}
+
+fn a_key() -> EditorKeyNet {
+    EditorKeyNet::new("stub_gun".to_owned())
 }
 
 #[test]
@@ -125,7 +130,41 @@ fn every_attachment_field_arm_round_trips() {
 }
 
 #[test]
+fn every_gang_field_arm_round_trips() {
+    let index = EditorListIndexNet::new(2);
+    assert_ron_round_trip(&EditorFieldNet::GangName(a_name()));
+    assert_ron_round_trip(&EditorFieldNet::GangMemberName {
+        index,
+        name: a_name(),
+    });
+    for attribute in GangAttributeNet::ALL {
+        assert_ron_round_trip(&attribute);
+        assert_ron_round_trip(&EditorFieldNet::GangMemberAttribute {
+            index,
+            attribute,
+            value: GangAttributeValueNet::new(42.5),
+        });
+    }
+    assert_ron_round_trip(&GangAttributeValueNet::new(7.25));
+    assert_ron_round_trip(&EditorFieldNet::GangMemberWeapon {
+        index,
+        key: a_key(),
+    });
+    assert_ron_round_trip(&EditorFieldNet::GangMemberArmor {
+        index,
+        key: a_key(),
+    });
+    assert_ron_round_trip(&EditorFieldNet::GangMemberMeleeWeapon {
+        index,
+        key: Some(a_key()),
+    });
+    assert_ron_round_trip(&EditorFieldNet::GangMemberMeleeWeapon { index, key: None });
+}
+
+#[test]
 fn the_field_traces_a_usable_shape() {
     assert_schema_is_usable::<EditorFieldNet>("EditorFieldNet");
     assert_schema_is_usable::<EditorDraftNameNet>("EditorDraftNameNet");
+    assert_schema_is_usable::<GangAttributeNet>("GangAttributeNet");
+    assert_schema_is_usable::<GangAttributeValueNet>("GangAttributeValueNet");
 }

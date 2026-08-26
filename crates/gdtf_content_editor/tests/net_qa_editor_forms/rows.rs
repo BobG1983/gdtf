@@ -2,8 +2,8 @@ use serde::Deserialize;
 
 use crate::values::{
     ArmorTypeRow, BandRow, BodyPartRow, CategoryRow, DamageTypeRow, EffectRow, FacingRow,
-    FightModeRow, FootfallRow, HandednessRow, InjuryEffectRow, LosRow, SeverityRow, SlotDeclRow,
-    SlotRow, SourceRow, TagRow, TerrainKindRow, TileRoleRow,
+    FightModeRow, FootfallRow, GangAttributeRow, HandednessRow, InjuryEffectRow, LosRow,
+    SeverityRow, SlotDeclRow, SlotRow, SourceRow, TagRow, TerrainKindRow, TileRoleRow,
 };
 
 /// Which single-value field a write named, carrying the value read back off the draft.
@@ -82,6 +82,28 @@ pub(crate) enum FieldRow {
     MeleeWeaponHandedness(HandednessRow),
     MeleeWeaponReach(u16),
     MeleeWeaponShove(bool),
+    GangName(String),
+    GangMemberName {
+        index: usize,
+        name:  String,
+    },
+    GangMemberAttribute {
+        index:     usize,
+        attribute: GangAttributeRow,
+        value:     f32,
+    },
+    GangMemberWeapon {
+        index: usize,
+        key:   String,
+    },
+    GangMemberArmor {
+        index: usize,
+        key:   String,
+    },
+    GangMemberMeleeWeapon {
+        index: usize,
+        key:   Option<String>,
+    },
 }
 
 /// Which list a write named.
@@ -95,6 +117,7 @@ pub(crate) enum ListRow {
     MeleeWeaponFightModes,
     MeleeWeaponSlots,
     MeleeWeaponAttachments,
+    GangMembers,
 }
 
 /// One member of the list a reply reads back.
@@ -108,6 +131,7 @@ pub(crate) enum ListMemberRow {
     FightMode(FightModeRow),
     Slot(SlotDeclRow),
     Attachment(String),
+    GangMember(String),
 }
 
 /// `editor.set_field`'s reply body.

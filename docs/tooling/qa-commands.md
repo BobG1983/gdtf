@@ -806,8 +806,9 @@ to, and neither command adds a protocol variant. What the handler answers itself
    `MoveUp` and `MoveDown`, and a toggle carrying a member of the other list is refused too.
    Every other list refuses `Toggle`: the attachment effects, the sprite frames, the injury
    effects and all three Melee Weapon lists. Every list outside the sprite frames refuses a
-   reorder. When a list reads its own options from a registry and that registry is absent, the
-   answer is `Unavailable { code: MissingModel }` instead.
+   reorder. The Gang member list takes `Add` and `Remove` alone, so it refuses `Toggle`,
+   `SetAt`, `MoveUp` and `MoveDown`. When a list reads its own options from a registry and that
+   registry is absent, the answer is `Unavailable { code: MissingModel }` instead.
 5. A closed gate: `Unavailable { code: WrongState }`, with a note naming the gate.
    `editor.list_op` refuses a `Toggle` on the entry sides while the draft's kind is not
    `Emplacement`, because `TerrainDraft::set_entry_sides` commits only at that kind and the
@@ -818,7 +819,12 @@ to, and neither command adds a protocol variant. What the handler answers itself
    Remove button. The sprite frames answer that case as `BadArguments` instead, under item 6.
 6. A stat outside its range, an index past the end of a list, a `Remove` on a sprite frame
    list holding one frame, a `MoveUp` at index 0 and a `MoveDown` at the last index:
-   `BadArguments`.
+   `BadArguments`. A Gang member key answers the same way when the registry the combo reads
+   does not hold it, weapons against `WeaponRegistry`, melee weapons against
+   `MeleeWeaponRegistry` and armor against `ArmorRegistry`, and the detail names the key. A
+   registry that is absent, or present and empty, offers the combo no row at all, so that one
+   answers `Unavailable { code: MissingModel }`. Clearing `GangMemberMeleeWeapon` with `None`
+   reads no registry, so it lands with `MeleeWeaponRegistry` out of the world.
 
 Every write that lands answers `Ran`, and the reply carries the mode, the field or list the
 write named, and the value as the draft stores it. The one setter that clamps still clamps:
@@ -835,6 +841,7 @@ rect's width answers `Ran` and reads the clamped value back.
 | Terrain | `Kind` (Wall, Cover, Slab, Emplacement); `TerrainDisplayName`; `TerrainHp`, which writes both the cover and the slab field, clamped to `TerrainDraft::HP_RANGE`; `TerrainArmorProtection` and `TerrainArmorHardness`, clamped to `TerrainDraft::ARMOR_RANGE`; `TerrainHeightBand`, on a kind whose `has_height_band` is true; `TerrainGraphic`, one of `offered_graphic_roles()`; `TerrainFootfall`, on a kind whose `offers_footfall` is true; `TerrainMountedWeapon`, a `WeaponRegistry` key or `None`, on an `Emplacement` kind; `TerrainBlocksPathing` and `TerrainBlocksLos`, each set or cleared with `None` |
 | Injury | `InjuryKey`; `InjuryName`; `InjuryCategory` (one of `InjuryCategory::ALL`); `InjurySeverity` (Minor, Major or Critical, so `None` and `Fatal` fail to decode); `InjuryPopupText`, `InjuryLogText`, `InjuryInspectText`; `InjuryEffect`, an index with that effect's variant and payload |
 | Melee Weapon | `MeleeWeaponName`; `MeleeWeaponDamage`, `MeleeWeaponPunch`, `MeleeWeaponShred`, `MeleeWeaponDamageType` (one of `DamageType::ALL`), `MeleeWeaponFatalBias`, `MeleeWeaponHandedness`; `MeleeWeaponReach`, clamped at 1; `MeleeWeaponShove` |
+| Gang | `GangName`; per member index, `GangMemberName`; `GangMemberAttribute`, naming one of `Speed`, `Aim`, `Strength`, `Toughness`, `Reflexes`, `Cool`, `Grit` and `Luck`, with a value inside `GangDraft::ATTRIBUTE_RANGE` (`0.0..=100.0`); `GangMemberWeapon`, a `WeaponRegistry` key; `GangMemberArmor`, an `ArmorRegistry` key; `GangMemberMeleeWeapon`, a `MeleeWeaponRegistry` key or `None` for the fists default |
 
 | Form | List | Operations |
 | --- | --- | --- |
@@ -847,6 +854,7 @@ rect's width answers `Ran` and reads the clamped value back.
 | Melee Weapon | `MeleeWeaponFightModes` | `Add` (seeds the form's own structural swing), `Remove`, `SetAt`. The list keeps at least one mode |
 | Melee Weapon | `MeleeWeaponSlots` | `Add` (seeds `WeaponSlots::DEFAULT_DECLARATION`), `Remove`, `SetAt`. An empty list is legal |
 | Melee Weapon | `MeleeWeaponAttachments` | `Add` (seeds the registry's first key by name), `Remove`, `SetAt` naming a key the registry holds. An absent `AttachmentRegistry` answers `MissingModel` on `Add` and on `SetAt`. An empty one answers `MissingModel` on `Add`, because there is no key to seed, and `BadArguments` on `SetAt`, because the key it names is not one the registry holds |
+| Gang | `GangMembers` | `Add` (appends the form's own default member), `Remove`. No minimum, so an empty list is legal, and no reorder |
 
 Reorder exists only for the sprite frames.
 

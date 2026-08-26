@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use gdtf_content_editor::{EditorMode, InjuryDraft, SpriteDraft};
+use gdtf_content_editor::{EditorMode, GangDraft, InjuryDraft, SpriteDraft};
 use gdtf_qa_command::dispatch::{CommandInbox, QaCommandSystems};
 use gdtf_qa_protocol::{
     command::{CommandAvailability, CommandName, CommandOutcome, UnavailableCode},
@@ -9,6 +9,7 @@ use gdtf_qa_protocol::{
 use crate::{
     names::{EDITOR_LIST_OP, EDITOR_SET_FIELD},
     outcome::unavailable_code,
+    refusal::refusal_note,
     setup::{form_tab_app_and_client, try_list_op, try_set_field},
     socket::Client,
     support::{TestError, TestResult},
@@ -101,11 +102,12 @@ fn neither_write_commands_summary_names_a_single_form() -> TestResult {
 }
 
 #[test]
-fn the_catalogue_offers_both_writes_on_each_of_the_three_tabs() -> TestResult {
+fn the_catalogue_offers_both_writes_on_each_of_the_four_tabs() -> TestResult {
     for mode in [
         EditorMode::Terrain,
         EditorMode::Injury,
         EditorMode::MeleeWeapon,
+        EditorMode::Gang,
     ] {
         let (mut app, mut client) = form_tab_app_and_client(mode)?;
         let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
@@ -118,6 +120,44 @@ fn the_catalogue_offers_both_writes_on_each_of_the_three_tabs() -> TestResult {
             );
         }
     }
+    Ok(())
+}
+
+#[test]
+fn the_gang_tab_with_no_draft_refuses_both_the_catalogue_row_and_the_write() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Gang)?;
+    app.world_mut().remove_resource::<GangDraft>();
+
+    let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    let CommandAvailability::Unavailable { code, note } =
+        availability_of(&catalogue, EDITOR_SET_FIELD)?
+    else {
+        return Err(
+            "with the Gang draft out of the world the write must publish as Unavailable"
+                .to_owned()
+                .into(),
+        );
+    };
+    assert_eq!(
+        code,
+        UnavailableCode::WrongState,
+        "the Gang tab is open but its draft is gone, which is what WrongState names",
+    );
+    assert!(
+        !note.as_str().is_empty(),
+        "the refusal carries the line that tells a client what is missing",
+    );
+
+    let reply = try_set_field(&mut app, &mut client, "(field: GangName(\"Ash Ferals\"))")?;
+    assert_eq!(
+        unavailable_code(&reply)?,
+        "WrongState",
+        "a missing draft is host state, so the handler names the code the catalogue names",
+    );
+    assert!(
+        !refusal_note(&reply)?.is_empty(),
+        "the write's refusal carries the line that tells a client what is missing",
+    );
     Ok(())
 }
 

@@ -8,10 +8,10 @@ use gdtf_content_families::sprites::{SpriteImagePath, SpriteSource};
 
 use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::net_qa::wire::{
-    AttachmentEffectNet, AttachmentKeyNet, AttachmentSlotNet, EditorListIndexNet,
-    EditorListMemberNet, EditorListNet, EditorListOpNet, FightModeKindNet, FightModeSpecNet,
-    InjuryEffectNet, SlotCapacityNet, SpriteSourceNet, StrikesNet, TerrainFacingNet, TerrainTagNet,
-    TuCostNet, WeaponSlotNet,
+    AttachmentEffectNet, AttachmentKeyNet, AttachmentSlotNet, EditorDraftNameNet,
+    EditorListIndexNet, EditorListMemberNet, EditorListNet, EditorListOpNet, FightModeKindNet,
+    FightModeSpecNet, InjuryEffectNet, SlotCapacityNet, SpriteSourceNet, StrikesNet,
+    TerrainFacingNet, TerrainTagNet, TuCostNet, WeaponSlotNet,
 };
 
 fn a_frame_source() -> SpriteSourceNet {
@@ -46,6 +46,7 @@ fn the_named_list_round_trips() {
         EditorListNet::MeleeWeaponFightModes,
         EditorListNet::MeleeWeaponSlots,
         EditorListNet::MeleeWeaponAttachments,
+        EditorListNet::GangMembers,
     ] {
         assert_ron_round_trip(&list);
     }
@@ -100,6 +101,9 @@ fn every_member_round_trips() {
     assert_ron_round_trip(&EditorListMemberNet::Attachment(
         AttachmentKeyNet::from_key(&AttachmentName::new("chain_teeth".to_owned())),
     ));
+    assert_ron_round_trip(&EditorListMemberNet::GangMember(EditorDraftNameNet::new(
+        "Kez",
+    )));
 }
 
 #[test]

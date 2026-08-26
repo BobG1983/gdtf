@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     attachment::AttachmentEffectNet,
     facing::TerrainFacingNet,
+    field::EditorDraftNameNet,
     injury::InjuryEffectNet,
     melee_weapon::{AttachmentKeyNet, FightModeSpecNet, WeaponSlotNet},
     sprite::SpriteSourceNet,
@@ -43,6 +44,8 @@ pub(in crate::net_qa) enum EditorListNet {
     MeleeWeaponSlots,
     /// The Melee Weapon draft's fitted attachment keys.
     MeleeWeaponAttachments,
+    /// The Gang draft's roster of members.
+    GangMembers,
 }
 
 /// What a write does to the named list.
@@ -81,4 +84,6 @@ pub(in crate::net_qa) enum EditorListMemberNet {
     Slot(WeaponSlotNet),
     /// One key of the Melee Weapon draft's fitted attachment list.
     Attachment(AttachmentKeyNet),
+    /// One member of the Gang draft's roster, named the way its header names it.
+    GangMember(EditorDraftNameNet),
 }

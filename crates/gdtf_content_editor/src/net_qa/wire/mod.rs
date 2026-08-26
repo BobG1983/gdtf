@@ -51,7 +51,9 @@ pub(in crate::net_qa) use facing::TerrainFacingNet;
 pub(in crate::net_qa) use family::{
     EditorFamilyEntryNet, EditorFamilyLabelNet, EditorFamilyNet, EditorFamilyRowNet,
 };
-pub(in crate::net_qa) use field::{EditorDraftNameNet, EditorFieldNet};
+pub(in crate::net_qa) use field::{
+    EditorDraftNameNet, EditorFieldNet, GangAttributeNet, GangAttributeValueNet,
+};
 pub(in crate::net_qa) use grid::{
     EditorGridHeightNet, EditorGridLevelsNet, EditorGridSizeNet, EditorGridWidthNet,
 };

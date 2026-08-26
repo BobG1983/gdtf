@@ -5,6 +5,8 @@
 mod armor_fields;
 mod attachment_fields;
 mod availability;
+mod gang_fields;
+mod gang_lists;
 #[path = "../net_qa_shared/harness.rs"]
 mod harness;
 #[path = "../net_qa_shared/hello.rs"]

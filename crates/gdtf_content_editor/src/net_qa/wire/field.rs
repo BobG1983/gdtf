@@ -13,6 +13,7 @@ use super::{
         WeaponPunchNet, WeaponShredNet,
     },
     injury::{InjuryCategoryNet, InjuryEffectNet, InjuryKeyNet, InjurySeverityNet, InjuryTextNet},
+    key::EditorKeyNet,
     list::EditorListIndexNet,
     melee_weapon::{HandednessNet, ReachNet, ShoveNet},
     sprite::{SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet, SpritePxNet, SpriteSourceNet},
@@ -33,6 +34,54 @@ impl EditorDraftNameNet {
     /// Wrap a name a client sent or a draft holds.
     pub(in crate::net_qa) fn new(name: &str) -> Self {
         Self(name.to_owned())
+    }
+}
+
+/// Which of a gang member's eight attributes a write names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub(in crate::net_qa) enum GangAttributeNet {
+    /// The member's movement attribute.
+    Speed,
+    /// The member's ranged accuracy.
+    Aim,
+    /// The member's melee power.
+    Strength,
+    /// The member's resilience.
+    Toughness,
+    /// The member's reaction speed.
+    Reflexes,
+    /// The member's composure under fire.
+    Cool,
+    /// The member's grit.
+    Grit,
+    /// The member's luck.
+    Luck,
+}
+
+impl GangAttributeNet {
+    /// Every attribute the member grid draws, for a case that walks them all.
+    #[cfg(test)]
+    pub(in crate::net_qa) const ALL: [Self; 8] = [
+        Self::Speed,
+        Self::Aim,
+        Self::Strength,
+        Self::Toughness,
+        Self::Reflexes,
+        Self::Cool,
+        Self::Grit,
+        Self::Luck,
+    ];
+}
+
+/// The number one attribute drag holds.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub(in crate::net_qa) struct GangAttributeValueNet(f32);
+
+impl GangAttributeValueNet {
+    /// Wrap an attribute value a client sent or a member holds.
+    pub(in crate::net_qa) const fn new(value: f32) -> Self {
+        Self(value)
     }
 }
 
@@ -176,4 +225,43 @@ pub(in crate::net_qa) enum EditorFieldNet {
     MeleeWeaponReach(ReachNet),
     /// Whether the Melee Weapon draft shoves on connect.
     MeleeWeaponShove(ShoveNet),
+    /// The Gang draft's own name.
+    GangName(EditorDraftNameNet),
+    /// One member's display name.
+    GangMemberName {
+        /// Which member.
+        index: EditorListIndexNet,
+        /// The name it is set to.
+        name:  EditorDraftNameNet,
+    },
+    /// One member's attribute.
+    GangMemberAttribute {
+        /// Which member.
+        index:     EditorListIndexNet,
+        /// Which of the member's eight attributes.
+        attribute: GangAttributeNet,
+        /// The value it is set to.
+        value:     GangAttributeValueNet,
+    },
+    /// One member's primary weapon key.
+    GangMemberWeapon {
+        /// Which member.
+        index: EditorListIndexNet,
+        /// The weapon registry key it is set to.
+        key:   EditorKeyNet,
+    },
+    /// One member's armor key.
+    GangMemberArmor {
+        /// Which member.
+        index: EditorListIndexNet,
+        /// The armor registry key it is set to.
+        key:   EditorKeyNet,
+    },
+    /// One member's melee weapon key, set or cleared to the fists default.
+    GangMemberMeleeWeapon {
+        /// Which member.
+        index: EditorListIndexNet,
+        /// The melee registry key it is set to, or none for the fists default.
+        key:   Option<EditorKeyNet>,
+    },
 }
