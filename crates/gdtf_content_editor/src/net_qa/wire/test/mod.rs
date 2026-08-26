@@ -2,7 +2,6 @@ mod armor;
 mod attachment;
 mod camera;
 mod cell;
-mod coverage;
 mod draft;
 mod facing;
 mod family;
