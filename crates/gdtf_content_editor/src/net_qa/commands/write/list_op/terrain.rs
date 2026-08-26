@@ -42,19 +42,35 @@ pub(super) fn members(draft: &TerrainDraft, list: EditorListNet) -> Vec<EditorLi
             .iter()
             .map(|tag| EditorListMemberNet::TerrainTag(TerrainTagNet::from_tag(*tag)))
             .collect(),
-        _ => draft
+        EditorListNet::EntrySides => draft
             .entry_sides()
             .iter()
             .map(|side| EditorListMemberNet::EntrySide(TerrainFacingNet::from_facing(*side)))
             .collect(),
+        EditorListNet::AttachmentEffects
+        | EditorListNet::SpriteFrames
+        | EditorListNet::InjuryEffects
+        | EditorListNet::MeleeWeaponFightModes
+        | EditorListNet::MeleeWeaponSlots
+        | EditorListNet::MeleeWeaponAttachments
+        | EditorListNet::GangMembers
+        | EditorListNet::WeaponFireModes
+        | EditorListNet::WeaponSlots
+        | EditorListNet::WeaponAttachments
+        | EditorListNet::FieldImmuneArmorTypes => Vec::new(),
     }
 }
 
-fn toggle_entry_side(
-    draft: &mut TerrainDraft,
-    member: EditorListMemberNet,
-) -> Result<(), FormWriteFault> {
-    let EditorListMemberNet::EntrySide(side) = member else {
+// The member a toggle carries, for the two lists the form draws as tick boxes.
+fn toggled_member(op: EditorListOpNet) -> Result<EditorListMemberNet, FormWriteFault> {
+    let EditorListOpNet::Toggle(member) = op else {
+        return Err(FormWriteFault::bad(TOGGLE_ONLY.to_owned()));
+    };
+    Ok(member)
+}
+
+fn toggle_entry_side(draft: &mut TerrainDraft, op: EditorListOpNet) -> Result<(), FormWriteFault> {
+    let EditorListMemberNet::EntrySide(side) = toggled_member(op)? else {
         return Err(wrong_member(EditorListNet::EntrySides));
     };
     if draft.kind() != TerrainKindChoice::Emplacement {
@@ -65,8 +81,8 @@ fn toggle_entry_side(
     Ok(())
 }
 
-fn toggle_tag(draft: &mut TerrainDraft, member: EditorListMemberNet) -> Result<(), FormWriteFault> {
-    let EditorListMemberNet::TerrainTag(tag) = member else {
+fn toggle_tag(draft: &mut TerrainDraft, op: EditorListOpNet) -> Result<(), FormWriteFault> {
+    let EditorListMemberNet::TerrainTag(tag) = toggled_member(op)? else {
         return Err(wrong_member(EditorListNet::TerrainTags));
     };
     draft.toggle_tag(tag.to_tag());
@@ -79,11 +95,19 @@ pub(super) fn apply(
     list: EditorListNet,
     op: EditorListOpNet,
 ) -> Result<(), FormWriteFault> {
-    let EditorListOpNet::Toggle(member) = op else {
-        return Err(FormWriteFault::bad(TOGGLE_ONLY.to_owned()));
-    };
     match list {
-        EditorListNet::TerrainTags => toggle_tag(draft, member),
-        _ => toggle_entry_side(draft, member),
+        EditorListNet::TerrainTags => toggle_tag(draft, op),
+        EditorListNet::EntrySides => toggle_entry_side(draft, op),
+        EditorListNet::AttachmentEffects
+        | EditorListNet::SpriteFrames
+        | EditorListNet::InjuryEffects
+        | EditorListNet::MeleeWeaponFightModes
+        | EditorListNet::MeleeWeaponSlots
+        | EditorListNet::MeleeWeaponAttachments
+        | EditorListNet::GangMembers
+        | EditorListNet::WeaponFireModes
+        | EditorListNet::WeaponSlots
+        | EditorListNet::WeaponAttachments
+        | EditorListNet::FieldImmuneArmorTypes => Err(FormWriteFault::ForeignArm),
     }
 }
