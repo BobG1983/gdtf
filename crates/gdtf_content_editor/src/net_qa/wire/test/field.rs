@@ -18,11 +18,11 @@ use crate::{
         ArmorTypeNet, AttachmentEffectNet, AttachmentSlotNet, BaseSpreadNet, BodyPartNet,
         DamageTypeNet, DotDamageNet, DotEnabledNet, DotTurnsNet, EditorDraftNameNet,
         EditorFieldNet, EditorKeyNet, EditorListIndexNet, ExplodeDamageNet, FatalBiasNet,
-        FieldDamageNet, FieldDurationNet, FieldKeyNet, GangAttributeNet, GangAttributeValueNet,
-        HandednessNet, HitTypeNet, KickbackNet, MagazineSizeNet, OnDeathEnabledNet,
-        OnDeathVariantNet, ReloadTuNet, ShoveNet, SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet,
-        SpritePxNet, SpriteSourceNet, StableNet, TerrainKindNet, TrajectoryStyleNet,
-        WeaponDamageNet, WeaponPunchNet, WeaponShredNet,
+        FieldDamageNet, FieldDurationNet, FieldKeyNet, FieldTurnsNet, GangAttributeNet,
+        GangAttributeValueNet, HandednessNet, HitTypeNet, KickbackNet, MagazineSizeNet,
+        OnDeathEnabledNet, OnDeathVariantNet, ReloadTuNet, ShoveNet, SpriteAnimatedNet,
+        SpriteFacingNet, SpriteFpsNet, SpritePxNet, SpriteSourceNet, StableNet, TerrainKindNet,
+        TrajectoryStyleNet, WeaponDamageNet, WeaponPunchNet, WeaponShredNet,
     },
     terrain_form::TerrainKindChoice,
 };
@@ -252,23 +252,37 @@ fn every_field_form_field_arm_round_trips() {
         ));
     }
     assert_ron_round_trip(&EditorFieldNet::FieldDuration(FieldDurationNet::Permanent));
-    assert_ron_round_trip(&EditorFieldNet::FieldDuration(FieldDurationNet::Turns(3)));
-    assert_ron_round_trip(&FieldDurationNet::Turns(0));
+    assert_ron_round_trip(&EditorFieldNet::FieldDuration(FieldDurationNet::Turns(
+        FieldTurnsNet::new(3),
+    )));
+    assert_ron_round_trip(&FieldDurationNet::Turns(FieldTurnsNet::new(0)));
+}
+
+#[test]
+fn a_field_duration_in_turns_keeps_the_documented_wire_spelling() {
+    let turns = EditorFieldNet::FieldDuration(FieldDurationNet::Turns(FieldTurnsNet::new(3)));
+    let Ok(encoded) = ron::ser::to_string(&turns) else {
+        unreachable!("a wire value serializes to compact RON: {turns:?}");
+    };
+    assert_eq!(
+        encoded, "FieldDuration(Turns(3))",
+        "a client sends the turn count as a plain integer, so the newtype must stay transparent",
+    );
 }
 
 #[test]
 fn a_zero_turn_duration_crosses_the_wire_and_is_refused_by_the_reader() {
     assert_eq!(
-        FieldDurationNet::Turns(0).to_duration(),
+        FieldDurationNet::Turns(FieldTurnsNet::new(0)).to_duration(),
         None,
         "the wire carries the turn count a client sent, and the reader is what refuses zero. \
          Clamping it to one here would hide the refusal the handler owes the client",
     );
     assert_eq!(
-        FieldDurationNet::Turns(1)
+        FieldDurationNet::Turns(FieldTurnsNet::new(1))
             .to_duration()
             .map(FieldDurationNet::from_duration),
-        Some(FieldDurationNet::Turns(1)),
+        Some(FieldDurationNet::Turns(FieldTurnsNet::new(1))),
         "one turn is the smallest count the sim loads, and it round-trips unchanged",
     );
 }
@@ -303,4 +317,5 @@ fn the_weapon_values_trace_usable_shapes() {
 fn the_field_form_values_trace_usable_shapes() {
     assert_schema_is_usable::<FieldDamageNet>("FieldDamageNet");
     assert_schema_is_usable::<FieldDurationNet>("FieldDurationNet");
+    assert_schema_is_usable::<FieldTurnsNet>("FieldTurnsNet");
 }

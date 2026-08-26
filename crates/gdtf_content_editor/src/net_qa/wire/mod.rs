@@ -53,6 +53,8 @@ pub(in crate::net_qa) use facing::TerrainFacingNet;
 pub(in crate::net_qa) use family::{
     EditorFamilyEntryNet, EditorFamilyLabelNet, EditorFamilyRowNet,
 };
+#[cfg(test)]
+pub(in crate::net_qa) use field::FieldTurnsNet;
 pub(in crate::net_qa) use field::{
     EditorDraftNameNet, EditorFieldNet, FieldDamageNet, FieldDurationNet,
 };
