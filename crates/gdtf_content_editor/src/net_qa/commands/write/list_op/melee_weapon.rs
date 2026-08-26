@@ -25,11 +25,21 @@ pub(super) fn members(draft: &MeleeWeaponDraft, list: EditorListNet) -> Vec<Edit
     match list {
         EditorListNet::MeleeWeaponSlots => slot_members(&draft.spec().slots),
         EditorListNet::MeleeWeaponAttachments => attachment_members(&draft.spec().attachments),
-        _ => draft
+        EditorListNet::MeleeWeaponFightModes => draft
             .fight_modes()
             .iter()
             .map(|mode| EditorListMemberNet::FightMode(FightModeSpecNet::from_spec(*mode)))
             .collect(),
+        EditorListNet::EntrySides
+        | EditorListNet::TerrainTags
+        | EditorListNet::AttachmentEffects
+        | EditorListNet::SpriteFrames
+        | EditorListNet::InjuryEffects
+        | EditorListNet::GangMembers
+        | EditorListNet::WeaponFireModes
+        | EditorListNet::WeaponSlots
+        | EditorListNet::WeaponAttachments
+        | EditorListNet::FieldImmuneArmorTypes => Vec::new(),
     }
 }
 
@@ -81,6 +91,16 @@ pub(super) fn apply(
         EditorListNet::MeleeWeaponAttachments => {
             apply_to_attachments(&mut draft.spec_mut().attachments, registry, list, op)
         }
-        _ => fight_modes(draft, op),
+        EditorListNet::MeleeWeaponFightModes => fight_modes(draft, op),
+        EditorListNet::EntrySides
+        | EditorListNet::TerrainTags
+        | EditorListNet::AttachmentEffects
+        | EditorListNet::SpriteFrames
+        | EditorListNet::InjuryEffects
+        | EditorListNet::GangMembers
+        | EditorListNet::WeaponFireModes
+        | EditorListNet::WeaponSlots
+        | EditorListNet::WeaponAttachments
+        | EditorListNet::FieldImmuneArmorTypes => Err(FormWriteFault::ForeignArm),
     }
 }
