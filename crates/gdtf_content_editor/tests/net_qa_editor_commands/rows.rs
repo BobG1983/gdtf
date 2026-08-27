@@ -81,3 +81,39 @@ pub(crate) struct ToggleTerrainReplyRow {
 pub(crate) struct SetDefaultFloorReplyRow {
     pub(crate) default_floor: Option<String>,
 }
+
+/// A client's own reading of the lifecycle phase a reply was answered in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum PhaseRow {
+    Load,
+    Editing,
+}
+
+/// A client's own reading of the nine families a wait can watch. Prefab owns no registry and
+/// `FieldDefRegistry` is not watched, so neither is spelled here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum ContentFamilyRow {
+    Weapon,
+    MeleeWeapon,
+    Armor,
+    Gang,
+    Terrain,
+    Theme,
+    Injury,
+    Sprite,
+    Attachment,
+}
+
+/// A client's own reading of the condition a `wait` was holding out for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum WaitConditionRow {
+    ChecksComplete,
+    RegistryRearmed { family: ContentFamilyRow },
+}
+
+/// `wait`'s reply body.
+#[derive(Debug, Deserialize)]
+pub(crate) struct WaitReplyRow {
+    pub(crate) condition: WaitConditionRow,
+    pub(crate) phase:     PhaseRow,
+}

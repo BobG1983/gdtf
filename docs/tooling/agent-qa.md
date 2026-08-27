@@ -197,11 +197,15 @@ does not know. That list is `EDITOR_COMMANDS` in
 `editor.toggle_terrain`, `editor.set_default_floor`, `editor.map`,
 `editor.set_grid_size`, `editor.select_tile`, `editor.set_level`,
 `editor.paint`, `editor.select_injury_tab`, `editor.select_weighting_table`,
-`editor.weighting` and `editor.save_weighting`.
-Capture is not wired here yet: `crates/gdtf_content_editor/Cargo.toml` does not
-depend on `gdtf_screenshot`, and the QA plugin registers no capture systems. The
-shared pipeline in `crates/gdtf_screenshot/src/capture/` is the path the editor
-will capture through, once the capture command that fills its queue exists.
+`editor.weighting`, `editor.save_weighting`, `capture.screenshot` and `wait`.
+Capture is wired here. `crates/gdtf_content_editor/Cargo.toml` depends on
+`gdtf_screenshot`, and `register_editor_capture` in
+`crates/gdtf_content_editor/src/net_qa/plugin.rs` adds `CapturePresentPlugin`,
+`WindowCapturePlugin` and `CapturePipelinePlugin<EditorShotResponder>`, which
+drive the shared pipeline in `crates/gdtf_screenshot/src/capture/`. The same
+function inserts the editor's own shot directory, `target/qa_screenshots_editor`,
+so an editor shot and a game shot cannot write over each other when both
+processes are up.
 The wire shape, the framing, and the protocol version are the game's — see
 [the protocol sketch](#the-protocol-sketch) — so one client library speaks to
 both.
@@ -352,11 +356,17 @@ Notes an agent relies on:
   level keys and the action bar's level buttons take. `battle.set_fire_mode`
   picks a fire mode on the weapon the selected shooter fires, the same weapon the
   action bar's mode panel sets it on, through the same lookup.
-  The EDITOR host publishes twenty-four commands. `editor.phase` reports the phase
+  The EDITOR host publishes twenty-six commands. `editor.phase` reports the phase
   the editor is in, the mode tab open right now — absent while it is still
   loading — and every mode tab in tab-bar order, `editor.last_save` reports what
   the newest save per mode did, and `editor.validation` reports the content
-  integrity report. All three answer at every point in the lifecycle.
+  integrity report. `capture.screenshot` writes a PNG of what the editor is
+  showing into `target/qa_screenshots_editor` and attaches it to the reply, and
+  `wait` holds its reply until `ChecksComplete` or `RegistryRearmed` comes true.
+  Both take the game host's own spelling, and both are `Deferred`: a capture
+  answers on a later frame than the one that claimed it, and a `wait` whose
+  condition already holds answers on the claim frame. All five answer at every
+  point in the lifecycle.
   `editor.families`, `editor.session`, `editor.draft` and `editor.map` read the
   authoring scene: the registry keys an author can pick, the session and the
   view, the open form's draft as the RON its save would write, and every painted

@@ -64,7 +64,7 @@ what is in view.
    the whole entry is `&YourCommand`.
 3. **A test.** The suite for the game's command layer is
    [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs).
-   The editor has six. Hello and the lifecycle commands are in
+   The editor has seven. Hello and the lifecycle commands are in
    [`crates/gdtf_content_editor/tests/net_qa_hello/`](../../crates/gdtf_content_editor/tests/net_qa_hello),
    the shared reads are in
    [`crates/gdtf_content_editor/tests/net_qa_editor_reads/`](../../crates/gdtf_content_editor/tests/net_qa_editor_reads),
@@ -74,9 +74,11 @@ what is in view.
    [`crates/gdtf_content_editor/tests/net_qa_editor_forms/`](../../crates/gdtf_content_editor/tests/net_qa_editor_forms),
    the prefab-canvas commands are in
    [`crates/gdtf_content_editor/tests/net_qa_editor_prefab/`](../../crates/gdtf_content_editor/tests/net_qa_editor_prefab),
-   and the Injury weighting table is in
-   [`crates/gdtf_content_editor/tests/net_qa_editor_weighting/`](../../crates/gdtf_content_editor/tests/net_qa_editor_weighting).
-   All six build their app and their client from
+   the Injury weighting table is in
+   [`crates/gdtf_content_editor/tests/net_qa_editor_weighting/`](../../crates/gdtf_content_editor/tests/net_qa_editor_weighting),
+   and one authoring session end to end is in
+   [`crates/gdtf_content_editor/tests/net_qa_editor_authoring/`](../../crates/gdtf_content_editor/tests/net_qa_editor_authoring).
+   All seven build their app and their client from
    [`crates/gdtf_content_editor/tests/net_qa_shared/`](../../crates/gdtf_content_editor/tests/net_qa_shared),
    which each target includes by `#[path]`, and the four that answer during the Load pass take
    that case from there too. All of them use a real socket, a real listener,
@@ -299,9 +301,12 @@ run(host="editor", command="editor.set_field", arguments="(field: Field(Damage(3
 run(host="editor", command="editor.set_field", arguments="(field: Field(Duration(Turns(2))))")
 run(host="editor", command="editor.list_op", arguments="(list: FieldImmuneArmorTypes, op: Toggle(ImmuneArmorType(Flak)))")
 run(host="editor", command="editor.save", arguments="(mode: Field)")
+run(host="editor", command="capture.screenshot", arguments="(name: Some(\"editor_shot\"))")
+run(host="editor", command="wait", arguments="(condition: ChecksComplete)")
+run(host="editor", command="wait", arguments="(condition: RegistryRearmed(family: Terrain))")
 ```
 
-The editor offers twenty-four commands today. They are listed in
+The editor offers twenty-six commands today. They are listed in
 [The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
@@ -750,15 +755,21 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## The editor host
 
-The editor publishes twenty-four commands, all `Immediate`, all in `EDITOR_COMMANDS`
+The editor publishes twenty-six commands, all in `EDITOR_COMMANDS`
 ([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
+Twenty-four are `Immediate`. The two the editor publishes under the game host's own
+spellings, `capture.screenshot` and `wait`, are `Deferred`, so a client reads the timing to
+know the reply can land on a later frame than the one that claimed the call. A capture always
+does, because the pipeline settles before it reads the pixels back. A `wait` whose condition
+already holds is answered on the frame it was claimed in.
 
-Three reads answer at every point in the lifecycle: `editor.phase`, `editor.last_save` and
-`editor.validation`. Five more reads need the authoring scene: `editor.families`,
-`editor.session`, `editor.draft`, `editor.map` and `editor.weighting`. `editor.draft` also
-needs a form tab open, `editor.map` needs the Prefab tab, and `editor.weighting` needs the
-Injury tab. All sixteen writes need the authoring scene too. During the editor's Load pass
-every scene-scoped command answers `Unavailable { code: WrongState }`. `EditorMode`,
+Five commands answer at every point in the lifecycle: the three reads `editor.phase`,
+`editor.last_save` and `editor.validation`, plus `capture.screenshot` and `wait`, which need
+neither the authoring scene nor a tab. Five more reads need the authoring scene:
+`editor.families`, `editor.session`, `editor.draft`, `editor.map` and `editor.weighting`.
+`editor.draft` also needs a form tab open, `editor.map` needs the Prefab tab, and
+`editor.weighting` needs the Injury tab. All sixteen writes need the authoring scene too.
+During the editor's Load pass every scene-scoped command answers `Unavailable { code: WrongState }`. `EditorMode`,
 `MapEditorSession` and every draft are state-scoped to `EditorState::Editing` by the
 `init_state_scoped_resource` calls in `MapEditorPlugin::build`
 ([`crates/gdtf_content_editor/src/plugin.rs`](../../crates/gdtf_content_editor/src/plugin.rs)),
@@ -794,6 +805,8 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.select_weighting_table` | Editing + the Injury tab | Loads the weighting table for one injury category and damage context, the way the Injury tab's two selectors load it. All three buckets are replaced from the tables, so unsaved row edits are discarded. Tables absent answers `Unavailable { code: MissingModel }`. [`commands/write/select_weighting_table.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_weighting_table.rs) |
 | `editor.weighting` | Editing + the Injury tab | The weighting table the Injury tab holds: its category and damage context, and each of its Minor, Major and Critical buckets in the order the draft holds them. [`commands/read/weighting.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/weighting.rs) |
 | `editor.save_weighting` | Editing + the Injury tab | Writes the weighting draft through the same `write_weighting_in` its Save weighting button calls, under the QA assets root, and records the outcome the way the button does. [`commands/write/save_weighting.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save_weighting.rs) |
+| `capture.screenshot` | always | Writes a PNG of what the editor is showing and attaches it to the reply. `Deferred`. [`commands/capture/screenshot.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/capture/screenshot.rs) |
+| `wait` | always | Holds the reply until `ChecksComplete` or `RegistryRearmed` comes true. `Deferred`. [`commands/wait/`](../../crates/gdtf_content_editor/src/net_qa/commands/wait) |
 
 `editor.set_field` and `editor.list_op` need more than the authoring scene. Both write the
 open form's own draft, so they need a form tab open and that tab's draft resource in the
@@ -1012,6 +1025,30 @@ On the Prefab tab `editor.draft` answers `Unavailable { code: WrongState }` with
 naming `editor.map`, because Prefab holds no draft. A draft that will not convert, such as
 an Emplacement terrain with no mounted weapon, answers a successful reply carrying
 `NotSavable` with the fault, never a refusal and never an empty string.
+
+`capture.screenshot` is the game host's command under the game host's spelling, so a client
+never branches on which host answered. Its argument and reply are the same shapes: one
+optional `name` that becomes the file stem, and a `Ran` reply carrying the path plus a
+`ReplyAttachment(Png, …)` naming it. A capture that never lands answers `Timeout`, and
+nothing refuses it. The pipeline is the shared one in `crates/gdtf_screenshot`, registered
+by the editor's own `serve`
+([`net_qa/plugin.rs`](../../crates/gdtf_content_editor/src/net_qa/plugin.rs)) as
+`CapturePresentPlugin`, `WindowCapturePlugin` and `CapturePipelinePlugin<EditorShotResponder>`
+together. Editor shots land in `target/qa_screenshots_editor` rather than the game's
+`target/qa_screenshots`, so the two processes cannot write over each other when both are up.
+
+`wait` holds its reply until one named condition becomes true, and it takes the game's
+two-minute budget, which expires well inside the socket's own 180-second wait for a reply.
+The editor has two conditions. `ChecksComplete` comes true once `ContentChecksComplete` is
+in the world, which is the same marker `editor.validation` reports. `RegistryRearmed` names
+one of nine content families — Weapon, MeleeWeapon, Armor, Gang, Terrain, Theme, Injury,
+Sprite and Attachment, spelled as the mode tabs are — and comes true when that family's
+registry changes after the call was parked. Those nine are the registries validation watches
+([`validate/rearm.rs`](../../crates/gdtf_content_editor/src/validate/rearm.rs)), so a rearm
+of the validation pass is what a wait on one of them sees. Prefab is not one, because the
+map canvas owns no registry, and neither is Field, because `FieldDefRegistry` is unwatched
+and a Field write rearms nothing. A condition that never comes true answers `Timeout` and
+leaves the connection open, never a refusal and never an "unsatisfied" reply.
 
 ## Why the shape is what it is
 

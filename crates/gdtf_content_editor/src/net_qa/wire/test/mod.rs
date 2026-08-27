@@ -2,6 +2,7 @@ mod armor;
 mod attachment;
 mod camera;
 mod cell;
+mod content_family;
 mod draft;
 mod facing;
 mod family;
@@ -32,6 +33,7 @@ mod tile_role;
 mod toggle;
 mod validation;
 mod view;
+mod wait;
 mod weighting;
 
 pub(in crate::net_qa::wire::test) use support::{assert_ron_round_trip, assert_schema_is_usable};

@@ -5,8 +5,8 @@ use gdtf_qa_protocol::{
 };
 
 use crate::client::{
-    EDITOR_COMMAND_NAMES, EDITOR_EDITING_ONLY, EDITOR_FORM_TAB_ONLY, EDITOR_INJURY_TAB_ONLY,
-    EDITOR_THEME_TAB_ONLY,
+    EDITOR_COMMAND_NAMES, EDITOR_DEFERRED, EDITOR_EDITING_ONLY, EDITOR_FORM_TAB_ONLY,
+    EDITOR_INJURY_TAB_ONLY, EDITOR_THEME_TAB_ONLY,
 };
 
 /// The lifecycle phase a reply says the frame that answered it was in.
@@ -69,14 +69,24 @@ pub(crate) fn assert_editor_catalogue(reply: &QaResponse, phase: AnsweringPhase)
         };
         assert_eq!(
             entry.timing,
-            CommandTiming::Immediate,
-            "`{name}` answers inside the frame it is claimed in: {entry:?}",
+            expected_timing(name),
+            "a client reads `{name}`'s timing to know whether the reply comes back inside the \
+             frame it was claimed in or lands on a later one: {entry:?}",
         );
         assert!(
             !entry.summary.as_str().is_empty(),
             "the row carries the one line a client reads to learn what it does: {entry:?}",
         );
         assert_availability(name, &entry.availability, phase);
+    }
+}
+
+// The two commands that park their reply answer on a later frame; everything else is Immediate.
+fn expected_timing(name: &str) -> CommandTiming {
+    if EDITOR_DEFERRED.contains(&name) {
+        CommandTiming::Deferred
+    } else {
+        CommandTiming::Immediate
     }
 }
 

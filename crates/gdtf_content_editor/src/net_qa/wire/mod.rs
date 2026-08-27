@@ -4,6 +4,7 @@ mod armor;
 mod attachment;
 mod camera;
 mod cell;
+mod content_family;
 mod draft;
 mod facing;
 mod family;
@@ -36,6 +37,7 @@ mod tile_role;
 mod toggle;
 mod validation;
 mod view;
+mod wait;
 mod weapon;
 mod weighting;
 
@@ -49,6 +51,7 @@ pub(in crate::net_qa) use attachment::{
 };
 pub(in crate::net_qa) use camera::{EditorPanNet, EditorZoomNet};
 pub(in crate::net_qa) use cell::{EditorCellXNet, EditorCellYNet, EditorLevelNet};
+pub(in crate::net_qa) use content_family::ContentFamilyNet;
 pub(in crate::net_qa) use draft::{EditorDraftOutcomeNet, EditorDraftRonNet};
 pub(in crate::net_qa) use facing::TerrainFacingNet;
 pub(in crate::net_qa) use family::{
@@ -113,6 +116,7 @@ pub(in crate::net_qa) use validation::{
     ChecksCompleteNet, ValidationFindingNet, ValidationPublishedNet,
 };
 pub(in crate::net_qa) use view::{EditorIsolateViewNet, EditorViewModeNet, EditorViewNet};
+pub(in crate::net_qa) use wait::EditorWaitConditionNet;
 pub(in crate::net_qa) use weapon::{
     AccuracyNet, BaseSpreadNet, DotDamageNet, DotEnabledNet, DotTurnsNet, ExplodeDamageNet,
     FieldKeyNet, KickbackNet, MagazineSizeNet, OnDeathEnabledNet, OnDeathVariantNet, ReloadTuNet,

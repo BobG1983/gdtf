@@ -10,7 +10,9 @@ mod schedule;
 mod wire;
 
 pub use assets_root::EditorQaAssetsRoot;
-pub use commands::{assert_editor_command_set_is_conformant, editor_command_names};
+pub use commands::{
+    assert_editor_command_set_is_conformant, editor_command_names, shorten_editor_wait_budget,
+};
 pub use config::EDITOR_QA_SERVER_NAME;
 pub use plugin::NetQaEditorPlugin;
 pub use schedule::EditorNetQaSystems;

@@ -11,14 +11,20 @@ use bevy::prelude::*;
 use gdtf_net_qa_transport::{IncomingRequest, NetInbox, bind_listener, run_listener};
 use gdtf_qa_command::dispatch::QaCommandSystems;
 use gdtf_qa_protocol::{ports::NetQaPort, timeouts::NetTimeouts};
+use gdtf_screenshot::{
+    CapturePipelinePlugin, CapturePresentPlugin, ShotDir, ShotDirName, WindowCapturePlugin,
+};
 
 use super::{
-    commands::register_editor_commands,
+    commands::{EditorShotResponder, register_editor_commands},
     config::{DEFAULT_EDITOR_PORT, editor_hello_facts},
     router::route_editor_requests,
     schedule::EditorNetQaSystems,
 };
 use crate::EditorState;
+
+/// Directory under the workspace `target/` the editor's own shots land in.
+const EDITOR_QA_SHOT_DIR: &str = "qa_screenshots_editor";
 
 enum Wiring {
     Listener {
@@ -108,5 +114,22 @@ fn serve(app: &mut App, listener: TcpListener, timeouts: NetTimeouts) {
         Update,
         route_editor_requests.in_set(QaCommandSystems::Route),
     );
+    register_editor_capture(app);
     register_editor_commands(app);
+}
+
+// The editor's own shot directory, then the three plugins one editor capture runs through.
+fn register_editor_capture(app: &mut App) {
+    app.insert_resource(ShotDir::under_workspace_target(&ShotDirName::new(
+        EDITOR_QA_SHOT_DIR,
+    )));
+    if !app.is_plugin_added::<CapturePresentPlugin>() {
+        app.add_plugins(CapturePresentPlugin);
+    }
+    if !app.is_plugin_added::<WindowCapturePlugin>() {
+        app.add_plugins(WindowCapturePlugin);
+    }
+    if !app.is_plugin_added::<CapturePipelinePlugin<EditorShotResponder>>() {
+        app.add_plugins(CapturePipelinePlugin::<EditorShotResponder>::new());
+    }
 }

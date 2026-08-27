@@ -18,3 +18,9 @@ pub(crate) const EDITOR_SET_MODE: &str = "editor.set_mode";
 
 /// The registry-load write this suite sends to fill the Theme draft.
 pub(crate) const EDITOR_LOAD: &str = "editor.load";
+
+/// The screen capture this suite drives.
+pub(crate) const CAPTURE_SCREENSHOT: &str = "capture.screenshot";
+
+/// The condition hold this suite drives.
+pub(crate) const WAIT: &str = "wait";

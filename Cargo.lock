@@ -2892,6 +2892,7 @@ dependencies = [
  "gdtf_net_qa_transport",
  "gdtf_qa_command",
  "gdtf_qa_protocol",
+ "gdtf_screenshot",
  "gdtf_state_scoped",
  "gdtf_test_utils",
  "image",

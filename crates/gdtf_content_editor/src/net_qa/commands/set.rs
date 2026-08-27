@@ -3,10 +3,12 @@
 use gdtf_qa_command::command::ErasedCommand;
 
 use super::{
+    capture::EditorCaptureScreenshot,
     read::{
         EditorDraft, EditorFamilies, EditorLastSave, EditorPaintedMap, EditorPhase, EditorSession,
         EditorValidation, EditorWeighting,
     },
+    wait::EditorWait,
     write::{
         EditorListOp, EditorLoad, EditorNew, EditorPaint, EditorSave, EditorSaveWeighting,
         EditorSelectInjuryTab, EditorSelectTheme, EditorSelectTile, EditorSelectWeightingTable,
@@ -41,4 +43,6 @@ pub(in crate::net_qa) const EDITOR_COMMANDS: &[&dyn ErasedCommand<EditorFacts>] 
     &EditorSelectWeightingTable,
     &EditorWeighting,
     &EditorSaveWeighting,
+    &EditorCaptureScreenshot,
+    &EditorWait,
 ];

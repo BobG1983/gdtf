@@ -84,8 +84,14 @@ pub(crate) const EDITOR_WEIGHTING: &str = "editor.weighting";
 /// The weighting-table save the editor host publishes.
 pub(crate) const EDITOR_SAVE_WEIGHTING: &str = "editor.save_weighting";
 
+/// The screen capture the editor host publishes, under the game host's own spelling.
+pub(crate) const CAPTURE_SCREENSHOT: &str = "capture.screenshot";
+
+/// The condition hold the editor host publishes, under the game host's own spelling.
+pub(crate) const WAIT: &str = "wait";
+
 /// Every command name the editor host publishes today.
-pub(crate) const EDITOR_COMMAND_NAMES: [&str; 24] = [
+pub(crate) const EDITOR_COMMAND_NAMES: [&str; 26] = [
     EDITOR_PHASE,
     EDITOR_LAST_SAVE,
     EDITOR_VALIDATION,
@@ -110,7 +116,12 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 24] = [
     EDITOR_SELECT_WEIGHTING_TABLE,
     EDITOR_WEIGHTING,
     EDITOR_SAVE_WEIGHTING,
+    CAPTURE_SCREENSHOT,
+    WAIT,
 ];
+
+/// Command names whose reply is parked and answered on a later frame.
+pub(crate) const EDITOR_DEFERRED: [&str; 2] = [CAPTURE_SCREENSHOT, WAIT];
 
 /// Command names that need the authoring scene, so they refuse the editor's Load pass.
 pub(crate) const EDITOR_EDITING_ONLY: [&str; 14] = [

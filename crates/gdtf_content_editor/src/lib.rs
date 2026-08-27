@@ -72,7 +72,7 @@ pub use mode::{EditorMode, InjurySubTab};
 #[cfg(debug_assertions)]
 pub use net_qa::{
     EDITOR_QA_SERVER_NAME, EditorNetQaSystems, EditorQaAssetsRoot, NetQaEditorPlugin,
-    assert_editor_command_set_is_conformant, editor_command_names,
+    assert_editor_command_set_is_conformant, editor_command_names, shorten_editor_wait_budget,
 };
 pub use placement::{
     EditorTileClass, IllegalReason, PlacementVerdict, ProposedPlacement, apply_placement, classify,
