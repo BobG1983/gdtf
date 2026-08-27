@@ -7,6 +7,7 @@ use super::{
     refusal::EditorRefusalNet,
     save_fault::EditorSaveFaultNet,
 };
+use crate::save_record::SaveOutcome;
 
 /// What `editor.new` did to the named mode's draft.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -48,4 +49,17 @@ pub(in crate::net_qa) enum EditorSaveOutcomeNet {
     Failed(EditorSaveFaultNet),
     /// The arguments named a shape this build does not save.
     Refused(EditorRefusalNet),
+}
+
+impl EditorSaveOutcomeNet {
+    /// Mirror what a writer that ran reported, which is never a refusal.
+    #[must_use]
+    pub(in crate::net_qa) fn from_outcome(outcome: &SaveOutcome) -> Self {
+        match outcome {
+            SaveOutcome::Wrote(path) => Self::Wrote {
+                path: SavedPathNet::from_path(path),
+            },
+            SaveOutcome::Failed(fault) => Self::Failed(EditorSaveFaultNet::from_fault(fault)),
+        }
+    }
 }

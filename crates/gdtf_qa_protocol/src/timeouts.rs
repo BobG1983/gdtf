@@ -45,6 +45,11 @@ impl NetTimeouts {
     /// The shipped pair: a short socket timeout and a long reply wait.
     pub const DEFAULT: Self = Self::new(DEFAULT_IO_TIMEOUT, DEFAULT_REPLY_TIMEOUT);
 
+    /// The pair an in-process test listener runs with, whose read wait never fires.
+    /// Such a client runs app frames between reads, so the shipped reap would cut it off.
+    pub const NO_IDLE_REAP: Self =
+        Self::new(NetIoTimeout::new(Duration::MAX), DEFAULT_REPLY_TIMEOUT);
+
     /// Pair a socket timeout with a reply wait.
     #[must_use]
     pub const fn new(io: NetIoTimeout, reply: NetReplyTimeout) -> Self {

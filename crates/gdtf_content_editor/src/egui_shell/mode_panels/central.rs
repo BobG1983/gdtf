@@ -119,6 +119,11 @@ fn injury_sub_tabs(
     ui: &mut egui::Ui,
     ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
+    #[cfg(debug_assertions)]
+    let root = Some(ctx.injury.assets_root());
+    // A release build draws no save button, so the weighting panel is handed no root.
+    #[cfg(not(debug_assertions))]
+    let root: Option<std::path::PathBuf> = None;
     let Some(sub_tab) = ctx.injury.sub_tab.as_deref_mut() else {
         return;
     };
@@ -129,6 +134,7 @@ fn injury_sub_tabs(
         injuries: ctx.injury.registry.as_deref(),
         tables: ctx.injury.tables.as_deref(),
         last_save: ctx.last_save,
+        root: root.as_deref(),
     };
     injury_form_ui::injury_panels(ui, &mut panels);
 }

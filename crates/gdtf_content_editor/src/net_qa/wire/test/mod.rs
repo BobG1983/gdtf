@@ -32,5 +32,6 @@ mod tile_role;
 mod toggle;
 mod validation;
 mod view;
+mod weighting;
 
 pub(in crate::net_qa::wire::test) use support::{assert_ron_round_trip, assert_schema_is_usable};

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use bevy_egui::egui;
 
 use crate::{
@@ -28,37 +30,44 @@ fn drawn_text(shape: &egui::epaint::Shape, into: &mut Vec<String>) {
 // Draw one sub-tab over a bare context and read back what it painted.
 fn draw(sub_tab: InjurySubTab) -> Vec<String> {
     let ctx = egui::Context::default();
-    let input = egui::RawInput {
-        screen_rect: Some(screen()),
-        ..Default::default()
-    };
     let mut sub_tab = sub_tab;
     let mut draft = InjuryDraft::default();
     let mut weighting = WeightingDraft::default();
     let mut last_save = LastSaveRecord::default();
-    ctx.begin_pass(input);
-    {
-        let mut ui = egui::Ui::new(
-            ctx.clone(),
-            egui::Id::new("injury_sub_tab_draw"),
-            egui::UiBuilder::new()
-                .layer_id(egui::LayerId::background())
-                .max_rect(screen()),
-        );
-        let mut panels = InjuryPanelsCtx {
-            sub_tab:   &mut sub_tab,
-            draft:     Some(&mut draft),
-            weighting: Some(&mut weighting),
-            injuries:  None,
-            tables:    None,
-            last_save: &mut last_save,
-        };
-        injury_panels(&mut ui, &mut panels);
-    }
-    let output = ctx.end_pass();
+    // The root `MapEditorPlugin` seeds, so the Tables sub-tab draws the save button it ships with.
+    let root: PathBuf = std::env::temp_dir();
     let mut text = Vec::new();
-    for shape in &output.shapes {
-        drawn_text(&shape.shape, &mut text);
+    // Two passes: a scroll area paints its whole content only once it has measured it.
+    for _ in 0..2 {
+        let input = egui::RawInput {
+            screen_rect: Some(screen()),
+            ..Default::default()
+        };
+        ctx.begin_pass(input);
+        {
+            let mut ui = egui::Ui::new(
+                ctx.clone(),
+                egui::Id::new("injury_sub_tab_draw"),
+                egui::UiBuilder::new()
+                    .layer_id(egui::LayerId::background())
+                    .max_rect(screen()),
+            );
+            let mut panels = InjuryPanelsCtx {
+                sub_tab:   &mut sub_tab,
+                draft:     Some(&mut draft),
+                weighting: Some(&mut weighting),
+                injuries:  None,
+                tables:    None,
+                last_save: &mut last_save,
+                root:      Some(&root),
+            };
+            injury_panels(&mut ui, &mut panels);
+        }
+        let output = ctx.end_pass();
+        text.clear();
+        for shape in &output.shapes {
+            drawn_text(&shape.shape, &mut text);
+        }
     }
     text
 }
@@ -103,4 +112,15 @@ fn both_sub_tabs_draw_the_sub_tab_row() {
             );
         }
     }
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn the_tables_sub_tab_draws_the_save_button_the_one_writer_sits_behind() {
+    let text = draw(InjurySubTab::Tables);
+    assert!(
+        text.iter().any(|line| line == "Save weighting"),
+        "the Tables sub-tab draws its save button whenever the editor holds a root to write \
+         under, which it always does: {text:?}",
+    );
 }

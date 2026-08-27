@@ -33,6 +33,7 @@ use crate::net_qa::wire::{
         FieldKeyNet, KickbackNet, MagazineSizeNet, OnDeathEnabledNet, OnDeathVariantNet,
         ReloadTuNet, StableNet, TrajectoryStyleNet,
     },
+    weighting::{InjuryWeightNet, WeightingBucketNet},
 };
 
 /// One field of the active mode's draft, carrying the value it is set to.
@@ -156,6 +157,24 @@ pub(in crate::net_qa) enum EditorFieldNet {
         index:  EditorListIndexNet,
         /// The effect it is set to.
         effect: InjuryEffectNet,
+    },
+    /// One weighting row's injury key, picked from the injury registry.
+    WeightingRowInjury {
+        /// Which bucket.
+        bucket: WeightingBucketNet,
+        /// Which row of it.
+        index:  EditorListIndexNet,
+        /// The injury key it is set to.
+        injury: InjuryKeyNet,
+    },
+    /// One weighting row's relative weight.
+    WeightingRowWeight {
+        /// Which bucket.
+        bucket: WeightingBucketNet,
+        /// Which row of it.
+        index:  EditorListIndexNet,
+        /// The weight it is set to.
+        weight: InjuryWeightNet,
     },
     /// The Melee Weapon draft's display name.
     MeleeWeaponName(EditorDraftNameNet),

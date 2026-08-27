@@ -9,7 +9,7 @@ pub use save::{
     weighting_save_path_in,
 };
 #[cfg(debug_assertions)]
-pub use save::{write_injury, write_injury_in, write_weighting, write_weighting_in};
+pub use save::{write_injury, write_injury_in, write_weighting_in};
 pub use weighting::WeightingDraft;
 
 #[cfg(test)]

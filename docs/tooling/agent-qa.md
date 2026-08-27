@@ -196,7 +196,8 @@ does not know. That list is `EDITOR_COMMANDS` in
 `editor.set_field`, `editor.list_op`, `editor.select_theme`,
 `editor.toggle_terrain`, `editor.set_default_floor`, `editor.map`,
 `editor.set_grid_size`, `editor.select_tile`, `editor.set_level`,
-`editor.paint` and `editor.select_injury_tab`.
+`editor.paint`, `editor.select_injury_tab`, `editor.select_weighting_table`,
+`editor.weighting` and `editor.save_weighting`.
 Capture is not wired here yet: `crates/gdtf_content_editor/Cargo.toml` does not
 depend on `gdtf_screenshot`, and the QA plugin registers no capture systems. The
 shared pipeline in `crates/gdtf_screenshot/src/capture/` is the path the editor
@@ -351,7 +352,7 @@ Notes an agent relies on:
   level keys and the action bar's level buttons take. `battle.set_fire_mode`
   picks a fire mode on the weapon the selected shooter fires, the same weapon the
   action bar's mode panel sets it on, through the same lookup.
-  The EDITOR host publishes twenty-one commands. `editor.phase` reports the phase
+  The EDITOR host publishes twenty-four commands. `editor.phase` reports the phase
   the editor is in, the mode tab open right now — absent while it is still
   loading — and every mode tab in tab-bar order, `editor.last_save` reports what
   the newest save per mode did, and `editor.validation` reports the content
@@ -364,18 +365,20 @@ Notes an agent relies on:
   `editor.select_theme`, `editor.toggle_terrain` and `editor.set_default_floor`
   drive the authoring forms, and `editor.set_grid_size`, `editor.select_tile`,
   `editor.set_level` and `editor.paint` drive the prefab canvas, and
-  `editor.select_injury_tab` opens one of the Injury tab's two sub-tabs. All
-  eighteen need the authoring scene, so during the editor's Load pass they answer
-  `Unavailable { code: WrongState }`. `editor.draft` needs a form tab open on
-  top of that, because the default Prefab tab carries no draft,
+  `editor.select_injury_tab` opens one of the Injury tab's two sub-tabs.
+  `editor.select_weighting_table`, `editor.weighting` and
+  `editor.save_weighting` pick, read and write the Injury tab's weighting
+  table. All twenty-one need the authoring scene, so during the editor's Load
+  pass they answer `Unavailable { code: WrongState }`. `editor.draft` needs a
+  form tab open on top of that, because the default Prefab tab carries no draft,
   `editor.set_field` and `editor.list_op` need a form tab whose draft is in the
   world, because both write the open form's own draft,
   `editor.toggle_terrain` and `editor.set_default_floor` need the Theme tab,
   because the terrain library and the default-floor picker are drawn only there,
   the five canvas commands need the Prefab tab, because the palette, the
   size fields, the level rail and the viewport are drawn only there, and
-  `editor.select_injury_tab` needs the Injury tab, because the sub-tab row it
-  writes is drawn only there.
+  `editor.select_injury_tab` and the three weighting commands need the Injury
+  tab, because the sub-tab row and the weighting panel are drawn only there.
   A name it does not know answers `Unknown`, listing what it does offer. The
   editor-host section of [qa-commands.md](qa-commands.md) has the whole list.
 - **`logs` is the first thing to try when a launch came up but the app is not
@@ -447,8 +450,8 @@ shape:
   into `Frame`s (split-read tolerant), capped at `MAX_FRAME_LEN`. The codec does
   no I/O — each side owns its own socket.
 - **The two timeouts** — `NetTimeouts` in
-  `crates/gdtf_qa_protocol/src/timeouts.rs`, which both hosts run with as
-  `NetTimeouts::DEFAULT`. A socket read or write gives up after **5 seconds**,
+  `crates/gdtf_qa_protocol/src/timeouts.rs`, which both shipped hosts run with
+  as `NetTimeouts::DEFAULT`. A socket read or write gives up after **5 seconds**,
   which is what stops an idle client holding the channel; the listener then
   waits up to **180 seconds** for the host to answer a forwarded request, and
   sends `Timeout` itself if none arrives. They are separate numbers on purpose:
@@ -456,7 +459,12 @@ shape:
   command-set conformance check asserts every command's budget expires before
   that 180. The MCP host's own link timeout — `LINK_TIMEOUT`, **200 seconds**,
   in `bins/gdtf_qa_mcp/src/link.rs` — sits outside both, so a slow command comes
-  back as a reply rather than a broken socket.
+  back as a reply rather than a broken socket. A listener bound inside a test —
+  `NetQaPlugin::listening` and `NetQaEditorPlugin::listening` — runs with
+  `NetTimeouts::NO_IDLE_REAP` instead. Such a client drives the app's frames
+  itself, so it reads a long reply over many frames and sends nothing meanwhile;
+  the 5-second reap would close the connection under it and the next request
+  would come back `ConnectionReset`.
 
 Every public type in `gdtf_qa_protocol` round-trips through compact RON
 identically, proven by the crate's per-module round-trip tests.

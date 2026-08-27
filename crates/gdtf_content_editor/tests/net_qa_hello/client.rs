@@ -75,8 +75,17 @@ pub(crate) const EDITOR_PAINT: &str = "editor.paint";
 /// The Injury sub-tab write the editor host publishes.
 pub(crate) const EDITOR_SELECT_INJURY_TAB: &str = "editor.select_injury_tab";
 
+/// The weighting-table pick the editor host publishes.
+pub(crate) const EDITOR_SELECT_WEIGHTING_TABLE: &str = "editor.select_weighting_table";
+
+/// The weighting-table read the editor host publishes.
+pub(crate) const EDITOR_WEIGHTING: &str = "editor.weighting";
+
+/// The weighting-table save the editor host publishes.
+pub(crate) const EDITOR_SAVE_WEIGHTING: &str = "editor.save_weighting";
+
 /// Every command name the editor host publishes today.
-pub(crate) const EDITOR_COMMAND_NAMES: [&str; 21] = [
+pub(crate) const EDITOR_COMMAND_NAMES: [&str; 24] = [
     EDITOR_PHASE,
     EDITOR_LAST_SAVE,
     EDITOR_VALIDATION,
@@ -98,6 +107,9 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 21] = [
     EDITOR_SET_LEVEL,
     EDITOR_PAINT,
     EDITOR_SELECT_INJURY_TAB,
+    EDITOR_SELECT_WEIGHTING_TABLE,
+    EDITOR_WEIGHTING,
+    EDITOR_SAVE_WEIGHTING,
 ];
 
 /// Command names that need the authoring scene, so they refuse the editor's Load pass.
@@ -123,7 +135,12 @@ pub(crate) const EDITOR_THEME_TAB_ONLY: [&str; 2] =
     [EDITOR_TOGGLE_TERRAIN, EDITOR_SET_DEFAULT_FLOOR];
 
 /// Command names that also need the Injury tab, so they refuse every other tab.
-pub(crate) const EDITOR_INJURY_TAB_ONLY: [&str; 1] = [EDITOR_SELECT_INJURY_TAB];
+pub(crate) const EDITOR_INJURY_TAB_ONLY: [&str; 4] = [
+    EDITOR_SELECT_INJURY_TAB,
+    EDITOR_SELECT_WEIGHTING_TABLE,
+    EDITOR_WEIGHTING,
+    EDITOR_SAVE_WEIGHTING,
+];
 
 /// Command names that need any form tab, so they refuse the default Prefab tab.
 pub(crate) const EDITOR_FORM_TAB_ONLY: [&str; 3] = [EDITOR_DRAFT, EDITOR_SET_FIELD, EDITOR_LIST_OP];

@@ -11,7 +11,7 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{attachment, field, gang, injury, melee_weapon, sprite, terrain, weapon};
+use super::{attachment, field, gang, injury, melee_weapon, sprite, terrain, weapon, weighting};
 use crate::{
     EditorMode,
     net_qa::{
@@ -136,6 +136,12 @@ fn edit(
             let draft = present(forms.injury.as_mut())?;
             injury::apply(draft, op)?;
             Ok(injury::members(draft))
+        }
+        (EditorModeNet::Injury, EditorListNet::WeightingBucket(bucket)) => {
+            let registry = registries.injuries.as_deref();
+            let draft = present(forms.weighting.as_mut())?;
+            weighting::apply(draft, registry, bucket, op)?;
+            Ok(weighting::members(draft, bucket))
         }
         (
             EditorModeNet::MeleeWeapon,

@@ -5,12 +5,13 @@ use gdtf_qa_command::command::ErasedCommand;
 use super::{
     read::{
         EditorDraft, EditorFamilies, EditorLastSave, EditorPaintedMap, EditorPhase, EditorSession,
-        EditorValidation,
+        EditorValidation, EditorWeighting,
     },
     write::{
-        EditorListOp, EditorLoad, EditorNew, EditorPaint, EditorSave, EditorSelectInjuryTab,
-        EditorSelectTheme, EditorSelectTile, EditorSetDefaultFloor, EditorSetField,
-        EditorSetGridSize, EditorSetLevel, EditorSetMode, EditorToggleTerrain,
+        EditorListOp, EditorLoad, EditorNew, EditorPaint, EditorSave, EditorSaveWeighting,
+        EditorSelectInjuryTab, EditorSelectTheme, EditorSelectTile, EditorSelectWeightingTable,
+        EditorSetDefaultFloor, EditorSetField, EditorSetGridSize, EditorSetLevel, EditorSetMode,
+        EditorToggleTerrain,
     },
 };
 use crate::net_qa::facts::EditorFacts;
@@ -37,4 +38,7 @@ pub(in crate::net_qa) const EDITOR_COMMANDS: &[&dyn ErasedCommand<EditorFacts>] 
     &EditorSetLevel,
     &EditorPaint,
     &EditorSelectInjuryTab,
+    &EditorSelectWeightingTable,
+    &EditorWeighting,
+    &EditorSaveWeighting,
 ];

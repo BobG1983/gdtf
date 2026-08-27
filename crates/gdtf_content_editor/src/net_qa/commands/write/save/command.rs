@@ -19,12 +19,9 @@ use crate::{
         facts::EditorFacts,
         forms::{EditorForms, EditorRegistries},
         schedule::EditorNetQaSystems,
-        wire::{
-            EditorContentNameNet, EditorModeNet, EditorSaveFaultNet, EditorSaveOutcomeNet,
-            SavedPathNet,
-        },
+        wire::{EditorContentNameNet, EditorModeNet, EditorSaveOutcomeNet},
     },
-    save_record::{LastSaveRecord, SaveOutcome},
+    save_record::LastSaveRecord,
 };
 
 const NO_DRAFTS: RefusalNote = RefusalNote::from_static(
@@ -78,17 +75,6 @@ impl QaCommand for EditorSave {
     }
 }
 
-fn wire_outcome(outcome: &SaveOutcome) -> EditorSaveOutcomeNet {
-    match outcome {
-        SaveOutcome::Wrote(path) => EditorSaveOutcomeNet::Wrote {
-            path: SavedPathNet::from_path(path),
-        },
-        SaveOutcome::Failed(fault) => {
-            EditorSaveOutcomeNet::Failed(EditorSaveFaultNet::from_fault(fault))
-        }
-    }
-}
-
 fn handle_editor_save(
     mut forms: EditorForms,
     registries: EditorRegistries,
@@ -109,7 +95,7 @@ fn handle_editor_save(
         }
         match save_for_mode(mode, args.name.as_ref(), &root, &mut forms, &registries) {
             SaveAttempt::Wrote(outcome) => {
-                let wire = wire_outcome(&outcome);
+                let wire = EditorSaveOutcomeNet::from_outcome(&outcome);
                 record.record(mode, outcome);
                 responder.answer(&EditorSaveReply { outcome: wire });
             }

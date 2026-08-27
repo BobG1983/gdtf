@@ -2,7 +2,7 @@ use gdtf_battle_sim::{
     armor::ArmorType,
     effects::attachments::{AimDelta, AttachmentEffect},
     equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity},
-    injuries::InjuryEffect,
+    injuries::{InjuryEffect, InjuryName, InjuryWeight, WeightedInjuryEntry},
     terrain::facing::TerrainFacing,
     weapon::{AoeRange, FireModeSpec, HitType, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
 };
@@ -13,7 +13,8 @@ use crate::net_qa::wire::{
     ArmorTypeNet, AttachmentEffectNet, AttachmentKeyNet, AttachmentSlotNet, EditorDraftNameNet,
     EditorListIndexNet, EditorListMemberNet, EditorListNet, EditorListOpNet, FightModeKindNet,
     FightModeSpecNet, FireModeSpecNet, InjuryEffectNet, SlotCapacityNet, SpriteSourceNet,
-    StrikesNet, TerrainFacingNet, TerrainTagNet, TuCostNet, WeaponSlotNet,
+    StrikesNet, TerrainFacingNet, TerrainTagNet, TuCostNet, WeaponSlotNet, WeightingBucketNet,
+    WeightingRowNet,
 };
 
 fn a_frame_source() -> SpriteSourceNet {
@@ -42,6 +43,13 @@ fn a_fire_mode() -> FireModeSpecNet {
     ))
 }
 
+fn a_weighting_row() -> WeightingRowNet {
+    WeightingRowNet::from_entry(&WeightedInjuryEntry::new(
+        InjuryName::new("twisted_ankle".to_owned()),
+        InjuryWeight::new(5),
+    ))
+}
+
 fn a_slot() -> WeaponSlotNet {
     WeaponSlotNet::new(
         AttachmentSlotNet::from_slot(AttachmentSlot::Muzzle),
@@ -65,6 +73,9 @@ fn the_named_list_round_trips() {
         EditorListNet::WeaponSlots,
         EditorListNet::WeaponAttachments,
         EditorListNet::FieldImmuneArmorTypes,
+        EditorListNet::WeightingBucket(WeightingBucketNet::Minor),
+        EditorListNet::WeightingBucket(WeightingBucketNet::Major),
+        EditorListNet::WeightingBucket(WeightingBucketNet::Critical),
     ] {
         assert_ron_round_trip(&list);
     }
@@ -133,6 +144,7 @@ fn every_member_round_trips() {
             ArmorTypeNet::from_type(armor_type),
         ));
     }
+    assert_ron_round_trip(&EditorListMemberNet::WeightingRow(a_weighting_row()));
 }
 
 #[test]

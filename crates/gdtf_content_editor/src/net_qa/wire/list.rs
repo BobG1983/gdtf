@@ -13,6 +13,7 @@ use super::{
     melee_weapon::{AttachmentKeyNet, FightModeSpecNet, WeaponSlotNet},
     sprite::SpriteSourceNet,
     terrain::TerrainTagNet,
+    weighting::{WeightingBucketNet, WeightingRowNet},
 };
 
 /// A position in one of the lists a form draws.
@@ -56,6 +57,8 @@ pub(in crate::net_qa) enum EditorListNet {
     WeaponAttachments,
     /// The Field draft's immune-armor tick boxes.
     FieldImmuneArmorTypes,
+    /// One of the Injury weighting table's three bucket row groups.
+    WeightingBucket(WeightingBucketNet),
 }
 
 /// What a write does to the named list.
@@ -100,4 +103,6 @@ pub(in crate::net_qa) enum EditorListMemberNet {
     FireMode(FireModeSpecNet),
     /// One armor type of the Field draft's immunity tick-box row.
     ImmuneArmorType(ArmorTypeNet),
+    /// One row of an Injury weighting bucket, its injury key and its weight.
+    WeightingRow(WeightingRowNet),
 }

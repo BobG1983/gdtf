@@ -1,5 +1,7 @@
 //! The INJURY tab's two sub-tabs: the def form and the weighting table.
 
+use std::path::Path;
+
 use bevy_egui::egui;
 use gdtf_battle_sim::injuries::{InjuryRegistry, InjuryTables};
 
@@ -21,6 +23,7 @@ pub(crate) struct InjuryPanelsCtx<'a> {
     pub(crate) injuries:  Option<&'a InjuryRegistry>,
     pub(crate) tables:    Option<&'a InjuryTables>,
     pub(crate) last_save: &'a mut LastSaveRecord,
+    pub(crate) root:      Option<&'a Path>,
 }
 
 pub(crate) fn injury_panels(ui: &mut egui::Ui, ctx: &mut InjuryPanelsCtx<'_>) {
@@ -46,7 +49,14 @@ pub(crate) fn injury_panels(ui: &mut egui::Ui, ctx: &mut InjuryPanelsCtx<'_>) {
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     if let Some(weighting) = ctx.weighting.as_deref_mut() {
-                        weighting_panel(ui, weighting, ctx.injuries, ctx.tables, ctx.last_save);
+                        weighting_panel(
+                            ui,
+                            weighting,
+                            ctx.injuries,
+                            ctx.tables,
+                            ctx.last_save,
+                            ctx.root,
+                        );
                     }
                 });
         }

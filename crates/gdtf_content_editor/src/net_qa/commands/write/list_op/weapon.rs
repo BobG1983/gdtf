@@ -39,7 +39,8 @@ pub(super) fn members(draft: &WeaponDraft, list: EditorListNet) -> Vec<EditorLis
         | EditorListNet::MeleeWeaponSlots
         | EditorListNet::MeleeWeaponAttachments
         | EditorListNet::GangMembers
-        | EditorListNet::FieldImmuneArmorTypes => Vec::new(),
+        | EditorListNet::FieldImmuneArmorTypes
+        | EditorListNet::WeightingBucket(_) => Vec::new(),
     }
 }
 
@@ -101,6 +102,7 @@ pub(super) fn apply(
         | EditorListNet::MeleeWeaponSlots
         | EditorListNet::MeleeWeaponAttachments
         | EditorListNet::GangMembers
-        | EditorListNet::FieldImmuneArmorTypes => Err(FormWriteFault::ForeignArm),
+        | EditorListNet::FieldImmuneArmorTypes
+        | EditorListNet::WeightingBucket(_) => Err(FormWriteFault::ForeignArm),
     }
 }

@@ -116,16 +116,3 @@ pub fn write_weighting_in(
     write_ron_pretty(&path, weighting)?;
     Ok(path)
 }
-
-/// Write weighting RON under the workspace assets root.
-///
-/// # Errors
-///
-/// Returns [`RonSaveError`] if the workspace root search fails or the path cannot be written.
-#[cfg(debug_assertions)]
-pub fn write_weighting(weighting: &InjuryWeighting) -> Result<PathBuf, RonSaveError> {
-    let Some(root) = workspace_assets_root() else {
-        return Err(RonSaveError::NoWorkspaceRoot);
-    };
-    write_weighting_in(&root, weighting)
-}

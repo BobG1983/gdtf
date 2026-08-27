@@ -11,7 +11,9 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{armor, attachment, field, gang, injury, melee_weapon, sprite, terrain, weapon};
+use super::{
+    armor, attachment, field, gang, injury, melee_weapon, sprite, terrain, weapon, weighting,
+};
 use crate::{
     EditorMode,
     net_qa::{
@@ -108,6 +110,24 @@ fn no_fields_of_its_own<T>(draft: Option<&mut T>) -> Result<EditorFieldNet, SetF
     Err(SetFieldRefusal::Fault(FormWriteFault::ForeignArm))
 }
 
+// The Injury tab draws two forms, so its weighting rows write a draft of their own.
+fn injury_field(
+    forms: &mut EditorForms,
+    registries: &EditorRegistries,
+    field: EditorFieldNet,
+) -> Result<EditorFieldNet, SetFieldRefusal> {
+    match field {
+        EditorFieldNet::WeightingRowInjury { .. } | EditorFieldNet::WeightingRowWeight { .. } => {
+            Ok(weighting::write(
+                present(forms.weighting.as_mut())?,
+                registries.injuries.as_deref(),
+                field,
+            )?)
+        }
+        other => Ok(injury::write(present(forms.injury.as_mut())?, other)?),
+    }
+}
+
 fn write_to(
     forms: &mut EditorForms,
     registries: &EditorRegistries,
@@ -126,7 +146,7 @@ fn write_to(
             present(forms.attachment.as_mut())?,
             field,
         )?),
-        EditorModeNet::Injury => Ok(injury::write(present(forms.injury.as_mut())?, field)?),
+        EditorModeNet::Injury => injury_field(forms, registries, field),
         EditorModeNet::MeleeWeapon => Ok(melee_weapon::write(
             present(forms.melee_weapon.as_mut())?,
             field,

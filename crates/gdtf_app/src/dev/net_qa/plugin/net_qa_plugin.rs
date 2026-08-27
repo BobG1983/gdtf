@@ -28,7 +28,6 @@ enum Wiring {
     #[cfg(feature = "headless_test")]
     Bound {
         listener: std::sync::Mutex<Option<TcpListener>>,
-        timeouts: NetTimeouts,
     },
 }
 
@@ -67,7 +66,7 @@ impl NetQaPlugin {
         }
     }
 
-    /// Bind a loopback listener on `port` for tests.
+    /// Bind a loopback listener on `port` for tests, running with [`NetTimeouts::NO_IDLE_REAP`].
     ///
     /// # Errors
     ///
@@ -78,7 +77,6 @@ impl NetQaPlugin {
         let plugin = Self {
             wiring: Wiring::Bound {
                 listener: std::sync::Mutex::new(Some(listener)),
-                timeouts: NetTimeouts::DEFAULT,
             },
         };
         Ok((plugin, bound))
@@ -119,11 +117,11 @@ impl Plugin for NetQaPlugin {
                 serve(app, listener, *timeouts);
             }
             #[cfg(feature = "headless_test")]
-            Wiring::Bound { listener, timeouts } => {
+            Wiring::Bound { listener } => {
                 let Some(listener) = listener.lock().ok().and_then(|mut guard| guard.take()) else {
                     return;
                 };
-                serve(app, listener, *timeouts);
+                serve(app, listener, NetTimeouts::NO_IDLE_REAP);
             }
             #[cfg(feature = "headless_test")]
             Wiring::Channels { inbox } => {

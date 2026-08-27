@@ -64,7 +64,7 @@ what is in view.
    the whole entry is `&YourCommand`.
 3. **A test.** The suite for the game's command layer is
    [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs).
-   The editor has five. Hello and the lifecycle commands are in
+   The editor has six. Hello and the lifecycle commands are in
    [`crates/gdtf_content_editor/tests/net_qa_hello/`](../../crates/gdtf_content_editor/tests/net_qa_hello),
    the shared reads are in
    [`crates/gdtf_content_editor/tests/net_qa_editor_reads/`](../../crates/gdtf_content_editor/tests/net_qa_editor_reads),
@@ -72,9 +72,11 @@ what is in view.
    [`crates/gdtf_content_editor/tests/net_qa_editor_commands/`](../../crates/gdtf_content_editor/tests/net_qa_editor_commands),
    the draft writes over every form tab are in
    [`crates/gdtf_content_editor/tests/net_qa_editor_forms/`](../../crates/gdtf_content_editor/tests/net_qa_editor_forms),
-   and the prefab-canvas commands are in
-   [`crates/gdtf_content_editor/tests/net_qa_editor_prefab/`](../../crates/gdtf_content_editor/tests/net_qa_editor_prefab).
-   All five build their app and their client from
+   the prefab-canvas commands are in
+   [`crates/gdtf_content_editor/tests/net_qa_editor_prefab/`](../../crates/gdtf_content_editor/tests/net_qa_editor_prefab),
+   and the Injury weighting table is in
+   [`crates/gdtf_content_editor/tests/net_qa_editor_weighting/`](../../crates/gdtf_content_editor/tests/net_qa_editor_weighting).
+   All six build their app and their client from
    [`crates/gdtf_content_editor/tests/net_qa_shared/`](../../crates/gdtf_content_editor/tests/net_qa_shared),
    which each target includes by `#[path]`, and the four that answer during the Load pass take
    that case from there too. All of them use a real socket, a real listener,
@@ -286,6 +288,11 @@ run(host="editor", command="editor.paint", arguments="(x: 2, y: 3)")
 run(host="editor", command="editor.map", arguments="(level: 1)")
 run(host="editor", command="editor.set_mode", arguments="(mode: Injury)")
 run(host="editor", command="editor.select_injury_tab", arguments="(tab: Tables)")
+run(host="editor", command="editor.select_weighting_table", arguments="(category: Leg, context: Melee)")
+run(host="editor", command="editor.list_op", arguments="(list: WeightingBucket(Minor), op: Add)")
+run(host="editor", command="editor.set_field", arguments="(field: WeightingRowWeight(bucket: Minor, index: 0, weight: 4))")
+run(host="editor", command="editor.weighting", arguments="()")
+run(host="editor", command="editor.save_weighting", arguments="()")
 run(host="editor", command="editor.set_mode", arguments="(mode: Field)")
 run(host="editor", command="editor.new", arguments="(mode: Field)")
 run(host="editor", command="editor.set_field", arguments="(field: FieldDamage(3))")
@@ -294,7 +301,7 @@ run(host="editor", command="editor.list_op", arguments="(list: FieldImmuneArmorT
 run(host="editor", command="editor.save", arguments="(mode: Field)")
 ```
 
-The editor offers twenty-one commands today. They are listed in
+The editor offers twenty-four commands today. They are listed in
 [The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
@@ -743,17 +750,17 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## The editor host
 
-The editor publishes twenty-one commands, all `Immediate`, all in `EDITOR_COMMANDS`
+The editor publishes twenty-four commands, all `Immediate`, all in `EDITOR_COMMANDS`
 ([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
 
 Three reads answer at every point in the lifecycle: `editor.phase`, `editor.last_save` and
-`editor.validation`. Four more reads need the authoring scene: `editor.families`,
-`editor.session`, `editor.draft` and `editor.map`. `editor.draft` also needs a form tab
-open, and `editor.map` needs the Prefab tab. All fourteen writes need the authoring scene
-too. During the editor's Load pass every scene-scoped
-command answers `Unavailable { code: WrongState }`. `EditorMode`, `MapEditorSession` and
-every draft are state-scoped to `EditorState::Editing` by the `init_state_scoped_resource`
-calls in `MapEditorPlugin::build`
+`editor.validation`. Five more reads need the authoring scene: `editor.families`,
+`editor.session`, `editor.draft`, `editor.map` and `editor.weighting`. `editor.draft` also
+needs a form tab open, `editor.map` needs the Prefab tab, and `editor.weighting` needs the
+Injury tab. All sixteen writes need the authoring scene too. During the editor's Load pass
+every scene-scoped command answers `Unavailable { code: WrongState }`. `EditorMode`,
+`MapEditorSession` and every draft are state-scoped to `EditorState::Editing` by the
+`init_state_scoped_resource` calls in `MapEditorPlugin::build`
 ([`crates/gdtf_content_editor/src/plugin.rs`](../../crates/gdtf_content_editor/src/plugin.rs)),
 so during Load none of them is in the world. The content registries are not state-scoped.
 They arrive one at a time as the editor loads them, and Editing starts only once every one
@@ -784,6 +791,9 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.set_level` | Editing + the Prefab tab | Jumps the storey the canvas paints on, the way clicking a row of the level rail does, clamping to the grid's extent. [`commands/write/set_level.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_level.rs) |
 | `editor.paint` | Editing + the Prefab tab | Paints the selected tile in one cell of the storey being edited, through the same placement and connector pairing a canvas click runs. [`commands/write/paint/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/paint) |
 | `editor.select_injury_tab` | Editing + the Injury tab | Opens the Injury def form or the Injury weighting table, writing the same `InjurySubTab` resource the sub-tab row writes. [`commands/write/select_injury_tab.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_injury_tab.rs) |
+| `editor.select_weighting_table` | Editing + the Injury tab | Loads the weighting table for one injury category and damage context, the way the Injury tab's two selectors load it. All three buckets are replaced from the tables, so unsaved row edits are discarded. Tables absent answers `Unavailable { code: MissingModel }`. [`commands/write/select_weighting_table.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_weighting_table.rs) |
+| `editor.weighting` | Editing + the Injury tab | The weighting table the Injury tab holds: its category and damage context, and each of its Minor, Major and Critical buckets in the order the draft holds them. [`commands/read/weighting.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/weighting.rs) |
+| `editor.save_weighting` | Editing + the Injury tab | Writes the weighting draft through the same `write_weighting_in` its Save weighting button calls, under the QA assets root, and records the outcome the way the button does. [`commands/write/save_weighting.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save_weighting.rs) |
 
 `editor.set_field` and `editor.list_op` need more than the authoring scene. Both write the
 open form's own draft, so they need a form tab open and that tab's draft resource in the
@@ -801,7 +811,12 @@ the size fields, the level rail and the viewport are drawn only in the Prefab ar
 painted map is that canvas's own model. The Prefab tab carries `EditorMode`'s own default,
 so a fresh process reaches them with no `editor.set_mode` first.
 `editor.select_injury_tab` is scoped to the Injury tab, because the sub-tab row it writes is
-drawn only in the Injury arm of the central panel.
+drawn only in the Injury arm of the central panel. So are the three weighting-table
+commands, `editor.select_weighting_table`, `editor.weighting` and `editor.save_weighting`,
+which read and write the weighting draft the Tables sub-tab draws. The weighting rows
+`editor.set_field` and `editor.list_op` reach are scoped by their own arms instead: a
+`WeightingRowInjury`, `WeightingRowWeight` or `WeightingBucket` name on any tab but Injury
+answers `Unavailable { code: WrongState }` with the note that names the open tab.
 The Field tab has one gate of its own, and it is a per-form refusal rather than an
 availability rule: while `FieldDraft::autoload_pending` is true the form's own sync has not
 run its first-frame seed yet, so every Field write answers
@@ -831,10 +846,10 @@ to, and neither command adds a protocol variant. What the handler answers itself
    the other tick-box rows draws is refused too.
    Every other list refuses `Toggle`: the attachment effects, the sprite frames, the injury
    effects, all three Melee Weapon lists and all three Weapon lists. Every list outside the
-   sprite frames refuses a reorder. The Gang member list takes `Add` and `Remove` alone, so
-   it refuses `Toggle`, `SetAt`, `MoveUp` and `MoveDown`. When a list reads its own options
-   from a registry and that registry is absent, the answer is
-   `Unavailable { code: MissingModel }` instead.
+   sprite frames refuses a reorder. The Gang member list and the three weighting buckets
+   take `Add` and `Remove` alone, so each refuses `Toggle`, `SetAt`, `MoveUp` and
+   `MoveDown`. When a list reads its own options from a registry and that registry is
+   absent, the answer is `Unavailable { code: MissingModel }` instead.
 5. A closed gate: `Unavailable { code: WrongState }`, with a note naming the gate.
    `editor.list_op` refuses a `Toggle` on the entry sides while the draft's kind is not
    `Emplacement`, because `TerrainDraft::set_entry_sides` commits only at that kind and the
@@ -878,6 +893,7 @@ rect's width answers `Ran` and reads the clamped value back.
 | Attachment | `AttachmentName`; `AttachmentDisplayName`; `AttachmentSlot` (one of `AttachmentSlot::ALL`); `AttachmentEffect`, variant and payload together |
 | Terrain | `TerrainKind` (Wall, Cover, Slab, Emplacement); `TerrainDisplayName`; `TerrainHp`, which writes both the cover and the slab field, clamped to `TerrainDraft::HP_RANGE`; `TerrainArmorProtection` and `TerrainArmorHardness`, clamped to `TerrainDraft::ARMOR_RANGE`; `TerrainHeightBand`, on a kind whose `has_height_band` is true; `TerrainGraphic`, one of `offered_graphic_roles()`; `TerrainFootfall`, on a kind whose `offers_footfall` is true; `TerrainMountedWeapon`, a `WeaponRegistry` key or `None`, on an `Emplacement` kind; `TerrainBlocksPathing` and `TerrainBlocksLos`, each set or cleared with `None` |
 | Injury | `InjuryKey`; `InjuryName`; `InjuryCategory` (one of `InjuryCategory::ALL`); `InjurySeverity` (Minor, Major or Critical, so `None` and `Fatal` fail to decode); `InjuryPopupText`, `InjuryLogText`, `InjuryInspectText`; `InjuryEffect`, an index with that effect's variant and payload |
+| Injury weighting | `WeightingRowInjury` and `WeightingRowWeight`, each naming a `bucket` (Minor, Major or Critical, so `None` and `Fatal` fail to decode) and a row `index`. The key must be one the `InjuryRegistry` holds, because that is all the row's combo offers, so a key it does not hold answers `BadArguments` naming the key, and an absent registry answers `MissingModel`. Which table the rows belong to is `editor.select_weighting_table`, not a field |
 | Melee Weapon | `MeleeWeaponName`; `MeleeWeaponDamage`, `MeleeWeaponPunch`, `MeleeWeaponShred`, `MeleeWeaponDamageType` (one of `DamageType::ALL`), `MeleeWeaponFatalBias`, `MeleeWeaponHandedness`; `MeleeWeaponReach`, clamped at 1; `MeleeWeaponShove` |
 | Gang | `GangName`; per member index, `GangMemberName`; `GangMemberAttribute`, naming one of `Speed`, `Aim`, `Strength`, `Toughness`, `Reflexes`, `Cool`, `Grit` and `Luck`, with a value inside `GangDraft::ATTRIBUTE_RANGE` (`0.0..=100.0`); `GangMemberWeapon`, a `WeaponRegistry` key; `GangMemberArmor`, an `ArmorRegistry` key; `GangMemberMeleeWeapon`, a `MeleeWeaponRegistry` key or `None` for the fists default |
 | Field | `FieldName`, the save stem; `FieldDamage`, the flat HP drained per tick; `FieldDamageType` (one of `DamageType::ALL`); `FieldDuration`, `Permanent` or `Turns(n)` where `n` is at least 1, and `Turns(0)` answers `BadArguments` rather than being clamped |
@@ -891,6 +907,7 @@ rect's width answers `Ran` and reads the clamped value back.
 | Terrain | `EntrySides` | `Toggle(EntrySide(..))`, on an `Emplacement` kind |
 | Terrain | `TerrainTags` | `Toggle(TerrainTag(..))` |
 | Injury | `InjuryEffects` | `Add` (seeds the form's own default effect), `Remove`. The list keeps at least one effect |
+| Injury weighting | `WeightingBucket(Minor \| Major \| Critical)` | `Add` (seeds the first `InjuryRegistry` key by name, at weight 1), `Remove`. A row is rewritten through the `WeightingRowInjury` and `WeightingRowWeight` field arms, so the list refuses `Toggle`, `SetAt` and both reorders. An absent or empty `InjuryRegistry` answers `MissingModel` on `Add`, which is the condition that greys out the form's own Add button. An empty bucket is legal |
 | Melee Weapon | `MeleeWeaponFightModes` | `Add` (seeds the form's own structural swing), `Remove`, `SetAt`. The list keeps at least one mode |
 | Melee Weapon | `MeleeWeaponSlots` | `Add` (seeds `WeaponSlots::DEFAULT_DECLARATION`), `Remove`, `SetAt`. An empty list is legal |
 | Melee Weapon | `MeleeWeaponAttachments` | `Add` (seeds the registry's first key by name), `Remove`, `SetAt` naming a key the registry holds. An absent `AttachmentRegistry` answers `MissingModel` on `Add` and on `SetAt`. An empty one answers `MissingModel` on `Add`, because there is no key to seed, and `BadArguments` on `SetAt`, because the key it names is not one the registry holds |
@@ -944,6 +961,10 @@ account for.
 which defaults to the workspace `assets/` and falls back to a temp directory when the
 marker search finds no workspace. Only Prefab takes a `name`, because only the prefab form
 carries its own name field; a name on any other mode is refused rather than dropped.
+
+`MapEditorPlugin` seeds that root, not the QA channel, so it is in the world whether or not
+the listener bound. `editor.save_weighting` and the Injury tab's own Save weighting button
+both write under it through `write_weighting_in`, the one writer either path has.
 
 `editor.last_save` reads the same `LastSaveRecord`
 ([`crates/gdtf_content_editor/src/save_record/`](../../crates/gdtf_content_editor/src/save_record))

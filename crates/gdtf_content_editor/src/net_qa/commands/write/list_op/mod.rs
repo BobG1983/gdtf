@@ -10,5 +10,6 @@ mod shared;
 mod sprite;
 mod terrain;
 mod weapon;
+mod weighting;
 
 pub(in crate::net_qa) use command::EditorListOp;

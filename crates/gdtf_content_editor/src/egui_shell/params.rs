@@ -1,4 +1,7 @@
 //! The shell system's per-mode **model-borrow bundles** — one `#[derive(SystemParam)]`
+#[cfg(debug_assertions)]
+use std::path::PathBuf;
+
 use bevy::prelude::*;
 use gdtf_battle_presenter::{IsolateView, ViewMode};
 use gdtf_battle_sim::{
@@ -14,6 +17,8 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
+#[cfg(debug_assertions)]
+use crate::net_qa::EditorQaAssetsRoot;
 use crate::{
     armor_form::ArmorDraft,
     attachment_form::AttachmentDraft,
@@ -106,6 +111,16 @@ pub(crate) struct InjuryParams<'w> {
     pub(super) weighting: Option<ResMut<'w, WeightingDraft>>,
     pub(super) registry:  Option<Res<'w, InjuryRegistry>>,
     pub(super) tables:    Option<Res<'w, InjuryTables>>,
+    #[cfg(debug_assertions)]
+    pub(super) qa_root:   Res<'w, EditorQaAssetsRoot>,
+}
+
+#[cfg(debug_assertions)]
+impl InjuryParams<'_> {
+    /// The one root every weighting save writes under, seeded by `MapEditorPlugin`.
+    pub(super) fn assets_root(&self) -> PathBuf {
+        self.qa_root.to_path_buf()
+    }
 }
 
 /// tolerate their absence; the asset surfaces the PREVIEW needs (the image store + the

@@ -1,10 +1,11 @@
-//! The assets root a QA-driven save writes under.
+//! The assets root the editor's saves write under.
 
 use std::path::PathBuf;
 
 use bevy::prelude::*;
 
-/// Root every QA-driven editor save writes its family folder under.
+/// Root every editor save writes its family folder under, over the wire or from a button.
+/// `MapEditorPlugin` seeds it, so it is there whether or not the QA listener bound.
 #[derive(Resource, Clone, Debug, Deref)]
 pub struct EditorQaAssetsRoot(PathBuf);
 

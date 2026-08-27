@@ -37,6 +37,7 @@ mod toggle;
 mod validation;
 mod view;
 mod weapon;
+mod weighting;
 
 pub(in crate::net_qa) use armor::{
     ArmorFloorNet, ArmorHardnessNet, ArmorIntegrityNet, ArmorProtectionNet, ArmorTypeNet,
@@ -69,9 +70,9 @@ pub(in crate::net_qa) use injury::{
     InjuryCategoryNet, InjuryEffectNet, InjuryKeyNet, InjurySeverityNet, InjuryTextNet,
 };
 pub(in crate::net_qa) use injury_sub_tab::InjurySubTabNet;
-pub(in crate::net_qa) use key::{
-    EditorContentNameNet, EditorKeyNet, SavedPathNet, TerrainKeyNet, ThemeKeyNet,
-};
+#[cfg(test)]
+pub(in crate::net_qa) use key::SavedPathNet;
+pub(in crate::net_qa) use key::{EditorContentNameNet, EditorKeyNet, TerrainKeyNet, ThemeKeyNet};
 pub(in crate::net_qa) use last_save::{EditorLastSaveRowNet, LastSaveOutcomeNet};
 pub(in crate::net_qa) use list::{
     EditorListIndexNet, EditorListMemberNet, EditorListNet, EditorListOpNet,
@@ -114,4 +115,7 @@ pub(in crate::net_qa) use weapon::{
     AccuracyNet, BaseSpreadNet, DotDamageNet, DotEnabledNet, DotTurnsNet, ExplodeDamageNet,
     FieldKeyNet, KickbackNet, MagazineSizeNet, OnDeathEnabledNet, OnDeathVariantNet, ReloadTuNet,
     StableNet, TrajectoryStyleNet,
+};
+pub(in crate::net_qa) use weighting::{
+    DamageContextNet, InjuryWeightNet, WeightingBucketNet, WeightingRowNet, WeightingTableNet,
 };

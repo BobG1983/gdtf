@@ -61,7 +61,7 @@ pub use injury_form::{
     injury_file_name, injury_save_path_in, weighting_file_name, weighting_save_path_in,
 };
 #[cfg(debug_assertions)]
-pub use injury_form::{write_injury, write_injury_in, write_weighting, write_weighting_in};
+pub use injury_form::{write_injury, write_injury_in, write_weighting_in};
 pub use melee_weapon_form::{
     MeleeWeaponDraft, draft_to_melee_weapon_spec, melee_weapon_file_name,
     melee_weapon_save_path_in, structural_swing_mode,

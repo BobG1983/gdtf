@@ -1,4 +1,6 @@
 //! Injury weighting panel; combo only offers resolving keys.
+use std::path::Path;
+
 use bevy_egui::egui;
 use gdtf_battle_sim::{
     armor::InjuryCategory,
@@ -33,6 +35,7 @@ pub(crate) fn weighting_panel(
     injuries: Option<&InjuryRegistry>,
     tables: Option<&InjuryTables>,
     last_save: &mut LastSaveRecord,
+    root: Option<&Path>,
 ) {
     ui.heading("Weighting");
     ui.separator();
@@ -46,13 +49,14 @@ pub(crate) fn weighting_panel(
     }
 
     #[cfg(debug_assertions)]
-    {
+    if let Some(root) = root {
         ui.separator();
-        save_button(ui, draft, last_save);
+        save_button(ui, draft, last_save, root);
     }
     #[cfg(not(debug_assertions))]
     {
         let _ = last_save;
+        let _ = root;
     }
 }
 
@@ -184,12 +188,17 @@ fn injury_combo(
 }
 
 #[cfg(debug_assertions)]
-fn save_button(ui: &mut egui::Ui, draft: &WeightingDraft, last_save: &mut LastSaveRecord) {
+fn save_button(
+    ui: &mut egui::Ui,
+    draft: &WeightingDraft,
+    last_save: &mut LastSaveRecord,
+    root: &Path,
+) {
     if !ui.button("Save weighting").clicked() {
         return;
     }
     let weighting = crate::injury_form::draft_to_weighting(draft);
-    let written = crate::injury_form::write_weighting(&weighting);
+    let written = crate::injury_form::write_weighting_in(root, &weighting);
     match &written {
         Ok(path) => bevy::log::info!(
             "weighting save: wrote `{}` / `{}` table to `{}`",

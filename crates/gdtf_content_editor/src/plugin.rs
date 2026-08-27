@@ -40,6 +40,9 @@ impl Plugin for MapEditorPlugin {
         register_load(app);
         register_validation(app);
         app.init_resource::<LastSaveRecord>();
+        // The one root a save writes under, whether or not the QA channel bound a listener.
+        #[cfg(debug_assertions)]
+        app.init_resource::<crate::net_qa::EditorQaAssetsRoot>();
 
         app.add_systems(Startup, disable_egui_auto_context);
 
