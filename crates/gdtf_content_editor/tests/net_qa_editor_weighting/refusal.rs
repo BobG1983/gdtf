@@ -17,9 +17,9 @@ use crate::{
 };
 
 #[test]
-fn a_select_from_the_default_tab_is_refused_and_leaves_the_draft_where_autoload_left_it()
--> TestResult {
+fn a_select_from_the_default_tab_is_refused_and_changes_no_part_of_the_draft() -> TestResult {
     let (mut app, mut client) = editing_app_and_client()?;
+    let before = table_of(&draft_weighting(&app)?);
     assert_eq!(
         editor_mode(&app)?,
         EditorMode::Prefab,
@@ -44,19 +44,18 @@ fn a_select_from_the_default_tab_is_refused_and_leaves_the_draft_where_autoload_
     assert_eq!(
         read.category.to_category(),
         InjuryCategory::ALL[0],
-        "the refused select changed nothing, so the draft still carries the category the form's \
-         own autoload seeds",
+        "the refused select asked for Leg and wrote nothing, so the draft still holds the \
+         category `WeightingDraft::default()` gave it",
     );
     assert_eq!(
         read.context.to_context(),
         DamageContext::ALL[0],
-        "the refused select changed nothing, so the draft still carries the damage source the \
-         form's own autoload seeds",
+        "the refused select asked for Melee and wrote nothing, so the draft still holds the \
+         damage source `WeightingDraft::default()` gave it",
     );
     assert_eq!(
-        read,
-        table_of(&draft_weighting(&app)?),
-        "the read answers the rows the draft holds, and the refused select added none",
+        read, before,
+        "the read answers the draft exactly as it stood before the refused select",
     );
     Ok(())
 }
