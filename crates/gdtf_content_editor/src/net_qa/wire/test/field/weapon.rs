@@ -11,75 +11,86 @@ use crate::net_qa::wire::{
     AccuracyNet, BaseSpreadNet, DamageTypeNet, DotDamageNet, DotEnabledNet, DotTurnsNet,
     EditorFieldNet, ExplodeDamageNet, FatalBiasNet, FieldKeyNet, HandednessNet, HitTypeNet,
     KickbackNet, MagazineSizeNet, OnDeathEnabledNet, OnDeathVariantNet, ReloadTuNet, ShoveNet,
-    StableNet, TrajectoryStyleNet, WeaponDamageNet, WeaponPunchNet, WeaponShredNet,
+    StableNet, TrajectoryStyleNet, WeaponDamageNet, WeaponFieldNet, WeaponPunchNet, WeaponShredNet,
 };
+
+// One Weapon field arm, under the form that owns it.
+fn weapon(field: WeaponFieldNet) -> EditorFieldNet {
+    EditorFieldNet::Weapon(field)
+}
 
 #[test]
 fn every_weapon_stat_field_arm_round_trips() {
-    assert_ron_round_trip(&EditorFieldNet::WeaponName(a_name()));
-    assert_ron_round_trip(&EditorFieldNet::WeaponBaseSpread(BaseSpreadNet::new(0.25)));
-    assert_ron_round_trip(&EditorFieldNet::WeaponAccuracy(AccuracyNet::new(0.75)));
-    assert_ron_round_trip(&EditorFieldNet::WeaponKickback(KickbackNet::new(0.5)));
-    assert_ron_round_trip(&EditorFieldNet::WeaponDamage(WeaponDamageNet::new(9)));
-    assert_ron_round_trip(&EditorFieldNet::WeaponPunch(WeaponPunchNet::new(2)));
-    assert_ron_round_trip(&EditorFieldNet::WeaponShred(WeaponShredNet::new(1)));
-    assert_ron_round_trip(&EditorFieldNet::WeaponFatalBias(FatalBiasNet::new(0.4)));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::Name(a_name())));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::BaseSpread(BaseSpreadNet::new(
+        0.25,
+    ))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::Accuracy(AccuracyNet::new(0.75))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::Kickback(KickbackNet::new(0.5))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::Damage(WeaponDamageNet::new(9))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::Punch(WeaponPunchNet::new(2))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::Shred(WeaponShredNet::new(1))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::FatalBias(FatalBiasNet::new(0.4))));
     for damage_type in DamageType::ALL {
-        assert_ron_round_trip(&EditorFieldNet::WeaponDamageType(
+        assert_ron_round_trip(&weapon(WeaponFieldNet::DamageType(
             DamageTypeNet::from_damage_type(damage_type),
-        ));
+        )));
     }
     for handedness in [Handedness::OneHanded, Handedness::TwoHanded] {
-        assert_ron_round_trip(&EditorFieldNet::WeaponHandedness(
+        assert_ron_round_trip(&weapon(WeaponFieldNet::Handedness(
             HandednessNet::from_handedness(handedness),
-        ));
+        )));
     }
 }
 
 #[test]
 fn every_weapon_handling_field_arm_round_trips() {
     for style in [TrajectoryStyle::Straight, TrajectoryStyle::Arc] {
-        assert_ron_round_trip(&EditorFieldNet::WeaponTrajectory(
+        assert_ron_round_trip(&weapon(WeaponFieldNet::Trajectory(
             TrajectoryStyleNet::from_style(style),
-        ));
+        )));
     }
-    assert_ron_round_trip(&EditorFieldNet::WeaponStable(StableNet::new(true)));
-    assert_ron_round_trip(&EditorFieldNet::WeaponShove(ShoveNet::new(false)));
-    assert_ron_round_trip(&EditorFieldNet::WeaponMagazineSize(MagazineSizeNet::new(
+    assert_ron_round_trip(&weapon(WeaponFieldNet::Stable(StableNet::new(true))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::Shove(ShoveNet::new(false))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::MagazineSize(MagazineSizeNet::new(
         24,
-    )));
-    assert_ron_round_trip(&EditorFieldNet::WeaponMagazineReloadTu(ReloadTuNet::new(6)));
+    ))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::MagazineReloadTu(ReloadTuNet::new(
+        6,
+    ))));
 }
 
 #[test]
 fn every_weapon_dot_field_arm_round_trips() {
-    assert_ron_round_trip(&EditorFieldNet::WeaponDot(DotEnabledNet::new(true)));
-    assert_ron_round_trip(&EditorFieldNet::WeaponDotDamage(DotDamageNet::new(4)));
-    assert_ron_round_trip(&EditorFieldNet::WeaponDotTurns(DotTurnsNet::new(3)));
-    assert_ron_round_trip(&EditorFieldNet::WeaponDotDamageType(
+    assert_ron_round_trip(&weapon(WeaponFieldNet::Dot(DotEnabledNet::new(true))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::DotDamage(DotDamageNet::new(4))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::DotTurns(DotTurnsNet::new(3))));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::DotDamageType(
         DamageTypeNet::from_damage_type(DamageType::Plasma),
-    ));
+    )));
 }
 
 #[test]
 fn every_weapon_on_death_field_arm_round_trips() {
-    assert_ron_round_trip(&EditorFieldNet::WeaponOnDeath(OnDeathEnabledNet::new(true)));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeath(OnDeathEnabledNet::new(
+        true,
+    ))));
     for variant in [OnDeathVariantNet::Explode, OnDeathVariantNet::LeaveField] {
-        assert_ron_round_trip(&EditorFieldNet::WeaponOnDeathVariant(variant));
+        assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathVariant(variant)));
     }
-    assert_ron_round_trip(&EditorFieldNet::WeaponOnDeathHitType(
+    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathHitType(
         HitTypeNet::from_hit_type(HitType::Blast {
             radius: BlastRadius::new(2),
         }),
-    ));
-    assert_ron_round_trip(&EditorFieldNet::WeaponOnDeathDamage(ExplodeDamageNet::new(
-        12,
     )));
-    assert_ron_round_trip(&EditorFieldNet::WeaponOnDeathDamageType(
+    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathDamage(
+        ExplodeDamageNet::new(12),
+    )));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathDamageType(
         DamageTypeNet::from_damage_type(DamageType::Blast),
-    ));
-    assert_ron_round_trip(&EditorFieldNet::WeaponOnDeathField(FieldKeyNet::from_key(
-        &FieldKey::new("promethium_pool".to_owned()),
+    )));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathField(
+        FieldKeyNet::from_key(&FieldKey::new("promethium_pool".to_owned())),
     )));
 }
 

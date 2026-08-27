@@ -3,7 +3,7 @@ use gdtf_content_editor::{EditorMode, TerrainKindChoice};
 
 use crate::{
     names::{EDITOR_NEW, EDITOR_SET_MODE},
-    rows::FieldRow,
+    rows::{FieldFormFieldRow, FieldRow, InjuryFieldRow, MeleeWeaponFieldRow, TerrainFieldRow},
     setup::{
         editor_mode, field_draft, form_tab_app_and_client, injury_draft, list_op,
         melee_weapon_draft, set_field, terrain_draft,
@@ -17,10 +17,12 @@ use crate::{
 fn one_connection_walks_terrain_injury_and_melee_weapon_in_turn() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
 
-    let kind = set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
+    let kind = set_field(&mut app, &mut client, "(field: Terrain(Kind(Emplacement)))")?;
     assert_eq!(
         kind.field,
-        FieldRow::TerrainKind(crate::values::TerrainKindRow::Emplacement)
+        FieldRow::Terrain(TerrainFieldRow::Kind(
+            crate::values::TerrainKindRow::Emplacement
+        ))
     );
     assert_eq!(terrain_draft(&app)?.kind(), TerrainKindChoice::Emplacement);
     list_op(
@@ -32,8 +34,11 @@ fn one_connection_walks_terrain_injury_and_melee_weapon_in_turn() -> TestResult 
 
     client.exchange(&mut app, &run_editor(EDITOR_SET_MODE, "(mode: Injury)"))?;
     assert_eq!(editor_mode(&app)?, EditorMode::Injury);
-    let severity = set_field(&mut app, &mut client, "(field: InjurySeverity(Major))")?;
-    assert_eq!(severity.field, FieldRow::InjurySeverity(SeverityRow::Major));
+    let severity = set_field(&mut app, &mut client, "(field: Injury(Severity(Major)))")?;
+    assert_eq!(
+        severity.field,
+        FieldRow::Injury(InjuryFieldRow::Severity(SeverityRow::Major)),
+    );
     assert_eq!(injury_draft(&app)?.def().severity, Severity::Major);
     list_op(&mut app, &mut client, "(list: InjuryEffects, op: Add)")?;
     assert_eq!(injury_draft(&app)?.effects().len(), 2);
@@ -46,11 +51,11 @@ fn one_connection_walks_terrain_injury_and_melee_weapon_in_turn() -> TestResult 
     let hands = set_field(
         &mut app,
         &mut client,
-        "(field: MeleeWeaponHandedness(TwoHanded))",
+        "(field: MeleeWeapon(Handedness(TwoHanded)))",
     )?;
     assert_eq!(
         hands.field,
-        FieldRow::MeleeWeaponHandedness(HandednessRow::TwoHanded)
+        FieldRow::MeleeWeapon(MeleeWeaponFieldRow::Handedness(HandednessRow::TwoHanded)),
     );
     list_op(
         &mut app,
@@ -62,8 +67,8 @@ fn one_connection_walks_terrain_injury_and_melee_weapon_in_turn() -> TestResult 
     client.exchange(&mut app, &run_editor(EDITOR_SET_MODE, "(mode: Field)"))?;
     assert_eq!(editor_mode(&app)?, EditorMode::Field);
     client.exchange(&mut app, &run_editor(EDITOR_NEW, "(mode: Field)"))?;
-    let damage = set_field(&mut app, &mut client, "(field: FieldDamage(6))")?;
-    assert_eq!(damage.field, FieldRow::FieldDamage(6));
+    let damage = set_field(&mut app, &mut client, "(field: Field(Damage(6)))")?;
+    assert_eq!(damage.field, FieldRow::Field(FieldFormFieldRow::Damage(6)));
     list_op(
         &mut app,
         &mut client,

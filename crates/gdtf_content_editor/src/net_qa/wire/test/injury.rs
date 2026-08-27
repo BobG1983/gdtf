@@ -6,9 +6,8 @@ use gdtf_battle_sim::{
 
 use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::net_qa::wire::{
-    BleedAmountNet, EditorDraftNameNet, EditorFieldNet, EditorListIndexNet, InjuryCategoryNet,
-    InjuryEffectNet, InjuryKeyNet, InjurySeverityNet, InjuryTextNet, MovementCostFactorNet,
-    StatDeltaNet,
+    BleedAmountNet, InjuryCategoryNet, InjuryEffectNet, InjuryKeyNet, InjurySeverityNet,
+    InjuryTextNet, MovementCostFactorNet, StatDeltaNet,
 };
 
 fn an_effect() -> InjuryEffectNet {
@@ -44,29 +43,6 @@ fn every_injury_value_round_trips() {
     ] {
         assert_ron_round_trip(&effect);
     }
-}
-
-#[test]
-fn every_injury_field_arm_round_trips() {
-    assert_ron_round_trip(&EditorFieldNet::InjuryKey(InjuryKeyNet::new("cracked_rib")));
-    assert_ron_round_trip(&EditorFieldNet::InjuryName(EditorDraftNameNet::new(
-        "cracked rib",
-    )));
-    assert_ron_round_trip(&EditorFieldNet::InjuryCategory(InjuryCategoryNet::Torso));
-    assert_ron_round_trip(&EditorFieldNet::InjurySeverity(InjurySeverityNet::Critical));
-    assert_ron_round_trip(&EditorFieldNet::InjuryPopupText(InjuryTextNet::new(
-        "crack",
-    )));
-    assert_ron_round_trip(&EditorFieldNet::InjuryLogText(InjuryTextNet::new(
-        "a crack",
-    )));
-    assert_ron_round_trip(&EditorFieldNet::InjuryInspectText(InjuryTextNet::new(
-        "a rib gives way",
-    )));
-    assert_ron_round_trip(&EditorFieldNet::InjuryEffect {
-        index:  EditorListIndexNet::new(0),
-        effect: an_effect(),
-    });
 }
 
 #[test]

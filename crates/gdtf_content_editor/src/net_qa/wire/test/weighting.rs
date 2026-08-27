@@ -5,8 +5,7 @@ use gdtf_battle_sim::{
 
 use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::net_qa::wire::{
-    DamageContextNet, EditorFieldNet, EditorListIndexNet, InjuryKeyNet, InjuryWeightNet,
-    WeightingBucketNet, WeightingRowNet, WeightingTableNet,
+    DamageContextNet, InjuryWeightNet, WeightingBucketNet, WeightingRowNet, WeightingTableNet,
 };
 
 fn an_entry(key: &str, weight: u32) -> WeightedInjuryEntry {
@@ -54,26 +53,6 @@ fn the_row_and_its_weight_round_trip() {
 #[test]
 fn the_whole_table_round_trips() {
     assert_ron_round_trip(&a_table());
-}
-
-#[test]
-fn both_weighting_row_field_arms_round_trip() {
-    for bucket in [
-        WeightingBucketNet::Minor,
-        WeightingBucketNet::Major,
-        WeightingBucketNet::Critical,
-    ] {
-        assert_ron_round_trip(&EditorFieldNet::WeightingRowInjury {
-            bucket,
-            index: EditorListIndexNet::new(1),
-            injury: InjuryKeyNet::new("twisted_ankle"),
-        });
-        assert_ron_round_trip(&EditorFieldNet::WeightingRowWeight {
-            bucket,
-            index: EditorListIndexNet::new(0),
-            weight: InjuryWeightNet::from_weight(InjuryWeight::new(4)),
-        });
-    }
 }
 
 #[test]

@@ -152,7 +152,7 @@ fn the_gang_tab_with_no_draft_refuses_both_the_catalogue_row_and_the_write() -> 
         "the refusal carries the line that tells a client what is missing",
     );
 
-    let reply = try_set_field(&mut app, &mut client, "(field: GangName(\"Ash Ferals\"))")?;
+    let reply = try_set_field(&mut app, &mut client, "(field: Gang(Name(\"Ash Ferals\")))")?;
     assert_eq!(
         unavailable_code(&reply)?,
         "WrongState",
@@ -190,7 +190,7 @@ fn the_weapon_tab_with_no_draft_refuses_both_the_catalogue_row_and_the_write() -
         );
     }
 
-    let field = try_set_field(&mut app, &mut client, "(field: WeaponDamage(9))")?;
+    let field = try_set_field(&mut app, &mut client, "(field: Weapon(Damage(9)))")?;
     assert_eq!(
         unavailable_code(&field)?,
         "WrongState",
@@ -226,7 +226,7 @@ fn the_field_tab_with_no_draft_refuses_both_the_catalogue_row_and_the_write() ->
         assert!(!note.as_str().is_empty());
     }
 
-    let field = try_set_field(&mut app, &mut client, "(field: FieldDamage(6))")?;
+    let field = try_set_field(&mut app, &mut client, "(field: Field(Damage(6)))")?;
     assert_eq!(unavailable_code(&field)?, "WrongState");
     let list = try_list_op(
         &mut app,
@@ -271,7 +271,7 @@ fn a_write_with_no_draft_names_the_same_code_the_catalogue_does() -> TestResult 
         assert_eq!(code, UnavailableCode::WrongState);
     }
 
-    let field = try_set_field(&mut app, &mut client, "(field: InjurySeverity(Major))")?;
+    let field = try_set_field(&mut app, &mut client, "(field: Injury(Severity(Major)))")?;
     assert_eq!(
         unavailable_code(&field)?,
         "WrongState",
@@ -334,7 +334,7 @@ fn assert_the_handler_answered(reply: &QaResponse) -> TestResult {
 fn a_set_field_whose_draft_goes_mid_frame_is_refused_by_the_handler() -> TestResult {
     let (mut app, mut client) = injury_app_losing_its_draft_mid_frame()?;
 
-    let reply = try_set_field(&mut app, &mut client, "(field: InjurySeverity(Major))")?;
+    let reply = try_set_field(&mut app, &mut client, "(field: Injury(Severity(Major)))")?;
     assert_the_handler_answered(&reply)?;
     assert!(
         app.world().get_resource::<InjuryDraft>().is_none(),

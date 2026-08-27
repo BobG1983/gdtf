@@ -5,8 +5,8 @@ use crate::{
     net_qa::{
         commands::write::form_fault::FormWriteFault,
         wire::{
-            ArmorFloorNet, ArmorHardnessNet, ArmorIntegrityNet, ArmorProtectionNet, ArmorTypeNet,
-            BodyPartNet, EditorDraftNameNet, EditorFieldNet,
+            ArmorFieldNet, ArmorFloorNet, ArmorHardnessNet, ArmorIntegrityNet, ArmorProtectionNet,
+            ArmorTypeNet, BodyPartNet, EditorDraftNameNet,
         },
     },
 };
@@ -69,64 +69,61 @@ fn checked_integrity(value: ArmorIntegrityNet) -> Result<ArmorIntegrityNet, Form
 /// Write one Armor field, answering the field as the draft stores it.
 pub(super) fn write(
     draft: &mut ArmorDraft,
-    field: EditorFieldNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+    field: ArmorFieldNet,
+) -> Result<ArmorFieldNet, FormWriteFault> {
     match field {
-        EditorFieldNet::ArmorName(name) => {
+        ArmorFieldNet::Name(name) => {
             draft.set_name((*name).clone());
-            Ok(EditorFieldNet::ArmorName(EditorDraftNameNet::new(
-                draft.name(),
-            )))
+            Ok(ArmorFieldNet::Name(EditorDraftNameNet::new(draft.name())))
         }
-        EditorFieldNet::ArmorFloor { part, value } => {
+        ArmorFieldNet::Floor { part, value } => {
             let value = checked_floor(value)?;
             let written = part.to_part();
             let piece = draft.piece_mut(written);
             piece.floor = value.to_floor();
-            Ok(EditorFieldNet::ArmorFloor {
+            Ok(ArmorFieldNet::Floor {
                 part:  BodyPartNet::from_part(written),
                 value: ArmorFloorNet::from_floor(piece.floor),
             })
         }
-        EditorFieldNet::ArmorProtection { part, value } => {
+        ArmorFieldNet::Protection { part, value } => {
             let value = checked_protection(value)?;
             let written = part.to_part();
             let piece = draft.piece_mut(written);
             piece.protection = value.to_protection();
-            Ok(EditorFieldNet::ArmorProtection {
+            Ok(ArmorFieldNet::Protection {
                 part:  BodyPartNet::from_part(written),
                 value: ArmorProtectionNet::from_protection(piece.protection),
             })
         }
-        EditorFieldNet::ArmorHardness { part, value } => {
+        ArmorFieldNet::Hardness { part, value } => {
             let value = checked_hardness(value)?;
             let written = part.to_part();
             let piece = draft.piece_mut(written);
             piece.hardness = value.to_hardness();
-            Ok(EditorFieldNet::ArmorHardness {
+            Ok(ArmorFieldNet::Hardness {
                 part:  BodyPartNet::from_part(written),
                 value: ArmorHardnessNet::from_hardness(piece.hardness),
             })
         }
-        EditorFieldNet::ArmorIntegrity { part, value } => {
+        ArmorFieldNet::Integrity { part, value } => {
             let value = checked_integrity(value)?;
             let written = part.to_part();
             let piece = draft.piece_mut(written);
             piece.integrity = value.to_integrity();
-            Ok(EditorFieldNet::ArmorIntegrity {
+            Ok(ArmorFieldNet::Integrity {
                 part:  BodyPartNet::from_part(written),
                 value: ArmorIntegrityNet::from_integrity(piece.integrity),
             })
         }
-        EditorFieldNet::ArmorType { part, value } => {
+        ArmorFieldNet::Type { part, value } => {
             let written = part.to_part();
             let piece = draft.piece_mut(written);
             piece.armor_type = value.to_type();
-            Ok(EditorFieldNet::ArmorType {
+            Ok(ArmorFieldNet::Type {
                 part:  BodyPartNet::from_part(written),
                 value: ArmorTypeNet::from_type(piece.armor_type),
             })
         }
-        _ => Err(FormWriteFault::ForeignArm),
     }
 }

@@ -44,8 +44,8 @@ pub(super) fn apply(
                 .to_owned(),
         )),
         EditorListOpNet::SetAt(..) => Err(FormWriteFault::bad(
-            "one attachment effect is rewritten through the AttachmentEffect field arm, not \
-             through the list"
+            "one attachment effect is rewritten through the \
+             `Attachment(Effect(index: n, effect: …))` field arm, not through the list"
                 .to_owned(),
         )),
         EditorListOpNet::MoveUp(_) | EditorListOpNet::MoveDown(_) => Err(FormWriteFault::bad(

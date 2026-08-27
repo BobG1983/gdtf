@@ -13,8 +13,8 @@ use crate::{
     net_qa::{
         commands::write::form_fault::FormWriteFault,
         wire::{
-            DamageTypeNet, EditorFieldNet, ExplodeDamageNet, FieldKeyNet, HitTypeNet,
-            OnDeathEnabledNet, OnDeathVariantNet,
+            DamageTypeNet, ExplodeDamageNet, FieldKeyNet, HitTypeNet, OnDeathEnabledNet,
+            OnDeathVariantNet, WeaponFieldNet,
         },
     },
     weapon_form::{explode_template, leave_field_template},
@@ -71,11 +71,17 @@ fn with_field_key<R>(
     })?
 }
 
-// Swap the effect for the other variant's blank template, the way the form's combo does.
-fn pick_variant(
+/// Turn the on-death effect on or off, answering the state the spec is left in.
+pub(super) fn enabled(spec: &mut WeaponSpec, enabled: OnDeathEnabledNet) -> WeaponFieldNet {
+    spec.on_death = enabled.is_enabled().then(explode_template);
+    WeaponFieldNet::OnDeath(OnDeathEnabledNet::from_spec(spec))
+}
+
+/// Swap the effect for the other variant's blank template, the way the form's combo does.
+pub(super) fn variant(
     spec: &mut WeaponSpec,
     wanted: OnDeathVariantNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<WeaponFieldNet, FormWriteFault> {
     with_effect(spec, |effect| {
         if OnDeathVariantNet::from_effect(effect) != wanted {
             *effect = match wanted {
@@ -83,43 +89,50 @@ fn pick_variant(
                 OnDeathVariantNet::LeaveField => leave_field_template(),
             };
         }
-        EditorFieldNet::WeaponOnDeathVariant(OnDeathVariantNet::from_effect(effect))
+        WeaponFieldNet::OnDeathVariant(OnDeathVariantNet::from_effect(effect))
     })
 }
 
-/// Write the on-death tick box, its variant, or one payload row, as the effect stores it.
-pub(super) fn write(
+/// Write the explode payload's hit geometry, answering the value the effect stores.
+pub(super) fn hit_type(
     spec: &mut WeaponSpec,
-    field: EditorFieldNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
-    match field {
-        EditorFieldNet::WeaponOnDeath(enabled) => {
-            spec.on_death = enabled.is_enabled().then(explode_template);
-            Ok(EditorFieldNet::WeaponOnDeath(OnDeathEnabledNet::from_spec(
-                spec,
-            )))
-        }
-        EditorFieldNet::WeaponOnDeathVariant(wanted) => pick_variant(spec, wanted),
-        EditorFieldNet::WeaponOnDeathHitType(wanted) => with_explode(spec, |hit_type, _, _| {
-            *hit_type = wanted.to_hit_type();
-            EditorFieldNet::WeaponOnDeathHitType(HitTypeNet::from_hit_type(*hit_type))
-        }),
-        EditorFieldNet::WeaponOnDeathDamage(wanted) => with_explode(spec, |_, damage, _| {
-            *damage = wanted.to_damage();
-            EditorFieldNet::WeaponOnDeathDamage(ExplodeDamageNet::new(**damage))
-        }),
-        EditorFieldNet::WeaponOnDeathDamageType(wanted) => {
-            with_explode(spec, |_, _, damage_type| {
-                *damage_type = wanted.to_damage_type();
-                EditorFieldNet::WeaponOnDeathDamageType(DamageTypeNet::from_damage_type(
-                    *damage_type,
-                ))
-            })
-        }
-        EditorFieldNet::WeaponOnDeathField(wanted) => with_field_key(spec, |field| {
-            *field = wanted.to_key();
-            EditorFieldNet::WeaponOnDeathField(FieldKeyNet::from_key(field))
-        }),
-        _ => Err(FormWriteFault::ForeignArm),
-    }
+    wanted: HitTypeNet,
+) -> Result<WeaponFieldNet, FormWriteFault> {
+    with_explode(spec, |hit_type, _, _| {
+        *hit_type = wanted.to_hit_type();
+        WeaponFieldNet::OnDeathHitType(HitTypeNet::from_hit_type(*hit_type))
+    })
+}
+
+/// Write the explode payload's blast damage, answering the value the effect stores.
+pub(super) fn damage(
+    spec: &mut WeaponSpec,
+    wanted: ExplodeDamageNet,
+) -> Result<WeaponFieldNet, FormWriteFault> {
+    with_explode(spec, |_, damage, _| {
+        *damage = wanted.to_damage();
+        WeaponFieldNet::OnDeathDamage(ExplodeDamageNet::new(**damage))
+    })
+}
+
+/// Write the explode payload's damage channel, answering the value the effect stores.
+pub(super) fn damage_type(
+    spec: &mut WeaponSpec,
+    wanted: DamageTypeNet,
+) -> Result<WeaponFieldNet, FormWriteFault> {
+    with_explode(spec, |_, _, damage_type| {
+        *damage_type = wanted.to_damage_type();
+        WeaponFieldNet::OnDeathDamageType(DamageTypeNet::from_damage_type(*damage_type))
+    })
+}
+
+/// Write the leave-field payload's field key, answering the value the effect stores.
+pub(super) fn field(
+    spec: &mut WeaponSpec,
+    wanted: FieldKeyNet,
+) -> Result<WeaponFieldNet, FormWriteFault> {
+    with_field_key(spec, |field| {
+        *field = wanted.to_key();
+        WeaponFieldNet::OnDeathField(FieldKeyNet::from_key(field))
+    })
 }

@@ -230,7 +230,7 @@ that authors `turns: 0` FAILS: the per-file salvage rejects it loudly as a
 enters the registry (no silent clamp-to-1). Editing the **form**
 cannot reach zero at all: its drag is ranged `1..=u8::MAX`, and it commits through
 `weapon_form::dot_turns_from_raw`, which turns a 0 into a 1. `editor.set_field`
-writes `WeaponDotTurns` through that same function, so a 0 sent over the wire
+writes `Weapon(DotTurns(n))` through that same function, so a 0 sent over the wire
 answers `Ran` and reads back as 1.
 
 ### 1l. `on_death` — wielder-death effect (optional)

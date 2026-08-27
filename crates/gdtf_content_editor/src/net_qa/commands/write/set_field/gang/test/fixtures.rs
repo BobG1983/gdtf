@@ -8,7 +8,7 @@ use crate::{
     melee_weapon_form::MeleeWeaponDraft,
     net_qa::{
         commands::write::form_fault::FormWriteFault,
-        wire::{EditorFieldNet, EditorKeyNet, EditorListIndexNet},
+        wire::{EditorKeyNet, EditorListIndexNet, GangFieldNet},
     },
     weapon_form::WeaponDraft,
 };
@@ -57,8 +57,8 @@ pub(super) fn armor() -> ArmorRegistry {
 
 /// The field a write answered, with any refusal flattened to the line it carries.
 pub(super) fn answered(
-    result: Result<EditorFieldNet, FormWriteFault>,
-) -> Result<EditorFieldNet, String> {
+    result: Result<GangFieldNet, FormWriteFault>,
+) -> Result<GangFieldNet, String> {
     result.map_err(|fault| match fault {
         FormWriteFault::ForeignArm => "the arm was read as another form's".to_owned(),
         FormWriteFault::Gated(note) | FormWriteFault::MissingModel(note) => {
@@ -70,7 +70,7 @@ pub(super) fn answered(
 
 /// Which refusal a write answered and the line it carries, or the field it wrote instead.
 pub(super) fn refusal(
-    result: Result<EditorFieldNet, FormWriteFault>,
+    result: Result<GangFieldNet, FormWriteFault>,
 ) -> Result<(&'static str, String), String> {
     match result {
         Ok(field) => Err(format!("expected a refusal, got {field:?}")),

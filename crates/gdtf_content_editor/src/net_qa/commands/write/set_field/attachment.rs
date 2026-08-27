@@ -7,7 +7,7 @@ use crate::{
     net_qa::{
         commands::write::form_fault::FormWriteFault,
         wire::{
-            AttachmentEffectNet, AttachmentSlotNet, EditorDraftNameNet, EditorFieldNet,
+            AttachmentEffectNet, AttachmentFieldNet, AttachmentSlotNet, EditorDraftNameNet,
             EditorListIndexNet,
         },
     },
@@ -26,35 +26,34 @@ fn effect_at(draft: &AttachmentDraft, index: usize) -> Result<AttachmentEffectNe
 /// Write one Attachment field, answering the field as the draft stores it.
 pub(super) fn write(
     draft: &mut AttachmentDraft,
-    field: EditorFieldNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+    field: AttachmentFieldNet,
+) -> Result<AttachmentFieldNet, FormWriteFault> {
     match field {
-        EditorFieldNet::AttachmentName(name) => {
+        AttachmentFieldNet::Name(name) => {
             draft.set_name((*name).clone());
-            Ok(EditorFieldNet::AttachmentName(EditorDraftNameNet::new(
+            Ok(AttachmentFieldNet::Name(EditorDraftNameNet::new(
                 draft.name(),
             )))
         }
-        EditorFieldNet::AttachmentDisplayName(name) => {
+        AttachmentFieldNet::DisplayName(name) => {
             draft.spec_mut().display_name = WeaponName::new((*name).clone());
-            Ok(EditorFieldNet::AttachmentDisplayName(
-                EditorDraftNameNet::new(draft.spec().display_name.as_str()),
-            ))
+            Ok(AttachmentFieldNet::DisplayName(EditorDraftNameNet::new(
+                draft.spec().display_name.as_str(),
+            )))
         }
-        EditorFieldNet::AttachmentSlot(slot) => {
+        AttachmentFieldNet::Slot(slot) => {
             draft.spec_mut().slot = slot.to_slot();
-            Ok(EditorFieldNet::AttachmentSlot(
-                AttachmentSlotNet::from_slot(draft.spec().slot),
-            ))
+            Ok(AttachmentFieldNet::Slot(AttachmentSlotNet::from_slot(
+                draft.spec().slot,
+            )))
         }
-        EditorFieldNet::AttachmentEffect { index, effect } => {
+        AttachmentFieldNet::Effect { index, effect } => {
             effect_at(draft, *index)?;
             draft.set_effect(*index, effect.to_effect());
-            Ok(EditorFieldNet::AttachmentEffect {
+            Ok(AttachmentFieldNet::Effect {
                 index:  EditorListIndexNet::new(*index),
                 effect: effect_at(draft, *index)?,
             })
         }
-        _ => Err(FormWriteFault::ForeignArm),
     }
 }

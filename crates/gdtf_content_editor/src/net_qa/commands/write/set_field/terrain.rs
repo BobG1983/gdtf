@@ -11,7 +11,7 @@ use crate::{
         commands::write::form_fault::{FormWriteFault, NOT_AN_EMPLACEMENT},
         wire::{
             ArmorHardnessNet, ArmorProtectionNet, BlocksPathingNet, EditorDraftNameNet,
-            EditorFieldNet, FootfallNet, HeightBandNet, LosBlockingNet, MountedWeaponNet,
+            FootfallNet, HeightBandNet, LosBlockingNet, MountedWeaponNet, TerrainFieldNet,
             TerrainHpNet, TerrainKindNet, TileRoleNet,
         },
     },
@@ -74,22 +74,22 @@ fn known_weapon(
     }
 }
 
-fn write_hp(draft: &mut TerrainDraft, hp: TerrainHpNet) -> EditorFieldNet {
+fn write_hp(draft: &mut TerrainDraft, hp: TerrainHpNet) -> TerrainFieldNet {
     let clamped = clamped_hp(hp);
     draft.set_cover_hp(clamped.to_cover_hp());
     draft.set_slab_hp(clamped.to_slab_hp());
-    EditorFieldNet::TerrainHp(TerrainHpNet::new(*draft.cover_hp()))
+    TerrainFieldNet::Hp(TerrainHpNet::new(*draft.cover_hp()))
 }
 
 const fn write_height_band(
     draft: &mut TerrainDraft,
     band: HeightBandNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<TerrainFieldNet, FormWriteFault> {
     if !draft.kind().has_height_band() {
         return Err(FormWriteFault::Gated(NO_HEIGHT_BAND));
     }
     draft.set_height_band(band.to_band());
-    Ok(EditorFieldNet::TerrainHeightBand(HeightBandNet::from_band(
+    Ok(TerrainFieldNet::HeightBand(HeightBandNet::from_band(
         draft.height_band(),
     )))
 }
@@ -97,7 +97,7 @@ const fn write_height_band(
 fn write_graphic(
     draft: &mut TerrainDraft,
     role: TileRoleNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<TerrainFieldNet, FormWriteFault> {
     let wanted = role.to_role();
     if !offered_graphic_roles().contains(&wanted) {
         return Err(FormWriteFault::bad(format!(
@@ -106,18 +106,18 @@ fn write_graphic(
     }
     draft.set_graphic(wanted);
     let stored = TileRoleNet::from_role(draft.graphic()).unwrap_or(role);
-    Ok(EditorFieldNet::TerrainGraphic(stored))
+    Ok(TerrainFieldNet::Graphic(stored))
 }
 
 const fn write_footfall(
     draft: &mut TerrainDraft,
     footfall: FootfallNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<TerrainFieldNet, FormWriteFault> {
     if !draft.kind().offers_footfall() {
         return Err(FormWriteFault::Gated(NO_FOOTFALL));
     }
     draft.set_footfall(footfall.to_choice());
-    Ok(EditorFieldNet::TerrainFootfall(FootfallNet::from_choice(
+    Ok(TerrainFieldNet::Footfall(FootfallNet::from_choice(
         draft.footfall(),
     )))
 }
@@ -126,7 +126,7 @@ fn write_mounted_weapon(
     draft: &mut TerrainDraft,
     weapons: Option<&WeaponRegistry>,
     named: Option<MountedWeaponNet>,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<TerrainFieldNet, FormWriteFault> {
     if draft.kind() != TerrainKindChoice::Emplacement {
         return Err(FormWriteFault::Gated(NOT_AN_EMPLACEMENT));
     }
@@ -138,7 +138,7 @@ fn write_mounted_weapon(
         None => None,
     };
     draft.set_mounted_weapon(wanted);
-    Ok(EditorFieldNet::TerrainMountedWeapon(
+    Ok(TerrainFieldNet::MountedWeapon(
         draft.mounted_weapon().map(MountedWeaponNet::from_name),
     ))
 }
@@ -147,50 +147,49 @@ fn write_mounted_weapon(
 pub(super) fn write(
     draft: &mut TerrainDraft,
     weapons: Option<&WeaponRegistry>,
-    field: EditorFieldNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+    field: TerrainFieldNet,
+) -> Result<TerrainFieldNet, FormWriteFault> {
     match field {
-        EditorFieldNet::TerrainKind(kind) => {
+        TerrainFieldNet::Kind(kind) => {
             draft.set_kind(kind.to_choice());
-            Ok(EditorFieldNet::TerrainKind(TerrainKindNet::from_choice(
+            Ok(TerrainFieldNet::Kind(TerrainKindNet::from_choice(
                 draft.kind(),
             )))
         }
-        EditorFieldNet::TerrainDisplayName(name) => {
+        TerrainFieldNet::DisplayName(name) => {
             draft.set_display_name((*name).clone());
-            Ok(EditorFieldNet::TerrainDisplayName(EditorDraftNameNet::new(
+            Ok(TerrainFieldNet::DisplayName(EditorDraftNameNet::new(
                 draft.display_name(),
             )))
         }
-        EditorFieldNet::TerrainHp(hp) => Ok(write_hp(draft, hp)),
-        EditorFieldNet::TerrainArmorProtection(value) => {
+        TerrainFieldNet::Hp(hp) => Ok(write_hp(draft, hp)),
+        TerrainFieldNet::ArmorProtection(value) => {
             draft.set_armor_protection(clamped_protection(value).to_protection());
-            Ok(EditorFieldNet::TerrainArmorProtection(
+            Ok(TerrainFieldNet::ArmorProtection(
                 ArmorProtectionNet::from_protection(draft.armor_protection()),
             ))
         }
-        EditorFieldNet::TerrainArmorHardness(value) => {
+        TerrainFieldNet::ArmorHardness(value) => {
             draft.set_armor_hardness(clamped_hardness(value).to_hardness());
-            Ok(EditorFieldNet::TerrainArmorHardness(
+            Ok(TerrainFieldNet::ArmorHardness(
                 ArmorHardnessNet::from_hardness(draft.armor_hardness()),
             ))
         }
-        EditorFieldNet::TerrainHeightBand(band) => write_height_band(draft, band),
-        EditorFieldNet::TerrainGraphic(role) => write_graphic(draft, role),
-        EditorFieldNet::TerrainFootfall(footfall) => write_footfall(draft, footfall),
-        EditorFieldNet::TerrainMountedWeapon(named) => write_mounted_weapon(draft, weapons, named),
-        EditorFieldNet::TerrainBlocksPathing(blocks) => {
+        TerrainFieldNet::HeightBand(band) => write_height_band(draft, band),
+        TerrainFieldNet::Graphic(role) => write_graphic(draft, role),
+        TerrainFieldNet::Footfall(footfall) => write_footfall(draft, footfall),
+        TerrainFieldNet::MountedWeapon(named) => write_mounted_weapon(draft, weapons, named),
+        TerrainFieldNet::BlocksPathing(blocks) => {
             draft.set_blocks_pathing(blocks.map(|blocks| *blocks));
-            Ok(EditorFieldNet::TerrainBlocksPathing(
+            Ok(TerrainFieldNet::BlocksPathing(
                 draft.blocks_pathing().map(BlocksPathingNet::new),
             ))
         }
-        EditorFieldNet::TerrainBlocksLos(blocking) => {
+        TerrainFieldNet::BlocksLos(blocking) => {
             draft.set_blocks_los(blocking.map(LosBlockingNet::to_blocking));
-            Ok(EditorFieldNet::TerrainBlocksLos(
+            Ok(TerrainFieldNet::BlocksLos(
                 draft.blocks_los().map(LosBlockingNet::from_blocking),
             ))
         }
-        _ => Err(FormWriteFault::ForeignArm),
     }
 }

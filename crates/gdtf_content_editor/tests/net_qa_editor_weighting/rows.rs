@@ -90,15 +90,21 @@ impl WeightingTableRow {
     }
 }
 
-/// Which single-value field a weighting write named, read back off the draft.
+/// Which single-value field a weighting write named, under the form that owns it.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub(crate) enum FieldRow {
-    WeightingRowInjury {
+    Weighting(WeightingFieldRow),
+}
+
+/// A weighting row field a write named, read back off the draft.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub(crate) enum WeightingFieldRow {
+    RowInjury {
         bucket: BucketRow,
         index:  usize,
         injury: String,
     },
-    WeightingRowWeight {
+    RowWeight {
         bucket: BucketRow,
         index:  usize,
         weight: u32,

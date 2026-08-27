@@ -104,27 +104,32 @@ fn present<T>(draft: Option<&mut T>) -> Result<&mut T, SetFieldRefusal> {
     draft.ok_or(SetFieldRefusal::DraftGone)
 }
 
-// A form this ticket writes no field of still answers for its own missing draft first.
-fn no_fields_of_its_own<T>(draft: Option<&mut T>) -> Result<EditorFieldNet, SetFieldRefusal> {
-    present(draft)?;
-    Err(SetFieldRefusal::Fault(FormWriteFault::ForeignArm))
+// Whether the open tab's own draft resource is still in the world.
+const fn draft_in_world(forms: &EditorForms, mode: EditorModeNet) -> bool {
+    match mode {
+        EditorModeNet::Terrain => forms.terrain.is_some(),
+        EditorModeNet::Theme => forms.theme.is_some(),
+        EditorModeNet::Gang => forms.gang.is_some(),
+        EditorModeNet::Armor => forms.armor.is_some(),
+        EditorModeNet::Injury => forms.injury.is_some(),
+        EditorModeNet::Sprite => forms.sprite.is_some(),
+        EditorModeNet::Attachment => forms.attachment.is_some(),
+        EditorModeNet::Weapon => forms.weapon.is_some(),
+        EditorModeNet::MeleeWeapon => forms.melee_weapon.is_some(),
+        EditorModeNet::Field => forms.field.is_some(),
+        EditorModeNet::Prefab => true,
+    }
 }
 
-// The Injury tab draws two forms, so its weighting rows write a draft of their own.
-fn injury_field(
-    forms: &mut EditorForms,
-    registries: &EditorRegistries,
-    field: EditorFieldNet,
+// A field of a form other than the open tab, which answers for its own missing draft first.
+const fn foreign_arm(
+    forms: &EditorForms,
+    mode: EditorModeNet,
 ) -> Result<EditorFieldNet, SetFieldRefusal> {
-    match field {
-        EditorFieldNet::WeightingRowInjury { .. } | EditorFieldNet::WeightingRowWeight { .. } => {
-            Ok(weighting::write(
-                present(forms.weighting.as_mut())?,
-                registries.injuries.as_deref(),
-                field,
-            )?)
-        }
-        other => Ok(injury::write(present(forms.injury.as_mut())?, other)?),
+    if draft_in_world(forms, mode) {
+        Err(SetFieldRefusal::Fault(FormWriteFault::ForeignArm))
+    } else {
+        Err(SetFieldRefusal::DraftGone)
     }
 }
 
@@ -134,34 +139,58 @@ fn write_to(
     mode: EditorModeNet,
     field: EditorFieldNet,
 ) -> Result<EditorFieldNet, SetFieldRefusal> {
-    match mode {
-        EditorModeNet::Terrain => Ok(terrain::write(
-            present(forms.terrain.as_mut())?,
-            registries.weapons.as_deref(),
-            field,
-        )?),
-        EditorModeNet::Armor => Ok(armor::write(present(forms.armor.as_mut())?, field)?),
-        EditorModeNet::Sprite => Ok(sprite::write(present(forms.sprite.as_mut())?, field)?),
-        EditorModeNet::Attachment => Ok(attachment::write(
-            present(forms.attachment.as_mut())?,
-            field,
-        )?),
-        EditorModeNet::Injury => injury_field(forms, registries, field),
-        EditorModeNet::MeleeWeapon => Ok(melee_weapon::write(
-            present(forms.melee_weapon.as_mut())?,
-            field,
-        )?),
-        EditorModeNet::Theme => no_fields_of_its_own(forms.theme.as_mut()),
-        EditorModeNet::Gang => Ok(gang::write(
-            present(forms.gang.as_mut())?,
-            registries.weapons.as_deref(),
-            registries.melee_weapon.as_deref(),
-            registries.armor.as_deref(),
-            field,
-        )?),
-        EditorModeNet::Weapon => Ok(weapon::write(present(forms.weapon.as_mut())?, field)?),
-        EditorModeNet::Field => Ok(field::write(present(forms.field.as_mut())?, field)?),
-        EditorModeNet::Prefab => Err(SetFieldRefusal::Fault(FormWriteFault::ForeignArm)),
+    match (mode, field) {
+        (EditorModeNet::Terrain, EditorFieldNet::Terrain(field)) => {
+            Ok(EditorFieldNet::Terrain(terrain::write(
+                present(forms.terrain.as_mut())?,
+                registries.weapons.as_deref(),
+                field,
+            )?))
+        }
+        (EditorModeNet::Armor, EditorFieldNet::Armor(field)) => Ok(EditorFieldNet::Armor(
+            armor::write(present(forms.armor.as_mut())?, field)?,
+        )),
+        (EditorModeNet::Sprite, EditorFieldNet::Sprite(field)) => Ok(EditorFieldNet::Sprite(
+            sprite::write(present(forms.sprite.as_mut())?, field)?,
+        )),
+        (EditorModeNet::Attachment, EditorFieldNet::Attachment(field)) => {
+            Ok(EditorFieldNet::Attachment(attachment::write(
+                present(forms.attachment.as_mut())?,
+                field,
+            )?))
+        }
+        (EditorModeNet::Injury, EditorFieldNet::Injury(field)) => Ok(EditorFieldNet::Injury(
+            injury::write(present(forms.injury.as_mut())?, field)?,
+        )),
+        (EditorModeNet::Injury, EditorFieldNet::Weighting(field)) => {
+            Ok(EditorFieldNet::Weighting(weighting::write(
+                present(forms.weighting.as_mut())?,
+                registries.injuries.as_deref(),
+                field,
+            )?))
+        }
+        (EditorModeNet::MeleeWeapon, EditorFieldNet::MeleeWeapon(field)) => {
+            Ok(EditorFieldNet::MeleeWeapon(melee_weapon::write(
+                present(forms.melee_weapon.as_mut())?,
+                field,
+            )))
+        }
+        (EditorModeNet::Gang, EditorFieldNet::Gang(field)) => {
+            Ok(EditorFieldNet::Gang(gang::write(
+                present(forms.gang.as_mut())?,
+                registries.weapons.as_deref(),
+                registries.melee_weapon.as_deref(),
+                registries.armor.as_deref(),
+                field,
+            )?))
+        }
+        (EditorModeNet::Weapon, EditorFieldNet::Weapon(field)) => Ok(EditorFieldNet::Weapon(
+            weapon::write(present(forms.weapon.as_mut())?, field)?,
+        )),
+        (EditorModeNet::Field, EditorFieldNet::Field(field)) => Ok(EditorFieldNet::Field(
+            field::write(present(forms.field.as_mut())?, field)?,
+        )),
+        (mode, _) => foreign_arm(forms, mode),
     }
 }
 

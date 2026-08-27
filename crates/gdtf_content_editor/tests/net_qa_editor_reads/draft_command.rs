@@ -177,7 +177,7 @@ fn a_terrain_draft_that_will_not_convert_answers_not_savable() -> TestResult {
     open_tab(&mut app, &mut client, "Terrain")?;
     client.exchange(
         &mut app,
-        &run_editor(EDITOR_SET_FIELD, "(field: TerrainKind(Emplacement))"),
+        &run_editor(EDITOR_SET_FIELD, "(field: Terrain(Kind(Emplacement)))"),
     )?;
 
     let body = read_draft(&mut app, &mut client)?;

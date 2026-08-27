@@ -6,16 +6,16 @@ use gdtf_battle_sim::{
 use gdtf_content_editor::EditorMode;
 
 use crate::{
-    rows::FieldRow,
+    rows::{AttachmentFieldRow, FieldRow},
     setup::{attachment_draft, form_tab_app_and_client, list_op, set_field},
     support::TestResult,
     values::{EffectRow, FireModeRow, HitTypeRow, ModeKindRow, SlotRow},
 };
 
 /// The fire mode this suite writes, all five fields the form's own row edits.
-const A_FIRE_MODE: &str = "(field: AttachmentEffect(index: 0, effect: GainFireMode((kind: Burst, \
-                           cone_mult: 1.5, tu_percent: 0.25, shots: 3, hit_type: Cone(range: 4, \
-                           angle: 30.0)))))";
+const A_FIRE_MODE: &str = "(field: Attachment(Effect(index: 0, effect: GainFireMode((kind: \
+                           Burst, cone_mult: 1.5, tu_percent: 0.25, shots: 3, hit_type: \
+                           Cone(range: 4, angle: 30.0))))))";
 
 #[test]
 fn every_attachment_field_arm_writes_the_draft_the_form_would_write() -> TestResult {
@@ -24,9 +24,12 @@ fn every_attachment_field_arm_writes_the_draft_the_form_would_write() -> TestRes
     let named = set_field(
         &mut app,
         &mut client,
-        "(field: AttachmentName(\"red dot\"))",
+        "(field: Attachment(Name(\"red dot\")))",
     )?;
-    assert_eq!(named.field, FieldRow::AttachmentName("red dot".to_owned()));
+    assert_eq!(
+        named.field,
+        FieldRow::Attachment(AttachmentFieldRow::Name("red dot".to_owned())),
+    );
     assert_eq!(
         attachment_draft(&app)?.name(),
         "red dot",
@@ -36,15 +39,18 @@ fn every_attachment_field_arm_writes_the_draft_the_form_would_write() -> TestRes
     let shown = set_field(
         &mut app,
         &mut client,
-        "(field: AttachmentDisplayName(\"Red Dot Sight\"))",
+        "(field: Attachment(DisplayName(\"Red Dot Sight\")))",
     )?;
     assert_eq!(
         shown.field,
-        FieldRow::AttachmentDisplayName("Red Dot Sight".to_owned()),
+        FieldRow::Attachment(AttachmentFieldRow::DisplayName("Red Dot Sight".to_owned())),
     );
 
-    let slotted = set_field(&mut app, &mut client, "(field: AttachmentSlot(Sight))")?;
-    assert_eq!(slotted.field, FieldRow::AttachmentSlot(SlotRow::Sight));
+    let slotted = set_field(&mut app, &mut client, "(field: Attachment(Slot(Sight)))")?;
+    assert_eq!(
+        slotted.field,
+        FieldRow::Attachment(AttachmentFieldRow::Slot(SlotRow::Sight)),
+    );
 
     let draft = attachment_draft(&app)?;
     assert_eq!(
@@ -62,7 +68,7 @@ fn every_attachment_field_arm_writes_the_draft_the_form_would_write() -> TestRes
     let written = set_field(&mut app, &mut client, A_FIRE_MODE)?;
     assert_eq!(
         written.field,
-        FieldRow::AttachmentEffect {
+        FieldRow::Attachment(AttachmentFieldRow::Effect {
             index:  0,
             effect: EffectRow::GainFireMode(FireModeRow {
                 kind:       ModeKindRow::Burst,
@@ -74,7 +80,7 @@ fn every_attachment_field_arm_writes_the_draft_the_form_would_write() -> TestRes
                     angle: 30.0,
                 },
             }),
-        },
+        }),
         "the reply reads the effect back off the draft, every field the form's row edits",
     );
 

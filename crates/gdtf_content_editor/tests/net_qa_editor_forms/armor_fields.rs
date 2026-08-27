@@ -3,7 +3,7 @@ use gdtf_battle_sim::armor::{ArmorPiece, ArmorType, BodyPart};
 use gdtf_content_editor::{ArmorDraft, EditorMode};
 
 use crate::{
-    rows::{FieldRow, SetFieldReplyRow},
+    rows::{ArmorFieldRow, FieldRow, SetFieldReplyRow},
     setup::{armor_draft, form_tab_app_and_client, set_field},
     socket::Client,
     support::{TestError, TestResult},
@@ -53,7 +53,7 @@ fn write_stat(
     part: BodyPart,
     value: i32,
 ) -> Result<SetFieldReplyRow, TestError> {
-    let arguments = format!("(field: {arm}(part: {part:?}, value: {value}))");
+    let arguments = format!("(field: Armor({arm}(part: {part:?}, value: {value})))");
     set_field(app, client, &arguments)
 }
 
@@ -61,10 +61,10 @@ fn write_stat(
 fn every_armor_field_arm_writes_its_own_piece_and_stat() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Armor)?;
 
-    let named = set_field(&mut app, &mut client, "(field: ArmorName(\"flak vest\"))")?;
+    let named = set_field(&mut app, &mut client, "(field: Armor(Name(\"flak vest\")))")?;
     assert_eq!(
         named.field,
-        FieldRow::ArmorName("flak vest".to_owned()),
+        FieldRow::Armor(ArmorFieldRow::Name("flak vest".to_owned())),
         "the reply reads the name back off the draft",
     );
     assert_eq!(
@@ -76,24 +76,24 @@ fn every_armor_field_arm_writes_its_own_piece_and_stat() -> TestResult {
     for part in BodyPart::ALL {
         let value = stat_for(part);
         let row = part_row(part);
-        let floor = write_stat(&mut app, &mut client, "ArmorFloor", part, value)?;
+        let floor = write_stat(&mut app, &mut client, "Floor", part, value)?;
         assert_eq!(
             floor.field,
-            FieldRow::ArmorFloor { part: row, value },
+            FieldRow::Armor(ArmorFieldRow::Floor { part: row, value }),
             "the reply names the piece and the stat it wrote",
         );
-        write_stat(&mut app, &mut client, "ArmorProtection", part, value + 10)?;
-        write_stat(&mut app, &mut client, "ArmorHardness", part, value + 20)?;
-        write_stat(&mut app, &mut client, "ArmorIntegrity", part, value + 500)?;
+        write_stat(&mut app, &mut client, "Protection", part, value + 10)?;
+        write_stat(&mut app, &mut client, "Hardness", part, value + 20)?;
+        write_stat(&mut app, &mut client, "Integrity", part, value + 500)?;
 
-        let arguments = format!("(field: ArmorType(part: {part:?}, value: Ceramic))");
+        let arguments = format!("(field: Armor(Type(part: {part:?}, value: Ceramic)))");
         let typed = set_field(&mut app, &mut client, &arguments)?;
         assert_eq!(
             typed.field,
-            FieldRow::ArmorType {
+            FieldRow::Armor(ArmorFieldRow::Type {
                 part:  row,
                 value: ArmorTypeRow::Ceramic,
-            },
+            }),
             "the reply names the piece and the material it wrote",
         );
     }

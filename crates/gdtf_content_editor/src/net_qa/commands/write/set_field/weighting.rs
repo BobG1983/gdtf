@@ -7,7 +7,8 @@ use crate::{
     net_qa::{
         commands::write::{form_fault::FormWriteFault, weighting_rows},
         wire::{
-            EditorFieldNet, EditorListIndexNet, InjuryKeyNet, InjuryWeightNet, WeightingBucketNet,
+            EditorListIndexNet, InjuryKeyNet, InjuryWeightNet, WeightingBucketNet,
+            WeightingFieldNet,
         },
     },
 };
@@ -30,11 +31,11 @@ fn write_injury(
     bucket: WeightingBucketNet,
     index: EditorListIndexNet,
     injury: InjuryKeyNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<WeightingFieldNet, FormWriteFault> {
     let key = weighting_rows::known_key(registry, &injury)?;
     let row = row_at(draft, bucket, *index)?;
     row.injury = key;
-    Ok(EditorFieldNet::WeightingRowInjury {
+    Ok(WeightingFieldNet::RowInjury {
         bucket,
         index,
         injury: InjuryKeyNet::new(row.injury.as_str()),
@@ -46,10 +47,10 @@ fn write_weight(
     bucket: WeightingBucketNet,
     index: EditorListIndexNet,
     weight: InjuryWeightNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<WeightingFieldNet, FormWriteFault> {
     let row = row_at(draft, bucket, *index)?;
     row.weight = weight.to_weight();
-    Ok(EditorFieldNet::WeightingRowWeight {
+    Ok(WeightingFieldNet::RowWeight {
         bucket,
         index,
         weight: InjuryWeightNet::from_weight(row.weight),
@@ -60,19 +61,18 @@ fn write_weight(
 pub(super) fn write(
     draft: &mut WeightingDraft,
     registry: Option<&InjuryRegistry>,
-    field: EditorFieldNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+    field: WeightingFieldNet,
+) -> Result<WeightingFieldNet, FormWriteFault> {
     match field {
-        EditorFieldNet::WeightingRowInjury {
+        WeightingFieldNet::RowInjury {
             bucket,
             index,
             injury,
         } => write_injury(draft, registry, bucket, index, injury),
-        EditorFieldNet::WeightingRowWeight {
+        WeightingFieldNet::RowWeight {
             bucket,
             index,
             weight,
         } => write_weight(draft, bucket, index, weight),
-        _ => Err(FormWriteFault::ForeignArm),
     }
 }

@@ -62,7 +62,7 @@ fn a_row_edited_over_the_wire_is_in_the_file_the_save_writes() -> TestResult {
     crate::setup::set_field(
         &mut app,
         &mut client,
-        &format!("(field: WeightingRowWeight(bucket: Minor, index: 0, weight: {raised}))"),
+        &format!("(field: Weighting(RowWeight(bucket: Minor, index: 0, weight: {raised})))"),
     )?;
     let outcome = save_weighting(&mut app, &mut client)?;
 

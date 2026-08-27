@@ -5,7 +5,7 @@ use crate::{
     net_qa::{
         commands::write::form_fault::{FIELD_AUTOLOAD_PENDING, FormWriteFault},
         wire::{
-            DamageTypeNet, EditorDraftNameNet, EditorFieldNet, FieldDamageNet, FieldDurationNet,
+            DamageTypeNet, EditorDraftNameNet, FieldDamageNet, FieldDurationNet, FieldFormFieldNet,
         },
     },
 };
@@ -21,7 +21,7 @@ const fn settled(draft: &FieldDraft) -> Result<(), FormWriteFault> {
 fn write_duration(
     draft: &mut FieldDraft,
     duration: FieldDurationNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<FieldFormFieldNet, FormWriteFault> {
     let Some(wanted) = duration.to_duration() else {
         return Err(FormWriteFault::bad(format!(
             "a field duration of Turns(0) never loads; the form's own turn drag starts at {}, \
@@ -30,7 +30,7 @@ fn write_duration(
         )));
     };
     draft.set_duration(wanted);
-    Ok(EditorFieldNet::FieldDuration(
+    Ok(FieldFormFieldNet::Duration(
         FieldDurationNet::from_duration(draft.duration()),
     ))
 }
@@ -38,34 +38,33 @@ fn write_duration(
 /// Write one Field field, answering the field as the draft stores it.
 pub(super) fn write(
     draft: &mut FieldDraft,
-    field: EditorFieldNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+    field: FieldFormFieldNet,
+) -> Result<FieldFormFieldNet, FormWriteFault> {
     match field {
-        EditorFieldNet::FieldName(name) => {
+        FieldFormFieldNet::Name(name) => {
             settled(draft)?;
             draft.set_key((*name).clone());
-            Ok(EditorFieldNet::FieldName(EditorDraftNameNet::new(
+            Ok(FieldFormFieldNet::Name(EditorDraftNameNet::new(
                 draft.key(),
             )))
         }
-        EditorFieldNet::FieldDamage(damage) => {
+        FieldFormFieldNet::Damage(damage) => {
             settled(draft)?;
             draft.set_damage(damage.to_damage());
-            Ok(EditorFieldNet::FieldDamage(FieldDamageNet::from_damage(
+            Ok(FieldFormFieldNet::Damage(FieldDamageNet::from_damage(
                 draft.damage(),
             )))
         }
-        EditorFieldNet::FieldDamageType(damage_type) => {
+        FieldFormFieldNet::DamageType(damage_type) => {
             settled(draft)?;
             draft.set_damage_type(damage_type.to_damage_type());
-            Ok(EditorFieldNet::FieldDamageType(
+            Ok(FieldFormFieldNet::DamageType(
                 DamageTypeNet::from_damage_type(draft.damage_type()),
             ))
         }
-        EditorFieldNet::FieldDuration(duration) => {
+        FieldFormFieldNet::Duration(duration) => {
             settled(draft)?;
             write_duration(draft, duration)
         }
-        _ => Err(FormWriteFault::ForeignArm),
     }
 }

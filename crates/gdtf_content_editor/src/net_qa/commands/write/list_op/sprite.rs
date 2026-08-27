@@ -91,8 +91,8 @@ pub(super) fn apply(draft: &mut SpriteDraft, op: EditorListOpNet) -> Result<(), 
                 .to_owned(),
         )),
         EditorListOpNet::SetAt(..) => Err(FormWriteFault::bad(
-            "one frame source is rewritten through the SpriteFrame field arm, not through the \
-             list"
+            "one frame source is rewritten through the `Sprite(Frame(index: n, source: …))` \
+             field arm, not through the list"
                 .to_owned(),
         )),
         EditorListOpNet::Add => {

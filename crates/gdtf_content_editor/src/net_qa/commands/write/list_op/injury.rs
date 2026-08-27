@@ -52,8 +52,8 @@ pub(super) fn apply(draft: &mut InjuryDraft, op: EditorListOpNet) -> Result<(), 
                 .to_owned(),
         )),
         EditorListOpNet::SetAt(..) => Err(FormWriteFault::bad(
-            "one injury effect is rewritten through the InjuryEffect field arm, not through the \
-             list"
+            "one injury effect is rewritten through the `Injury(Effect(index: n, effect: …))` \
+             field arm, not through the list"
                 .to_owned(),
         )),
         EditorListOpNet::MoveUp(_) | EditorListOpNet::MoveDown(_) => Err(FormWriteFault::bad(

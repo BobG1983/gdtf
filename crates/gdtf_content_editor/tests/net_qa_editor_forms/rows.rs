@@ -7,133 +7,184 @@ use crate::values::{
     TagRow, TerrainKindRow, TileRoleRow, TrajectoryRow,
 };
 
-/// Which single-value field a write named, carrying the value read back off the draft.
+/// Which single-value field a write named, under the form that owns it.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub(crate) enum FieldRow {
-    ArmorName(String),
-    SpriteName(String),
-    AttachmentName(String),
-    ArmorFloor {
+    Terrain(TerrainFieldRow),
+    Armor(ArmorFieldRow),
+    Sprite(SpriteFieldRow),
+    Attachment(AttachmentFieldRow),
+    Injury(InjuryFieldRow),
+    MeleeWeapon(MeleeWeaponFieldRow),
+    Gang(GangFieldRow),
+    Weapon(WeaponFieldRow),
+    Field(FieldFormFieldRow),
+}
+
+/// A Terrain field a write named, with the value read back off the draft.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) enum TerrainFieldRow {
+    Kind(TerrainKindRow),
+    DisplayName(String),
+    Hp(u32),
+    ArmorProtection(i32),
+    ArmorHardness(i32),
+    HeightBand(BandRow),
+    Graphic(TileRoleRow),
+    Footfall(FootfallRow),
+    MountedWeapon(Option<String>),
+    BlocksPathing(Option<bool>),
+    BlocksLos(Option<LosRow>),
+}
+
+/// An Armor field a write named, with the value read back off the draft.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) enum ArmorFieldRow {
+    Name(String),
+    Floor {
         part:  BodyPartRow,
         value: i32,
     },
-    ArmorProtection {
+    Protection {
         part:  BodyPartRow,
         value: i32,
     },
-    ArmorHardness {
+    Hardness {
         part:  BodyPartRow,
         value: i32,
     },
-    ArmorIntegrity {
+    Integrity {
         part:  BodyPartRow,
         value: i32,
     },
-    ArmorType {
+    Type {
         part:  BodyPartRow,
         value: ArmorTypeRow,
     },
-    SpriteBaseSource(SourceRow),
-    SpriteAnchorX(u32),
-    SpriteAnchorY(u32),
-    SpriteFps(f32),
-    SpriteFacingOverride {
+}
+
+/// A Sprite field a write named, with the value read back off the draft.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) enum SpriteFieldRow {
+    Name(String),
+    BaseSource(SourceRow),
+    AnchorX(u32),
+    AnchorY(u32),
+    Fps(f32),
+    FacingOverride {
         facing: FacingRow,
         source: Option<SourceRow>,
     },
-    SpriteFrame {
+    Frame {
         index:  usize,
         source: SourceRow,
     },
-    SpriteAnimated(bool),
-    AttachmentDisplayName(String),
-    AttachmentSlot(SlotRow),
-    AttachmentEffect {
-        index:  usize,
-        effect: EffectRow,
-    },
-    TerrainKind(TerrainKindRow),
-    TerrainDisplayName(String),
-    TerrainHp(u32),
-    TerrainArmorProtection(i32),
-    TerrainArmorHardness(i32),
-    TerrainHeightBand(BandRow),
-    TerrainGraphic(TileRoleRow),
-    TerrainFootfall(FootfallRow),
-    TerrainMountedWeapon(Option<String>),
-    TerrainBlocksPathing(Option<bool>),
-    TerrainBlocksLos(Option<LosRow>),
-    InjuryKey(String),
-    InjuryName(String),
-    InjuryCategory(CategoryRow),
-    InjurySeverity(SeverityRow),
-    InjuryPopupText(String),
-    InjuryLogText(String),
-    InjuryInspectText(String),
-    InjuryEffect {
+    Animated(bool),
+}
+
+/// An Attachment field a write named, with the value read back off the draft.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) enum AttachmentFieldRow {
+    Name(String),
+    DisplayName(String),
+    Slot(SlotRow),
+    Effect { index: usize, effect: EffectRow },
+}
+
+/// An Injury field a write named, with the value read back off the draft.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) enum InjuryFieldRow {
+    Key(String),
+    Name(String),
+    Category(CategoryRow),
+    Severity(SeverityRow),
+    PopupText(String),
+    LogText(String),
+    InspectText(String),
+    Effect {
         index:  usize,
         effect: InjuryEffectRow,
     },
-    MeleeWeaponName(String),
-    MeleeWeaponDamage(i32),
-    MeleeWeaponPunch(i32),
-    MeleeWeaponShred(i32),
-    MeleeWeaponDamageType(DamageTypeRow),
-    MeleeWeaponFatalBias(f32),
-    MeleeWeaponHandedness(HandednessRow),
-    MeleeWeaponReach(u16),
-    MeleeWeaponShove(bool),
-    GangName(String),
-    GangMemberName {
+}
+
+/// A Melee Weapon field a write named, with the value read back off the draft.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) enum MeleeWeaponFieldRow {
+    Name(String),
+    Damage(i32),
+    Punch(i32),
+    Shred(i32),
+    DamageType(DamageTypeRow),
+    FatalBias(f32),
+    Handedness(HandednessRow),
+    Reach(u16),
+    Shove(bool),
+}
+
+/// A Gang field a write named, with the value read back off the draft.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) enum GangFieldRow {
+    Name(String),
+    MemberName {
         index: usize,
         name:  String,
     },
-    GangMemberAttribute {
+    MemberAttribute {
         index:     usize,
         attribute: GangAttributeRow,
         value:     f32,
     },
-    GangMemberWeapon {
+    MemberWeapon {
         index: usize,
         key:   String,
     },
-    GangMemberArmor {
+    MemberArmor {
         index: usize,
         key:   String,
     },
-    GangMemberMeleeWeapon {
+    MemberMeleeWeapon {
         index: usize,
         key:   Option<String>,
     },
-    WeaponName(String),
-    WeaponBaseSpread(f32),
-    WeaponAccuracy(f32),
-    WeaponKickback(f32),
-    WeaponDamage(i32),
-    WeaponPunch(i32),
-    WeaponShred(i32),
-    WeaponDamageType(DamageTypeRow),
-    WeaponFatalBias(f32),
-    WeaponHandedness(HandednessRow),
-    WeaponTrajectory(TrajectoryRow),
-    WeaponStable(bool),
-    WeaponShove(bool),
-    WeaponMagazineSize(u16),
-    WeaponMagazineReloadTu(u8),
-    WeaponDot(bool),
-    WeaponDotDamage(u16),
-    WeaponDotTurns(u8),
-    WeaponDotDamageType(DamageTypeRow),
-    WeaponOnDeath(bool),
-    WeaponOnDeathVariant(OnDeathVariantRow),
-    WeaponOnDeathHitType(HitTypeRow),
-    WeaponOnDeathDamage(u16),
-    WeaponOnDeathDamageType(DamageTypeRow),
-    WeaponOnDeathField(String),
-    FieldName(String),
-    FieldDamage(u16),
-    FieldDamageType(DamageTypeRow),
-    FieldDuration(DurationRow),
+}
+
+/// A Weapon field a write named, with the value read back off the draft.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) enum WeaponFieldRow {
+    Name(String),
+    BaseSpread(f32),
+    Accuracy(f32),
+    Kickback(f32),
+    Damage(i32),
+    Punch(i32),
+    Shred(i32),
+    DamageType(DamageTypeRow),
+    FatalBias(f32),
+    Handedness(HandednessRow),
+    Trajectory(TrajectoryRow),
+    Stable(bool),
+    Shove(bool),
+    MagazineSize(u16),
+    MagazineReloadTu(u8),
+    Dot(bool),
+    DotDamage(u16),
+    DotTurns(u8),
+    DotDamageType(DamageTypeRow),
+    OnDeath(bool),
+    OnDeathVariant(OnDeathVariantRow),
+    OnDeathHitType(HitTypeRow),
+    OnDeathDamage(u16),
+    OnDeathDamageType(DamageTypeRow),
+    OnDeathField(String),
+}
+
+/// A Field field a write named, with the value read back off the draft.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) enum FieldFormFieldRow {
+    Name(String),
+    Damage(u16),
+    DamageType(DamageTypeRow),
+    Duration(DurationRow),
 }
 
 /// Which list a write named.

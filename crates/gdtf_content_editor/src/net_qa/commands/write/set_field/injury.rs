@@ -7,8 +7,8 @@ use crate::{
     net_qa::{
         commands::write::form_fault::FormWriteFault,
         wire::{
-            EditorDraftNameNet, EditorFieldNet, EditorListIndexNet, InjuryCategoryNet,
-            InjuryEffectNet, InjuryKeyNet, InjurySeverityNet, InjuryTextNet,
+            EditorDraftNameNet, EditorListIndexNet, InjuryCategoryNet, InjuryEffectNet,
+            InjuryFieldNet, InjuryKeyNet, InjurySeverityNet, InjuryTextNet,
         },
     },
 };
@@ -32,10 +32,10 @@ fn write_effect(
     draft: &mut InjuryDraft,
     index: usize,
     effect: InjuryEffectNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<InjuryFieldNet, FormWriteFault> {
     effect_at(draft, index)?;
     draft.set_effect(index, effect.to_effect());
-    Ok(EditorFieldNet::InjuryEffect {
+    Ok(InjuryFieldNet::Effect {
         index:  EditorListIndexNet::new(index),
         effect: effect_at(draft, index)?,
     })
@@ -44,50 +44,47 @@ fn write_effect(
 /// Write one Injury field, answering the field as the draft stores it.
 pub(super) fn write(
     draft: &mut InjuryDraft,
-    field: EditorFieldNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+    field: InjuryFieldNet,
+) -> Result<InjuryFieldNet, FormWriteFault> {
     match field {
-        EditorFieldNet::InjuryKey(key) => {
+        InjuryFieldNet::Key(key) => {
             draft.set_key((*key).clone());
-            Ok(EditorFieldNet::InjuryKey(InjuryKeyNet::new(draft.key())))
+            Ok(InjuryFieldNet::Key(InjuryKeyNet::new(draft.key())))
         }
-        EditorFieldNet::InjuryName(name) => {
+        InjuryFieldNet::Name(name) => {
             draft.def_mut().name = InjuryName::new((*name).clone());
-            Ok(EditorFieldNet::InjuryName(EditorDraftNameNet::new(
+            Ok(InjuryFieldNet::Name(EditorDraftNameNet::new(
                 draft.def().name.as_str(),
             )))
         }
-        EditorFieldNet::InjuryCategory(category) => {
+        InjuryFieldNet::Category(category) => {
             draft.def_mut().category = category.to_category();
-            Ok(EditorFieldNet::InjuryCategory(
-                InjuryCategoryNet::from_category(draft.def().category),
-            ))
-        }
-        EditorFieldNet::InjurySeverity(severity) => {
-            draft.def_mut().severity = severity.to_severity();
-            Ok(EditorFieldNet::InjurySeverity(stored_severity(
-                draft, severity,
+            Ok(InjuryFieldNet::Category(InjuryCategoryNet::from_category(
+                draft.def().category,
             )))
         }
-        EditorFieldNet::InjuryPopupText(text) => {
+        InjuryFieldNet::Severity(severity) => {
+            draft.def_mut().severity = severity.to_severity();
+            Ok(InjuryFieldNet::Severity(stored_severity(draft, severity)))
+        }
+        InjuryFieldNet::PopupText(text) => {
             draft.def_mut().popup_text = PopupText::new((*text).clone());
-            Ok(EditorFieldNet::InjuryPopupText(InjuryTextNet::new(
+            Ok(InjuryFieldNet::PopupText(InjuryTextNet::new(
                 &draft.def().popup_text,
             )))
         }
-        EditorFieldNet::InjuryLogText(text) => {
+        InjuryFieldNet::LogText(text) => {
             draft.def_mut().log_text = LogText::new((*text).clone());
-            Ok(EditorFieldNet::InjuryLogText(InjuryTextNet::new(
+            Ok(InjuryFieldNet::LogText(InjuryTextNet::new(
                 &draft.def().log_text,
             )))
         }
-        EditorFieldNet::InjuryInspectText(text) => {
+        InjuryFieldNet::InspectText(text) => {
             draft.def_mut().inspect_text = InspectText::new((*text).clone());
-            Ok(EditorFieldNet::InjuryInspectText(InjuryTextNet::new(
+            Ok(InjuryFieldNet::InspectText(InjuryTextNet::new(
                 &draft.def().inspect_text,
             )))
         }
-        EditorFieldNet::InjuryEffect { index, effect } => write_effect(draft, *index, effect),
-        _ => Err(FormWriteFault::ForeignArm),
+        InjuryFieldNet::Effect { index, effect } => write_effect(draft, *index, effect),
     }
 }

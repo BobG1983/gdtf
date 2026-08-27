@@ -1,14 +1,12 @@
 use gdtf_battle_sim::{
     equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity},
-    weapon::{DamageType, FightModeKind, Handedness, Reach},
+    weapon::{FightModeKind, Handedness, Reach},
 };
 
 use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::net_qa::wire::{
-    AttachmentKeyNet, AttachmentSlotNet, DamageTypeNet, EditorDraftNameNet, EditorFieldNet,
-    FatalBiasNet, FightModeKindNet, FightModeSpecNet, HandednessNet, ReachNet, ShoveNet,
-    SlotCapacityNet, StrikesNet, TuCostNet, WeaponDamageNet, WeaponPunchNet, WeaponShredNet,
-    WeaponSlotNet,
+    AttachmentKeyNet, AttachmentSlotNet, FightModeKindNet, FightModeSpecNet, HandednessNet,
+    ReachNet, ShoveNet, SlotCapacityNet, StrikesNet, TuCostNet, WeaponSlotNet,
 };
 
 fn a_mode() -> FightModeSpecNet {
@@ -47,27 +45,6 @@ fn every_melee_weapon_value_round_trips() {
     assert_ron_round_trip(&AttachmentKeyNet::from_key(&AttachmentName::new(
         "chain_teeth".to_owned(),
     )));
-}
-
-#[test]
-fn every_melee_weapon_field_arm_round_trips() {
-    assert_ron_round_trip(&EditorFieldNet::MeleeWeaponName(EditorDraftNameNet::new(
-        "chain cleaver",
-    )));
-    assert_ron_round_trip(&EditorFieldNet::MeleeWeaponDamage(WeaponDamageNet::new(7)));
-    assert_ron_round_trip(&EditorFieldNet::MeleeWeaponPunch(WeaponPunchNet::new(2)));
-    assert_ron_round_trip(&EditorFieldNet::MeleeWeaponShred(WeaponShredNet::new(1)));
-    assert_ron_round_trip(&EditorFieldNet::MeleeWeaponDamageType(
-        DamageTypeNet::from_damage_type(DamageType::Rend),
-    ));
-    assert_ron_round_trip(&EditorFieldNet::MeleeWeaponFatalBias(FatalBiasNet::new(
-        0.25,
-    )));
-    assert_ron_round_trip(&EditorFieldNet::MeleeWeaponHandedness(
-        HandednessNet::TwoHanded,
-    ));
-    assert_ron_round_trip(&EditorFieldNet::MeleeWeaponReach(ReachNet::new(2)));
-    assert_ron_round_trip(&EditorFieldNet::MeleeWeaponShove(ShoveNet::new(true)));
 }
 
 #[test]

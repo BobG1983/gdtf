@@ -34,12 +34,14 @@ mod refusal;
 mod rows;
 #[path = "../net_qa_shared/save_fault.rs"]
 mod save_fault;
+mod set_at_refusals;
 mod setup;
 #[path = "../net_qa_shared/socket.rs"]
 mod socket;
 mod sprite_fields;
 #[path = "../net_qa_shared/support.rs"]
 mod support;
+mod terrain_clamps;
 mod terrain_clears;
 mod terrain_fields;
 mod terrain_gates;

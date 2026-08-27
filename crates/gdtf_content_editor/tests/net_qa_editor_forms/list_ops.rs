@@ -39,23 +39,23 @@ fn a_file(name: &str) -> SpriteSource {
 // A three-frame animation whose frames are all different, so a reorder is visible.
 fn three_frames(app: &mut App, client: &mut Client) -> Result<(), TestError> {
     set_field(app, client, A_SHEET)?;
-    set_field(app, client, "(field: SpriteAnimated(true))")?;
+    set_field(app, client, "(field: Sprite(Animated(true)))")?;
     set_field(
         app,
         client,
-        "(field: SpriteFrame(index: 0, source: File(\"sprites/a.png\")))",
+        "(field: Sprite(Frame(index: 0, source: File(\"sprites/a.png\"))))",
     )?;
     list_op(app, client, "(list: SpriteFrames, op: Add)")?;
     set_field(
         app,
         client,
-        "(field: SpriteFrame(index: 1, source: File(\"sprites/b.png\")))",
+        "(field: Sprite(Frame(index: 1, source: File(\"sprites/b.png\"))))",
     )?;
     list_op(app, client, "(list: SpriteFrames, op: Add)")?;
     set_field(
         app,
         client,
-        "(field: SpriteFrame(index: 2, source: File(\"sprites/c.png\")))",
+        "(field: Sprite(Frame(index: 2, source: File(\"sprites/c.png\"))))",
     )?;
     Ok(())
 }
@@ -163,7 +163,7 @@ fn sprite_frames_move_up_and_down_and_the_world_agrees() -> TestResult {
 #[test]
 fn a_toggle_adds_the_entry_side_then_takes_it_back_off() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
+    set_field(&mut app, &mut client, "(field: Terrain(Kind(Emplacement)))")?;
     assert!(
         terrain_draft(&app)?.entry_sides().is_empty(),
         "a fresh Emplacement draft names no entry side, or the toggles below would prove nothing",

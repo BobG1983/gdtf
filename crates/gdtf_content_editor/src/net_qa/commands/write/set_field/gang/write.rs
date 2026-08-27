@@ -12,8 +12,8 @@ use crate::{
     net_qa::{
         commands::write::form_fault::FormWriteFault,
         wire::{
-            EditorDraftNameNet, EditorFieldNet, EditorKeyNet, EditorListIndexNet, GangAttributeNet,
-            GangAttributeValueNet,
+            EditorDraftNameNet, EditorKeyNet, EditorListIndexNet, GangAttributeNet,
+            GangAttributeValueNet, GangFieldNet,
         },
     },
 };
@@ -93,10 +93,10 @@ fn write_member_name(
     draft: &mut GangDraft,
     index: EditorListIndexNet,
     name: &EditorDraftNameNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<GangFieldNet, FormWriteFault> {
     let member = member_at(draft, index)?;
     member.name = GangerName::new((**name).clone());
-    Ok(EditorFieldNet::GangMemberName {
+    Ok(GangFieldNet::MemberName {
         index,
         name: EditorDraftNameNet::new(member.name.as_str()),
     })
@@ -107,10 +107,10 @@ fn write_attribute(
     index: EditorListIndexNet,
     attribute: GangAttributeNet,
     value: GangAttributeValueNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<GangFieldNet, FormWriteFault> {
     let wanted = in_range(value)?;
     let member = member_at(draft, index)?;
-    Ok(EditorFieldNet::GangMemberAttribute {
+    Ok(GangFieldNet::MemberAttribute {
         index,
         attribute,
         value: store_attribute(member, attribute, wanted),
@@ -122,11 +122,11 @@ fn write_weapon(
     weapons: Option<&WeaponRegistry>,
     index: EditorListIndexNet,
     key: &EditorKeyNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<GangFieldNet, FormWriteFault> {
     let wanted = registry::weapon(weapons, key)?;
     let member = member_at(draft, index)?;
     member.weapon = wanted;
-    Ok(EditorFieldNet::GangMemberWeapon {
+    Ok(GangFieldNet::MemberWeapon {
         index,
         key: EditorKeyNet::new(member.weapon.as_str().to_owned()),
     })
@@ -137,11 +137,11 @@ fn write_armor(
     armor: Option<&ArmorRegistry>,
     index: EditorListIndexNet,
     key: &EditorKeyNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<GangFieldNet, FormWriteFault> {
     let wanted = registry::armor(armor, key)?;
     let member = member_at(draft, index)?;
     member.armor = wanted;
-    Ok(EditorFieldNet::GangMemberArmor {
+    Ok(GangFieldNet::MemberArmor {
         index,
         key: EditorKeyNet::new(member.armor.as_str().to_owned()),
     })
@@ -152,14 +152,14 @@ fn write_melee_weapon(
     melee: Option<&MeleeWeaponRegistry>,
     index: EditorListIndexNet,
     key: Option<&EditorKeyNet>,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<GangFieldNet, FormWriteFault> {
     let wanted = match key {
         Some(key) => Some(registry::melee_weapon(melee, key)?),
         None => None,
     };
     let member = member_at(draft, index)?;
     member.melee_weapon = wanted;
-    Ok(EditorFieldNet::GangMemberMeleeWeapon {
+    Ok(GangFieldNet::MemberMeleeWeapon {
         index,
         key: member
             .melee_weapon
@@ -174,28 +174,23 @@ pub(in crate::net_qa::commands::write::set_field) fn write(
     weapons: Option<&WeaponRegistry>,
     melee: Option<&MeleeWeaponRegistry>,
     armor: Option<&ArmorRegistry>,
-    field: EditorFieldNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+    field: GangFieldNet,
+) -> Result<GangFieldNet, FormWriteFault> {
     match field {
-        EditorFieldNet::GangName(name) => {
+        GangFieldNet::Name(name) => {
             draft.set_name((*name).clone());
-            Ok(EditorFieldNet::GangName(EditorDraftNameNet::new(
-                draft.name(),
-            )))
+            Ok(GangFieldNet::Name(EditorDraftNameNet::new(draft.name())))
         }
-        EditorFieldNet::GangMemberName { index, name } => write_member_name(draft, index, &name),
-        EditorFieldNet::GangMemberAttribute {
+        GangFieldNet::MemberName { index, name } => write_member_name(draft, index, &name),
+        GangFieldNet::MemberAttribute {
             index,
             attribute,
             value,
         } => write_attribute(draft, index, attribute, value),
-        EditorFieldNet::GangMemberWeapon { index, key } => {
-            write_weapon(draft, weapons, index, &key)
-        }
-        EditorFieldNet::GangMemberArmor { index, key } => write_armor(draft, armor, index, &key),
-        EditorFieldNet::GangMemberMeleeWeapon { index, key } => {
+        GangFieldNet::MemberWeapon { index, key } => write_weapon(draft, weapons, index, &key),
+        GangFieldNet::MemberArmor { index, key } => write_armor(draft, armor, index, &key),
+        GangFieldNet::MemberMeleeWeapon { index, key } => {
             write_melee_weapon(draft, melee, index, key.as_ref())
         }
-        _ => Err(FormWriteFault::ForeignArm),
     }
 }

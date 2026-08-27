@@ -10,8 +10,8 @@ use super::{
 use crate::{
     gang_form::GangDraft,
     net_qa::wire::{
-        EditorDraftNameNet, EditorFieldNet, EditorListIndexNet, GangAttributeNet,
-        GangAttributeValueNet,
+        EditorDraftNameNet, EditorListIndexNet, GangAttributeNet, GangAttributeValueNet,
+        GangFieldNet,
     },
 };
 
@@ -21,7 +21,7 @@ fn refused(
     weapons: Option<&WeaponRegistry>,
     melee: Option<&MeleeWeaponRegistry>,
     armor: Option<&ArmorRegistry>,
-    field: EditorFieldNet,
+    field: GangFieldNet,
 ) -> (&'static str, String) {
     match refusal(write(draft, weapons, melee, armor, field)) {
         Ok(parts) => parts,
@@ -39,7 +39,7 @@ fn an_attribute_over_the_range_the_drag_offers_is_refused_bad_arguments() {
         Some(&weapons()),
         Some(&melee_weapons()),
         Some(&armor()),
-        EditorFieldNet::GangMemberAttribute {
+        GangFieldNet::MemberAttribute {
             index:     FIRST,
             attribute: GangAttributeNet::Speed,
             value:     over,
@@ -66,7 +66,7 @@ fn an_attribute_under_the_range_the_drag_offers_is_refused_bad_arguments() {
         Some(&weapons()),
         Some(&melee_weapons()),
         Some(&armor()),
-        EditorFieldNet::GangMemberAttribute {
+        GangFieldNet::MemberAttribute {
             index:     FIRST,
             attribute: GangAttributeNet::Luck,
             value:     under,
@@ -86,7 +86,7 @@ fn a_member_index_past_the_end_of_the_roster_is_refused_bad_arguments() {
         Some(&weapons()),
         Some(&melee_weapons()),
         Some(&armor()),
-        EditorFieldNet::GangMemberName {
+        GangFieldNet::MemberName {
             index: past,
             name:  EditorDraftNameNet::new("Kez"),
         },
@@ -105,15 +105,15 @@ fn a_member_index_past_the_end_of_the_roster_is_refused_bad_arguments() {
 fn a_key_none_of_the_three_registries_holds_is_refused_bad_arguments_naming_it() {
     let mut draft = one_member();
     for field in [
-        EditorFieldNet::GangMemberWeapon {
+        GangFieldNet::MemberWeapon {
             index: FIRST,
             key:   asked_key("no_such_key"),
         },
-        EditorFieldNet::GangMemberArmor {
+        GangFieldNet::MemberArmor {
             index: FIRST,
             key:   asked_key("no_such_key"),
         },
-        EditorFieldNet::GangMemberMeleeWeapon {
+        GangFieldNet::MemberMeleeWeapon {
             index: FIRST,
             key:   Some(asked_key("no_such_key")),
         },
@@ -149,7 +149,7 @@ fn a_registry_that_is_absent_answers_missing_model() {
         None,
         Some(&melee_weapons()),
         Some(&armor()),
-        EditorFieldNet::GangMemberWeapon {
+        GangFieldNet::MemberWeapon {
             index: FIRST,
             key:   asked_key(SEEDED_KEY),
         },
@@ -168,7 +168,7 @@ fn a_registry_that_is_present_and_empty_answers_missing_model() {
         Some(&weapons()),
         Some(&melee_weapons()),
         Some(&empty),
-        EditorFieldNet::GangMemberArmor {
+        GangFieldNet::MemberArmor {
             index: FIRST,
             key:   asked_key(SEEDED_KEY),
         },
@@ -179,19 +179,4 @@ fn a_registry_that_is_present_and_empty_answers_missing_model() {
         "an empty registry offers the combo no row, which is a missing model rather than a bad \
          argument",
     );
-}
-
-#[test]
-fn another_forms_field_arm_is_read_as_foreign() {
-    let mut draft = one_member();
-
-    let (kind, _) = refused(
-        &mut draft,
-        Some(&weapons()),
-        Some(&melee_weapons()),
-        Some(&armor()),
-        EditorFieldNet::ArmorName(EditorDraftNameNet::new("scarred plate")),
-    );
-
-    assert_eq!(kind, "ForeignArm");
 }

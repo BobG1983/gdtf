@@ -4,8 +4,8 @@ use gdtf_content_families::sprites::{
 
 use super::super::assert_ron_round_trip;
 use crate::net_qa::wire::{
-    EditorFieldNet, EditorListIndexNet, SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet,
-    SpritePxNet, SpriteSourceNet,
+    EditorFieldNet, EditorListIndexNet, SpriteAnimatedNet, SpriteFacingNet, SpriteFieldNet,
+    SpriteFpsNet, SpritePxNet, SpriteSourceNet,
 };
 
 fn a_source() -> SpriteSourceNet {
@@ -22,31 +22,33 @@ fn a_source() -> SpriteSourceNet {
 
 #[test]
 fn every_sprite_field_arm_round_trips() {
-    assert_ron_round_trip(&EditorFieldNet::SpriteBaseSource(a_source()));
-    assert_ron_round_trip(&EditorFieldNet::SpriteAnchorX(SpritePxNet::from_px(
-        SpritePx::new(2),
+    assert_ron_round_trip(&EditorFieldNet::Sprite(SpriteFieldNet::BaseSource(
+        a_source(),
     )));
-    assert_ron_round_trip(&EditorFieldNet::SpriteAnchorY(SpritePxNet::from_px(
-        SpritePx::new(3),
+    assert_ron_round_trip(&EditorFieldNet::Sprite(SpriteFieldNet::AnchorX(
+        SpritePxNet::from_px(SpritePx::new(2)),
     )));
-    assert_ron_round_trip(&EditorFieldNet::SpriteFps(SpriteFpsNet::from_fps(
-        SpriteFps::new(12.0),
+    assert_ron_round_trip(&EditorFieldNet::Sprite(SpriteFieldNet::AnchorY(
+        SpritePxNet::from_px(SpritePx::new(3)),
+    )));
+    assert_ron_round_trip(&EditorFieldNet::Sprite(SpriteFieldNet::Fps(
+        SpriteFpsNet::from_fps(SpriteFps::new(12.0)),
     )));
     for facing in SpriteFacingNet::ALL {
-        assert_ron_round_trip(&EditorFieldNet::SpriteFacingOverride {
+        assert_ron_round_trip(&EditorFieldNet::Sprite(SpriteFieldNet::FacingOverride {
             facing,
             source: Some(a_source()),
-        });
-        assert_ron_round_trip(&EditorFieldNet::SpriteFacingOverride {
+        }));
+        assert_ron_round_trip(&EditorFieldNet::Sprite(SpriteFieldNet::FacingOverride {
             facing,
             source: None,
-        });
+        }));
     }
-    assert_ron_round_trip(&EditorFieldNet::SpriteFrame {
+    assert_ron_round_trip(&EditorFieldNet::Sprite(SpriteFieldNet::Frame {
         index:  EditorListIndexNet::new(1),
         source: a_source(),
-    });
-    assert_ron_round_trip(&EditorFieldNet::SpriteAnimated(SpriteAnimatedNet::new(
-        true,
+    }));
+    assert_ron_round_trip(&EditorFieldNet::Sprite(SpriteFieldNet::Animated(
+        SpriteAnimatedNet::new(true),
     )));
 }

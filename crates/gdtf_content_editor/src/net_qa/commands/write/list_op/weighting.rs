@@ -13,8 +13,8 @@ use crate::{
 const NO_TOGGLE: &str = "a weighting bucket is authored by adding, removing and rewriting rows, so it draws no tick \
      boxes and offers no toggle";
 
-const NOT_THROUGH_THE_LIST: &str = "one weighting row is rewritten through the WeightingRowInjury and WeightingRowWeight \
-     field arms, not through the list";
+const NOT_THROUGH_THE_LIST: &str = "one weighting row is rewritten through the `Weighting(RowInjury(…))` and \
+     `Weighting(RowWeight(…))` field arms, not through the list";
 
 const NO_REORDER: &str = "a weighting bucket draws no reorder buttons. The Sprite form's animation frames are the one \
      list that reorders";

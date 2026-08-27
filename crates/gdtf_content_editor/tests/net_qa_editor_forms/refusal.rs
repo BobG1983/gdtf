@@ -25,7 +25,7 @@ fn an_attachment_field_on_the_sprite_tab_is_refused_and_the_note_names_the_activ
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Sprite)?;
     let before = sprite_draft(&app)?;
 
-    let reply = try_set_field(&mut app, &mut client, "(field: AttachmentSlot(Rail))")?;
+    let reply = try_set_field(&mut app, &mut client, "(field: Attachment(Slot(Rail)))")?;
     assert_eq!(
         unavailable_code(&reply)?,
         "WrongState",
@@ -75,13 +75,13 @@ fn an_armor_stat_over_its_range_is_refused_bad_arguments() -> TestResult {
     set_field(
         &mut app,
         &mut client,
-        "(field: ArmorFloor(part: Head, value: 9))",
+        "(field: Armor(Floor(part: Head, value: 9)))",
     )?;
 
     let reply = try_set_field(
         &mut app,
         &mut client,
-        "(field: ArmorFloor(part: Head, value: 101))",
+        "(field: Armor(Floor(part: Head, value: 101)))",
     )?;
     let detail = bad_arguments_detail(&reply)?;
     assert!(
@@ -114,7 +114,7 @@ fn a_list_op_on_the_armor_tab_is_refused_bad_arguments() -> TestResult {
 #[test]
 fn a_toggle_on_the_sprite_frames_list_is_refused_bad_arguments() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Sprite)?;
-    set_field(&mut app, &mut client, "(field: SpriteAnimated(true))")?;
+    set_field(&mut app, &mut client, "(field: Sprite(Animated(true)))")?;
     let before = sprite_draft(&app)?;
 
     let reply = try_list_op(
@@ -153,7 +153,7 @@ fn a_reorder_on_the_attachment_effects_list_is_refused_bad_arguments() -> TestRe
 #[test]
 fn removing_the_last_sprite_frame_is_refused_bad_arguments() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Sprite)?;
-    set_field(&mut app, &mut client, "(field: SpriteAnimated(true))")?;
+    set_field(&mut app, &mut client, "(field: Sprite(Animated(true)))")?;
     let before = sprite_draft(&app)?;
 
     let reply = try_list_op(&mut app, &mut client, "(list: SpriteFrames, op: Remove(0))")?;
@@ -170,7 +170,7 @@ fn removing_the_last_sprite_frame_is_refused_bad_arguments() -> TestResult {
 fn a_write_naming_another_forms_field_is_refused_with_the_open_tab_named() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Injury)?;
 
-    let reply = try_set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
+    let reply = try_set_field(&mut app, &mut client, "(field: Terrain(Kind(Emplacement)))")?;
     assert_eq!(
         unavailable_code(&reply)?,
         "WrongState",
@@ -193,7 +193,7 @@ fn a_field_arm_on_the_armor_tab_is_refused_with_the_armor_tab_named() -> TestRes
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Armor)?;
     let before = crate::setup::field_draft(&app)?;
 
-    let write = try_set_field(&mut app, &mut client, "(field: FieldDamage(6))")?;
+    let write = try_set_field(&mut app, &mut client, "(field: Field(Damage(6)))")?;
     assert_eq!(
         unavailable_code(&write)?,
         "WrongState",
@@ -228,7 +228,7 @@ fn a_field_write_before_the_autoload_settles_is_refused_and_names_the_gate() -> 
          case needs",
     );
 
-    let write = try_set_field(&mut app, &mut client, "(field: FieldDamage(6))")?;
+    let write = try_set_field(&mut app, &mut client, "(field: Field(Damage(6)))")?;
     assert_eq!(
         unavailable_code(&write)?,
         "WrongState",
@@ -259,7 +259,7 @@ fn a_terrain_field_on_the_gang_tab_is_refused_with_the_gang_tab_named() -> TestR
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Gang)?;
     let before = crate::setup::terrain_draft(&app)?;
 
-    let reply = try_set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
+    let reply = try_set_field(&mut app, &mut client, "(field: Terrain(Kind(Emplacement)))")?;
     assert_eq!(
         unavailable_code(&reply)?,
         "WrongState",

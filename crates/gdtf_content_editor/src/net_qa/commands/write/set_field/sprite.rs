@@ -4,8 +4,8 @@ use crate::{
     net_qa::{
         commands::write::form_fault::{ANIMATION_OFF, FormWriteFault},
         wire::{
-            EditorDraftNameNet, EditorFieldNet, EditorListIndexNet, SpriteAnimatedNet,
-            SpriteFacingNet, SpriteFpsNet, SpritePxNet, SpriteSourceNet,
+            EditorDraftNameNet, EditorListIndexNet, SpriteAnimatedNet, SpriteFacingNet,
+            SpriteFieldNet, SpriteFpsNet, SpritePxNet, SpriteSourceNet,
         },
     },
     sprite_form::SpriteDraft,
@@ -49,7 +49,7 @@ fn stored_override(
     }
 }
 
-fn write_fps(draft: &mut SpriteDraft, fps: SpriteFpsNet) -> Result<EditorFieldNet, FormWriteFault> {
+fn write_fps(draft: &mut SpriteDraft, fps: SpriteFpsNet) -> Result<SpriteFieldNet, FormWriteFault> {
     behind_the_gate(draft)?;
     if !SpriteDraft::FPS_RANGE.contains(&*fps) {
         return Err(FormWriteFault::bad(format!(
@@ -64,18 +64,18 @@ fn write_fps(draft: &mut SpriteDraft, fps: SpriteFpsNet) -> Result<EditorFieldNe
         .animation
         .as_ref()
         .map_or(fps, |animation| SpriteFpsNet::from_fps(animation.fps));
-    Ok(EditorFieldNet::SpriteFps(stored))
+    Ok(SpriteFieldNet::Fps(stored))
 }
 
 fn write_frame(
     draft: &mut SpriteDraft,
     index: usize,
     source: &SpriteSourceNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+) -> Result<SpriteFieldNet, FormWriteFault> {
     behind_the_gate(draft)?;
     frame_at(draft, index)?;
     draft.set_frame(index, source.to_source());
-    Ok(EditorFieldNet::SpriteFrame {
+    Ok(SpriteFieldNet::Frame {
         index:  EditorListIndexNet::new(index),
         source: frame_at(draft, index)?,
     })
@@ -84,56 +84,53 @@ fn write_frame(
 /// Write one Sprite field, answering the field as the draft stores it.
 pub(super) fn write(
     draft: &mut SpriteDraft,
-    field: EditorFieldNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
+    field: SpriteFieldNet,
+) -> Result<SpriteFieldNet, FormWriteFault> {
     match field {
-        EditorFieldNet::SpriteName(name) => {
+        SpriteFieldNet::Name(name) => {
             draft.set_name((*name).clone());
-            Ok(EditorFieldNet::SpriteName(EditorDraftNameNet::new(
-                draft.name(),
+            Ok(SpriteFieldNet::Name(EditorDraftNameNet::new(draft.name())))
+        }
+        SpriteFieldNet::BaseSource(source) => {
+            draft.set_base_source(source.to_source());
+            Ok(SpriteFieldNet::BaseSource(SpriteSourceNet::from_source(
+                &draft.def().source,
             )))
         }
-        EditorFieldNet::SpriteBaseSource(source) => {
-            draft.set_base_source(source.to_source());
-            Ok(EditorFieldNet::SpriteBaseSource(
-                SpriteSourceNet::from_source(&draft.def().source),
-            ))
-        }
-        EditorFieldNet::SpriteAnchorX(x) => {
+        SpriteFieldNet::AnchorX(x) => {
             draft.set_anchor(x.to_px(), draft.def().anchor.y);
-            Ok(EditorFieldNet::SpriteAnchorX(SpritePxNet::from_px(
+            Ok(SpriteFieldNet::AnchorX(SpritePxNet::from_px(
                 draft.def().anchor.x,
             )))
         }
-        EditorFieldNet::SpriteAnchorY(y) => {
+        SpriteFieldNet::AnchorY(y) => {
             draft.set_anchor(draft.def().anchor.x, y.to_px());
-            Ok(EditorFieldNet::SpriteAnchorY(SpritePxNet::from_px(
+            Ok(SpriteFieldNet::AnchorY(SpritePxNet::from_px(
                 draft.def().anchor.y,
             )))
         }
-        EditorFieldNet::SpriteFps(fps) => write_fps(draft, fps),
-        EditorFieldNet::SpriteFacingOverride { facing, source } => {
+        SpriteFieldNet::Fps(fps) => write_fps(draft, fps),
+        SpriteFieldNet::FacingOverride { facing, source } => {
             draft.set_facing_override(
                 facing.to_facing(),
                 source.as_ref().map(SpriteSourceNet::to_source),
             );
             let (stored_facing, source) = stored_override(draft, facing);
-            Ok(EditorFieldNet::SpriteFacingOverride {
+            Ok(SpriteFieldNet::FacingOverride {
                 facing: stored_facing,
                 source,
             })
         }
-        EditorFieldNet::SpriteFrame { index, source } => write_frame(draft, *index, &source),
-        EditorFieldNet::SpriteAnimated(animated) => {
+        SpriteFieldNet::Frame { index, source } => write_frame(draft, *index, &source),
+        SpriteFieldNet::Animated(animated) => {
             if *animated {
                 draft.enable_animation();
             } else {
                 draft.disable_animation();
             }
-            Ok(EditorFieldNet::SpriteAnimated(SpriteAnimatedNet::new(
+            Ok(SpriteFieldNet::Animated(SpriteAnimatedNet::new(
                 draft.is_animated(),
             )))
         }
-        _ => Err(FormWriteFault::ForeignArm),
     }
 }

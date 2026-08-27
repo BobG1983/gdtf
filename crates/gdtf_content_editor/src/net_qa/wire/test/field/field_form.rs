@@ -5,36 +5,42 @@ use super::{
     support::a_name,
 };
 use crate::net_qa::wire::{
-    DamageTypeNet, EditorFieldNet, FieldDamageNet, FieldDurationNet, FieldTurnsNet,
+    DamageTypeNet, EditorFieldNet, FieldDamageNet, FieldDurationNet, FieldFormFieldNet,
+    FieldTurnsNet,
 };
 
 #[test]
 fn every_field_form_field_arm_round_trips() {
-    assert_ron_round_trip(&EditorFieldNet::FieldName(a_name()));
-    assert_ron_round_trip(&EditorFieldNet::FieldDamage(FieldDamageNet::from_damage(
-        FieldDamage::new(4),
+    assert_ron_round_trip(&EditorFieldNet::Field(FieldFormFieldNet::Name(a_name())));
+    assert_ron_round_trip(&EditorFieldNet::Field(FieldFormFieldNet::Damage(
+        FieldDamageNet::from_damage(FieldDamage::new(4)),
     )));
     for damage_type in DamageType::ALL {
-        assert_ron_round_trip(&EditorFieldNet::FieldDamageType(
+        assert_ron_round_trip(&EditorFieldNet::Field(FieldFormFieldNet::DamageType(
             DamageTypeNet::from_damage_type(damage_type),
-        ));
+        )));
     }
-    assert_ron_round_trip(&EditorFieldNet::FieldDuration(FieldDurationNet::Permanent));
-    assert_ron_round_trip(&EditorFieldNet::FieldDuration(FieldDurationNet::Turns(
-        FieldTurnsNet::new(3),
+    assert_ron_round_trip(&EditorFieldNet::Field(FieldFormFieldNet::Duration(
+        FieldDurationNet::Permanent,
+    )));
+    assert_ron_round_trip(&EditorFieldNet::Field(FieldFormFieldNet::Duration(
+        FieldDurationNet::Turns(FieldTurnsNet::new(3)),
     )));
     assert_ron_round_trip(&FieldDurationNet::Turns(FieldTurnsNet::new(0)));
 }
 
 #[test]
 fn a_field_duration_in_turns_keeps_the_documented_wire_spelling() {
-    let turns = EditorFieldNet::FieldDuration(FieldDurationNet::Turns(FieldTurnsNet::new(3)));
+    let turns = EditorFieldNet::Field(FieldFormFieldNet::Duration(FieldDurationNet::Turns(
+        FieldTurnsNet::new(3),
+    )));
     let Ok(encoded) = ron::ser::to_string(&turns) else {
         unreachable!("a wire value serializes to compact RON: {turns:?}");
     };
     assert_eq!(
-        encoded, "FieldDuration(Turns(3))",
-        "a client sends the turn count as a plain integer, so the newtype must stay transparent",
+        encoded, "Field(Duration(Turns(3)))",
+        "a client sends the field under the form that owns it, and the turn count as a plain \
+         integer, so the newtype must stay transparent",
     );
 }
 

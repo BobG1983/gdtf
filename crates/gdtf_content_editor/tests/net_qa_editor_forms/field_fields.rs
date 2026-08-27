@@ -10,7 +10,7 @@ use crate::{
     mirror::ModeRow,
     names::EDITOR_DRAFT,
     outcome::ran_body,
-    rows::FieldRow,
+    rows::{FieldFormFieldRow, FieldRow},
     setup::{editor_mode, field_draft, set_field, settled_field_app_and_client, try_set_field},
     socket::run_editor,
     support::{TestError, TestResult},
@@ -27,39 +27,43 @@ fn set_mode_opens_the_field_tab_and_every_field_arm_writes_its_own_value() -> Te
          fail here before any write ran",
     );
 
-    let named = set_field(&mut app, &mut client, "(field: FieldName(\"toxic_sump\"))")?;
+    let named = set_field(
+        &mut app,
+        &mut client,
+        "(field: Field(Name(\"toxic_sump\")))",
+    )?;
     assert_eq!(
         named.field,
-        FieldRow::FieldName("toxic_sump".to_owned()),
+        FieldRow::Field(FieldFormFieldRow::Name("toxic_sump".to_owned())),
         "the reply reads the stem back off the draft",
     );
     assert_eq!(field_draft(&app)?.key(), "toxic_sump");
 
-    let damage = set_field(&mut app, &mut client, "(field: FieldDamage(6))")?;
-    assert_eq!(damage.field, FieldRow::FieldDamage(6));
+    let damage = set_field(&mut app, &mut client, "(field: Field(Damage(6)))")?;
+    assert_eq!(damage.field, FieldRow::Field(FieldFormFieldRow::Damage(6)));
     assert_eq!(*field_draft(&app)?.damage(), 6);
 
-    let channel = set_field(&mut app, &mut client, "(field: FieldDamageType(Chem))")?;
+    let channel = set_field(&mut app, &mut client, "(field: Field(DamageType(Chem)))")?;
     assert_eq!(
         channel.field,
-        FieldRow::FieldDamageType(DamageTypeRow::Chem)
+        FieldRow::Field(FieldFormFieldRow::DamageType(DamageTypeRow::Chem)),
     );
     assert_eq!(field_draft(&app)?.damage_type(), DamageType::Chem);
 
-    let duration = set_field(&mut app, &mut client, "(field: FieldDuration(Turns(2)))")?;
+    let duration = set_field(&mut app, &mut client, "(field: Field(Duration(Turns(2))))")?;
     assert_eq!(
         duration.field,
-        FieldRow::FieldDuration(DurationRow::Turns(2))
+        FieldRow::Field(FieldFormFieldRow::Duration(DurationRow::Turns(2))),
     );
     assert!(
         matches!(field_draft(&app)?.duration(), FieldDuration::Turns(turns) if (*turns).get() == 2),
         "the world's own Field draft holds the finite duration the write named",
     );
 
-    let permanent = set_field(&mut app, &mut client, "(field: FieldDuration(Permanent))")?;
+    let permanent = set_field(&mut app, &mut client, "(field: Field(Duration(Permanent)))")?;
     assert_eq!(
         permanent.field,
-        FieldRow::FieldDuration(DurationRow::Permanent)
+        FieldRow::Field(FieldFormFieldRow::Duration(DurationRow::Permanent)),
     );
     assert_eq!(field_draft(&app)?.duration(), FieldDuration::Permanent);
 
@@ -77,7 +81,7 @@ fn a_zero_turn_duration_is_refused_and_one_turn_is_written() -> TestResult {
     let (mut app, mut client) = settled_field_app_and_client()?;
     let before = field_draft(&app)?;
 
-    let refused = try_set_field(&mut app, &mut client, "(field: FieldDuration(Turns(0)))")?;
+    let refused = try_set_field(&mut app, &mut client, "(field: Field(Duration(Turns(0))))")?;
     let detail = bad_arguments_detail(&refused)?;
     assert!(
         detail.contains("Turns(0)"),
@@ -89,10 +93,10 @@ fn a_zero_turn_duration_is_refused_and_one_turn_is_written() -> TestResult {
         "a zero-turn duration is refused rather than clamped to one, so the draft is untouched",
     );
 
-    let written = set_field(&mut app, &mut client, "(field: FieldDuration(Turns(1)))")?;
+    let written = set_field(&mut app, &mut client, "(field: Field(Duration(Turns(1))))")?;
     assert_eq!(
         written.field,
-        FieldRow::FieldDuration(DurationRow::Turns(1)),
+        FieldRow::Field(FieldFormFieldRow::Duration(DurationRow::Turns(1))),
         "one turn is the smallest count the loader accepts, and it is written unchanged",
     );
     Ok(())
@@ -101,8 +105,12 @@ fn a_zero_turn_duration_is_refused_and_one_turn_is_written() -> TestResult {
 #[test]
 fn the_field_tab_projects_what_its_own_conversion_builds() -> TestResult {
     let (mut app, mut client) = settled_field_app_and_client()?;
-    set_field(&mut app, &mut client, "(field: FieldName(\"toxic_sump\"))")?;
-    set_field(&mut app, &mut client, "(field: FieldDamage(5))")?;
+    set_field(
+        &mut app,
+        &mut client,
+        "(field: Field(Name(\"toxic_sump\")))",
+    )?;
+    set_field(&mut app, &mut client, "(field: Field(Damage(5)))")?;
 
     let reply = client.exchange(&mut app, &run_editor(EDITOR_DRAFT, "()"))?;
     let body: DraftReplyRow = ran_body(&reply, EDITOR_DRAFT)?;

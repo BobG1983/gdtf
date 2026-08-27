@@ -10,7 +10,7 @@ use gdtf_content_editor::EditorMode;
 use crate::{
     outcome::unavailable_code,
     refusal::refusal_note,
-    rows::FieldRow,
+    rows::{FieldRow, WeaponFieldRow},
     setup::{form_tab_app_and_client, set_field, try_set_field, weapon_draft},
     support::{TestError, TestResult},
     values::{DamageTypeRow, HitTypeRow, OnDeathVariantRow},
@@ -32,8 +32,8 @@ fn the_tick_box_seeds_the_forms_own_explode_template_and_its_rows_then_write_it(
         "a fresh Weapon draft authors no on-death effect, or the tick box would prove nothing",
     );
 
-    let on = set_field(&mut app, &mut client, "(field: WeaponOnDeath(true))")?;
-    assert_eq!(on.field, FieldRow::WeaponOnDeath(true));
+    let on = set_field(&mut app, &mut client, "(field: Weapon(OnDeath(true)))")?;
+    assert_eq!(on.field, FieldRow::Weapon(WeaponFieldRow::OnDeath(true)));
     assert_eq!(
         effect(&app)?,
         OnDeathEffect::Explode {
@@ -47,22 +47,27 @@ fn the_tick_box_seeds_the_forms_own_explode_template_and_its_rows_then_write_it(
     let geometry = set_field(
         &mut app,
         &mut client,
-        "(field: WeaponOnDeathHitType(Blast(radius: 2)))",
+        "(field: Weapon(OnDeathHitType(Blast(radius: 2))))",
     )?;
     assert_eq!(
         geometry.field,
-        FieldRow::WeaponOnDeathHitType(HitTypeRow::Blast { radius: 2 })
+        FieldRow::Weapon(WeaponFieldRow::OnDeathHitType(HitTypeRow::Blast {
+            radius: 2,
+        })),
     );
-    let damage = set_field(&mut app, &mut client, "(field: WeaponOnDeathDamage(12))")?;
-    assert_eq!(damage.field, FieldRow::WeaponOnDeathDamage(12));
+    let damage = set_field(&mut app, &mut client, "(field: Weapon(OnDeathDamage(12)))")?;
+    assert_eq!(
+        damage.field,
+        FieldRow::Weapon(WeaponFieldRow::OnDeathDamage(12)),
+    );
     let channel = set_field(
         &mut app,
         &mut client,
-        "(field: WeaponOnDeathDamageType(Blast))",
+        "(field: Weapon(OnDeathDamageType(Blast)))",
     )?;
     assert_eq!(
         channel.field,
-        FieldRow::WeaponOnDeathDamageType(DamageTypeRow::Blast)
+        FieldRow::Weapon(WeaponFieldRow::OnDeathDamageType(DamageTypeRow::Blast)),
     );
 
     let OnDeathEffect::Explode {
@@ -82,8 +87,8 @@ fn the_tick_box_seeds_the_forms_own_explode_template_and_its_rows_then_write_it(
     assert_eq!(*damage, 12);
     assert_eq!(damage_type, DamageType::Blast);
 
-    let off = set_field(&mut app, &mut client, "(field: WeaponOnDeath(false))")?;
-    assert_eq!(off.field, FieldRow::WeaponOnDeath(false));
+    let off = set_field(&mut app, &mut client, "(field: Weapon(OnDeath(false)))")?;
+    assert_eq!(off.field, FieldRow::Weapon(WeaponFieldRow::OnDeath(false)));
     assert!(weapon_draft(&app)?.spec().on_death.is_none());
     Ok(())
 }
@@ -91,26 +96,28 @@ fn the_tick_box_seeds_the_forms_own_explode_template_and_its_rows_then_write_it(
 #[test]
 fn the_variant_pick_swaps_the_template_and_the_field_key_then_writes() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Weapon)?;
-    set_field(&mut app, &mut client, "(field: WeaponOnDeath(true))")?;
+    set_field(&mut app, &mut client, "(field: Weapon(OnDeath(true)))")?;
 
     let picked = set_field(
         &mut app,
         &mut client,
-        "(field: WeaponOnDeathVariant(LeaveField))",
+        "(field: Weapon(OnDeathVariant(LeaveField)))",
     )?;
     assert_eq!(
         picked.field,
-        FieldRow::WeaponOnDeathVariant(OnDeathVariantRow::LeaveField)
+        FieldRow::Weapon(WeaponFieldRow::OnDeathVariant(
+            OnDeathVariantRow::LeaveField
+        )),
     );
 
     let keyed = set_field(
         &mut app,
         &mut client,
-        "(field: WeaponOnDeathField(\"promethium_pool\"))",
+        "(field: Weapon(OnDeathField(\"promethium_pool\")))",
     )?;
     assert_eq!(
         keyed.field,
-        FieldRow::WeaponOnDeathField("promethium_pool".to_owned())
+        FieldRow::Weapon(WeaponFieldRow::OnDeathField("promethium_pool".to_owned())),
     );
     let OnDeathEffect::LeaveField { field } = effect(&app)? else {
         return Err("the variant pick left the draft on Explode".into());
@@ -120,11 +127,11 @@ fn the_variant_pick_swaps_the_template_and_the_field_key_then_writes() -> TestRe
     let back = set_field(
         &mut app,
         &mut client,
-        "(field: WeaponOnDeathVariant(Explode))",
+        "(field: Weapon(OnDeathVariant(Explode)))",
     )?;
     assert_eq!(
         back.field,
-        FieldRow::WeaponOnDeathVariant(OnDeathVariantRow::Explode)
+        FieldRow::Weapon(WeaponFieldRow::OnDeathVariant(OnDeathVariantRow::Explode)),
     );
     assert!(
         matches!(effect(&app)?, OnDeathEffect::Explode { .. }),
@@ -138,11 +145,11 @@ fn an_on_death_payload_write_with_the_tick_box_off_is_refused_and_seeds_no_effec
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Weapon)?;
 
     for arguments in [
-        "(field: WeaponOnDeathVariant(LeaveField))",
-        "(field: WeaponOnDeathHitType(Single))",
-        "(field: WeaponOnDeathDamage(12))",
-        "(field: WeaponOnDeathDamageType(Blast))",
-        "(field: WeaponOnDeathField(\"promethium_pool\"))",
+        "(field: Weapon(OnDeathVariant(LeaveField)))",
+        "(field: Weapon(OnDeathHitType(Single)))",
+        "(field: Weapon(OnDeathDamage(12)))",
+        "(field: Weapon(OnDeathDamageType(Blast)))",
+        "(field: Weapon(OnDeathField(\"promethium_pool\")))",
     ] {
         let reply = try_set_field(&mut app, &mut client, arguments)?;
         assert_eq!(
@@ -165,18 +172,18 @@ fn an_on_death_payload_write_with_the_tick_box_off_is_refused_and_seeds_no_effec
 #[test]
 fn an_explode_payload_write_while_the_effect_leaves_a_field_is_refused() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Weapon)?;
-    set_field(&mut app, &mut client, "(field: WeaponOnDeath(true))")?;
+    set_field(&mut app, &mut client, "(field: Weapon(OnDeath(true)))")?;
     set_field(
         &mut app,
         &mut client,
-        "(field: WeaponOnDeathVariant(LeaveField))",
+        "(field: Weapon(OnDeathVariant(LeaveField)))",
     )?;
     let before = effect(&app)?;
 
     for arguments in [
-        "(field: WeaponOnDeathHitType(Single))",
-        "(field: WeaponOnDeathDamage(12))",
-        "(field: WeaponOnDeathDamageType(Blast))",
+        "(field: Weapon(OnDeathHitType(Single)))",
+        "(field: Weapon(OnDeathDamage(12)))",
+        "(field: Weapon(OnDeathDamageType(Blast)))",
     ] {
         let reply = try_set_field(&mut app, &mut client, arguments)?;
         assert_eq!(
@@ -200,13 +207,13 @@ fn an_explode_payload_write_while_the_effect_leaves_a_field_is_refused() -> Test
 #[test]
 fn a_field_key_write_while_the_effect_explodes_is_refused() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Weapon)?;
-    set_field(&mut app, &mut client, "(field: WeaponOnDeath(true))")?;
+    set_field(&mut app, &mut client, "(field: Weapon(OnDeath(true)))")?;
     let before = effect(&app)?;
 
     let reply = try_set_field(
         &mut app,
         &mut client,
-        "(field: WeaponOnDeathField(\"promethium_pool\"))",
+        "(field: Weapon(OnDeathField(\"promethium_pool\")))",
     )?;
     assert_eq!(
         unavailable_code(&reply)?,

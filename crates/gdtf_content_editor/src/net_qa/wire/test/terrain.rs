@@ -1,5 +1,4 @@
 use gdtf_battle_sim::{
-    armor::{ArmorHardness, ArmorProtection},
     cover::HeightBand,
     terrain::def::{LosBlocking, TerrainTag},
     weapon::WeaponName,
@@ -8,9 +7,8 @@ use gdtf_battle_sim::{
 use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::{
     net_qa::wire::{
-        ArmorHardnessNet, ArmorProtectionNet, BlocksPathingNet, EditorDraftNameNet, EditorFieldNet,
-        FootfallNet, HeightBandNet, LosBlockingNet, MountedWeaponNet, TerrainHpNet, TerrainTagNet,
-        TileRoleNet,
+        BlocksPathingNet, FootfallNet, HeightBandNet, LosBlockingNet, MountedWeaponNet,
+        TerrainHpNet, TerrainTagNet, TileRoleNet,
     },
     terrain_form::{FootfallChoice, offered_graphic_roles},
 };
@@ -38,37 +36,6 @@ fn every_terrain_value_round_trips() {
     for tag in TerrainTagNet::ALL {
         assert_ron_round_trip(&tag);
     }
-}
-
-#[test]
-fn every_terrain_field_arm_round_trips() {
-    assert_ron_round_trip(&EditorFieldNet::TerrainDisplayName(
-        EditorDraftNameNet::new("rusted bulkhead"),
-    ));
-    assert_ron_round_trip(&EditorFieldNet::TerrainHp(TerrainHpNet::new(40)));
-    assert_ron_round_trip(&EditorFieldNet::TerrainArmorProtection(
-        ArmorProtectionNet::from_protection(ArmorProtection::new(4)),
-    ));
-    assert_ron_round_trip(&EditorFieldNet::TerrainArmorHardness(
-        ArmorHardnessNet::from_hardness(ArmorHardness::new(2)),
-    ));
-    assert_ron_round_trip(&EditorFieldNet::TerrainHeightBand(
-        HeightBandNet::from_band(HeightBand::Mid),
-    ));
-    assert_ron_round_trip(&EditorFieldNet::TerrainGraphic(TileRoleNet::Slab));
-    assert_ron_round_trip(&EditorFieldNet::TerrainFootfall(FootfallNet::Grate));
-    assert_ron_round_trip(&EditorFieldNet::TerrainMountedWeapon(Some(
-        MountedWeaponNet::from_name(&WeaponName::new("autogun".to_owned())),
-    )));
-    assert_ron_round_trip(&EditorFieldNet::TerrainMountedWeapon(None));
-    assert_ron_round_trip(&EditorFieldNet::TerrainBlocksPathing(Some(
-        BlocksPathingNet::new(false),
-    )));
-    assert_ron_round_trip(&EditorFieldNet::TerrainBlocksPathing(None));
-    assert_ron_round_trip(&EditorFieldNet::TerrainBlocksLos(Some(
-        LosBlockingNet::UpToHeightBand,
-    )));
-    assert_ron_round_trip(&EditorFieldNet::TerrainBlocksLos(None));
 }
 
 #[test]

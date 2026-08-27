@@ -2,7 +2,7 @@ use gdtf_battle_sim::terrain::def::LosBlocking;
 use gdtf_content_editor::EditorMode;
 
 use crate::{
-    rows::FieldRow,
+    rows::{FieldRow, TerrainFieldRow},
     setup::{form_tab_app_and_client, set_field, terrain_draft},
     support::TestResult,
     terrain_fields::a_mounted_weapon,
@@ -11,10 +11,10 @@ use crate::{
 #[test]
 fn a_none_mounted_weapon_write_unmounts_the_weapon() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
+    set_field(&mut app, &mut client, "(field: Terrain(Kind(Emplacement)))")?;
     let weapon = a_mounted_weapon(&app)?;
     let arguments = format!(
-        "(field: TerrainMountedWeapon(Some(\"{}\")))",
+        "(field: Terrain(MountedWeapon(Some(\"{}\"))))",
         weapon.as_str()
     );
     set_field(&mut app, &mut client, &arguments)?;
@@ -25,10 +25,14 @@ fn a_none_mounted_weapon_write_unmounts_the_weapon() -> TestResult {
          writes nothing",
     );
 
-    let cleared = set_field(&mut app, &mut client, "(field: TerrainMountedWeapon(None))")?;
+    let cleared = set_field(
+        &mut app,
+        &mut client,
+        "(field: Terrain(MountedWeapon(None)))",
+    )?;
     assert_eq!(
         cleared.field,
-        FieldRow::TerrainMountedWeapon(None),
+        FieldRow::Terrain(TerrainFieldRow::MountedWeapon(None)),
         "the reply reads the mount back off the draft, so a clear that did not land answers the \
          weapon that is still mounted",
     );
@@ -46,7 +50,7 @@ fn a_none_blocks_pathing_write_returns_the_field_to_the_kinds_own_value() -> Tes
     set_field(
         &mut app,
         &mut client,
-        "(field: TerrainBlocksPathing(Some(true)))",
+        "(field: Terrain(BlocksPathing(Some(true))))",
     )?;
     assert_eq!(
         terrain_draft(&app)?.blocks_pathing(),
@@ -55,10 +59,14 @@ fn a_none_blocks_pathing_write_returns_the_field_to_the_kinds_own_value() -> Tes
          nothing",
     );
 
-    let cleared = set_field(&mut app, &mut client, "(field: TerrainBlocksPathing(None))")?;
+    let cleared = set_field(
+        &mut app,
+        &mut client,
+        "(field: Terrain(BlocksPathing(None)))",
+    )?;
     assert_eq!(
         cleared.field,
-        FieldRow::TerrainBlocksPathing(None),
+        FieldRow::Terrain(TerrainFieldRow::BlocksPathing(None)),
         "the reply reads the override back off the draft, so a clear stored as Some(false) \
          answers Some(false) here",
     );
@@ -76,7 +84,7 @@ fn a_none_blocks_los_write_returns_the_field_to_the_kinds_own_value() -> TestRes
     set_field(
         &mut app,
         &mut client,
-        "(field: TerrainBlocksLos(Some(UpToHeightBand)))",
+        "(field: Terrain(BlocksLos(Some(UpToHeightBand))))",
     )?;
     assert_eq!(
         terrain_draft(&app)?.blocks_los(),
@@ -85,10 +93,10 @@ fn a_none_blocks_los_write_returns_the_field_to_the_kinds_own_value() -> TestRes
          nothing",
     );
 
-    let cleared = set_field(&mut app, &mut client, "(field: TerrainBlocksLos(None))")?;
+    let cleared = set_field(&mut app, &mut client, "(field: Terrain(BlocksLos(None)))")?;
     assert_eq!(
         cleared.field,
-        FieldRow::TerrainBlocksLos(None),
+        FieldRow::Terrain(TerrainFieldRow::BlocksLos(None)),
         "the reply reads the override back off the draft, so a clear stored as a blocking value \
          answers that value here",
     );

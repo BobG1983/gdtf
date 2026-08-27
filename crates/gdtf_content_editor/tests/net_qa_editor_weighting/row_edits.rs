@@ -1,7 +1,7 @@
 use bevy::app::App;
 
 use crate::{
-    rows::{BucketRow, FieldRow, ListMemberRow, ListRow, WeightingRow},
+    rows::{BucketRow, FieldRow, ListMemberRow, ListRow, WeightingFieldRow, WeightingRow},
     setup::{
         draft_weighting, injury_tab_app_and_client, list_op, set_field, sorted_injury_keys,
         table_of,
@@ -108,30 +108,30 @@ fn a_rows_injury_and_its_weight_are_written_through_their_own_field_arms() -> Te
     let picked = set_field(
         &mut app,
         &mut client,
-        &format!("(field: WeightingRowInjury(bucket: Critical, index: 0, injury: \"{other}\"))"),
+        &format!("(field: Weighting(RowInjury(bucket: Critical, index: 0, injury: \"{other}\")))"),
     )?;
     assert_eq!(
         picked.field,
-        FieldRow::WeightingRowInjury {
+        FieldRow::Weighting(WeightingFieldRow::RowInjury {
             bucket: BucketRow::Critical,
             index:  0,
             injury: other.clone(),
-        },
+        }),
         "the reply reads the key back as the draft stores it",
     );
 
     let weighed = set_field(
         &mut app,
         &mut client,
-        "(field: WeightingRowWeight(bucket: Critical, index: 0, weight: 9))",
+        "(field: Weighting(RowWeight(bucket: Critical, index: 0, weight: 9)))",
     )?;
     assert_eq!(
         weighed.field,
-        FieldRow::WeightingRowWeight {
+        FieldRow::Weighting(WeightingFieldRow::RowWeight {
             bucket: BucketRow::Critical,
             index:  0,
             weight: 9,
-        },
+        }),
     );
     assert_eq!(
         bucket_in_world(&app, BucketRow::Critical)?,

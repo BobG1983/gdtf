@@ -54,7 +54,9 @@ pub(in crate::net_qa::commands::write::list_op) fn apply(
         EditorListOpNet::Remove(index) => remove(draft, *index),
         EditorListOpNet::Toggle(_) => Err(no_such_button("toggle")),
         EditorListOpNet::SetAt(..) => Err(no_such_button(
-            "set-at. One member's own rows are rewritten through the GangMember field arms",
+            "set-at. One member's own rows are rewritten through the `Gang(MemberName(…))`, \
+             `Gang(MemberAttribute(…))`, `Gang(MemberWeapon(…))`, `Gang(MemberArmor(…))` and \
+             `Gang(MemberMeleeWeapon(…))` field arms",
         )),
         EditorListOpNet::MoveUp(_) | EditorListOpNet::MoveDown(_) => Err(no_such_button(
             "reorder. The Sprite form's animation frames are the one list that reorders",

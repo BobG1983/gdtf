@@ -31,7 +31,7 @@ fn the_operations_a_bucket_draws_no_control_for_are_bad_arguments_naming_the_fau
         ("Toggle(WeightingRow((injury: \"x\", weight: 1)))", "toggle"),
         (
             "SetAt(0, WeightingRow((injury: \"x\", weight: 1)))",
-            "field arms",
+            "`Weighting(RowInjury(…))`",
         ),
         ("MoveUp(0)", "reorder"),
         ("MoveDown(0)", "reorder"),
@@ -78,7 +78,7 @@ fn an_index_past_the_end_of_a_bucket_is_bad_arguments_saying_how_many_it_holds()
         &mut app,
         &mut client,
         EDITOR_SET_FIELD,
-        "(field: WeightingRowWeight(bucket: Minor, index: 4, weight: 2))",
+        "(field: Weighting(RowWeight(bucket: Minor, index: 4, weight: 2)))",
     )?;
     bad_arguments_detail(&written)?;
     assert_eq!(
@@ -103,7 +103,7 @@ fn an_injury_key_the_registry_does_not_hold_is_bad_arguments() -> TestResult {
         &mut app,
         &mut client,
         EDITOR_SET_FIELD,
-        "(field: WeightingRowInjury(bucket: Minor, index: 0, injury: \"no_such_injury\"))",
+        "(field: Weighting(RowInjury(bucket: Minor, index: 0, injury: \"no_such_injury\")))",
     )?;
 
     let detail = bad_arguments_detail(&reply)?;
@@ -170,7 +170,7 @@ fn a_weighting_write_from_another_form_tab_is_refused_and_the_note_names_that_ta
         (EDITOR_LIST_OP, "(list: WeightingBucket(Minor), op: Add)"),
         (
             EDITOR_SET_FIELD,
-            "(field: WeightingRowWeight(bucket: Minor, index: 0, weight: 2))",
+            "(field: Weighting(RowWeight(bucket: Minor, index: 0, weight: 2)))",
         ),
     ] {
         let reply = try_run(&mut app, &mut client, command, arguments)?;

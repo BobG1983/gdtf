@@ -6,7 +6,7 @@ use gdtf_qa_protocol::command::RefusalNote;
 use crate::{
     net_qa::{
         commands::write::form_fault::FormWriteFault,
-        wire::{DamageTypeNet, DotDamageNet, DotEnabledNet, DotTurnsNet, EditorFieldNet},
+        wire::{DamageTypeNet, DotDamageNet, DotEnabledNet, DotTurnsNet, WeaponFieldNet},
     },
     weapon_form::dot_turns_from_raw,
 };
@@ -27,30 +27,41 @@ fn with_profile<R>(
     }
 }
 
-/// Write the dot tick box or one of its rows, answering the value as the profile stores it.
-pub(super) fn write(
+/// Turn the dot profile on or off, answering the state the spec is left in.
+pub(super) fn enabled(spec: &mut WeaponSpec, enabled: DotEnabledNet) -> WeaponFieldNet {
+    spec.dot = enabled.is_enabled().then(DotProfile::default);
+    WeaponFieldNet::Dot(DotEnabledNet::from_spec(spec))
+}
+
+/// Write the profile's per-turn damage, answering the value it stores.
+pub(super) fn damage(
     spec: &mut WeaponSpec,
-    field: EditorFieldNet,
-) -> Result<EditorFieldNet, FormWriteFault> {
-    match field {
-        EditorFieldNet::WeaponDot(enabled) => {
-            spec.dot = enabled.is_enabled().then(DotProfile::default);
-            Ok(EditorFieldNet::WeaponDot(DotEnabledNet::from_spec(spec)))
-        }
-        EditorFieldNet::WeaponDotDamage(damage) => with_profile(spec, |profile| {
-            profile.damage = damage.to_damage();
-            EditorFieldNet::WeaponDotDamage(DotDamageNet::new(*profile.damage))
-        }),
-        EditorFieldNet::WeaponDotTurns(turns) => with_profile(spec, |profile| {
-            profile.turns = dot_turns_from_raw(*turns);
-            EditorFieldNet::WeaponDotTurns(DotTurnsNet::new(profile.turns.get()))
-        }),
-        EditorFieldNet::WeaponDotDamageType(damage_type) => with_profile(spec, |profile| {
-            profile.damage_type = damage_type.to_damage_type();
-            EditorFieldNet::WeaponDotDamageType(DamageTypeNet::from_damage_type(
-                profile.damage_type,
-            ))
-        }),
-        _ => Err(FormWriteFault::ForeignArm),
-    }
+    damage: DotDamageNet,
+) -> Result<WeaponFieldNet, FormWriteFault> {
+    with_profile(spec, |profile| {
+        profile.damage = damage.to_damage();
+        WeaponFieldNet::DotDamage(DotDamageNet::new(*profile.damage))
+    })
+}
+
+/// Write the profile's duration, answering the count it stores after the form's own zero fix.
+pub(super) fn turns(
+    spec: &mut WeaponSpec,
+    turns: DotTurnsNet,
+) -> Result<WeaponFieldNet, FormWriteFault> {
+    with_profile(spec, |profile| {
+        profile.turns = dot_turns_from_raw(*turns);
+        WeaponFieldNet::DotTurns(DotTurnsNet::new(profile.turns.get()))
+    })
+}
+
+/// Write the profile's damage channel, answering the value it stores.
+pub(super) fn damage_type(
+    spec: &mut WeaponSpec,
+    damage_type: DamageTypeNet,
+) -> Result<WeaponFieldNet, FormWriteFault> {
+    with_profile(spec, |profile| {
+        profile.damage_type = damage_type.to_damage_type();
+        WeaponFieldNet::DotDamageType(DamageTypeNet::from_damage_type(profile.damage_type))
+    })
 }

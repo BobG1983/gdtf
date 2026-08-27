@@ -6,13 +6,13 @@ use gdtf_battle_sim::{
     terrain::def::LosBlocking,
     weapon::{WeaponName, WeaponRegistry},
 };
-use gdtf_content_editor::{EditorMode, FootfallChoice, TerrainDraft, TerrainKindChoice};
+use gdtf_content_editor::{EditorMode, FootfallChoice, TerrainKindChoice};
 use gdtf_content_families::WeaponsFamily;
 
 use crate::{
     names::EDITOR_SET_FIELD,
     outcome::unavailable_code,
-    rows::FieldRow,
+    rows::{FieldRow, TerrainFieldRow},
     setup::{form_tab_app_and_client, set_field, terrain_draft, try_set_field},
     socket::run_editor,
     support::{TestError, TestResult},
@@ -42,10 +42,10 @@ fn set_field_writes_the_terrain_kind_the_reply_and_the_world_agree() -> TestResu
          handler that writes nothing",
     );
 
-    let body = set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
+    let body = set_field(&mut app, &mut client, "(field: Terrain(Kind(Emplacement)))")?;
     assert_eq!(
         body.field,
-        FieldRow::TerrainKind(TerrainKindRow::Emplacement),
+        FieldRow::Terrain(TerrainFieldRow::Kind(TerrainKindRow::Emplacement)),
         "the reply names the field that was written, read back off the draft",
     );
     assert_eq!(
@@ -64,140 +64,96 @@ fn every_terrain_field_writes_the_draft_and_reads_back_as_stored() -> TestResult
     let named = set_field(
         &mut app,
         &mut client,
-        "(field: TerrainDisplayName(\"bulkhead\"))",
+        "(field: Terrain(DisplayName(\"bulkhead\")))",
     )?;
     assert_eq!(
         named.field,
-        FieldRow::TerrainDisplayName("bulkhead".to_owned())
+        FieldRow::Terrain(TerrainFieldRow::DisplayName("bulkhead".to_owned())),
     );
     assert_eq!(terrain_draft(&app)?.display_name(), "bulkhead");
 
-    let hp = set_field(&mut app, &mut client, "(field: TerrainHp(77))")?;
-    assert_eq!(hp.field, FieldRow::TerrainHp(77));
+    let hp = set_field(&mut app, &mut client, "(field: Terrain(Hp(77)))")?;
+    assert_eq!(hp.field, FieldRow::Terrain(TerrainFieldRow::Hp(77)));
 
-    let protection = set_field(&mut app, &mut client, "(field: TerrainArmorProtection(9))")?;
-    assert_eq!(protection.field, FieldRow::TerrainArmorProtection(9));
+    let protection = set_field(
+        &mut app,
+        &mut client,
+        "(field: Terrain(ArmorProtection(9)))",
+    )?;
+    assert_eq!(
+        protection.field,
+        FieldRow::Terrain(TerrainFieldRow::ArmorProtection(9)),
+    );
     assert_eq!(*terrain_draft(&app)?.armor_protection(), 9);
 
-    let hardness = set_field(&mut app, &mut client, "(field: TerrainArmorHardness(8))")?;
-    assert_eq!(hardness.field, FieldRow::TerrainArmorHardness(8));
+    let hardness = set_field(&mut app, &mut client, "(field: Terrain(ArmorHardness(8)))")?;
+    assert_eq!(
+        hardness.field,
+        FieldRow::Terrain(TerrainFieldRow::ArmorHardness(8)),
+    );
     assert_eq!(*terrain_draft(&app)?.armor_hardness(), 8);
 
-    let graphic = set_field(&mut app, &mut client, "(field: TerrainGraphic(Rubble))")?;
-    assert_eq!(graphic.field, FieldRow::TerrainGraphic(TileRoleRow::Rubble));
+    let graphic = set_field(&mut app, &mut client, "(field: Terrain(Graphic(Rubble)))")?;
+    assert_eq!(
+        graphic.field,
+        FieldRow::Terrain(TerrainFieldRow::Graphic(TileRoleRow::Rubble)),
+    );
     assert_eq!(terrain_draft(&app)?.graphic(), TileRole::Rubble);
 
     let pathing = set_field(
         &mut app,
         &mut client,
-        "(field: TerrainBlocksPathing(Some(true)))",
+        "(field: Terrain(BlocksPathing(Some(true))))",
     )?;
-    assert_eq!(pathing.field, FieldRow::TerrainBlocksPathing(Some(true)));
+    assert_eq!(
+        pathing.field,
+        FieldRow::Terrain(TerrainFieldRow::BlocksPathing(Some(true))),
+    );
     assert_eq!(terrain_draft(&app)?.blocks_pathing(), Some(true));
 
     let los = set_field(
         &mut app,
         &mut client,
-        "(field: TerrainBlocksLos(Some(UpToHeightBand)))",
+        "(field: Terrain(BlocksLos(Some(UpToHeightBand))))",
     )?;
     assert_eq!(
         los.field,
-        FieldRow::TerrainBlocksLos(Some(LosRow::UpToHeightBand))
+        FieldRow::Terrain(TerrainFieldRow::BlocksLos(Some(LosRow::UpToHeightBand))),
     );
     assert_eq!(
         terrain_draft(&app)?.blocks_los(),
         Some(LosBlocking::UpToHeightBand)
     );
 
-    set_field(&mut app, &mut client, "(field: TerrainKind(Slab))")?;
-    let footfall = set_field(&mut app, &mut client, "(field: TerrainFootfall(Grate))")?;
+    set_field(&mut app, &mut client, "(field: Terrain(Kind(Slab)))")?;
+    let footfall = set_field(&mut app, &mut client, "(field: Terrain(Footfall(Grate)))")?;
     assert_eq!(
         footfall.field,
-        FieldRow::TerrainFootfall(FootfallRow::Grate)
+        FieldRow::Terrain(TerrainFieldRow::Footfall(FootfallRow::Grate)),
     );
     assert_eq!(terrain_draft(&app)?.footfall(), FootfallChoice::Grate);
 
-    set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
-    let band = set_field(&mut app, &mut client, "(field: TerrainHeightBand(Low))")?;
-    assert_eq!(band.field, FieldRow::TerrainHeightBand(BandRow::Low));
+    set_field(&mut app, &mut client, "(field: Terrain(Kind(Emplacement)))")?;
+    let band = set_field(&mut app, &mut client, "(field: Terrain(HeightBand(Low)))")?;
+    assert_eq!(
+        band.field,
+        FieldRow::Terrain(TerrainFieldRow::HeightBand(BandRow::Low)),
+    );
     assert_eq!(terrain_draft(&app)?.height_band(), HeightBand::Low);
 
     let weapon = a_mounted_weapon(&app)?;
     let arguments = format!(
-        "(field: TerrainMountedWeapon(Some(\"{}\")))",
+        "(field: Terrain(MountedWeapon(Some(\"{}\"))))",
         weapon.as_str()
     );
     let mounted = set_field(&mut app, &mut client, &arguments)?;
     assert_eq!(
         mounted.field,
-        FieldRow::TerrainMountedWeapon(Some(weapon.as_str().to_owned())),
+        FieldRow::Terrain(TerrainFieldRow::MountedWeapon(Some(
+            weapon.as_str().to_owned()
+        ))),
     );
     assert_eq!(terrain_draft(&app)?.mounted_weapon(), Some(&weapon));
-    Ok(())
-}
-
-#[test]
-fn an_hp_write_lands_on_both_cover_and_slab() -> TestResult {
-    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    let before = terrain_draft(&app)?;
-    assert_ne!(
-        (*before.cover_hp(), *before.slab_hp()),
-        (250, 250),
-        "the case must ask for an HP neither field already holds",
-    );
-
-    let written = set_field(&mut app, &mut client, "(field: TerrainHp(250))")?;
-    assert_eq!(written.field, FieldRow::TerrainHp(250));
-    let after = terrain_draft(&app)?;
-    assert_eq!(
-        (*after.cover_hp(), *after.slab_hp()),
-        (250, 250),
-        "the one HP input writes both the cover and the slab field, so writing one and not the \
-         other fails here",
-    );
-    Ok(())
-}
-
-#[test]
-fn an_hp_over_the_forms_range_is_stored_clamped_and_the_reply_says_so() -> TestResult {
-    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    let ceiling = *TerrainDraft::HP_RANGE.end();
-
-    let arguments = format!("(field: TerrainHp({}))", ceiling + 500);
-    let written = set_field(&mut app, &mut client, &arguments)?;
-    assert_eq!(
-        written.field,
-        FieldRow::TerrainHp(ceiling),
-        "the HP input's own range clamps a drag rather than refusing it, so the reply reads the \
-         stored value back",
-    );
-    assert_eq!(*terrain_draft(&app)?.cover_hp(), ceiling);
-    Ok(())
-}
-
-#[test]
-fn an_armor_value_over_the_forms_range_is_stored_clamped_and_the_reply_says_so() -> TestResult {
-    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    let ceiling = *TerrainDraft::ARMOR_RANGE.end();
-
-    let arguments = format!("(field: TerrainArmorProtection({}))", ceiling + 50);
-    let protection = set_field(&mut app, &mut client, &arguments)?;
-    assert_eq!(
-        protection.field,
-        FieldRow::TerrainArmorProtection(ceiling),
-        "the armor input's own range clamps a drag rather than refusing it, so the reply reads \
-         the stored value back",
-    );
-    assert_eq!(*terrain_draft(&app)?.armor_protection(), ceiling);
-
-    let arguments = format!("(field: TerrainArmorHardness({}))", ceiling + 50);
-    let hardness = set_field(&mut app, &mut client, &arguments)?;
-    assert_eq!(
-        hardness.field,
-        FieldRow::TerrainArmorHardness(ceiling),
-        "the hardness input shares that range, so an over-range write reads back at the ceiling",
-    );
-    assert_eq!(*terrain_draft(&app)?.armor_hardness(), ceiling);
     Ok(())
 }
 
@@ -206,7 +162,7 @@ fn a_graphic_role_the_picker_does_not_offer_is_bad_arguments() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
     let before = terrain_draft(&app)?.graphic();
 
-    let reply = try_set_field(&mut app, &mut client, "(field: TerrainGraphic(Door))")?;
+    let reply = try_set_field(&mut app, &mut client, "(field: Terrain(Graphic(Door)))")?;
     crate::bad_arguments::bad_arguments_detail(&reply)?;
     assert_eq!(
         terrain_draft(&app)?.graphic(),
@@ -220,7 +176,7 @@ fn a_graphic_role_the_picker_does_not_offer_is_bad_arguments() -> TestResult {
 fn set_field_is_refused_on_the_prefab_tab() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Prefab)?;
 
-    let reply = try_set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
+    let reply = try_set_field(&mut app, &mut client, "(field: Terrain(Kind(Emplacement)))")?;
     assert_eq!(
         unavailable_code(&reply)?,
         "WrongState",
@@ -238,7 +194,7 @@ fn set_field_is_refused_on_the_prefab_tab() -> TestResult {
 #[test]
 fn set_field_is_refused_while_the_editor_is_still_loading() -> TestResult {
     let reply = crate::load_case::reply_answered_during_load(
-        run_editor(EDITOR_SET_FIELD, "(field: TerrainKind(Emplacement))"),
+        run_editor(EDITOR_SET_FIELD, "(field: Terrain(Kind(Emplacement)))"),
         "the editor.set_field run",
     )?;
     assert_eq!(
@@ -253,13 +209,13 @@ fn set_field_is_refused_while_the_editor_is_still_loading() -> TestResult {
 #[test]
 fn a_mounted_weapon_key_no_registry_holds_is_bad_arguments() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
+    set_field(&mut app, &mut client, "(field: Terrain(Kind(Emplacement)))")?;
     let before = terrain_draft(&app)?.mounted_weapon().cloned();
 
     let reply = try_set_field(
         &mut app,
         &mut client,
-        "(field: TerrainMountedWeapon(Some(\"no_such_weapon\")))",
+        "(field: Terrain(MountedWeapon(Some(\"no_such_weapon\"))))",
     )?;
     crate::bad_arguments::bad_arguments_detail(&reply)?;
     assert_eq!(
@@ -273,7 +229,7 @@ fn a_mounted_weapon_key_no_registry_holds_is_bad_arguments() -> TestResult {
 #[test]
 fn a_mounted_weapon_write_with_no_registry_is_missing_model() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    set_field(&mut app, &mut client, "(field: TerrainKind(Emplacement))")?;
+    set_field(&mut app, &mut client, "(field: Terrain(Kind(Emplacement)))")?;
     app.world_mut().remove_resource::<WeaponRegistry>();
     // The content family rebuilds a registry that left the world while its folder handle is held.
     app.world_mut()
@@ -282,7 +238,7 @@ fn a_mounted_weapon_write_with_no_registry_is_missing_model() -> TestResult {
     let reply = try_set_field(
         &mut app,
         &mut client,
-        "(field: TerrainMountedWeapon(Some(\"autogun\")))",
+        "(field: Terrain(MountedWeapon(Some(\"autogun\"))))",
     )?;
     assert_eq!(
         unavailable_code(&reply)?,
