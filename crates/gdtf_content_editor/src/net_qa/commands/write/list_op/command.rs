@@ -11,7 +11,7 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{attachment, field, gang, injury, melee_weapon, sprite, terrain, weapon, weighting};
+use super::route;
 use crate::{
     EditorMode,
     net_qa::{
@@ -42,9 +42,6 @@ const DRAFT_GONE: RefusalNote =
 const NO_MODE_RESOURCE: RefusalNote = RefusalNote::from_static(
     "the mode tab resource left the world between the availability check and the handler",
 );
-
-const ARMOR_HAS_NO_LIST: &str = "the Armor form draws six fixed pieces and no list at all, so no list name is right while \
-     its tab is open";
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -90,9 +87,14 @@ impl QaCommand for EditorListOp {
     }
 }
 
-// Why an edit did not land: the draft went missing, or the form turned the edit down.
-enum ListOpRefusal {
+/// What a list op answers: the named list's members, or why the edit did not land.
+pub(super) type Routed = Result<Vec<EditorListMemberNet>, ListOpRefusal>;
+
+/// Why an edit did not land: the draft went missing, or the form turned the edit down.
+pub(super) enum ListOpRefusal {
+    /// The open tab's own draft resource is not in the world.
     DraftGone,
+    /// The form read the edit and turned it down.
     Fault(FormWriteFault),
 }
 
@@ -102,13 +104,13 @@ impl From<FormWriteFault> for ListOpRefusal {
     }
 }
 
-// The draft the open tab names, or the refusal a draft that left the world answers.
-fn present<T>(draft: Option<&mut T>) -> Result<&mut T, ListOpRefusal> {
+/// The draft the open tab names, or the refusal a draft that left the world answers.
+pub(super) fn present<T>(draft: Option<&mut T>) -> Result<&mut T, ListOpRefusal> {
     draft.ok_or(ListOpRefusal::DraftGone)
 }
 
-// A form with no list of its own still answers for its own missing draft first.
-fn no_list_of_its_own<T>(draft: Option<&mut T>) -> Result<Vec<EditorListMemberNet>, ListOpRefusal> {
+/// A form with no list of its own still answers for its own missing draft first.
+pub(super) fn no_list_of_its_own<T>(draft: Option<&mut T>) -> Routed {
     present(draft)?;
     Err(ListOpRefusal::Fault(FormWriteFault::ForeignArm))
 }
@@ -119,82 +121,35 @@ fn edit(
     mode: EditorModeNet,
     list: EditorListNet,
     op: EditorListOpNet,
-) -> Result<Vec<EditorListMemberNet>, ListOpRefusal> {
-    match (mode, list) {
-        (EditorModeNet::Armor, _) => {
-            present(forms.armor.as_mut())?;
-            Err(ListOpRefusal::Fault(FormWriteFault::bad(
-                ARMOR_HAS_NO_LIST.to_owned(),
-            )))
-        }
-        (EditorModeNet::Terrain, EditorListNet::EntrySides | EditorListNet::TerrainTags) => {
-            let draft = present(forms.terrain.as_mut())?;
-            terrain::apply(draft, list, op)?;
-            Ok(terrain::members(draft, list))
-        }
-        (EditorModeNet::Injury, EditorListNet::InjuryEffects) => {
-            let draft = present(forms.injury.as_mut())?;
-            injury::apply(draft, op)?;
-            Ok(injury::members(draft))
-        }
-        (EditorModeNet::Injury, EditorListNet::WeightingBucket(bucket)) => {
-            let registry = registries.injuries.as_deref();
-            let draft = present(forms.weighting.as_mut())?;
-            weighting::apply(draft, registry, bucket, op)?;
-            Ok(weighting::members(draft, bucket))
-        }
-        (
-            EditorModeNet::MeleeWeapon,
-            EditorListNet::MeleeWeaponFightModes
-            | EditorListNet::MeleeWeaponSlots
-            | EditorListNet::MeleeWeaponAttachments,
-        ) => {
-            let registry = registries.attachments.as_deref();
-            let draft = present(forms.melee_weapon.as_mut())?;
-            melee_weapon::apply(draft, registry, list, op)?;
-            Ok(melee_weapon::members(draft, list))
-        }
-        (
-            EditorModeNet::Weapon,
-            EditorListNet::WeaponFireModes
-            | EditorListNet::WeaponSlots
-            | EditorListNet::WeaponAttachments,
-        ) => {
-            let registry = registries.attachments.as_deref();
-            let draft = present(forms.weapon.as_mut())?;
-            weapon::apply(draft, registry, list, op)?;
-            Ok(weapon::members(draft, list))
-        }
-        (EditorModeNet::Attachment, EditorListNet::AttachmentEffects) => {
-            let draft = present(forms.attachment.as_mut())?;
-            attachment::apply(draft, op)?;
-            Ok(attachment::members(draft))
-        }
-        (EditorModeNet::Gang, EditorListNet::GangMembers) => {
-            let draft = present(forms.gang.as_mut())?;
-            gang::apply(draft, op)?;
-            Ok(gang::members(draft))
-        }
-        (EditorModeNet::Sprite, EditorListNet::SpriteFrames) => {
-            let draft = present(forms.sprite.as_mut())?;
-            sprite::apply(draft, op)?;
-            Ok(sprite::members(draft))
-        }
-        (EditorModeNet::Field, EditorListNet::FieldImmuneArmorTypes) => {
-            let draft = present(forms.field.as_mut())?;
-            field::apply(draft, op)?;
-            Ok(field::members(draft))
-        }
-        (EditorModeNet::Field, _) => no_list_of_its_own(forms.field.as_mut()),
-        (EditorModeNet::Terrain, _) => no_list_of_its_own(forms.terrain.as_mut()),
-        (EditorModeNet::Attachment, _) => no_list_of_its_own(forms.attachment.as_mut()),
-        (EditorModeNet::Sprite, _) => no_list_of_its_own(forms.sprite.as_mut()),
-        (EditorModeNet::Theme, _) => no_list_of_its_own(forms.theme.as_mut()),
-        (EditorModeNet::Gang, _) => no_list_of_its_own(forms.gang.as_mut()),
-        (EditorModeNet::Injury, _) => no_list_of_its_own(forms.injury.as_mut()),
-        (EditorModeNet::Weapon, _) => no_list_of_its_own(forms.weapon.as_mut()),
-        (EditorModeNet::MeleeWeapon, _) => no_list_of_its_own(forms.melee_weapon.as_mut()),
-        (EditorModeNet::Prefab, _) => Err(ListOpRefusal::Fault(FormWriteFault::ForeignArm)),
+) -> Routed {
+    match mode {
+        EditorModeNet::Terrain => route::terrain(forms.terrain.as_mut(), list, op),
+        EditorModeNet::Theme => route::theme(forms.theme.as_mut(), list),
+        EditorModeNet::Prefab => route::prefab(list),
+        EditorModeNet::Gang => route::gang(forms.gang.as_mut(), list, op),
+        EditorModeNet::Armor => route::armor(forms.armor.as_mut(), list),
+        EditorModeNet::Injury => route::injury(
+            forms.injury.as_mut(),
+            forms.weighting.as_mut(),
+            registries.injuries.as_deref(),
+            list,
+            op,
+        ),
+        EditorModeNet::Sprite => route::sprite(forms.sprite.as_mut(), list, op),
+        EditorModeNet::Attachment => route::attachment(forms.attachment.as_mut(), list, op),
+        EditorModeNet::Weapon => route::weapon(
+            forms.weapon.as_mut(),
+            registries.attachments.as_deref(),
+            list,
+            op,
+        ),
+        EditorModeNet::MeleeWeapon => route::melee_weapon(
+            forms.melee_weapon.as_mut(),
+            registries.attachments.as_deref(),
+            list,
+            op,
+        ),
+        EditorModeNet::Field => route::field(forms.field.as_mut(), list, op),
     }
 }
 

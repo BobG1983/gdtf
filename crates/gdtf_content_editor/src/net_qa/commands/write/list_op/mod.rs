@@ -6,6 +6,7 @@ mod field;
 mod gang;
 mod injury;
 mod melee_weapon;
+mod route;
 mod shared;
 mod sprite;
 mod terrain;
