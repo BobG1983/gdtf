@@ -4,6 +4,8 @@
 pub mod admit;
 /// Typed pending call payload.
 pub mod call;
+/// Host-side drain that takes the held replies' shots.
+pub mod capture_drain;
 /// Replies held until the capture rider's screenshot lands.
 pub mod capture_hold;
 /// Move inbox entries into typed pending queues.
@@ -27,6 +29,7 @@ pub mod waiting;
 
 pub use admit::{Admission, CommandRefusal, admit};
 pub use call::{CommandCall, take_calls};
+pub use capture_drain::drive_rider_captures;
 pub use capture_hold::{CaptureHolds, CaptureTicket, RiderShot, ShotRequest, poll_capture_holds};
 pub use claim::{bad_arguments, claim_calls};
 pub use deferred::{

@@ -1,15 +1,19 @@
-use bevy::app::App;
+use std::path::PathBuf;
+
+use bevy::prelude::*;
 use gdtf_qa_protocol::{
-    command::CommandOutcome,
+    command::{AttachmentKind, CaptureRider, CommandOutcome, RunOptions},
+    ids::ShotName,
     message::{ProtocolVersion, QaError, QaRequest, QaResponse},
+    ports::NetQaPort,
 };
-use gdtf_screenshot::{PollCap, SettleFrames};
+use gdtf_screenshot::{CaptureSystems, PollCap, SettleFrames, ShotDir, ShotDirName};
 
 use crate::{
     harness::{advance_to_editing, editor_app_listening},
     hello::assert_hello_ok,
-    names::CAPTURE_SCREENSHOT,
-    socket::{Client, run_editor},
+    names::{CAPTURE_SCREENSHOT, EDITOR_PHASE},
+    socket::{Client, run_editor, run_editor_with},
     support::{TestError, TestResult},
 };
 
@@ -19,10 +23,21 @@ const SHORT_SETTLE: u32 = 2;
 /// Frames the pump polls for the PNG before it gives up.
 const SHORT_POLL: u32 = 4;
 
-// An editing app with both capture tunables small, so a shot that cannot land gives up fast.
-// Nothing renders in this harness, so nothing ever writes a PNG.
-fn capture_app_and_client() -> Result<(App, Client), TestError> {
-    let (mut app, port) = editor_app_listening()?;
+/// Frames the call spends being routed, held, answered, queued and drained.
+const HOLD_HANDOFF_FRAMES: u32 = 6;
+
+/// Frames the answered call spends reaching the client's socket.
+const SOCKET_FRAMES: u32 = 8;
+
+/// Whole budget a case gives the editor to answer one run.
+const REPLY_BUDGET_FRAMES: u32 = SHORT_SETTLE + SHORT_POLL + HOLD_HANDOFF_FRAMES + SOCKET_FRAMES;
+
+/// Stem the capture rider asks the editor to write its shot under.
+const RIDER_SHOT_NAME: &str = "editor_rider_shot";
+
+// Both capture tunables small, the app advanced into editing, and a negotiated client on its
+// listener.
+fn settled_client(mut app: App, port: NetQaPort) -> Result<(App, Client), TestError> {
     app.insert_resource(SettleFrames::new(SHORT_SETTLE));
     app.insert_resource(PollCap::new(SHORT_POLL));
     advance_to_editing(&mut app);
@@ -30,6 +45,67 @@ fn capture_app_and_client() -> Result<(App, Client), TestError> {
     let hello = client.exchange(&mut app, &QaRequest::Hello(ProtocolVersion::CURRENT))?;
     assert_hello_ok(&hello);
     Ok((app, client))
+}
+
+// An editing app with both capture tunables small, so a shot that cannot land gives up fast.
+// Nothing renders in this harness, so nothing ever writes a PNG.
+fn capture_app_and_client() -> Result<(App, Client), TestError> {
+    let (app, port) = editor_app_listening()?;
+    settled_client(app, port)
+}
+
+// The same app writing into this case's own directory, with a stand-in for the renderer, so a
+// rider's shot can land.
+fn landing_capture_app_and_client() -> Result<(App, Client), TestError> {
+    let dir = rider_shot_dir();
+    drop(std::fs::remove_dir_all(dir.as_path()));
+    let (mut app, port) = editor_app_listening()?;
+    app.insert_resource(dir);
+    app.add_systems(Update, stand_in_for_the_renderer.after(CaptureSystems));
+    settled_client(app, port)
+}
+
+// One directory per process, so two runs of this suite never share a file.
+fn rider_shot_dir() -> ShotDir {
+    ShotDir::under_workspace_target(&ShotDirName::new(format!(
+        "qa_screenshot_editor_rider_{}",
+        std::process::id()
+    )))
+}
+
+// Nothing renders here, so this stands in for the capture's own PNG writer.
+fn stand_in_for_the_renderer(dir: Res<ShotDir>) {
+    if !dir.is_dir() {
+        return;
+    }
+    let path = dir.join(format!("{RIDER_SHOT_NAME}_0.png"));
+    if path.exists() {
+        return;
+    }
+    let frame = image::RgbaImage::from_pixel(2, 2, image::Rgba([7, 9, 11, 255]));
+    drop(frame.save_with_format(&path, image::ImageFormat::Png));
+}
+
+fn rider_named(stem: &str) -> RunOptions {
+    RunOptions::new(
+        None,
+        Some(CaptureRider::new(Some(ShotName::new(stem.to_owned())))),
+    )
+}
+
+// The answer inside the budget, or an error naming the call that ran out of frames.
+fn answer_within(app: &mut App, client: &mut Client, call: &str) -> Result<QaResponse, TestError> {
+    let answered = client.read_within(app, REPLY_BUDGET_FRAMES)?;
+    answered.ok_or_else(|| {
+        format!("{call} answered nothing inside {REPLY_BUDGET_FRAMES} frames").into()
+    })
+}
+
+fn ran_body_text(reply: &QaResponse) -> Result<String, TestError> {
+    let QaResponse::Outcome(CommandOutcome::Ran { reply: body, .. }) = reply else {
+        return Err(format!("expected a Ran outcome for `{EDITOR_PHASE}`, got {reply:?}").into());
+    };
+    Ok(body.as_str().to_owned())
 }
 
 #[test]
@@ -62,5 +138,63 @@ fn a_capture_the_headless_editor_cannot_land_reaches_the_pump_and_times_out() ->
         "the command needs neither the authoring scene nor a tab, so nothing may refuse it: \
          {reply:?}",
     );
+    Ok(())
+}
+
+#[test]
+fn a_capture_rider_on_an_editor_command_attaches_the_png_the_editor_took() -> TestResult {
+    let (mut app, mut client) = landing_capture_app_and_client()?;
+    let dir = rider_shot_dir();
+
+    client.send(&run_editor(EDITOR_PHASE, "()"))?;
+    let plain = answer_within(&mut app, &mut client, "the control run carrying no rider")?;
+    let plain_body = ran_body_text(&plain)?;
+
+    client.send(&run_editor_with(
+        EDITOR_PHASE,
+        "()",
+        rider_named(RIDER_SHOT_NAME),
+    ))?;
+    let with_rider = answer_within(&mut app, &mut client, "the run carrying a capture rider")?;
+
+    assert!(
+        !matches!(with_rider, QaResponse::Error(QaError::Timeout)),
+        "the editor drains the capture holds it registers, so a rider must answer rather than \
+         wait out the caller's reply timeout; got {with_rider:?}",
+    );
+    let QaResponse::Outcome(CommandOutcome::Ran { reply, attachments }) = &with_rider else {
+        return Err(format!("a capture rider runs its command first, got {with_rider:?}").into());
+    };
+    assert_eq!(
+        reply.as_str(),
+        plain_body,
+        "the rider leaves the command's own reply body alone",
+    );
+    assert_eq!(
+        attachments.len(),
+        1,
+        "the rider appends exactly one attachment: {attachments:?}",
+    );
+    let Some(attachment) = attachments.first() else {
+        return Err(format!("the length check above found one: {attachments:?}").into());
+    };
+    assert_eq!(
+        attachment.kind,
+        AttachmentKind::Png,
+        "the rider's attachment is declared a PNG: {attachment:?}",
+    );
+    let png = PathBuf::from(attachment.path.as_str());
+    assert!(
+        png.starts_with(dir.as_path()),
+        "the rider's shot must land inside {}, not at {}",
+        dir.display(),
+        png.display(),
+    );
+    assert!(
+        png.exists(),
+        "the editor attached {} but no file is there. The reply must name a PNG that exists",
+        png.display(),
+    );
+    drop(std::fs::remove_dir_all(dir.as_path()));
     Ok(())
 }

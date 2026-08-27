@@ -742,9 +742,9 @@ missing. `BadArguments` names the offending field in its `detail`, which is what
 `CommandResponder::bad_arguments`, for a body that decoded but named a value the command
 cannot take: a stat outside its range, an index past the end of a list.
 
-`run`'s two riders both work. `await_ready` holds a call its command refuses right now and
-tests admission again every frame until the command admits; when the seconds run out the
-answer is the command's own `Unavailable` refusal, the one the last test produced, never a
+`run`'s two riders both work, on either host. `await_ready` holds a call its command refuses
+right now and tests admission again every frame until the command admits; when the seconds run
+out the answer is the command's own `Unavailable` refusal, the one the last test produced, never a
 rider refusal and never `Timeout`. Nothing clamps the budget: a waiting call holds the
 channel exactly as a parked `wait` does, and a budget past the socket's three-minute wait
 for a reply (`DEFAULT_REPLY_TIMEOUT` in `crates/gdtf_qa_protocol/src/timeouts.rs`) answers
@@ -1036,6 +1036,10 @@ by the editor's own `serve`
 `CapturePresentPlugin`, `WindowCapturePlugin` and `CapturePipelinePlugin<EditorShotResponder>`
 together. Editor shots land in `target/qa_screenshots_editor` rather than the game's
 `target/qa_screenshots`, so the two processes cannot write over each other when both are up.
+`run`'s `capture` rider writes there too: `register_riders`
+([`dispatch/register.rs`](../../crates/gdtf_qa_command/src/dispatch/register.rs)) adds
+`CapturePipelinePlugin<CaptureTicket>` and the `drive_rider_captures` drain that empties it
+beside the holds themselves, so the host that parks a held reply is the host that takes its shot.
 
 `wait` holds its reply until one named condition becomes true, and it takes the game's
 two-minute budget, which expires well inside the socket's own 180-second wait for a reply.

@@ -2,18 +2,26 @@
 
 use bevy::prelude::*;
 use gdtf_net_qa_transport::{PendingQueue, sweep_pending};
+use gdtf_screenshot::CapturePipelinePlugin;
 
 use super::{
-    CaptureHolds, CommandCall, CommandInbox, DeferredReplies, QaCommandSystems, WaitingCalls,
-    claim_calls, poll_capture_holds, sweep_deferred,
+    CaptureHolds, CaptureTicket, CommandCall, CommandInbox, DeferredReplies, QaCommandSystems,
+    WaitingCalls, claim_calls, drive_rider_captures, poll_capture_holds, sweep_deferred,
 };
 use crate::command::{ErasedCommand, QaCommand};
 
-/// Register the resources and the polling system the run riders need.
+/// Register the resources, the capture pipeline, and the systems the run riders need.
+///
+/// The host that gets the hold gets the queue that feeds it and the drain that empties it, so a
+/// capture rider answers on every host rather than waiting out the caller's reply timeout.
 pub fn register_riders(app: &mut App) {
     app.init_resource::<WaitingCalls>();
     app.init_resource::<CaptureHolds>();
     app.add_systems(Last, poll_capture_holds);
+    if !app.is_plugin_added::<CapturePipelinePlugin<CaptureTicket>>() {
+        app.add_plugins(CapturePipelinePlugin::<CaptureTicket>::new());
+    }
+    app.add_systems(Update, drive_rider_captures.after(QaCommandSystems::Claim));
 }
 
 /// Register inbox, queue, claim, sweep, and the command's own handler for `C`.

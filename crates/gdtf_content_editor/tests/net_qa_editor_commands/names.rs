@@ -22,5 +22,8 @@ pub(crate) const EDITOR_LOAD: &str = "editor.load";
 /// The screen capture this suite drives.
 pub(crate) const CAPTURE_SCREENSHOT: &str = "capture.screenshot";
 
+/// The lifecycle read this suite hangs a capture rider on.
+pub(crate) const EDITOR_PHASE: &str = "editor.phase";
+
 /// The condition hold this suite drives.
 pub(crate) const WAIT: &str = "wait";

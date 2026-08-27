@@ -2946,6 +2946,7 @@ dependencies = [
  "bevy",
  "gdtf_net_qa_transport",
  "gdtf_qa_protocol",
+ "gdtf_screenshot",
  "ron",
  "serde",
 ]

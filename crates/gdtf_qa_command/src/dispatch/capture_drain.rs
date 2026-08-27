@@ -1,9 +1,13 @@
+//! Hand each held reply's shot to the capture pipeline and report how it finished.
+
 use bevy::prelude::*;
-use gdtf_qa_command::dispatch::{CaptureHolds, CaptureTicket, RiderShot};
 use gdtf_qa_protocol::command::ArtifactPath;
 use gdtf_screenshot::{CaptureCompletions, CaptureOutcome, CaptureQueue, ShotStem};
 
-pub(in crate::dev::net_qa) fn drive_rider_captures(
+use super::{CaptureHolds, CaptureTicket, RiderShot};
+
+/// Queue the shots the holds have asked for, and answer the holds whose shots have finished.
+pub fn drive_rider_captures(
     mut holds: ResMut<CaptureHolds>,
     mut captures: ResMut<CaptureQueue<CaptureTicket>>,
     mut completions: ResMut<CaptureCompletions<CaptureTicket>>,
