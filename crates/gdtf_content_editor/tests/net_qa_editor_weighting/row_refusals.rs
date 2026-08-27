@@ -33,6 +33,10 @@ fn the_operations_a_bucket_draws_no_control_for_are_bad_arguments_naming_the_fau
             "SetAt(0, WeightingRow((injury: \"x\", weight: 1)))",
             "`Weighting(RowInjury(…))`",
         ),
+        (
+            "SetAt(0, WeightingRow((injury: \"x\", weight: 1)))",
+            "`Weighting(RowWeight(…))`",
+        ),
         ("MoveUp(0)", "reorder"),
         ("MoveDown(0)", "reorder"),
     ] {
