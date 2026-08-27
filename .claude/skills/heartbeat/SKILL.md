@@ -86,7 +86,8 @@ The job also expires after 7 days, even in a session that never restarts. Recrea
    Never launch a build with `Workflow({name: 'build-ticket'})`. A named workflow resolves
    once per session and replays that frozen copy, so later edits to the file are ignored.
    Use `{scriptPath: '.claude/workflows/build-ticket.js'}`.
-7. Run `/run-state` to write the file.
+7. Call `LSP` with a workspace symbol to ensure the LSP cache is warm. 
+8. Run `/run-state` to write the file.
 
 ## Rust-analyzer target dir
 
