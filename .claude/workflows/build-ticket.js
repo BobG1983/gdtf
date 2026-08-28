@@ -24,11 +24,11 @@ export const meta = {
 // sonnet. Between tiers -> the higher one.
 //
 //   fetch:*         sonnet  verbatim Linear snapshot, judges nothing
-//   clause-audit:*  fable    audit judgment against tree and canon
+//   clause-audit:*  fable   audit judgment against tree and canon
 //   open:*          sonnet  status move plus templated comment
 //   build:*         opus    the implementation
 //   refetch:*       sonnet  read-only re-fetch
-//   verify:*        sonnet    adversarial verification, trusts nothing
+//   verify:*        sonnet  adversarial verification, trusts nothing
 //   gate:*          opus    design-gate lens
 //   fix:*           opus    repair engineering
 //   docs-sync:*     opus    decides doc drift against source
