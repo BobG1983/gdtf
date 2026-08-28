@@ -8,8 +8,8 @@ use std::{
 };
 
 use gdtf_qa_mcp::{
-    HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, OutputTail, QaClient,
-    QaLink, QaPort, StopOutcome, TailLines, WorkingDir, dispatch,
+    HostLifecycle, HostPair, HostSet, InstanceId, LaunchOutcome, LaunchSpec, McpError, OutputTail,
+    QaClient, QaLink, QaPort, RecordedInstance, StopOutcome, TailLines, WorkingDir, dispatch,
 };
 use gdtf_qa_protocol::{
     command::CommandCatalogue,
@@ -29,17 +29,29 @@ impl HostLifecycle for NoLifecycle {
         StopOutcome::NotRunning
     }
 
+    fn stop_instance(&mut self, _instance: &InstanceId) -> StopOutcome {
+        StopOutcome::NotRunning
+    }
+
     fn stop_owned(&mut self) -> StopOutcome {
         StopOutcome::NotRunning
     }
 
     fn reap_dead_child(&mut self) {}
 
+    fn instances(&self) -> Vec<RecordedInstance> {
+        Vec::new()
+    }
+
     fn child_working_dir(&self) -> Option<WorkingDir> {
         None
     }
 
     fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
+        None
+    }
+
+    fn instance_output(&self, _instance: &InstanceId, _max: TailLines) -> Option<OutputTail> {
         None
     }
 }

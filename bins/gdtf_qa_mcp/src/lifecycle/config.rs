@@ -16,6 +16,15 @@ const DEFAULT_PROBE_TIMEOUT: ProbeTimeout = ProbeTimeout::new(Duration::from_mil
 
 const DEFAULT_SWEEP_INTERVAL: SweepInterval = SweepInterval::new(Duration::from_secs(60));
 
+/// What a launch does about the children a host already records.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LaunchPolicy {
+    /// Keep the recorded child and report it as already running.
+    Reuse,
+    /// Start another child on every launch.
+    AlwaysSpawn,
+}
+
 /// Timing knobs for launch readiness and stop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LifecycleConfig {
@@ -24,10 +33,11 @@ pub struct LifecycleConfig {
     kill_grace:     KillGrace,
     probe_timeout:  ProbeTimeout,
     sweep_interval: SweepInterval,
+    launch_policy:  LaunchPolicy,
 }
 
 impl LifecycleConfig {
-    /// Build from explicit timings.
+    /// Build from explicit timings and a launch policy.
     #[must_use]
     pub const fn new(
         boot_timeout: BootTimeout,
@@ -35,6 +45,7 @@ impl LifecycleConfig {
         kill_grace: KillGrace,
         probe_timeout: ProbeTimeout,
         sweep_interval: SweepInterval,
+        launch_policy: LaunchPolicy,
     ) -> Self {
         Self {
             boot_timeout,
@@ -42,6 +53,7 @@ impl LifecycleConfig {
             kill_grace,
             probe_timeout,
             sweep_interval,
+            launch_policy,
         }
     }
 
@@ -75,6 +87,12 @@ impl LifecycleConfig {
         self.sweep_interval
     }
 
+    /// Whether a launch reuses a recorded child or starts another.
+    #[must_use]
+    pub const fn launch_policy(&self) -> LaunchPolicy {
+        self.launch_policy
+    }
+
     /// Defaults for the game host.
     #[must_use]
     pub const fn game() -> Self {
@@ -84,6 +102,7 @@ impl LifecycleConfig {
             DEFAULT_KILL_GRACE,
             DEFAULT_PROBE_TIMEOUT,
             DEFAULT_SWEEP_INTERVAL,
+            LaunchPolicy::Reuse,
         )
     }
 
@@ -96,6 +115,7 @@ impl LifecycleConfig {
             DEFAULT_KILL_GRACE,
             DEFAULT_PROBE_TIMEOUT,
             DEFAULT_SWEEP_INTERVAL,
+            LaunchPolicy::Reuse,
         )
     }
 }
@@ -108,7 +128,7 @@ impl Default for LifecycleConfig {
 
 #[cfg(test)]
 mod test {
-    use super::LifecycleConfig;
+    use super::{LaunchPolicy, LifecycleConfig};
 
     #[test]
     fn editor_and_game_share_the_same_boot_timeout() {
@@ -117,5 +137,19 @@ mod test {
             LifecycleConfig::game().boot_timeout()
         );
         assert_eq!(LifecycleConfig::default(), LifecycleConfig::game());
+    }
+
+    #[test]
+    fn both_shipped_configs_reuse_the_child_they_record() {
+        assert_eq!(
+            LifecycleConfig::game().launch_policy(),
+            LaunchPolicy::Reuse,
+            "the game host keeps one child, so a second launch reports it"
+        );
+        assert_eq!(
+            LifecycleConfig::editor().launch_policy(),
+            LaunchPolicy::Reuse,
+            "the editor host keeps one child in this build"
+        );
     }
 }

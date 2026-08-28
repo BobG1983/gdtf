@@ -8,8 +8,9 @@ use std::{
 };
 
 use gdtf_qa_mcp::{
-    BootTimeout, ChildSpawner, KillGrace, LaunchSpec, LifecycleConfig, ManagedChild, PollInterval,
-    ProbeTimeout, ProcessChild, QaPort, SweepInterval,
+    BootTimeout, CargoPackage, ChildSpawner, EnvOverrides, FeatureList, FeatureName, KillGrace,
+    LaunchPolicy, LaunchSpec, LifecycleConfig, ManagedChild, OrphanStop, OrphanTarget, OrphanWatch,
+    PollInterval, PortHold, ProbeTimeout, ProcessChild, QaChannel, QaPort, SweepInterval,
 };
 use gdtf_qa_protocol::{
     framing::{FrameDecoder, encode},
@@ -88,6 +89,15 @@ pub(crate) fn spawn_gated_fake_game() -> (u16, FakeGameGate) {
     (port, gate)
 }
 
+pub(crate) fn gated_listeners(count: usize) -> Vec<(QaPort, FakeGameGate)> {
+    (0..count)
+        .map(|_| {
+            let (port, gate) = spawn_gated_fake_game();
+            (QaPort::new(port), gate)
+        })
+        .collect()
+}
+
 pub(crate) fn spawn_fake_game() -> u16 {
     let (port, gate) = spawn_gated_fake_game();
     gate.open();
@@ -134,12 +144,25 @@ pub(crate) fn free_port() -> u16 {
 }
 
 pub(crate) const fn fast_config(boot_ms: u64) -> LifecycleConfig {
-    config_sweeping_every(boot_ms, SweepInterval::new(Duration::from_secs(60)))
+    config_sweeping_every(
+        boot_ms,
+        SweepInterval::new(Duration::from_secs(60)),
+        LaunchPolicy::Reuse,
+    )
+}
+
+pub(crate) const fn always_spawning_config(boot_ms: u64) -> LifecycleConfig {
+    config_sweeping_every(
+        boot_ms,
+        SweepInterval::new(Duration::from_secs(60)),
+        LaunchPolicy::AlwaysSpawn,
+    )
 }
 
 pub(crate) const fn config_sweeping_every(
     boot_ms: u64,
     sweep_interval: SweepInterval,
+    launch_policy: LaunchPolicy,
 ) -> LifecycleConfig {
     LifecycleConfig::new(
         BootTimeout::new(Duration::from_millis(boot_ms)),
@@ -147,5 +170,33 @@ pub(crate) const fn config_sweeping_every(
         KillGrace::new(Duration::from_secs(1)),
         ProbeTimeout::new(Duration::from_millis(300)),
         sweep_interval,
+        launch_policy,
     )
+}
+
+pub(crate) fn recipe_with_features(features: &[&str]) -> LaunchSpec {
+    LaunchSpec::new(
+        CargoPackage::new("grimdark_turfwar".to_owned()),
+        FeatureList::new(
+            features
+                .iter()
+                .map(|name| FeatureName::new((*name).to_owned()))
+                .collect(),
+        ),
+        None,
+        EnvOverrides::default(),
+        QaChannel::game(),
+    )
+}
+
+pub(crate) struct WatchFreePort;
+
+impl OrphanWatch for WatchFreePort {
+    fn inspect(&self, _port: QaPort, _timeout: ProbeTimeout) -> PortHold {
+        PortHold::Free
+    }
+
+    fn stop(&self, _target: OrphanTarget) -> OrphanStop {
+        OrphanStop::Stopped
+    }
 }

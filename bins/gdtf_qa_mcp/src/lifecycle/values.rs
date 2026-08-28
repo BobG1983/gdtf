@@ -2,6 +2,8 @@
 
 use core::{ops::Deref, time::Duration};
 
+use crate::link::QaPort;
+
 /// OS process id of a managed child.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ChildPid(u32);
@@ -19,6 +21,60 @@ impl Deref for ChildPid {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+/// Name a host gives one child it records, unique within that host.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct InstanceId(String);
+
+impl InstanceId {
+    /// Wrap an id.
+    #[must_use]
+    pub const fn new(id: String) -> Self {
+        Self(id)
+    }
+}
+
+impl Deref for InstanceId {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+/// One child a host records: its id, the port it listens on, and its pid.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecordedInstance {
+    id:   InstanceId,
+    port: QaPort,
+    pid:  ChildPid,
+}
+
+impl RecordedInstance {
+    /// Build from the three facts a host records.
+    #[must_use]
+    pub const fn new(id: InstanceId, port: QaPort, pid: ChildPid) -> Self {
+        Self { id, port, pid }
+    }
+
+    /// Id this host knows the child by.
+    #[must_use]
+    pub const fn id(&self) -> &InstanceId {
+        &self.id
+    }
+
+    /// Port the child listens on.
+    #[must_use]
+    pub const fn port(&self) -> QaPort {
+        self.port
+    }
+
+    /// Process id of the child.
+    #[must_use]
+    pub const fn pid(&self) -> ChildPid {
+        self.pid
     }
 }
 

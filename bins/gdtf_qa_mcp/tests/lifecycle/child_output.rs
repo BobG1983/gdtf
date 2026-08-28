@@ -1,8 +1,16 @@
+use std::sync::{Arc, Mutex};
+
 use gdtf_qa_mcp::{
     HostLifecycle, HostManager, LaunchOutcome, LaunchSpec, QaPort, StopOutcome, TailLines,
 };
 
-use crate::support::{GatedStubSpawner, STUB_STDERR_LINE, fast_config, spawn_gated_fake_game};
+use crate::{
+    fake_child::{CallLog, PortGatedSpawner, tail_on},
+    support::{
+        GatedStubSpawner, STUB_STDERR_LINE, WatchFreePort, always_spawning_config, fast_config,
+        gated_listeners, spawn_gated_fake_game,
+    },
+};
 
 #[test]
 fn a_running_child_reports_what_it_printed() {
@@ -65,5 +73,40 @@ fn the_line_cap_reaches_the_childs_ring() {
     assert!(
         matches!(stopped, StopOutcome::Stopped { .. }),
         "the child stops cleanly: {stopped:?}",
+    );
+}
+
+#[test]
+fn with_two_children_recorded_the_tail_is_the_last_one_launched() {
+    let gates = gated_listeners(2);
+    let ports: Vec<QaPort> = gates.iter().map(|(port, _)| *port).collect();
+    let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
+    let mut manager = HostManager::with_orphan_watch(
+        Box::new(PortGatedSpawner::new(calls, gates)),
+        always_spawning_config(2000),
+        Box::new(WatchFreePort),
+    );
+    let (Some(first), Some(second)) = (ports.first().copied(), ports.get(1).copied()) else {
+        unreachable!("the test opened two gated listeners, got: {ports:?}");
+    };
+
+    let earlier = manager.launch(first, &LaunchSpec::game_default());
+    let later = manager.launch(second, &LaunchSpec::game_default());
+
+    assert!(
+        matches!(earlier, LaunchOutcome::Launched { .. }),
+        "the first launch becomes ready: {earlier:?}",
+    );
+    assert!(
+        matches!(later, LaunchOutcome::Launched { .. }),
+        "the second launch becomes ready: {later:?}",
+    );
+    let Some(tail) = manager.child_output(TailLines::default()) else {
+        unreachable!("two recorded children leave a tail to report");
+    };
+    assert_eq!(
+        *tail,
+        tail_on(second),
+        "with no instance named the tail is the last child launched, not the first",
     );
 }

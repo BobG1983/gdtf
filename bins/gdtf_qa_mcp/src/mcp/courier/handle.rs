@@ -9,10 +9,13 @@ use super::{
 };
 use crate::{
     hosts::{HostSet, QaHost},
+    lifecycle::{HostLifecycle, InstanceId, RecordedInstance},
     mcp::{content::tool_error, control, tools::ToolName},
 };
 
 const HOST_ARG: &str = "host";
+
+const INSTANCE_ARG: &str = "instance";
 
 fn resolve_host(args: &Value) -> Result<QaHost, String> {
     match args.get(HOST_ARG) {
@@ -35,6 +38,63 @@ pub enum ToolCallOutcome {
     Result(Value),
     /// Argument validation failure.
     Invalid(String),
+}
+
+/// Which instance a call acts on, or the reply that refuses it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InstanceChoice {
+    /// The call named a recorded instance.
+    Named(InstanceId),
+    /// The call named none, and this host needs none.
+    Unnamed,
+    /// The call cannot be answered, and this is what it gets back.
+    Refused(ToolCallOutcome),
+}
+
+/// Resolve a call's `instance` argument against what its host records.
+#[must_use]
+pub fn resolve_instance(
+    host: QaHost,
+    args: &Value,
+    lifecycle: &dyn HostLifecycle,
+) -> InstanceChoice {
+    let recorded = lifecycle.instances();
+    match args.get(INSTANCE_ARG) {
+        None | Some(Value::Null) => {
+            if matches!(host, QaHost::Editor) && !recorded.is_empty() {
+                return InstanceChoice::Refused(instance_refusal(host, &recorded));
+            }
+            InstanceChoice::Unnamed
+        }
+        Some(Value::String(word)) => recorded
+            .iter()
+            .find(|instance| instance.id().as_str() == word)
+            .map_or_else(
+                || InstanceChoice::Refused(instance_refusal(host, &recorded)),
+                |instance| InstanceChoice::Named(instance.id().clone()),
+            ),
+        Some(other) => InstanceChoice::Refused(ToolCallOutcome::Invalid(format!(
+            "`{INSTANCE_ARG}` must be a string, not {other}"
+        ))),
+    }
+}
+
+fn instance_refusal(host: QaHost, recorded: &[RecordedInstance]) -> ToolCallOutcome {
+    let named: Vec<&str> = recorded
+        .iter()
+        .map(|instance| instance.id().as_str())
+        .collect();
+    let list = if named.is_empty() {
+        "none".to_owned()
+    } else {
+        named.join(", ")
+    };
+    ToolCallOutcome::Result(tool_error(&format!(
+        "`{INSTANCE_ARG}` must name one of the {} instances this MCP host records: {list}. An \
+         editor `stop` or `logs` names the instance it acts on, and the launch reply carries \
+         the id.",
+        host.label(),
+    )))
 }
 
 /// Dispatch one MCP `tools/call` request.
@@ -61,7 +121,7 @@ pub fn handle_tool_call(params: Option<&Value>, hosts: &mut HostSet<'_>) -> Tool
             let (link, lifecycle) = pair.parts();
             control::handle_launch(host, args, link, lifecycle)
         }
-        ToolName::Stop => control::handle_stop(host, pair.lifecycle()),
+        ToolName::Stop => control::handle_stop(host, args, pair.lifecycle()),
         ToolName::Logs => control::handle_logs(host, args, pair.lifecycle()),
         ToolName::Commands => handle_commands(args, pair),
         ToolName::Run => handle_run(args, pair),

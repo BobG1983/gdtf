@@ -122,8 +122,8 @@ mod tests {
         error::McpError,
         hosts::{HostPair, HostSet, QaHost},
         lifecycle::{
-            HostLifecycle, LaunchOutcome, LaunchSpec, OutputTail, StopOutcome, SweepClock,
-            SweepSchedule, TailLines, WorkingDir,
+            HostLifecycle, InstanceId, LaunchOutcome, LaunchSpec, OutputTail, RecordedInstance,
+            StopOutcome, SweepClock, SweepSchedule, TailLines, WorkingDir,
         },
         link::{QaLink, QaPort},
     };
@@ -147,17 +147,29 @@ mod tests {
             StopOutcome::NotRunning
         }
 
+        fn stop_instance(&mut self, _instance: &InstanceId) -> StopOutcome {
+            StopOutcome::NotRunning
+        }
+
         fn stop_owned(&mut self) -> StopOutcome {
             StopOutcome::NotRunning
         }
 
         fn reap_dead_child(&mut self) {}
 
+        fn instances(&self) -> Vec<RecordedInstance> {
+            Vec::new()
+        }
+
         fn child_working_dir(&self) -> Option<WorkingDir> {
             None
         }
 
         fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
+            None
+        }
+
+        fn instance_output(&self, _instance: &InstanceId, _max: TailLines) -> Option<OutputTail> {
             None
         }
     }

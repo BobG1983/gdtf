@@ -3,6 +3,7 @@
 mod child_dir;
 mod child_output;
 mod fake_child;
+mod instances;
 mod orphan;
 mod output_tail;
 mod process;

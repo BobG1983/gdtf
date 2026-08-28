@@ -56,10 +56,22 @@ fn launch_schema() -> Value {
     })
 }
 
+fn instance_property() -> Value {
+    json!({
+        "type": "string",
+        "description": "Which recorded instance to act on, as the launch reply named it. An \
+         editor call that names none while the host records any is refused, and the refusal \
+         lists every recorded editor instance.",
+    })
+}
+
 fn stop_schema() -> Value {
     json!({
         "type": "object",
-        "properties": { "host": host_property() }
+        "properties": {
+            "host": host_property(),
+            "instance": instance_property()
+        }
     })
 }
 
@@ -68,6 +80,7 @@ fn logs_schema() -> Value {
         "type": "object",
         "properties": {
             "host": host_property(),
+            "instance": instance_property(),
             "max_lines": { "type": "integer", "minimum": 0,
                            "description": "How many trailing lines to return; omit for \
                             the default tail." }

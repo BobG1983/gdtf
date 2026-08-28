@@ -13,7 +13,7 @@ pub mod launch_args;
 /// Tool names and list schema.
 pub mod tools;
 
-pub use courier::{ToolCallOutcome, handle_tool_call};
+pub use courier::{InstanceChoice, ToolCallOutcome, handle_tool_call, resolve_instance};
 pub use initialize::initialize_result;
 pub use launch_args::parse_launch_spec;
 pub use tools::{ToolName, tools_list_result};

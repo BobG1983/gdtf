@@ -67,8 +67,8 @@ mod test {
     use crate::{
         error::McpError,
         lifecycle::{
-            ChildPid, HostLifecycle, LaunchOutcome, LaunchSpec, OutputTail, StopOutcome, TailLines,
-            WorkingDir,
+            ChildPid, HostLifecycle, InstanceId, LaunchOutcome, LaunchSpec, OutputTail,
+            RecordedInstance, StopOutcome, TailLines, WorkingDir,
         },
         link::{QaLink, QaPort},
     };
@@ -91,11 +91,16 @@ mod test {
             LaunchOutcome::Launched {
                 port,
                 pid: ChildPid::new(self.0),
+                instance: InstanceId::new(format!("instance-{}", self.0)),
             }
         }
 
         fn stop(&mut self, _port: QaPort) -> StopOutcome {
             self.stop_owned()
+        }
+
+        fn stop_instance(&mut self, _instance: &InstanceId) -> StopOutcome {
+            StopOutcome::NotRunning
         }
 
         fn stop_owned(&mut self) -> StopOutcome {
@@ -106,11 +111,19 @@ mod test {
 
         fn reap_dead_child(&mut self) {}
 
+        fn instances(&self) -> Vec<RecordedInstance> {
+            Vec::new()
+        }
+
         fn child_working_dir(&self) -> Option<WorkingDir> {
             None
         }
 
         fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
+            None
+        }
+
+        fn instance_output(&self, _instance: &InstanceId, _max: TailLines) -> Option<OutputTail> {
             None
         }
     }

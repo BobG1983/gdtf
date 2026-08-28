@@ -1,7 +1,7 @@
 use core::time::Duration;
 use std::time::Instant;
 
-use gdtf_qa_mcp::{QaHost, SweepClock, SweepDue, SweepInterval, SweepSchedule};
+use gdtf_qa_mcp::{LaunchPolicy, QaHost, SweepClock, SweepDue, SweepInterval, SweepSchedule};
 
 use crate::support::config_sweeping_every;
 
@@ -13,8 +13,8 @@ const EDITOR_EVERY: SweepInterval = SweepInterval::new(Duration::from_millis(23)
 
 #[test]
 fn each_registered_host_carries_the_interval_its_own_config_reports() {
-    let game = config_sweeping_every(BOOT_MS, GAME_EVERY);
-    let editor = config_sweeping_every(BOOT_MS, EDITOR_EVERY);
+    let game = config_sweeping_every(BOOT_MS, GAME_EVERY, LaunchPolicy::Reuse);
+    let editor = config_sweeping_every(BOOT_MS, EDITOR_EVERY, LaunchPolicy::Reuse);
 
     let schedule = SweepSchedule::from_configs(game, editor);
 
@@ -45,8 +45,8 @@ fn each_registered_host_carries_the_interval_its_own_config_reports() {
 fn a_host_falls_due_on_its_own_interval_and_is_rescheduled_once_swept() {
     let start = Instant::now();
     let schedule = SweepSchedule::from_configs(
-        config_sweeping_every(BOOT_MS, GAME_EVERY),
-        config_sweeping_every(BOOT_MS, EDITOR_EVERY),
+        config_sweeping_every(BOOT_MS, GAME_EVERY, LaunchPolicy::Reuse),
+        config_sweeping_every(BOOT_MS, EDITOR_EVERY, LaunchPolicy::Reuse),
     );
     let mut clock = SweepClock::starting_at(schedule, SweepDue::new(start));
 

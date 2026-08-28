@@ -1,9 +1,17 @@
+use std::sync::{Arc, Mutex};
+
 use gdtf_qa_mcp::{
     CargoPackage, EnvOverrides, FeatureList, HostLifecycle, HostManager, LaunchOutcome, LaunchSpec,
     QaChannel, QaPort, StopOutcome, WorkingDir,
 };
 
-use crate::support::{GatedStubSpawner, fast_config, spawn_gated_fake_game};
+use crate::{
+    fake_child::{CallLog, PortGatedSpawner},
+    support::{
+        GatedStubSpawner, WatchFreePort, always_spawning_config, fast_config, gated_listeners,
+        spawn_gated_fake_game,
+    },
+};
 
 fn recipe_in(dir: &WorkingDir) -> LaunchSpec {
     LaunchSpec::new(
@@ -77,5 +85,45 @@ fn a_child_from_a_recipe_with_no_directory_reports_the_hosts_own() {
     assert!(
         matches!(stopped, StopOutcome::Stopped { .. }),
         "the child stops cleanly: {stopped:?}",
+    );
+}
+
+#[test]
+fn with_two_children_recorded_the_directory_is_the_last_one_launched() {
+    let gates = gated_listeners(2);
+    let ports: Vec<QaPort> = gates.iter().map(|(port, _)| *port).collect();
+    let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
+    let mut manager = HostManager::with_orphan_watch(
+        Box::new(PortGatedSpawner::new(calls, gates)),
+        always_spawning_config(2000),
+        Box::new(WatchFreePort),
+    );
+    let (Some(first), Some(second)) = (ports.first().copied(), ports.get(1).copied()) else {
+        unreachable!("the test opened two gated listeners, got: {ports:?}");
+    };
+    let Ok(here) = std::env::current_dir() else {
+        unreachable!("the test process has a current directory");
+    };
+    let (earlier_dir, later_dir) = (WorkingDir::new(here), WorkingDir::new(std::env::temp_dir()));
+    assert_ne!(
+        earlier_dir, later_dir,
+        "the two recipes name two directories, or this proves nothing",
+    );
+
+    let earlier = manager.launch(first, &recipe_in(&earlier_dir));
+    let later = manager.launch(second, &recipe_in(&later_dir));
+
+    assert!(
+        matches!(earlier, LaunchOutcome::Launched { .. }),
+        "the first launch becomes ready: {earlier:?}",
+    );
+    assert!(
+        matches!(later, LaunchOutcome::Launched { .. }),
+        "the second launch becomes ready: {later:?}",
+    );
+    assert_eq!(
+        manager.child_working_dir(),
+        Some(later_dir),
+        "with no instance named the directory is the last child launched, not the first",
     );
 }

@@ -1,10 +1,11 @@
 use gdtf_qa_mcp::{
-    CargoPackage, EnvOverrides, FeatureList, FeatureName, HostLifecycle, HostManager,
-    LaunchFailure, LaunchOutcome, LaunchSpec, QaChannel, QaPort, StopOutcome, WorkingDir,
+    CargoPackage, EnvOverrides, HostLifecycle, HostManager, LaunchFailure, LaunchOutcome,
+    LaunchSpec, QaChannel, QaPort, StopOutcome, WorkingDir,
 };
 
 use crate::support::{
-    GatedStubSpawner, STUB_STDERR_LINE, StubSpawner, fast_config, free_port, spawn_gated_fake_game,
+    GatedStubSpawner, STUB_STDERR_LINE, StubSpawner, fast_config, free_port, recipe_with_features,
+    spawn_gated_fake_game,
 };
 
 #[test]
@@ -17,6 +18,7 @@ fn launch_becomes_ready_then_stops() {
     let LaunchOutcome::Launched {
         port: ready_port,
         pid,
+        ..
     } = outcome
     else {
         unreachable!("launch against the fake server becomes ready: {outcome:?}");
@@ -32,21 +34,6 @@ fn launch_becomes_ready_then_stops() {
         manager.stop(QaPort::new(free_port())),
         StopOutcome::NotRunning
     );
-}
-
-fn recipe_with_features(features: &[&str]) -> LaunchSpec {
-    LaunchSpec::new(
-        CargoPackage::new("grimdark_turfwar".to_owned()),
-        FeatureList::new(
-            features
-                .iter()
-                .map(|name| FeatureName::new((*name).to_owned()))
-                .collect(),
-        ),
-        None,
-        EnvOverrides::default(),
-        QaChannel::game(),
-    )
 }
 
 #[test]

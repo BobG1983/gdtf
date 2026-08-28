@@ -17,6 +17,8 @@ pub(crate) const GATED_LINE: &str = "boot-oops: the child never came up";
 
 const FIRST_GATED_PID: u32 = 424_242;
 
+const FIRST_PORT_GATED_PID: u32 = 515_151;
+
 pub(crate) type CallLog = Arc<Mutex<Vec<ChildCall>>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,6 +34,7 @@ pub(crate) enum ChildCall {
 pub(crate) struct ReapGatedChild {
     pid:    ChildPid,
     tail:   FailureTail,
+    output: OutputTail,
     status: ChildStatus,
     calls:  CallLog,
 }
@@ -87,14 +90,13 @@ impl ManagedChild for ReapGatedChild {
     }
 
     fn output_tail(&self, _max: TailLines) -> OutputTail {
-        OutputTail::new((*self.failure_tail()).clone())
+        self.output.clone()
     }
 }
 
 pub(crate) struct ReapGatedSpawner {
     status:   ChildStatus,
     calls:    CallLog,
-    gate:     Option<FakeGameGate>,
     next_pid: AtomicU32,
 }
 
@@ -103,16 +105,6 @@ impl ReapGatedSpawner {
         Self {
             status,
             calls,
-            gate: None,
-            next_pid: AtomicU32::new(FIRST_GATED_PID),
-        }
-    }
-
-    pub(crate) const fn gated(status: ChildStatus, calls: CallLog, gate: FakeGameGate) -> Self {
-        Self {
-            status,
-            calls,
-            gate: Some(gate),
             next_pid: AtomicU32::new(FIRST_GATED_PID),
         }
     }
@@ -120,17 +112,57 @@ impl ReapGatedSpawner {
 
 impl ChildSpawner for ReapGatedSpawner {
     fn spawn(&self, _port: QaPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
-        let child = ReapGatedChild {
+        Ok(Box::new(ReapGatedChild {
             pid:    ChildPid::new(self.next_pid.fetch_add(1, Ordering::SeqCst)),
             tail:   FailureTail::new(GATED_LINE.to_owned()),
+            output: OutputTail::new(GATED_LINE.to_owned()),
             status: self.status,
             calls:  Arc::clone(&self.calls),
-        };
-        if let Some(gate) = self.gate.as_ref() {
-            gate.open();
-        }
-        Ok(Box::new(child))
+        }))
     }
+}
+
+/// Tail one child prints, naming the port that child was handed.
+pub(crate) fn tail_on(port: QaPort) -> String {
+    format!("fake child listening on port {}", *port)
+}
+
+/// Spawner that opens the gate belonging to the port it is handed.
+pub(crate) struct PortGatedSpawner {
+    calls:    CallLog,
+    gates:    Vec<(QaPort, FakeGameGate)>,
+    next_pid: AtomicU32,
+}
+
+impl PortGatedSpawner {
+    pub(crate) const fn new(calls: CallLog, gates: Vec<(QaPort, FakeGameGate)>) -> Self {
+        Self {
+            calls,
+            gates,
+            next_pid: AtomicU32::new(FIRST_PORT_GATED_PID),
+        }
+    }
+}
+
+impl ChildSpawner for PortGatedSpawner {
+    fn spawn(&self, port: QaPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
+        for (gated, gate) in &self.gates {
+            if *gated == port {
+                gate.open();
+            }
+        }
+        Ok(Box::new(ReapGatedChild {
+            pid:    ChildPid::new(self.next_pid.fetch_add(1, Ordering::SeqCst)),
+            tail:   FailureTail::new(GATED_LINE.to_owned()),
+            output: OutputTail::new(tail_on(port)),
+            status: ChildStatus::Running,
+            calls:  Arc::clone(&self.calls),
+        }))
+    }
+}
+
+pub(crate) fn counted(calls: &CallLog, call: ChildCall) -> usize {
+    recorded(calls).iter().filter(|made| **made == call).count()
 }
 
 pub(crate) fn recorded(calls: &CallLog) -> Vec<ChildCall> {

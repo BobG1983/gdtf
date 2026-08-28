@@ -29,6 +29,33 @@ fn tools_list_returns_every_tool() {
 }
 
 #[test]
+fn every_tool_taking_an_instance_names_it_in_its_description() {
+    let response = dispatch_json(r#"{"jsonrpc":"2.0","id":3,"method":"tools/list"}"#);
+    let Some(tools) = response["result"]["tools"].as_array() else {
+        unreachable!("tools/list carries a tools array");
+    };
+
+    for tool in tools {
+        let name = tool["name"].as_str().unwrap_or_default();
+        let described = tool["description"].as_str().unwrap_or_default();
+        if tool["inputSchema"]["properties"]["instance"].is_object() {
+            assert!(
+                described.contains("instance"),
+                "tool {name} takes an `instance` argument and its description never says so: \
+                 {described}"
+            );
+        }
+        if name == "launch" {
+            assert!(
+                described.contains("instance"),
+                "the launch reply names the instance it recorded, and the launch description \
+                 never says so: {described}"
+            );
+        }
+    }
+}
+
+#[test]
 fn tools_call_unknown_tool_is_invalid_params() {
     let response = dispatch_json(
         r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"no_such_tool","arguments":{}}}"#,

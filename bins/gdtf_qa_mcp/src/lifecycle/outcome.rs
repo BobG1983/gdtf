@@ -4,7 +4,7 @@ use crate::{
     lifecycle::{
         launch::LaunchSpec,
         orphan::OrphanPid,
-        values::{BootTimeout, ChildPid, FailureTail, SpawnError},
+        values::{BootTimeout, ChildPid, FailureTail, InstanceId, SpawnError},
     },
     link::QaPort,
 };
@@ -15,9 +15,11 @@ pub enum LaunchOutcome {
     /// Child started and became ready.
     Launched {
         /// Port it is listening on.
-        port: QaPort,
+        port:     QaPort,
         /// Process id.
-        pid:  ChildPid,
+        pid:      ChildPid,
+        /// Id this host records the new child under.
+        instance: InstanceId,
     },
     /// Already running with a matching recipe.
     AlreadyRunning {
@@ -54,6 +56,11 @@ pub enum LaunchFailure {
         port: QaPort,
         /// Best-effort pid of the holder.
         pid:  OrphanPid,
+    },
+    /// This host's own records hold the port, and the search above it found none free.
+    NoFreePort {
+        /// Port the launch asked for.
+        requested: QaPort,
     },
 }
 

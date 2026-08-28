@@ -16,8 +16,13 @@ pub(super) fn render_launch(
     requested: &LaunchSpec,
 ) -> Value {
     match outcome {
-        LaunchOutcome::Launched { port, pid } => text_content(&json!({
+        LaunchOutcome::Launched {
+            port,
+            pid,
+            instance,
+        } => text_content(&json!({
             "status": "launched", "port": **port, "pid": **pid,
+            "instance": instance.as_str(),
             "package": requested.package().as_str(),
             "features": requested.features().render(),
             "working_dir": resolved_working_dir(requested),
@@ -73,6 +78,13 @@ fn launch_failure_message(host: QaHost, failure: &LaunchFailure, requested: &Lau
              owns no handle to it. Call {} to stop it, then try again.",
             **port,
             holder_clause(*pid),
+            host.stop_tool_name(),
+        ),
+        LaunchFailure::NoFreePort { requested: port } => format!(
+            "this MCP host's own {label} records hold port {}, and no port just above it was \
+             free, so nothing was started. Call {} for one of the recorded instances to free \
+             a port, then try again.",
+            **port,
             host.stop_tool_name(),
         ),
         LaunchFailure::Timeout { tail, waited } => timeout_message(host, *waited, requested, tail),
@@ -174,4 +186,28 @@ pub(super) fn render_logs(host: QaHost, max: TailLines, tail: Option<&OutputTail
         "max_lines": *max,
         "lines": lines,
     }))
+}
+
+#[cfg(test)]
+mod test {
+    use super::{LaunchFailure, LaunchOutcome, QaHost, QaPort, render_launch};
+
+    #[test]
+    fn a_full_port_search_is_not_reported_as_an_orphan() {
+        let outcome = LaunchOutcome::Failed(LaunchFailure::NoFreePort {
+            requested: QaPort::new(7617),
+        });
+
+        let reply = render_launch(QaHost::Editor, &outcome, &QaHost::Editor.default_spec());
+
+        let Some(text) = reply["content"][0]["text"].as_str() else {
+            unreachable!("a launch failure renders as text content: {reply}");
+        };
+        assert_eq!(reply["isError"], serde_json::json!(true), "{reply}");
+        assert!(
+            !text.contains("orphan"),
+            "this host's own records hold the port, so the reply must not send the author after \
+             an orphan: {text}"
+        );
+    }
 }

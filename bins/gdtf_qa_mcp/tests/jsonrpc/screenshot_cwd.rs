@@ -5,8 +5,9 @@ use std::{
 };
 
 use gdtf_qa_mcp::{
-    ChildPid, HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, OutputTail,
-    QaLink, QaPort, StopOutcome, TailLines, WorkingDir, base64::encode_standard, dispatch,
+    ChildPid, HostLifecycle, HostPair, HostSet, InstanceId, LaunchOutcome, LaunchSpec, McpError,
+    OutputTail, QaLink, QaPort, RecordedInstance, StopOutcome, TailLines, WorkingDir,
+    base64::encode_standard, dispatch,
 };
 use gdtf_qa_protocol::{
     command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyRon, ReplyAttachment},
@@ -49,10 +50,15 @@ impl HostLifecycle for ChildInDirLifecycle {
         LaunchOutcome::Launched {
             port,
             pid: ChildPid::new(process::id()),
+            instance: InstanceId::new("instance-1".to_owned()),
         }
     }
 
     fn stop(&mut self, _port: QaPort) -> StopOutcome {
+        StopOutcome::NotRunning
+    }
+
+    fn stop_instance(&mut self, _instance: &InstanceId) -> StopOutcome {
         StopOutcome::NotRunning
     }
 
@@ -62,11 +68,19 @@ impl HostLifecycle for ChildInDirLifecycle {
 
     fn reap_dead_child(&mut self) {}
 
+    fn instances(&self) -> Vec<RecordedInstance> {
+        Vec::new()
+    }
+
     fn child_working_dir(&self) -> Option<WorkingDir> {
         Some(WorkingDir::new(self.0.clone()))
     }
 
     fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
+        None
+    }
+
+    fn instance_output(&self, _instance: &InstanceId, _max: TailLines) -> Option<OutputTail> {
         None
     }
 }

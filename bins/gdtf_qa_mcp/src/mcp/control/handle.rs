@@ -7,7 +7,7 @@ use crate::{
     hosts::QaHost,
     lifecycle::{HostLifecycle, LaunchOutcome, TailLines},
     link::{QaLink, QaPort},
-    mcp::{ToolCallOutcome, launch_args::parse_launch_spec},
+    mcp::{InstanceChoice, ToolCallOutcome, launch_args::parse_launch_spec, resolve_instance},
 };
 
 /// Launch (or attach to) a host with optional recipe overrides.
@@ -36,14 +36,23 @@ pub fn handle_launch(
     ToolCallOutcome::Result(render_launch(host, &outcome, &spec))
 }
 
-/// Stop a host (managed child or orphan on its port).
+/// Stop a host's named instance, or its child (or an orphan on its port).
 #[must_use]
-pub fn handle_stop(host: QaHost, lifecycle: &mut dyn HostLifecycle) -> ToolCallOutcome {
-    let outcome = lifecycle.stop(host.port_from_env());
+pub fn handle_stop(
+    host: QaHost,
+    args: &Value,
+    lifecycle: &mut dyn HostLifecycle,
+) -> ToolCallOutcome {
+    let choice = resolve_instance(host, args, lifecycle);
+    let outcome = match choice {
+        InstanceChoice::Refused(refusal) => return refusal,
+        InstanceChoice::Named(instance) => lifecycle.stop_instance(&instance),
+        InstanceChoice::Unnamed => lifecycle.stop(host.port_from_env()),
+    };
     ToolCallOutcome::Result(render_stop(host, &outcome))
 }
 
-/// Return recent child output for a host.
+/// Return recent output for a host's named instance, or for its child.
 #[must_use]
 pub fn handle_logs(
     host: QaHost,
@@ -54,7 +63,13 @@ pub fn handle_logs(
         Ok(max) => max,
         Err(message) => return ToolCallOutcome::Invalid(message),
     };
-    ToolCallOutcome::Result(render_logs(host, max, lifecycle.child_output(max).as_ref()))
+    let choice = resolve_instance(host, args, lifecycle);
+    let tail = match choice {
+        InstanceChoice::Refused(refusal) => return refusal,
+        InstanceChoice::Named(instance) => lifecycle.instance_output(&instance, max),
+        InstanceChoice::Unnamed => lifecycle.child_output(max),
+    };
+    ToolCallOutcome::Result(render_logs(host, max, tail.as_ref()))
 }
 
 fn parse_max_lines(args: &Value) -> Result<TailLines, String> {

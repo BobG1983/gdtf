@@ -13,7 +13,7 @@ pub mod sweep;
 pub mod values;
 
 pub use child::{ManagedChild, OUTPUT_TAIL_LINES, ProcessChild};
-pub use config::LifecycleConfig;
+pub use config::{LaunchPolicy, LifecycleConfig};
 pub use launch::{
     CargoPackage, EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList, FeatureName,
     LaunchSpec, QaChannel, WorkingDir,
@@ -25,6 +25,6 @@ pub use outcome::{LaunchFailure, LaunchOutcome, StopOutcome};
 pub use spawn::{CargoSpawner, ChildSpawner, build_command};
 pub use sweep::{SweepClock, SweepDue, SweepEntry, SweepSchedule};
 pub use values::{
-    BootTimeout, ChildPid, ChildStatus, FailureTail, KillGrace, OutputTail, PollInterval,
-    ProbeTimeout, Readiness, SpawnError, SweepInterval, TailLines,
+    BootTimeout, ChildPid, ChildStatus, FailureTail, InstanceId, KillGrace, OutputTail,
+    PollInterval, ProbeTimeout, Readiness, RecordedInstance, SpawnError, SweepInterval, TailLines,
 };

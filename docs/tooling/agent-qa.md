@@ -73,10 +73,10 @@ always binds `7616`. BOTH of the child's output streams are piped and drained in
 `ProcessChild` — the host's own stdout is the JSON-RPC channel, so the child's
 cannot share it. The `logs` tool reads the tail of that ring, and a failed launch
 reports it as the diagnosis. The process is managed by the `HostManager`
-(`bins/gdtf_qa_mcp/src/lifecycle/manager.rs`): `launch` starts it and waits
-for it to answer before returning its port and pid — plus the package, features,
-and resolved directory it was built from — and `stop` (plus stdin EOF) stops
-it so the game never outlives the host.
+(`bins/gdtf_qa_mcp/src/lifecycle/manager/`): `launch` starts it and waits for it
+to answer before returning the instance id it recorded the child under, that
+child's port and pid, and the package, features and resolved directory it was
+built from. `stop` (plus stdin EOF) stops it so the game never outlives the host.
 
 One game runs at a time, and the manager remembers the recipe that built it:
 
@@ -260,11 +260,16 @@ defaults, and a `launch` that names a port has to name a free one.
 The MCP host's tools are enumerated once by the `ToolName` enum in
 `bins/gdtf_qa_mcp/src/mcp/tools/name.rs`. Some drive a child process — `launch`,
 `stop`, `logs` — and the rest carry that child's own command layer: `commands` and
-`run`. Every one takes the same optional `host` argument (`"game"` — the default
-— or `"editor"`), so which child a call reaches is the CALL's to say rather than
+`run`. Every one takes the same optional `host` argument (`"game"`, the default,
+or `"editor"`), so which child a call reaches is the CALL's to say rather than
 the tool's. `resolve_host` in `bins/gdtf_qa_mcp/src/mcp/courier/handle.rs`
-resolves it, and a `host` value naming neither child is rejected as invalid
-params rather than quietly defaulting, so a typo cannot drive the wrong process.
+resolves that argument, and a `host` value naming neither child is rejected as
+invalid params rather than quietly defaulting, so a typo cannot drive the wrong
+process. `stop` and `logs` take an `instance` as well, naming which of that
+host's recorded children to act on. `resolve_instance`, in the same file,
+resolves that one. An id no record of the called host holds is refused, and so is
+an editor call that names no instance while the host records any. Both refusals
+list the ids that host records.
 
 **The two command tools name no command.** What a host can be asked to do is read
 from the host itself — `commands` returns its live catalogue, `run` calls one
@@ -275,8 +280,8 @@ rebuild, and needs no MCP reconnect. That is the whole point of the design; see
 | Tool | Kind | Maps to | Arguments |
 | --- | --- | --- | --- |
 | `launch` | host-local | — (starts the child via that host's `HostManager`) | all optional: `host`, `port`, `package`, `features` (array or comma-separated string), `working_dir`, `env` |
-| `stop` | host-local | — (stops the child via that host's `HostManager`) | optional `host` |
-| `logs` | host-local | — (reads the child's captured output) | optional `host`, `max_lines` (trailing lines to return) |
+| `stop` | host-local | — (stops a recorded child via that host's `HostManager`) | optional `host`, `instance` (which recorded child to stop, as the launch reply named it; an editor call naming none while the host records any is refused, listing the recorded ids) |
+| `logs` | host-local | — (reads a recorded child's captured output) | optional `host`, `instance` (which recorded child to read, refused the same way), `max_lines` (trailing lines to return) |
 | `commands` | forward | `QaRequest::Catalogue` | optional `host`, `command` (name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the published RON shapes) |
 | `run` | forward | `QaRequest::Run` | `command` (required, from `commands`), `arguments` (optional string of compact RON, default `"()"`), optional `host`, `await_ready` (whole seconds), `capture` (`true` or a file stem) |
 
@@ -421,8 +426,12 @@ Notes an agent relies on:
   actually said. `max_lines` bounds it. A host owning no child answers
   `not_running` rather than an empty log.
 - **The two children are independent.** A `stop` aimed at the game does not touch
-  the editor and vice versa; each `HostManager` owns one child and enforces
-  one-at-a-time for its own host only. Stdin EOF stops both.
+  the editor and vice versa; each `HostManager` records the children of its own
+  host and no others. Whether a second `launch` starts another child or reuses
+  the recorded one is that host's launch policy on its `LifecycleConfig`
+  (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`), and both hosts ship with the
+  reuse policy, so each holds one child. Stdin EOF stops every child both hosts
+  record.
 - **An MCP host restart leaves the child running, and `stop` says so.** Replacing
   the MCP server process — what every `/mcp` reconnect does — kills the host, not
   its child: the child is spawned into its own process group and survives, still
@@ -520,8 +529,10 @@ against the shipped tool surface:
    published argument and reply shapes.
 4. `run` with that command and its arguments, written as compact RON — do the
    thing.
-5. `logs` — if a step surprised you, read what the child printed.
-6. `stop` — stop the child and release the port.
+5. `logs`: if a step surprised you, read what the child printed. An editor
+   `logs` names the instance the launch reply gave it.
+6. `stop`: stop the child and release the port. An editor `stop` names its
+   instance the same way.
 
 On the game host today step 4 is one of the commands its catalogue lists. `run { command: "app.phase",
 arguments: "()" }` answers the state tuple (`app`, `running`, `game`,
@@ -540,7 +551,8 @@ battle used; omit the seed and the game resolves its own and reports that.
 one stage, and refuses `NotBuilt` in a build without `dev_tools`.
 `run { command: "wait", arguments: "(condition: BattleDecided)" }` holds until
 that condition comes true, or answers `Timeout` after two minutes. Steps 2-4 are
-what change as commands land; steps 1, 5 and 6 never do.
+what change as commands land. Steps 1, 5 and 6 change only in what they name: on
+the editor, steps 5 and 6 name the instance step 1's reply gave them.
 
 The two hosts are independent: a game child on `7616` and an editor child on
 `7617` are tracked by separate `HostManager`s, one per host, constructed in
