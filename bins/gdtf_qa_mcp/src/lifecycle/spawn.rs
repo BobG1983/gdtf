@@ -47,8 +47,8 @@ pub fn build_command(port: QaPort, spec: &LaunchSpec) -> Command {
     for var in spec.env().iter() {
         command.env(var.name().as_str(), var.value().as_str());
     }
-    // Hosts listen on shared protocol ports in debug builds; nothing to pass through.
-    let _ = (port, spec.channel());
+    // After the overrides, so an `env` argument cannot displace the launch port.
+    command.env(spec.channel().port().as_str(), (*port).to_string());
     command.stdin(Stdio::null());
     command
 }
@@ -98,8 +98,39 @@ mod tests {
             ]
         );
         assert_eq!(env_of(&command, "GDTF_NET_QA"), None);
-        assert_eq!(env_of(&command, "GDTF_NET_QA_PORT"), None);
+        assert_eq!(
+            env_of(&command, "GDTF_NET_QA_PORT"),
+            Some("7616".to_owned())
+        );
         assert!(command.get_current_dir().is_none());
+    }
+
+    #[test]
+    fn the_editor_child_is_handed_the_launch_port() {
+        let spec = LaunchSpec::editor_default();
+        let command = build_command(QaPort::new(7620), &spec);
+        assert_eq!(
+            env_of(&command, spec.channel().port().as_str()),
+            Some("7620".to_owned())
+        );
+    }
+
+    #[test]
+    fn the_launch_port_outranks_an_env_override_of_the_same_name() {
+        let default = LaunchSpec::editor_default();
+        let port_var = default.channel().port().as_str().to_owned();
+        let spec = LaunchSpec::new(
+            default.package().clone(),
+            default.features().clone(),
+            None,
+            EnvOverrides::new(vec![EnvVar::new(
+                EnvVarName::new(port_var.clone()),
+                EnvVarValue::new("7999".to_owned()),
+            )]),
+            default.channel().clone(),
+        );
+        let command = build_command(QaPort::new(7620), &spec);
+        assert_eq!(env_of(&command, &port_var), Some("7620".to_owned()));
     }
 
     #[test]

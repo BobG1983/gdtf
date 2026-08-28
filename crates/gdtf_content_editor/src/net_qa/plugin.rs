@@ -17,7 +17,7 @@ use gdtf_screenshot::{
 
 use super::{
     commands::{EditorShotResponder, register_editor_commands},
-    config::{DEFAULT_EDITOR_PORT, editor_hello_facts},
+    config::{editor_hello_facts, editor_port_from_env},
     router::route_editor_requests,
     schedule::EditorNetQaSystems,
 };
@@ -42,12 +42,13 @@ pub struct NetQaEditorPlugin {
 }
 
 impl NetQaEditorPlugin {
-    /// Build the default wiring: debug builds listen on the shared editor QA port.
+    /// Build the default wiring: the listen port comes from `GDTF_EDITOR_NET_QA_PORT`,
+    /// falling back to `DEFAULT_EDITOR_PORT`.
     #[must_use]
-    pub const fn from_env() -> Self {
+    pub fn from_env() -> Self {
         Self {
             wiring: Wiring::Listener {
-                port:     DEFAULT_EDITOR_PORT,
+                port:     editor_port_from_env(),
                 timeouts: NetTimeouts::DEFAULT,
             },
         }

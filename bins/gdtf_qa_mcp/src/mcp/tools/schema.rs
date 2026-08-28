@@ -24,8 +24,18 @@ fn launch_schema() -> Value {
         "properties": {
             "host": host_property(),
             "port": { "type": "integer", "minimum": 0, "maximum": 65535,
-                      "description": "Loopback port for the child's net_qa listener; \
-                       omit for that host's default (game 7616, editor 7617)." },
+                      "description": "Loopback port for the child's net_qa listener. The \
+                       spawner sets the port env var on both children. The editor child \
+                       reads GDTF_EDITOR_NET_QA_PORT and listens on the port given, so \
+                       omit for the editor's default 7617. The game child receives \
+                       GDTF_NET_QA_PORT and ignores it, and always listens on 7616 \
+                       whatever this says, because port_from_env \
+                       (crates/gdtf_app/src/dev/net_qa/env.rs) reads no environment. The \
+                       host does not ignore the argument: parse_port hands it to \
+                       HostManager::launch, which probes it while the child binds 7616, \
+                       so a port other than 7616 on host \"game\" answers a 'did not \
+                       answer within' error after the 180-second boot timeout. Omit port \
+                       for the game." },
             "package": { "type": "string",
                          "description": "Cargo package to build and run; omit for that \
                           host's own (grimdark_turfwar, gdtf_content_editor_bin)." },

@@ -65,12 +65,12 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `GDTF_BATTLE_SEED` | `gdtf_app` (consumed by `gdtf_battle_sim`; honored by the `gdtf_test_utils` battle harness) | Pins the root battle RNG seed for a reproducible replay; unset = wall-clock entropy, logged at `info!`. |
 | `GDTF_DEBUG_REACHABLE_OVERLAY` | `gdtf_battle_presenter` (mirrored by `gdtf_battle_input` docs) | Truthy renders the reachable-range debug overlay in a debug build (default off — visual noise). |
 | ~~`GDTF_EDITOR_NET_QA`~~ | — | Read by nothing. A debug editor build always opens its QA channel; there is no arming variable. Launch recipe is in [tooling/agent-qa.md](tooling/agent-qa.md). |
-| ~~`GDTF_EDITOR_NET_QA_PORT`~~ | — | Read by nothing. The editor always listens on `7617` (one above the game's `7616`, so the two hosts never contend for a socket) on `Ipv4Addr::LOCALHOST`. |
+| `GDTF_EDITOR_NET_QA_PORT` | `gdtf_content_editor`, `gdtf_qa_mcp` | The editor listens on this value when it trims and parses as a `u16`, and on `7617` otherwise (one above the game's `7616`, so the two hosts never contend for a socket). Always on `Ipv4Addr::LOCALHOST`. The spawner sets the port name on both children from the port the launch was given, so `launch(host="editor", port=…)` puts the editor child here; the game child receives `GDTF_NET_QA_PORT` and ignores it. Read in the MCP host's own environment by `QaHost::port_from_env`, it also moves the port the editor link opens on and the port a `launch` or `stop` that names none targets. |
 | `GDTF_MODULE_LAYOUT_ROOT` | `gdtf_test_utils` | Overrides the repo root the module-layout conformance guard test scans (guard-test hook). |
 | `GDTF_RUSTDOC_GATE_ROOT` | `gdtf_test_utils` | Overrides the repo root the rustdoc-lint guard test scans (guard-test hook). |
 | `GDTF_SEED_LOGGING_CASE` | `gdtf_app` | Names which seed-logging case a re-invoked child test process runs — `env-pinned` or `wall-clock`. Set for the child by the parent test. |
 | ~~`GDTF_NET_QA`~~ | — | Read by nothing. A debug game build always opens the loopback QA network control channel — the ONE drive path (`launch` → `commands` → `run` → `stop`, driven via `gdtf_qa_mcp` or any `gdtf_qa_protocol` client). |
-| ~~`GDTF_NET_QA_PORT`~~ | — | Read by nothing. The game always listens on `7616` on `Ipv4Addr::LOCALHOST`. |
+| `GDTF_NET_QA_PORT` | `gdtf_qa_mcp` | The game child ignores it and always listens on `7616` on `Ipv4Addr::LOCALHOST`; the spawner sets the name on it regardless. Read in the MCP host's own environment by `QaHost::port_from_env`, it moves the port the game link opens on and the port a `launch` or `stop` that names none targets. The game child never binds that port, so such a launch waits out its boot timeout. |
 | `GDTF_TEST_FORCE_NO_GPU` | `gdtf_test_utils` | Forces the GPU-adapter probe to report Absent, driving the exact no-GPU skip path on a GPU machine. |
 
 ## What the suite pins (and what it doesn't)

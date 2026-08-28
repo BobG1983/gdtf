@@ -61,10 +61,15 @@ QA pass gets reported against code that is not the code under review. A
 `working_dir` that is not an existing directory is rejected, never silently
 dropped.
 
-The spawner does **not** inject `GDTF_NET_QA` / `GDTF_NET_QA_PORT` (or the
-editor pair) onto the child. Those names remain as historical `QaChannel` labels
-in launch types for host identity only; debug hosts listen on fixed protocol
-ports without arming. BOTH of the child's output streams are piped and drained into one ring by
+The spawner does **not** inject either enable name, `GDTF_NET_QA` or
+`GDTF_EDITOR_NET_QA`, onto the child; both remain historical `QaChannel` labels
+read by nothing, and debug hosts open their channel without arming. It DOES set
+the port name from `spec.channel().port()` on both children, to the port the
+launch was given, and it sets it AFTER the recipe's `env` overrides, so an `env`
+entry of that name cannot displace it. The editor reads its one; the game child receives
+`GDTF_NET_QA_PORT` and ignores it, because `port_from_env`
+(`crates/gdtf_app/src/dev/net_qa/env.rs`) reads no environment and the game
+always binds `7616`. BOTH of the child's output streams are piped and drained into one ring by
 `ProcessChild` — the host's own stdout is the JSON-RPC channel, so the child's
 cannot share it. The `logs` tool reads the tail of that ring, and a failed launch
 reports it as the diagnosis. The process is managed by the `HostManager`
@@ -112,18 +117,21 @@ cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher
 ```
 
 in the MCP host's own directory. No arming env vars are set on the child; a
-debug editor always opens its QA channel on `7617`. The historical
-`GDTF_EDITOR_NET_QA` / `GDTF_EDITOR_NET_QA_PORT` names are not read by the
-editor and are not required for launch.
+debug editor opens its QA channel on `7617` only when `GDTF_EDITOR_NET_QA_PORT`
+is absent or does not parse. The spawner sets that name on both children from
+`spec.channel().port()`, to the port the launch was given: the editor reads its
+one, and the game child receives `GDTF_NET_QA_PORT` and ignores it, because
+`port_from_env` (`crates/gdtf_app/src/dev/net_qa/env.rs`) is unchanged and reads
+no environment. `GDTF_EDITOR_NET_QA` is read by nothing. Neither enable variable
+is set, and neither is required for launch.
 
-**Warm the build first.** The editor's `dynamic_linking,dev_tools` combination is
-one nothing else in the repo produces — `cargo dbuild` builds the GAME binary,
-and the workspace checks never link an editor binary — so the first
-`launch(host="editor")` against a given checkout is usually a COLD BUILD of the whole
-editor. Two things follow:
+**Warm the build first.** Nothing in the normal loop builds the editor binary.
+`cargo dbuild` builds the GAME binary, and the workspace checks never link an
+editor binary. So the first `launch(host="editor")` against a given checkout is
+usually a COLD BUILD of the whole editor. Two things follow:
 
-- The editor's boot timeout is **600 seconds**, not the game's 180
-  (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`).
+- A cold build can outrun the wait: the editor's boot timeout is **180 seconds**,
+  the same as the game's (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`).
 - Run `cargo edbuild` in the checkout you are about to QA before calling
   `launch(host="editor")`, and the launch answers in seconds instead.
 
@@ -146,11 +154,16 @@ cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher
 `cargo edbuild` builds without running. Both include `file_watcher` (hot-reload
 RON).
 
-A debug editor build always opens the channel on **`7617`**, the
+A debug editor build opens the channel on **`7617`** by default, the
 `DEFAULT_EDITOR_PORT` in `crates/gdtf_content_editor/src/net_qa/config.rs` —
 deliberately one above the game's `7616`, so both hosts can be up at once without
-fighting for a socket. `GDTF_EDITOR_NET_QA` and `GDTF_EDITOR_NET_QA_PORT` are read
-by nothing; the MCP host still sets them and the editor ignores them.
+fighting for a socket. `GDTF_EDITOR_NET_QA_PORT` overrides that default, and the
+editor listens on its value whenever the value trims and parses as a `u16`. The
+spawner sets the port name on both children, so a `launch(host="editor", port=…)`
+child binds the port it was given; the game child receives `GDTF_NET_QA_PORT` and
+ignores it, because `port_from_env` (`crates/gdtf_app/src/dev/net_qa/env.rs`)
+reads no environment. `GDTF_EDITOR_NET_QA` is read by nothing, and the spawner
+sets neither enable variable.
 
 When the channel comes up the editor writes this line to **stderr** at `info`
 level (`crates/gdtf_content_editor/src/net_qa/plugin.rs`), carrying the port it
@@ -223,17 +236,24 @@ so a release build never contains the server code. The editor mirrors it at
 
 There is no cargo feature and no runtime arming. `net_qa` used to be a feature on
 both hosts, and `GDTF_NET_QA` used to arm it at run time; both were removed. What
-is left keeps the old names but reads nothing: `net_qa_enabled()`
-(`crates/gdtf_app/src/dev/net_qa/env.rs`) returns a literal `true`, and
-`NetQaPlugin::from_env` / `NetQaEditorPlugin::from_env` take their port from a
-constant.
+is left keeps the old names, and both enable names are read by nothing:
+`net_qa_enabled()` (`crates/gdtf_app/src/dev/net_qa/env.rs`) returns a literal
+`true`, and the game's `NetQaPlugin::from_env` takes its port from a constant.
+The editor's `NetQaEditorPlugin::from_env` is the one exception: it reads
+`GDTF_EDITOR_NET_QA_PORT` and falls back to the constant when that name is absent
+or does not parse. The spawner sets the port name on both children, so the editor
+binds the port the launch gave it, while the game child receives
+`GDTF_NET_QA_PORT` and ignores it.
 
 The listen **interface** is never configurable — hardcoded to
-`Ipv4Addr::LOCALHOST` — and the **port** is a constant too: `GAME_QA_PORT`
-(`7616`) and `EDITOR_QA_PORT` (`7617`) in `crates/gdtf_qa_protocol/src/ports.rs`,
-wrapped as `DEFAULT_PORT` and `DEFAULT_EDITOR_PORT` in each host's
-`net_qa/config.rs`. One constant per host is why the two never contend for a
-socket.
+`Ipv4Addr::LOCALHOST`. The game's **port** is a constant: `GAME_QA_PORT` (`7616`)
+in `crates/gdtf_qa_protocol/src/ports.rs`, wrapped as `DEFAULT_PORT` in
+`crates/gdtf_app/src/dev/net_qa/config.rs`, and the game child ignores the
+`GDTF_NET_QA_PORT` the spawner hands it. `EDITOR_QA_PORT` (`7617`), wrapped as
+`DEFAULT_EDITOR_PORT` in `crates/gdtf_content_editor/src/net_qa/config.rs`, is
+only the editor's DEFAULT: the spawner sets `GDTF_EDITOR_NET_QA_PORT` to the
+launch port and the editor reads it. The two never contend for a socket on their
+defaults, and a `launch` that names a port has to name a free one.
 
 ## The tool vocabulary
 
@@ -434,9 +454,13 @@ handshake string, distinct from the game wire version below.
 
 **Host ↔ child — framed RON over a loopback TCP socket.** For each forwarding
 tool call the host connects to that tool's host over an `Ipv4Addr::LOCALHOST` TCP
-stream — the game on port `7616` (`GAME_QA_PORT`) or the editor on `7617`
-(`EDITOR_QA_PORT`) — and exchanges typed messages using the shared
-`gdtf_qa_protocol` crate. That crate is bevy-free — it links only `serde`, `ron`,
+stream — the game always on port `7616` (`GAME_QA_PORT`), the editor on whatever
+port the last `launch` retargeted its link to, which is `7617` (`EDITOR_QA_PORT`)
+when no `port` was given — and exchanges typed messages using the shared
+`gdtf_qa_protocol` crate. The spawner sets the port name on both children, so
+the editor child binds the port the launch named and the link reaches it there;
+the game child receives `GDTF_NET_QA_PORT`, ignores it, and always binds `7616`.
+That crate is bevy-free — it links only `serde`, `ron`,
 and `bevy_derive` (the `Deref` derive), so neither half pulls in the engine. Its
 shape:
 
