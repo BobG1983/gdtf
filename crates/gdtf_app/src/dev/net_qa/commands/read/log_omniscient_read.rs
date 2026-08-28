@@ -29,7 +29,7 @@ const NO_ACT_LOG: RefusalNote =
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct LogOmniscientReadArgs {
-    /// Oldest sequence to return; absent starts at the oldest line still retained.
+    /// Oldest sequence to return; absent starts at the oldest line the log holds.
     #[serde(default)]
     since: Option<ActSeqNet>,
     /// How many of the newest lines to return; absent means 50, and 200 is the ceiling.
@@ -94,12 +94,12 @@ pub(super) fn whole_window(log: &ActLog, args: &LogOmniscientReadArgs) -> LogRea
         .skip(skipped)
         .map(LogEntryNet::omniscient)
         .collect();
-    let before_window = u32::try_from(skipped).unwrap_or(u32::MAX);
+    let before_window = LogDroppedCount::new(u32::try_from(skipped).unwrap_or(u32::MAX));
     LogReadReply {
         entries,
         cap,
         head: ActSeqNet::new(*log.head()),
         oldest: ActSeqNet::new(*log.oldest_seq()),
-        dropped: LogDroppedCount::new((*log.dropped()).saturating_add(before_window)),
+        dropped: before_window,
     }
 }

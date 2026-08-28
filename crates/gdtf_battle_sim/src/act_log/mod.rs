@@ -20,5 +20,5 @@ pub use log::{ActLog, SquadSees};
 pub use plugin::wire_act_log;
 pub use provenance::ActProvenance;
 pub use record::record_acts;
-pub use seq::{ActLogCapacity, ActLogDropped, ActSeq};
+pub use seq::ActSeq;
 pub use witness::{ActWitnesses, WatchingFactions};

@@ -1,4 +1,4 @@
-//! Ring-buffer act log resource and prior-state tracking.
+//! Act log resource and prior-state tracking.
 
 use std::collections::VecDeque;
 
@@ -7,17 +7,15 @@ use bevy::{platform::collections::HashMap, prelude::*};
 use super::{
     entry::{ActEntry, RecordedAct},
     facts::{MagazineFacts, PoseFacts, PositionFacts, VitalsFacts},
-    seq::{ActLogCapacity, ActLogDropped, ActSeq},
+    seq::ActSeq,
 };
 use crate::ganger::LifeState;
 
-/// Ordered act history with capacity limit and prior-state maps.
-#[derive(Resource, Debug)]
+/// Every act a battle has recorded, in order, plus the prior-state maps.
+#[derive(Resource, Debug, Default)]
 pub struct ActLog {
     entries:        VecDeque<ActEntry>,
     next_seq:       ActSeq,
-    capacity:       ActLogCapacity,
-    dropped:        ActLogDropped,
     prior_pose:     HashMap<Entity, PoseFacts>,
     prior_vitals:   HashMap<Entity, VitalsFacts>,
     prior_magazine: HashMap<Entity, MagazineFacts>,
@@ -39,24 +37,7 @@ impl SquadSees {
 }
 
 impl ActLog {
-    /// Create a log with the given capacity.
-    #[must_use]
-    pub fn new(capacity: ActLogCapacity) -> Self {
-        Self {
-            entries: VecDeque::new(),
-            next_seq: ActSeq::START,
-            capacity,
-            dropped: ActLogDropped::default(),
-            prior_pose: HashMap::default(),
-            prior_vitals: HashMap::default(),
-            prior_magazine: HashMap::default(),
-            prior_life: HashMap::default(),
-            prior_position: HashMap::default(),
-            prior_seen: HashMap::default(),
-        }
-    }
-
-    /// Append an act; returns its sequence. Drops oldest when over capacity.
+    /// Append an act and return its sequence. Every entry is kept for the battle.
     pub fn append(&mut self, act: RecordedAct) -> ActSeq {
         let seq = self.next_seq;
         self.entries.push_back(ActEntry::new(
@@ -67,11 +48,6 @@ impl ActLog {
             act.witnesses,
         ));
         self.next_seq = seq.next();
-        while self.entries.len() > *self.capacity {
-            if self.entries.pop_front().is_some() {
-                self.dropped.increment();
-            }
-        }
         seq
     }
 
@@ -80,7 +56,7 @@ impl ActLog {
         self.entries.iter().skip_while(move |e| e.seq() < cursor)
     }
 
-    /// Entry with this exact sequence, if still retained.
+    /// Entry with this exact sequence, if the log has reached it.
     #[must_use]
     pub fn at(&self, seq: ActSeq) -> Option<&ActEntry> {
         self.entries.iter().find(|entry| entry.seq() == seq)
@@ -92,13 +68,13 @@ impl ActLog {
         self.next_seq
     }
 
-    /// Oldest retained sequence (or head if empty).
+    /// Oldest sequence the log holds (or head if empty).
     #[must_use]
     pub fn oldest_seq(&self) -> ActSeq {
         self.entries.front().map_or(self.next_seq, ActEntry::seq)
     }
 
-    /// Number of retained entries.
+    /// Number of entries held.
     #[must_use]
     pub fn len(&self) -> usize {
         self.entries.len()
@@ -108,18 +84,6 @@ impl ActLog {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
-    }
-
-    /// How many entries have been dropped.
-    #[must_use]
-    pub const fn dropped(&self) -> ActLogDropped {
-        self.dropped
-    }
-
-    /// Configured capacity.
-    #[must_use]
-    pub const fn capacity(&self) -> ActLogCapacity {
-        self.capacity
     }
 
     /// Note pose; returns true if it changed from the prior value.
@@ -168,11 +132,5 @@ impl ActLog {
         self.prior_life
             .insert(entity, life)
             .filter(|prior| *prior != life)
-    }
-}
-
-impl Default for ActLog {
-    fn default() -> Self {
-        Self::new(ActLogCapacity::default())
     }
 }

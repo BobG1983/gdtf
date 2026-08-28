@@ -6,8 +6,8 @@ use bevy::{
     prelude::*,
 };
 use gdtf_battle_presenter::{
-    DrawnLife, DrawnPose, DrawnPosition, DrawnVitals, PlaybackCursor, PlaybackTuning, Played,
-    advance_playback, register_playback, seed_drawn_state,
+    DrawnPose, DrawnPosition, PlaybackCursor, PlaybackTuning, Played, advance_playback,
+    register_playback, seed_drawn_state,
 };
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActLog, ActProvenance, ActSeq, ActWitnesses, RecordedAct},
@@ -108,14 +108,6 @@ pub(crate) fn drawn_position(app: &App, entity: Entity) -> Option<Position> {
 
 pub(crate) fn drawn_pose(app: &App, entity: Entity) -> Option<DrawnPose> {
     app.world().get::<DrawnPose>(entity).copied()
-}
-
-pub(crate) fn drawn_life(app: &App, entity: Entity) -> Option<LifeState> {
-    app.world().get::<DrawnLife>(entity).map(|life| **life)
-}
-
-pub(crate) fn drawn_hp(app: &App, entity: Entity) -> Option<Hp> {
-    app.world().get::<DrawnVitals>(entity).map(DrawnVitals::hp)
 }
 
 pub(crate) const fn drawn_suppressed(pose: DrawnPose) -> bool {

@@ -31,7 +31,7 @@ pub(super) fn watched_unnamed(gang: Faction) -> ActWitnesses {
     ActWitnesses::new(WatchingFactions::new([gang]), WatchingFactions::nobody())
 }
 
-/// A log holding [`WRITTEN`] lines, sequenced from the start and inside the ring buffer.
+/// A log holding [`WRITTEN`] lines, sequenced from the start.
 fn a_flooded_log() -> ActLog {
     let mut log = ActLog::default();
     for _ in 0..WRITTEN {

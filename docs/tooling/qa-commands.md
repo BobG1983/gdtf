@@ -370,9 +370,10 @@ brackets the window with the log's `head` and `oldest` so a caller can page.
 
 `log.read` is where the whole-log dump would come back if it were allowed to, so its cap
 is bounded rather than obeyed: absent it is 50, and any cap a caller names is clamped to
-200. The ring buffer holds 2048 lines. A caller that wants more than one window pages with
-`since`, taking the previous reply's `head` as the next cursor, and compares its cursor
-against `oldest` to see whether the buffer threw lines away in between.
+200. The log keeps every line a battle writes for as long as the battle runs, so `oldest` is
+always that battle's first line and no cursor a caller holds can be older than it. A caller
+that wants more than one window pages with `since`, taking the previous reply's `head` as the
+next cursor, and reads `dropped` for how many lines the cap left before the window.
 
 `log.omniscient_read` takes the same arguments over the same log and returns every line
 unfiltered and fully identified. Using it is cheating: it is for testing only, and it must

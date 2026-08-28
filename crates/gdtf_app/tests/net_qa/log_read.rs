@@ -124,8 +124,8 @@ fn a_tighter_cap_counts_every_line_it_left_outside_the_window() -> TestResult {
     assert_eq!(
         *capped.dropped,
         (*uncapped.dropped).saturating_add(skipped),
-        "cutting the window reports each line it left outside on top of what the ring buffer \
-         had already thrown away: {capped:?} against {uncapped:?}",
+        "cutting the window reports each line it left outside on top of what the wider read \
+         had already left out: {capped:?} against {uncapped:?}",
     );
     let sequences: Vec<u64> = uncapped.entries.iter().map(|entry| *entry.seq).collect();
     assert!(

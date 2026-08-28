@@ -9,11 +9,16 @@ use gdtf_battle_sim::{
 };
 use gdtf_qa_protocol::{command::CommandOutcome, message::QaResponse};
 
-use super::support::{PARKED_FRAMES, SETTLE_FRAMES, act_log_len, answered_within};
+use super::support::{
+    PARKED_FRAMES, SETTLE_FRAMES, act_log_len, answered_within, append_act_log_lines,
+};
 use crate::{
     battle_fixture::{drive_into_battle_running, menu_app_with_net_qa, run_request, send},
     command_exchange::WAIT,
 };
+
+/// Entries the deleted ring buffer capped the act log at.
+const DELETED_CAP: usize = 2048;
 
 /// Put one route in flight, carrying the component `dispatch_move` inserts on a real walk.
 fn start_a_walk(app: &mut App) -> Entity {
@@ -124,6 +129,37 @@ fn wait_on_the_act_log_answers_only_once_the_log_holds_the_entries_asked_for() {
     assert!(
         act_log_len(&app) >= wanted,
         "and the release must be the log actually growing, not the condition going soft",
+    );
+}
+
+#[test]
+fn wait_on_the_act_log_answers_for_a_count_past_the_deleted_ring_buffer_cap() {
+    let (mut app, tx) = menu_app_with_net_qa();
+    drive_into_battle_running(&mut app);
+
+    let wanted = DELETED_CAP.saturating_add(1);
+    append_act_log_lines(&mut app, wanted);
+    assert!(
+        act_log_len(&app) >= wanted,
+        "the log must actually hold more than {DELETED_CAP} entries, or this case proves \
+         nothing: {wanted} lines were written and it holds {held}",
+        held = act_log_len(&app),
+    );
+
+    let reply = send(
+        &tx,
+        run_request(WAIT, &format!("(condition:LogAtLeast({wanted}))")),
+    );
+
+    let answered = answered_within(&mut app, &reply, SETTLE_FRAMES);
+    assert!(
+        matches!(
+            answered,
+            Some(QaResponse::Outcome(CommandOutcome::Ran { .. }))
+        ),
+        "the log already holds {wanted} entries, so a wait asking for that many must answer \
+         rather than park: the log holds {held}; got {answered:?}",
+        held = act_log_len(&app),
     );
 }
 

@@ -17,23 +17,6 @@ impl FxSeenBusy {
     }
 }
 
-/// Count of act-log entries skipped by a catch-up jump.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct SkippedActs(u32);
-
-impl SkippedActs {
-    /// Build from a skip count.
-    #[must_use]
-    pub const fn new(skipped: u32) -> Self {
-        Self(skipped)
-    }
-
-    /// Add to the skip count, saturating at `u32::MAX`.
-    pub const fn add(&mut self, count: u32) {
-        self.0 = self.0.saturating_add(count);
-    }
-}
-
 /// How the cursor is currently holding before the next act.
 #[derive(Debug, Clone)]
 pub enum ActHoldPhase {
@@ -130,7 +113,6 @@ impl ActHold {
 pub struct PlaybackCursor {
     shown:   ActSeq,
     holding: Option<ActHold>,
-    skipped: SkippedActs,
 }
 
 impl PlaybackCursor {
@@ -152,17 +134,10 @@ impl PlaybackCursor {
         self.holding.as_ref()
     }
 
-    /// Acts skipped by catch-up jumps.
-    #[must_use]
-    pub const fn skipped(&self) -> SkippedActs {
-        self.skipped
-    }
-
     /// Reset to the start of the log with no hold.
-    pub fn reset(&mut self) {
+    pub const fn reset(&mut self) {
         self.shown = ActSeq::START;
         self.holding = None;
-        self.skipped = SkippedActs::default();
     }
 
     /// Begin holding with the given phase.
@@ -186,11 +161,9 @@ impl PlaybackCursor {
         self.shown = self.shown.next();
     }
 
-    /// Jump the cursor to `oldest`, counting skipped acts.
-    pub fn jump_to(&mut self, oldest: ActSeq) {
-        self.skipped
-            .add(u32::try_from(oldest.distance_from(self.shown)).unwrap_or(u32::MAX));
-        self.shown = oldest;
+    /// Put the cursor on `seq`, showing that act next.
+    pub const fn jump_to(&mut self, seq: ActSeq) {
+        self.shown = seq;
     }
 }
 
@@ -202,9 +175,9 @@ pub struct LogPlayhead<'w> {
 }
 
 impl LogPlayhead<'_> {
-    /// Oldest retained and newest sequence, when a log is loaded.
+    /// Sequence the log would assign next, when a log is loaded.
     #[must_use]
-    pub fn span(&self) -> Option<(ActSeq, ActSeq)> {
-        self.log.as_ref().map(|log| (log.oldest_seq(), log.head()))
+    pub fn head(&self) -> Option<ActSeq> {
+        self.log.as_ref().map(|log| log.head())
     }
 }

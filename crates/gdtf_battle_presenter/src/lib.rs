@@ -65,8 +65,8 @@ pub use playback::{
     DrawnVitals, DrawnWriters, FireBeatSeconds, FxPipelineProbe, FxSeenBusy, ImpactCapSeconds,
     LifeChangeSeconds, LogPlayhead, MinorSeconds, PlaybackCursor, PlaybackGate, PlaybackTuning,
     Played, PlayedSignals, PostureSeconds, ReactionBeatSeconds, ReloadSeconds, RoundSeconds,
-    SkippedActs, StepSeconds, TurnBeatSeconds, advance_playback, playback_caught_up,
-    register_playback, seed_drawn_state,
+    StepSeconds, TurnBeatSeconds, advance_playback, playback_caught_up, register_playback,
+    seed_drawn_state,
 };
 pub use plugin::{
     BattlePresenterMode, BattlePresenterPlugin, IsoRendererPlugin, TopDownRendererActive,

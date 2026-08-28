@@ -2,11 +2,14 @@ use bevy::prelude::Entity;
 
 use crate::{
     act_log::{
-        ActDeed, ActEntry, ActLog, ActLogCapacity, ActProvenance, ActSeq, ActWitnesses,
-        RecordedAct, WatchingFactions,
+        ActDeed, ActEntry, ActLog, ActProvenance, ActSeq, ActWitnesses, RecordedAct,
+        WatchingFactions,
     },
     ganger::Faction,
 };
+
+/// More appends than the deleted ring buffer's 2048-line default ever held at once.
+const PAST_THE_DELETED_CAP: usize = 2049;
 
 fn beat(gang: u8) -> RecordedAct {
     watched_beat(gang, &[Faction::new(gang)])
@@ -78,34 +81,25 @@ fn since_is_non_destructive_so_two_cursors_coexist() {
 }
 
 #[test]
-fn capacity_drops_oldest_and_counts() {
-    let mut log = ActLog::new(ActLogCapacity::new(3));
-    for gang in 0..5 {
-        log.append(beat(gang));
+fn a_log_longer_than_the_deleted_cap_keeps_every_entry_it_was_given() {
+    let mut log = ActLog::default();
+    for _ in 0..PAST_THE_DELETED_CAP {
+        log.append(beat(0));
     }
 
-    assert_eq!(log.len(), 3, "the ring retains exactly its capacity");
     assert_eq!(
-        *log.dropped(),
-        2,
-        "the two evicted entries are counted, not silently lost",
+        log.len(),
+        PAST_THE_DELETED_CAP,
+        "the log holds every act appended to it — nothing trims the front, however many \
+         arrive: oldest {oldest:?}, head {head:?}",
+        oldest = log.oldest_seq(),
+        head = log.head(),
     );
-    assert_eq!(
-        log.oldest_seq(),
-        ActSeq::new(2),
-        "the oldest RETAINED entry is what a reader compares its cursor against to detect \
-         that it fell off the window",
-    );
-    assert_eq!(
-        log.head(),
-        ActSeq::new(5),
-        "eviction does not rewind the sequence counter — every append still advances it",
-    );
-    let retained: Vec<ActSeq> = log.since(ActSeq::START).map(ActEntry::seq).collect();
-    assert_eq!(
-        retained,
-        vec![ActSeq::new(2), ActSeq::new(3), ActSeq::new(4)],
-        "a cursor that fell off the window still reads everything retained, oldest first",
+    assert!(
+        log.at(ActSeq::START).is_some(),
+        "the very first act is still readable after {PAST_THE_DELETED_CAP} appends, so a \
+         cursor at the start of a battle can never fall off the log: oldest {oldest:?}",
+        oldest = log.oldest_seq(),
     );
 }
 

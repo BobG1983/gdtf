@@ -37,7 +37,7 @@ const NO_ACT_LOG: RefusalNote =
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct LogReadArgs {
-    /// Oldest sequence to return; absent starts at the oldest line still retained.
+    /// Oldest sequence to return; absent starts at the oldest line the log holds.
     #[serde(default)]
     since: Option<ActSeqNet>,
     /// How many of the newest lines to return; absent means 50, and 200 is the ceiling.
@@ -66,10 +66,10 @@ impl QaCommand for LogRead {
     const SUMMARY: CommandSummary = CommandSummary::from_static(
         "Read the tail of the act log — sequence, actor, provenance and deed kind per line, \
          starting at `since` and keeping the newest `cap`, which defaults to 50 and never \
-         exceeds 200. `head` and `oldest` bracket what the ring buffer still holds, so a caller \
-         can page and can tell its cursor fell off the end; `dropped` counts the lines before \
-         the window. Fog-gated the way the combat log on screen is: a line the player's gang \
-         could not observe is dropped, and an actor it could not identify comes back with no \
+         exceeds 200. The log keeps every line a battle writes, so `head` and `oldest` bracket \
+         all of it and a caller pages from `head`; `dropped` counts the lines the cap left \
+         before the window. Fog-gated the way the combat log on screen is: a line the player's \
+         gang could not observe is dropped, and an actor it could not identify comes back with no \
          token, so a reply may hold fewer lines than `cap`.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
@@ -106,7 +106,7 @@ pub(super) fn capped_at(asked: Option<LogReadCap>) -> LogReadCap {
     asked.map_or(DEFAULT_CAP, |asked| LogReadCap::new((*asked).min(*MAX_CAP)))
 }
 
-/// The sequence a read starts at, never older than the ring buffer still holds.
+/// The sequence a read starts at, never older than the log's own oldest line.
 pub(super) fn cursor_from(log: &ActLog, since: Option<ActSeqNet>) -> ActSeq {
     since.map_or_else(
         || log.oldest_seq(),
@@ -134,12 +134,12 @@ pub(super) fn window(log: &ActLog, args: &LogReadArgs, asking: Option<Faction>) 
             .collect(),
         None => Vec::new(),
     };
-    let before_window = u32::try_from(skipped).unwrap_or(u32::MAX);
+    let before_window = LogDroppedCount::new(u32::try_from(skipped).unwrap_or(u32::MAX));
     LogReadReply {
         entries,
         cap,
         head: ActSeqNet::new(*log.head()),
         oldest: ActSeqNet::new(*log.oldest_seq()),
-        dropped: LogDroppedCount::new((*log.dropped()).saturating_add(before_window)),
+        dropped: before_window,
     }
 }

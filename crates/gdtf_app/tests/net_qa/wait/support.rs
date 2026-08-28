@@ -1,8 +1,11 @@
 use std::sync::mpsc::{Receiver, Sender};
 
-use bevy::app::App;
+use bevy::{app::App, ecs::entity::Entity};
 use gdtf_battle_presenter::playback::{ActHold, PlaybackCursor};
-use gdtf_battle_sim::act_log::ActLog;
+use gdtf_battle_sim::{
+    act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct},
+    ganger::Faction,
+};
 use gdtf_net_qa_transport::IncomingRequest;
 use gdtf_qa_protocol::message::QaResponse;
 
@@ -57,4 +60,21 @@ pub(crate) fn answered_within(
 /// Entries the live act log holds, or none at all before a battle.
 pub(crate) fn act_log_len(app: &App) -> usize {
     app.world().get_resource::<ActLog>().map_or(0, ActLog::len)
+}
+
+/// Write `lines` turn-began entries into the live act log.
+pub(crate) fn append_act_log_lines(app: &mut App, lines: usize) {
+    let Some(mut log) = app.world_mut().get_resource_mut::<ActLog>() else {
+        unreachable!("a running battle carries the sim's act log");
+    };
+    for _ in 0..lines {
+        log.append(RecordedAct::new(
+            Entity::PLACEHOLDER,
+            ActProvenance::Clock,
+            ActDeed::TurnBegan {
+                now_active: Faction::new(0),
+            },
+            ActWitnesses::unseen(),
+        ));
+    }
 }
