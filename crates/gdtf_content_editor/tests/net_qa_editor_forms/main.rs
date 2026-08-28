@@ -45,6 +45,7 @@ mod terrain_clamps;
 mod terrain_clears;
 mod terrain_fields;
 mod terrain_gates;
+mod theme_tab;
 mod values;
 mod walk;
 mod weapon_attachments;
