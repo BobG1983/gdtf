@@ -1,4 +1,5 @@
 use gdtf_battle_sim::{armor::InjuryCategory, injuries::DamageContext};
+use gdtf_content_editor::WeightingDraft;
 
 use crate::{
     rows::{BucketRow, CategoryRow, ContextRow},
@@ -8,17 +9,19 @@ use crate::{
     support::TestResult,
 };
 
-// The pair every case asks for, chosen so it is not the one autoload seeds.
+// The pair every case asks for, chosen so it is not the one the draft opens on.
 const WANTED_CATEGORY: InjuryCategory = InjuryCategory::Leg;
 const WANTED_CONTEXT: DamageContext = DamageContext::Melee;
 
 #[test]
 fn selecting_a_table_loads_that_categorys_own_rows_out_of_the_live_tables() -> TestResult {
+    let opening = WeightingDraft::default();
     assert_ne!(
         (WANTED_CATEGORY, WANTED_CONTEXT),
-        (InjuryCategory::ALL[0], DamageContext::ALL[0]),
-        "the case only shows the select did something if it asks for a pair the form's own \
-         autoload does not already seed",
+        (opening.category(), opening.context()),
+        "this case's app adds no `EguiPlugin`, so the draft opens on the pair \
+         `WeightingDraft::default()` holds, and the case must ask for a different one to show \
+         the select did anything",
     );
     let (mut app, mut client) = injury_tab_app_and_client()?;
 

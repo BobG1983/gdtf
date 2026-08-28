@@ -2,6 +2,7 @@
 #![cfg(debug_assertions)]
 
 mod assets_root;
+mod autoload;
 #[path = "../net_qa_shared/bad_arguments.rs"]
 mod bad_arguments;
 #[path = "../net_qa_shared/harness.rs"]

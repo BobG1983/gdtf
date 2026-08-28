@@ -8,6 +8,8 @@ use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
 use crate::{hello::assert_hello_ok, socket::Client, support::TestError};
 
+/// An editor app on a real listener, built with no `EguiPlugin`. Without one the shell never
+/// draws, so the form syncs it owns never run and each draft stays at its own default.
 pub(crate) fn editor_app_listening() -> Result<(App, NetQaPort), TestError> {
     let (plugin, port) = NetQaEditorPlugin::listening(NetQaPort::new(0))?;
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
