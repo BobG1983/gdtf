@@ -3,6 +3,7 @@ use gdtf_battle_sim::{
     acts::{MeleeRequested, melee_tu_cost},
     entity::TerrainPieceKind,
     ganger::Direction,
+    occupancy::TerrainKind,
     prelude::Tu,
     test_support::SituationBuilder,
     weapon::{FightMode, MeleeWeapon, Wields},
@@ -154,7 +155,7 @@ fn a_smashed_piece_reports_the_kind_the_ledger_held() {
 }
 
 #[test]
-fn smashing_an_unseeded_cell_mints_a_cover_kind_entry() {
+fn smashing_empty_ground_mints_nothing_and_destroys_nothing() {
     let (mut app, seed) = battle_app(0x5508_0E0E);
     with_logs(&mut app);
 
@@ -166,7 +167,12 @@ fn smashing_an_unseeded_cell_mints_a_cover_kind_entry() {
     let bare = ground(6, 5);
     assert!(
         cover_entry_at(&app, bare).is_none(),
-        "precondition: the target cell was never seeded, so the smash must fall back",
+        "precondition: the target cell has no ledger entry",
+    );
+    assert_eq!(
+        terrain_at(&app, bare),
+        TerrainKind::Open,
+        "precondition: the target cell holds no terrain either",
     );
 
     let Some(attacker_entity) = player_ganger(&mut app) else {
@@ -176,10 +182,51 @@ fn smashing_an_unseeded_cell_mints_a_cover_kind_entry() {
         .write_message(MeleeRequested::new_structural(attacker_entity, bare));
     step(&mut app, 3);
 
-    let minted = cover_entry_at(&app, bare);
+    let after = cover_entry_at(&app, bare);
+    assert!(
+        after.is_none(),
+        "a smash at a cell holding no terrain mints NO ledger entry, found {after:?}",
+    );
+    assert_eq!(
+        destroyed_hits(&app),
+        0,
+        "a smash at a cell holding no terrain fires NO TerrainPieceDestroyed",
+    );
+    assert_eq!(
+        melee_hits(&app),
+        0,
+        "a smash at a cell holding no terrain emits NO MeleeResolved",
+    );
+}
+
+#[test]
+fn smashing_unseeded_terrain_still_mints_a_cover_kind_entry() {
+    let (mut app, seed) = battle_app(0x5508_0E1E);
+    with_logs(&mut app);
+
+    let situation = SituationBuilder::new()
+        .with_gangers([attacker(ground(5, 5), PLAYER, Direction::East)])
+        .build_with_gangs();
+    drive_setup(&mut app, seed, situation);
+
+    let piece = ground(6, 5);
+    seed_terrain(&mut app, piece, TerrainKind::Cover);
+    assert!(
+        cover_entry_at(&app, piece).is_none(),
+        "precondition: the cell holds terrain but has no ledger entry, so the smash falls back",
+    );
+
+    let Some(attacker_entity) = player_ganger(&mut app) else {
+        unreachable!("setup spawns one player attacker");
+    };
+    app.world_mut()
+        .write_message(MeleeRequested::new_structural(attacker_entity, piece));
+    step(&mut app, 3);
+
+    let minted = cover_entry_at(&app, piece);
     assert!(
         minted.is_some(),
-        "smashing an unseeded cell must mint a ledger entry from the melee fallback",
+        "smashing terrain the ledger has not seen yet mints an entry from the melee fallback",
     );
     let Some(minted) = minted else { return };
     assert_eq!(

@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     acts::request::MeleeResolved, cover::CoverEvent, melee::resolve_structural_melee,
-    metric::CellLevel, occupancy_sync::TerrainPieceDestroyed, tu::spend_tu,
+    metric::CellLevel, occupancy::TerrainKind, occupancy_sync::TerrainPieceDestroyed, tu::spend_tu,
 };
 
 /// Spend TU and smash adjacent cover/structure.
@@ -22,11 +22,12 @@ pub(super) fn resolve_structure_melee(
         return;
     }
 
-    let prototype = world
-        .cover
-        .peek(&at)
-        .copied()
-        .unwrap_or(STRUCTURE_SMASH_FALLBACK);
+    let prototype = match world.cover.peek(&at).copied() {
+        Some(entry) => entry,
+        // Empty ground holds nothing to smash, so the fallback must not mint an entry for it.
+        None if world.occupancy.terrain(&at) == TerrainKind::Open => return,
+        None => STRUCTURE_SMASH_FALLBACK,
+    };
 
     let Ok(mut attacker_tu) = combatants.tu.get_mut(attacker.entity) else {
         return;

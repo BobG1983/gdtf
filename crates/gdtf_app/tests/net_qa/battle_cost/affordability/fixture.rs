@@ -4,7 +4,11 @@ use bevy::{app::App, ecs::entity::Entity};
 use gdtf_app::qa_wire::cell::CellLevelNet;
 use gdtf_battle_sim::{
     acts::{melee_tu_cost, shove_tu_cost},
+    armor::{ArmorHardness, ArmorProtection},
+    cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::{Hp, Position, Stance, StanceKind, Tu, Wounds},
+    occupancy::{OccupancyGrid, TerrainKind},
     posture::stance_tu_cost,
     prelude::{Cell, CellLevel},
     tuning::CombatTuning,
@@ -142,7 +146,27 @@ pub(super) fn too_poor_to_shove() -> Result<(App, NetQaPort, (Broke, Entity)), T
     Ok((app, port, (Broke { actor, pool, cost }, enemy)))
 }
 
-/// A live battle whose first player ganger cannot afford to smash the cell beside it.
+/// Put a cover piece at `at`, in the ledger the smash depletes and the grid it stands on.
+fn stand_cover_at(app: &mut App, at: CellLevel) -> Result<(), TestError> {
+    let entry = CoverEntry::seeded(
+        CoverHp::new(1_000),
+        HeightBand::Mid,
+        ArmorProtection::new(0),
+        ArmorHardness::new(0),
+        TerrainPieceKind::Cover,
+    );
+    let Some(mut ledger) = app.world_mut().get_resource_mut::<CoverLedger>() else {
+        return Err("a running battle carries a cover ledger".into());
+    };
+    ledger.insert(at, entry);
+    let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() else {
+        return Err("a running battle carries an occupancy grid".into());
+    };
+    grid.set_terrain(at, TerrainKind::Cover);
+    Ok(())
+}
+
+/// A live battle whose first player ganger cannot afford to smash the cover beside it.
 pub(super) fn too_poor_to_smash() -> Result<(App, NetQaPort, (Broke, CellLevel)), TestError> {
     let (mut app, port) = battle_app_listening()?;
     settle(&mut app);
@@ -150,9 +174,12 @@ pub(super) fn too_poor_to_smash() -> Result<(App, NetQaPort, (Broke, CellLevel))
     let Some(beside) = one_step_from(&app, at) else {
         return Err("the generated map must offer one clear cell beside the actor".into());
     };
+    let beside = beside.to_sim();
+    stand_cover_at(&mut app, beside)?;
+    settle(&mut app);
     let Some(cost) = strike_cost(&app, actor) else {
         return Err("a player ganger must hold a melee weapon to strike with".into());
     };
     let pool = cut_pool_below(&mut app, actor, cost)?;
-    Ok((app, port, (Broke { actor, pool, cost }, beside.to_sim())))
+    Ok((app, port, (Broke { actor, pool, cost }, beside)))
 }

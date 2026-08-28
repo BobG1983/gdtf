@@ -12,6 +12,7 @@ use gdtf_battle_sim::{
     entity::TerrainPieceKind,
     ganger::{Cool, Direction, Facing, GangRegistry, Grit, Speed, Strength, Toughness},
     metric::{Cell, CellLevel, Level},
+    occupancy::{OccupancyGrid, TerrainKind},
     occupancy_sync::TerrainPieceDestroyed,
     prelude::{Faction, Stance, StanceKind, Tu},
     rng::BattleSeed,
@@ -170,6 +171,18 @@ pub(crate) fn seed_cover(app: &mut App, at: CellLevel, max_hp: u32, kind: Terrai
     app.world_mut()
         .resource_mut::<CoverLedger>()
         .insert(at, entry);
+}
+
+pub(crate) fn seed_terrain(app: &mut App, at: CellLevel, kind: TerrainKind) {
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_terrain(at, kind);
+}
+
+pub(crate) fn terrain_at(app: &App, at: CellLevel) -> TerrainKind {
+    app.world()
+        .get_resource::<OccupancyGrid>()
+        .map_or(TerrainKind::Open, |grid| grid.terrain(&at))
 }
 
 pub(crate) fn step(app: &mut App, ticks: u32) {
