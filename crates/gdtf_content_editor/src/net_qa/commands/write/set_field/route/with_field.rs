@@ -47,7 +47,8 @@ pub(in crate::net_qa::commands::write::set_field) fn terrain(
         | EditorFieldNet::MeleeWeapon(_)
         | EditorFieldNet::Gang(_)
         | EditorFieldNet::Weapon(_)
-        | EditorFieldNet::Field(_) => no_field_of_its_own(draft),
+        | EditorFieldNet::Field(_)
+        | EditorFieldNet::Theme(_) => no_field_of_its_own(draft),
     }
 }
 
@@ -75,7 +76,8 @@ pub(in crate::net_qa::commands::write::set_field) fn gang(
         | EditorFieldNet::Weighting(_)
         | EditorFieldNet::MeleeWeapon(_)
         | EditorFieldNet::Weapon(_)
-        | EditorFieldNet::Field(_) => no_field_of_its_own(draft),
+        | EditorFieldNet::Field(_)
+        | EditorFieldNet::Theme(_) => no_field_of_its_own(draft),
     }
 }
 
@@ -96,7 +98,8 @@ pub(in crate::net_qa::commands::write::set_field) fn armor(
         | EditorFieldNet::MeleeWeapon(_)
         | EditorFieldNet::Gang(_)
         | EditorFieldNet::Weapon(_)
-        | EditorFieldNet::Field(_) => no_field_of_its_own(draft),
+        | EditorFieldNet::Field(_)
+        | EditorFieldNet::Theme(_) => no_field_of_its_own(draft),
     }
 }
 
@@ -124,7 +127,8 @@ pub(in crate::net_qa::commands::write::set_field) fn injury(
         | EditorFieldNet::MeleeWeapon(_)
         | EditorFieldNet::Gang(_)
         | EditorFieldNet::Weapon(_)
-        | EditorFieldNet::Field(_) => no_field_of_its_own(injury_draft),
+        | EditorFieldNet::Field(_)
+        | EditorFieldNet::Theme(_) => no_field_of_its_own(injury_draft),
     }
 }
 
@@ -145,7 +149,8 @@ pub(in crate::net_qa::commands::write::set_field) fn sprite(
         | EditorFieldNet::MeleeWeapon(_)
         | EditorFieldNet::Gang(_)
         | EditorFieldNet::Weapon(_)
-        | EditorFieldNet::Field(_) => no_field_of_its_own(draft),
+        | EditorFieldNet::Field(_)
+        | EditorFieldNet::Theme(_) => no_field_of_its_own(draft),
     }
 }
 
@@ -167,7 +172,8 @@ pub(in crate::net_qa::commands::write::set_field) fn attachment(
         | EditorFieldNet::MeleeWeapon(_)
         | EditorFieldNet::Gang(_)
         | EditorFieldNet::Weapon(_)
-        | EditorFieldNet::Field(_) => no_field_of_its_own(draft),
+        | EditorFieldNet::Field(_)
+        | EditorFieldNet::Theme(_) => no_field_of_its_own(draft),
     }
 }
 
@@ -188,7 +194,8 @@ pub(in crate::net_qa::commands::write::set_field) fn weapon(
         | EditorFieldNet::Weighting(_)
         | EditorFieldNet::MeleeWeapon(_)
         | EditorFieldNet::Gang(_)
-        | EditorFieldNet::Field(_) => no_field_of_its_own(draft),
+        | EditorFieldNet::Field(_)
+        | EditorFieldNet::Theme(_) => no_field_of_its_own(draft),
     }
 }
 
@@ -210,7 +217,8 @@ pub(in crate::net_qa::commands::write::set_field) fn melee_weapon(
         | EditorFieldNet::Weighting(_)
         | EditorFieldNet::Gang(_)
         | EditorFieldNet::Weapon(_)
-        | EditorFieldNet::Field(_) => no_field_of_its_own(draft),
+        | EditorFieldNet::Field(_)
+        | EditorFieldNet::Theme(_) => no_field_of_its_own(draft),
     }
 }
 
@@ -231,6 +239,7 @@ pub(in crate::net_qa::commands::write::set_field) fn field(
         | EditorFieldNet::Weighting(_)
         | EditorFieldNet::MeleeWeapon(_)
         | EditorFieldNet::Gang(_)
-        | EditorFieldNet::Weapon(_) => no_field_of_its_own(draft),
+        | EditorFieldNet::Weapon(_)
+        | EditorFieldNet::Theme(_) => no_field_of_its_own(draft),
     }
 }

@@ -1,4 +1,5 @@
-//! The routes for the two tabs that own no field arm of their own.
+//! The routes for the Theme tab, whose only field is its draft's name, and the Prefab tab,
+//! which holds no draft at all.
 
 use bevy::prelude::ResMut;
 
@@ -6,19 +7,26 @@ use crate::{
     net_qa::{
         commands::write::{
             form_fault::FormWriteFault,
-            set_field::command::{SetFieldRefusal, Written, no_field_of_its_own},
+            set_field::command::{SetFieldRefusal, Written, no_field_of_its_own, present},
         },
-        wire::EditorFieldNet,
+        wire::{EditorDraftNameNet, EditorFieldNet, ThemeFieldNet},
     },
     theme_form::ThemeDraft,
 };
 
-/// Route a field write on the Theme tab, which owns no field arm of its own.
+/// Route a field write on the Theme tab, whose one arm is the display name its name box writes.
 pub(in crate::net_qa::commands::write::set_field) fn theme(
     draft: Option<&mut ResMut<'_, ThemeDraft>>,
     field: EditorFieldNet,
 ) -> Written {
     match field {
+        EditorFieldNet::Theme(ThemeFieldNet::Name(name)) => {
+            let draft = present(draft)?;
+            draft.set_display_name((*name).clone());
+            Ok(EditorFieldNet::Theme(ThemeFieldNet::Name(
+                EditorDraftNameNet::new(draft.display_name()),
+            )))
+        }
         EditorFieldNet::Terrain(_)
         | EditorFieldNet::Armor(_)
         | EditorFieldNet::Sprite(_)
@@ -44,6 +52,7 @@ pub(in crate::net_qa::commands::write::set_field) fn prefab(field: EditorFieldNe
         | EditorFieldNet::MeleeWeapon(_)
         | EditorFieldNet::Gang(_)
         | EditorFieldNet::Weapon(_)
-        | EditorFieldNet::Field(_) => Err(SetFieldRefusal::Fault(FormWriteFault::ForeignArm)),
+        | EditorFieldNet::Field(_)
+        | EditorFieldNet::Theme(_) => Err(SetFieldRefusal::Fault(FormWriteFault::ForeignArm)),
     }
 }

@@ -1,5 +1,5 @@
-//! The Theme tab, which owns no field arm and no list of its own, driven with both write
-//! commands: a field or list belonging to another form, and a draft that leaves the world.
+//! The Theme tab, which owns one field arm and no list. Both write commands drive it: the
+//! display name, a foreign field or list, and a draft that leaves the world.
 
 use bevy::prelude::*;
 use gdtf_content_editor::{EditorMode, ThemeDraft};
@@ -9,12 +9,18 @@ use gdtf_qa_protocol::message::QaResponse;
 use crate::{
     outcome::unavailable_code,
     refusal::refusal_note,
-    setup::{form_tab_app_and_client, gang_draft, try_list_op, try_set_field},
+    rows::{FieldRow, ThemeFieldRow},
+    setup::{
+        form_tab_app_and_client, gang_draft, set_field, theme_draft, try_list_op, try_set_field,
+    },
     socket::Client,
     support::{TestError, TestResult},
 };
 
-// A field arm the Theme form does not own. Its route sends every arm to the same helper.
+// The Theme form's own field arm, the name its display name box writes.
+const THE_THEME_NAME: &str = "(field: Theme(Name(\"Ash Hive\")))";
+
+// A field arm the Theme form does not own. Its route sends every foreign arm to the same helper.
 const A_GANG_FIELD: &str = "(field: Gang(Name(\"Ash Ferals\")))";
 
 // A list the Theme form does not own.
@@ -83,6 +89,24 @@ fn theme_app_losing_its_draft_mid_frame() -> Result<(App, Client), TestError> {
             .before(QaCommandSystems::Claim),
     );
     Ok((app, client))
+}
+
+#[test]
+fn the_theme_name_field_writes_the_draft_and_reads_it_back() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Theme)?;
+
+    let written = set_field(&mut app, &mut client, THE_THEME_NAME)?;
+    assert_eq!(
+        written.field,
+        FieldRow::Theme(ThemeFieldRow::Name("Ash Hive".to_owned())),
+        "the write lands, and the reply reads the name back off the draft",
+    );
+    assert_eq!(
+        theme_draft(&app)?.display_name(),
+        "Ash Hive",
+        "the world's own Theme draft holds the name on the frame that answered",
+    );
+    Ok(())
 }
 
 #[test]

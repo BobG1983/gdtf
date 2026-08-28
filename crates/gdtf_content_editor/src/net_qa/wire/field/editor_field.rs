@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     armor::ArmorFieldNet, attachment::AttachmentFieldNet, field_form::FieldFormFieldNet,
     gang::GangFieldNet, injury::InjuryFieldNet, melee_weapon::MeleeWeaponFieldNet,
-    sprite::SpriteFieldNet, terrain::TerrainFieldNet, weapon::WeaponFieldNet,
+    sprite::SpriteFieldNet, terrain::TerrainFieldNet, theme::ThemeFieldNet, weapon::WeaponFieldNet,
     weighting::WeightingFieldNet,
 };
 
@@ -32,4 +32,6 @@ pub(in crate::net_qa) enum EditorFieldNet {
     Weapon(WeaponFieldNet),
     /// A field of the Field form.
     Field(FieldFormFieldNet),
+    /// A field of the Theme form.
+    Theme(ThemeFieldNet),
 }

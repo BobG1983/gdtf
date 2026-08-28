@@ -10,6 +10,7 @@ mod injury;
 mod melee_weapon;
 mod sprite;
 mod terrain;
+mod theme;
 mod value;
 mod weapon;
 mod weighting;
@@ -24,6 +25,7 @@ pub(in crate::net_qa) use injury::InjuryFieldNet;
 pub(in crate::net_qa) use melee_weapon::MeleeWeaponFieldNet;
 pub(in crate::net_qa) use sprite::SpriteFieldNet;
 pub(in crate::net_qa) use terrain::TerrainFieldNet;
+pub(in crate::net_qa) use theme::ThemeFieldNet;
 #[cfg(test)]
 pub(in crate::net_qa) use value::FieldTurnsNet;
 pub(in crate::net_qa) use value::{FieldDamageNet, FieldDurationNet};

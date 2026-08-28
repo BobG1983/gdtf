@@ -62,7 +62,7 @@ pub(in crate::net_qa) use field::FieldTurnsNet;
 pub(in crate::net_qa) use field::{
     ArmorFieldNet, AttachmentFieldNet, EditorDraftNameNet, EditorFieldNet, FieldDamageNet,
     FieldDurationNet, FieldFormFieldNet, GangFieldNet, InjuryFieldNet, MeleeWeaponFieldNet,
-    SpriteFieldNet, TerrainFieldNet, WeaponFieldNet, WeightingFieldNet,
+    SpriteFieldNet, TerrainFieldNet, ThemeFieldNet, WeaponFieldNet, WeightingFieldNet,
 };
 pub(in crate::net_qa) use fire_mode::{FireModeSpecNet, HitTypeNet};
 pub(in crate::net_qa) use gang::{GangAttributeNet, GangAttributeValueNet};

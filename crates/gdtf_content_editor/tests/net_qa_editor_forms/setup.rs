@@ -1,7 +1,7 @@
 use bevy::app::App;
 use gdtf_content_editor::{
     ArmorDraft, AttachmentDraft, EditorMode, FieldDraft, GangDraft, InjuryDraft, MeleeWeaponDraft,
-    SpriteDraft, TerrainDraft, WeaponDraft,
+    SpriteDraft, TerrainDraft, ThemeDraft, WeaponDraft,
 };
 use gdtf_qa_protocol::message::QaResponse;
 
@@ -114,6 +114,14 @@ pub(crate) fn settled_field_app_and_client() -> Result<(App, Client), TestError>
         return Err("editor.new must settle the Field draft's autoload before a case runs".into());
     }
     Ok((app, client))
+}
+
+/// The Theme draft the world holds right now.
+pub(crate) fn theme_draft(app: &App) -> Result<ThemeDraft, TestError> {
+    let Some(draft) = app.world().get_resource::<ThemeDraft>() else {
+        return Err("the Theme draft is a resource the editor creates on entering Editing".into());
+    };
+    Ok(draft.clone())
 }
 
 /// The Gang draft the world holds right now.

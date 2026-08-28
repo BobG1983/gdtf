@@ -19,6 +19,7 @@ pub(crate) enum FieldRow {
     Gang(GangFieldRow),
     Weapon(WeaponFieldRow),
     Field(FieldFormFieldRow),
+    Theme(ThemeFieldRow),
 }
 
 /// A Terrain field a write named, with the value read back off the draft.
@@ -185,6 +186,12 @@ pub(crate) enum FieldFormFieldRow {
     Damage(u16),
     DamageType(DamageTypeRow),
     Duration(DurationRow),
+}
+
+/// A Theme field a write named, with the value read back off the draft.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) enum ThemeFieldRow {
+    Name(String),
 }
 
 /// Which list a write named.
