@@ -24,16 +24,16 @@ export const meta = {
 // sonnet. Between tiers -> the higher one.
 //
 //   fetch:*         sonnet  verbatim Linear snapshot, judges nothing
-//   clause-audit:*  opus    audit judgment against tree and canon
+//   clause-audit:*  fable    audit judgment against tree and canon
 //   open:*          sonnet  status move plus templated comment
 //   build:*         opus    the implementation
 //   refetch:*       sonnet  read-only re-fetch
-//   verify:*        opus    adversarial verification, trusts nothing
+//   verify:*        sonnet    adversarial verification, trusts nothing
 //   gate:*          opus    design-gate lens
 //   fix:*           opus    repair engineering
 //   docs-sync:*     opus    decides doc drift against source
-//   land:*          opus    rebase, suite, and the git facts only
-//   summarize:*     opus    gathers its own evidence; owns every judged field of the result
+//   land:*          sonnet  rebase, suite, and the git facts only
+//   summarize:*     sonnet  gathers its own evidence; owns every judged field of the result
 //   confirm-land:*  sonnet  compares expected landing state to actual
 //   close:*         sonnet  posts what summarize wrote and moves status; judges nothing
 //
@@ -491,7 +491,7 @@ empty. Reasoning that belongs to no single clause goes in \`report\`.
 <live-ticket id="${TICKET}">
 ${renderTicket(live)}
 </live-ticket>`,
-  { model: 'opus', label: `clause-audit:${TICKET}`, phase: 'Clause-audit', agentType: 'clause-audit', schema: AUDIT_RESULT })
+  { model: 'fable', label: `clause-audit:${TICKET}`, phase: 'Clause-audit', agentType: 'clause-audit', schema: AUDIT_RESULT })
 
 if (!audit) throw new Error(`${TICKET}: clause audit died — abort`)
 
@@ -733,7 +733,7 @@ Check the two claim lists against the tree, not against the prose:
 A GREEN verdict with either array non-empty is a contradiction; the run reads it as RED.
 
 ${HOUSE_RULES}`,
-    { model: 'opus', label: `verify:${TICKET}#${attempt}`, phase: 'Verify', schema: VERIFY_RESULT })
+    { model: 'sonnet', label: `verify:${TICKET}#${attempt}`, phase: 'Verify', schema: VERIFY_RESULT })
 }
 
 async function runLens(lens, verifyOut, attempt, work) {
@@ -974,7 +974,7 @@ You report no findings, risks or judgements about the code — there is no field
 context still holds the rounds of this run that failed, so you cannot tell a live defect from one
 an engineer has since fixed. A later step gathers its own evidence and decides. Land, and report
 what git printed.`,
-  { model: 'opus', label: `land:${TICKET}`, phase: 'Land', schema: LAND_RESULT })
+  { model: 'sonnet', label: `land:${TICKET}`, phase: 'Land', schema: LAND_RESULT })
 
 const confirm = await agent(`Confirm landing of ${TICKET}.
 
@@ -1122,7 +1122,7 @@ ${JSON.stringify(work?.foreignDirtyFiles ?? [], null, 2)}
 <docs-sync>
 ${JSON.stringify({ changed: docs?.filesChanged ?? [], conflicts: docs?.conflicts ?? [] }, null, 2)}
 </docs-sync>`,
-    { model: 'opus', label: `summarize:${TICKET}`, phase: 'Land', schema: SUMMARY_RESULT })
+    { model: 'sonnet', label: `summarize:${TICKET}`, phase: 'Land', schema: SUMMARY_RESULT })
   : null
 
 if (summarized?.rejected?.length) {
