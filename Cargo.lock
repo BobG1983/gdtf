@@ -2947,6 +2947,7 @@ dependencies = [
  "gdtf_net_qa_transport",
  "gdtf_qa_protocol",
  "gdtf_screenshot",
+ "image",
  "ron",
  "serde",
 ]

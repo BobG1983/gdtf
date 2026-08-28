@@ -5,6 +5,9 @@ use gdtf_qa_protocol::{
     message::QaResponse,
 };
 
+/// Arguments `fake.cell` accepts, used by both rider suites.
+pub(crate) const CELL_ARGS: &str = "(cell:(x:3,y:-4))";
+
 pub(crate) fn args(ron: &str) -> CommandArgsRon {
     CommandArgsRon::new(ron.to_owned())
 }

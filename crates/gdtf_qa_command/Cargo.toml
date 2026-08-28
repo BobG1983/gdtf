@@ -11,6 +11,10 @@ gdtf_qa_protocol = { path = "../gdtf_qa_protocol" }
 gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport" }
 gdtf_screenshot = { path = "../gdtf_screenshot" }
 
+[dev-dependencies]
+# The rider tests write the PNG a shot lands as, in place of the renderer.
+image = { version = "0.25", default-features = false, features = ["png"] }
+
 [features]
 dynamic_linking = [
     "bevy/dynamic_linking",

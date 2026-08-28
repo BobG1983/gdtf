@@ -1,5 +1,6 @@
 //! Command-set conformance, growth, deferred, and admission tests.
 
+mod await_riders;
 mod bad_arguments;
 mod conformance;
 mod deferred;

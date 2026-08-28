@@ -1,30 +1,51 @@
-use std::sync::mpsc::Receiver;
+//! The capture rider, answered through the drain the host registers with the hold.
 
-use bevy::prelude::App;
+use std::{path::PathBuf, sync::mpsc::Receiver};
+
+use bevy::prelude::*;
 use gdtf_qa_command::{
     command::QaCommand,
-    dispatch::{CaptureHolds, RiderShot, ShotRequest},
+    dispatch::{CaptureHolds, CaptureTicket},
     test_support::{
-        FAKE_COMMANDS, FakeCell, FakePhase, fake_app, fake_facts_loaded, fake_facts_unloaded,
-        run_fake_command,
+        FAKE_COMMANDS, FakeCell, FakeFacts, FakePhase, fake_app, fake_facts_loaded,
+        fake_facts_unloaded, run_fake_command,
     },
 };
 use gdtf_qa_protocol::{
     command::{
-        ArtifactPath, AttachmentKind, AwaitBudget, CaptureRider, CommandAvailability, CommandName,
-        CommandOutcome, RunOptions, UnavailableCode,
+        ArtifactPath, AttachmentKind, AwaitBudget, CaptureRider, CommandOutcome, RunOptions,
     },
     ids::ShotName,
     message::{QaError, QaResponse},
 };
+use gdtf_screenshot::{CaptureQueue, CaptureSystems, PollCap, SettleFrames, ShotDir, ShotDirName};
 
-use crate::support::{args, no_answer_yet, outcome, plain};
+use crate::support::{CELL_ARGS, args, no_answer_yet, outcome, plain};
 
-const CELL_ARGS: &str = "(cell:(x:3,y:-4))";
+/// Frames the capture pump settles for before it spawns its readback.
+const SHORT_SETTLE: u32 = 2;
 
-const fn await_for(seconds: u64) -> RunOptions {
-    RunOptions::new(Some(AwaitBudget::new(seconds)), None)
-}
+/// Frames the capture pump polls for the PNG before it gives up.
+const SHORT_POLL: u32 = 4;
+
+/// Frames one call spends being claimed, held, queued, drained and answered.
+const HANDOFF_FRAMES: u32 = 12;
+
+/// Whole budget a case gives the fake host to answer one run.
+const REPLY_BUDGET_FRAMES: u32 = SHORT_SETTLE + SHORT_POLL + HANDOFF_FRAMES;
+
+/// Frames the drain is given to queue a shot no rider asked for.
+const DRAIN_TURNS: u32 = 3;
+
+/// Stem a named capture rider asks the host to write its shot under.
+const RIDER_STEM: &str = "rider";
+
+/// Stem the capture pipeline falls back to when a rider names none.
+const DEFAULT_STEM: &str = "qa_shot";
+
+/// File stem the stand-in renderer writes its PNG under.
+#[derive(Resource, Deref)]
+struct LandingStem(&'static str);
 
 fn capture_named(stem: &str) -> RunOptions {
     RunOptions::new(
@@ -33,37 +54,69 @@ fn capture_named(stem: &str) -> RunOptions {
     )
 }
 
-fn shot_path(stem: &str) -> ArtifactPath {
-    ArtifactPath::new(format!("target/{stem}_0.png"))
+// One emptied directory per case and per process, so parallel cases and parallel runs never
+// share a file.
+fn case_shot_dir(case: &str) -> ShotDir {
+    let dir = ShotDir::under_workspace_target(&ShotDirName::new(format!(
+        "qa_command_rider_{case}_{}",
+        std::process::id()
+    )));
+    drop(std::fs::remove_dir_all(dir.as_path()));
+    dir
 }
 
-// The refusal `fake.cell` publishes for itself with nothing loaded.
-fn cell_refuses_unloaded() -> (UnavailableCode, String) {
-    let availability = <FakeCell as QaCommand>::availability(&fake_facts_unloaded());
-    let CommandAvailability::Unavailable { code, note } = availability else {
-        unreachable!("fake.cell refuses itself with nothing loaded, got {availability:?}");
-    };
-    (code, note.as_str().to_owned())
+// The fake host with both capture tunables small and its own shot directory, so a shot that
+// cannot land gives up fast.
+fn capture_app(facts: FakeFacts, dir: &ShotDir) -> App {
+    let mut app = fake_app(FAKE_COMMANDS, facts);
+    app.insert_resource(SettleFrames::new(SHORT_SETTLE));
+    app.insert_resource(PollCap::new(SHORT_POLL));
+    app.insert_resource(dir.clone());
+    app
 }
 
-fn one_request(app: &mut App) -> ShotRequest {
-    let mut holds = app.world_mut().resource_mut::<CaptureHolds>();
-    let mut requests = holds.drain_requests();
-    assert_eq!(
-        requests.len(),
-        1,
-        "a capture rider asks the host for exactly one shot, got {requests:?}"
-    );
-    let Some(request) = requests.pop() else {
-        unreachable!("the length check above already found the one request");
-    };
-    request
+// The same host with a stand-in for the renderer, so a rider's shot can land.
+fn landing_app(facts: FakeFacts, dir: &ShotDir, stem: &'static str) -> App {
+    let mut app = capture_app(facts, dir);
+    app.insert_resource(LandingStem(stem));
+    app.add_systems(Update, stand_in_for_the_renderer.after(CaptureSystems));
+    app
 }
 
-fn report_shot(app: &mut App, request: &ShotRequest, shot: RiderShot) {
-    app.world_mut()
-        .resource_mut::<CaptureHolds>()
-        .complete(request.ticket(), shot);
+// Nothing renders here, so this stands in for the capture's own PNG writer.
+fn stand_in_for_the_renderer(dir: Res<ShotDir>, stem: Res<LandingStem>) {
+    if !dir.is_dir() {
+        return;
+    }
+    let path = dir.join(format!("{}_0.png", **stem));
+    if path.exists() {
+        return;
+    }
+    let frame = image::RgbaImage::from_pixel(2, 2, image::Rgba([7, 9, 11, 255]));
+    drop(frame.save_with_format(&path, image::ImageFormat::Png));
+}
+
+// The answer inside the frame budget, or nothing if the host never answered.
+fn answer_within(app: &mut App, channel: &Receiver<QaResponse>) -> Option<QaResponse> {
+    for _ in 0..REPLY_BUDGET_FRAMES {
+        app.update();
+        if let Ok(answered) = channel.try_recv() {
+            return Some(answered);
+        }
+    }
+    None
+}
+
+// The answer inside the frame budget, or a failure naming the call that never came back.
+fn answered_within(app: &mut App, channel: &Receiver<QaResponse>, call: &str) -> QaResponse {
+    match answer_within(app, channel) {
+        Some(answered) => answered,
+        None => unreachable!(
+            "{call} answered nothing inside {REPLY_BUDGET_FRAMES} frames. The host drains the \
+             capture holds it registers, so a rider answers rather than waiting out the caller's \
+             reply timeout"
+        ),
+    }
 }
 
 fn ran_body(channel: &Receiver<QaResponse>) -> String {
@@ -78,9 +131,8 @@ fn ran_body(channel: &Receiver<QaResponse>) -> String {
     reply.as_str().to_owned()
 }
 
-fn ran_with_one_png(channel: &Receiver<QaResponse>) -> (String, ArtifactPath) {
-    let answered = outcome(channel);
-    let CommandOutcome::Ran { reply, attachments } = answered else {
+fn ran_with_one_png(answered: &QaResponse) -> (String, ArtifactPath) {
+    let QaResponse::Outcome(CommandOutcome::Ran { reply, attachments }) = answered else {
         unreachable!("a landed capture rider must run, got {answered:?}");
     };
     let Some(attachment) = attachments.first() else {
@@ -99,74 +151,25 @@ fn ran_with_one_png(channel: &Receiver<QaResponse>) -> (String, ArtifactPath) {
     (reply.as_str().to_owned(), attachment.path.clone())
 }
 
-#[test]
-fn an_await_ready_rider_holds_the_call_until_the_command_admits() {
-    let mut app = fake_app(FAKE_COMMANDS, fake_facts_unloaded());
-    let channel = run_fake_command(
-        &mut app,
-        FAKE_COMMANDS,
-        &FakeCell::NAME,
-        &args(CELL_ARGS),
-        &await_for(60),
-    );
-
-    app.update();
-    no_answer_yet(&channel);
-
-    app.insert_resource(fake_facts_loaded());
-    app.update();
-
-    let answered = outcome(&channel);
-    assert!(
-        matches!(answered, CommandOutcome::Ran { .. }),
-        "a held call runs as soon as the facts admit it, got {answered:?}"
-    );
-}
-
-#[test]
-fn a_spent_await_budget_answers_the_command_s_own_refusal() {
-    let mut app = fake_app(FAKE_COMMANDS, fake_facts_unloaded());
-    let channel = run_fake_command(
-        &mut app,
-        FAKE_COMMANDS,
-        &FakeCell::NAME,
-        &args(CELL_ARGS),
-        &await_for(0),
-    );
-
-    let answered = outcome(&channel);
-    let CommandOutcome::Unavailable { code, note } = answered else {
-        unreachable!("a budget of zero decides once, got {answered:?}");
-    };
+// Check the attachment against the file the host's own pipeline landed.
+fn assert_landed_png(attached: &ArtifactPath, dir: &ShotDir, stem: &str) {
+    let png = PathBuf::from(attached.as_str());
     assert_eq!(
-        (code, note.as_str().to_owned()),
-        cell_refuses_unloaded(),
-        "a spent budget answers the refusal the last test produced, never a rider refusal"
+        png,
+        dir.join(format!("{stem}_0.png")),
+        "the attachment names the file the host's own drain landed"
     );
-}
-
-#[test]
-fn an_await_ready_rider_on_a_name_the_host_does_not_know_answers_at_once() {
-    let mut app = fake_app(FAKE_COMMANDS, fake_facts_unloaded());
-    let channel = run_fake_command(
-        &mut app,
-        FAKE_COMMANDS,
-        &CommandName::from_static("fake.nope"),
-        &args("()"),
-        &await_for(60),
-    );
-
-    let answered = outcome(&channel);
     assert!(
-        matches!(answered, CommandOutcome::Unknown { .. }),
-        "waiting cannot make a name appear, so an unknown name answers before any frame runs, \
-         got {answered:?}"
+        png.exists(),
+        "the rider attached {} but no file is there. The reply must name a PNG that exists",
+        png.display()
     );
 }
 
 #[test]
 fn a_capture_rider_holds_the_reply_until_its_shot_lands() {
-    let mut app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
+    let dir = case_shot_dir("holds");
+    let mut app = landing_app(fake_facts_loaded(), &dir, RIDER_STEM);
     let bare = run_fake_command(
         &mut app,
         FAKE_COMMANDS,
@@ -179,7 +182,7 @@ fn a_capture_rider_holds_the_reply_until_its_shot_lands() {
         FAKE_COMMANDS,
         &FakePhase::NAME,
         &args("()"),
-        &capture_named("rider"),
+        &capture_named(RIDER_STEM),
     );
 
     app.update();
@@ -187,26 +190,20 @@ fn a_capture_rider_holds_the_reply_until_its_shot_lands() {
     let bare_body = ran_body(&bare);
     no_answer_yet(&shot);
 
-    let path = shot_path("rider");
-    let request = one_request(&mut app);
-    assert_eq!(
-        request.name(),
-        Some(&ShotName::new("rider".to_owned())),
-        "the stem the caller asked for reaches the host"
-    );
-    report_shot(&mut app, &request, RiderShot::Landed(path.clone()));
-
-    let (body, attached) = ran_with_one_png(&shot);
+    let answered = answered_within(&mut app, &shot, "a capture rider whose shot lands");
+    let (body, attached) = ran_with_one_png(&answered);
     assert_eq!(
         body, bare_body,
         "the rider leaves the command's own reply body alone"
     );
-    assert_eq!(attached, path, "the attachment names the PNG that landed");
+    assert_landed_png(&attached, &dir, RIDER_STEM);
+    drop(std::fs::remove_dir_all(dir.as_path()));
 }
 
 #[test]
 fn a_capture_rider_whose_shot_never_lands_answers_timeout() {
-    let mut app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
+    let dir = case_shot_dir("lost");
+    let mut app = capture_app(fake_facts_loaded(), &dir);
     let channel = run_fake_command(
         &mut app,
         FAKE_COMMANDS,
@@ -217,20 +214,20 @@ fn a_capture_rider_whose_shot_never_lands_answers_timeout() {
 
     app.update();
     no_answer_yet(&channel);
-    let request = one_request(&mut app);
-    report_shot(&mut app, &request, RiderShot::Lost);
 
-    let answered = channel.try_recv().ok();
+    let answered = answered_within(&mut app, &channel, "a capture rider whose shot never lands");
     assert!(
-        matches!(answered, Some(QaResponse::Error(QaError::Timeout))),
-        "a shot that never lands answers Timeout rather than the reply without it, got \
-         {answered:?}"
+        matches!(answered, QaResponse::Error(QaError::Timeout)),
+        "nothing writes a PNG here, so the shot times out in the pump and the rider answers \
+         Timeout rather than the reply without it, got {answered:?}"
     );
+    drop(std::fs::remove_dir_all(dir.as_path()));
 }
 
 #[test]
 fn a_capture_rider_on_a_command_that_did_not_run_answers_without_a_shot() {
-    let mut app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
+    let dir = case_shot_dir("unparsed");
+    let mut app = capture_app(fake_facts_loaded(), &dir);
     let channel = run_fake_command(
         &mut app,
         FAKE_COMMANDS,
@@ -247,22 +244,27 @@ fn a_capture_rider_on_a_command_that_did_not_run_answers_without_a_shot() {
         "an outcome that is not Ran goes straight back to the caller, got {answered:?}"
     );
 
-    let mut holds = app.world_mut().resource_mut::<CaptureHolds>();
-    let requests = holds.drain_requests();
+    for _ in 0..DRAIN_TURNS {
+        app.update();
+    }
     assert!(
-        requests.is_empty(),
-        "the rider shoots after the command has run, so a command that did not run takes no shot, \
-         got {requests:?}"
+        app.world()
+            .resource::<CaptureQueue<CaptureTicket>>()
+            .is_idle(),
+        "the rider shoots after the command has run, so a command that did not run leaves the \
+         host's capture queue with nothing to take"
     );
     assert!(
-        holds.is_empty(),
+        app.world().resource::<CaptureHolds>().is_empty(),
         "the answered call is released rather than left waiting for a shot"
     );
+    drop(std::fs::remove_dir_all(dir.as_path()));
 }
 
 #[test]
 fn both_riders_on_one_call_wait_for_admission_and_then_attach() {
-    let mut app = fake_app(FAKE_COMMANDS, fake_facts_unloaded());
+    let dir = case_shot_dir("both");
+    let mut app = landing_app(fake_facts_unloaded(), &dir, DEFAULT_STEM);
     let channel = run_fake_command(
         &mut app,
         FAKE_COMMANDS,
@@ -278,54 +280,8 @@ fn both_riders_on_one_call_wait_for_admission_and_then_attach() {
     app.update();
     no_answer_yet(&channel);
 
-    let path = shot_path("qa_shot");
-    let request = one_request(&mut app);
-    report_shot(&mut app, &request, RiderShot::Landed(path.clone()));
-
-    let (_body, attached) = ran_with_one_png(&channel);
-    assert_eq!(
-        attached, path,
-        "one call carrying both riders waits, runs, and comes back with the PNG"
-    );
-}
-
-#[test]
-fn the_default_riders_still_run_the_command() {
-    let mut app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
-    let channel = run_fake_command(
-        &mut app,
-        FAKE_COMMANDS,
-        &FakePhase::NAME,
-        &args("()"),
-        &plain(),
-    );
-
-    app.update();
-
-    assert!(matches!(outcome(&channel), CommandOutcome::Ran { .. }));
-}
-
-#[test]
-fn a_held_call_is_answered_exactly_once() {
-    let mut app = fake_app(FAKE_COMMANDS, fake_facts_unloaded());
-    let channel = run_fake_command(
-        &mut app,
-        FAKE_COMMANDS,
-        &FakeCell::NAME,
-        &args(CELL_ARGS),
-        &await_for(60),
-    );
-
-    app.update();
-    app.insert_resource(fake_facts_loaded());
-    app.update();
-    assert!(matches!(outcome(&channel), CommandOutcome::Ran { .. }));
-
-    for _ in 0..8 {
-        app.update();
-    }
-    assert!(
-        channel.try_recv().is_err(),
-        "a call that waited for admission still produces exactly one answer"
-    );
+    let answered = answered_within(&mut app, &channel, "one call carrying both riders");
+    let (_body, attached) = ran_with_one_png(&answered);
+    assert_landed_png(&attached, &dir, DEFAULT_STEM);
+    drop(std::fs::remove_dir_all(dir.as_path()));
 }
