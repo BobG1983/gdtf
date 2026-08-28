@@ -2,6 +2,7 @@
 mod cost;
 mod death;
 mod duplicate_requests;
+mod eject_on_destroy;
 mod enter_exit;
 mod entry_sides;
 mod harness;

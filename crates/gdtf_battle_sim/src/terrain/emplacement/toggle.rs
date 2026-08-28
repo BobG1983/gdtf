@@ -10,14 +10,15 @@ use bevy::{
 
 use super::{
     EmplacementState, EnteredFrom, MountedBy, MountedWeaponEntity, MountedWeaponKey,
-    death::clear_seat_on_death, vacate::clear_seat,
+    death::clear_seat_on_death, eject::eject_on_destroy, vacate::clear_seat,
 };
 use crate::{
+    acts::{dispatch_fire, dispatch_melee},
     effects::on_death::resolve_on_death,
     equipment::attachments::{AttachmentRegistry, resolve_pending_attachments},
     ganger::Position,
     metric::CellLevel,
-    occupancy_sync::{SimSystems, sync_dead_gangers, sync_moved_gangers},
+    occupancy_sync::{SimSystems, sync_dead_gangers, sync_destroyed_piece, sync_moved_gangers},
     terrain::entity::TerrainCell,
     weapon::{MountedWeapon, WeaponRegistry, WieldedBy},
 };
@@ -181,6 +182,15 @@ impl Plugin for EmplacementTogglePlugin {
                     .after(apply_emplacement_toggle)
                     .after(resolve_on_death)
                     .after(sync_dead_gangers),
+            )
+            .add_systems(
+                Update,
+                eject_on_destroy
+                    .in_set(SimSystems::Simulate)
+                    .after(sync_destroyed_piece)
+                    .after(apply_emplacement_toggle)
+                    .before(dispatch_fire)
+                    .before(dispatch_melee),
             );
     }
 }

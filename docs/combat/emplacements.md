@@ -12,8 +12,9 @@ pillars: [4, 5]
 it and reach in.**
 
 Status: the entry gate, the move onto the emplacement's cell, the remembered
-origin cell, the exit act, walking off the seat and a death freeing the seat
-are built. "What exists today" records what they do.
+origin cell, the exit act, walking off the seat, a death freeing the seat and
+a destroyed mount setting its occupant down are built. "What exists today"
+records what they do.
 
 ## The claim
 
@@ -49,6 +50,12 @@ on the mount cell and the emplacement goes vacant, so another ganger can climb
 in and take the gun: a body slumped over the gun is flavour, one death taking a
 heavy weapon out of the fight is not. What a *downed* occupant should do is not
 settled.
+
+**Destroyed.** An emplacement is destructible cover, and destroying it takes
+the seat with it. The occupant is put back on the cell it entered from when
+that cell is free, and on the mount's own cell when it is not. The seat goes
+vacant, the mounted weapon goes with the piece, and the ganger carries its own
+gun again.
 
 **Emplacements nothing can enter.** A def naming no entry side cannot be
 entered, and offers no act. That is how a mount is authored as scenery, or for
@@ -124,8 +131,38 @@ seat frees. Writing the corpse's cell back would re-claim that slot with nothing
 left to release it, which is why the system touches no position. A mounted
 weapon carries the on-death effect its spec authors, the way a carried one
 does, so a gunner killed at the mount fires the mount's effect rather than the
-gun on their back. Only death is handled: a downed occupant keeps its seat and
-its grid slot both.
+gun on their back. Only a death frees the seat here: a downed occupant keeps
+its seat and its grid slot both.
+
+`eject_on_destroy` (`terrain/emplacement/eject.rs`) reads the
+`TerrainPieceDestroyed` messages, takes only the ones whose kind is
+`Emplacement`, and acts on the emplacement standing at that cell when its state
+reads occupied. A message at a plain cover cell reaches no emplacement. A
+`Slab` message is the floor under the seat rather than the mount. A vacant seat
+has no occupant to set down. It writes the occupant's `Position` and then gives
+the seat up through the same `clear_seat`, so the state, the occupant record,
+the remembered origin cell, the despawned mount and the new position all land
+in one update.
+
+The destination is the remembered origin cell when that cell is free, and
+otherwise the first free cell an outward scan reaches. Free means not
+path-blocked and unoccupied, read from the `OccupancyGrid` as the ejection
+runs. The occupant's own entity does not make a cell taken, because it is
+standing on the mount cell the scan starts from. The scan grows by Chebyshev
+distance from the mount's cell, distance 0 first, over cells on the mount's own
+level, taking them in ascending `(y, x)` inside one distance, and stops when a
+whole ring falls off the grid. Finding nothing leaves the `Position` where it
+is; the state change, the dropped records and the despawned mount still happen.
+
+The mount's own cell is a candidate because `sync_destroyed_piece`
+(`terrain/occupancy_sync/systems.rs`) marks the destroyed cover first, and
+`is_path_blocked` answers false for a marked cell whatever `path_blocking`
+holds. `eject_on_destroy` runs after that mark, after
+`apply_emplacement_toggle`, and before `dispatch_fire` and `dispatch_melee`, so
+a message either dispatcher writes is read on the following update, with the
+mark already in. Nothing can take the mount's cell while the occupant stands on
+it, so the scan itself never passes distance 0 today: the occupant lands on the
+origin cell or on the mount's own cell.
 
 The route out is planned from the seat's rotated entry cells: the first step may
 land only on one of them, and the rest of the route carries on from there. A
@@ -184,10 +221,14 @@ holds for it and the card for a ganger on it the squad can see.
   `advance_walk`. `apply_emplacement_toggle`, which writes both `Position`
   moves, is in `terrain/emplacement/toggle.rs`.
   `clear_seat` (`terrain/emplacement/vacate.rs`) is the vacate the toggle, a
-  walk's first step and `clear_seat_on_death` (`terrain/emplacement/death.rs`)
-  share, and `emplacement_entry_cells`
+  walk's first step, `clear_seat_on_death` (`terrain/emplacement/death.rs`) and
+  `eject_on_destroy` (`terrain/emplacement/eject.rs`) share, and
+  `emplacement_entry_cells`
   (`terrain/emplacement/entry.rs`) is the rotated entry set the enter gate and
-  the route out share.
+  the route out share. The `TerrainPieceDestroyed` message `eject_on_destroy`
+  reads is in `terrain/occupancy_sync/components.rs`, and
+  `EmplacementTogglePlugin` (`terrain/emplacement/toggle.rs`) registers the
+  system and its ordering edges.
   `dismount_surcharge`, `seat_surcharge` and `seat_departure` are in
   `acts/movement/mount.rs`; the surcharge is added by `move_tu_cost` and
   `move_step_tu_costs` in `acts/movement/cost.rs`, and the departure reaches the
