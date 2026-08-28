@@ -64,7 +64,9 @@ something that was never going to climb into it.
 **Blocking.** An emplacement blocks movement and line of sight, and it is
 cover. Its sim kind blocks pathing and occludes vision up to its own height
 band, and battle setup seeds a cover ledger entry at that band, the same entry a
-wall or a crate gets.
+wall or a crate gets. A sightline crossing the cell is stopped. A sightline
+starting or ending on that cell is clear: a mounted ganger sees out past its own
+mount, and a ganger elsewhere with a line to the mount's cell sees the occupant.
 
 ## Why
 
@@ -189,6 +191,15 @@ cell is the mounted ganger's own stance silhouette, published by the same system
 that publishes every other ganger's. A shot at that cell is aimed at the
 emplacement's authored cover height rather than at the ganger's silhouette,
 because the cover ledger's entry is read before the occupant band.
+
+`has_los` (`perception/los/probe.rs`) skips the observer's own cell, because
+`march_vector` (`shot_pipeline/march/vector.rs`) tests nothing at the cell the
+march starts in, and `is_clear` reads a hit landing on the target's own cell as
+clear. Both exclusions belong to the line-of-sight probe rather than to
+emplacements, and they reach the occupant because it stands on the mount's
+cell. So the mount's cover entry stops neither a probe from the seat nor a
+probe aimed at the seat, while an unmanned mount stops the probe between two
+gangers either side of it.
 
 A round crossing that cell meets the occupant before the mount. `impact_at`
 (`shot_pipeline/march/dda.rs`) tests the occupant's band first and the cover

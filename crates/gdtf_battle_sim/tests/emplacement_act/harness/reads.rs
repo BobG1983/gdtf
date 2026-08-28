@@ -7,7 +7,7 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     acts::{MovementOccurred, movement::WalkInProgress},
-    cover::HeightBand,
+    cover::{CoverLedger, HeightBand},
     ganger::Position,
     metric::CellLevel,
     occupancy::OccupancyGrid,
@@ -49,6 +49,13 @@ pub(crate) fn occupant_band(app: &App, at: CellLevel) -> Option<HeightBand> {
     app.world()
         .get_resource::<OccupancyGrid>()
         .and_then(|g| g.occupant_band(&at))
+}
+
+/// The band of the cover entry seeded at a cell, which a piece's own def decides.
+pub(crate) fn cover_band(app: &App, at: CellLevel) -> Option<HeightBand> {
+    app.world()
+        .get_resource::<CoverLedger>()
+        .and_then(|ledger| ledger.peek(&at).map(|entry| entry.height_band))
 }
 
 pub(crate) fn tu_of(app: &App, entity: Entity) -> Option<u8> {

@@ -1,4 +1,5 @@
 //! HARNESS NOTE (the `melee_cover_smash` idiom): the sim crate is the LOW crate, so it drives
+mod blocking;
 mod cost;
 mod death;
 mod duplicate_requests;
@@ -11,6 +12,7 @@ mod mounted_fire;
 mod rejections;
 mod same_frame;
 mod seeded_sides;
+mod sight;
 mod trapped;
 mod walk_off;
 mod zero_step;
