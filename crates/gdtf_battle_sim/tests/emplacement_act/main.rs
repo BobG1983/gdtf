@@ -6,6 +6,7 @@ mod eject_on_destroy;
 mod enter_exit;
 mod entry_sides;
 mod harness;
+mod mounted_cover;
 mod mounted_fire;
 mod rejections;
 mod same_frame;

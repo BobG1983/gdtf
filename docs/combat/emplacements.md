@@ -21,11 +21,11 @@ records what they do.
 An emplacement is a mounted position — a heavy weapon on a pintle, a firing
 slit. Using one means being in it.
 
-**Entering.** An emplacement def names the sides it can be entered from: up,
-down, left, right. Those sides rotate with the emplacement's facing, so a mount
-turned to face east has its entry sides turned with it. A ganger standing on one
-of those cells is offered the act to enter, and entering moves it onto the
-emplacement's own cell.
+**Entering.** An emplacement def names the sides it can be entered from, as
+cardinals: north, east, south, west. Those sides rotate with the emplacement's
+facing, so a mount turned to face east has its entry sides turned with it. A
+ganger standing on one of those cells is offered the act to enter, and entering
+moves it onto the emplacement's own cell.
 
 **Occupying.** A mounted ganger is on the emplacement's cell and is in high
 cover. It is not adjacent to the mount; it is in it.
@@ -61,8 +61,10 @@ gun again.
 entered, and offers no act. That is how a mount is authored as scenery, or for
 something that was never going to climb into it.
 
-**Blocking.** An emplacement blocks movement and line of sight. Treating it as
-cover may give both without new code; check before writing either.
+**Blocking.** An emplacement blocks movement and line of sight, and it is
+cover. Its sim kind blocks pathing and occludes vision up to its own height
+band, and battle setup seeds a cover ledger entry at that band, the same entry a
+wall or a crate gets.
 
 ## Why
 
@@ -187,6 +189,15 @@ cell is the mounted ganger's own stance silhouette, published by the same system
 that publishes every other ganger's. A shot at that cell is aimed at the
 emplacement's authored cover height rather than at the ganger's silhouette,
 because the cover ledger's entry is read before the occupant band.
+
+A round crossing that cell meets the occupant before the mount. `impact_at`
+(`shot_pipeline/march/dda.rs`) tests the occupant's band first and the cover
+entry at the same cell second, so a `High` round clears a crouching occupant at
+`Mid` and stops on the mount's own `High` entry, while a standing occupant at
+`High` is struck itself. `impact_at` reads no attacker cell and a `CoverEntry`
+carries no sides, so that entry stops a round from any bearing, the side the
+mount is entered from included. The entry sides gate the enter act and the route
+out, and nothing else.
 
 Which ganger rides which emplacement is a Bevy relationship — `MountedBy` on the
 emplacement, `Mounted` on the ganger, kept in step by the engine. It is
