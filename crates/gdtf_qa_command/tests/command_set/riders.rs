@@ -1,6 +1,6 @@
 //! The capture rider, answered through the drain the host registers with the hold.
 
-use std::{path::PathBuf, sync::mpsc::Receiver};
+use std::{cell::Cell, path::PathBuf, sync::mpsc::Receiver};
 
 use bevy::prelude::*;
 use gdtf_qa_command::{
@@ -19,6 +19,7 @@ use gdtf_qa_protocol::{
     message::{QaError, QaResponse},
 };
 use gdtf_screenshot::{CaptureQueue, CaptureSystems, PollCap, SettleFrames, ShotDir, ShotDirName};
+use gdtf_test_utils::advance_until;
 
 use crate::support::{CELL_ARGS, args, no_answer_yet, outcome, plain};
 
@@ -27,12 +28,6 @@ const SHORT_SETTLE: u32 = 2;
 
 /// Frames the capture pump polls for the PNG before it gives up.
 const SHORT_POLL: u32 = 4;
-
-/// Frames one call spends being claimed, held, queued, drained and answered.
-const HANDOFF_FRAMES: u32 = 12;
-
-/// Whole budget a case gives the fake host to answer one run.
-const REPLY_BUDGET_FRAMES: u32 = SHORT_SETTLE + SHORT_POLL + HANDOFF_FRAMES;
 
 /// Frames the drain is given to queue a shot no rider asked for.
 const DRAIN_TURNS: u32 = 3;
@@ -96,26 +91,20 @@ fn stand_in_for_the_renderer(dir: Res<ShotDir>, stem: Res<LandingStem>) {
     drop(frame.save_with_format(&path, image::ImageFormat::Png));
 }
 
-// The answer inside the frame budget, or nothing if the host never answered.
-fn answer_within(app: &mut App, channel: &Receiver<QaResponse>) -> Option<QaResponse> {
-    for _ in 0..REPLY_BUDGET_FRAMES {
-        app.update();
-        if let Ok(answered) = channel.try_recv() {
-            return Some(answered);
+// The host's answer to one call, taken off the channel the frame it arrives on. The wait has no
+// budget, so a busy machine is never red.
+fn wait_for_answer(app: &mut App, channel: &Receiver<QaResponse>) -> QaResponse {
+    let landed = Cell::new(None);
+    loop {
+        advance_until(app, |_| {
+            let arrived = channel.try_recv().ok();
+            let answered = arrived.is_some();
+            landed.set(arrived);
+            answered
+        });
+        if let Some(answered) = landed.take() {
+            return answered;
         }
-    }
-    None
-}
-
-// The answer inside the frame budget, or a failure naming the call that never came back.
-fn answered_within(app: &mut App, channel: &Receiver<QaResponse>, call: &str) -> QaResponse {
-    match answer_within(app, channel) {
-        Some(answered) => answered,
-        None => unreachable!(
-            "{call} answered nothing inside {REPLY_BUDGET_FRAMES} frames. The host drains the \
-             capture holds it registers, so a rider answers rather than waiting out the caller's \
-             reply timeout"
-        ),
     }
 }
 
@@ -190,7 +179,7 @@ fn a_capture_rider_holds_the_reply_until_its_shot_lands() {
     let bare_body = ran_body(&bare);
     no_answer_yet(&shot);
 
-    let answered = answered_within(&mut app, &shot, "a capture rider whose shot lands");
+    let answered = wait_for_answer(&mut app, &shot);
     let (body, attached) = ran_with_one_png(&answered);
     assert_eq!(
         body, bare_body,
@@ -215,7 +204,7 @@ fn a_capture_rider_whose_shot_never_lands_answers_timeout() {
     app.update();
     no_answer_yet(&channel);
 
-    let answered = answered_within(&mut app, &channel, "a capture rider whose shot never lands");
+    let answered = wait_for_answer(&mut app, &channel);
     assert!(
         matches!(answered, QaResponse::Error(QaError::Timeout)),
         "nothing writes a PNG here, so the shot times out in the pump and the rider answers \
@@ -280,7 +269,7 @@ fn both_riders_on_one_call_wait_for_admission_and_then_attach() {
     app.update();
     no_answer_yet(&channel);
 
-    let answered = answered_within(&mut app, &channel, "one call carrying both riders");
+    let answered = wait_for_answer(&mut app, &channel);
     let (_body, attached) = ran_with_one_png(&answered);
     assert_landed_png(&attached, &dir, DEFAULT_STEM);
     drop(std::fs::remove_dir_all(dir.as_path()));

@@ -14,6 +14,9 @@ gdtf_screenshot = { path = "../gdtf_screenshot" }
 [dev-dependencies]
 # The rider tests write the PNG a shot lands as, in place of the renderer.
 image = { version = "0.25", default-features = false, features = ["png"] }
+# `advance_until`, the budget-free wait the rider tests take their answer from. The cycle back
+# through gdtf_app is a dev-dependency, which cargo allows.
+gdtf_test_utils = { path = "../gdtf_test_utils" }
 
 [features]
 dynamic_linking = [

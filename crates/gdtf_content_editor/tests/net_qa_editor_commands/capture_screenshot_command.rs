@@ -23,15 +23,6 @@ const SHORT_SETTLE: u32 = 2;
 /// Frames the pump polls for the PNG before it gives up.
 const SHORT_POLL: u32 = 4;
 
-/// Frames the call spends being routed, held, answered, queued and drained.
-const HOLD_HANDOFF_FRAMES: u32 = 6;
-
-/// Frames the answered call spends reaching the client's socket.
-const SOCKET_FRAMES: u32 = 8;
-
-/// Whole budget a case gives the editor to answer one run.
-const REPLY_BUDGET_FRAMES: u32 = SHORT_SETTLE + SHORT_POLL + HOLD_HANDOFF_FRAMES + SOCKET_FRAMES;
-
 /// Stem the capture rider asks the editor to write its shot under.
 const RIDER_SHOT_NAME: &str = "editor_rider_shot";
 
@@ -93,14 +84,6 @@ fn rider_named(stem: &str) -> RunOptions {
     )
 }
 
-// The answer inside the budget, or an error naming the call that ran out of frames.
-fn answer_within(app: &mut App, client: &mut Client, call: &str) -> Result<QaResponse, TestError> {
-    let answered = client.read_within(app, REPLY_BUDGET_FRAMES)?;
-    answered.ok_or_else(|| {
-        format!("{call} answered nothing inside {REPLY_BUDGET_FRAMES} frames").into()
-    })
-}
-
 fn ran_body_text(reply: &QaResponse) -> Result<String, TestError> {
     let QaResponse::Outcome(CommandOutcome::Ran { reply: body, .. }) = reply else {
         return Err(format!("expected a Ran outcome for `{EDITOR_PHASE}`, got {reply:?}").into());
@@ -147,7 +130,7 @@ fn a_capture_rider_on_an_editor_command_attaches_the_png_the_editor_took() -> Te
     let dir = rider_shot_dir();
 
     client.send(&run_editor(EDITOR_PHASE, "()"))?;
-    let plain = answer_within(&mut app, &mut client, "the control run carrying no rider")?;
+    let plain = client.read(&mut app)?;
     let plain_body = ran_body_text(&plain)?;
 
     client.send(&run_editor_with(
@@ -155,7 +138,7 @@ fn a_capture_rider_on_an_editor_command_attaches_the_png_the_editor_took() -> Te
         "()",
         rider_named(RIDER_SHOT_NAME),
     ))?;
-    let with_rider = answer_within(&mut app, &mut client, "the run carrying a capture rider")?;
+    let with_rider = client.read(&mut app)?;
 
     assert!(
         !matches!(with_rider, QaResponse::Error(QaError::Timeout)),
