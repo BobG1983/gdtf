@@ -365,7 +365,8 @@ would charge one ganger in TU and whether the sim would allow it — every numbe
 sim's own cost helper and every verdict its own legality check, so a melee quote on a
 ganger runs the sim's line-of-sight probe as well as its reach check and refuses
 `NoLineOfSight` for a target behind cover (a strike on a structure gets no probe, because
-the sim runs none either), and nothing in the battle
+the sim runs none either, and is refused `ActNotAllowed` at a cell holding neither cover nor
+terrain, because the sim smashes nothing there), and nothing in the battle
 moves — and `log.read` returns a window of
 the act log — `since` picks where it starts, `cap` how many lines it keeps, and the reply
 brackets the window with the log's `head` and `oldest` so a caller can page.

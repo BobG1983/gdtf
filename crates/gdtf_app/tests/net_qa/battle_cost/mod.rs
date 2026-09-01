@@ -10,6 +10,7 @@ mod mounted;
 mod quotes;
 mod refusals;
 mod scope;
+mod structure;
 pub(crate) mod support;
 mod suppression;
 mod suppression_sight;

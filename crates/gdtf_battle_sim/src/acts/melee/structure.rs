@@ -2,7 +2,7 @@
 
 use super::{
     MeleeCombatants, MeleeOutcomes, MeleeWorld,
-    cost::{MeleeReach, can_melee},
+    cost::{MeleeReach, can_melee, structure_stands},
     snapshot::AttackerSnapshot,
 };
 use crate::{
@@ -18,7 +18,8 @@ pub(super) fn resolve_structure_melee(
     world: &mut MeleeWorld,
     outcomes: &mut MeleeOutcomes,
 ) {
-    if !*can_melee(attacker.reach(), MeleeReach::structure(at)) {
+    let standing = structure_stands(&world.cover, &world.occupancy, at);
+    if !*can_melee(attacker.reach(), MeleeReach::structure(at, standing)) {
         return;
     }
 

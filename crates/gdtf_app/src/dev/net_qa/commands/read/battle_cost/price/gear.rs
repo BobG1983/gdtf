@@ -5,7 +5,7 @@ use gdtf_battle_input::{firing_weapon_of, ranged_weapon_of};
 use gdtf_battle_sim::{
     acts::{
         MeleeAttacker, MeleeReach, can_melee, can_reload, can_throw_grenade, fire_arc_tu_cost,
-        melee_tu_cost, reload_tu_cost, throw_grenade_tu_cost,
+        melee_tu_cost, reload_tu_cost, structure_stands, throw_grenade_tu_cost,
     },
     ganger::{LifeState, Stance, StanceKind},
     injuries::{HandsAvailable, InflictedInjuries},
@@ -120,7 +120,7 @@ pub(super) fn melee_quote(
     else {
         return Quote::refused(CostRefusalNet::ActNotAllowed);
     };
-    let Some(reach) = melee_reach(rows, target) else {
+    let Some(reach) = melee_reach(world, rows, target) else {
         return Quote::refused(CostRefusalNet::NoSuchGanger);
     };
     let cost = melee_tu_cost(fight);
@@ -177,13 +177,17 @@ fn melee_sighted(
     )
 }
 
-fn melee_reach(rows: &CostRows, target: MeleeTargetNet) -> Option<MeleeReach> {
+fn melee_reach(world: &LoadedWorld, rows: &CostRows, target: MeleeTargetNet) -> Option<MeleeReach> {
     match target {
         MeleeTargetNet::Ganger(token) => {
             let entity = a_ganger(&rows.tokens, token)?;
             let (position, faction, life) = rows.targets.get(entity).ok()?;
             Some(MeleeReach::ganger(*position, *faction, *life))
         }
-        MeleeTargetNet::Structure(at) => Some(MeleeReach::structure(at.to_sim())),
+        MeleeTargetNet::Structure(at) => {
+            let at = at.to_sim();
+            let standing = structure_stands(world.cover, world.grids.occupancy, at);
+            Some(MeleeReach::structure(at, standing))
+        }
     }
 }

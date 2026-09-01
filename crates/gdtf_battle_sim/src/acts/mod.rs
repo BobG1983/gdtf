@@ -31,7 +31,10 @@ pub use fire::{
     can_engage, decide_fire_arc, dispatch_fire, fire_arc_tu_cost,
 };
 pub use injury::{InjuryInflicted, apply_injury};
-pub use melee::{CanMelee, MeleeAttacker, MeleeReach, can_melee, dispatch_melee, melee_tu_cost};
+pub use melee::{
+    CanMelee, MeleeAttacker, MeleeReach, StructureStanding, can_melee, dispatch_melee,
+    melee_tu_cost, structure_stands,
+};
 pub use movement::{
     DismountSurcharge, MoveCompleted, MoveRejected, MoveRejection, MoveVerdict, MovementOccurred,
     Mover, SightWorld, can_move, dismount_surcharge, dispatch_move, move_step_tu_costs,

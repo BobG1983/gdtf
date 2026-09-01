@@ -4,8 +4,10 @@ use bevy::prelude::Deref;
 
 use crate::{
     acts::downed::is_8_adjacent,
+    cover::CoverLedger,
     ganger::{Faction, LifeState, Position, Tu},
     metric::CellLevel,
+    occupancy::{OccupancyGrid, TerrainKind},
     weapon::FightMode,
 };
 
@@ -18,6 +20,18 @@ impl CanMelee {
     #[must_use]
     pub const fn new(allowed: bool) -> Self {
         Self(allowed)
+    }
+}
+
+/// Whether the aimed cell holds anything a strike could smash.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StructureStanding(bool);
+
+impl StructureStanding {
+    /// Wrap a boolean.
+    #[must_use]
+    pub const fn new(standing: bool) -> Self {
+        Self(standing)
     }
 }
 
@@ -53,7 +67,9 @@ pub enum MeleeReach {
     /// A structure or cover cell.
     Structure {
         /// Cell being smashed.
-        at: CellLevel,
+        at:       CellLevel,
+        /// Whether that cell holds anything to smash.
+        standing: StructureStanding,
     },
 }
 
@@ -68,11 +84,21 @@ impl MeleeReach {
         }
     }
 
-    /// Aim the strike at a structure cell.
+    /// Aim the strike at a structure cell, with what that cell stands.
     #[must_use]
-    pub const fn structure(at: CellLevel) -> Self {
-        Self::Structure { at }
+    pub const fn structure(at: CellLevel, standing: StructureStanding) -> Self {
+        Self::Structure { at, standing }
     }
+}
+
+/// Whether a cell holds cover or terrain, which is what a structural strike resolves against.
+#[must_use]
+pub fn structure_stands(
+    cover: &CoverLedger,
+    occupancy: &OccupancyGrid,
+    at: CellLevel,
+) -> StructureStanding {
+    StructureStanding::new(cover.peek(&at).is_some() || occupancy.terrain(&at) != TerrainKind::Open)
 }
 
 /// TU charged for one strike with this weapon's primary mode.
@@ -81,7 +107,7 @@ pub fn melee_tu_cost(fight_mode: &FightMode) -> Tu {
     Tu::new(u8::try_from(*fight_mode.primary().tu_cost).unwrap_or(u8::MAX))
 }
 
-/// Adjacent, and for a ganger target also hostile and still active.
+/// Adjacent; a ganger target must also be hostile and active, a cell must stand something.
 #[must_use]
 pub fn can_melee(attacker: MeleeAttacker, target: MeleeReach) -> CanMelee {
     match target {
@@ -94,8 +120,8 @@ pub fn can_melee(attacker: MeleeAttacker, target: MeleeReach) -> CanMelee {
                 && attacker.faction != faction
                 && *life.is_active(),
         ),
-        MeleeReach::Structure { at } => {
-            CanMelee::new(*is_8_adjacent(attacker.position, Position::new(at)))
+        MeleeReach::Structure { at, standing } => {
+            CanMelee::new(*is_8_adjacent(attacker.position, Position::new(at)) && *standing)
         }
     }
 }

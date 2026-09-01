@@ -2,7 +2,9 @@
 
 use bevy::{app::App, ecs::relationship::Relationship, prelude::Entity};
 use gdtf_battle_sim::{
-    acts::{MeleeAttacker, MeleeReach, MeleeRequested, can_melee, melee_tu_cost},
+    acts::{
+        MeleeAttacker, MeleeReach, MeleeRequested, StructureStanding, can_melee, melee_tu_cost,
+    },
     ganger::{Direction, Faction, LifeState, Position},
     test_support::SituationBuilder,
     weapon::{FightMode, FightModeKind, FightModeSpec, Strikes, TuCost, WieldedBy},
@@ -118,11 +120,25 @@ fn can_melee_matches_the_reach_gates_the_resolvers_enforce() {
         "a downed target is not a legal strike",
     );
     assert!(
-        *can_melee(attacker, MeleeReach::structure(ground(6, 6))),
-        "an adjacent structure cell is a legal smash",
+        *can_melee(
+            attacker,
+            MeleeReach::structure(ground(6, 6), StructureStanding::new(true)),
+        ),
+        "an adjacent cell standing something is a legal smash",
     );
     assert!(
-        !*can_melee(attacker, MeleeReach::structure(ground(9, 9))),
+        !*can_melee(
+            attacker,
+            MeleeReach::structure(ground(9, 9), StructureStanding::new(true)),
+        ),
         "a distant structure cell is not a legal smash",
+    );
+    assert!(
+        !*can_melee(
+            attacker,
+            MeleeReach::structure(ground(6, 6), StructureStanding::new(false)),
+        ),
+        "an adjacent cell standing nothing is bare ground, which the resolver refuses, so it is \
+         not a legal smash",
     );
 }

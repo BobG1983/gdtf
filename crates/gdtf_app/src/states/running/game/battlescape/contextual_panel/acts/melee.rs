@@ -1,7 +1,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::{SelectedShooter, contextual::MeleeAct};
 use gdtf_battle_sim::{
-    acts::{MeleeAttacker, MeleeReach, MeleeTarget, can_melee, melee_tu_cost},
+    acts::{MeleeAttacker, MeleeReach, MeleeTarget, can_melee, melee_tu_cost, structure_stands},
     cover::CoverLedger,
     ganger::{Facing, Faction, LifeState, Position, Stance, StanceKind, Tu},
     los::{Observer, PeekOffset, Target, has_los},
@@ -170,6 +170,7 @@ fn scan_melee_target(
 
 fn scan_melee_structure(attacker: MeleeAttacker, grids: &LosGrids) -> Option<CellLevel> {
     let cover = grids.cover.as_ref()?;
+    let occupancy = grids.occupancy.as_ref()?;
 
     let key = *attacker.position;
     let level = key.level();
@@ -177,7 +178,8 @@ fn scan_melee_structure(attacker: MeleeAttacker, grids: &LosGrids) -> Option<Cel
     for dy in -1..=1 {
         for dx in -1..=1 {
             let at = CellLevel::new(Cell::new(key.x + dx, key.y + dy), level);
-            if !*can_melee(attacker, MeleeReach::structure(at)) {
+            let standing = structure_stands(cover, occupancy, at);
+            if !*can_melee(attacker, MeleeReach::structure(at, standing)) {
                 continue;
             }
             if let Some(entry) = cover.peek(&at)
