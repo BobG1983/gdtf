@@ -8,7 +8,7 @@ use super::{
     run::{parse_run, render_outcome},
 };
 use crate::{
-    hosts::{HostSet, QaHost},
+    hosts::{HostPair, HostSet, QaHost},
     lifecycle::{HostLifecycle, InstanceId, RecordedInstance},
     mcp::{content::tool_error, control, tools::ToolName},
 };
@@ -84,16 +84,23 @@ fn instance_refusal(host: QaHost, recorded: &[RecordedInstance]) -> ToolCallOutc
         .iter()
         .map(|instance| instance.id().as_str())
         .collect();
-    let list = if named.is_empty() {
-        "none".to_owned()
+    let held = if named.is_empty() {
+        format!(
+            "this MCP host records no {} instance. Call {} to start one",
+            host.label(),
+            host.launch_tool_name(),
+        )
     } else {
-        named.join(", ")
+        format!(
+            "this MCP host records these {} instances: {}",
+            host.label(),
+            named.join(", "),
+        )
     };
     ToolCallOutcome::Result(tool_error(&format!(
-        "`{INSTANCE_ARG}` must name one of the {} instances this MCP host records: {list}. An \
-         editor `stop` or `logs` names the instance it acts on, and the launch reply carries \
-         the id.",
-        host.label(),
+        "`{INSTANCE_ARG}` must name a recorded instance, and {held}. An editor `run`, \
+         `commands`, `stop` or `logs` names the instance it acts on, and the launch reply \
+         carries the id."
     )))
 }
 
@@ -123,12 +130,41 @@ pub fn handle_tool_call(params: Option<&Value>, hosts: &mut HostSet<'_>) -> Tool
         }
         ToolName::Stop => control::handle_stop(host, args, pair.lifecycle()),
         ToolName::Logs => control::handle_logs(host, args, pair.lifecycle()),
-        ToolName::Commands => handle_commands(args, pair),
-        ToolName::Run => handle_run(args, pair),
+        ToolName::Commands => match aim_at_instance(host, args, pair) {
+            Err(refusal) => refusal,
+            Ok(_) => handle_commands(args, pair),
+        },
+        ToolName::Run => match aim_at_instance(host, args, pair) {
+            Err(refusal) => refusal,
+            Ok(instance) => handle_run(args, pair, instance.as_ref()),
+        },
     }
 }
 
-fn handle_commands(args: &Value, pair: &mut crate::hosts::HostPair<'_>) -> ToolCallOutcome {
+// Point a forwarded call at the instance it named; an editor call naming none is refused.
+fn aim_at_instance(
+    host: QaHost,
+    args: &Value,
+    pair: &mut HostPair<'_>,
+) -> Result<Option<InstanceId>, ToolCallOutcome> {
+    let recorded = pair.lifecycle().instances();
+    let choice = resolve_instance(host, args, pair.lifecycle());
+    match choice {
+        InstanceChoice::Refused(refusal) => Err(refusal),
+        InstanceChoice::Unnamed if matches!(host, QaHost::Editor) => {
+            Err(instance_refusal(host, &recorded))
+        }
+        InstanceChoice::Unnamed => Ok(None),
+        InstanceChoice::Named(instance) => {
+            if let Some(held) = recorded.iter().find(|held| *held.id() == instance) {
+                pair.link().retarget(held.port());
+            }
+            Ok(Some(instance))
+        }
+    }
+}
+
+fn handle_commands(args: &Value, pair: &mut HostPair<'_>) -> ToolCallOutcome {
     let detail = match parse_detail(args) {
         Ok(detail) => detail,
         Err(message) => return ToolCallOutcome::Invalid(message),
@@ -148,12 +184,19 @@ fn handle_commands(args: &Value, pair: &mut crate::hosts::HostPair<'_>) -> ToolC
     }
 }
 
-fn handle_run(args: &Value, pair: &mut crate::hosts::HostPair<'_>) -> ToolCallOutcome {
+fn handle_run(
+    args: &Value,
+    pair: &mut HostPair<'_>,
+    instance: Option<&InstanceId>,
+) -> ToolCallOutcome {
     let run = match parse_run(args) {
         Ok(run) => run,
         Err(message) => return ToolCallOutcome::Invalid(message),
     };
-    let child_dir = pair.lifecycle().child_working_dir();
+    let child_dir = match instance {
+        Some(named) => pair.lifecycle().instance_working_dir(named),
+        None => pair.lifecycle().child_working_dir(),
+    };
     match pair.link().request(QaRequest::Run(run)) {
         Ok(QaResponse::Outcome(outcome)) => {
             ToolCallOutcome::Result(render_outcome(&outcome, child_dir.as_ref()))

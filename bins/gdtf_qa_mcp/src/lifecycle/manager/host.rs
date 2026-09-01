@@ -254,6 +254,13 @@ impl HostLifecycle for HostManager {
             .and_then(|running| running.recipe.resolved_working_dir())
     }
 
+    fn instance_working_dir(&self, instance: &InstanceId) -> Option<WorkingDir> {
+        self.running
+            .iter()
+            .find(|running| running.id == *instance)
+            .and_then(|running| running.recipe.resolved_working_dir())
+    }
+
     fn child_output(&self, max: TailLines) -> Option<OutputTail> {
         self.running
             .last()

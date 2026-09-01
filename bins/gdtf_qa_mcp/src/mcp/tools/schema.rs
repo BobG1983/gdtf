@@ -14,7 +14,9 @@ fn host_property() -> Value {
     json!({
         "type": "string",
         "enum": [QaHost::Game.label(), QaHost::Editor.label()],
-        "description": "Which child to act on; omit for the game.",
+        "description": "Which host to act on; omit for the game. The game runs one child, so a \
+         game call needs no `instance`; the editor runs as many as have been launched, so an \
+         editor call names the one it acts on.",
     })
 }
 
@@ -60,8 +62,9 @@ fn instance_property() -> Value {
     json!({
         "type": "string",
         "description": "Which recorded instance to act on, as the launch reply named it. An \
-         editor call that names none while the host records any is refused, and the refusal \
-         lists every recorded editor instance.",
+         editor `run` or `commands` always names one; an editor `stop` or `logs` that names \
+         none is refused while the host records any. Either refusal lists every recorded \
+         editor instance.",
     })
 }
 
@@ -93,6 +96,7 @@ fn commands_schema() -> Value {
         "type": "object",
         "properties": {
             "host": host_property(),
+            "instance": instance_property(),
             "command": { "type": "string",
                          "description": "Narrow the reply to one command by name; omit \
                           for the whole catalogue. Names come from this tool." },
@@ -116,6 +120,7 @@ fn run_schema() -> Value {
                             its own `schemas.arguments` from `commands`; a command that takes \
                             none is \"()\"." },
             "host": host_property(),
+            "instance": instance_property(),
             "await_ready": { "type": "integer", "minimum": 0,
                              "description": "Whole seconds to keep re-testing admission \
                               before giving up; omit to decide once." },

@@ -79,7 +79,7 @@ fn canned_run(run: &RunCommand) -> CommandOutcome {
     }
 }
 
-struct CannedGame;
+pub(crate) struct CannedGame;
 
 impl QaLink for CannedGame {
     fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
@@ -137,6 +137,10 @@ impl HostLifecycle for NoLifecycle {
         None
     }
 
+    fn instance_working_dir(&self, _instance: &InstanceId) -> Option<WorkingDir> {
+        None
+    }
+
     fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
         None
     }
@@ -176,6 +180,10 @@ impl SeededInstance {
         self.id
     }
 
+    pub(crate) const fn port(&self) -> QaPort {
+        QaPort::new(self.port)
+    }
+
     pub(crate) const fn pid(&self) -> u32 {
         self.pid
     }
@@ -202,7 +210,7 @@ pub(crate) const SECOND_EDITOR_INSTANCE: SeededInstance =
 pub(crate) const GAME_INSTANCE: SeededInstance =
     SeededInstance::new("game-one", GAME_PORT, 4301, GAME_LOG);
 
-struct CannedLifecycle {
+pub(crate) struct CannedLifecycle {
     port:   u16,
     pid:    u32,
     log:    &'static str,
@@ -211,7 +219,7 @@ struct CannedLifecycle {
 }
 
 impl CannedLifecycle {
-    fn new(port: u16, pid: u32, log: &'static str, seeded: &[SeededInstance]) -> Self {
+    pub(crate) fn new(port: u16, pid: u32, log: &'static str, seeded: &[SeededInstance]) -> Self {
         Self {
             port,
             pid,
@@ -268,6 +276,10 @@ impl HostLifecycle for CannedLifecycle {
     }
 
     fn child_working_dir(&self) -> Option<WorkingDir> {
+        None
+    }
+
+    fn instance_working_dir(&self, _instance: &InstanceId) -> Option<WorkingDir> {
         None
     }
 

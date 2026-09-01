@@ -144,19 +144,15 @@ pub(crate) fn free_port() -> u16 {
 }
 
 pub(crate) const fn fast_config(boot_ms: u64) -> LifecycleConfig {
-    config_sweeping_every(
-        boot_ms,
-        SweepInterval::new(Duration::from_secs(60)),
-        LaunchPolicy::Reuse,
-    )
+    fast_config_with_policy(boot_ms, LaunchPolicy::Reuse)
 }
 
 pub(crate) const fn always_spawning_config(boot_ms: u64) -> LifecycleConfig {
-    config_sweeping_every(
-        boot_ms,
-        SweepInterval::new(Duration::from_secs(60)),
-        LaunchPolicy::AlwaysSpawn,
-    )
+    fast_config_with_policy(boot_ms, LaunchPolicy::AlwaysSpawn)
+}
+
+pub(crate) const fn fast_config_with_policy(boot_ms: u64, policy: LaunchPolicy) -> LifecycleConfig {
+    config_sweeping_every(boot_ms, SweepInterval::new(Duration::from_secs(60)), policy)
 }
 
 pub(crate) const fn config_sweeping_every(

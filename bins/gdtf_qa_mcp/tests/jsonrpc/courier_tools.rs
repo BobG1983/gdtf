@@ -1,8 +1,12 @@
+use gdtf_qa_mcp::QaPort;
 use serde_json::{Value, json};
 
-use crate::support::{
-    CANNED_ARG_SCHEMA, CANNED_COMMAND, CANNED_REPLY, CANNED_REPLY_SCHEMA, EDITOR_HOST_NAME,
-    dispatch_json,
+use crate::{
+    retarget::dispatch_recording,
+    support::{
+        CANNED_ARG_SCHEMA, CANNED_COMMAND, CANNED_REPLY, CANNED_REPLY_SCHEMA, EDITOR_HOST_NAME,
+        FIRST_EDITOR_INSTANCE, SECOND_EDITOR_INSTANCE, dispatch_json,
+    },
 };
 
 fn body(response: &Value) -> Value {
@@ -141,10 +145,65 @@ fn run_without_a_command_is_invalid_params() {
     );
 }
 
+fn last_retarget(ports: &[QaPort], tool: &str) -> QaPort {
+    let Some(port) = ports.last() else {
+        unreachable!("an editor {tool} points the link at the instance it named, recorded: none");
+    };
+    *port
+}
+
+#[test]
+fn a_run_reaches_the_editor_instance_it_names() {
+    let (_, ports) = dispatch_recording(
+        &format!(
+            r#"{{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{{"name":"run","arguments":{{"host":"editor","instance":"{}","command":"app.phase"}}}}}}"#,
+            SECOND_EDITOR_INSTANCE.id()
+        ),
+        &[FIRST_EDITOR_INSTANCE, SECOND_EDITOR_INSTANCE],
+    );
+
+    assert_eq!(
+        last_retarget(&ports, "run"),
+        SECOND_EDITOR_INSTANCE.port(),
+        "the run goes to the port the named instance listens on, recorded: {ports:?}"
+    );
+    assert_ne!(
+        last_retarget(&ports, "run"),
+        FIRST_EDITOR_INSTANCE.port(),
+        "and never another recorded instance's, recorded: {ports:?}"
+    );
+}
+
+#[test]
+fn a_commands_call_reaches_the_editor_instance_it_names() {
+    let (_, ports) = dispatch_recording(
+        &format!(
+            r#"{{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{{"name":"commands","arguments":{{"host":"editor","instance":"{}"}}}}}}"#,
+            SECOND_EDITOR_INSTANCE.id()
+        ),
+        &[FIRST_EDITOR_INSTANCE, SECOND_EDITOR_INSTANCE],
+    );
+
+    assert_eq!(
+        last_retarget(&ports, "commands"),
+        SECOND_EDITOR_INSTANCE.port(),
+        "the catalogue is asked of the port the named instance listens on, recorded: {ports:?}"
+    );
+    assert_ne!(
+        last_retarget(&ports, "commands"),
+        FIRST_EDITOR_INSTANCE.port(),
+        "and never another recorded instance's, recorded: {ports:?}"
+    );
+}
+
 #[test]
 fn the_courier_tools_are_aimed_by_their_host_argument() {
-    let catalogue = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"commands","arguments":{"host":"editor"}}}"#,
+    let (catalogue, _) = dispatch_recording(
+        &format!(
+            r#"{{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{{"name":"commands","arguments":{{"host":"editor","instance":"{}"}}}}}}"#,
+            FIRST_EDITOR_INSTANCE.id()
+        ),
+        &[FIRST_EDITOR_INSTANCE],
     );
     let Some(text) = catalogue["result"]["content"][0]["text"].as_str() else {
         unreachable!("the catalogue carries text: {catalogue}");
@@ -158,8 +217,12 @@ fn the_courier_tools_are_aimed_by_their_host_argument() {
         "the GAME's one command must not appear in the EDITOR's catalogue: {text}",
     );
 
-    let outcome = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"run","arguments":{"host":"editor","command":"app.phase"}}}"#,
+    let (outcome, _) = dispatch_recording(
+        &format!(
+            r#"{{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{{"name":"run","arguments":{{"host":"editor","instance":"{}","command":"app.phase"}}}}}}"#,
+            FIRST_EDITOR_INSTANCE.id()
+        ),
+        &[FIRST_EDITOR_INSTANCE],
     );
     assert_eq!(
         outcome["result"]["isError"],

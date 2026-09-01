@@ -1,13 +1,16 @@
 use std::sync::{Arc, Mutex};
 
 use gdtf_qa_mcp::{
-    HostLifecycle, HostManager, InstanceId, LaunchOutcome, LaunchSpec, QaPort, RecordedInstance,
-    StopOutcome,
+    ChildPid, HostLifecycle, HostManager, InstanceId, LaunchOutcome, LaunchSpec, LifecycleConfig,
+    QaHost, QaPort, RecordedInstance, StopOutcome,
 };
 
 use crate::{
     fake_child::{CallLog, ChildCall, PortGatedSpawner, counted, recorded},
-    support::{WatchFreePort, always_spawning_config, gated_listeners, recipe_with_features},
+    support::{
+        WatchFreePort, always_spawning_config, fast_config_with_policy, gated_listeners,
+        recipe_with_features,
+    },
 };
 
 const BOOT_MS: u64 = 2000;
@@ -19,12 +22,16 @@ struct Fixture {
 }
 
 fn manager_over_gated_listeners(count: usize) -> Fixture {
+    manager_configured_over_gated_listeners(count, always_spawning_config(BOOT_MS))
+}
+
+fn manager_configured_over_gated_listeners(count: usize, config: LifecycleConfig) -> Fixture {
     let gates = gated_listeners(count);
     let ports: Vec<QaPort> = gates.iter().map(|(port, _)| *port).collect();
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
     let manager = HostManager::with_orphan_watch(
         Box::new(PortGatedSpawner::new(Arc::clone(&calls), gates)),
-        always_spawning_config(BOOT_MS),
+        config,
         Box::new(WatchFreePort),
     );
     Fixture {
@@ -54,6 +61,16 @@ fn launched(outcome: LaunchOutcome, which: &str) -> (InstanceId, QaPort) {
         unreachable!("the {which} launch becomes ready, got: {outcome:?}");
     };
     (instance, port)
+}
+
+fn launched_child(outcome: LaunchOutcome, which: &str) -> (InstanceId, ChildPid) {
+    let LaunchOutcome::Launched { instance, pid, .. } = outcome else {
+        unreachable!(
+            "the {which} launch starts a child rather than answering from the record, got: \
+             {outcome:?}"
+        );
+    };
+    (instance, pid)
 }
 
 fn holding(recorded: &[RecordedInstance], id: &InstanceId) -> Option<RecordedInstance> {
@@ -110,6 +127,38 @@ fn two_launches_record_two_instances_on_two_ports() {
         "each record holds the port its own launch was handed, got: {held:?}"
     );
     assert_eq!(second_record.port(), port_at(&fixture, 1), "got: {held:?}");
+}
+
+#[test]
+fn the_shipped_editor_config_starts_a_second_child() {
+    let mut fixture = manager_configured_over_gated_listeners(
+        2,
+        fast_config_with_policy(BOOT_MS, QaHost::Editor.lifecycle_config().launch_policy()),
+    );
+
+    let (first_instance, first_child) = launched_child(
+        launch_at(&mut fixture, 0, &LaunchSpec::game_default()),
+        "first editor",
+    );
+    let (second_instance, second_child) = launched_child(
+        launch_at(&mut fixture, 1, &LaunchSpec::game_default()),
+        "second editor",
+    );
+
+    assert_ne!(
+        first_instance, second_instance,
+        "the shipped editor host mints an id per launch"
+    );
+    assert_ne!(
+        first_child, second_child,
+        "and starts a child per launch rather than reporting the recorded one"
+    );
+    let held = fixture.manager.instances();
+    assert_eq!(
+        held.len(),
+        2,
+        "both editor launches are recorded, got: {held:?}"
+    );
 }
 
 #[test]

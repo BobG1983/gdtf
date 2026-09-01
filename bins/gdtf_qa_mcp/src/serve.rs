@@ -165,6 +165,10 @@ mod tests {
             None
         }
 
+        fn instance_working_dir(&self, _instance: &InstanceId) -> Option<WorkingDir> {
+            None
+        }
+
         fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
             None
         }

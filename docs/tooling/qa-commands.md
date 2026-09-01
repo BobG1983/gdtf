@@ -260,6 +260,8 @@ run(host="game", command="capture.screenshot", arguments="(name: Some(\"menu\"))
 run(host="game", command="battle.start", arguments="(seed: Some(42))")
 run(host="game", command="wait", arguments="(condition: BattleDecided)")
 
+# Every editor line below also carries instance="<id>", naming the editor its
+# launch reply reported; an editor call that names no instance is refused.
 commands(host="editor")                                   # the other host, same tools
 commands(host="editor", command="editor.phase", detail="Full")
 run(host="editor", command="editor.phase", arguments="()")

@@ -48,6 +48,15 @@ impl QaHost {
         }
     }
 
+    /// Human-readable launch tool name for error messages.
+    #[must_use]
+    pub const fn launch_tool_name(self) -> &'static str {
+        match self {
+            Self::Game => "launch(host=\"game\")",
+            Self::Editor => "launch(host=\"editor\")",
+        }
+    }
+
     /// Built-in default port.
     #[must_use]
     pub const fn default_port(self) -> QaPort {

@@ -8,11 +8,13 @@ impl ToolName {
                  which one — \"game\" (the default) or \"editor\" — and everything else is \
                  optional: `port`, `package`, `features`, `working_dir` and `env` override \
                  that host's own defaults, so one call can build another package or another \
-                 checkout. A child already running from the SAME recipe is kept and reported \
-                 as already_running; one running from a DIFFERENT recipe is refused, naming \
-                 what is actually up. The launched reply names the instance the child was \
-                 recorded under; keep that id for `stop` and `logs`. Call `commands` next to \
-                 see what that child offers."
+                 checkout. An editor call starts another editor every time, with its own \
+                 fresh state, so several can be up at once. On the game a child already \
+                 running from the same recipe is kept and reported as already_running, and one \
+                 running from a different recipe is refused, naming what is actually up. The \
+                 launched reply names the instance the child was recorded under; keep that id \
+                 for `run`, `commands`, `stop` and `logs`. Call `commands` next to see what \
+                 that child offers."
             }
             Self::Stop => {
                 "Stop a recorded child. `host` picks which one — \"game\" (the default) or \
@@ -38,7 +40,9 @@ impl ToolName {
                 "Ask a running child what it can do. The reply is that host's live catalogue: \
                  one row per command with its name, a one-line summary, when it answers, and \
                  whether it can run RIGHT NOW in the state the host is in. `host` picks which \
-                 child — \"game\" (the default) or \"editor\". `detail: \"Full\"` also \
+                 child — \"game\" (the default) or \"editor\"; an editor call also names the \
+                 `instance` to ask, as its launch reply gave it, and one that names none is \
+                 refused, listing every recorded editor instance. `detail: \"Full\"` also \
                  returns each command's argument and reply shapes as RON text, which is what \
                  you read to build a `run` call. `command` narrows the reply to one row. Start \
                  every session here: the catalogue is the truth about what this build offers, \
@@ -49,7 +53,9 @@ impl ToolName {
                  gave; `arguments` is a compact-RON string shaped by that command's own \
                  `schemas.arguments` (omit it for a command that takes none); `host` picks \
                  which child \
-                 — \"game\" (the default) or \"editor\". Two optional riders: `await_ready` \
+                 — \"game\" (the default) or \"editor\", and an editor call also names the \
+                 `instance` to run against, as its launch reply gave it, or it is refused, \
+                 listing every recorded editor instance. Two optional riders: `await_ready` \
                  keeps re-testing admission for that many seconds instead of deciding once, \
                  and `capture` takes a screenshot after the command has run (true for a \
                  host-chosen file name, or a string to pick one). A command that cannot run \

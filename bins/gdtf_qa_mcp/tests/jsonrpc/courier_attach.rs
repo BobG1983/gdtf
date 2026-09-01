@@ -74,6 +74,10 @@ impl HostLifecycle for ChildInDirLifecycle {
         self.0.clone().map(WorkingDir::new)
     }
 
+    fn instance_working_dir(&self, _instance: &InstanceId) -> Option<WorkingDir> {
+        self.child_working_dir()
+    }
+
     fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
         None
     }

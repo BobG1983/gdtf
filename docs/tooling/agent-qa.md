@@ -15,8 +15,8 @@ control channel. It has these processes and one shared wire contract:
   separate process from the game and can run at the same time.
 - **The MCP host** (`gdtf_qa_mcp`) speaks a hand-rolled JSON-RPC 2.0 subset on
   stdin/stdout to the model harness and forwards each tool call to the game or
-  the editor over that loopback socket. ONE host binary manages BOTH children:
-  it holds a link and a lifecycle manager per host, so a game on
+  the editor over that loopback socket. ONE host binary manages the children of
+  BOTH hosts: it holds a link and a lifecycle manager per host, so a game on
   `7616` and an editor on `7617` can be up and driven at the same time.
 - **`gdtf_qa_protocol`** is the bevy-free crate they all link — `crates/gdtf_app`
   for the game, `crates/gdtf_content_editor` for the editor, and `bins/gdtf_qa_mcp`
@@ -78,22 +78,37 @@ to answer before returning the instance id it recorded the child under, that
 child's port and pid, and the package, features and resolved directory it was
 built from. `stop` (plus stdin EOF) stops it so the game never outlives the host.
 
-One game runs at a time, and the manager remembers the recipe that built it:
+The two hosts answer a second `launch` differently, and the difference is the
+`launch_policy` on each host's `LifecycleConfig`:
 
-- The same recipe again is ensure-style `already_running`, reporting the running
-  child's package, features, and directory (not the ones this call asked for).
-- A DIFFERENT recipe is REJECTED, naming what is actually running. Call
-  `stop` first. Answering "already running" to a request for another
-  checkout would hand back a success for a build that was never started.
+- The game runs one child at a time, and the manager remembers the recipe that
+  built it. Asking for the SAME recipe again keeps that child and answers
+  `already_running`, reporting the running child's package, features, and
+  directory (not the ones this call asked for). Asking for ANOTHER recipe is
+  refused, naming what is actually running. Call `stop` first. Answering
+  "already running" to a request for another checkout would hand back a success
+  for a build that was never started.
+- The editor starts another child EVERY time, with its own fresh state, its own
+  port and its own instance id. Nothing is compared against the recipe of a
+  child already up, and no editor `launch` ever answers `already_running`. Every
+  later editor call names the instance it acts on. That covers `run`,
+  `commands`, `stop` and `logs`. A `run` or `commands` that names none is
+  refused. A `stop` or `logs` that names none is refused while the host records
+  any instance, and falls through to the port when it records none, so an orphan
+  can still be stopped and read.
 
 The record lasts only as long as the process. Every 60 seconds the host asks the
 OS whether each recorded child's pid is still running and drops the record when
 it is not, so a closed game window does not leave `launch` answering
 `already_running` with a pid nothing listens on. Until the sweep runs the stale
-record is still there, so for up to a minute after the child exits `launch` can
-still answer `already_running`; `stop` clears it at once. `logs` for that host
-answers `not_running` once the record is gone, so read the child's tail before
-the sweep drops it. The interval is `sweep_interval` on each host's
+record is still there, so a game `launch` can go on answering `already_running`
+for as long as a minute past its child's exit; `stop` clears it at once. An
+editor `launch` never answers from that record, though it still counts a stale
+instance's port as taken and puts the new child on the next free port above it.
+A dead editor instance also stays in the list a `run`, `commands`, `stop` or
+`logs` can name until the sweep drops it. `logs` for that host answers
+`not_running` once the record is gone, so read the child's tail before the sweep
+drops it. The interval is `sweep_interval` on each host's
 `LifecycleConfig` (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`); the sweep is the
 `SweepClock` in `bins/gdtf_qa_mcp/src/lifecycle/sweep.rs` calling
 `reap_dead_child` on the `HostManager`, and the liveness answer comes from the
@@ -119,7 +134,7 @@ cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher
 in the MCP host's own directory. No arming env vars are set on the child; a
 debug editor opens its QA channel on `7617` only when `GDTF_EDITOR_NET_QA_PORT`
 is absent or does not parse. The spawner sets that name on both children from
-`spec.channel().port()`, to the port the launch was given: the editor reads its
+`spec.channel().port()`, to the port the launch picked: the editor reads its
 one, and the game child receives `GDTF_NET_QA_PORT` and ignores it, because
 `port_from_env` (`crates/gdtf_app/src/dev/net_qa/env.rs`) is unchanged and reads
 no environment. `GDTF_EDITOR_NET_QA` is read by nothing. Neither enable variable
@@ -160,9 +175,12 @@ deliberately one above the game's `7616`, so both hosts can be up at once withou
 fighting for a socket. `GDTF_EDITOR_NET_QA_PORT` overrides that default, and the
 editor listens on its value whenever the value trims and parses as a `u16`. The
 spawner sets the port name on both children, so a `launch(host="editor", port=…)`
-child binds the port it was given; the game child receives `GDTF_NET_QA_PORT` and
-ignores it, because `port_from_env` (`crates/gdtf_app/src/dev/net_qa/env.rs`)
-reads no environment. `GDTF_EDITOR_NET_QA` is read by nothing, and the spawner
+child binds the port it was given, or the first free port above it when this
+host's own records already hold that one. That is how a second editor comes up
+while the first is still listening, and the launch reply carries the port the
+child actually got. The game child receives `GDTF_NET_QA_PORT` and ignores it,
+because `port_from_env` (`crates/gdtf_app/src/dev/net_qa/env.rs`) reads no
+environment. `GDTF_EDITOR_NET_QA` is read by nothing, and the spawner
 sets neither enable variable.
 
 When the channel comes up the editor writes this line to **stderr** at `info`
@@ -242,7 +260,7 @@ is left keeps the old names, and both enable names are read by nothing:
 The editor's `NetQaEditorPlugin::from_env` is the one exception: it reads
 `GDTF_EDITOR_NET_QA_PORT` and falls back to the constant when that name is absent
 or does not parse. The spawner sets the port name on both children, so the editor
-binds the port the launch gave it, while the game child receives
+binds the port its launch picked, while the game child receives
 `GDTF_NET_QA_PORT` and ignores it.
 
 The listen **interface** is never configurable — hardcoded to
@@ -253,7 +271,9 @@ in `crates/gdtf_qa_protocol/src/ports.rs`, wrapped as `DEFAULT_PORT` in
 `DEFAULT_EDITOR_PORT` in `crates/gdtf_content_editor/src/net_qa/config.rs`, is
 only the editor's DEFAULT: the spawner sets `GDTF_EDITOR_NET_QA_PORT` to the
 launch port and the editor reads it. The two never contend for a socket on their
-defaults, and a `launch` that names a port has to name a free one.
+defaults. A `launch` whose port its own host already records is moved to the
+first free port above it, and gives up after sixteen; a port held by a process
+this host did not start stops the launch and reports the orphan.
 
 ## The tool vocabulary
 
@@ -265,11 +285,16 @@ or `"editor"`), so which child a call reaches is the CALL's to say rather than
 the tool's. `resolve_host` in `bins/gdtf_qa_mcp/src/mcp/courier/handle.rs`
 resolves that argument, and a `host` value naming neither child is rejected as
 invalid params rather than quietly defaulting, so a typo cannot drive the wrong
-process. `stop` and `logs` take an `instance` as well, naming which of that
-host's recorded children to act on. `resolve_instance`, in the same file,
-resolves that one. An id no record of the called host holds is refused, and so is
-an editor call that names no instance while the host records any. Both refusals
-list the ids that host records.
+process. `stop`, `logs`, `commands` and `run` take an `instance` as well, naming
+which of that host's recorded children to act on. `resolve_instance`, in the same
+file, resolves that one. An id no record of the called host holds is refused, and
+so is an editor call that names no instance. The two forwarding tools differ from
+the two host-local ones on an empty record: an editor `commands` or `run` is
+refused there too, because it has no child to forward to, while an editor `stop`
+or `logs` falls through, so an orphan editor left by an earlier session can still
+be stopped and read. A refusal lists the ids that host records, or, where it
+records none, says so and names `launch(host="editor")` as the call that starts
+one.
 
 **The two command tools name no command.** What a host can be asked to do is read
 from the host itself — `commands` returns its live catalogue, `run` calls one
@@ -282,8 +307,8 @@ rebuild, and needs no MCP reconnect. That is the whole point of the design; see
 | `launch` | host-local | — (starts the child via that host's `HostManager`) | all optional: `host`, `port`, `package`, `features` (array or comma-separated string), `working_dir`, `env` |
 | `stop` | host-local | — (stops a recorded child via that host's `HostManager`) | optional `host`, `instance` (which recorded child to stop, as the launch reply named it; an editor call naming none while the host records any is refused, listing the recorded ids) |
 | `logs` | host-local | — (reads a recorded child's captured output) | optional `host`, `instance` (which recorded child to read, refused the same way), `max_lines` (trailing lines to return) |
-| `commands` | forward | `QaRequest::Catalogue` | optional `host`, `command` (name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the published RON shapes) |
-| `run` | forward | `QaRequest::Run` | `command` (required, from `commands`), `arguments` (optional string of compact RON, default `"()"`), optional `host`, `await_ready` (whole seconds), `capture` (`true` or a file stem) |
+| `commands` | forward | `QaRequest::Catalogue` | optional `host`, `instance` (which recorded child to ask, as the launch reply named it; required on the editor, refused without it), `command` (name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the published RON shapes) |
+| `run` | forward | `QaRequest::Run` | `command` (required, from `commands`), `arguments` (optional string of compact RON, default `"()"`), optional `host`, `instance` (which recorded child to run against, required on the editor the same way), `await_ready` (whole seconds), `capture` (`true` or a file stem) |
 
 Notes an agent relies on:
 
@@ -429,9 +454,10 @@ Notes an agent relies on:
   the editor and vice versa; each `HostManager` records the children of its own
   host and no others. Whether a second `launch` starts another child or reuses
   the recorded one is that host's launch policy on its `LifecycleConfig`
-  (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`), and both hosts ship with the
-  reuse policy, so each holds one child. Stdin EOF stops every child both hosts
-  record.
+  (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`), and the two ship with different
+  policies: the game reuses, so it holds one child, and the editor always
+  spawns, so it holds as many as have been launched. Stdin EOF stops every child
+  both hosts record.
 - **An MCP host restart leaves the child running, and `stop` says so.** Replacing
   the MCP server process — what every `/mcp` reconnect does — kills the host, not
   its child: the child is spawned into its own process group and survives, still
@@ -463,11 +489,12 @@ handshake string, distinct from the game wire version below.
 
 **Host ↔ child — framed RON over a loopback TCP socket.** For each forwarding
 tool call the host connects to that tool's host over an `Ipv4Addr::LOCALHOST` TCP
-stream — the game always on port `7616` (`GAME_QA_PORT`), the editor on whatever
-port the last `launch` retargeted its link to, which is `7617` (`EDITOR_QA_PORT`)
-when no `port` was given — and exchanges typed messages using the shared
-`gdtf_qa_protocol` crate. The spawner sets the port name on both children, so
-the editor child binds the port the launch named and the link reaches it there;
+stream and exchanges typed messages using the shared `gdtf_qa_protocol` crate.
+The game is always on port `7616` (`GAME_QA_PORT`). The editor is on the recorded
+port of the instance the call named, which the courier points the link at before
+it sends, and which is `7617` (`EDITOR_QA_PORT`) for a first editor launch that
+named no `port`. The spawner sets the port name on both children, so
+the editor child binds the port its launch picked and the link reaches it there;
 the game child receives `GDTF_NET_QA_PORT`, ignores it, and always binds `7616`.
 That crate is bevy-free — it links only `serde`, `ron`,
 and `bevy_derive` (the `Deref` derive), so neither half pulls in the engine. Its
@@ -522,17 +549,17 @@ The sequence an agent runs against either child. Every step is a real call
 against the shipped tool surface:
 
 1. `launch` — start the child and wait for its QA channel to answer. Add
-   `host: "editor"` for the editor.
+   `host: "editor"` to start an editor, and keep the instance id its reply
+   names: every later step of an editor sequence carries that id as `instance`,
+   and a step that leaves it out is refused.
 2. `commands` — read that host's live catalogue: what it offers, and what is
    available right now.
 3. `commands` with `detail: "Full"` and a `command` filter — read one command's
    published argument and reply shapes.
 4. `run` with that command and its arguments, written as compact RON — do the
    thing.
-5. `logs`: if a step surprised you, read what the child printed. An editor
-   `logs` names the instance the launch reply gave it.
-6. `stop`: stop the child and release the port. An editor `stop` names its
-   instance the same way.
+5. `logs`: if a step surprised you, read what the child printed.
+6. `stop`: stop the child and release the port.
 
 On the game host today step 4 is one of the commands its catalogue lists. `run { command: "app.phase",
 arguments: "()" }` answers the state tuple (`app`, `running`, `game`,
@@ -551,8 +578,8 @@ battle used; omit the seed and the game resolves its own and reports that.
 one stage, and refuses `NotBuilt` in a build without `dev_tools`.
 `run { command: "wait", arguments: "(condition: BattleDecided)" }` holds until
 that condition comes true, or answers `Timeout` after two minutes. Steps 2-4 are
-what change as commands land. Steps 1, 5 and 6 change only in what they name: on
-the editor, steps 5 and 6 name the instance step 1's reply gave them.
+what change as commands land. Steps 1, 5 and 6 change only in what they name. On
+the editor every step after the first names the instance step 1's reply gave it.
 
 The two hosts are independent: a game child on `7616` and an editor child on
 `7617` are tracked by separate `HostManager`s, one per host, constructed in

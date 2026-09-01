@@ -32,6 +32,9 @@ pub trait HostLifecycle {
     /// Working directory of the last recorded child, if any.
     fn child_working_dir(&self) -> Option<WorkingDir>;
 
+    /// Working directory of one recorded instance, if it is recorded.
+    fn instance_working_dir(&self, instance: &InstanceId) -> Option<WorkingDir>;
+
     /// Recent output of the last recorded child, if any.
     fn child_output(&self, max: TailLines) -> Option<OutputTail>;
 

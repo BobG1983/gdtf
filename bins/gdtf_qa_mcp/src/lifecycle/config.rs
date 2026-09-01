@@ -106,7 +106,7 @@ impl LifecycleConfig {
         )
     }
 
-    /// Defaults for the editor host (longer boot wait).
+    /// Defaults for the editor host, which starts another child on every launch.
     #[must_use]
     pub const fn editor() -> Self {
         Self::new(
@@ -115,7 +115,7 @@ impl LifecycleConfig {
             DEFAULT_KILL_GRACE,
             DEFAULT_PROBE_TIMEOUT,
             DEFAULT_SWEEP_INTERVAL,
-            LaunchPolicy::Reuse,
+            LaunchPolicy::AlwaysSpawn,
         )
     }
 }
@@ -129,6 +129,7 @@ impl Default for LifecycleConfig {
 #[cfg(test)]
 mod test {
     use super::{LaunchPolicy, LifecycleConfig};
+    use crate::hosts::QaHost;
 
     #[test]
     fn editor_and_game_share_the_same_boot_timeout() {
@@ -140,16 +141,26 @@ mod test {
     }
 
     #[test]
-    fn both_shipped_configs_reuse_the_child_they_record() {
+    fn the_shipped_editor_always_spawns_while_the_shipped_game_reuses() {
+        assert_eq!(
+            LifecycleConfig::editor().launch_policy(),
+            LaunchPolicy::AlwaysSpawn,
+            "every editor launch starts another child"
+        );
         assert_eq!(
             LifecycleConfig::game().launch_policy(),
             LaunchPolicy::Reuse,
             "the game host keeps one child, so a second launch reports it"
         );
         assert_eq!(
-            LifecycleConfig::editor().launch_policy(),
+            QaHost::Editor.lifecycle_config().launch_policy(),
+            LaunchPolicy::AlwaysSpawn,
+            "the serve loop builds the editor's manager from this config"
+        );
+        assert_eq!(
+            QaHost::Game.lifecycle_config().launch_policy(),
             LaunchPolicy::Reuse,
-            "the editor host keeps one child in this build"
+            "and the game's from this one"
         );
     }
 }

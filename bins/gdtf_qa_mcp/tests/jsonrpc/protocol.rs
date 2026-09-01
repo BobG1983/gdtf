@@ -29,6 +29,25 @@ fn tools_list_returns_every_tool() {
 }
 
 #[test]
+fn the_forwarding_tools_declare_an_instance_argument() {
+    let response = dispatch_json(r#"{"jsonrpc":"2.0","id":10,"method":"tools/list"}"#);
+    let Some(tools) = response["result"]["tools"].as_array() else {
+        unreachable!("tools/list carries a tools array");
+    };
+
+    for wanted in ["run", "commands"] {
+        let Some(tool) = tools.iter().find(|tool| tool["name"] == json!(wanted)) else {
+            unreachable!("tools/list carries the {wanted} tool: {response}");
+        };
+        assert!(
+            tool["inputSchema"]["properties"]["instance"].is_object(),
+            "an editor {wanted} names its instance, so the schema must declare the argument: \
+             {tool}"
+        );
+    }
+}
+
+#[test]
 fn every_tool_taking_an_instance_names_it_in_its_description() {
     let response = dispatch_json(r#"{"jsonrpc":"2.0","id":3,"method":"tools/list"}"#);
     let Some(tools) = response["result"]["tools"].as_array() else {
