@@ -56,7 +56,7 @@ Pre-commit does not implement this skip. It always runs its cargo subset.
 5. Run the blocking checks. A failure here fails the gate, like a clause violation.
    - 4a Tests. Every behavioral clause has a test that runs the real path, carries an assertion, and would go red if the behavior were wrong (`verification.md` rules 2–3).
    - 4b Wiring. Systems, plugins and resources the ticket claims run are actually registered.
-   - 4c Size. Warn above 300 lines, block above 400, unless the file is cohesive and the ticket sanctioned it.
+   - 4c Size. Block above 400 lines, unless the file is cohesive and the ticket sanctioned it.
    - 4d Hygiene. No `GTW-` strings, no banned jargon, short doc comments.
 
 6. Spawn the read-only design-gate sub-agents in parallel, one per lens: clauses, tests, rules. Give each one the contract and the diff, and tell it to verify first-hand. Any non-compliant lens blocks the gate.

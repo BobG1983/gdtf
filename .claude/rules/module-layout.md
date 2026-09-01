@@ -20,8 +20,8 @@ review and bisect get harder, and no one reads it in one sitting.
    preserves the module's public paths), and nothing else. No function of any kind: not a
    helper, not a `register_*(app: &mut App)` aggregator, not even a delegating
    `Plugin::build`. No impls, no type definitions, no closure systems inside `add_systems`.
-3. The line limits cover every file: logic, unit tests and integration tests. Over 300
-   lines, split now if the split is obvious. Over 400 is the block line: it must not land.
+3. The 400-line limit covers logic, unit tests and integration tests. A file over 400 lines
+   must not land. There is no second, lower limit.
 4. A `lib.rs` is wiring only on the same terms, plus `pub mod` declarations. An `src/main.rs`
    contains only `fn main()` and delegates everything else to crates.
 5. Unit tests live in `<module>/test/mod.rs` behind `#[cfg(test)] mod test`. For integration

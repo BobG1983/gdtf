@@ -6,7 +6,6 @@ use crate::{
 };
 
 const BLOCK_LINES: usize = 400;
-const WARN_LINES: usize = 300;
 
 // Files the module-layout rule excuses, by repo-relative path. Adding one is a code
 // change: propose it, get the user's approval, then land the entry with the reason.
@@ -23,7 +22,6 @@ fn module_layout_conformance() {
     let root = workspace_root();
     let files = tracked_rs(&root);
     let mut violations: Vec<Violation> = Vec::new();
-    let mut warns: Vec<(usize, String)> = Vec::new();
     let mut live_exemptions: BTreeSet<String> = BTreeSet::new();
     if files.is_empty() {
         violations.push(Violation {
@@ -80,8 +78,6 @@ fn module_layout_conformance() {
                     text,
                 });
             }
-        } else if lines > WARN_LINES {
-            warns.push((lines, path.clone()));
         }
     }
     for &entry in EXEMPT_PATHS {
@@ -96,10 +92,6 @@ fn module_layout_conformance() {
                 text,
             });
         }
-    }
-    warns.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
-    for (lines, path) in &warns {
-        eprintln!("warn  {lines:5} {path}");
     }
     violations.sort_by(|a, b| b.lines.cmp(&a.lines).then_with(|| a.path.cmp(&b.path)));
     for violation in &violations {

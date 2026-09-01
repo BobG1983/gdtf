@@ -33,7 +33,7 @@ Short files under `.claude/rules/` — read and follow them:
 - [`linear-discipline.md`](.claude/rules/linear-discipline.md) — every change has a GTW-* ticket; statuses move with the work; labels defined there.
 - [`clause-writing.md`](.claude/rules/clause-writing.md) — a clause says what changes, where, and what goes red if it is wrong.
 - [`no-bare-types.md`](.claude/rules/no-bare-types.md) — no bare Rust/std type for a domain value; named newtype that `Deref`s.
-- [`module-layout.md`](.claude/rules/module-layout.md) — module is a directory; mod.rs is wiring-only; size limits.
+- [`module-layout.md`](.claude/rules/module-layout.md) — module is a directory; mod.rs is wiring-only; one 400-line limit.
 - [`plain-language.md`](.claude/rules/plain-language.md) — the words. What is banned, what is required, every artifact. **CRITICAL**
 - [`reply-shape.md`](.claude/rules/reply-shape.md) — chat reply structure - **HOW TO SPEAK TO THE USER**: answer first, no process narration. **CRITICAL**
 - [`comment-hygiene.md`](.claude/rules/comment-hygiene.md) — short docs; no ticket ids in comments.

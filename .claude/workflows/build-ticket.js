@@ -434,7 +434,7 @@ const HOUSE_RULES = `
 2. Cheapest sufficient evidence: integration test ≈ unit test > reading the code >> building tooling.
 3. Prove behaviour against the REAL binary. MinimalPlugins with hand-inserted resources proves nothing.
 4. No unwrap/expect/panic/todo/unimplemented. Doc every pub item. Typed domain values (no-bare-types.md).
-   Files: warn >300, block >400. mod.rs is wiring only.
+   Files: block >400. mod.rs is wiring only.
 5. Comments: comment-hygiene.md. Symbols and bulk edits: code-navigation.md — the LSP answers every
    symbol question, and no script ever edits Rust source.
 6. plain-language.md governs everything you write. Quote failures whole; never summarise one away.
