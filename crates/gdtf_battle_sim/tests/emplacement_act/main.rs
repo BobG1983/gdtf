@@ -1,4 +1,5 @@
-//! HARNESS NOTE (the `melee_cover_smash` idiom): the sim crate is the LOW crate, so it drives
+//! HARNESS NOTE (the `melee_cover_smash` idiom): the sim is the LOW crate (a dev-dep on
+//! `gdtf_test_utils` would be a cycle), so `harness` builds the `App` and adds `BattleSimPlugin`.
 mod blocking;
 mod cost;
 mod death;
