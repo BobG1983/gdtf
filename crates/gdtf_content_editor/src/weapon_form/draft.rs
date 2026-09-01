@@ -37,7 +37,7 @@ fn seed_spec() -> WeaponSpec {
         slots:       WeaponSlots::default(),
         attachments: FittedAttachments::default(),
         dot:         None,
-        on_death:    None,
+        on_death:    Vec::new(),
     }
 }
 
@@ -58,7 +58,7 @@ pub(crate) fn dot_turns_from_raw(raw: u8) -> DotTurns {
     DotTurns::new(NonZeroU8::new(raw).unwrap_or(NonZeroU8::MIN))
 }
 
-/// The blank explode effect the on-death tick box and its variant combo seed.
+/// The blank explode effect an on-death Add button and its variant combo seed.
 #[must_use]
 pub(crate) const fn explode_template() -> OnDeathEffect {
     OnDeathEffect::Explode {

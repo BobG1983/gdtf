@@ -55,7 +55,7 @@ A catalog entry does nothing until something PLACES it at a `(cell, level)`:
    `assets/content/situations/skirmish.ron` places initial-terrain hazards
    (each entry names a `field:` key + a position). See
    [battlefield-authoring.md](battlefield-authoring.md).
-2. **An on-death effect** — `on_death: Some(LeaveField(field: "<key>"))` on a
+2. **An on-death effect** — `on_death: [LeaveField(field: "<key>")]` on a
    weapon or terrain def spawns the field at the death cell
    ([on-death-authoring.md](on-death-authoring.md)).
 3. **Code** — `FieldRegistry::spawn`

@@ -1,4 +1,4 @@
-//! Terrain form draft resource.
+//! The terrain draft's own fields and their accessors.
 
 use bevy::prelude::Resource;
 use gdtf_battle_presenter::TileRole;
@@ -14,27 +14,27 @@ use gdtf_battle_sim::{
     weapon::WeaponName,
 };
 
-use super::picks::{FootfallChoice, TerrainKindChoice};
+use crate::terrain_form::picks::{FootfallChoice, TerrainKindChoice};
 
 /// In-progress terrain def being authored.
 #[derive(Resource, Clone, Debug, PartialEq)]
 pub struct TerrainDraft {
-    display_name:     String,
-    kind:             TerrainKindChoice,
-    cover_hp:         CoverHp,
-    slab_hp:          SlabHp,
-    armor_protection: ArmorProtection,
-    armor_hardness:   ArmorHardness,
-    height_band:      HeightBand,
-    graphic:          TileRole,
-    footfall:         FootfallChoice,
-    mounted_weapon:   Option<WeaponName>,
-    entry_sides:      Vec<TerrainFacing>,
-    tags:             Vec<TerrainTag>,
-    blocks_pathing:   Option<bool>,
-    blocks_los:       Option<LosBlocking>,
-    on_death:         Option<OnDeathEffect>,
-    uuid:             Option<TerrainUuid>,
+    display_name:        String,
+    kind:                TerrainKindChoice,
+    cover_hp:            CoverHp,
+    slab_hp:             SlabHp,
+    armor_protection:    ArmorProtection,
+    armor_hardness:      ArmorHardness,
+    height_band:         HeightBand,
+    graphic:             TileRole,
+    footfall:            FootfallChoice,
+    mounted_weapon:      Option<WeaponName>,
+    entry_sides:         Vec<TerrainFacing>,
+    tags:                Vec<TerrainTag>,
+    blocks_pathing:      Option<bool>,
+    blocks_los:          Option<LosBlocking>,
+    pub(super) on_death: Vec<OnDeathEffect>,
+    uuid:                Option<TerrainUuid>,
 }
 
 impl TerrainDraft {
@@ -226,22 +226,6 @@ impl TerrainDraft {
         self.blocks_los = blocks_los;
     }
 
-    /// On-death effect, if authored.
-    #[must_use]
-    pub const fn on_death(&self) -> Option<&OnDeathEffect> {
-        self.on_death.as_ref()
-    }
-
-    /// Set the on-death effect.
-    pub fn set_on_death(&mut self, on_death: Option<OnDeathEffect>) {
-        self.on_death = on_death;
-    }
-
-    /// Mutable on-death effect for the form.
-    pub const fn on_death_mut(&mut self) -> &mut Option<OnDeathEffect> {
-        &mut self.on_death
-    }
-
     /// Assigned terrain uuid, if any.
     #[must_use]
     pub const fn uuid(&self) -> Option<TerrainUuid> {
@@ -276,7 +260,7 @@ impl Default for TerrainDraft {
             tags:             Vec::new(),
             blocks_pathing:   None,
             blocks_los:       None,
-            on_death:         None,
+            on_death:         Vec::new(),
             uuid:             None,
         }
     }

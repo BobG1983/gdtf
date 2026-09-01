@@ -16,11 +16,14 @@ use super::support::key;
 use crate::terrain_form::{TerrainDraft, draft_to_terrain_def};
 
 #[test]
-fn save_preserves_an_authored_on_death_effect() {
+fn save_preserves_every_authored_on_death_effect_in_order() {
     let explode = OnDeathEffect::Explode {
         hit_type:    HitType::Single,
         damage:      ExplodeDamage::new(40),
         damage_type: DamageType::Blast,
+    };
+    let leave = OnDeathEffect::LeaveField {
+        field: FieldKey::new("incendiary_fire".to_owned()),
     };
     let def = TerrainDef {
         key:            key(),
@@ -35,7 +38,7 @@ fn save_preserves_an_authored_on_death_effect() {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags:           Vec::new(),
-        on_death:       Some(explode.clone()),
+        on_death:       vec![explode.clone(), leave.clone()],
         blocks_pathing: None,
         blocks_los:     None,
     };
@@ -47,27 +50,12 @@ fn save_preserves_an_authored_on_death_effect() {
     };
     assert_eq!(
         saved.on_death,
-        Some(explode),
-        "loading a def and saving it must keep the authored explode — a hardcoded None \
-         drops waste_drum / supply_crate on save",
+        vec![explode, leave],
+        "loading a def and saving it must keep EVERY authored effect, in the authored order — \
+         a save that drops all but the first shortens the list here",
     );
     assert_eq!(
         saved, def,
         "load then save is identity for every field the form owns, including on_death",
-    );
-
-    let leave = OnDeathEffect::LeaveField {
-        field: FieldKey::new("incendiary_fire".to_owned()),
-    };
-    let mut leave_def = def;
-    leave_def.on_death = Some(leave.clone());
-    draft.load_from_def(&leave_def);
-    let Ok(again) = draft_to_terrain_def(&draft, leave_def.key) else {
-        unreachable!("a loaded Cover draft always projects")
-    };
-    assert_eq!(
-        again.on_death,
-        Some(leave),
-        "LeaveField must survive load then save the same way Explode does",
     );
 }

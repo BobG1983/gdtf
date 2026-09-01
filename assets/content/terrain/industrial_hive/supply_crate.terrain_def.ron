@@ -14,5 +14,7 @@
     ),
     tags: [],
     // Packed with volatile munitions — destroying it leaves a persistent incendiary field.
-    on_death: Some(LeaveField(field: "incendiary_fire")),
+    on_death: [
+        LeaveField(field: "incendiary_fire"),
+    ],
 )

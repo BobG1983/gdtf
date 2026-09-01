@@ -10,7 +10,7 @@ use crate::{
 };
 
 // Each list that refuses set-at, with every field arm its detail must spell.
-const REFUSALS: [(EditorMode, &str, &[&str]); 4] = [
+const REFUSALS: [(EditorMode, &str, &[&str]); 6] = [
     (
         EditorMode::Attachment,
         "(list: AttachmentEffects, op: SetAt(0, AttachmentEffect(Silence)))",
@@ -35,6 +35,28 @@ const REFUSALS: [(EditorMode, &str, &[&str]); 4] = [
             "`Gang(MemberWeapon(…))`",
             "`Gang(MemberArmor(…))`",
             "`Gang(MemberMeleeWeapon(…))`",
+        ],
+    ),
+    (
+        EditorMode::Terrain,
+        "(list: TerrainOnDeathEffects, op: SetAt(0, OnDeathEffect(LeaveField(field: \"burning\"))))",
+        &[
+            "`Terrain(OnDeathVariant(index: n, …))`",
+            "`Terrain(OnDeathHitType(index: n, …))`",
+            "`Terrain(OnDeathDamage(index: n, …))`",
+            "`Terrain(OnDeathDamageType(index: n, …))`",
+            "`Terrain(OnDeathField(index: n, …))`",
+        ],
+    ),
+    (
+        EditorMode::Weapon,
+        "(list: WeaponOnDeathEffects, op: SetAt(0, OnDeathEffect(LeaveField(field: \"burning\"))))",
+        &[
+            "`Weapon(OnDeathVariant(index: n, …))`",
+            "`Weapon(OnDeathHitType(index: n, …))`",
+            "`Weapon(OnDeathDamage(index: n, …))`",
+            "`Weapon(OnDeathDamageType(index: n, …))`",
+            "`Weapon(OnDeathField(index: n, …))`",
         ],
     ),
 ];

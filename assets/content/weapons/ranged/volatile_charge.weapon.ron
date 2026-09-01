@@ -3,10 +3,10 @@
 // ganger carrying it DIES, the charge cooks off, detonating a fragmentation blast at their body
 // that tears everyone in the radius (true friendly fire — resolution.md §2).
 //
-// The `on_death` field authors an `Explode` effect —
+// The `on_death` list authors one `Explode` effect —
 // a radius-1 Blast dealing a flat 8 HP per cell (armor-bypassing, RNG-free), fanned at
-// the dead wielder's cell by `resolve_on_death`. `on_death` defaults to `None` when omitted, so
-// every existing weapon reads as having no death effect.
+// the dead wielder's cell by `resolve_on_death`. `on_death` defaults to an EMPTY LIST when
+// omitted, so every existing weapon reads as having no death effect.
 (
     base_spread:   0.30,
     accuracy:      0.7,
@@ -31,9 +31,11 @@
     // Unstable payload — the wielder's death detonates a radius-1 fragmentation
     // blast at their body (flat 8 HP per cell, Blast wheel node). A `LeaveField` variant is the
     // alternative (a burning / toxic zone); this weapon carries the explosive one.
-    on_death: Some(Explode(
-        hit_type:    Blast(radius: 1),
-        damage:      8,
-        damage_type: Blast,
-    )),
+    on_death: [
+        Explode(
+            hit_type:    Blast(radius: 1),
+            damage:      8,
+            damage_type: Blast,
+        ),
+    ],
 )

@@ -20,24 +20,28 @@ use crate::{
 
 /// Terrain on-death effects keyed by the terrain piece that carries them.
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
-pub struct TerrainOnDeathRegistry(HashMap<TerrainIndexKey, OnDeathEffect>);
+pub struct TerrainOnDeathRegistry(HashMap<TerrainIndexKey, Vec<OnDeathEffect>>);
 
 impl TerrainOnDeathRegistry {
-    /// From key/effect pairs.
+    /// From key/effect-list pairs.
     #[must_use]
-    pub fn new(effects: impl IntoIterator<Item = (TerrainIndexKey, OnDeathEffect)>) -> Self {
+    pub fn new(effects: impl IntoIterator<Item = (TerrainIndexKey, Vec<OnDeathEffect>)>) -> Self {
         Self(effects.into_iter().collect())
     }
 
-    /// Insert or replace an effect.
-    pub fn insert(&mut self, at: TerrainIndexKey, effect: OnDeathEffect) -> Option<OnDeathEffect> {
-        self.0.insert(at, effect)
+    /// Insert or replace a key's effects.
+    pub fn insert(
+        &mut self,
+        at: TerrainIndexKey,
+        effects: Vec<OnDeathEffect>,
+    ) -> Option<Vec<OnDeathEffect>> {
+        self.0.insert(at, effects)
     }
 
-    /// Look up an effect.
+    /// Look up a key's effects, in the authored order.
     #[must_use]
-    pub fn effect(&self, at: &TerrainIndexKey) -> Option<&OnDeathEffect> {
-        self.0.get(at)
+    pub fn effects(&self, at: &TerrainIndexKey) -> Option<&[OnDeathEffect]> {
+        self.0.get(at).map(Vec::as_slice)
     }
 
     /// Number of entries.
@@ -63,8 +67,8 @@ pub struct DeathWeapons<'w, 's> {
 }
 
 impl DeathWeapons<'_, '_> {
-    // The on-death effect carried by the victim's firing weapon, if any.
-    fn effect_of(&self, victim: Entity) -> Option<OnDeathEffect> {
+    // The on-death effects carried by the victim's firing weapon, in the authored order.
+    fn effect_of(&self, victim: Entity) -> Option<Vec<OnDeathEffect>> {
         let weapon = self.wields.get(victim).ok()?.firing_weapon(
             |entity| self.mounted.get(entity).is_ok(),
             |entity| self.melee.get(entity).is_ok(),
@@ -72,7 +76,7 @@ impl DeathWeapons<'_, '_> {
         self.on_deaths
             .get(weapon)
             .ok()
-            .map(|on_death| on_death.effect().clone())
+            .map(|on_death| on_death.effects().to_vec())
     }
 }
 
@@ -112,21 +116,23 @@ pub fn resolve_on_death(
             continue;
         }
 
-        let effect: Option<OnDeathEffect> = match death.terrain {
-            Some(key) => terrain_on_death.effect(&key).cloned(),
+        let effects: Option<Vec<OnDeathEffect>> = match death.terrain {
+            Some(key) => terrain_on_death.effects(&key).map(<[_]>::to_vec),
             None => weapons.effect_of(death.entity),
         };
-        let Some(effect) = effect else {
+        let Some(effects) = effects else {
             continue;
         };
 
-        let mut fan_out = DeathFanOut {
-            grid:       &grid,
-            victims:    &mut victims,
-            fields:     &mut fields.placed,
-            field_defs: fields.defs.as_deref(),
-            cascade:    &mut queue,
-        };
-        effect.fan_at(death.at, &mut fan_out);
+        for effect in &effects {
+            let mut fan_out = DeathFanOut {
+                grid:       &grid,
+                victims:    &mut victims,
+                fields:     &mut fields.placed,
+                field_defs: fields.defs.as_deref(),
+                cascade:    &mut queue,
+            };
+            effect.fan_at(death.at, &mut fan_out);
+        }
     }
 }

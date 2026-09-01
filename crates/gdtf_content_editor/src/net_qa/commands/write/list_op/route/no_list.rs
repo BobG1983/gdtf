@@ -25,6 +25,7 @@ pub(in crate::net_qa::commands::write::list_op) fn theme(
     match list {
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::AttachmentEffects
         | EditorListNet::SpriteFrames
         | EditorListNet::InjuryEffects
@@ -35,6 +36,7 @@ pub(in crate::net_qa::commands::write::list_op) fn theme(
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::FieldImmuneArmorTypes
         | EditorListNet::WeightingBucket(_) => no_list_of_its_own(draft),
     }
@@ -48,6 +50,7 @@ pub(in crate::net_qa::commands::write::list_op) fn armor(
     match list {
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::AttachmentEffects
         | EditorListNet::SpriteFrames
         | EditorListNet::InjuryEffects
@@ -58,6 +61,7 @@ pub(in crate::net_qa::commands::write::list_op) fn armor(
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::FieldImmuneArmorTypes
         | EditorListNet::WeightingBucket(_) => {
             present(draft)?;
@@ -73,6 +77,7 @@ pub(in crate::net_qa::commands::write::list_op) const fn prefab(list: EditorList
     match list {
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::AttachmentEffects
         | EditorListNet::SpriteFrames
         | EditorListNet::InjuryEffects
@@ -83,6 +88,7 @@ pub(in crate::net_qa::commands::write::list_op) const fn prefab(list: EditorList
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::FieldImmuneArmorTypes
         | EditorListNet::WeightingBucket(_) => {
             Err(ListOpRefusal::Fault(FormWriteFault::ForeignArm))

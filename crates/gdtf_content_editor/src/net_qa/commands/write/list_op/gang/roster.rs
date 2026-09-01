@@ -59,7 +59,8 @@ pub(in crate::net_qa::commands::write::list_op) fn apply(
              `Gang(MemberMeleeWeapon(…))` field arms",
         )),
         EditorListOpNet::MoveUp(_) | EditorListOpNet::MoveDown(_) => Err(no_such_button(
-            "reorder. The Sprite form's animation frames are the one list that reorders",
+            "reorder. The Sprite form's animation frames and the two on-death effect lists are \
+             the lists that reorder",
         )),
     }
 }

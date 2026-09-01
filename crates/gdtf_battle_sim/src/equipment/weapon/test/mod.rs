@@ -5,4 +5,5 @@ mod bundle;
 mod components;
 mod fire_mode;
 mod melee;
+mod spec_on_death;
 mod spec_registry;

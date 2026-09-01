@@ -3,6 +3,7 @@ use gdtf_assets::ContentFolderHandle;
 use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     cover::HeightBand,
+    effects::{fields::FieldKey, on_death::OnDeathEffect},
     terrain::def::LosBlocking,
     weapon::{WeaponName, WeaponRegistry},
 };
@@ -13,10 +14,13 @@ use crate::{
     names::EDITOR_SET_FIELD,
     outcome::unavailable_code,
     rows::{FieldRow, TerrainFieldRow},
-    setup::{form_tab_app_and_client, set_field, terrain_draft, try_set_field},
-    socket::run_editor,
+    setup::{form_tab_app_and_client, list_op, set_field, terrain_draft, try_set_field},
+    socket::{Client, run_editor},
     support::{TestError, TestResult},
-    values::{BandRow, FootfallRow, LosRow, TerrainKindRow, TileRoleRow},
+    values::{
+        BandRow, DamageTypeRow, FootfallRow, HitTypeRow, LosRow, OnDeathVariantRow, TerrainKindRow,
+        TileRoleRow,
+    },
 };
 
 /// The first weapon the mounted-weapon picker offers, read off the registry the form reads.
@@ -154,6 +158,80 @@ fn every_terrain_field_writes_the_draft_and_reads_back_as_stored() -> TestResult
         ))),
     );
     assert_eq!(terrain_draft(&app)?.mounted_weapon(), Some(&weapon));
+
+    every_on_death_arm(&mut app, &mut client)
+}
+
+// The five on-death arms, each written at the one index an Add put there.
+fn every_on_death_arm(app: &mut App, client: &mut Client) -> TestResult {
+    list_op(app, client, "(list: TerrainOnDeathEffects, op: Add)")?;
+    let geometry = set_field(
+        app,
+        client,
+        "(field: Terrain(OnDeathHitType(index: 0, hit_type: Blast(radius: 2))))",
+    )?;
+    assert_eq!(
+        geometry.field,
+        FieldRow::Terrain(TerrainFieldRow::OnDeathHitType {
+            index:    0,
+            hit_type: HitTypeRow::Blast { radius: 2 },
+        }),
+    );
+    let damage = set_field(
+        app,
+        client,
+        "(field: Terrain(OnDeathDamage(index: 0, damage: 14)))",
+    )?;
+    assert_eq!(
+        damage.field,
+        FieldRow::Terrain(TerrainFieldRow::OnDeathDamage {
+            index:  0,
+            damage: 14,
+        }),
+    );
+    let channel = set_field(
+        app,
+        client,
+        "(field: Terrain(OnDeathDamageType(index: 0, damage_type: Blast)))",
+    )?;
+    assert_eq!(
+        channel.field,
+        FieldRow::Terrain(TerrainFieldRow::OnDeathDamageType {
+            index:       0,
+            damage_type: DamageTypeRow::Blast,
+        }),
+    );
+    let picked = set_field(
+        app,
+        client,
+        "(field: Terrain(OnDeathVariant(index: 0, variant: LeaveField)))",
+    )?;
+    assert_eq!(
+        picked.field,
+        FieldRow::Terrain(TerrainFieldRow::OnDeathVariant {
+            index:   0,
+            variant: OnDeathVariantRow::LeaveField,
+        }),
+    );
+    let keyed = set_field(
+        app,
+        client,
+        "(field: Terrain(OnDeathField(index: 0, field: \"toxic_waste_pool\")))",
+    )?;
+    assert_eq!(
+        keyed.field,
+        FieldRow::Terrain(TerrainFieldRow::OnDeathField {
+            index: 0,
+            field: "toxic_waste_pool".to_owned(),
+        }),
+    );
+    assert_eq!(
+        terrain_draft(app)?.on_death(),
+        [OnDeathEffect::LeaveField {
+            field: FieldKey::new("toxic_waste_pool".to_owned()),
+        }],
+        "the draft holds the row every write above left it on",
+    );
     Ok(())
 }
 

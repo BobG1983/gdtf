@@ -89,6 +89,26 @@ fn shipped_cone_and_line_weapons_resolve_their_aoe_hit_types() {
 }
 
 #[test]
+fn some_shipped_weapon_authors_an_on_death_list() {
+    let mut app = GdtfLoadTestAppBuilder::new()
+        .starting_in(AppState::Load)
+        .build();
+
+    advance_until_resource_exists::<WeaponRegistry>(&mut app);
+
+    let Some(registry) = app.world().get_resource::<WeaponRegistry>() else {
+        unreachable!("the wait above returns once the registry is in the world");
+    };
+    assert!(
+        registry
+            .iter()
+            .any(|(_name, spec)| !spec.on_death.is_empty()),
+        "at least one shipped weapon must author a non-empty on_death list, or the migration to \
+         a list emptied them",
+    );
+}
+
+#[test]
 fn shipped_weapons_each_declare_an_accepted_ammo_type() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)

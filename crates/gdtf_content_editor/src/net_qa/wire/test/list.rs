@@ -1,10 +1,17 @@
 use gdtf_battle_sim::{
     armor::ArmorType,
-    effects::attachments::{AimDelta, AttachmentEffect},
+    effects::{
+        attachments::{AimDelta, AttachmentEffect},
+        fields::FieldKey,
+        on_death::{ExplodeDamage, OnDeathEffect},
+    },
     equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity},
     injuries::{InjuryEffect, InjuryName, InjuryWeight, WeightedInjuryEntry},
     terrain::facing::TerrainFacing,
-    weapon::{AoeRange, FireModeSpec, HitType, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
+    weapon::{
+        AoeRange, BlastRadius, DamageType, FireModeSpec, HitType, ModeConeMult, ModeKind,
+        ModeShots, ModeTuPercent,
+    },
 };
 use gdtf_content_families::sprites::{SpriteImagePath, SpriteSource};
 
@@ -12,9 +19,9 @@ use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::net_qa::wire::{
     ArmorTypeNet, AttachmentEffectNet, AttachmentKeyNet, AttachmentSlotNet, EditorDraftNameNet,
     EditorListIndexNet, EditorListMemberNet, EditorListNet, EditorListOpNet, FightModeKindNet,
-    FightModeSpecNet, FireModeSpecNet, InjuryEffectNet, SlotCapacityNet, SpriteSourceNet,
-    StrikesNet, TerrainFacingNet, TerrainTagNet, TuCostNet, WeaponSlotNet, WeightingBucketNet,
-    WeightingRowNet,
+    FightModeSpecNet, FireModeSpecNet, InjuryEffectNet, OnDeathEffectNet, SlotCapacityNet,
+    SpriteSourceNet, StrikesNet, TerrainFacingNet, TerrainTagNet, TuCostNet, WeaponSlotNet,
+    WeightingBucketNet, WeightingRowNet,
 };
 
 fn a_frame_source() -> SpriteSourceNet {
@@ -50,6 +57,22 @@ fn a_weighting_row() -> WeightingRowNet {
     ))
 }
 
+fn an_explode() -> OnDeathEffect {
+    OnDeathEffect::Explode {
+        hit_type:    HitType::Blast {
+            radius: BlastRadius::new(2),
+        },
+        damage:      ExplodeDamage::new(12),
+        damage_type: DamageType::Blast,
+    }
+}
+
+fn a_leave_field() -> OnDeathEffect {
+    OnDeathEffect::LeaveField {
+        field: FieldKey::new("promethium_pool".to_owned()),
+    }
+}
+
 fn a_slot() -> WeaponSlotNet {
     WeaponSlotNet::new(
         AttachmentSlotNet::from_slot(AttachmentSlot::Muzzle),
@@ -62,6 +85,8 @@ fn the_named_list_round_trips() {
     for list in [
         EditorListNet::EntrySides,
         EditorListNet::TerrainTags,
+        EditorListNet::TerrainOnDeathEffects,
+        EditorListNet::WeaponOnDeathEffects,
         EditorListNet::AttachmentEffects,
         EditorListNet::SpriteFrames,
         EditorListNet::InjuryEffects,
@@ -145,6 +170,22 @@ fn every_member_round_trips() {
         ));
     }
     assert_ron_round_trip(&EditorListMemberNet::WeightingRow(a_weighting_row()));
+    for effect in [an_explode(), a_leave_field()] {
+        assert_ron_round_trip(&EditorListMemberNet::OnDeathEffect(
+            OnDeathEffectNet::from_effect(&effect),
+        ));
+    }
+}
+
+#[test]
+fn an_on_death_member_reads_back_as_the_sims_own_effect() {
+    for effect in [an_explode(), a_leave_field()] {
+        assert_eq!(
+            OnDeathEffectNet::from_effect(&effect).to_effect(),
+            effect,
+            "the mirror carries the whole payload, so a client's effect reads back verbatim",
+        );
+    }
 }
 
 #[test]
@@ -153,4 +194,5 @@ fn the_list_types_trace_usable_shapes() {
     assert_schema_is_usable::<EditorListOpNet>("EditorListOpNet");
     assert_schema_is_usable::<EditorListMemberNet>("EditorListMemberNet");
     assert_schema_is_usable::<EditorListIndexNet>("EditorListIndexNet");
+    assert_schema_is_usable::<OnDeathEffectNet>("OnDeathEffectNet");
 }

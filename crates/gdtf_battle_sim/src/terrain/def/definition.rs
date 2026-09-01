@@ -45,9 +45,9 @@ pub struct TerrainDef {
     /// Optional tags.
     #[serde(default)]
     pub tags:           Vec<TerrainTag>,
-    /// Optional on-death effect.
+    /// On-death effects, fired in the authored order.
     #[serde(default)]
-    pub on_death:       Option<crate::effects::on_death::OnDeathEffect>,
+    pub on_death:       Vec<crate::effects::on_death::OnDeathEffect>,
     /// Optional path-blocking override.
     #[serde(default)]
     pub blocks_pathing: Option<BlocksPathingOverride>,

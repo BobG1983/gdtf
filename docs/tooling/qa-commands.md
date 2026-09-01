@@ -863,29 +863,30 @@ answers itself, in the order it checks:
    `Add`, `Remove`, `SetAt`, `MoveUp` and `MoveDown`, and a toggle carrying a member one of
    the other tick-box rows draws is refused too.
    Every other list refuses `Toggle`: the attachment effects, the sprite frames, the injury
-   effects, all three Melee Weapon lists and all three Weapon lists. Every list outside the
-   sprite frames refuses a reorder. The Gang member list and the three weighting buckets
-   take `Add` and `Remove` alone, so each refuses `Toggle`, `SetAt`, `MoveUp` and
-   `MoveDown`. When a list reads its own options from a registry and that registry is
-   absent, the answer is `Unavailable { code: MissingModel }` instead.
+   effects, the Terrain on-death effects, all three Melee Weapon lists and all four Weapon
+   lists. Every list but the sprite frames and the two on-death lists refuses a reorder. The
+   Gang member list and the three weighting buckets take `Add` and `Remove` alone, so each
+   refuses `Toggle`, `SetAt`, `MoveUp` and `MoveDown`. When a list reads its own options from
+   a registry and that registry is absent, the answer is `Unavailable { code: MissingModel }`
+   instead.
 5. A closed gate: `Unavailable { code: WrongState }`, with a note naming the gate.
    `editor.list_op` refuses a `Toggle` on the entry sides while the draft's kind is not
    `Emplacement`, because `TerrainDraft::set_entry_sides` commits only at that kind and the
    write would otherwise do nothing. The Sprite fps, every frame operation and every
    per-frame source refuse the same way while `SpriteDraft::is_animated` is false. The Weapon
-   form has three gates of the same kind: the three DOT rows refuse while its `dot` tick box
-   is off, the on-death variant and every payload row refuse while its `on_death` tick box is
-   off, and a payload row belonging to the other variant refuses too, so `OnDeathField`
-   refuses while the effect is `Explode` and `OnDeathHitType`, `OnDeathDamage` and
-   `OnDeathDamageType` refuse while it is `LeaveField`. No refused payload write turns a
-   profile on as a side effect. The Field form's one gate is read ahead of item 4 rather than
-   after it: while `FieldDraft::autoload_pending` is true, every Field field and every
-   operation on the immune list refuses here, whatever the write names, because the form's own
-   sync would seed the first registry entry over it. A `Remove` on the injury effects, the
-   melee fight modes or the weapon fire modes while one entry remains refuses here too, with a
-   note naming the minimum,
-   because it is the condition that greys out the form's own Remove button. The sprite frames
-   answer that case as `BadArguments` instead, under item 6.
+   form has two gates of the same kind. The three DOT rows refuse while its `dot` tick box is
+   off. An on-death payload row belonging to the other variant refuses as well, so
+   `OnDeathField` refuses while the effect at that index is `Explode`, and `OnDeathHitType`,
+   `OnDeathDamage` and `OnDeathDamageType` refuse while it is `LeaveField`. The Terrain form
+   draws that second gate over its own on-death list, worded over the Terrain draft. No
+   refused payload write turns a profile on, seeds an effect, or swaps a variant as a side
+   effect. The Field form's one gate is read ahead of item 4 rather than after it: while
+   `FieldDraft::autoload_pending` is true, every Field field and every operation on the immune
+   list refuses here, whatever the write names, because the form's own sync would seed the
+   first registry entry over it. A `Remove` on the injury effects, the melee fight modes or
+   the weapon fire modes while one entry remains refuses here too, with a note naming the
+   minimum, because it is the condition that greys out the form's own Remove button. The
+   sprite frames answer that case as `BadArguments` instead, under item 6.
 6. A stat outside its range, an index past the end of a list, a `Remove` on a sprite frame
    list holding one frame, a `MoveUp` at index 0 and a `MoveDown` at the last index:
    `BadArguments`. A Gang member key answers the same way when the registry the combo reads
@@ -917,14 +918,14 @@ Every field goes inside its form's own arm, which the middle column names. The A
 | Armor | `Armor` | `Name`; per `BodyPart`, `Floor`, `Protection`, `Hardness` (`ArmorDraft::STAT_RANGE`, `0..=100`), `Integrity` (`ArmorDraft::INTEGRITY_RANGE`, `0..=1000`) and `Type` (one of `ArmorType::ALL`) |
 | Sprite | `Sprite` | `Name`; `BaseSource`; `AnchorX` and `AnchorY` (clamped to the sheet rect); `Animated`; and behind that gate `Fps` (`SpriteDraft::FPS_RANGE`), `Frame`; `FacingOverride`, set to a source or cleared with `None` |
 | Attachment | `Attachment` | `Name`; `DisplayName`; `Slot` (one of `AttachmentSlot::ALL`); `Effect`, variant and payload together |
-| Terrain | `Terrain` | `Kind` (Wall, Cover, Slab, Emplacement); `DisplayName`; `Hp`, which writes both the cover and the slab field, clamped to `TerrainDraft::HP_RANGE`; `ArmorProtection` and `ArmorHardness`, clamped to `TerrainDraft::ARMOR_RANGE`; `HeightBand`, on a kind whose `has_height_band` is true; `Graphic`, one of `offered_graphic_roles()`; `Footfall`, on a kind whose `offers_footfall` is true; `MountedWeapon`, a `WeaponRegistry` key or `None`, on an `Emplacement` kind; `BlocksPathing` and `BlocksLos`, each set or cleared with `None` |
+| Terrain | `Terrain` | `Kind` (Wall, Cover, Slab, Emplacement); `DisplayName`; `Hp`, which writes both the cover and the slab field, clamped to `TerrainDraft::HP_RANGE`; `ArmorProtection` and `ArmorHardness`, clamped to `TerrainDraft::ARMOR_RANGE`; `HeightBand`, on a kind whose `has_height_band` is true; `Graphic`, one of `offered_graphic_roles()`; `Footfall`, on a kind whose `offers_footfall` is true; `MountedWeapon`, a `WeaponRegistry` key or `None`, on an `Emplacement` kind; `BlocksPathing` and `BlocksLos`, each set or cleared with `None`; per on-death `index`, `OnDeathVariant` (Explode or LeaveField), then `OnDeathHitType`, `OnDeathDamage` and `OnDeathDamageType` while the effect at that index is `Explode`, and `OnDeathField` while it is `LeaveField` |
 | Theme | `Theme` | `Name`, the display name its name box writes. Its default floor is written with `editor.set_default_floor` |
 | Injury | `Injury` | `Key`; `Name`; `Category` (one of `InjuryCategory::ALL`); `Severity` (Minor, Major or Critical, so `None` and `Fatal` fail to decode); `PopupText`, `LogText`, `InspectText`; `Effect`, an index with that effect's variant and payload |
 | Injury weighting | `Weighting` | `RowInjury` and `RowWeight`, each naming a `bucket` (Minor, Major or Critical, so `None` and `Fatal` fail to decode) and a row `index`. The key must be one the `InjuryRegistry` holds, because that is all the row's combo offers, so a key it does not hold answers `BadArguments` naming the key, and an absent registry answers `MissingModel`. Which table the rows belong to is `editor.select_weighting_table`, not a field |
 | Melee Weapon | `MeleeWeapon` | `Name`; `Damage`, `Punch`, `Shred`, `DamageType` (one of `DamageType::ALL`), `FatalBias`, `Handedness`; `Reach`, clamped at 1; `Shove` |
 | Gang | `Gang` | `Name`; per member index, `MemberName`; `MemberAttribute`, naming one of `Speed`, `Aim`, `Strength`, `Toughness`, `Reflexes`, `Cool`, `Grit` and `Luck`, with a value inside `GangDraft::ATTRIBUTE_RANGE` (`0.0..=100.0`); `MemberWeapon`, a `WeaponRegistry` key; `MemberArmor`, an `ArmorRegistry` key; `MemberMeleeWeapon`, a `MeleeWeaponRegistry` key or `None` for the fists default |
 | Field | `Field` | `Name`, the save stem; `Damage`, the flat HP drained per tick; `DamageType` (one of `DamageType::ALL`); `Duration`, `Permanent` or `Turns(n)` where `n` is at least 1, and `Turns(0)` answers `BadArguments` rather than being clamped |
-| Weapon | `Weapon` | `Name`; `BaseSpread`, `Accuracy`, `Kickback`; `Damage`, `Punch`, `Shred`, `DamageType` (one of `DamageType::ALL`), `FatalBias`, `Handedness`; `Trajectory` (Straight or Arc), `Stable`, `Shove`; `MagazineSize`, `MagazineReloadTu`; `Dot`, and behind that tick box `DotDamage`, `DotTurns` (zero is stored as 1) and `DotDamageType`; `OnDeath`, and behind that tick box `OnDeathVariant` (Explode or LeaveField), then `OnDeathHitType`, `OnDeathDamage` and `OnDeathDamageType` while the effect is `Explode`, and `OnDeathField` while it is `LeaveField`. There is no `accepts` arm, because the form draws no control for it |
+| Weapon | `Weapon` | `Name`; `BaseSpread`, `Accuracy`, `Kickback`; `Damage`, `Punch`, `Shred`, `DamageType` (one of `DamageType::ALL`), `FatalBias`, `Handedness`; `Trajectory` (Straight or Arc), `Stable`, `Shove`; `MagazineSize`, `MagazineReloadTu`; `Dot`, and behind that tick box `DotDamage`, `DotTurns` (zero is stored as 1) and `DotDamageType`; per on-death `index`, `OnDeathVariant` (Explode or LeaveField), then `OnDeathHitType`, `OnDeathDamage` and `OnDeathDamageType` while the effect at that index is `Explode`, and `OnDeathField` while it is `LeaveField`. There is no `accepts` arm, because the form draws no control for it |
 
 | Form | List | Operations |
 | --- | --- | --- |
@@ -933,6 +934,7 @@ Every field goes inside its form's own arm, which the middle column names. The A
 | Attachment | `AttachmentEffects` | `Add` (seeds the form's own default effect), `Remove`. An empty list is legal and means cosmetic |
 | Terrain | `EntrySides` | `Toggle(EntrySide(..))`, on an `Emplacement` kind |
 | Terrain | `TerrainTags` | `Toggle(TerrainTag(..))` |
+| Terrain | `TerrainOnDeathEffects` | `Add` (seeds `weapon_form::explode_template`, the same blank explode the Weapon form's Add seeds), `Remove`, `MoveUp`, `MoveDown`. A row is rewritten through the `Terrain(OnDeath…(index: n, …))` field arms, so the list refuses `Toggle` and `SetAt`. An empty list is legal and means the piece fans nothing |
 | Theme | none | The tab draws no list of its own, so every `editor.list_op` answers `Unavailable { code: WrongState }`. Its terrain library is written with `editor.toggle_terrain` |
 | Injury | `InjuryEffects` | `Add` (seeds the form's own default effect), `Remove`. The list keeps at least one effect |
 | Injury weighting | `WeightingBucket(Minor \| Major \| Critical)` | `Add` (seeds the first `InjuryRegistry` key by name, at weight 1), `Remove`. A row is rewritten through the `Weighting(RowInjury(…))` and `Weighting(RowWeight(…))` field arms, so the list refuses `Toggle`, `SetAt` and both reorders. An absent or empty `InjuryRegistry` answers `MissingModel` on `Add`, which is the condition that greys out the form's own Add button. An empty bucket is legal |
@@ -944,8 +946,9 @@ Every field goes inside its form's own arm, which the middle column names. The A
 | Weapon | `WeaponFireModes` | `Add` (appends through `WeaponDraft::add_fire_mode`), `Remove`, `SetAt` rewriting all five fields the row draws, `hit_type` included. The list keeps at least one mode |
 | Weapon | `WeaponSlots` | `Add` (seeds `WeaponSlots::DEFAULT_DECLARATION`), `Remove`, `SetAt`. An empty list is legal |
 | Weapon | `WeaponAttachments` | `Add` (seeds the registry's first key by name), `Remove`, `SetAt` naming a key the registry holds. An absent `AttachmentRegistry` answers `MissingModel` on `Add` and on `SetAt`. An empty one answers `MissingModel` on `Add`, because there is no key to seed, and `BadArguments` on `SetAt`, because the key it names is not one the registry holds |
+| Weapon | `WeaponOnDeathEffects` | `Add` (seeds `weapon_form::explode_template`), `Remove`, `MoveUp`, `MoveDown`. A row is rewritten through the `Weapon(OnDeath…(index: n, …))` field arms, so the list refuses `Toggle` and `SetAt`. An empty list is legal and means the weapon fans nothing |
 
-Reorder exists only for the sprite frames.
+Reorder exists for the sprite frames and the two on-death effect lists.
 
 A mode a command does not handle is a **typed outcome inside a successful reply**, never
 `Unavailable` — that is reserved for host state. `editor.new` refuses Terrain and Prefab

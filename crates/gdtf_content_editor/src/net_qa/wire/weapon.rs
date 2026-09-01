@@ -2,10 +2,7 @@
 
 use bevy::prelude::Deref;
 use gdtf_battle_sim::{
-    effects::{
-        fields::FieldKey,
-        on_death::{ExplodeDamage, OnDeathEffect},
-    },
+    effects::{fields::FieldKey, on_death::ExplodeDamage},
     magazine::ReloadTu,
     weapon::{
         Accuracy, BaseSpread, DotDamage, Kickback, MagazineSize, Stable, TrajectoryStyle,
@@ -192,48 +189,6 @@ impl DotTurnsNet {
     /// Wrap a turn count a client sent or the profile holds.
     pub(in crate::net_qa) const fn new(turns: u8) -> Self {
         Self(turns)
-    }
-}
-
-/// Whether the weapon authors an on-death effect at all.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub(in crate::net_qa) struct OnDeathEnabledNet(bool);
-
-impl OnDeathEnabledNet {
-    /// Wrap a tick box, for a case that spells one a client could send.
-    #[cfg(test)]
-    pub(in crate::net_qa) const fn new(enabled: bool) -> Self {
-        Self(enabled)
-    }
-
-    /// Whether the effect is authored.
-    pub(in crate::net_qa) const fn is_enabled(self) -> bool {
-        self.0
-    }
-
-    /// Read the tick box off a spec, the way the form's own checkbox reads it.
-    pub(in crate::net_qa) const fn from_spec(spec: &WeaponSpec) -> Self {
-        Self(spec.on_death.is_some())
-    }
-}
-
-/// Which on-death effect the form's own variant combo is showing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub(in crate::net_qa) enum OnDeathVariantNet {
-    /// A blast at the death cell.
-    Explode,
-    /// A field left at the death cell.
-    LeaveField,
-}
-
-impl OnDeathVariantNet {
-    /// Mirror the variant an authored effect is on.
-    pub(in crate::net_qa) const fn from_effect(effect: &OnDeathEffect) -> Self {
-        match effect {
-            OnDeathEffect::Explode { .. } => Self::Explode,
-            OnDeathEffect::LeaveField { .. } => Self::LeaveField,
-        }
     }
 }
 

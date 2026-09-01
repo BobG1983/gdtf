@@ -11,6 +11,7 @@ use super::{
     fire_mode::FireModeSpecNet,
     injury::InjuryEffectNet,
     melee_weapon::{AttachmentKeyNet, FightModeSpecNet, WeaponSlotNet},
+    on_death::OnDeathEffectNet,
     sprite::SpriteSourceNet,
     terrain::TerrainTagNet,
     weighting::{WeightingBucketNet, WeightingRowNet},
@@ -35,6 +36,8 @@ pub(in crate::net_qa) enum EditorListNet {
     EntrySides,
     /// The Terrain draft's tag tick boxes.
     TerrainTags,
+    /// The Terrain draft's authored on-death effects.
+    TerrainOnDeathEffects,
     /// The Attachment draft's authored effects.
     AttachmentEffects,
     /// The Sprite draft's animation frames.
@@ -55,6 +58,8 @@ pub(in crate::net_qa) enum EditorListNet {
     WeaponSlots,
     /// The Weapon draft's fitted attachment keys.
     WeaponAttachments,
+    /// The Weapon draft's authored on-death effects.
+    WeaponOnDeathEffects,
     /// The Field draft's immune-armor tick boxes.
     FieldImmuneArmorTypes,
     /// One of the Injury weighting table's three bucket row groups.
@@ -105,4 +110,6 @@ pub(in crate::net_qa) enum EditorListMemberNet {
     ImmuneArmorType(ArmorTypeNet),
     /// One row of an Injury weighting bucket, its injury key and its weight.
     WeightingRow(WeightingRowNet),
+    /// One effect of a Terrain or a Weapon draft's on-death list.
+    OnDeathEffect(OnDeathEffectNet),
 }

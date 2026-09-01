@@ -10,6 +10,7 @@ mod melee_weapon;
 mod route;
 mod sprite;
 mod terrain;
+mod terrain_on_death;
 mod weapon;
 mod weighting;
 

@@ -152,7 +152,7 @@ pub(crate) fn one_sided_emplacement() -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("emplacement".to_owned()),
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
     }

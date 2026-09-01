@@ -29,6 +29,23 @@ fn real_asset_resolves_terrain_def_registry_by_uuid() {
 }
 
 #[test]
+fn some_shipped_terrain_def_authors_an_on_death_list() {
+    let mut app = GdtfLoadTestAppBuilder::new()
+        .starting_in(AppState::Load)
+        .build();
+    advance_until_resource_exists::<TerrainDefRegistry>(&mut app);
+
+    let Some(registry) = app.world().get_resource::<TerrainDefRegistry>() else {
+        unreachable!("the wait above returns once the registry is in the world");
+    };
+    assert!(
+        registry.defs().any(|(_, def)| !def.on_death.is_empty()),
+        "at least one shipped terrain def must author a non-empty on_death list, or the \
+         migration to a list emptied them",
+    );
+}
+
+#[test]
 fn a_shipped_emplacement_names_at_least_one_entry_side() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)

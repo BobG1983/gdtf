@@ -1,27 +1,74 @@
-//! On-death editor for a terrain draft — same variants as the weapon form.
+//! On-death list editor for a terrain draft — same rows as the weapon form.
 use bevy_egui::egui;
-use gdtf_battle_sim::{
-    effects::{
-        fields::FieldKey,
-        on_death::{ExplodeDamage, OnDeathEffect},
-    },
-    weapon::{DamageType, HitType},
+use gdtf_battle_sim::effects::{
+    fields::FieldKey,
+    on_death::{ExplodeDamage, OnDeathEffect},
 };
 
 use crate::{
     egui_shell::{damage_edit::damage_type_combo, fire_mode_edit},
     terrain_form::TerrainDraft,
+    weapon_form::{explode_template, leave_field_template},
 };
 
+// What a row's own buttons asked for, applied once the loop has let the list go.
+enum RowButton {
+    Remove(usize),
+    Up(usize),
+    Down(usize),
+}
+
 pub(super) fn on_death_form(ui: &mut egui::Ui, draft: &mut TerrainDraft) {
-    let mut enabled = draft.on_death().is_some();
-    if ui.checkbox(&mut enabled, "on death effect").changed() {
-        draft.set_on_death(enabled.then(explode_template));
+    ui.horizontal(|ui| {
+        ui.label("on death effects");
+        if ui.button("add").clicked() {
+            draft.add_on_death(explode_template());
+        }
+    });
+    let mut pressed: Option<RowButton> = None;
+    for index in 0..draft.on_death().len() {
+        let Some(stored) = draft.on_death().get(index).cloned() else {
+            continue;
+        };
+        let mut edited = stored.clone();
+        ui.push_id(index, |ui| {
+            row_buttons(ui, index, &mut pressed);
+            variant_combo(ui, &mut edited);
+            payload_rows(ui, &mut edited);
+        });
+        if edited != stored {
+            draft.set_on_death_at(index, edited);
+        }
     }
-    let Some(effect) = draft.on_death_mut() else {
-        return;
-    };
-    variant_combo(ui, effect);
+    match pressed {
+        Some(RowButton::Remove(index)) => {
+            draft.remove_on_death(index);
+        }
+        Some(RowButton::Up(index)) => {
+            draft.move_on_death_up(index);
+        }
+        Some(RowButton::Down(index)) => {
+            draft.move_on_death_down(index);
+        }
+        None => {}
+    }
+}
+
+fn row_buttons(ui: &mut egui::Ui, index: usize, pressed: &mut Option<RowButton>) {
+    ui.horizontal(|ui| {
+        if ui.button("remove").clicked() {
+            *pressed = Some(RowButton::Remove(index));
+        }
+        if ui.button("move up").clicked() {
+            *pressed = Some(RowButton::Up(index));
+        }
+        if ui.button("move down").clicked() {
+            *pressed = Some(RowButton::Down(index));
+        }
+    });
+}
+
+fn payload_rows(ui: &mut egui::Ui, effect: &mut OnDeathEffect) {
     match effect {
         OnDeathEffect::Explode {
             hit_type,
@@ -47,20 +94,6 @@ pub(super) fn on_death_form(ui: &mut egui::Ui, draft: &mut TerrainDraft) {
                 }
             });
         }
-    }
-}
-
-const fn explode_template() -> OnDeathEffect {
-    OnDeathEffect::Explode {
-        hit_type:    HitType::Single,
-        damage:      ExplodeDamage::new(0),
-        damage_type: DamageType::Kinetic,
-    }
-}
-
-const fn leave_field_template() -> OnDeathEffect {
-    OnDeathEffect::LeaveField {
-        field: FieldKey::new(String::new()),
     }
 }
 

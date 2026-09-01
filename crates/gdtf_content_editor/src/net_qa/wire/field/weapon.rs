@@ -6,11 +6,12 @@ use super::draft_name::EditorDraftNameNet;
 use crate::net_qa::wire::{
     attachment::{DamageTypeNet, FatalBiasNet, WeaponDamageNet, WeaponPunchNet, WeaponShredNet},
     fire_mode::HitTypeNet,
+    list::EditorListIndexNet,
     melee_weapon::{HandednessNet, ShoveNet},
+    on_death::OnDeathVariantNet,
     weapon::{
         AccuracyNet, BaseSpreadNet, DotDamageNet, DotEnabledNet, DotTurnsNet, ExplodeDamageNet,
-        FieldKeyNet, KickbackNet, MagazineSizeNet, OnDeathEnabledNet, OnDeathVariantNet,
-        ReloadTuNet, StableNet, TrajectoryStyleNet,
+        FieldKeyNet, KickbackNet, MagazineSizeNet, ReloadTuNet, StableNet, TrajectoryStyleNet,
     },
 };
 
@@ -55,16 +56,39 @@ pub(in crate::net_qa) enum WeaponFieldNet {
     DotTurns(DotTurnsNet),
     /// The DOT profile's damage channel, behind the DOT tick box.
     DotDamageType(DamageTypeNet),
-    /// Whether the draft authors an on-death effect.
-    OnDeath(OnDeathEnabledNet),
-    /// Which on-death effect the draft is on, behind the on-death tick box.
-    OnDeathVariant(OnDeathVariantNet),
-    /// The explode effect's hit geometry, behind the on-death tick box.
-    OnDeathHitType(HitTypeNet),
-    /// The explode effect's blast damage, behind the on-death tick box.
-    OnDeathDamage(ExplodeDamageNet),
-    /// The explode effect's damage channel, behind the on-death tick box.
-    OnDeathDamageType(DamageTypeNet),
-    /// The leave-field effect's field key, behind the on-death tick box.
-    OnDeathField(FieldKeyNet),
+    /// Which variant the on-death effect at one index is on.
+    OnDeathVariant {
+        /// Which effect of the list.
+        index:   EditorListIndexNet,
+        /// The variant its combo is set to.
+        variant: OnDeathVariantNet,
+    },
+    /// The explode effect's hit geometry, at one index.
+    OnDeathHitType {
+        /// Which effect of the list.
+        index:    EditorListIndexNet,
+        /// The geometry its row draws.
+        hit_type: HitTypeNet,
+    },
+    /// The explode effect's blast damage, at one index.
+    OnDeathDamage {
+        /// Which effect of the list.
+        index:  EditorListIndexNet,
+        /// The flat damage each cell takes.
+        damage: ExplodeDamageNet,
+    },
+    /// The explode effect's damage channel, at one index.
+    OnDeathDamageType {
+        /// Which effect of the list.
+        index:       EditorListIndexNet,
+        /// The channel the blast deals on.
+        damage_type: DamageTypeNet,
+    },
+    /// The leave-field effect's field key, at one index.
+    OnDeathField {
+        /// Which effect of the list.
+        index: EditorListIndexNet,
+        /// The catalog key of the field left behind.
+        field: FieldKeyNet,
+    },
 }

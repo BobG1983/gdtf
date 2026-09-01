@@ -36,7 +36,7 @@ fn slab_def(blocks_pathing: Option<bool>, blocks_los: Option<LosBlocking>) -> Te
             footfall:     None,
         },
         tags: Vec::new(),
-        on_death: None,
+        on_death: Vec::new(),
         blocks_pathing: blocks_pathing.map(BlocksPathingOverride::new),
         blocks_los,
     }
@@ -61,7 +61,7 @@ fn wall_def(
             graphic_name: TerrainGraphicKey::new("wall".to_owned()),
         },
         tags,
-        on_death: None,
+        on_death: Vec::new(),
         blocks_pathing: blocks_pathing.map(BlocksPathingOverride::new),
         blocks_los,
     }

@@ -80,7 +80,7 @@ Every `.terrain_def.ron` deserializes into `TerrainDef`
 | `sim_kind` | `TerrainSimKind` | struct variant | The SIM half — structural kind + combat stats (see 1c). |
 | `presenter_kind` | `TerrainPresenterKind` | struct variant | The PRESENTER half — graphic role key (+ optional slab footfall; see 1d). |
 | `tags` | `Vec<TerrainTag>` | list of variants | SIM-owned pathing/vision traits (see 1e). `#[serde(default)]` — omitted = `[]`. |
-| `on_death` | `Option<OnDeathEffect>` | `Some(…)` | What the piece fans when DESTROYED (see 1e). `#[serde(default)]` — omitted = `None`. |
+| `on_death` | `Vec<OnDeathEffect>` | list of variants | What the piece fans when DESTROYED (see 1e). `#[serde(default)]` — omitted = `[]`. |
 | `blocks_pathing` | `Option<bool>` | `Some(true)` \| `Some(false)` | OPTIONAL path-blocking OVERRIDE (see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
 | `blocks_los` | `Option<LosBlocking>` | `Some(Full)` \| `Some(UpToHeightBand)` \| `Some(None)` | OPTIONAL line-of-sight blocking OVERRIDE (see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
 
@@ -178,13 +178,16 @@ see 1h. A tag can only ADD blocking; an override can force it either
 way (including OFF), and when present WINS over both the tag and the kind
 default.
 
-`on_death:` names the `OnDeathEffect` a DESTRUCTIBLE piece fans when smashed
-: `Explode(hit_type: …, damage: …, damage_type: …)` or
+`on_death:` names the list of effects a DESTRUCTIBLE piece fans when smashed,
+every one of them, in the order it is written. Each entry is
+`Explode(hit_type: …, damage: …, damage_type: …)` or
 `LeaveField(field: "<field key>")`. Example from the shipped content
 (`assets/content/terrain/sump_waste/waste_drum.terrain_def.ron`):
 
 ```ron
-on_death: Some(LeaveField(field: "toxic_waste_pool")),
+on_death: [
+    LeaveField(field: "toxic_waste_pool"),
+],
 ```
 
 ### 1f. The theme file — `<theme>.terrain_theme.ron`

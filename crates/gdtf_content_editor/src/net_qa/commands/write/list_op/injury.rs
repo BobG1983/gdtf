@@ -58,7 +58,7 @@ pub(super) fn apply(draft: &mut InjuryDraft, op: EditorListOpNet) -> Result<(), 
         )),
         EditorListOpNet::MoveUp(_) | EditorListOpNet::MoveDown(_) => Err(FormWriteFault::bad(
             "the injury's effect list draws no reorder buttons. The Sprite form's animation \
-             frames are the one list that reorders"
+             frames and the two on-death effect lists are the lists that reorder"
                 .to_owned(),
         )),
     }

@@ -49,8 +49,8 @@ pub(super) fn apply(
                 .to_owned(),
         )),
         EditorListOpNet::MoveUp(_) | EditorListOpNet::MoveDown(_) => Err(FormWriteFault::bad(
-            "the effects list draws no reorder buttons. The Sprite form's animation frames are \
-             the one list that reorders"
+            "the effects list draws no reorder buttons. The Sprite form's animation frames and \
+             the two on-death effect lists are the lists that reorder"
                 .to_owned(),
         )),
     }

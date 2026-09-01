@@ -32,7 +32,7 @@ fn new_weapon_seeds_the_structural_minimum() {
     assert!(spec.slots.declarations().is_empty(), "no slots offered");
     assert!(spec.attachments.is_empty(), "no attachment keys");
     assert!(spec.dot.is_none(), "no DOT profile");
-    assert!(spec.on_death.is_none(), "no on-death effect");
+    assert!(spec.on_death.is_empty(), "no on-death effect");
 }
 
 #[test]

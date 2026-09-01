@@ -5,12 +5,17 @@ use serde::{Deserialize, Serialize};
 use super::draft_name::EditorDraftNameNet;
 use crate::net_qa::wire::{
     armor::{ArmorHardnessNet, ArmorProtectionNet},
+    attachment::DamageTypeNet,
+    fire_mode::HitTypeNet,
+    list::EditorListIndexNet,
+    on_death::OnDeathVariantNet,
     terrain::{
         BlocksPathingNet, FootfallNet, HeightBandNet, LosBlockingNet, MountedWeaponNet,
         TerrainHpNet,
     },
     terrain_kind::TerrainKindNet,
     tile_role::TileRoleNet,
+    weapon::{ExplodeDamageNet, FieldKeyNet},
 };
 
 /// One field of the Terrain draft, carrying the value it is set to.
@@ -38,4 +43,39 @@ pub(in crate::net_qa) enum TerrainFieldNet {
     BlocksPathing(Option<BlocksPathingNet>),
     /// The draft's line-of-sight override, set or cleared.
     BlocksLos(Option<LosBlockingNet>),
+    /// Which variant the on-death effect at one index is on.
+    OnDeathVariant {
+        /// Which effect of the list.
+        index:   EditorListIndexNet,
+        /// The variant its combo is set to.
+        variant: OnDeathVariantNet,
+    },
+    /// The explode effect's hit geometry, at one index.
+    OnDeathHitType {
+        /// Which effect of the list.
+        index:    EditorListIndexNet,
+        /// The geometry its row draws.
+        hit_type: HitTypeNet,
+    },
+    /// The explode effect's blast damage, at one index.
+    OnDeathDamage {
+        /// Which effect of the list.
+        index:  EditorListIndexNet,
+        /// The flat damage each cell takes.
+        damage: ExplodeDamageNet,
+    },
+    /// The explode effect's damage channel, at one index.
+    OnDeathDamageType {
+        /// Which effect of the list.
+        index:       EditorListIndexNet,
+        /// The channel the blast deals on.
+        damage_type: DamageTypeNet,
+    },
+    /// The leave-field effect's field key, at one index.
+    OnDeathField {
+        /// Which effect of the list.
+        index: EditorListIndexNet,
+        /// The catalog key of the field left behind.
+        field: FieldKeyNet,
+    },
 }

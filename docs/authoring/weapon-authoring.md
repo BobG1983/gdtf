@@ -61,7 +61,7 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
     // slots: [(Muzzle, 1), (Sight, 1)], // offered attachment slots
     // attachments: ["suppressor"], // fitted attachment item keys
     // dot: Some((damage: 4, damage_type: Plasma, turns: 3)), //
-    // on_death: Some(Explode(hit_type: Blast(radius: 1), damage: 8, damage_type: Blast)), //
+    // on_death: [Explode(hit_type: Blast(radius: 1), damage: 8, damage_type: Blast)], //
 )
 ```
 
@@ -87,7 +87,7 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
 | `slots` | `WeaponSlots` | pair list, optional | Offered attachment slots + capacities; omitted = none fit (see 1j) |
 | `attachments` | `FittedAttachments` | string list, optional | Fitted attachment ITEM keys; omitted = `[]` (see 1j) |
 | `dot` | `Option<DotProfile>` | `Some((…))`, optional | Damage-over-time profile; omitted = `None` (see 1k) |
-| `on_death` | `Option<OnDeathEffect>` | `Some(…)`, optional | Wielder-death effect; omitted = `None` (see 1l) |
+| `on_death` | `Vec<OnDeathEffect>` | list of variants, optional | Wielder-death effects; omitted = `[]` (see 1l) |
 
 ### 1c. Magazine authoring
 
@@ -233,19 +233,22 @@ cannot reach zero at all: its drag is ranged `1..=u8::MAX`, and it commits throu
 writes `Weapon(DotTurns(n))` through that same function, so a 0 sent over the wire
 answers `Ran` and reads back as 1.
 
-### 1l. `on_death` — wielder-death effect (optional)
+### 1l. `on_death` — wielder-death effects
 
-`on_death:` names the `OnDeathEffect` the WIELDING ganger's death fans (a live
-satchel charge, an unstable power cell): `Explode(hit_type: …, damage: …,
-damage_type: …)` or `LeaveField(field: "<field key>")`. Example
+`on_death:` names the list of effects the WIELDING ganger's death fans, every
+one of them, in the order it is written (a live satchel charge, an unstable
+power cell). Each entry is `Explode(hit_type: …, damage: …, damage_type: …)` or
+`LeaveField(field: "<field key>")`. Example
 (`assets/content/weapons/ranged/volatile_charge.weapon.ron`):
 
 ```ron
-on_death: Some(Explode(
-    hit_type:    Blast(radius: 1),  // AoE template (Blast / Cone / Line / Single)
-    damage:      8,                 // flat HP drained per affected ganger (no RNG)
-    damage_type: Blast,             // wheel-node flavour (the drain bypasses armor)
-)),
+on_death: [
+    Explode(
+        hit_type:    Blast(radius: 1),  // AoE template (Blast / Cone / Line / Single)
+        damage:      8,                 // flat HP drained per affected ganger (no RNG)
+        damage_type: Blast,             // wheel-node flavour (the drain bypasses armor)
+    ),
+],
 ```
 
 ---

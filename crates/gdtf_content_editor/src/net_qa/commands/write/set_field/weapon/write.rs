@@ -46,13 +46,20 @@ pub(in crate::net_qa::commands::write::set_field) fn write(
         WeaponFieldNet::DotDamage(damage) => dot::damage(draft.spec_mut(), damage),
         WeaponFieldNet::DotTurns(turns) => dot::turns(draft.spec_mut(), turns),
         WeaponFieldNet::DotDamageType(channel) => dot::damage_type(draft.spec_mut(), channel),
-        WeaponFieldNet::OnDeath(enabled) => Ok(on_death::enabled(draft.spec_mut(), enabled)),
-        WeaponFieldNet::OnDeathVariant(wanted) => on_death::variant(draft.spec_mut(), wanted),
-        WeaponFieldNet::OnDeathHitType(wanted) => on_death::hit_type(draft.spec_mut(), wanted),
-        WeaponFieldNet::OnDeathDamage(wanted) => on_death::damage(draft.spec_mut(), wanted),
-        WeaponFieldNet::OnDeathDamageType(wanted) => {
-            on_death::damage_type(draft.spec_mut(), wanted)
+        WeaponFieldNet::OnDeathVariant { index, variant } => {
+            on_death::variant(draft.spec_mut(), index, variant)
         }
-        WeaponFieldNet::OnDeathField(wanted) => on_death::field(draft.spec_mut(), wanted),
+        WeaponFieldNet::OnDeathHitType { index, hit_type } => {
+            on_death::hit_type(draft.spec_mut(), index, hit_type)
+        }
+        WeaponFieldNet::OnDeathDamage { index, damage } => {
+            on_death::damage(draft.spec_mut(), index, damage)
+        }
+        WeaponFieldNet::OnDeathDamageType { index, damage_type } => {
+            on_death::damage_type(draft.spec_mut(), index, damage_type)
+        }
+        WeaponFieldNet::OnDeathField { index, field } => {
+            on_death::field(draft.spec_mut(), index, field)
+        }
     }
 }

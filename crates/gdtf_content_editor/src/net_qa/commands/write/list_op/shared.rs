@@ -16,8 +16,8 @@ const NO_ATTACHMENT_REGISTRY: RefusalNote = RefusalNote::from_static(
 );
 
 /// The note a list that draws no reorder buttons refuses a move with.
-pub(super) const NO_REORDER: &str = "this list draws no reorder buttons. The Sprite form's animation frames are the one list \
-     that reorders";
+pub(super) const NO_REORDER: &str = "this list draws no reorder buttons. The Sprite form's animation frames and the two \
+     on-death effect lists are the lists that reorder";
 
 /// The note a list authored by add, remove and rewrite refuses a toggle with.
 pub(super) const NO_TOGGLE: &str =
@@ -31,9 +31,27 @@ pub(super) fn wrong_member(list: EditorListNet) -> FormWriteFault {
 }
 
 /// The fault an index beyond the list's own length answers.
-pub(super) fn past_the_end(list: EditorListNet, index: usize, held: usize) -> FormWriteFault {
+pub(in crate::net_qa::commands::write) fn past_the_end(
+    list: EditorListNet,
+    index: usize,
+    held: usize,
+) -> FormWriteFault {
     FormWriteFault::bad(format!(
         "{index} is past the end of {list:?}, which holds {held}"
+    ))
+}
+
+/// The fault a move-up with nothing above it answers.
+pub(super) fn no_slot_above(index: usize, held: usize) -> FormWriteFault {
+    FormWriteFault::bad(format!(
+        "effect {index} has no slot above it in a list holding {held}"
+    ))
+}
+
+/// The fault a move-down with nothing below it answers.
+pub(super) fn no_slot_below(index: usize, held: usize) -> FormWriteFault {
+    FormWriteFault::bad(format!(
+        "effect {index} has no slot below it in a list holding {held}"
     ))
 }
 

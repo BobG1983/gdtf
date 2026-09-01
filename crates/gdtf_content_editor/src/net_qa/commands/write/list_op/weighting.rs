@@ -16,8 +16,8 @@ const NO_TOGGLE: &str = "a weighting bucket is authored by adding, removing and 
 const NOT_THROUGH_THE_LIST: &str = "one weighting row is rewritten through the `Weighting(RowInjury(…))` and \
      `Weighting(RowWeight(…))` field arms, not through the list";
 
-const NO_REORDER: &str = "a weighting bucket draws no reorder buttons. The Sprite form's animation frames are the one \
-     list that reorders";
+const NO_REORDER: &str = "a weighting bucket draws no reorder buttons. The Sprite form's animation frames and the two \
+     on-death effect lists are the lists that reorder";
 
 /// The rows the named bucket holds, as the reply reads them back.
 pub(super) fn members(

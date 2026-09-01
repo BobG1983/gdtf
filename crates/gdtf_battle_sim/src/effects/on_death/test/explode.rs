@@ -86,13 +86,13 @@ fn explode_chain_reaction_kills_then_terminates() {
     app.world_mut().spawn((
         Weapon,
         WieldedBy::new(b_ganger),
-        OnDeath::new(OnDeathEffect::Explode {
+        OnDeath::new(vec![OnDeathEffect::Explode {
             hit_type:    HitType::Blast {
                 radius: BlastRadius::new(1),
             },
             damage:      ExplodeDamage::new(100),
             damage_type: DamageType::Blast,
-        }),
+        }]),
     ));
     grid_with_occupant(&mut app, ground(6, 5), b_ganger);
 

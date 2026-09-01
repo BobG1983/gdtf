@@ -58,13 +58,13 @@ pub(crate) fn explode_weapon_spec() -> WeaponSpec {
         punch: WeaponPunch::new(500),
         fire_mode: FireMode::new(vec![single_mode(0.2, 1)]),
         stable: Stable::new(true),
-        on_death: Some(OnDeathEffect::Explode {
+        on_death: vec![OnDeathEffect::Explode {
             hit_type:    HitType::Blast {
                 radius: BlastRadius::new(1),
             },
             damage:      gdtf_battle_sim::effects::on_death::ExplodeDamage::new(50),
             damage_type: DamageType::Blast,
-        }),
+        }],
         ..test_weapon_spec()
     }
 }
@@ -95,9 +95,9 @@ pub(crate) fn barrel_terrain_registry() -> TerrainDefRegistry {
                 ),
             },
             tags:           Vec::new(),
-            on_death:       Some(OnDeathEffect::LeaveField {
+            on_death:       vec![OnDeathEffect::LeaveField {
                 field: FieldKey::new("burning".to_owned()),
-            }),
+            }],
 
             blocks_pathing: None,
             blocks_los:     None,
@@ -124,9 +124,9 @@ fn fuel_slab_def() -> TerrainDef {
             footfall:     None,
         },
         tags:           Vec::new(),
-        on_death:       Some(OnDeathEffect::LeaveField {
+        on_death:       vec![OnDeathEffect::LeaveField {
             field: FieldKey::new("burning".to_owned()),
-        }),
+        }],
         blocks_pathing: None,
         blocks_los:     None,
     }

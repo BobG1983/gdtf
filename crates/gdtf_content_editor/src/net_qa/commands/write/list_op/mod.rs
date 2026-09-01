@@ -7,7 +7,7 @@ mod gang;
 mod injury;
 mod melee_weapon;
 mod route;
-mod shared;
+pub(in crate::net_qa::commands::write) mod shared;
 mod sprite;
 mod terrain;
 mod weapon;

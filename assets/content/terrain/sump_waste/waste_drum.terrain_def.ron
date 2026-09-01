@@ -13,5 +13,7 @@
     ),
     tags: [],
     // Full of toxic sludge — destroying it leaves a persistent toxic-waste field.
-    on_death: Some(LeaveField(field: "toxic_waste_pool")),
+    on_death: [
+        LeaveField(field: "toxic_waste_pool"),
+    ],
 )

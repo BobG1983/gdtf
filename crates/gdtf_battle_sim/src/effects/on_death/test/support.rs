@@ -45,7 +45,11 @@ pub(super) fn dead_ganger_with_on_death(app: &mut App, effect: OnDeathEffect) ->
         .life_state(LifeState::Dead)
         .at(ground(5, 5))
         .spawn(app.world_mut());
-    wield(app.world_mut(), ganger, (Weapon, OnDeath::new(effect)));
+    wield(
+        app.world_mut(),
+        ganger,
+        (Weapon, OnDeath::new(vec![effect])),
+    );
     ganger
 }
 

@@ -36,6 +36,26 @@ pub(crate) enum TerrainFieldRow {
     MountedWeapon(Option<String>),
     BlocksPathing(Option<bool>),
     BlocksLos(Option<LosRow>),
+    OnDeathVariant {
+        index:   usize,
+        variant: OnDeathVariantRow,
+    },
+    OnDeathHitType {
+        index:    usize,
+        hit_type: HitTypeRow,
+    },
+    OnDeathDamage {
+        index:  usize,
+        damage: u16,
+    },
+    OnDeathDamageType {
+        index:       usize,
+        damage_type: DamageTypeRow,
+    },
+    OnDeathField {
+        index: usize,
+        field: String,
+    },
 }
 
 /// An Armor field a write named, with the value read back off the draft.
@@ -171,12 +191,26 @@ pub(crate) enum WeaponFieldRow {
     DotDamage(u16),
     DotTurns(u8),
     DotDamageType(DamageTypeRow),
-    OnDeath(bool),
-    OnDeathVariant(OnDeathVariantRow),
-    OnDeathHitType(HitTypeRow),
-    OnDeathDamage(u16),
-    OnDeathDamageType(DamageTypeRow),
-    OnDeathField(String),
+    OnDeathVariant {
+        index:   usize,
+        variant: OnDeathVariantRow,
+    },
+    OnDeathHitType {
+        index:    usize,
+        hit_type: HitTypeRow,
+    },
+    OnDeathDamage {
+        index:  usize,
+        damage: u16,
+    },
+    OnDeathDamageType {
+        index:       usize,
+        damage_type: DamageTypeRow,
+    },
+    OnDeathField {
+        index: usize,
+        field: String,
+    },
 }
 
 /// A Field field a write named, with the value read back off the draft.
@@ -199,6 +233,7 @@ pub(crate) enum ThemeFieldRow {
 pub(crate) enum ListRow {
     EntrySides,
     TerrainTags,
+    TerrainOnDeathEffects,
     AttachmentEffects,
     SpriteFrames,
     InjuryEffects,
@@ -209,6 +244,7 @@ pub(crate) enum ListRow {
     WeaponFireModes,
     WeaponSlots,
     WeaponAttachments,
+    WeaponOnDeathEffects,
     FieldImmuneArmorTypes,
 }
 
@@ -226,6 +262,20 @@ pub(crate) enum ListMemberRow {
     GangMember(String),
     FireMode(FireModeRow),
     ImmuneArmorType(ArmorTypeRow),
+    OnDeathEffect(OnDeathEffectRow),
+}
+
+/// A client's own reading of one authored on-death effect.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) enum OnDeathEffectRow {
+    Explode {
+        hit_type:    HitTypeRow,
+        damage:      u16,
+        damage_type: DamageTypeRow,
+    },
+    LeaveField {
+        field: String,
+    },
 }
 
 /// `editor.set_field`'s reply body.

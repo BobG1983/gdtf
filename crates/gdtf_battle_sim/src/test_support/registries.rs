@@ -62,7 +62,7 @@ pub fn test_weapon_spec() -> WeaponSpec {
         slots:       WeaponSlots::default(),
         attachments: FittedAttachments::default(),
         dot:         None,
-        on_death:    None,
+        on_death:    Vec::new(),
     }
 }
 

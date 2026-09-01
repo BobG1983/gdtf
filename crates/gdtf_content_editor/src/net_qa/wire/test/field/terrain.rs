@@ -1,15 +1,17 @@
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::HeightBand,
-    weapon::WeaponName,
+    effects::fields::FieldKey,
+    weapon::{BlastRadius, DamageType, HitType, WeaponName},
 };
 
 use super::super::assert_ron_round_trip;
 use crate::{
     net_qa::wire::{
-        ArmorHardnessNet, ArmorProtectionNet, BlocksPathingNet, EditorDraftNameNet, EditorFieldNet,
-        FootfallNet, HeightBandNet, LosBlockingNet, MountedWeaponNet, TerrainFieldNet,
-        TerrainHpNet, TerrainKindNet, TileRoleNet,
+        ArmorHardnessNet, ArmorProtectionNet, BlocksPathingNet, DamageTypeNet, EditorDraftNameNet,
+        EditorFieldNet, EditorListIndexNet, ExplodeDamageNet, FieldKeyNet, FootfallNet,
+        HeightBandNet, HitTypeNet, LosBlockingNet, MountedWeaponNet, OnDeathVariantNet,
+        TerrainFieldNet, TerrainHpNet, TerrainKindNet, TileRoleNet,
     },
     terrain_form::TerrainKindChoice,
 };
@@ -53,4 +55,26 @@ fn every_terrain_field_arm_round_trips() {
         LosBlockingNet::UpToHeightBand,
     ))));
     assert_ron_round_trip(&terrain(TerrainFieldNet::BlocksLos(None)));
+    let index = EditorListIndexNet::new(1);
+    for variant in [OnDeathVariantNet::Explode, OnDeathVariantNet::LeaveField] {
+        assert_ron_round_trip(&terrain(TerrainFieldNet::OnDeathVariant { index, variant }));
+    }
+    assert_ron_round_trip(&terrain(TerrainFieldNet::OnDeathHitType {
+        index,
+        hit_type: HitTypeNet::from_hit_type(HitType::Blast {
+            radius: BlastRadius::new(2),
+        }),
+    }));
+    assert_ron_round_trip(&terrain(TerrainFieldNet::OnDeathDamage {
+        index,
+        damage: ExplodeDamageNet::new(12),
+    }));
+    assert_ron_round_trip(&terrain(TerrainFieldNet::OnDeathDamageType {
+        index,
+        damage_type: DamageTypeNet::from_damage_type(DamageType::Blast),
+    }));
+    assert_ron_round_trip(&terrain(TerrainFieldNet::OnDeathField {
+        index,
+        field: FieldKeyNet::from_key(&FieldKey::new("toxic_waste_pool".to_owned())),
+    }));
 }

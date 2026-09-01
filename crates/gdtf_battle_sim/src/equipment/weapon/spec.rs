@@ -59,9 +59,9 @@ pub struct WeaponSpec {
     /// Optional DOT on hit.
     #[serde(default)]
     pub dot:         Option<DotProfile>,
-    /// Optional on-death effect.
+    /// On-death effects, fired in the authored order.
     #[serde(default)]
-    pub on_death:    Option<crate::effects::on_death::OnDeathEffect>,
+    pub on_death:    Vec<crate::effects::on_death::OnDeathEffect>,
 }
 
 impl WeaponSpec {
@@ -102,15 +102,16 @@ pub struct WeaponSpawnSiblings {
 }
 
 impl WeaponSpawnSiblings {
-    /// Build siblings from optional authored effects.
+    /// Build siblings from the authored DOT and on-death effects.
     #[must_use]
     pub fn new(
         dot: Option<DotProfile>,
-        on_death: Option<crate::effects::on_death::OnDeathEffect>,
+        on_death: Vec<crate::effects::on_death::OnDeathEffect>,
     ) -> Self {
         Self {
             dot,
-            on_death: on_death.map(crate::effects::on_death::OnDeath::new),
+            on_death: (!on_death.is_empty())
+                .then(|| crate::effects::on_death::OnDeath::new(on_death)),
         }
     }
 
@@ -120,7 +121,7 @@ impl WeaponSpawnSiblings {
         self.dot
     }
 
-    /// Optional on-death effect.
+    /// The on-death effects, absent while the authored list is empty.
     #[must_use]
     pub const fn on_death(&self) -> Option<&crate::effects::on_death::OnDeath> {
         self.on_death.as_ref()

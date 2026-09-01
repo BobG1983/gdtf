@@ -32,6 +32,7 @@ pub(super) fn members(draft: &MeleeWeaponDraft, list: EditorListNet) -> Vec<Edit
             .collect(),
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::AttachmentEffects
         | EditorListNet::SpriteFrames
         | EditorListNet::InjuryEffects
@@ -39,6 +40,7 @@ pub(super) fn members(draft: &MeleeWeaponDraft, list: EditorListNet) -> Vec<Edit
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::FieldImmuneArmorTypes
         | EditorListNet::WeightingBucket(_) => Vec::new(),
     }
@@ -95,6 +97,7 @@ pub(super) fn apply(
         EditorListNet::MeleeWeaponFightModes => fight_modes(draft, op),
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::AttachmentEffects
         | EditorListNet::SpriteFrames
         | EditorListNet::InjuryEffects
@@ -102,6 +105,7 @@ pub(super) fn apply(
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::FieldImmuneArmorTypes
         | EditorListNet::WeightingBucket(_) => Err(FormWriteFault::ForeignArm),
     }

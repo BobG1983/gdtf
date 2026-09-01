@@ -38,7 +38,7 @@ fn test_wall() -> TerrainDef {
             graphic_name: graphic("wall"),
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
     }
@@ -58,7 +58,7 @@ fn test_slab() -> TerrainDef {
             footfall:     Some(FootfallSound::new("test-step".to_owned())),
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
     }
@@ -78,7 +78,7 @@ fn test_cover() -> TerrainDef {
             graphic_name: graphic("cover"),
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
     }
@@ -98,7 +98,7 @@ fn test_floor() -> TerrainDef {
             footfall:     None,
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
     }
@@ -118,7 +118,7 @@ fn test_vision_slab() -> TerrainDef {
             footfall:     None,
         },
         tags:           vec![TerrainTag::BlocksVision],
-        on_death:       None,
+        on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
     }
@@ -138,7 +138,7 @@ fn test_path_slab() -> TerrainDef {
             footfall:     None,
         },
         tags:           vec![TerrainTag::BlocksPathfinding],
-        on_death:       None,
+        on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
     }
@@ -158,7 +158,7 @@ fn test_low_vision_cover() -> TerrainDef {
             graphic_name: graphic("low-cover"),
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
     }
@@ -180,7 +180,7 @@ fn test_emplacement() -> TerrainDef {
             graphic_name: graphic("emplacement"),
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
     }

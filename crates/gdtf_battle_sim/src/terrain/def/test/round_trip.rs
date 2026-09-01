@@ -49,7 +49,7 @@ fn wall_def_round_trips() {
             graphic_name: TerrainGraphicKey::new("wall".to_owned()),
         },
         tags:           vec![TerrainTag::BlocksVision, TerrainTag::BlocksPathfinding],
-        on_death:       None,
+        on_death:       Vec::new(),
 
         blocks_pathing: None,
         blocks_los:     None,
@@ -72,7 +72,7 @@ fn cover_def_round_trips() {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
 
         blocks_pathing: None,
         blocks_los:     None,
@@ -95,7 +95,7 @@ fn slab_def_round_trips() {
             footfall:     Some(FootfallSound::new("footfall_metal".to_owned())),
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
 
         blocks_pathing: None,
         blocks_los:     None,
@@ -117,7 +117,7 @@ fn slab_with_path_override(over: Option<BlocksPathingOverride>) -> TerrainDef {
             footfall:     None,
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
 
         blocks_pathing: over,
         blocks_los:     None,
@@ -178,7 +178,7 @@ fn emplacement_def_round_trips() {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
 
         blocks_pathing: None,
         blocks_los:     None,

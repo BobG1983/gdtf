@@ -1,5 +1,5 @@
 use super::super::{TerrainDef, TerrainPresenterKind, TerrainSimKind, TerrainTag};
-use crate::terrain::piece::TerrainGraphicKey;
+use crate::{effects::on_death::OnDeathEffect, terrain::piece::TerrainGraphicKey};
 
 #[test]
 fn wall_named_struct_ron_parses() {
@@ -179,6 +179,74 @@ fn slab_presenter_footfall_is_optional() {
     let _cover: TerrainPresenterKind = TerrainPresenterKind::Cover {
         graphic_name: TerrainGraphicKey::new("cover".to_owned()),
     };
+}
+
+#[test]
+fn a_def_authoring_two_effects_parses_them_in_order() {
+    let ron = r#"(
+        key: "01840a3e-0000-4000-8000-000000000030",
+        display_name: "Fuel Barrel",
+        sim_kind: Cover(
+            hp: 20,
+            armor_protection: 3,
+            armor_hardness: 1,
+            height_band: Low,
+        ),
+        presenter_kind: Cover(
+            graphic_name: "cover",
+        ),
+        on_death: [
+            Explode(hit_type: Blast(radius: 1), damage: 8, damage_type: Blast),
+            LeaveField(field: "burning"),
+        ],
+    )"#;
+    let parsed = ron::de::from_str::<TerrainDef>(ron);
+    assert!(
+        parsed.is_ok(),
+        "a def authoring two on-death effects must parse: {parsed:?}",
+    );
+    if let Ok(def) = parsed {
+        assert!(
+            matches!(
+                def.on_death.as_slice(),
+                [
+                    OnDeathEffect::Explode { .. },
+                    OnDeathEffect::LeaveField { .. }
+                ]
+            ),
+            "the parsed list is the two authored effects, Explode then LeaveField, got {:?}",
+            def.on_death,
+        );
+    }
+}
+
+#[test]
+fn a_def_omitting_on_death_parses_as_an_empty_list() {
+    let ron = r#"(
+        key: "01840a3e-0000-4000-8000-000000000031",
+        display_name: "Supply Crate",
+        sim_kind: Cover(
+            hp: 20,
+            armor_protection: 3,
+            armor_hardness: 1,
+            height_band: Low,
+        ),
+        presenter_kind: Cover(
+            graphic_name: "cover",
+        ),
+    )"#;
+    let parsed = ron::de::from_str::<TerrainDef>(ron);
+    assert!(
+        parsed.is_ok(),
+        "a def omitting on_death must parse: {parsed:?}",
+    );
+    if let Ok(def) = parsed {
+        assert!(
+            def.on_death.is_empty(),
+            "an omitted on_death reads as an empty list, got {:?}",
+            def.on_death,
+        );
+    }
 }
 
 #[test]

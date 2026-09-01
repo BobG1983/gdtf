@@ -6,6 +6,7 @@ use gdtf_battle_sim::{
 };
 use gdtf_qa_protocol::command::RefusalNote;
 
+use super::terrain_on_death;
 use crate::{
     net_qa::{
         commands::write::form_fault::{FormWriteFault, NOT_AN_EMPLACEMENT},
@@ -190,6 +191,21 @@ pub(super) fn write(
             Ok(TerrainFieldNet::BlocksLos(
                 draft.blocks_los().map(LosBlockingNet::from_blocking),
             ))
+        }
+        TerrainFieldNet::OnDeathVariant { index, variant } => {
+            terrain_on_death::variant(draft, index, variant)
+        }
+        TerrainFieldNet::OnDeathHitType { index, hit_type } => {
+            terrain_on_death::hit_type(draft, index, hit_type)
+        }
+        TerrainFieldNet::OnDeathDamage { index, damage } => {
+            terrain_on_death::damage(draft, index, damage)
+        }
+        TerrainFieldNet::OnDeathDamageType { index, damage_type } => {
+            terrain_on_death::damage_type(draft, index, damage_type)
+        }
+        TerrainFieldNet::OnDeathField { index, field } => {
+            terrain_on_death::field(draft, index, field)
         }
     }
 }

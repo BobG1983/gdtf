@@ -31,17 +31,17 @@ fn a_cover_death_and_a_slab_death_at_one_cell_each_fan_their_own_effect() {
     let mut terrain = TerrainOnDeathRegistry::default();
     terrain.insert(
         TerrainIndexKey::Slab(at),
-        OnDeathEffect::LeaveField { field: burning() },
+        vec![OnDeathEffect::LeaveField { field: burning() }],
     );
     terrain.insert(
         TerrainIndexKey::Cover(at),
-        OnDeathEffect::Explode {
+        vec![OnDeathEffect::Explode {
             hit_type:    HitType::Blast {
                 radius: BlastRadius::new(1),
             },
             damage:      ExplodeDamage::new(5),
             damage_type: DamageType::Blast,
-        },
+        }],
     );
     app.world_mut().insert_resource(terrain);
 

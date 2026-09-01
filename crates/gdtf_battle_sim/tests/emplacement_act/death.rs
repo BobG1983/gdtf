@@ -226,7 +226,7 @@ fn mounted_on_death_registry() -> WeaponRegistry {
         (
             WeaponName::new(TEST_MOUNTED_WEAPON_KEY.to_owned()),
             WeaponSpec {
-                on_death: Some(OnDeathEffect::LeaveField { field: burning() }),
+                on_death: vec![OnDeathEffect::LeaveField { field: burning() }],
                 ..gun_spec(MOUNT_DAMAGE_TYPE)
             },
         ),

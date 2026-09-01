@@ -1,4 +1,4 @@
-//! The Sprite draft's animation frames: add, remove, and the one reorder in the editor.
+//! The Sprite draft's animation frames: add, remove, and reorder.
 
 use crate::{
     net_qa::{

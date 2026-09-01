@@ -38,7 +38,7 @@ fn orientation_wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
         },
         tags: Vec::new(),
-        on_death: None,
+        on_death: Vec::new(),
 
         blocks_pathing: None,
         blocks_los: None,
@@ -59,7 +59,7 @@ fn orientation_terrain_defs() -> TerrainDefRegistry {
             footfall:     None,
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
 
         blocks_pathing: None,
         blocks_los:     None,

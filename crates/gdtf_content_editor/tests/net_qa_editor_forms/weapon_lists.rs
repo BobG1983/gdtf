@@ -231,7 +231,8 @@ fn a_member_a_weapon_list_does_not_draw_is_bad_arguments() -> TestResult {
 }
 
 #[test]
-fn a_reorder_or_a_toggle_against_a_weapon_list_is_bad_arguments() -> TestResult {
+fn a_reorder_or_a_toggle_against_the_weapon_fire_modes_slots_or_attachments_is_bad_arguments()
+-> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Weapon)?;
     list_op(&mut app, &mut client, "(list: WeaponFireModes, op: Add)")?;
     let before = weapon_draft(&app)?.fire_modes().to_vec();
@@ -246,8 +247,8 @@ fn a_reorder_or_a_toggle_against_a_weapon_list_is_bad_arguments() -> TestResult 
         let detail = bad_arguments_detail(&reply)?;
         assert!(
             detail.contains("reorder"),
-            "a Weapon list draws no reorder buttons, so `{arguments}` is refused by the handler \
-             and the detail says why, got `{detail}`",
+            "the fire modes, the slots and the fitted attachments draw no reorder buttons, so \
+             `{arguments}` is refused by the handler and the detail says why, got `{detail}`",
         );
     }
 
@@ -259,7 +260,7 @@ fn a_reorder_or_a_toggle_against_a_weapon_list_is_bad_arguments() -> TestResult 
     let detail = bad_arguments_detail(&toggled)?;
     assert!(
         detail.contains("toggle"),
-        "a Weapon list is authored by add, remove and rewrite, got `{detail}`",
+        "the fire-mode list is authored by add, remove and rewrite, got `{detail}`",
     );
     assert_eq!(
         weapon_draft(&app)?.fire_modes().to_vec(),

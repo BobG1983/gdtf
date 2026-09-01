@@ -23,9 +23,9 @@ fn leave_field_spawns_the_referenced_field_at_the_death_cell() {
     let mut cover = TerrainOnDeathRegistry::default();
     cover.insert(
         TerrainIndexKey::Cover(ground(7, 8)),
-        OnDeathEffect::LeaveField {
+        vec![OnDeathEffect::LeaveField {
             field: FieldKey::new("burning".to_owned()),
-        },
+        }],
     );
     app.world_mut().insert_resource(cover);
 

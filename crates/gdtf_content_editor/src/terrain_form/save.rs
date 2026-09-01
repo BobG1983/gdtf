@@ -89,7 +89,7 @@ pub fn draft_to_terrain_def(
         sim_kind,
         presenter_kind,
         tags: draft.tags().to_vec(),
-        on_death: draft.on_death().cloned(),
+        on_death: draft.on_death().to_vec(),
         blocks_pathing: draft.blocks_pathing().map(BlocksPathingOverride::new),
         blocks_los: draft.blocks_los(),
     })

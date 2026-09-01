@@ -24,7 +24,7 @@ fn registry_inserts_and_looks_up_by_uuid() {
             footfall:     Some(FootfallSound::new("footfall_metal".to_owned())),
         },
         tags: Vec::new(),
-        on_death: None,
+        on_death: Vec::new(),
 
         blocks_pathing: None,
         blocks_los: None,
@@ -75,7 +75,7 @@ fn registry_new_keys_by_uuid() {
             footfall:     None,
         },
         tags: Vec::new(),
-        on_death: None,
+        on_death: Vec::new(),
 
         blocks_pathing: None,
         blocks_los: None,

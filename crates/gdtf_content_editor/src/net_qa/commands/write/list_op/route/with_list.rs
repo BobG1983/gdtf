@@ -29,7 +29,9 @@ pub(in crate::net_qa::commands::write::list_op) fn terrain(
     op: EditorListOpNet,
 ) -> Routed {
     match list {
-        EditorListNet::EntrySides | EditorListNet::TerrainTags => {
+        EditorListNet::EntrySides
+        | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects => {
             let draft = present(draft)?;
             terrain::apply(draft, list, op)?;
             Ok(terrain::members(draft, list))
@@ -44,6 +46,7 @@ pub(in crate::net_qa::commands::write::list_op) fn terrain(
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::FieldImmuneArmorTypes
         | EditorListNet::WeightingBucket(_) => no_list_of_its_own(draft),
     }
@@ -70,6 +73,7 @@ pub(in crate::net_qa::commands::write::list_op) fn injury(
         }
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::AttachmentEffects
         | EditorListNet::SpriteFrames
         | EditorListNet::MeleeWeaponFightModes
@@ -79,6 +83,7 @@ pub(in crate::net_qa::commands::write::list_op) fn injury(
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::FieldImmuneArmorTypes => no_list_of_its_own(injury_draft),
     }
 }
@@ -100,6 +105,7 @@ pub(in crate::net_qa::commands::write::list_op) fn melee_weapon(
         }
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::AttachmentEffects
         | EditorListNet::SpriteFrames
         | EditorListNet::InjuryEffects
@@ -107,6 +113,7 @@ pub(in crate::net_qa::commands::write::list_op) fn melee_weapon(
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::FieldImmuneArmorTypes
         | EditorListNet::WeightingBucket(_) => no_list_of_its_own(draft),
     }
@@ -122,13 +129,15 @@ pub(in crate::net_qa::commands::write::list_op) fn weapon(
     match list {
         EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
-        | EditorListNet::WeaponAttachments => {
+        | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects => {
             let draft = present(draft)?;
             weapon::apply(draft, registry, list, op)?;
             Ok(weapon::members(draft, list))
         }
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::AttachmentEffects
         | EditorListNet::SpriteFrames
         | EditorListNet::InjuryEffects
@@ -155,6 +164,7 @@ pub(in crate::net_qa::commands::write::list_op) fn attachment(
         }
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::SpriteFrames
         | EditorListNet::InjuryEffects
         | EditorListNet::MeleeWeaponFightModes
@@ -164,6 +174,7 @@ pub(in crate::net_qa::commands::write::list_op) fn attachment(
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::FieldImmuneArmorTypes
         | EditorListNet::WeightingBucket(_) => no_list_of_its_own(draft),
     }
@@ -183,6 +194,7 @@ pub(in crate::net_qa::commands::write::list_op) fn gang(
         }
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::AttachmentEffects
         | EditorListNet::SpriteFrames
         | EditorListNet::InjuryEffects
@@ -192,6 +204,7 @@ pub(in crate::net_qa::commands::write::list_op) fn gang(
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::FieldImmuneArmorTypes
         | EditorListNet::WeightingBucket(_) => no_list_of_its_own(draft),
     }
@@ -211,6 +224,7 @@ pub(in crate::net_qa::commands::write::list_op) fn sprite(
         }
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::AttachmentEffects
         | EditorListNet::InjuryEffects
         | EditorListNet::MeleeWeaponFightModes
@@ -220,6 +234,7 @@ pub(in crate::net_qa::commands::write::list_op) fn sprite(
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::FieldImmuneArmorTypes
         | EditorListNet::WeightingBucket(_) => no_list_of_its_own(draft),
     }
@@ -239,6 +254,7 @@ pub(in crate::net_qa::commands::write::list_op) fn field(
         }
         EditorListNet::EntrySides
         | EditorListNet::TerrainTags
+        | EditorListNet::TerrainOnDeathEffects
         | EditorListNet::AttachmentEffects
         | EditorListNet::SpriteFrames
         | EditorListNet::InjuryEffects
@@ -249,6 +265,7 @@ pub(in crate::net_qa::commands::write::list_op) fn field(
         | EditorListNet::WeaponFireModes
         | EditorListNet::WeaponSlots
         | EditorListNet::WeaponAttachments
+        | EditorListNet::WeaponOnDeathEffects
         | EditorListNet::WeightingBucket(_) => no_list_of_its_own(draft),
     }
 }

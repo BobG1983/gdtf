@@ -134,13 +134,13 @@ fn maximal_draft() -> WeaponDraft {
         DamageType::Chem,
         DotTurns::new(NonZeroU8::MIN.saturating_add(3)),
     ));
-    spec.on_death = Some(OnDeathEffect::Explode {
+    spec.on_death = vec![OnDeathEffect::Explode {
         hit_type:    HitType::Blast {
             radius: BlastRadius::new(2),
         },
         damage:      ExplodeDamage::new(6),
         damage_type: DamageType::Blast,
-    });
+    }];
     draft
 }
 
@@ -162,9 +162,19 @@ fn minimal_draft() -> WeaponDraft {
 fn leave_field_on_death_round_trips_through_ron() {
     let mut draft = WeaponDraft::new_weapon();
     draft.set_name("tempdir_barrel_bomb".to_owned());
-    draft.spec_mut().on_death = Some(OnDeathEffect::LeaveField {
-        field: FieldKey::new("burning_ground".to_owned()),
-    });
+    let authored = vec![
+        OnDeathEffect::LeaveField {
+            field: FieldKey::new("burning_ground".to_owned()),
+        },
+        OnDeathEffect::Explode {
+            hit_type:    HitType::Blast {
+                radius: BlastRadius::new(1),
+            },
+            damage:      ExplodeDamage::new(8),
+            damage_type: DamageType::Blast,
+        },
+    ];
+    draft.spec_mut().on_death = authored.clone();
     let (_, spec) = draft_to_weapon_spec(&draft);
     let serialized = ron::ser::to_string(&spec);
     assert!(serialized.is_ok(), "the spec serializes: {serialized:?}");
@@ -172,7 +182,11 @@ fn leave_field_on_death_round_trips_through_ron() {
     let parsed = ron::de::from_str::<gdtf_battle_sim::weapon::WeaponSpec>(&serialized);
     assert!(parsed.is_ok(), "the serialized spec parses: {parsed:?}");
     let Ok(parsed) = parsed else { return };
-    assert_eq!(parsed, spec, "the LeaveField on-death survives verbatim");
+    assert_eq!(
+        parsed.on_death, authored,
+        "both authored effects survive the save, in the authored order",
+    );
+    assert_eq!(parsed, spec, "the on-death list survives verbatim");
 }
 
 #[test]

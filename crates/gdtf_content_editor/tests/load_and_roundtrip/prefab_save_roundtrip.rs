@@ -50,7 +50,7 @@ fn slab_def() -> TerrainDef {
             footfall:     None,
         },
         tags:           Vec::new(),
-        on_death:       None,
+        on_death:       Vec::new(),
 
         blocks_pathing: None,
         blocks_los:     None,

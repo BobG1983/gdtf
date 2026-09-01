@@ -114,8 +114,8 @@ pub(super) fn resolve_covers(
     let mut on_death = TerrainOnDeathRegistry::default();
     for cover in situation.walls.iter().chain(situation.scatter.iter()) {
         let def = resolve_terrain_or_err(terrain, &cover.piece)?;
-        if let Some(effect) = &def.on_death {
-            on_death.insert(TerrainIndexKey::Cover(cover.at), effect.clone());
+        if !def.on_death.is_empty() {
+            on_death.insert(TerrainIndexKey::Cover(cover.at), def.on_death.clone());
         }
         let Some(resolved) = resolve_cover_def(&cover.piece, def) else {
             return Err(BattleSetupError::TerrainNotFound { piece: cover.piece });
@@ -134,8 +134,8 @@ pub(super) fn resolve_slabs(
     let mut resolved_slabs: Vec<ResolvedSlabPiece> = Vec::new();
     for slab_spawn in &situation.slabs {
         let def = resolve_terrain_or_err(terrain, &slab_spawn.piece)?;
-        if let Some(effect) = &def.on_death {
-            on_death.insert(TerrainIndexKey::Slab(slab_spawn.at), effect.clone());
+        if !def.on_death.is_empty() {
+            on_death.insert(TerrainIndexKey::Slab(slab_spawn.at), def.on_death.clone());
         }
         let Some(resolved) = resolve_slab_def(&slab_spawn.piece, def) else {
             return Err(BattleSetupError::TerrainNotFound {

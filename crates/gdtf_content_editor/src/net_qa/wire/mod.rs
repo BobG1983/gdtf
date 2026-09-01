@@ -19,6 +19,7 @@ mod last_save;
 mod list;
 mod melee_weapon;
 mod mode;
+mod on_death;
 mod outcome;
 mod painted;
 mod pairing;
@@ -90,6 +91,7 @@ pub(in crate::net_qa) use melee_weapon::{
     FightModeKindNet, SlotCapacityNet, StrikesNet, TuCostNet,
 };
 pub(in crate::net_qa) use mode::EditorModeNet;
+pub(in crate::net_qa) use on_death::{OnDeathEffectNet, OnDeathVariantNet};
 pub(in crate::net_qa) use outcome::{
     EditorLoadOutcomeNet, EditorNewOutcomeNet, EditorSaveOutcomeNet,
 };
@@ -119,8 +121,7 @@ pub(in crate::net_qa) use view::{EditorIsolateViewNet, EditorViewModeNet, Editor
 pub(in crate::net_qa) use wait::EditorWaitConditionNet;
 pub(in crate::net_qa) use weapon::{
     AccuracyNet, BaseSpreadNet, DotDamageNet, DotEnabledNet, DotTurnsNet, ExplodeDamageNet,
-    FieldKeyNet, KickbackNet, MagazineSizeNet, OnDeathEnabledNet, OnDeathVariantNet, ReloadTuNet,
-    StableNet, TrajectoryStyleNet,
+    FieldKeyNet, KickbackNet, MagazineSizeNet, ReloadTuNet, StableNet, TrajectoryStyleNet,
 };
 pub(in crate::net_qa) use weighting::{
     DamageContextNet, InjuryWeightNet, WeightingBucketNet, WeightingRowNet, WeightingTableNet,

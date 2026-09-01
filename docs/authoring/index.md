@@ -56,8 +56,7 @@ validation window), and the one-owner path-spelling rule.
   re-arm.
 - [terrain-art-and-destruction.md](terrain-art-and-destruction.md) — canon,
   decided but not built: a def owns its art in every state it can be in and
-  says what it `leaves_behind` when it dies, the renderer owns no content, and
-  `on_death` becomes a list.
+  says what it `leaves_behind` when it dies, and the renderer owns no content.
 
 ## Combat text (the view side)
 

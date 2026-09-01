@@ -24,7 +24,7 @@ fn wall_def(tags: Vec<TerrainTag>) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("wall".to_owned()),
         },
         tags,
-        on_death: None,
+        on_death: Vec::new(),
 
         blocks_pathing: None,
         blocks_los: None,
@@ -45,7 +45,7 @@ fn cover_def(tags: Vec<TerrainTag>) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("crate".to_owned()),
         },
         tags,
-        on_death: None,
+        on_death: Vec::new(),
 
         blocks_pathing: None,
         blocks_los: None,
@@ -68,7 +68,7 @@ fn emplacement_def(tags: Vec<TerrainTag>) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags,
-        on_death: None,
+        on_death: Vec::new(),
 
         blocks_pathing: None,
         blocks_los: None,
@@ -89,7 +89,7 @@ fn slab_def(tags: Vec<TerrainTag>) -> TerrainDef {
             footfall:     None,
         },
         tags,
-        on_death: None,
+        on_death: Vec::new(),
 
         blocks_pathing: None,
         blocks_los: None,

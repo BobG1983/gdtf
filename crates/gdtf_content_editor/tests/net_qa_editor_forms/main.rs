@@ -28,6 +28,7 @@ mod melee_weapon_lists;
 #[path = "../net_qa_shared/mirror.rs"]
 mod mirror;
 mod names;
+mod on_death_lists;
 #[path = "../net_qa_shared/outcome.rs"]
 mod outcome;
 mod refusal;
@@ -45,6 +46,7 @@ mod terrain_clamps;
 mod terrain_clears;
 mod terrain_fields;
 mod terrain_gates;
+mod terrain_on_death;
 mod theme_tab;
 mod values;
 mod walk;

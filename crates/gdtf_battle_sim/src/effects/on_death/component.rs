@@ -2,30 +2,22 @@
 
 use bevy::prelude::{Component, Deref};
 
-use crate::effects::{fields::FieldKey, on_death::OnDeathEffect};
+use crate::effects::on_death::OnDeathEffect;
 
-/// Weapon/gear carrier for an authored on-death effect.
-#[derive(Component, Deref, Debug, Clone, PartialEq)]
-pub struct OnDeath(OnDeathEffect);
+/// Weapon/gear carrier for the authored on-death effects.
+#[derive(Component, Deref, Debug, Clone, Default, PartialEq)]
+pub struct OnDeath(Vec<OnDeathEffect>);
 
 impl OnDeath {
-    /// Wrap an effect.
+    /// Wrap a list of effects.
     #[must_use]
-    pub const fn new(effect: OnDeathEffect) -> Self {
-        Self(effect)
+    pub const fn new(effects: Vec<OnDeathEffect>) -> Self {
+        Self(effects)
     }
 
-    /// Inner effect.
+    /// Inner effects, in the authored order.
     #[must_use]
-    pub const fn effect(&self) -> &OnDeathEffect {
+    pub fn effects(&self) -> &[OnDeathEffect] {
         &self.0
-    }
-}
-
-impl Default for OnDeath {
-    fn default() -> Self {
-        Self(OnDeathEffect::LeaveField {
-            field: FieldKey::new(String::new()),
-        })
     }
 }

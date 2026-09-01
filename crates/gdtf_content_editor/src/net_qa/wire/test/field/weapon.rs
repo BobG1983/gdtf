@@ -9,9 +9,9 @@ use super::{
 };
 use crate::net_qa::wire::{
     AccuracyNet, BaseSpreadNet, DamageTypeNet, DotDamageNet, DotEnabledNet, DotTurnsNet,
-    EditorFieldNet, ExplodeDamageNet, FatalBiasNet, FieldKeyNet, HandednessNet, HitTypeNet,
-    KickbackNet, MagazineSizeNet, OnDeathEnabledNet, OnDeathVariantNet, ReloadTuNet, ShoveNet,
-    StableNet, TrajectoryStyleNet, WeaponDamageNet, WeaponFieldNet, WeaponPunchNet, WeaponShredNet,
+    EditorFieldNet, EditorListIndexNet, ExplodeDamageNet, FatalBiasNet, FieldKeyNet, HandednessNet,
+    HitTypeNet, KickbackNet, MagazineSizeNet, OnDeathVariantNet, ReloadTuNet, ShoveNet, StableNet,
+    TrajectoryStyleNet, WeaponDamageNet, WeaponFieldNet, WeaponPunchNet, WeaponShredNet,
 };
 
 // One Weapon field arm, under the form that owns it.
@@ -72,26 +72,28 @@ fn every_weapon_dot_field_arm_round_trips() {
 
 #[test]
 fn every_weapon_on_death_field_arm_round_trips() {
-    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeath(OnDeathEnabledNet::new(
-        true,
-    ))));
+    let index = EditorListIndexNet::new(1);
     for variant in [OnDeathVariantNet::Explode, OnDeathVariantNet::LeaveField] {
-        assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathVariant(variant)));
+        assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathVariant { index, variant }));
     }
-    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathHitType(
-        HitTypeNet::from_hit_type(HitType::Blast {
+    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathHitType {
+        index,
+        hit_type: HitTypeNet::from_hit_type(HitType::Blast {
             radius: BlastRadius::new(2),
         }),
-    )));
-    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathDamage(
-        ExplodeDamageNet::new(12),
-    )));
-    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathDamageType(
-        DamageTypeNet::from_damage_type(DamageType::Blast),
-    )));
-    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathField(
-        FieldKeyNet::from_key(&FieldKey::new("promethium_pool".to_owned())),
-    )));
+    }));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathDamage {
+        index,
+        damage: ExplodeDamageNet::new(12),
+    }));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathDamageType {
+        index,
+        damage_type: DamageTypeNet::from_damage_type(DamageType::Blast),
+    }));
+    assert_ron_round_trip(&weapon(WeaponFieldNet::OnDeathField {
+        index,
+        field: FieldKeyNet::from_key(&FieldKey::new("promethium_pool".to_owned())),
+    }));
 }
 
 #[test]
@@ -106,7 +108,6 @@ fn the_weapon_values_trace_usable_shapes() {
     assert_schema_is_usable::<DotEnabledNet>("DotEnabledNet");
     assert_schema_is_usable::<DotDamageNet>("DotDamageNet");
     assert_schema_is_usable::<DotTurnsNet>("DotTurnsNet");
-    assert_schema_is_usable::<OnDeathEnabledNet>("OnDeathEnabledNet");
     assert_schema_is_usable::<OnDeathVariantNet>("OnDeathVariantNet");
     assert_schema_is_usable::<ExplodeDamageNet>("ExplodeDamageNet");
     assert_schema_is_usable::<FieldKeyNet>("FieldKeyNet");

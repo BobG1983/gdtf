@@ -129,14 +129,15 @@ through the same `clear_seat` a walk off the seat uses: the state goes back to
 vacant, the occupant record and the remembered origin cell are dropped, and the
 mounted weapon is despawned. It writes no `Position`, so the body is left on the
 mount cell. It runs after `apply_emplacement_toggle`, after `resolve_on_death`
-and after `sync_dead_gangers` — so the death fans its effect while the mount is
-still there, and the grid has already released the corpse's slot by the time the
-seat frees. Writing the corpse's cell back would re-claim that slot with nothing
-left to release it, which is why the system touches no position. A mounted
-weapon carries the on-death effect its spec authors, the way a carried one
-does, so a gunner killed at the mount fires the mount's effect rather than the
-gun on their back. Only a death frees the seat here: a downed occupant keeps
-its seat and its grid slot both.
+and after `sync_dead_gangers` — so the death fans every effect the spec
+authors, in the order it is written, while the mount is still there, and the
+grid has already released the corpse's slot by the time the seat frees. Writing
+the corpse's cell back would re-claim that slot with nothing left to release it,
+which is why the system touches no position. A mounted weapon carries the
+on-death list its spec authors, the way a carried one does, so a gunner killed
+at the mount fires the mounted gun's list rather than the list on the gun on
+their back. Only a death frees the seat here: a downed occupant keeps its seat
+and its grid slot both.
 
 `eject_on_destroy` (`terrain/emplacement/eject.rs`) reads the
 `TerrainPieceDestroyed` messages, takes only the ones whose kind is

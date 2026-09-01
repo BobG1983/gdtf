@@ -40,7 +40,7 @@ fn cover_def(key: TerrainUuid) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags: Vec::new(),
-        on_death: None,
+        on_death: Vec::new(),
 
         blocks_pathing: None,
         blocks_los: None,
@@ -61,7 +61,7 @@ fn slab_def(key: TerrainUuid) -> TerrainDef {
             footfall:     None,
         },
         tags: Vec::new(),
-        on_death: None,
+        on_death: Vec::new(),
 
         blocks_pathing: None,
         blocks_los: None,

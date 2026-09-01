@@ -79,10 +79,9 @@ hide behind, a fungus stack simply goes.
 The presenter derives a role for each cell and, when a cell has no authored
 piece, resolves art by the role's own name — so roughly twenty sprite records
 are claimed by render code rather than by any content. A test asserts those
-files exist. `on_death` is a single optional effect (`Explode` / `LeaveField`)
-on terrain defs and weapon specs; three content files set it. The missing-tile
-texture is already generated at runtime; it is simply reached more often than it
-should be.
+files exist. The missing-tile texture is already generated at runtime; it is
+simply reached more often than it should be. The `on_death` list the claim
+names is built on terrain defs and weapon specs both; `leaves_behind` is not.
 
 ## Consequence for the editor
 
