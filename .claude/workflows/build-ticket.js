@@ -1023,9 +1023,9 @@ const SUMMARY_RESULT = {
   type: 'object', additionalProperties: false,
   required: ['summary', 'findings', 'rejected', 'followUps', 'nextTickNotes'],
   properties: {
-    summary: { type: 'string', description: 'What the orchestrator tells the user. Written for someone who has read none of the run.' },
+    summary: { type: 'string', description: 'What the orchestrator tells the user. Written for someone who has read none of the run. Says nothing about the ticket\'s status, comments or labels: the close step has not run yet, so you cannot know them.' },
     findings: {
-      type: 'array', description: 'Things worth a look that you reproduced on the landed tree yourself.',
+      type: 'array', description: 'Things worth a look that you reproduced on the landed tree yourself. Never the ticket\'s board state: the close step runs after you, so an unmoved status or a missing evidence comment is the pipeline working, not a finding.',
       items: {
         type: 'object', additionalProperties: false, required: ['kind', 'detail', 'evidence'],
         properties: {
@@ -1057,7 +1057,7 @@ const SUMMARY_RESULT = {
         },
       },
     },
-    nextTickNotes: { type: 'string', description: 'What the next tick needs that it cannot read off the tree. Empty if nothing.' },
+    nextTickNotes: { type: 'string', description: 'What the next tick needs that it cannot read off the tree. Empty if nothing. Not the ticket\'s status or its comments; the close step owns those and runs after you.' },
   },
 }
 
@@ -1082,6 +1082,13 @@ defect may describe a state that no longer exists. Nothing reaches your output o
 Everything you checked and dropped goes in \`rejected\` with what you ran. Anything that survives
 and deserves a ticket goes in \`followUps\` — those become real tickets, so each needs a title, a
 symbol or quoted text, and the run behind it.
+
+**The board is not yours to report.** The close step runs AFTER you, so Linear still shows this
+ticket as it was before the run finished: In Progress, with no evidence comment on it. That is the
+close step's job, not a defect. Never write the ticket's status, its comments or its labels into any
+field. Those come from the close step's own return, which happens after you have finished, and a
+claim from you about them is wrong by construction. This step used to report a process violation
+against itself four times in one day for exactly this reason.
 
 <land-result>
 ${JSON.stringify(landed, null, 2)}
@@ -1122,7 +1129,8 @@ ${JSON.stringify(work?.foreignDirtyFiles ?? [], null, 2)}
 <docs-sync>
 ${JSON.stringify({ changed: docs?.filesChanged ?? [], conflicts: docs?.conflicts ?? [] }, null, 2)}
 </docs-sync>`,
-    { model: 'sonnet', label: `summarize:${TICKET}`, phase: 'Land', schema: SUMMARY_RESULT })
+    { model: 'sonnet', label: `summarize:${TICKET}`, phase: 'Land', agentType: 'source-control',
+      schema: SUMMARY_RESULT })
   : null
 
 if (summarized?.rejected?.length) {
