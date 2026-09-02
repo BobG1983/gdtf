@@ -1,6 +1,7 @@
 use bevy::app::App;
 use gdtf_content_editor::{
-    AttachmentDraft, GangDraft, InjuryDraft, MeleeWeaponDraft, SpriteDraft, ThemeDraft,
+    AttachmentDraft, GangDraft, InjuryDraft, MeleeWeaponDraft, SpriteDraft, TerrainDraft,
+    ThemeDraft,
 };
 
 use crate::support::TestError;
@@ -44,6 +45,16 @@ pub(crate) fn melee_weapon_draft(app: &App) -> Result<MeleeWeaponDraft, TestErro
     let Some(draft) = app.world().get_resource::<MeleeWeaponDraft>() else {
         return Err(
             "the melee weapon draft is a resource the editor creates on entering Editing".into(),
+        );
+    };
+    Ok(draft.clone())
+}
+
+/// The terrain draft the world holds right now.
+pub(crate) fn terrain_draft(app: &App) -> Result<TerrainDraft, TestError> {
+    let Some(draft) = app.world().get_resource::<TerrainDraft>() else {
+        return Err(
+            "the terrain draft is a resource the editor creates on entering Editing".into(),
         );
     };
     Ok(draft.clone())

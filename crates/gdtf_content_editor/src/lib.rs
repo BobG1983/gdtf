@@ -94,7 +94,7 @@ pub use sprite_form::{write_sprite, write_sprite_in};
 pub use state::EditorState;
 pub use terrain_form::{
     ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainKindChoice,
-    draft_to_terrain_def, offers_view_expander, serialize_terrain_def, view_rows,
+    draft_to_terrain_def, load_candidates, offers_view_expander, serialize_terrain_def, view_rows,
 };
 #[cfg(debug_assertions)]
 pub use terrain_form::{write_terrain, write_terrain_in};

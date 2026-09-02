@@ -4,9 +4,12 @@ use core::ops::Deref;
 
 use bevy::asset::uuid::Uuid;
 
-use crate::net_qa::{
-    forms::EditorRegistries,
-    wire::{EditorFamilyEntryNet, EditorFamilyLabelNet, EditorKeyNet, EditorModeNet},
+use crate::{
+    net_qa::{
+        forms::EditorRegistries,
+        wire::{EditorFamilyEntryNet, EditorFamilyLabelNet, EditorKeyNet, EditorModeNet},
+    },
+    terrain_form::load_candidates,
 };
 
 // A name-keyed family shows its key as the label; that is what the editor's pickers show.
@@ -35,13 +38,19 @@ pub(super) fn entries_of(
     registries: &EditorRegistries<'_>,
 ) -> Vec<EditorFamilyEntryNet> {
     match family {
+        // The Terrain load picker's own rows, so a duplicated display name is one row per def.
         EditorModeNet::Terrain => registries
             .terrain
             .as_deref()
             .map_or_else(Vec::new, |registry| {
-                registry
-                    .defs()
-                    .map(|(key, def)| titled(key, &def.display_name))
+                load_candidates(registry)
+                    .into_iter()
+                    .map(|(key, label)| {
+                        EditorFamilyEntryNet::new(
+                            EditorKeyNet::new((*key).to_string()),
+                            EditorFamilyLabelNet::new(label),
+                        )
+                    })
                     .collect()
             }),
         EditorModeNet::Theme => registries

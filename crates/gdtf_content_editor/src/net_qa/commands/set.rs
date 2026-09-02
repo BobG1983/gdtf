@@ -11,8 +11,8 @@ use super::{
     wait::EditorWait,
     write::{
         EditorListOp, EditorLoadArmor, EditorLoadAttachment, EditorLoadField, EditorLoadGang,
-        EditorLoadInjury, EditorLoadMeleeWeapon, EditorLoadSprite, EditorLoadTheme,
-        EditorLoadWeapon, EditorNew, EditorPaint, EditorSave, EditorSaveWeighting,
+        EditorLoadInjury, EditorLoadMeleeWeapon, EditorLoadSprite, EditorLoadTerrain,
+        EditorLoadTheme, EditorLoadWeapon, EditorNew, EditorPaint, EditorSave, EditorSaveWeighting,
         EditorSelectFacing, EditorSelectInjuryTab, EditorSelectTheme, EditorSelectTile,
         EditorSelectWeightingTable, EditorSetDefaultFloor, EditorSetField, EditorSetGridSize,
         EditorSetLevel, EditorSetMode, EditorToggleTerrain,
@@ -38,6 +38,7 @@ pub(in crate::net_qa) const EDITOR_COMMANDS: &[&dyn ErasedCommand<EditorFacts>] 
     &EditorLoadWeapon,
     &EditorLoadMeleeWeapon,
     &EditorLoadField,
+    &EditorLoadTerrain,
     &EditorSave,
     &EditorSetField,
     &EditorListOp,

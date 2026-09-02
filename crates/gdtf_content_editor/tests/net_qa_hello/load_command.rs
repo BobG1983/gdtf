@@ -1,20 +1,21 @@
 use gdtf_assets::ContentFolderHandle;
-use gdtf_battle_sim::effects::fields::FieldDefRegistry;
+use gdtf_battle_sim::{effects::fields::FieldDefRegistry, terrain::def::TerrainDefRegistry};
 use gdtf_content_families::FieldsFamily;
 
 use crate::{
     client::{
         EDITOR_LOAD_ARMOR, EDITOR_LOAD_ATTACHMENT, EDITOR_LOAD_FIELD, EDITOR_LOAD_GANG,
-        EDITOR_LOAD_INJURY, EDITOR_LOAD_MELEE_WEAPON, EDITOR_LOAD_SPRITE, EDITOR_LOAD_THEME,
-        EDITOR_LOAD_WEAPON,
+        EDITOR_LOAD_INJURY, EDITOR_LOAD_MELEE_WEAPON, EDITOR_LOAD_SPRITE, EDITOR_LOAD_TERRAIN,
+        EDITOR_LOAD_THEME, EDITOR_LOAD_WEAPON,
     },
     drafts::{
-        attachment_draft, gang_draft, injury_draft, melee_weapon_draft, sprite_draft, theme_draft,
+        attachment_draft, gang_draft, injury_draft, melee_weapon_draft, sprite_draft,
+        terrain_draft, theme_draft,
     },
     harness::editing_app_and_client,
     keys::{
         first_attachment_key, first_gang_key, first_injury_key, first_melee_weapon_key,
-        first_sprite_key, first_theme_key,
+        first_sprite_key, first_terrain_key, first_theme_key,
     },
     lifecycle::{
         armor_draft, field_draft, first_armor_key, first_field_key, first_weapon_key, load_by_key,
@@ -29,6 +30,8 @@ use crate::{
 const ABSENT_KEY: &str = "no_such_weapon_in_any_content_pack";
 
 const ABSENT_FIELD_KEY: &str = "no_such_field_in_any_content_pack";
+
+const ABSENT_TERRAIN_KEY: &str = "no_such_terrain_in_any_content_pack";
 
 // The key a load echoed back, or why the reply was not a load at all.
 fn echoed_key(outcome: LoadOutcomeRow) -> Result<String, TestError> {
@@ -230,6 +233,88 @@ fn load_field_fills_the_field_draft_from_the_live_registry_and_a_miss_lists_the_
     );
     assert_eq!(
         field_draft(&app)?,
+        before,
+        "a miss writes nothing, so the draft still equals the one taken before the call",
+    );
+    Ok(())
+}
+
+// The display name the live registry holds under one rendered key.
+fn terrain_display_name(app: &bevy::app::App, key: &str) -> Result<String, TestError> {
+    let Some(registry) = app.world().get_resource::<TerrainDefRegistry>() else {
+        return Err("the editor reached Editing, so its terrain registry is loaded".into());
+    };
+    let found = registry
+        .defs()
+        .find_map(|(uuid, def)| ((**uuid).to_string() == key).then(|| (*def.display_name).clone()));
+    let Some(name) = found else {
+        return Err(format!("`{key}` came from this registry, so it still holds that def").into());
+    };
+    Ok(name)
+}
+
+#[test]
+fn load_terrain_fills_the_terrain_draft_from_the_live_registry() -> TestResult {
+    let (mut app, mut client) = editing_app_and_client()?;
+    let key = first_terrain_key(&app)?;
+    let name = terrain_display_name(&app, &key)?;
+    open_tab(&mut app, &mut client, "Terrain")?;
+
+    let outcome = load_by_key(&mut app, &mut client, EDITOR_LOAD_TERRAIN, &key)?;
+
+    assert_eq!(echoed_key(outcome)?, key, "the reply echoes the loaded key");
+    let draft = terrain_draft(&app)?;
+    assert_eq!(
+        draft.uuid().map(|uuid| (*uuid).to_string()),
+        Some(key.clone()),
+        "the world's own terrain draft carries the loaded def's authored key, so the next save \
+         writes that record instead of minting a new one",
+    );
+    assert_eq!(
+        draft.display_name(),
+        name,
+        "the draft carries the loaded def's display name, through the same `load_from_def` the \
+         form's own picker calls",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_terrain_key_that_is_not_uuid_text_lists_the_keys_and_leaves_the_draft_alone() -> TestResult {
+    let (mut app, mut client) = editing_app_and_client()?;
+    open_tab(&mut app, &mut client, "Terrain")?;
+    let before = terrain_draft(&app)?;
+
+    let missed = load_by_key(
+        &mut app,
+        &mut client,
+        EDITOR_LOAD_TERRAIN,
+        ABSENT_TERRAIN_KEY,
+    )?;
+
+    let LoadOutcomeRow::NoSuchKey {
+        key: asked,
+        mut known,
+    } = missed
+    else {
+        unreachable!(
+            "`{ABSENT_TERRAIN_KEY}` is not UUID text, so it misses at the parse: {missed:?}"
+        );
+    };
+    assert_eq!(asked, ABSENT_TERRAIN_KEY);
+    assert!(
+        !known.is_empty() && !known.contains(&ABSENT_TERRAIN_KEY.to_owned()),
+        "the miss lists the registry's own keys, and the asked-for key is not one: {known:?}",
+    );
+    let listed = known.clone();
+    known.sort();
+    assert_eq!(
+        listed, known,
+        "the known list comes back sorted, so a client reading a miss sees the same order every \
+         time",
+    );
+    assert_eq!(
+        terrain_draft(&app)?,
         before,
         "a miss writes nothing, so the draft still equals the one taken before the call",
     );

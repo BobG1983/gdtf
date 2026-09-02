@@ -1,3 +1,13 @@
+use bevy::asset::uuid::Uuid;
+use gdtf_battle_sim::{
+    armor::{ArmorHardness, ArmorProtection},
+    cover::{CoverHp, HeightBand},
+    terrain::def::{
+        LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+        TerrainSimKind, TerrainUuid, TerrainViews,
+    },
+};
+
 use crate::{
     bad_arguments::bad_arguments_detail,
     harness::editing_app_and_client,
@@ -142,6 +152,60 @@ fn every_entry_carries_a_key_and_a_label() -> TestResult {
             );
         }
     }
+    Ok(())
+}
+
+// The display name both fixture defs hold, so a label built from the name alone reads twice.
+const SHARED_NAME: &str = "Waste Drum";
+
+fn cover_def(low: u128) -> TerrainDef {
+    TerrainDef {
+        key:            TerrainUuid::new(Uuid::from_u128(low)),
+        display_name:   TerrainDisplayName::new(SHARED_NAME.to_owned()),
+        sim_kind:       TerrainSimKind::Cover {
+            hp:               CoverHp::new(20),
+            armor_protection: ArmorProtection::new(3),
+            armor_hardness:   ArmorHardness::new(1),
+            height_band:      HeightBand::Low,
+        },
+        presenter_kind: TerrainPresenterKind::Cover,
+        views:          TerrainViews::new(Vec::new()),
+        tags:           Vec::new(),
+        on_death:       Vec::new(),
+        blocks_pathing: None,
+        blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
+    }
+}
+
+#[test]
+fn two_terrain_defs_under_one_display_name_answer_labels_that_differ() -> TestResult {
+    let (mut app, mut client) = editing_app_and_client()?;
+    // `resolve_content_family` is gated on the registry being absent, so this replacement sticks.
+    app.world_mut().insert_resource(TerrainDefRegistry::new(
+        [0x0184_0bcd_8001, 0x0184_0bcd_8002].into_iter().map(|low| {
+            let def = cover_def(low);
+            (def.key, def)
+        }),
+    ));
+
+    let reply = client.exchange(
+        &mut app,
+        &run_editor(EDITOR_FAMILIES, "(family: Some(Terrain))"),
+    )?;
+    let body: FamiliesReplyRow = ran_body(&reply, EDITOR_FAMILIES)?;
+
+    let Some(row) = body.families.first() else {
+        unreachable!("a filtered read answers the Terrain row: {body:?}");
+    };
+    let [first, second] = row.entries.as_slice() else {
+        unreachable!("the fixture registry holds two defs: {row:?}");
+    };
+    assert_ne!(
+        first.label, second.label,
+        "two defs sharing a display name must answer two labels an author can tell apart, or the \
+         Terrain picker draws one row twice: {row:?}",
+    );
     Ok(())
 }
 

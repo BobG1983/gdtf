@@ -1,7 +1,7 @@
 use bevy::app::App;
 use gdtf_battle_sim::{
     equipment::attachments::AttachmentRegistry, ganger::GangRegistry, injuries::InjuryRegistry,
-    level::UuidThemeRegistry, weapon::MeleeWeaponRegistry,
+    level::UuidThemeRegistry, terrain::def::TerrainDefRegistry, weapon::MeleeWeaponRegistry,
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
@@ -73,6 +73,20 @@ pub(crate) fn first_melee_weapon_key(app: &App) -> Result<String, TestError> {
     first_sorted(
         registry.keys().map(|key| key.as_str().to_owned()).collect(),
         "melee weapon",
+    )
+}
+
+/// A key the live terrain registry actually holds, rendered the way the host renders it.
+pub(crate) fn first_terrain_key(app: &App) -> Result<String, TestError> {
+    let Some(registry) = app.world().get_resource::<TerrainDefRegistry>() else {
+        return Err("the editor reached Editing, so its terrain registry is loaded".into());
+    };
+    first_sorted(
+        registry
+            .defs()
+            .map(|(key, _)| (**key).to_string())
+            .collect(),
+        "terrain",
     )
 }
 

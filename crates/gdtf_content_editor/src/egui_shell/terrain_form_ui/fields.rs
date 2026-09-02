@@ -4,7 +4,7 @@ use gdtf_battle_sim::{
     cover::{CoverHp, HeightBand},
     level::UuidThemeRegistry,
     slab::SlabHp,
-    terrain::def::{TerrainDefRegistry, TerrainTag},
+    terrain::def::{TerrainDefRegistry, TerrainTag, TerrainUuid},
     weapon::{WeaponName, WeaponRegistry},
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
@@ -12,7 +12,9 @@ use gdtf_content_families::sprites::SpriteDefRegistry;
 use crate::{
     save_record::LastSaveRecord,
     session::MapEditorSession,
-    terrain_form::{ArmorInput, FootfallChoice, HpInput, TerrainDraft, TerrainKindChoice},
+    terrain_form::{
+        ArmorInput, FootfallChoice, HpInput, TerrainDraft, TerrainKindChoice, load_candidates,
+    },
 };
 
 /// What the terrain form's save button needs beyond the draft it is drawn against.
@@ -66,6 +68,7 @@ pub(in crate::egui_shell) fn field_stack(
     ui.heading("Terrain");
     ui.separator();
 
+    load_combo(ui, draft, terrain);
     name_field(ui, draft);
     kind_row(ui, draft);
     hp_field(ui, draft);
@@ -95,6 +98,35 @@ pub(in crate::egui_shell) fn field_stack(
             last_save,
         } = save;
         let _ = (session, themes, last_save);
+    }
+}
+
+fn load_combo(ui: &mut egui::Ui, draft: &mut TerrainDraft, terrain: Option<&TerrainDefRegistry>) {
+    ui.label("Load terrain");
+    let Some(registry) = terrain else {
+        ui.label("(loading…)");
+        return;
+    };
+    let candidates = load_candidates(registry);
+    let current = draft.uuid();
+    let preview = current
+        .and_then(|key| candidates.iter().find(|(held, _)| *held == key))
+        .map_or_else(|| "(select…)".to_owned(), |(_, label)| label.clone());
+    let mut chosen: Option<TerrainUuid> = None;
+    egui::ComboBox::from_id_salt("terrain_load_combo")
+        .selected_text(preview)
+        .show_ui(ui, |ui| {
+            for (key, label) in &candidates {
+                let is_selected = Some(*key) == current;
+                if ui.selectable_label(is_selected, label).clicked() {
+                    chosen = Some(*key);
+                }
+            }
+        });
+    if let Some(key) = chosen
+        && let Some(def) = registry.def(&key)
+    {
+        draft.load_from_def(def);
     }
 }
 

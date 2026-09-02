@@ -1,8 +1,8 @@
 use crate::{
     client::{
         EDITOR_LOAD_ARMOR, EDITOR_LOAD_ATTACHMENT, EDITOR_LOAD_FIELD, EDITOR_LOAD_GANG,
-        EDITOR_LOAD_INJURY, EDITOR_LOAD_MELEE_WEAPON, EDITOR_LOAD_SPRITE, EDITOR_LOAD_THEME,
-        EDITOR_LOAD_WEAPON,
+        EDITOR_LOAD_INJURY, EDITOR_LOAD_MELEE_WEAPON, EDITOR_LOAD_SPRITE, EDITOR_LOAD_TERRAIN,
+        EDITOR_LOAD_THEME, EDITOR_LOAD_WEAPON,
     },
     harness::editing_app_and_client,
     lifecycle::open_tab,
@@ -76,4 +76,9 @@ fn load_melee_weapon_is_refused_off_the_melee_weapon_tab() -> TestResult {
 #[test]
 fn load_field_is_refused_off_the_field_tab() -> TestResult {
     refused_off_its_own_tab(EDITOR_LOAD_FIELD, "Armor")
+}
+
+#[test]
+fn load_terrain_is_refused_off_the_terrain_tab() -> TestResult {
+    refused_off_its_own_tab(EDITOR_LOAD_TERRAIN, "Armor")
 }

@@ -3,7 +3,6 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    level::UuidThemeRegistry,
     terrain::{
         def::{
             TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind, TerrainTag,
@@ -15,11 +14,11 @@ use gdtf_battle_sim::{
     weapon::{WeaponName, WeaponRegistry},
 };
 use gdtf_content_editor::{
-    EditorMode, MapEditorSession, SaveTerrainError, TerrainDraft, TerrainKindChoice,
-    draft_to_terrain_def, serialize_terrain_def, write_terrain_in,
+    EditorMode, SaveTerrainError, TerrainDraft, TerrainKindChoice, draft_to_terrain_def,
+    serialize_terrain_def, write_terrain_in,
 };
 
-use crate::support::{advance_to_editing, editor_app};
+use crate::support::{advance_to_editing, editor_app, resolve_theme_display};
 
 // The sprite key these cases name on a Cover draft's own first owed view.
 const COVER_SPRITE: &str = "cover";
@@ -83,17 +82,6 @@ fn terrain_save_round_trips_through_the_loader() {
         "the reloaded TerrainDef must equal the projected one — every field survives the egui Save \
          round-trip (C2.5)",
     );
-}
-
-fn resolve_theme_display(app: &App) -> String {
-    let Some(session) = app.world().get_resource::<MapEditorSession>() else {
-        return String::new();
-    };
-    let theme = session.theme();
-    app.world()
-        .get_resource::<UuidThemeRegistry>()
-        .and_then(|themes| themes.def(&theme).map(|def| (*def.display_name).clone()))
-        .unwrap_or_default()
 }
 
 #[test]

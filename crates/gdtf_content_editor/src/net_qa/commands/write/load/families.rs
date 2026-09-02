@@ -1,11 +1,13 @@
 //! Look a key up in one family's registry and call that draft's own `load_*` method.
 
+use bevy::asset::uuid::Uuid;
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry},
     effects::fields::{FieldDefRegistry, FieldKey},
     equipment::attachments::{AttachmentName, AttachmentRegistry},
     ganger::{GangName, GangRegistry},
     injuries::{InjuryName, InjuryRegistry},
+    terrain::def::{TerrainDefRegistry, TerrainUuid},
     weapon::{MeleeWeaponRegistry, WeaponName, WeaponRegistry},
 };
 use gdtf_content_families::sprites::{SpriteDefRegistry, SpriteName};
@@ -13,7 +15,8 @@ use gdtf_content_families::sprites::{SpriteDefRegistry, SpriteName};
 use crate::{
     armor_form::ArmorDraft, attachment_form::AttachmentDraft, field_form::FieldDraft,
     gang_form::GangDraft, injury_form::InjuryDraft, melee_weapon_form::MeleeWeaponDraft,
-    net_qa::wire::EditorKeyNet, sprite_form::SpriteDraft, weapon_form::WeaponDraft,
+    net_qa::wire::EditorKeyNet, sprite_form::SpriteDraft, terrain_form::TerrainDraft,
+    weapon_form::WeaponDraft,
 };
 
 /// Whether the key was found and loaded, or the registry holds no such entry.
@@ -160,6 +163,29 @@ pub(in crate::net_qa::commands::write::load) fn load_field(
     };
     let def = def.clone();
     draft.load_field(&wanted, &def);
+    KeyLookup::Loaded
+}
+
+// The terrain registry keys by uuid, so a key that is not UUID text misses at the parse.
+pub(in crate::net_qa::commands::write::load) fn load_terrain(
+    draft: &mut TerrainDraft,
+    registry: &TerrainDefRegistry,
+    key: &EditorKeyNet,
+) -> KeyLookup {
+    let known = || {
+        known_keys(
+            registry
+                .defs()
+                .map(|(held, _)| EditorKeyNet::new((**held).to_string())),
+        )
+    };
+    let Ok(parsed) = Uuid::parse_str(key) else {
+        return KeyLookup::NoSuchKey(known());
+    };
+    let Some(def) = registry.def(&TerrainUuid::new(parsed)) else {
+        return KeyLookup::NoSuchKey(known());
+    };
+    draft.load_from_def(def);
     KeyLookup::Loaded
 }
 

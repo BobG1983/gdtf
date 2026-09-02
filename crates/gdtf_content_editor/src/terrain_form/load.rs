@@ -1,11 +1,44 @@
-//! Load an existing terrain def into the form draft.
+//! Load an existing terrain def into the form draft, and the rows a picker offers.
 
-use gdtf_battle_sim::terrain::def::{TerrainDef, TerrainPresenterKind, TerrainSimKind};
+use std::collections::HashMap;
+
+use gdtf_battle_sim::{
+    cover::CoverHp,
+    slab::SlabHp,
+    terrain::def::{
+        TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind, TerrainUuid,
+    },
+};
 
 use super::{
     draft::TerrainDraft,
     picks::{FootfallChoice, TerrainKindChoice},
 };
+
+/// Every terrain def as the (key, label) row the load picker draws, sorted by display name.
+/// A display name two or more defs share carries that def's key, so no two rows read alike.
+#[must_use]
+pub fn load_candidates(registry: &TerrainDefRegistry) -> Vec<(TerrainUuid, String)> {
+    let mut held: HashMap<String, usize> = HashMap::new();
+    for (_, def) in registry.defs() {
+        *held.entry((*def.display_name).clone()).or_insert(0) += 1;
+    }
+    let mut rows: Vec<(TerrainUuid, String, String)> = registry
+        .defs()
+        .map(|(key, def)| (*key, (*def.display_name).clone(), (**key).to_string()))
+        .collect();
+    rows.sort_by(|left, right| left.1.cmp(&right.1).then_with(|| left.2.cmp(&right.2)));
+    rows.into_iter()
+        .map(|(key, name, text)| {
+            let label = if held.get(&name).is_some_and(|count| *count > 1) {
+                format!("{name}  [{text}]")
+            } else {
+                name
+            };
+            (key, label)
+        })
+        .collect()
+}
 
 impl TerrainDraft {
     /// Fill the draft from an existing terrain def, including on-death.
@@ -26,6 +59,7 @@ impl TerrainDraft {
                 height_band,
             } => {
                 self.set_cover_hp(*hp);
+                self.set_slab_hp(SlabHp::new(**hp));
                 self.set_armor_protection(*armor_protection);
                 self.set_armor_hardness(*armor_hardness);
                 self.set_height_band(*height_band);
@@ -36,6 +70,7 @@ impl TerrainDraft {
                 armor_hardness,
             } => {
                 self.set_slab_hp(*hp);
+                self.set_cover_hp(CoverHp::new(**hp));
                 self.set_armor_protection(*armor_protection);
                 self.set_armor_hardness(*armor_hardness);
             }
@@ -48,6 +83,7 @@ impl TerrainDraft {
                 entry_sides,
             } => {
                 self.set_cover_hp(*hp);
+                self.set_slab_hp(SlabHp::new(**hp));
                 self.set_armor_protection(*armor_protection);
                 self.set_armor_hardness(*armor_hardness);
                 self.set_height_band(*height_band);

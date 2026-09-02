@@ -2,7 +2,8 @@
 #![cfg(debug_assertions)]
 
 use bevy::prelude::*;
-use gdtf_content_editor::{EditorState, MapEditorPlugin};
+use gdtf_battle_sim::level::UuidThemeRegistry;
+use gdtf_content_editor::{EditorState, MapEditorPlugin, MapEditorSession};
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
 /// A headless editor app with the real map-editor plugin on it.
@@ -22,4 +23,16 @@ pub(crate) fn advance_to_editing(app: &mut App) {
     for _ in 0..4 {
         app.update();
     }
+}
+
+/// The session theme's display name, which is the folder a terrain save writes into.
+pub(crate) fn resolve_theme_display(app: &App) -> String {
+    let Some(session) = app.world().get_resource::<MapEditorSession>() else {
+        return String::new();
+    };
+    let theme = session.theme();
+    app.world()
+        .get_resource::<UuidThemeRegistry>()
+        .and_then(|themes| themes.def(&theme).map(|def| (*def.display_name).clone()))
+        .unwrap_or_default()
 }

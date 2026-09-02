@@ -8,6 +8,7 @@ mod gang_mode;
 mod injury_mode;
 mod sprite_mode;
 mod support;
+mod terrain_load_save;
 mod terrain_mode;
 mod terrain_registry_walk;
 mod theme_mode;

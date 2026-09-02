@@ -63,6 +63,9 @@ pub(crate) const EDITOR_LOAD_MELEE_WEAPON: &str = "editor.load_melee_weapon";
 /// The Field tab's registry-load write the editor host publishes.
 pub(crate) const EDITOR_LOAD_FIELD: &str = "editor.load_field";
 
+/// The Terrain tab's registry-load write the editor host publishes.
+pub(crate) const EDITOR_LOAD_TERRAIN: &str = "editor.load_terrain";
+
 /// The draft-save write the editor host publishes.
 pub(crate) const EDITOR_SAVE: &str = "editor.save";
 
@@ -118,7 +121,7 @@ pub(crate) const CAPTURE_SCREENSHOT: &str = "capture.screenshot";
 pub(crate) const WAIT: &str = "wait";
 
 /// Every command name the editor host publishes today.
-pub(crate) const EDITOR_COMMAND_NAMES: [&str; 35] = [
+pub(crate) const EDITOR_COMMAND_NAMES: [&str; 36] = [
     EDITOR_PHASE,
     EDITOR_LAST_SAVE,
     EDITOR_VALIDATION,
@@ -136,6 +139,7 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 35] = [
     EDITOR_LOAD_WEAPON,
     EDITOR_LOAD_MELEE_WEAPON,
     EDITOR_LOAD_FIELD,
+    EDITOR_LOAD_TERRAIN,
     EDITOR_SAVE,
     EDITOR_SET_FIELD,
     EDITOR_LIST_OP,
@@ -198,7 +202,7 @@ pub(crate) const EDITOR_FORM_TAB_ONLY: [&str; 3] = [EDITOR_DRAFT, EDITOR_SET_FIE
 
 /// Command names scoped to one form tab that the catalogue is never read on, so both phases
 /// refuse them.
-pub(crate) const EDITOR_ONE_FORM_TAB_ONLY: [&str; 7] = [
+pub(crate) const EDITOR_ONE_FORM_TAB_ONLY: [&str; 8] = [
     EDITOR_LOAD_GANG,
     EDITOR_LOAD_ARMOR,
     EDITOR_LOAD_SPRITE,
@@ -206,6 +210,7 @@ pub(crate) const EDITOR_ONE_FORM_TAB_ONLY: [&str; 7] = [
     EDITOR_LOAD_WEAPON,
     EDITOR_LOAD_MELEE_WEAPON,
     EDITOR_LOAD_FIELD,
+    EDITOR_LOAD_TERRAIN,
 ];
 
 pub(crate) fn run_editor_phase(arguments: &str) -> QaRequest {
