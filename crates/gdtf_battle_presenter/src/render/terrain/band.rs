@@ -38,12 +38,14 @@ impl DrawnStoreys<'_> {
         )
     }
 
+    /// The storey band the camera draws, lowest to highest.
+    pub(super) fn band(&self) -> RangeInclusive<Level> {
+        drawn_band(*self.active, StoreyViewMode::new(*self.view, *self.isolate))
+    }
+
     /// Storeys to draw, lowest first.
     pub fn levels(&self) -> impl Iterator<Item = Level> {
-        level_band(drawn_band(
-            *self.active,
-            StoreyViewMode::new(*self.view, *self.isolate),
-        ))
+        level_band(self.band())
     }
 }
 

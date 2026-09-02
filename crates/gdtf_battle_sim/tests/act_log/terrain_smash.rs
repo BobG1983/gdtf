@@ -3,8 +3,9 @@
 use bevy::{app::App, prelude::Entity};
 use gdtf_battle_sim::{
     act_log::ActDeed,
-    acts::FireRequested,
+    acts::{FireRequested, MeleeRequested},
     armor::{ArmorHardness, ArmorProtection},
+    cover::CoverLedger,
     entity::TerrainPieceKind,
     ganger::{Aiming, Direction, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
@@ -154,5 +155,65 @@ fn a_slab_shot_to_pieces_records_one_smash_deed_naming_the_slab() {
             kind: TerrainPieceKind::Slab,
         }),
         "the recorded smash names the slab cell and the Slab kind — found {deeds:?}",
+    );
+}
+
+fn attacker_cell() -> CellLevel {
+    ground(5, 5)
+}
+
+fn cover_cell() -> CellLevel {
+    ground(6, 5)
+}
+
+fn cover_destroyed(app: &App, at: CellLevel) -> bool {
+    app.world()
+        .get_resource::<CoverLedger>()
+        .and_then(|ledger| ledger.peek(&at))
+        .is_some_and(|entry| *entry.destroyed)
+}
+
+#[test]
+fn a_cover_smashed_in_melee_records_one_smash_deed_naming_the_cover() {
+    let mut app = battle_app(forced_reaction_tuning(0));
+    let situation = SituationBuilder::new()
+        .with_gangers([watcher(attacker_cell(), PLAYER, Direction::East)])
+        .build_with_gangs();
+    drive_setup(&mut app, situation);
+
+    seed_cover(&mut app, cover_cell(), 60, TerrainPieceKind::Cover);
+    let Some(attacker) = ganger_at(&mut app, attacker_cell()) else {
+        unreachable!("setup spawns the attacker at its authored cell");
+    };
+
+    for _ in 0..16 {
+        if cover_destroyed(&app, cover_cell()) {
+            break;
+        }
+        set_tu(&mut app, attacker, 250);
+        app.world_mut()
+            .write_message(MeleeRequested::new_structural(attacker, cover_cell()));
+        settle(&mut app);
+    }
+    assert!(
+        cover_destroyed(&app, cover_cell()),
+        "precondition: the melee path must destroy the cover, or the deed assertion is vacuous",
+    );
+
+    let deeds = deeds_of(&app, "TerrainPieceSmashed");
+    assert_eq!(
+        deeds.len(),
+        1,
+        "smashing the cover to pieces records exactly one smash deed — found {} deed(s): \
+         {deeds:?}",
+        deeds.len(),
+    );
+    assert_eq!(
+        deeds.first(),
+        Some(&ActDeed::TerrainPieceSmashed {
+            at:   cover_cell(),
+            kind: TerrainPieceKind::Cover,
+        }),
+        "the recorded smash names the cover cell and the Cover kind — found {deeds:?}",
     );
 }

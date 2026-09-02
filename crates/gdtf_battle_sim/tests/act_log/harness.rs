@@ -6,7 +6,10 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActEntry, ActLog, ActProvenance, ActSeq, ActWitnesses},
+    armor::{ArmorHardness, ArmorProtection},
     battle::{BattleSimPlugin, SetupBattleRequested},
+    cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainPieceKind,
     ganger::{Cool, Direction, Facing, GangRegistry, Grit, Reflexes, Speed, Toughness, TuMax},
     magazine::{LoadedRounds, Magazine},
     metric::{Cell, CellLevel, Level},
@@ -266,4 +269,18 @@ pub(crate) fn settle(app: &mut App) {
     for _ in 0..4 {
         app.update();
     }
+}
+
+/// Put a destructible piece of the given kind in the cover ledger at a cell.
+pub(crate) fn seed_cover(app: &mut App, at: CellLevel, max_hp: u32, kind: TerrainPieceKind) {
+    let entry = CoverEntry::seeded(
+        CoverHp::new(max_hp),
+        HeightBand::Mid,
+        ArmorProtection::new(0),
+        ArmorHardness::new(0),
+        kind,
+    );
+    app.world_mut()
+        .resource_mut::<CoverLedger>()
+        .insert(at, entry);
 }

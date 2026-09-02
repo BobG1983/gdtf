@@ -25,5 +25,5 @@ pub use restamp::{StampedGraphic, restamp_tiles_on_def_change};
 pub use roles::TileRole;
 pub use static_draw::{TerrainSprite, draw_static_battlefield};
 pub use static_map::{SpriteResolveCtx, StaticMap};
-pub use swaps::{indicate_emplacement_occupied, swap_destroyed_cover, swap_destroyed_slab};
+pub use swaps::{indicate_emplacement_occupied, stamp_destroyed_cell};
 pub use treatment::{ContextDepth, IsolateView, StoreyTreatment, StoreyViewMode, storey_treatment};

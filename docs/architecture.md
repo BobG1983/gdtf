@@ -49,9 +49,11 @@ ahead.
 `TerrainPieceDestroyed` and its kin — and draws the result on the spot.
 Destruction is in scope: cover, wall and slab, and whatever replaces a destroyed piece.
 
-**One exception the tree carries:** `swap_destroyed_cover` reads the raw buffer and draws from it.
-It is the only one, and nothing else may join it. It ends the same way — the swap reads the played
-fact instead, and the system goes when nothing needs it.
+**Destruction reads the played fact.** `stamp_destroyed_cell` takes
+`MessageReader<Played<TerrainPieceDestroyed>>` and stamps the cell when the cursor plays the
+smash, so no presenter system reads the raw `TerrainPieceDestroyed` buffer. Three raw sim reads
+stand elsewhere in the presenter: `despawn_killed_ganger_on_impact`,
+`forward_live_log_source::<S>` and `draw_static_battlefield`.
 
 **What breaks without it:** the sim resolves a whole act while playback is still animating
 the one before it. A system that reads the sim directly is not slightly early, it is an
@@ -62,7 +64,7 @@ on the shot path, consequence text and death ordering, and destruction.
 **Code sites:** `crates/gdtf_battle_presenter/src/playback/`.
 `crates/gdtf_battle_presenter/src/actors/fx/fct/stacked_reader.rs` is the worked example —
 it reads the played fact rather than the sim's buffer. Two paths are pinned the same
-way: a raw `ShotFired` pops no hit text, and a raw `TerrainPieceDestroyed` swaps no slab tile.
+way: a raw `ShotFired` pops no hit text, and a raw `TerrainPieceDestroyed` stamps no tile.
 Other raw buffers are still enforced by review.
 
 ## The sim answers whether an act may happen

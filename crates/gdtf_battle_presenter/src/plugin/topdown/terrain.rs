@@ -11,7 +11,7 @@ use gdtf_content_families::sprites::SpriteDefRegistry;
 use crate::{
     MissingTileTexture, Played, PresenterSystems, draw_static_battlefield, draw_vertical_links,
     indicate_emplacement_occupied, render::terrain::setup_missing_tile_texture,
-    restamp_tiles_on_def_change, swap_destroyed_cover, swap_destroyed_slab,
+    restamp_tiles_on_def_change, stamp_destroyed_cell,
 };
 
 pub(super) fn register_terrain_draw(app: &mut App) {
@@ -38,17 +38,13 @@ pub(super) fn register_terrain_draw(app: &mut App) {
 pub(super) fn register_destruction_swaps(app: &mut App) {
     app.add_systems(
         Update,
-        swap_destroyed_cover
-            .in_set(PresenterSystems::Scene)
-            .after(swap_destroyed_slab)
-            .run_if(resource_exists::<BattleInProgress>.and_then(sprite_resolution_ready)),
-    )
-    .add_systems(
-        Update,
-        swap_destroyed_slab.in_set(PresenterSystems::Scene).run_if(
+        stamp_destroyed_cell.in_set(PresenterSystems::Scene).run_if(
             resource_exists::<BattleInProgress>
                 .and_then(sprite_resolution_ready)
-                .and_then(resource_exists::<Messages<Played<TerrainPieceDestroyed>>>),
+                .and_then(resource_exists::<Messages<Played<TerrainPieceDestroyed>>>)
+                .and_then(resource_exists::<OccupancyGrid>)
+                .and_then(resource_exists::<CoverLedger>)
+                .and_then(resource_exists::<SurfaceGrid>),
         ),
     )
     .add_systems(
@@ -62,8 +58,7 @@ pub(super) fn register_destruction_swaps(app: &mut App) {
         restamp_tiles_on_def_change
             .in_set(PresenterSystems::Scene)
             .after(draw_static_battlefield)
-            .after(swap_destroyed_cover)
-            .after(swap_destroyed_slab)
+            .after(stamp_destroyed_cell)
             .after(indicate_emplacement_occupied)
             .run_if(resource_exists::<BattleInProgress>.and_then(sprite_resolution_ready)),
     );

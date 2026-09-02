@@ -1,24 +1,26 @@
 //! grid authoring, and the shared tile probes.
 
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
     asset::{AssetPlugin, Assets},
-    ecs::error::warn,
+    ecs::{entity::Entity, error::warn, message::Messages},
     math::URect,
     prelude::{MeshMaterial2d, default},
     render::{RenderPlugin, settings::WgpuSettings},
+    time::TimeUpdateStrategy,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
 use gdtf_assets::ContentFamilyAppExt;
 use gdtf_battle_presenter::{
-    StampedGraphic, TerrainFogMaterial, TerrainSprite, TopDownAtlases, TopDownRendererPlugin,
-    source_parts, source_urect,
+    PlaybackCursor, PlaybackTuning, StampedGraphic, TerrainFogMaterial, TerrainSprite,
+    TopDownAtlases, TopDownRendererPlugin, source_parts, source_urect,
 };
 use gdtf_battle_sim::{
+    act_log::{ActDeed, ActLog, ActProvenance, ActSeq, ActWitnesses, RecordedAct},
     armor::{ArmorHardness, ArmorProtection},
     battle::BattleReady,
     cover::{CoverEntry, CoverHp, HeightBand},
@@ -155,13 +157,101 @@ pub(crate) fn stamped_graphic_at(app: &mut App, key: CellLevel) -> Option<Stampe
         .map(|(_, stamped)| stamped.clone())
 }
 
-pub(crate) fn sprite_entity_at(app: &mut App, key: CellLevel) -> Option<bevy::ecs::entity::Entity> {
-    let mut q = app
-        .world_mut()
-        .query::<(bevy::ecs::entity::Entity, &TerrainSprite)>();
+pub(crate) fn sprite_entity_at(app: &mut App, key: CellLevel) -> Option<Entity> {
+    let mut q = app.world_mut().query::<(Entity, &TerrainSprite)>();
     q.iter(app.world())
         .find(|(_, t)| t.at == key)
         .map(|(entity, _)| entity)
+}
+
+// How many manual frames the bounded advance loop is allowed before it gives up.
+const MAX_FRAMES: usize = 16;
+
+/// Sequence of the next act-log entry the cursor will show.
+pub(crate) fn shown(app: &App) -> ActSeq {
+    app.world().resource::<PlaybackCursor>().shown()
+}
+
+/// Whether the cursor is dwelling on an entry rather than moving on.
+pub(crate) fn holding(app: &App) -> bool {
+    app.world().resource::<PlaybackCursor>().is_holding()
+}
+
+/// Whether the raw `TerrainPieceDestroyed` buffer is registered in this app.
+pub(crate) fn raw_destroyed_present(app: &App) -> bool {
+    app.world()
+        .contains_resource::<Messages<TerrainPieceDestroyed>>()
+}
+
+// One manual frame, longer than the shortest dwell.
+pub(crate) fn hold_step(app: &App) -> Duration {
+    let minor = *app.world().resource::<PlaybackTuning>().minor_seconds;
+    Duration::from_secs_f32(minor.max(0.0) + 0.05)
+}
+
+/// An act log holding a detaining minor deed then one smash per entry, whose last
+/// sequence it returns.
+pub(crate) fn detained_smash_log(
+    app: &mut App,
+    smashes: &[(CellLevel, TerrainPieceKind)],
+) -> ActSeq {
+    let actor = app.world_mut().spawn_empty().id();
+    let mut log = ActLog::default();
+    let mut last = log.append(RecordedAct::new(
+        actor,
+        ActProvenance::Commanded,
+        ActDeed::BleedStarted,
+        ActWitnesses::unseen(),
+    ));
+    for (at, kind) in smashes {
+        last = log.append(RecordedAct::new(
+            actor,
+            ActProvenance::Commanded,
+            ActDeed::TerrainPieceSmashed {
+                at:   *at,
+                kind: *kind,
+            },
+            ActWitnesses::unseen(),
+        ));
+    }
+    app.world_mut().insert_resource(log);
+    last
+}
+
+/// Steps the manual clock until the cursor plays `seq`, running `each_frame` after each update.
+pub(crate) fn play_past(app: &mut App, seq: ActSeq, each_frame: impl Fn(&App)) {
+    let step = hold_step(app);
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(step));
+    for _ in 0..MAX_FRAMES {
+        app.update();
+        each_frame(app);
+        if shown(app) > seq {
+            return;
+        }
+    }
+    assert!(
+        shown(app) > seq,
+        "the cursor never played the smash entry {seq:?} within {MAX_FRAMES} manual frames of \
+         {step:?} — it is still at {:?}",
+        shown(app),
+    );
+}
+
+/// Despawn the terrain piece standing at a cell, which is what a destruction does.
+pub(crate) fn despawn_terrain_entity(app: &mut App, key: CellLevel) {
+    let world = app.world_mut();
+    let mut query = world.query::<(Entity, &TerrainCell)>();
+    let standing: Vec<Entity> = query
+        .iter(world)
+        .filter(|(_, cell)| ***cell == key)
+        .map(|(entity, _)| entity)
+        .collect();
+    for entity in standing {
+        assert!(
+            world.despawn(entity),
+            "the terrain piece at {key:?} must still be alive to despawn",
+        );
+    }
 }
 
 pub(crate) const CENTER_WALL_DEF: &str = r#"(

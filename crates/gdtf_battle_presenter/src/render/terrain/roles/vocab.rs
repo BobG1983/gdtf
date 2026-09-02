@@ -22,8 +22,6 @@ pub enum TileRole {
     Slab,
     /// Rubble after destruction.
     Rubble,
-    /// Destroyed slab graphic.
-    SlabDestroyed,
     /// Generic door (legacy).
     Door,
     /// Stair leading up (legacy).
@@ -48,7 +46,7 @@ pub enum TileRole {
 
 impl TileRole {
     /// Every role, in a stable order.
-    pub const ALL: [Self; 20] = [
+    pub const ALL: [Self; 19] = [
         Self::Floor,
         Self::FloorAltPanel,
         Self::Wall,
@@ -58,7 +56,6 @@ impl TileRole {
         Self::EmplacementOccupied,
         Self::Slab,
         Self::Rubble,
-        Self::SlabDestroyed,
         Self::Door,
         Self::StairUp,
         Self::StairDown,
@@ -84,7 +81,6 @@ impl TileRole {
             Self::EmplacementOccupied => "emplacement_occupied",
             Self::Slab => "slab",
             Self::Rubble => "rubble",
-            Self::SlabDestroyed => "slab_destroyed",
             Self::Door => "door",
             Self::StairUp => "stair_up",
             Self::StairDown => "stair_down",
@@ -123,11 +119,7 @@ impl TileRole {
             | Self::StairNsDown
             | Self::StairEwUp
             | Self::StairEwDown => true,
-            Self::EmplacementOccupied
-            | Self::SlabDestroyed
-            | Self::StairUp
-            | Self::StairDown
-            | Self::Door => false,
+            Self::EmplacementOccupied | Self::StairUp | Self::StairDown | Self::Door => false,
         }
     }
 

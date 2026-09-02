@@ -122,8 +122,10 @@ set re-arms the pass when the sprite registry rebuilds).
 
 ## Part 4 — The seeded catalog and how it resolves
 
- seeded one def per name reachable as a `graphic_name` today — the 20
-`TileRole` keys — each mechanically derived from the then-live role table:
+The catalog holds 20 defs, one per name reachable as a `graphic_name` when it
+was seeded. The `TileRole` table is 19 keys: no role names
+`slab_destroyed.spritedef.ron` any more, and the file stays. Each def was
+mechanically derived from the then-live table:
 sheet = the presenter's terrain sheet, rect = the role's atlas index unpacked
 on the sheet's 16-column/16-px grid, anchor = the implicit CENTER anchor
 `(8, 8)` (the renderer draws each tile as a unit quad centered on its cell —

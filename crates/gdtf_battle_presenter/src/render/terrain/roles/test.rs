@@ -44,7 +44,6 @@ fn every_role_key_names_a_shipped_sprite_def() {
 fn def_authorable_excludes_exactly_the_runtime_and_link_roles() {
     let excluded = [
         TileRole::EmplacementOccupied,
-        TileRole::SlabDestroyed,
         TileRole::StairUp,
         TileRole::StairDown,
         TileRole::Door,

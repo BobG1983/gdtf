@@ -1,27 +1,25 @@
-//! Live terrain graphic swaps for destruction and emplacement occupancy.
+//! Live terrain graphic stamps for destruction and emplacement occupancy.
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    emplacement::EmplacementState,
-    entity::{TerrainCell, TerrainPieceKind},
-    occupancy_sync::TerrainPieceDestroyed,
+    emplacement::EmplacementState, entity::TerrainCell, occupancy_sync::TerrainPieceDestroyed,
     prelude::CellLevel,
 };
 
 use super::{
     active_level::{ActiveLevel, ViewMode},
-    band::{cell_level_in_band, drawn_band},
+    band::{DrawnStoreys, cell_level_in_band, drawn_band},
     restamp::{StampedGraphic, stamp_tile_quiet},
     roles::TileRole,
     static_draw::TerrainSprite,
-    static_map::SpriteResolveCtx,
+    static_map::{SpriteResolveCtx, StaticMap, graphic_name_at},
     treatment::{IsolateView, StoreyViewMode},
 };
 use crate::{TerrainFogMaterial, playback::Played};
 
 fn retarget_tile(
     at: CellLevel,
-    role: TileRole,
+    name: &str,
     resolve: &SpriteResolveCtx,
     materials: &mut ResMut<Assets<TerrainFogMaterial>>,
     tiles: &mut Query<(
@@ -35,54 +33,16 @@ fn retarget_tile(
         if terrain.at != at {
             continue;
         }
-        stamp_tile_quiet(
-            resolve,
-            materials,
-            role.as_key(),
-            at,
-            mat_handle,
-            &mut transform,
-        );
-        stamped.set_if_neq(StampedGraphic::from_key(role.as_key()));
+        stamp_tile_quiet(resolve, materials, name, at, mat_handle, &mut transform);
+        stamped.set_if_neq(StampedGraphic::from_key(name));
     }
 }
 
-/// Swap tiles to rubble when a piece other than a slab is destroyed.
-pub fn swap_destroyed_cover(
-    active: Res<ActiveLevel>,
-    view: Res<ViewMode>,
-    isolate: Res<IsolateView>,
-    resolve: SpriteResolveCtx,
-    mut materials: ResMut<Assets<TerrainFogMaterial>>,
-    mut destroyed: MessageReader<TerrainPieceDestroyed>,
-    mut tiles: Query<(
-        &TerrainSprite,
-        &MeshMaterial2d<TerrainFogMaterial>,
-        &mut Transform,
-        &mut StampedGraphic,
-    )>,
-) {
-    let band = drawn_band(*active, StoreyViewMode::new(*view, *isolate));
-    for event in destroyed.read() {
-        if event.kind == TerrainPieceKind::Slab || !cell_level_in_band(event.at, &band) {
-            continue;
-        }
-        retarget_tile(
-            event.at,
-            TileRole::Rubble,
-            &resolve,
-            &mut materials,
-            &mut tiles,
-        );
-    }
-}
-
-/// Swap slab tiles to the destroyed graphic when the playback cursor plays a
-/// [`Played`] `TerrainPieceDestroyed` whose kind is `Slab`.
-pub fn swap_destroyed_slab(
-    active: Res<ActiveLevel>,
-    view: Res<ViewMode>,
-    isolate: Res<IsolateView>,
+/// Stamp a smashed cell with whatever stands there now, once the playback cursor
+/// plays the [`Played`] `TerrainPieceDestroyed`.
+pub fn stamp_destroyed_cell(
+    storeys: DrawnStoreys,
+    map: StaticMap,
     resolve: SpriteResolveCtx,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut destroyed: MessageReader<Played<TerrainPieceDestroyed>>,
@@ -93,18 +53,14 @@ pub fn swap_destroyed_slab(
         &mut StampedGraphic,
     )>,
 ) {
-    let band = drawn_band(*active, StoreyViewMode::new(*view, *isolate));
+    let band = storeys.band();
+    let graphic_facts = map.graphic_facts();
     for event in destroyed.read() {
-        if event.kind != TerrainPieceKind::Slab || !cell_level_in_band(event.at, &band) {
+        if !cell_level_in_band(event.at, &band) {
             continue;
         }
-        retarget_tile(
-            event.at,
-            TileRole::SlabDestroyed,
-            &resolve,
-            &mut materials,
-            &mut tiles,
-        );
+        let name = graphic_name_at(&event.at, &graphic_facts, &map);
+        retarget_tile(event.at, name, &resolve, &mut materials, &mut tiles);
     }
 }
 
@@ -134,6 +90,6 @@ pub fn indicate_emplacement_occupied(
         } else {
             TileRole::Emplacement
         };
-        retarget_tile(at, role, &resolve, &mut materials, &mut tiles);
+        retarget_tile(at, role.as_key(), &resolve, &mut materials, &mut tiles);
     }
 }

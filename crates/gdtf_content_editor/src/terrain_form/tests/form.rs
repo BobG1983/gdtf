@@ -33,7 +33,6 @@ fn picker_offers_exactly_the_def_authorable_vocabulary() {
     }
     for excluded in [
         TileRole::EmplacementOccupied,
-        TileRole::SlabDestroyed,
         TileRole::StairUp,
         TileRole::StairDown,
         TileRole::Door,
