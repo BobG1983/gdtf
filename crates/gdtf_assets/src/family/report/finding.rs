@@ -95,6 +95,13 @@ pub enum ContentFinding {
         /// Load error detail.
         detail: FindingDetail,
     },
+    /// A def provides no art for views it owes.
+    MissingViews {
+        /// Authoring context.
+        referrer: FindingReferrer,
+        /// The views the def names no art for.
+        views:    Vec<FindingTarget>,
+    },
     /// Host fell back to a degraded default.
     DegradedFallback {
         /// Context of the fallback.
@@ -127,6 +134,10 @@ impl core::fmt::Display for ContentFinding {
                  siblings were salvaged per-file",
                 &***path, &***family, &***detail,
             ),
+            Self::MissingViews { referrer, views } => {
+                let named: Vec<&str> = views.iter().map(|view| &***view).collect();
+                write!(f, "{} is missing {}", &***referrer, named.join(", "))
+            }
             Self::DegradedFallback { context, detail } => {
                 write!(f, "degraded fallback: {} — {}", &***context, &***detail)
             }

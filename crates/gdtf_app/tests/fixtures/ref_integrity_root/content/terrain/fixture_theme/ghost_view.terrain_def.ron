@@ -1,0 +1,23 @@
+// fixture terrain def — a Cover whose view set is COMPLETE and whose four rows name three
+// sprite keys this root holds and one it does not, so the per-view sprite edge dangles ON
+// PURPOSE for exactly one view and the coverage check says nothing about this def.
+(
+    key: "00000000-0000-0000-0000-130700000a04",
+    display_name: "Ghost View Cover",
+    sim_kind: Cover(
+        hp:               10,
+        armor_protection: 0,
+        armor_hardness:   0,
+        height_band:      Low,
+    ),
+    presenter_kind: Cover(
+        graphic_name: "cover",
+    ),
+    views: [
+        (view: Facing(North), sprite: "cover"),
+        (view: Facing(East), sprite: "cover"),
+        (view: Facing(South), sprite: "cover"),
+        (view: Facing(West), sprite: "ghost_view_graphic"),
+    ],
+    tags: [],
+)

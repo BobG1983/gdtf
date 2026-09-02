@@ -23,7 +23,7 @@ use gdtf_battle_sim::{
     situation::{GangerSpawn, Situation},
     terrain::def::{
         LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-        TerrainSimKind, TerrainUuid,
+        TerrainSimKind, TerrainUuid, TerrainViews,
     },
     test_support::{
         GangerSpawnBuilder, TEST_MELEE_WEAPON_KEY, TEST_WEAPON_KEY, field_turns, single_mode,
@@ -94,6 +94,7 @@ pub(crate) fn barrel_terrain_registry() -> TerrainDefRegistry {
                     "cover".to_owned(),
                 ),
             },
+            views:          TerrainViews::new(Vec::new()),
             tags:           Vec::new(),
             on_death:       vec![OnDeathEffect::LeaveField {
                 field: FieldKey::new("burning".to_owned()),
@@ -124,6 +125,7 @@ fn fuel_slab_def() -> TerrainDef {
             ),
             footfall:     None,
         },
+        views:          TerrainViews::new(Vec::new()),
         tags:           Vec::new(),
         on_death:       vec![OnDeathEffect::LeaveField {
             field: FieldKey::new("burning".to_owned()),

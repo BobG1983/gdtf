@@ -57,7 +57,8 @@ validation window), and the one-owner path-spelling rule.
 - [terrain-art-and-destruction.md](terrain-art-and-destruction.md) — canon,
   part built: a def owns its art in every state it can be in and says what it
   `leaves_behind` when it dies, and the renderer owns no content.
-  `leaves_behind` is built; the per-state art is not.
+  `leaves_behind` and the per-def view sets are built; the presenter still
+  reads one `graphic_name` per def.
 
 ## Combat text (the view side)
 

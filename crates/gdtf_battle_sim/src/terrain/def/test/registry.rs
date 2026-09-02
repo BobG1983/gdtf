@@ -1,6 +1,6 @@
 use super::super::{
     LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-    TerrainSimKind, TerrainUuid,
+    TerrainSimKind, TerrainUuid, TerrainViews,
 };
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -24,6 +24,7 @@ fn registry_inserts_and_looks_up_by_uuid() {
             footfall:     Some(FootfallSound::new("footfall_metal".to_owned())),
         },
         tags: Vec::new(),
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -76,6 +77,7 @@ fn registry_new_keys_by_uuid() {
             footfall:     None,
         },
         tags: Vec::new(),
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,

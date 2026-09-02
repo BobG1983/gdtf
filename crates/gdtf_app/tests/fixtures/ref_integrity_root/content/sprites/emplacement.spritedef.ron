@@ -1,0 +1,8 @@
+// fixture sprite def — the key the fixture emplacement's graphic_name and views name.
+(
+    source: Sheet(
+        sheet: "sprites/alt_tileset_terrain.png",
+        rect: (x: 16, y: 0, w: 16, h: 16),
+    ),
+    anchor: (x: 8, y: 8),
+)

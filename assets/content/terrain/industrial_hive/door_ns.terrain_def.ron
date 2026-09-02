@@ -14,6 +14,17 @@
     presenter_kind: Wall(
         graphic_name: "door_ns", // NS-running door sprite
     ),
+    // The Openable tag is what makes this a door, so it owes shut and open on all four sides.
+    views: [
+        (view: Shut(North), sprite: "door_ns"),
+        (view: Open(North), sprite: "door_ns"),
+        (view: Shut(East), sprite: "door_ns"),
+        (view: Open(East), sprite: "door_ns"),
+        (view: Shut(South), sprite: "door_ns"),
+        (view: Open(South), sprite: "door_ns"),
+        (view: Shut(West), sprite: "door_ns"),
+        (view: Open(West), sprite: "door_ns"),
+    ],
     // Openable marks this as a door. Blocks vision + pathfinding while closed.
     tags: [Openable, BlocksVision, BlocksPathfinding],
 )

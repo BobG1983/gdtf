@@ -1,0 +1,22 @@
+// fixture terrain def — a Cover whose `views:` list names only two of the four facings a
+// Cover owes, so the view-coverage check reports it ON PURPOSE at authoring time. Its
+// graphic_name and its two authored rows all name `cover`, which this root's content/sprites/
+// does hold, so the only thing wrong with it is the coverage.
+(
+    key: "00000000-0000-0000-0000-130700000b01",
+    display_name: "Sparse Views Cover",
+    sim_kind: Cover(
+        hp:               10,
+        armor_protection: 0,
+        armor_hardness:   0,
+        height_band:      Low,
+    ),
+    presenter_kind: Cover(
+        graphic_name: "cover",
+    ),
+    views: [
+        (view: Facing(North), sprite: "cover"),
+        (view: Facing(East), sprite: "cover"),
+    ],
+    tags: [],
+)

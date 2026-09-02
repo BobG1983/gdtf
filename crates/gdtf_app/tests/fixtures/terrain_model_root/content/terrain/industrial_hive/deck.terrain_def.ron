@@ -14,5 +14,6 @@
         graphic_name: "slab",
         footfall: Some("footfall_metal"),
     ),
+    views: [(view: Single, sprite: "slab")],
     tags: [],
 )

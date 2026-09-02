@@ -15,5 +15,11 @@
     presenter_kind: Emplacement(
         graphic_name: "emplacement",
     ),
+    views: [
+        (view: Facing(North), sprite: "emplacement"),
+        (view: Facing(East), sprite: "emplacement"),
+        (view: Facing(South), sprite: "emplacement"),
+        (view: Facing(West), sprite: "emplacement"),
+    ],
     tags: [],
 )

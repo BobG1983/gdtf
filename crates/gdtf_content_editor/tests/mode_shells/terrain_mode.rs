@@ -5,9 +5,12 @@ use bevy::prelude::*;
 use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     level::UuidThemeRegistry,
-    terrain::def::{
-        TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind, TerrainTag,
-        TerrainUuid,
+    terrain::{
+        def::{
+            TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind, TerrainTag,
+            TerrainUuid, TerrainView, owed_views, owed_views_for,
+        },
+        piece::TerrainGraphicKey,
     },
     weapon::{WeaponName, WeaponRegistry},
 };
@@ -283,5 +286,88 @@ fn emplacement_save_without_weapon_fails_closed_and_writes_nothing() {
     assert!(
         entries.next().is_none(),
         "a fail-closed Emplacement save must write NOTHING — the TempDir must stay empty (AC4)",
+    );
+}
+
+// The def a draft writes into a TempDir, read back through the loader's own parser.
+fn saved_def(app: &App, draft: &TerrainDraft) -> Option<(TerrainDef, tempfile::TempDir)> {
+    let theme_display = resolve_theme_display(app);
+    let uuid = draft.uuid()?;
+    let temp_dir = tempfile::TempDir::new().ok()?;
+    let path = write_terrain_in(temp_dir.path(), draft, uuid, &theme_display).ok()?;
+    let written = std::fs::read_to_string(&path).ok()?;
+    let def = ron::de::from_str::<TerrainDef>(&written).ok()?;
+    Some((def, temp_dir))
+}
+
+// A named Wall draft the save path accepts, with a uuid already minted.
+fn wall_draft(app: &mut App, name: &str) -> Option<TerrainDraft> {
+    let mut draft = app.world_mut().get_resource_mut::<TerrainDraft>()?;
+    draft.set_display_name(name.to_owned());
+    draft.set_kind(TerrainKindChoice::Wall);
+    draft.set_graphic(TileRole::Wall);
+    let _ = draft.ensure_uuid();
+    app.world().get_resource::<TerrainDraft>().cloned()
+}
+
+// The sprite key this test names for one view, distinct per view.
+fn view_key(view: TerrainView) -> TerrainGraphicKey {
+    TerrainGraphicKey::new(format!("{view:?}").to_lowercase())
+}
+
+#[test]
+fn every_view_set_on_the_draft_survives_the_save() {
+    let mut app = editor_app();
+    advance_to_editing(&mut app);
+
+    let Some(mut draft) = wall_draft(&mut app, "View Probe") else {
+        unreachable!("the TerrainDraft must be inserted in Editing")
+    };
+    let owed = owed_views_for(draft.kind().piece_kind(), draft.tags());
+    for view in owed.iter() {
+        draft.set_view(*view, view_key(*view));
+    }
+
+    let Some((reloaded, _dir)) = saved_def(&app, &draft) else {
+        unreachable!("a named Wall draft must write and parse back out of a TempDir")
+    };
+    let dropped: Vec<TerrainView> = owed
+        .iter()
+        .filter(|view| reloaded.views.sprite(**view) != Some(&view_key(**view)))
+        .copied()
+        .collect();
+    assert!(
+        dropped.is_empty(),
+        "every view the draft named must come back off disk naming the key it was set to; these \
+         did not: {dropped:?}",
+    );
+}
+
+#[test]
+fn a_draft_with_no_view_set_saves_a_complete_set_off_its_graphic() {
+    let mut app = editor_app();
+    advance_to_editing(&mut app);
+
+    let Some(draft) = wall_draft(&mut app, "Unset Views Probe") else {
+        unreachable!("the TerrainDraft must be inserted in Editing")
+    };
+    assert!(
+        draft.views().is_empty(),
+        "the case starts from a draft with no view set, or the fill below would prove nothing",
+    );
+
+    let Some((reloaded, _dir)) = saved_def(&app, &draft) else {
+        unreachable!("a named Wall draft must write and parse back out of a TempDir")
+    };
+    let picked = TerrainGraphicKey::new(draft.graphic().as_key().to_owned());
+    let unfilled: Vec<TerrainView> = owed_views(&reloaded)
+        .iter()
+        .filter(|view| reloaded.views.sprite(**view) != Some(&picked))
+        .copied()
+        .collect();
+    assert!(
+        unfilled.is_empty(),
+        "a save fills every owed view from the picked graphic, so the next def authored in the \
+         form passes the coverage check; these views did not: {unfilled:?}",
     );
 }

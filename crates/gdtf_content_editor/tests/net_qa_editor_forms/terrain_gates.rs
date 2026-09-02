@@ -87,6 +87,35 @@ fn a_height_band_write_off_a_banded_kind_is_refused() -> TestResult {
 }
 
 #[test]
+fn a_view_write_off_a_kind_that_does_not_owe_it_is_refused() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
+    set_field(&mut app, &mut client, "(field: Terrain(Kind(Wall)))")?;
+    let before = terrain_draft(&app)?.views().clone();
+
+    let reply = try_set_field(
+        &mut app,
+        &mut client,
+        "(field: Terrain(View(view: Facing(North), sprite: \"wall\")))",
+    )?;
+    assert_eq!(
+        unavailable_code(&reply)?,
+        "WrongState",
+        "an untagged Wall owes its edges and its corners and no Facing view at all, so the \
+         handler refuses the write rather than storing art nothing will ever draw",
+    );
+    assert!(
+        refusal_note(&reply)?.contains("Facing(North)"),
+        "the note names the view the draft does not owe",
+    );
+    assert_eq!(
+        terrain_draft(&app)?.views().clone(),
+        before,
+        "the refused write left the draft's views exactly as they were",
+    );
+    Ok(())
+}
+
+#[test]
 fn an_entry_side_toggle_off_emplacement_is_refused() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
     set_field(&mut app, &mut client, "(field: Terrain(Kind(Emplacement)))")?;

@@ -1,7 +1,7 @@
 //! the terrain→sprite-def edge's authoring-time pin — a terrain
 //! authoring time).
 
-use gdtf_assets::ContentIntegrityReport;
+use gdtf_assets::{ContentIntegrityReport, ReferenceKeyScheme};
 
 use crate::harness::{advance_to_published, editor_app_on_fixture_root, has_dangling_ref};
 
@@ -19,7 +19,12 @@ fn dangling_terrain_graphic_name_surfaces_in_the_editor_at_authoring_time() {
     );
     let Some(report) = report else { return };
     assert!(
-        has_dangling_ref(report, "SpriteDefRegistry", DANGLING_GRAPHIC),
+        has_dangling_ref(
+            report,
+            "SpriteDefRegistry",
+            DANGLING_GRAPHIC,
+            ReferenceKeyScheme::FileStem,
+        ),
         "the terrain def's dangling graphic_name must be reported at authoring time \
          (the terrain→sprite-def edge); report: {:?}",
         report.findings(),

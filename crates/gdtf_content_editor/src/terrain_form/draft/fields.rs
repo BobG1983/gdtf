@@ -8,8 +8,12 @@ use gdtf_battle_sim::{
     effects::on_death::OnDeathEffect,
     slab::SlabHp,
     terrain::{
-        def::{LeavesBehind, LosBlocking, TerrainTag, TerrainUuid},
+        def::{
+            LeavesBehind, LosBlocking, TerrainTag, TerrainUuid, TerrainView, TerrainViewArt,
+            TerrainViews,
+        },
         facing::TerrainFacing,
+        piece::TerrainGraphicKey,
     },
     weapon::WeaponName,
 };
@@ -27,6 +31,7 @@ pub struct TerrainDraft {
     armor_hardness:      ArmorHardness,
     height_band:         HeightBand,
     graphic:             TileRole,
+    views:               TerrainViews,
     footfall:            FootfallChoice,
     mounted_weapon:      Option<WeaponName>,
     entry_sides:         Vec<TerrainFacing>,
@@ -83,6 +88,28 @@ impl TerrainDraft {
     /// Set the graphic role.
     pub const fn set_graphic(&mut self, graphic: TileRole) {
         self.graphic = graphic;
+    }
+
+    /// The per-view art rows the draft holds.
+    #[must_use]
+    pub const fn views(&self) -> &TerrainViews {
+        &self.views
+    }
+
+    /// Replace every art row, the way loading an existing def fills the draft.
+    pub fn replace_views(&mut self, views: TerrainViews) {
+        self.views = views;
+    }
+
+    /// Name the sprite one view is drawn with, replacing any row that view already has.
+    pub fn set_view(&mut self, view: TerrainView, sprite: TerrainGraphicKey) {
+        let row = TerrainViewArt { view, sprite };
+        let mut rows = (*self.views).clone();
+        match rows.iter_mut().find(|held| held.view == view) {
+            Some(held) => *held = row,
+            None => rows.push(row),
+        }
+        self.views = TerrainViews::new(rows);
     }
 
     /// Footfall choice for slabs.
@@ -266,6 +293,7 @@ impl Default for TerrainDraft {
             armor_hardness:   ArmorHardness::new(2),
             height_band:      HeightBand::High,
             graphic:          TileRole::Floor,
+            views:            TerrainViews::new(Vec::new()),
             footfall:         FootfallChoice::default(),
             mounted_weapon:   None,
             entry_sides:      Vec::new(),

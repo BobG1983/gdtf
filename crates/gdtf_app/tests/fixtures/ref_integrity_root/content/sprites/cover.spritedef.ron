@@ -1,0 +1,10 @@
+// fixture sprite def — the resolving sprite key this root's terrain views name.
+// Its presence is what makes a view naming `ghost_view_graphic` read as the one dangling
+// row rather than as a root with no sprite defs at all.
+(
+    source: Sheet(
+        sheet: "sprites/alt_tileset_terrain.png",
+        rect: (x: 0, y: 0, w: 16, h: 16),
+    ),
+    anchor: (x: 8, y: 8),
+)

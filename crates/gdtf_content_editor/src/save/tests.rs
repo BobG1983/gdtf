@@ -11,7 +11,7 @@ use gdtf_battle_sim::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid,
+            TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
         piece::TerrainGraphicKey,
@@ -57,6 +57,7 @@ fn cover_def(key: TerrainUuid, label: &str) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags: Vec::new(),
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -79,6 +80,7 @@ fn wall_def(key: TerrainUuid, label: &str) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("wall".to_owned()),
         },
         tags: Vec::new(),
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -101,6 +103,7 @@ fn slab_def(key: TerrainUuid, label: &str) -> TerrainDef {
             footfall:     None,
         },
         tags: Vec::new(),
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,

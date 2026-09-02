@@ -25,6 +25,13 @@
     presenter_kind: Emplacement(
         graphic_name: "emplacement",   // TileRoles `emplacement` key — the dedicated VACANT weapon-mount tile, drawn distinctly from generic cover. While OCCUPIED the presenter swaps this tile in place to the `emplacement_occupied` tile (a Changed<EmplacementState> signal), so occupancy reads distinctly.
     ),
+    // One row per view an Emplacement owes — its four facings.
+    views: [
+        (view: Facing(North), sprite: "emplacement"),
+        (view: Facing(East), sprite: "emplacement"),
+        (view: Facing(South), sprite: "emplacement"),
+        (view: Facing(West), sprite: "emplacement"),
+    ],
     // SIM-OWNED tags: none. Emplacement's Wall/Cover-like blocking (path + vision at its band) is
     // the kind DEFAULT (sim_kind_blocks_path / sim_kind_occludes_vision are true for Emplacement),
     // so no explicit BlocksPathfinding/BlocksVision tag is needed. It is NOT Openable (enter/exit

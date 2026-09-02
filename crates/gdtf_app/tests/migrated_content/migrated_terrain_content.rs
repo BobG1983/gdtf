@@ -1,5 +1,6 @@
 //! Terrain load: shipped migrated terrain and theme content resolve by UUID.
 use gdtf_app::test_support::{AppState, load_released};
+use gdtf_assets::{ContentFinding, ContentIntegrityReport, ContentValidationDone};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainSimKind, TerrainTag, TerrainUuid},
@@ -116,6 +117,47 @@ fn shipped_migrated_terrain_and_theme_content_resolves_by_uuid() {
             }
         }
     }
+
+    advance_until(&mut app, load_released);
+}
+
+#[test]
+fn every_shipped_terrain_def_parses_and_carries_the_views_it_owes() {
+    let mut app = GdtfLoadTestAppBuilder::new()
+        .starting_in(AppState::Load)
+        .build();
+
+    advance_until_resource_exists::<ContentValidationDone>(&mut app);
+    let findings = app
+        .world()
+        .get_resource::<ContentIntegrityReport>()
+        .map(|report| report.findings().to_vec())
+        .unwrap_or_default();
+
+    let malformed: Vec<&ContentFinding> = findings
+        .iter()
+        .filter(|finding| {
+            matches!(
+                finding,
+                ContentFinding::MalformedFile { path, .. } if path.ends_with(".terrain_def.ron")
+            )
+        })
+        .collect();
+    assert!(
+        malformed.is_empty(),
+        "every shipped terrain def must parse — `views` is required with no default, so a file \
+         that never migrated is salvaged out of the registry instead: {malformed:?}",
+    );
+
+    let short: Vec<&ContentFinding> = findings
+        .iter()
+        .filter(|finding| matches!(finding, ContentFinding::MissingViews { .. }))
+        .collect();
+    assert!(
+        short.is_empty(),
+        "every shipped terrain def must name art for every view its own kind and tags owe: \
+         {short:?}",
+    );
 
     advance_until(&mut app, load_released);
 }

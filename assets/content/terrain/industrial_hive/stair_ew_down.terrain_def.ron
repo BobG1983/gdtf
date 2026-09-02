@@ -14,5 +14,15 @@
         graphic_name: "stair_ew_down", // EW descending-stair sprite — NS down rotated 90deg
         footfall:     None,            // no authored footfall
     ),
-    tags: [],
+    views: [
+        (view: FromBelow(North), sprite: "stair_ew_down"),
+        (view: FromAbove(North), sprite: "stair_ew_down"),
+        (view: FromBelow(East), sprite: "stair_ew_down"),
+        (view: FromAbove(East), sprite: "stair_ew_down"),
+        (view: FromBelow(South), sprite: "stair_ew_down"),
+        (view: FromAbove(South), sprite: "stair_ew_down"),
+        (view: FromBelow(West), sprite: "stair_ew_down"),
+        (view: FromAbove(West), sprite: "stair_ew_down"),
+    ],
+    tags: [Stair],
 )

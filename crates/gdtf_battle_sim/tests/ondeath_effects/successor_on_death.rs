@@ -18,7 +18,7 @@ use gdtf_battle_sim::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid,
+            TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
         piece::TerrainGraphicKey,
@@ -68,6 +68,7 @@ fn barrel_def(key: TerrainUuid, field: Option<FieldKey>, leaves: LeavesBehind) -
         presenter_kind: TerrainPresenterKind::Cover {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
+        views: TerrainViews::new(Vec::new()),
         tags: Vec::new(),
         on_death: field
             .map(|field| OnDeathEffect::LeaveField { field })

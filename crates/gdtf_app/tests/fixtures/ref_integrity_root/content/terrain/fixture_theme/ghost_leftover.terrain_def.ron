@@ -1,0 +1,24 @@
+// fixture terrain def — a Cover whose `leaves_behind` names a sprite key no sprite def in
+// this root holds, so the leaves-behind → sprite-def edge dangles ON PURPOSE under the
+// file-stem scheme. Its view set is complete and every row resolves.
+(
+    key: "00000000-0000-0000-0000-130700000a03",
+    display_name: "Ghost Leftover",
+    sim_kind: Cover(
+        hp:               10,
+        armor_protection: 0,
+        armor_hardness:   0,
+        height_band:      Low,
+    ),
+    presenter_kind: Cover(
+        graphic_name: "cover",
+    ),
+    views: [
+        (view: Facing(North), sprite: "cover"),
+        (view: Facing(East), sprite: "cover"),
+        (view: Facing(South), sprite: "cover"),
+        (view: Facing(West), sprite: "cover"),
+    ],
+    tags: [],
+    leaves_behind: Sprite("ghost_leftover_graphic"),
+)

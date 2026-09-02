@@ -8,6 +8,16 @@ fn tags_default_empty_when_omitted() {
         display_name: "Bulkhead Wall",
         sim_kind: Wall(hp: 40, armor_protection: 6, armor_hardness: 3, height_band: High),
         presenter_kind: Wall(graphic_name: "wall"),
+        views: [
+            (view: Edge(North), sprite: "wall"),
+            (view: Edge(East), sprite: "wall"),
+            (view: Edge(South), sprite: "wall"),
+            (view: Edge(West), sprite: "wall"),
+            (view: Corner(NorthEast), sprite: "wall"),
+            (view: Corner(SouthEast), sprite: "wall"),
+            (view: Corner(SouthWest), sprite: "wall"),
+            (view: Corner(NorthWest), sprite: "wall"),
+        ],
     )"#;
     let parsed = ron::de::from_str::<TerrainDef>(ron);
     assert!(
@@ -30,7 +40,17 @@ fn tags_round_trip_when_present() {
         display_name: "Blast Door",
         sim_kind: Wall(hp: 80, armor_protection: 10, armor_hardness: 6, height_band: High),
         presenter_kind: Wall(graphic_name: "door"),
-        tags: [Openable, BlocksVision, BlocksPathfinding, Indestructible],
+        views: [
+            (view: Shut(North), sprite: "door"),
+            (view: Open(North), sprite: "door"),
+            (view: Shut(East), sprite: "door"),
+            (view: Open(East), sprite: "door"),
+            (view: Shut(South), sprite: "door"),
+            (view: Open(South), sprite: "door"),
+            (view: Shut(West), sprite: "door"),
+            (view: Open(West), sprite: "door"),
+        ],
+        tags: [Openable, Stair, BlocksVision, BlocksPathfinding, Indestructible],
     )"#;
     let parsed = ron::de::from_str::<TerrainDef>(ron);
     assert!(
@@ -42,6 +62,7 @@ fn tags_round_trip_when_present() {
             def.tags,
             vec![
                 TerrainTag::Openable,
+                TerrainTag::Stair,
                 TerrainTag::BlocksVision,
                 TerrainTag::BlocksPathfinding,
                 TerrainTag::Indestructible,

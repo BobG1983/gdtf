@@ -79,6 +79,7 @@ Every `.terrain_def.ron` deserializes into `TerrainDef`
 | `display_name` | `TerrainDisplayName` | bare string | Human label for tooling / the editor. |
 | `sim_kind` | `TerrainSimKind` | struct variant | The SIM half — structural kind + combat stats (see 1c). |
 | `presenter_kind` | `TerrainPresenterKind` | struct variant | The PRESENTER half — graphic role key (+ optional slab footfall; see 1d). |
+| `views` | `TerrainViews` | list of `(view: …, sprite: "…")` rows | The art this def carries, one row per view its kind and tags owe. REQUIRED — it carries no `#[serde(default)]`, so a file omitting it fails to parse. |
 | `tags` | `Vec<TerrainTag>` | list of variants | SIM-owned pathing/vision traits (see 1e). `#[serde(default)]` — omitted = `[]`. |
 | `on_death` | `Vec<OnDeathEffect>` | list of variants | What the piece fans when DESTROYED (see 1e). `#[serde(default)]` — omitted = `[]`. |
 | `blocks_pathing` | `Option<bool>` | `Some(true)` \| `Some(false)` | OPTIONAL path-blocking OVERRIDE (see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
@@ -159,11 +160,13 @@ Author the SAME structural kind on both halves (a `Slab` sim kind takes a
 ### 1e. `tags:` and `on_death:` — optional sim behavior
 
 `tags:` lists `TerrainTag` variants — the closed, SIM-owned trait set that
-drives pathing / vision (never authored on `presenter_kind`):
+drives pathing, vision and which art views the def owes (never authored on
+`presenter_kind`):
 
 | Variant | Meaning |
 |---------|---------|
 | `Openable` | A door / hatch — passable when open, blocking when closed |
+| `Stair` | A staircase, which is what the view derivation reads to give the def its from-below and from-above views. Carries no blocking behaviour of any kind |
 | `BlocksVision` | Stops line-of-sight / field-of-view |
 | `BlocksPathfinding` | The cell is impassable |
 | `Indestructible` | HP depletion can never destroy it |
@@ -222,6 +225,12 @@ Create `rusted_barrels.terrain_def.ron` under `assets/content/terrain/underhive/
     presenter_kind: Cover(
         graphic_name: "cover",   // sprite-def name -> texture + rect + anchor
     ),
+    views: [                     // REQUIRED: every view a Cover owes, no default
+        (view: Facing(North), sprite: "cover"),
+        (view: Facing(East), sprite: "cover"),
+        (view: Facing(South), sprite: "cover"),
+        (view: Facing(West), sprite: "cover"),
+    ],
     tags: [],                    // plain destructible cover; no extra traits
 )
 ```

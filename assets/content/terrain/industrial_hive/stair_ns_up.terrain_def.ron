@@ -12,5 +12,17 @@
         graphic_name: "stair_ns_up",
         footfall:     None,
     ),
-    tags: [],
+    // The Stair tag is what marks a staircase on the def, so it owes the view from below and
+    // the view from above on each of the four facings.
+    views: [
+        (view: FromBelow(North), sprite: "stair_ns_up"),
+        (view: FromAbove(North), sprite: "stair_ns_up"),
+        (view: FromBelow(East), sprite: "stair_ns_up"),
+        (view: FromAbove(East), sprite: "stair_ns_up"),
+        (view: FromBelow(South), sprite: "stair_ns_up"),
+        (view: FromAbove(South), sprite: "stair_ns_up"),
+        (view: FromBelow(West), sprite: "stair_ns_up"),
+        (view: FromAbove(West), sprite: "stair_ns_up"),
+    ],
+    tags: [Stair],
 )

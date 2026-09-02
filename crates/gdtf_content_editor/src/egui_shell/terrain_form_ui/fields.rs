@@ -25,8 +25,9 @@ pub(in crate::egui_shell) struct TerrainSaveContext<'a> {
     pub(in crate::egui_shell) last_save: &'a mut LastSaveRecord,
 }
 
-const TAG_ORDER: [TerrainTag; 4] = [
+const TAG_ORDER: [TerrainTag; 5] = [
     TerrainTag::Openable,
+    TerrainTag::Stair,
     TerrainTag::BlocksVision,
     TerrainTag::BlocksPathfinding,
     TerrainTag::Indestructible,
@@ -39,6 +40,7 @@ const BAND_ORDER: [HeightBand; 3] = [HeightBand::Low, HeightBand::Mid, HeightBan
 const fn tag_label(tag: TerrainTag) -> &'static str {
     match tag {
         TerrainTag::Openable => "Openable",
+        TerrainTag::Stair => "Stair",
         TerrainTag::BlocksVision => "Blocks Vision",
         TerrainTag::BlocksPathfinding => "Blocks Pathfinding",
         TerrainTag::Indestructible => "Indestructible",

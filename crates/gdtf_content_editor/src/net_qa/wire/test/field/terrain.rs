@@ -2,6 +2,11 @@ use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::HeightBand,
     effects::fields::FieldKey,
+    terrain::{
+        def::TerrainView,
+        facing::{TerrainCorner, TerrainFacing},
+        piece::TerrainGraphicKey,
+    },
     weapon::{BlastRadius, DamageType, HitType, WeaponName},
 };
 
@@ -11,7 +16,8 @@ use crate::{
         ArmorHardnessNet, ArmorProtectionNet, BlocksPathingNet, DamageTypeNet, EditorDraftNameNet,
         EditorFieldNet, EditorListIndexNet, ExplodeDamageNet, FieldKeyNet, FootfallNet,
         HeightBandNet, HitTypeNet, LosBlockingNet, MountedWeaponNet, OnDeathVariantNet,
-        TerrainFieldNet, TerrainHpNet, TerrainKindNet, TileRoleNet,
+        TerrainFieldNet, TerrainHpNet, TerrainKindNet, TerrainViewNet, TerrainViewSpriteNet,
+        TileRoleNet,
     },
     terrain_form::TerrainKindChoice,
 };
@@ -55,6 +61,21 @@ fn every_terrain_field_arm_round_trips() {
         LosBlockingNet::UpToHeightBand,
     ))));
     assert_ron_round_trip(&terrain(TerrainFieldNet::BlocksLos(None)));
+    for view in [
+        TerrainView::Edge(TerrainFacing::North),
+        TerrainView::Corner(TerrainCorner::SouthWest),
+        TerrainView::Facing(TerrainFacing::East),
+        TerrainView::Shut(TerrainFacing::South),
+        TerrainView::Open(TerrainFacing::West),
+        TerrainView::FromBelow(TerrainFacing::North),
+        TerrainView::FromAbove(TerrainFacing::East),
+        TerrainView::Single,
+    ] {
+        assert_ron_round_trip(&terrain(TerrainFieldNet::View {
+            view:   TerrainViewNet::from_view(view),
+            sprite: TerrainViewSpriteNet::from_key(&TerrainGraphicKey::new("wall".to_owned())),
+        }));
+    }
     let index = EditorListIndexNet::new(1);
     for variant in [OnDeathVariantNet::Explode, OnDeathVariantNet::LeaveField] {
         assert_ron_round_trip(&terrain(TerrainFieldNet::OnDeathVariant { index, variant }));

@@ -154,6 +154,8 @@ impl TerrainPresenterKind {
 pub enum TerrainTag {
     /// Can be opened and closed.
     Openable,
+    /// A staircase, for the view derivation. Carries no blocking behaviour.
+    Stair,
     /// Blocks vision.
     BlocksVision,
     /// Blocks pathfinding.

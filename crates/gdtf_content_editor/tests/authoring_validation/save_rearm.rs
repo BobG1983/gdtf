@@ -1,6 +1,6 @@
 //! the GANG mode's own SAVE path feeds the authoring-validation
 use bevy::asset::AssetServer;
-use gdtf_assets::{ContentFamily, ContentIntegrityReport};
+use gdtf_assets::{ContentFamily, ContentIntegrityReport, ReferenceKeyScheme};
 use gdtf_battle_sim::weapon::WeaponName;
 use gdtf_content_editor::{GangDraft, draft_to_roster, gang_file_name, write_gang_in};
 use gdtf_content_families::GangsFamily;
@@ -39,7 +39,12 @@ fn gang_save_reload_rearms_validation_with_the_saved_keys() {
     {
         let report = app.world().resource::<ContentIntegrityReport>();
         assert!(
-            has_dangling_ref(report, "WeaponRegistry", SAVED_DANGLING_WEAPON),
+            has_dangling_ref(
+                report,
+                "WeaponRegistry",
+                SAVED_DANGLING_WEAPON,
+                ReferenceKeyScheme::FileStem,
+            ),
             "the SAVED gang's dangling weapon key must surface at editor launch; report: {:?}",
             report.findings(),
         );
@@ -63,12 +68,22 @@ fn gang_save_reload_rearms_validation_with_the_saved_keys() {
         app.world()
             .get_resource::<ContentIntegrityReport>()
             .is_some_and(|report| {
-                has_dangling_ref(report, "WeaponRegistry", RESAVED_DANGLING_WEAPON)
+                has_dangling_ref(
+                    report,
+                    "WeaponRegistry",
+                    RESAVED_DANGLING_WEAPON,
+                    ReferenceKeyScheme::FileStem,
+                )
             })
     });
     let report = app.world().resource::<ContentIntegrityReport>();
     assert!(
-        !has_dangling_ref(report, "WeaponRegistry", SAVED_DANGLING_WEAPON),
+        !has_dangling_ref(
+            report,
+            "WeaponRegistry",
+            SAVED_DANGLING_WEAPON,
+            ReferenceKeyScheme::FileStem,
+        ),
         "the report must be RESET and re-checked on re-arm — the first save's superseded weapon \
          finding must not persist; report: {:?}",
         report.findings(),

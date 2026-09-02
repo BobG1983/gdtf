@@ -12,5 +12,7 @@
         graphic_name: "floor",
         footfall:     Some("footfall_metal"),
     ),
+    // A plain floor slab owes one view and draws no expander.
+    views: [(view: Single, sprite: "floor")],
     tags: [],
 )

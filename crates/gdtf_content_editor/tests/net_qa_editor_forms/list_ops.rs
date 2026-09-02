@@ -23,6 +23,8 @@ const TOGGLE_EAST: &str = "(list: EntrySides, op: Toggle(EntrySide(East)))";
 
 const TOGGLE_OPENABLE: &str = "(list: TerrainTags, op: Toggle(TerrainTag(Openable)))";
 
+const TOGGLE_STAIR: &str = "(list: TerrainTags, op: Toggle(TerrainTag(Stair)))";
+
 // The frame sources the world's own draft holds right now.
 fn frames(app: &App) -> Result<Vec<SpriteSource>, TestError> {
     let draft = sprite_draft(app)?;
@@ -216,6 +218,34 @@ fn a_tag_toggle_adds_the_tag_then_takes_it_back_off() -> TestResult {
         removed.members,
     );
     assert!(!terrain_draft(&app)?.has_tag(TerrainTag::Openable));
+    Ok(())
+}
+
+#[test]
+fn a_stair_tag_toggle_adds_the_tag_then_takes_it_back_off() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
+    assert!(
+        !terrain_draft(&app)?.has_tag(TerrainTag::Stair),
+        "a fresh Terrain draft holds no tag, or the toggles below would prove nothing",
+    );
+
+    let added = list_op(&mut app, &mut client, TOGGLE_STAIR)?;
+    assert_eq!(added.list, ListRow::TerrainTags);
+    assert_eq!(
+        added.members,
+        vec![ListMemberRow::TerrainTag(TagRow::Stair)],
+        "the tag that marks a staircase reaches editor.list_op through the existing TerrainTags \
+         list, and the reply reads it back",
+    );
+    assert!(terrain_draft(&app)?.has_tag(TerrainTag::Stair));
+
+    let removed = list_op(&mut app, &mut client, TOGGLE_STAIR)?;
+    assert!(
+        removed.members.is_empty(),
+        "a toggle that only ever adds fails here, got {:?}",
+        removed.members,
+    );
+    assert!(!terrain_draft(&app)?.has_tag(TerrainTag::Stair));
     Ok(())
 }
 

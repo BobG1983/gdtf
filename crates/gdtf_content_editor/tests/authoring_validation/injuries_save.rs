@@ -1,6 +1,6 @@
 //! the INJURY mode's weighting SAVE path feeds the authoring-validation
 use bevy::asset::AssetServer;
-use gdtf_assets::ContentIntegrityReport;
+use gdtf_assets::{ContentIntegrityReport, ReferenceKeyScheme};
 use gdtf_battle_sim::{
     armor::InjuryCategory,
     injuries::{DamageContext, InjuryName, InjuryTables, InjuryWeight, WeightedInjuryEntry},
@@ -50,7 +50,12 @@ fn weighting_save_reload_rearms_validation_with_the_saved_keys() {
     {
         let report = app.world().resource::<ContentIntegrityReport>();
         assert!(
-            has_dangling_ref(report, "InjuryRegistry", SAVED_DANGLING_INJURY),
+            has_dangling_ref(
+                report,
+                "InjuryRegistry",
+                SAVED_DANGLING_INJURY,
+                ReferenceKeyScheme::FileStem,
+            ),
             "the SAVED weighting's dangling injury key must surface at editor launch; \
              report: {:?}",
             report.findings(),
@@ -75,12 +80,22 @@ fn weighting_save_reload_rearms_validation_with_the_saved_keys() {
         app.world()
             .get_resource::<ContentIntegrityReport>()
             .is_some_and(|report| {
-                has_dangling_ref(report, "InjuryRegistry", RESAVED_DANGLING_INJURY)
+                has_dangling_ref(
+                    report,
+                    "InjuryRegistry",
+                    RESAVED_DANGLING_INJURY,
+                    ReferenceKeyScheme::FileStem,
+                )
             })
     });
     let report = app.world().resource::<ContentIntegrityReport>();
     assert!(
-        !has_dangling_ref(report, "InjuryRegistry", SAVED_DANGLING_INJURY),
+        !has_dangling_ref(
+            report,
+            "InjuryRegistry",
+            SAVED_DANGLING_INJURY,
+            ReferenceKeyScheme::FileStem,
+        ),
         "the report must be RESET and re-checked on re-arm — the first save's superseded \
          injury finding must not persist; report: {:?}",
         report.findings(),

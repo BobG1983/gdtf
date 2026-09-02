@@ -1,7 +1,7 @@
 use gdtf_battle_sim::terrain::facing::TerrainFacing;
 
 use super::{assert_ron_round_trip, assert_schema_is_usable};
-use crate::net_qa::wire::TerrainFacingNet;
+use crate::net_qa::wire::{TerrainCornerNet, TerrainFacingNet};
 
 #[test]
 fn every_facing_mirrors_to_its_own_name() {
@@ -42,6 +42,26 @@ fn every_facing_reads_back_as_the_cardinal_it_mirrored() {
 }
 
 #[test]
+fn every_corner_arm_round_trips() {
+    for corner in TerrainCornerNet::ALL {
+        assert_ron_round_trip(&corner);
+    }
+}
+
+#[test]
+fn every_corner_reads_back_as_the_corner_it_mirrored() {
+    for corner in TerrainCornerNet::ALL {
+        assert_eq!(
+            TerrainCornerNet::from_corner(corner.to_corner()),
+            corner,
+            "a client's corner must come back as the sim's own, or a view written at one turn \
+             would be stored at another",
+        );
+    }
+}
+
+#[test]
 fn the_facing_traces_a_usable_shape() {
     assert_schema_is_usable::<TerrainFacingNet>("TerrainFacingNet");
+    assert_schema_is_usable::<TerrainCornerNet>("TerrainCornerNet");
 }

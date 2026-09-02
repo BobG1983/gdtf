@@ -11,7 +11,7 @@ pillars: [1, 5]
 **A terrain def owns its own art in every state it can be in, and says what it
 leaves behind when it dies; the renderer owns no content.**
 
-Status: `leaves_behind` is built; the per-def view sets are not. "What exists
+Status: `leaves_behind` and the per-def view sets are both built. "What exists
 today" below records the state they replace, so a reader can tell canon from
 code.
 
@@ -24,13 +24,21 @@ Which art views a def owes follows from its kind and its properties:
 | Wall kind | its edges and its corners |
 | Cover kind | its facings |
 | Emplacement kind | its facings |
-| Openable tag — a door | its facings, plus open and shut |
-| Stair link — a staircase | the view from below and the view from above — one def, not two |
+| Slab kind | one view |
+| Openable tag — a door | shut and open for each of the four facings, and no plain facing row |
+| `Stair` tag — a staircase | the view from below and the view from above for each of the four facings, on one def, not two |
+
+A tag row wins over a kind row, and `Openable` wins over `Stair`. A door
+authors `sim_kind: Wall` and a staircase authors `sim_kind: Slab`, so reading
+the kind first would give a door a wall's edges and corners and a staircase one
+floor view.
 
 There is no `Door` kind and no `Staircase` kind. The sim has four terrain
 kinds — wall, cover, slab, emplacement — and a door is an openable tag with an
-open state, a staircase a vertical link. Each row above is keyed off the marker
-that actually exists, not off an invented kind.
+open state. The stair row keys off `TerrainTag::Stair`, added on the def,
+because the `VerticalLink` carrying `LinkKind::Stair`
+(`crates/gdtf_battle_sim/src/terrain/vertical/links.rs`) lives on the link graph
+and not on the def, so the def had nothing to key off.
 
 Nothing owes a "destroyed" view. A def carries `leaves_behind`, which is one of:
 
@@ -119,8 +127,11 @@ slot can become a list without disturbing anything else.
 - Code sites: the sim's terrain kinds, the `on_death` field and the
   `leaves_behind` field live in `crates/gdtf_battle_sim/src/terrain/def/`, and
   `crates/gdtf_battle_sim/src/terrain/successor/` acts on it when a piece is
-  destroyed; role-name art resolution lives in `crates/gdtf_battle_presenter`;
-  the authoring forms live in `crates/gdtf_content_editor`. **TBD (Bevy):** the
-  per-def view sets, the per-def completeness check, the mounted weapon's arc
-  reading the mount's facing, and turning a mount as an act are not built.
+  destroyed; `TerrainView`, `TerrainViewArt`, `TerrainViews` and `owed_views`
+  live in `crates/gdtf_battle_sim/src/terrain/def/views/`, and the per-def
+  completeness check in
+  `crates/gdtf_content_families/src/validate/terrain_views.rs`; role-name art
+  resolution lives in `crates/gdtf_battle_presenter`; the authoring forms live
+  in `crates/gdtf_content_editor`. **TBD (Bevy):** the mounted weapon's arc
+  reading the mount's facing, and turning a mount as an act, are not built.
 - Source: owner rulings, given directly in conversation, 2026-08-14.

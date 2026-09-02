@@ -13,7 +13,7 @@ use crate::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid,
+            TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
         piece::TerrainGraphicKey,
@@ -40,6 +40,7 @@ fn facing_wall_def(key: TerrainUuid) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("wall".to_owned()),
         },
         tags: Vec::new(),
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -62,6 +63,7 @@ fn facing_terrain_defs() -> TerrainDefRegistry {
             footfall:     None,
         },
         tags:           Vec::new(),
+        views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),
 
         blocks_pathing: None,

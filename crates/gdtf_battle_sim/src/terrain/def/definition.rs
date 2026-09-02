@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     LeavesBehind, LosBlocking, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid,
+    TerrainViews,
 };
 
 /// Display name for tooling and authoring.
@@ -44,6 +45,8 @@ pub struct TerrainDef {
     pub sim_kind:       TerrainSimKind,
     /// Presenter behaviour.
     pub presenter_kind: TerrainPresenterKind,
+    /// The art this def carries, one row per view it owes. Required.
+    pub views:          TerrainViews,
     /// Optional tags.
     #[serde(default)]
     pub tags:           Vec<TerrainTag>,

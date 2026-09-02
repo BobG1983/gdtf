@@ -17,7 +17,7 @@ use gdtf_battle_sim::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid,
+            TerrainSimKind, TerrainUuid, TerrainViews,
         },
         piece::TerrainGraphicKey,
     },
@@ -57,6 +57,7 @@ fn slab_def(key: TerrainUuid, name: &str, hp: u32, leaves_behind: LeavesBehind) 
             graphic_name: TerrainGraphicKey::new("floor".to_owned()),
             footfall:     None,
         },
+        views: TerrainViews::new(Vec::new()),
         tags: Vec::new(),
         on_death: Vec::new(),
         blocks_pathing: None,

@@ -15,7 +15,7 @@ use gdtf_battle_sim::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid,
+            TerrainSimKind, TerrainUuid, TerrainViews,
         },
         piece::TerrainGraphicKey,
     },
@@ -102,6 +102,7 @@ pub(crate) fn ordered_cover_registry(on_death: Vec<OnDeathEffect>) -> TerrainDef
             presenter_kind: TerrainPresenterKind::Cover {
                 graphic_name: TerrainGraphicKey::new("cover".to_owned()),
             },
+            views: TerrainViews::new(Vec::new()),
             tags: Vec::new(),
             on_death,
             blocks_pathing: None,

@@ -8,7 +8,7 @@ use gdtf_battle_sim::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid,
+            TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
         piece::TerrainGraphicKey,
@@ -52,6 +52,7 @@ fn ladder_def() -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("ladder".to_owned()),
         },
         tags:           Vec::new(),
+        views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
@@ -73,6 +74,7 @@ fn slab_def() -> TerrainDef {
             footfall:     None,
         },
         tags:           Vec::new(),
+        views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,

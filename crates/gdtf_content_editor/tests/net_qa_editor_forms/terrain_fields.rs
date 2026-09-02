@@ -4,7 +4,11 @@ use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     cover::HeightBand,
     effects::{fields::FieldKey, on_death::OnDeathEffect},
-    terrain::def::LosBlocking,
+    terrain::{
+        def::{LosBlocking, TerrainView},
+        facing::TerrainFacing,
+        piece::TerrainGraphicKey,
+    },
     weapon::{WeaponName, WeaponRegistry},
 };
 use gdtf_content_editor::{EditorMode, FootfallChoice, TerrainKindChoice};
@@ -18,8 +22,8 @@ use crate::{
     socket::{Client, run_editor},
     support::{TestError, TestResult},
     values::{
-        BandRow, DamageTypeRow, FootfallRow, HitTypeRow, LosRow, OnDeathVariantRow, TerrainKindRow,
-        TileRoleRow,
+        BandRow, DamageTypeRow, FacingRow, FootfallRow, HitTypeRow, LosRow, OnDeathVariantRow,
+        TerrainKindRow, TileRoleRow, ViewRow,
     },
 };
 
@@ -129,6 +133,8 @@ fn every_terrain_field_writes_the_draft_and_reads_back_as_stored() -> TestResult
         Some(LosBlocking::UpToHeightBand)
     );
 
+    a_view_on_a_cover_draft(&mut app, &mut client)?;
+
     set_field(&mut app, &mut client, "(field: Terrain(Kind(Slab)))")?;
     let footfall = set_field(&mut app, &mut client, "(field: Terrain(Footfall(Grate)))")?;
     assert_eq!(
@@ -160,6 +166,32 @@ fn every_terrain_field_writes_the_draft_and_reads_back_as_stored() -> TestResult
     assert_eq!(terrain_draft(&app)?.mounted_weapon(), Some(&weapon));
 
     every_on_death_arm(&mut app, &mut client)
+}
+
+// The View arm, written on a Cover draft, which owes a Facing view on every side.
+fn a_view_on_a_cover_draft(app: &mut App, client: &mut Client) -> TestResult {
+    set_field(app, client, "(field: Terrain(Kind(Cover)))")?;
+    let view = set_field(
+        app,
+        client,
+        "(field: Terrain(View(view: Facing(North), sprite: \"cover\")))",
+    )?;
+    assert_eq!(
+        view.field,
+        FieldRow::Terrain(TerrainFieldRow::View {
+            view:   ViewRow::Facing(FacingRow::North),
+            sprite: "cover".to_owned(),
+        }),
+        "the reply names the view that was written, read back off the draft",
+    );
+    assert_eq!(
+        terrain_draft(app)?
+            .views()
+            .sprite(TerrainView::Facing(TerrainFacing::North)),
+        Some(&TerrainGraphicKey::new("cover".to_owned())),
+        "the world's own Terrain draft holds the view the write left",
+    );
+    Ok(())
 }
 
 // The five on-death arms, each written at the one index an Add put there.
@@ -231,6 +263,35 @@ fn every_on_death_arm(app: &mut App, client: &mut Client) -> TestResult {
             field: FieldKey::new("toxic_waste_pool".to_owned()),
         }],
         "the draft holds the row every write above left it on",
+    );
+    Ok(())
+}
+
+#[test]
+fn a_view_naming_a_sprite_no_registry_holds_is_written_anyway() -> TestResult {
+    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
+    set_field(&mut app, &mut client, "(field: Terrain(Kind(Cover)))")?;
+
+    let written = set_field(
+        &mut app,
+        &mut client,
+        "(field: Terrain(View(view: Facing(East), sprite: \"no_such_sprite\")))",
+    )?;
+    assert_eq!(
+        written.field,
+        FieldRow::Terrain(TerrainFieldRow::View {
+            view:   ViewRow::Facing(FacingRow::East),
+            sprite: "no_such_sprite".to_owned(),
+        }),
+        "a view takes any sprite key, exactly as a .terrain_def.ron takes any graphic_name — a \
+         key no sprite def holds is reported at authoring time, not refused at the write",
+    );
+    assert_eq!(
+        terrain_draft(&app)?
+            .views()
+            .sprite(TerrainView::Facing(TerrainFacing::East)),
+        Some(&TerrainGraphicKey::new("no_such_sprite".to_owned())),
+        "the draft holds the unresolvable key the write was asked for",
     );
     Ok(())
 }

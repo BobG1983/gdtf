@@ -12,5 +12,11 @@
     presenter_kind: Cover(
         graphic_name: "rubble",
     ),
+    views: [
+        (view: Facing(North), sprite: "rubble"),
+        (view: Facing(East), sprite: "rubble"),
+        (view: Facing(South), sprite: "rubble"),
+        (view: Facing(West), sprite: "rubble"),
+    ],
     tags: [],
 )

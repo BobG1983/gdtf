@@ -1,6 +1,8 @@
 //! A2: the theme→terrain edge's authoring-time pins — a dangling
 use bevy::asset::{AssetEvent, AssetServer, Assets, uuid::Uuid};
-use gdtf_assets::{ContentFamily, ContentFolderHandle, ContentIntegrityReport, RonAsset};
+use gdtf_assets::{
+    ContentFamily, ContentFolderHandle, ContentIntegrityReport, ReferenceKeyScheme, RonAsset,
+};
 use gdtf_battle_sim::{level::UuidThemeDef, terrain::def::TerrainUuid};
 use gdtf_content_families::ThemeDefsFamily;
 use gdtf_test_utils::advance_until;
@@ -13,7 +15,7 @@ use crate::harness::{
 const EDITED_DEFAULT_FLOOR: u128 = 0x0000_0000_0000_0000_0000_0630_0000_0003;
 
 fn has_dangling_terrain_ref(report: &ContentIntegrityReport, uuid: &str) -> bool {
-    has_dangling_ref(report, "TerrainDefRegistry", uuid)
+    has_dangling_ref(report, "TerrainDefRegistry", uuid, ReferenceKeyScheme::Uuid)
 }
 
 #[test]

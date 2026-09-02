@@ -11,5 +11,6 @@
         graphic_name: "floor_alt_panel",
         footfall:     None,
     ),
+    views: [(view: Single, sprite: "floor_alt_panel")],
     tags: [],
 )

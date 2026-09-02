@@ -1,6 +1,8 @@
 //! the GANG equipment-refs edge joins the editor's authoring-time
 use bevy::asset::{AssetEvent, AssetServer, Assets};
-use gdtf_assets::{ContentFamily, ContentFolderHandle, ContentIntegrityReport, RonAsset};
+use gdtf_assets::{
+    ContentFamily, ContentFolderHandle, ContentIntegrityReport, ReferenceKeyScheme, RonAsset,
+};
 use gdtf_battle_sim::{
     ganger::GangRoster,
     weapon::{FISTS_KEY, WeaponName},
@@ -33,7 +35,12 @@ fn dangling_gang_equipment_refs_surface_in_the_editor_at_authoring_time() {
     );
     let Some(report) = report else { return };
 
-    let referrer = dangling_ref_referrer(report, "WeaponRegistry", DANGLING_WEAPON);
+    let referrer = dangling_ref_referrer(
+        report,
+        "WeaponRegistry",
+        DANGLING_WEAPON,
+        ReferenceKeyScheme::FileStem,
+    );
     assert!(
         referrer.is_some(),
         "the gang member's dangling weapon key must be reported at authoring time; report: {:?}",
@@ -47,12 +54,22 @@ fn dangling_gang_equipment_refs_surface_in_the_editor_at_authoring_time() {
     );
 
     assert!(
-        has_dangling_ref(report, "ArmorRegistry", DANGLING_ARMOR),
+        has_dangling_ref(
+            report,
+            "ArmorRegistry",
+            DANGLING_ARMOR,
+            ReferenceKeyScheme::FileStem,
+        ),
         "the gang member's dangling armor key must be reported at authoring time; report: {:?}",
         report.findings(),
     );
     assert!(
-        has_dangling_ref(report, "MeleeWeaponRegistry", FISTS_KEY),
+        has_dangling_ref(
+            report,
+            "MeleeWeaponRegistry",
+            FISTS_KEY,
+            ReferenceKeyScheme::FileStem,
+        ),
         "the melee-less member's implicit `fists` default must be reported dangling (no melee \
          folder in this root); report: {:?}",
         report.findings(),
@@ -100,20 +117,35 @@ fn gang_hot_edit_rearms_validation_and_republishes_current_findings() {
         app.world()
             .get_resource::<ContentIntegrityReport>()
             .is_some_and(|report| {
-                has_dangling_ref(report, "WeaponRegistry", EDITED_DANGLING_WEAPON)
+                has_dangling_ref(
+                    report,
+                    "WeaponRegistry",
+                    EDITED_DANGLING_WEAPON,
+                    ReferenceKeyScheme::FileStem,
+                )
             })
     });
 
     let world = app.world();
     let report = world.resource::<ContentIntegrityReport>();
     assert!(
-        !has_dangling_ref(report, "WeaponRegistry", DANGLING_WEAPON),
+        !has_dangling_ref(
+            report,
+            "WeaponRegistry",
+            DANGLING_WEAPON,
+            ReferenceKeyScheme::FileStem,
+        ),
         "the report must be RESET and re-checked on re-arm — the superseded weapon finding must \
          not persist; report: {:?}",
         report.findings(),
     );
     assert!(
-        has_dangling_ref(report, "TerrainDefRegistry", DANGLING_DEFAULT_FLOOR),
+        has_dangling_ref(
+            report,
+            "TerrainDefRegistry",
+            DANGLING_DEFAULT_FLOOR,
+            ReferenceKeyScheme::Uuid,
+        ),
         "the gang re-arm must re-run EVERY registered check onto the one report — the theme's \
          untouched dangling default_floor must be re-reported; report: {:?}",
         report.findings(),

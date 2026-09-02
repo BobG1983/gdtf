@@ -12,5 +12,15 @@
         graphic_name: "stair_ns_down",
         footfall:     None,
     ),
-    tags: [],
+    views: [
+        (view: FromBelow(North), sprite: "stair_ns_down"),
+        (view: FromAbove(North), sprite: "stair_ns_down"),
+        (view: FromBelow(East), sprite: "stair_ns_down"),
+        (view: FromAbove(East), sprite: "stair_ns_down"),
+        (view: FromBelow(South), sprite: "stair_ns_down"),
+        (view: FromAbove(South), sprite: "stair_ns_down"),
+        (view: FromBelow(West), sprite: "stair_ns_down"),
+        (view: FromAbove(West), sprite: "stair_ns_down"),
+    ],
+    tags: [Stair],
 )

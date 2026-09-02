@@ -71,6 +71,7 @@ impl TerrainDraft {
         if let Some(role) = TileRole::from_key(graphic_name) {
             self.set_graphic(role);
         }
+        self.replace_views(def.views.clone());
         self.replace_tags(def.tags.clone());
         self.set_blocks_pathing(def.blocks_pathing.map(|flag| *flag));
         self.set_blocks_los(def.blocks_los);

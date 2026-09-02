@@ -11,5 +11,15 @@
     presenter_kind: Wall(
         graphic_name: "wall",
     ),
+    views: [
+        (view: Edge(North), sprite: "wall"),
+        (view: Edge(East), sprite: "wall"),
+        (view: Edge(South), sprite: "wall"),
+        (view: Edge(West), sprite: "wall"),
+        (view: Corner(NorthEast), sprite: "wall"),
+        (view: Corner(SouthEast), sprite: "wall"),
+        (view: Corner(SouthWest), sprite: "wall"),
+        (view: Corner(NorthWest), sprite: "wall"),
+    ],
     tags: [BlocksVision, BlocksPathfinding],
 )

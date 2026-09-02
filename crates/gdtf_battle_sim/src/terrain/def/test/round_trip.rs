@@ -1,17 +1,31 @@
 use super::super::{
     BlocksPathingOverride, LeavesBehind, TerrainDef, TerrainDisplayName, TerrainPresenterKind,
-    TerrainSimKind, TerrainTag, TerrainUuid,
+    TerrainSimKind, TerrainTag, TerrainUuid, TerrainViewArt, TerrainViews, owed_views_for,
 };
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
     terrain::{
+        entity::TerrainPieceKind,
         facing::TerrainFacing,
         piece::{FootfallSound, TerrainGraphicKey},
     },
     weapon::WeaponName,
 };
+
+// Every view this kind and tag set owes, each row naming the one sprite key.
+fn owed_art(kind: TerrainPieceKind, tags: &[TerrainTag], sprite: &str) -> TerrainViews {
+    TerrainViews::new(
+        owed_views_for(kind, tags)
+            .iter()
+            .map(|view| TerrainViewArt {
+                view:   *view,
+                sprite: TerrainGraphicKey::new(sprite.to_owned()),
+            })
+            .collect(),
+    )
+}
 
 fn assert_round_trips(def: &TerrainDef) {
     let serialized = ron::ser::to_string(def);
@@ -48,6 +62,11 @@ fn wall_def_round_trips() {
         presenter_kind: TerrainPresenterKind::Wall {
             graphic_name: TerrainGraphicKey::new("wall".to_owned()),
         },
+        views:          owed_art(
+            TerrainPieceKind::Wall,
+            &[TerrainTag::BlocksVision, TerrainTag::BlocksPathfinding],
+            "wall",
+        ),
         tags:           vec![TerrainTag::BlocksVision, TerrainTag::BlocksPathfinding],
         on_death:       Vec::new(),
 
@@ -72,6 +91,7 @@ fn cover_def_round_trips() {
         presenter_kind: TerrainPresenterKind::Cover {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
+        views:          owed_art(TerrainPieceKind::Cover, &[], "cover"),
         tags:           Vec::new(),
         on_death:       Vec::new(),
 
@@ -96,6 +116,7 @@ fn slab_def_round_trips() {
             graphic_name: TerrainGraphicKey::new("slab".to_owned()),
             footfall:     Some(FootfallSound::new("footfall_metal".to_owned())),
         },
+        views:          owed_art(TerrainPieceKind::Slab, &[], "slab"),
         tags:           Vec::new(),
         on_death:       Vec::new(),
 
@@ -119,6 +140,7 @@ fn slab_with_path_override(over: Option<BlocksPathingOverride>) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("floor".to_owned()),
             footfall:     None,
         },
+        views:          owed_art(TerrainPieceKind::Slab, &[], "floor"),
         tags:           Vec::new(),
         on_death:       Vec::new(),
 
@@ -181,6 +203,7 @@ fn emplacement_def_round_trips() {
         presenter_kind: TerrainPresenterKind::Emplacement {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
+        views:          owed_art(TerrainPieceKind::Emplacement, &[], "cover"),
         tags:           Vec::new(),
         on_death:       Vec::new(),
 
@@ -205,6 +228,16 @@ fn a_def_with_no_leaves_behind_key_parses_as_nothing() {
         presenter_kind: Wall(
             graphic_name: "wall",
         ),
+        views: [
+            (view: Edge(North), sprite: "wall"),
+            (view: Edge(East), sprite: "wall"),
+            (view: Edge(South), sprite: "wall"),
+            (view: Edge(West), sprite: "wall"),
+            (view: Corner(NorthEast), sprite: "wall"),
+            (view: Corner(SouthEast), sprite: "wall"),
+            (view: Corner(SouthWest), sprite: "wall"),
+            (view: Corner(NorthWest), sprite: "wall"),
+        ],
     )"#;
     let parsed = ron::de::from_str::<TerrainDef>(ron);
     assert!(
@@ -235,6 +268,7 @@ fn a_def_that_leaves_a_piece_behind_round_trips() {
         presenter_kind: TerrainPresenterKind::Wall {
             graphic_name: TerrainGraphicKey::new("wall".to_owned()),
         },
+        views:          owed_art(TerrainPieceKind::Wall, &[], "wall"),
         tags:           Vec::new(),
         on_death:       Vec::new(),
         blocks_pathing: None,

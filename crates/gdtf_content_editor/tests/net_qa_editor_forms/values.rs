@@ -106,9 +106,32 @@ pub(crate) enum TerrainKindRow {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub(crate) enum TagRow {
     Openable,
+    Stair,
     BlocksVision,
     BlocksPathfinding,
     Indestructible,
+}
+
+/// A client's own reading of a wall's diagonal turn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum CornerRow {
+    NorthEast,
+    SouthEast,
+    SouthWest,
+    NorthWest,
+}
+
+/// A client's own reading of one view a terrain piece can be drawn in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum ViewRow {
+    Edge(FacingRow),
+    Corner(CornerRow),
+    Facing(FacingRow),
+    Shut(FacingRow),
+    Open(FacingRow),
+    FromBelow(FacingRow),
+    FromAbove(FacingRow),
+    Single,
 }
 
 /// A client's own reading of a piece's height band.

@@ -11,7 +11,7 @@ use crate::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainTag, TerrainUuid,
+            TerrainSimKind, TerrainTag, TerrainUuid, TerrainViews,
         },
         entity::{TerrainBrace, TerrainCell, TerrainPieceKind},
         facing::TerrainFacing,
@@ -60,6 +60,7 @@ fn cover_def(key: TerrainUuid, name: &str, leaves_behind: LeavesBehind) -> Terra
             graphic_name: graphic("cover"),
         },
         tags: Vec::new(),
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
         blocks_pathing: None,
         blocks_los: None,
@@ -81,6 +82,7 @@ fn wall_def(key: TerrainUuid, name: &str) -> TerrainDef {
             graphic_name: graphic("wall"),
         },
         tags: vec![TerrainTag::BlocksPathfinding],
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
         blocks_pathing: None,
         blocks_los: None,
@@ -102,6 +104,7 @@ fn slab_def(key: TerrainUuid, name: &str, leaves_behind: LeavesBehind) -> Terrai
             footfall:     None,
         },
         tags: Vec::new(),
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
         blocks_pathing: None,
         blocks_los: None,

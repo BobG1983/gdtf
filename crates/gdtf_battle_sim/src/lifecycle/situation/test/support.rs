@@ -23,7 +23,7 @@ pub(super) use crate::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainTag, TerrainUuid,
+            TerrainSimKind, TerrainTag, TerrainUuid, TerrainViews,
         },
         entity::{BlocksPathfinding, TerrainCell, TerrainPieceKind},
         facing::TerrainFacing,

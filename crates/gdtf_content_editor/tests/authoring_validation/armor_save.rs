@@ -1,6 +1,6 @@
 //! the ARMOR mode's own SAVE path feeds the authoring-validation
 use bevy::asset::AssetServer;
-use gdtf_assets::{ContentFamily, ContentIntegrityReport};
+use gdtf_assets::{ContentFamily, ContentIntegrityReport, ReferenceKeyScheme};
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorProtection, ArmorRegistry, BodyPart},
     weapon::WeaponName,
@@ -21,6 +21,37 @@ const REARM_ARMOR: &str = "rearm_plate";
 const DANGLING_WEAPON: &str = "armor_suite_missing_weapon";
 
 const MALFORMED_STEM: &str = "broken_plate";
+
+// What the report must say the first time the editor reads the planted root.
+fn assert_launch_findings(report: &ContentIntegrityReport) {
+    assert!(
+        !has_dangling_ref(
+            report,
+            "ArmorRegistry",
+            REARM_ARMOR,
+            ReferenceKeyScheme::FileStem,
+        ),
+        "the SAVED armor must resolve the gang's armor key at editor launch (no dangling \
+         ArmorRegistry finding); report: {:?}",
+        report.findings(),
+    );
+    assert!(
+        has_dangling_ref(
+            report,
+            "WeaponRegistry",
+            DANGLING_WEAPON,
+            ReferenceKeyScheme::FileStem,
+        ),
+        "the gang's dangling weapon key must surface at editor launch; report: {:?}",
+        report.findings(),
+    );
+    assert!(
+        has_malformed(report, MALFORMED_STEM),
+        "the malformed armor sibling must surface as a MalformedFile finding at launch; \
+         report: {:?}",
+        report.findings(),
+    );
+}
 
 #[test]
 fn armor_save_reload_rearms_validation_and_republishes_findings() {
@@ -66,26 +97,7 @@ fn armor_save_reload_rearms_validation_and_republishes_findings() {
 
     let mut app = editor_app_with_asset_root(dir.path());
     advance_to_published(&mut app);
-    {
-        let report = app.world().resource::<ContentIntegrityReport>();
-        assert!(
-            !has_dangling_ref(report, "ArmorRegistry", REARM_ARMOR),
-            "the SAVED armor must resolve the gang's armor key at editor launch (no dangling \
-             ArmorRegistry finding); report: {:?}",
-            report.findings(),
-        );
-        assert!(
-            has_dangling_ref(report, "WeaponRegistry", DANGLING_WEAPON),
-            "the gang's dangling weapon key must surface at editor launch; report: {:?}",
-            report.findings(),
-        );
-        assert!(
-            has_malformed(report, MALFORMED_STEM),
-            "the malformed armor sibling must surface as a MalformedFile finding at launch; \
-             report: {:?}",
-            report.findings(),
-        );
-    }
+    assert_launch_findings(app.world().resource::<ContentIntegrityReport>());
 
     armor_draft.piece_mut(BodyPart::Torso).protection = ArmorProtection::new(9);
     let (armor_name, edited_spec) = draft_to_spec(&armor_draft);
@@ -110,14 +122,23 @@ fn armor_save_reload_rearms_validation_and_republishes_findings() {
             .world()
             .get_resource::<ContentIntegrityReport>()
             .is_some_and(|report| {
-                has_dangling_ref(report, "WeaponRegistry", DANGLING_WEAPON)
-                    && !has_malformed(report, MALFORMED_STEM)
+                has_dangling_ref(
+                    report,
+                    "WeaponRegistry",
+                    DANGLING_WEAPON,
+                    ReferenceKeyScheme::FileStem,
+                ) && !has_malformed(report, MALFORMED_STEM)
             });
         registry_rebuilt && report_fresh
     });
     let report = app.world().resource::<ContentIntegrityReport>();
     assert!(
-        !has_dangling_ref(report, "ArmorRegistry", REARM_ARMOR),
+        !has_dangling_ref(
+            report,
+            "ArmorRegistry",
+            REARM_ARMOR,
+            ReferenceKeyScheme::FileStem,
+        ),
         "the re-saved armor key must still resolve after the re-check; report: {:?}",
         report.findings(),
     );

@@ -11,7 +11,7 @@ use crate::net_qa::wire::{
     on_death::OnDeathVariantNet,
     terrain::{
         BlocksPathingNet, FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet,
-        MountedWeaponNet, TerrainHpNet,
+        MountedWeaponNet, TerrainHpNet, TerrainViewNet, TerrainViewSpriteNet,
     },
     terrain_kind::TerrainKindNet,
     tile_role::TileRoleNet,
@@ -45,6 +45,13 @@ pub(in crate::net_qa) enum TerrainFieldNet {
     BlocksLos(Option<LosBlockingNet>),
     /// What the draft's piece leaves standing when it is destroyed.
     LeavesBehind(LeavesBehindNet),
+    /// The sprite one owed view of the draft is drawn with.
+    View {
+        /// Which view the row names.
+        view:   TerrainViewNet,
+        /// The sprite def key that draws it.
+        sprite: TerrainViewSpriteNet,
+    },
     /// Which variant the on-death effect at one index is on.
     OnDeathVariant {
         /// Which effect of the list.

@@ -4,7 +4,7 @@ use bevy::asset::uuid::Uuid;
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     terrain::{
-        def::{LeavesBehind, TerrainDefRegistry, TerrainUuid},
+        def::{LeavesBehind, TerrainDefRegistry, TerrainUuid, owed_views_for},
         piece::TerrainGraphicKey,
     },
     weapon::{WeaponName, WeaponRegistry},
@@ -19,7 +19,8 @@ use crate::{
         wire::{
             ArmorHardnessNet, ArmorProtectionNet, BlocksPathingNet, EditorDraftNameNet,
             FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet, MountedWeaponNet,
-            TerrainFieldNet, TerrainHpNet, TerrainKindNet, TileRoleNet,
+            TerrainFieldNet, TerrainHpNet, TerrainKindNet, TerrainViewNet, TerrainViewSpriteNet,
+            TileRoleNet,
         },
     },
     terrain_form::{TerrainDraft, TerrainKindChoice, offered_graphic_roles},
@@ -147,6 +148,36 @@ const fn write_footfall(
     Ok(TerrainFieldNet::Footfall(FootfallNet::from_choice(
         draft.footfall(),
     )))
+}
+
+// The note a view the open draft's kind and tags never owe is refused with.
+fn view_not_owed(view: TerrainViewNet) -> RefusalNote {
+    RefusalNote::from_owned(format!(
+        "the Terrain form draws art only for the views the draft's own kind and tags owe, and \
+         {:?} is not one of them, so this write names a control the open draft does not have",
+        view.to_view(),
+    ))
+}
+
+// The view is written only when the draft's own kind and tags owe it.
+fn write_view(
+    draft: &mut TerrainDraft,
+    view: TerrainViewNet,
+    sprite: TerrainViewSpriteNet,
+) -> Result<TerrainFieldNet, FormWriteFault> {
+    let wanted = view.to_view();
+    if !owed_views_for(draft.kind().piece_kind(), draft.tags()).contains(&wanted) {
+        return Err(FormWriteFault::Gated(view_not_owed(view)));
+    }
+    draft.set_view(wanted, sprite.to_key());
+    let stored = draft
+        .views()
+        .sprite(wanted)
+        .map_or(sprite, TerrainViewSpriteNet::from_key);
+    Ok(TerrainFieldNet::View {
+        view:   TerrainViewNet::from_view(wanted),
+        sprite: stored,
+    })
 }
 
 fn write_mounted_weapon(
@@ -285,6 +316,7 @@ pub(super) fn write(
             ))
         }
         TerrainFieldNet::LeavesBehind(leaves) => write_leaves_behind(draft, registries, leaves),
+        TerrainFieldNet::View { view, sprite } => write_view(draft, view, sprite),
         TerrainFieldNet::OnDeathVariant { index, variant } => {
             terrain_on_death::variant(draft, index, variant)
         }

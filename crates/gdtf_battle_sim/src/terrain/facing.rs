@@ -19,6 +19,29 @@ pub enum TerrainFacing {
     West,
 }
 
+/// Diagonal corner of a placed terrain piece, where two cardinals meet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub enum TerrainCorner {
+    /// Where north meets east.
+    NorthEast,
+    /// Where south meets east.
+    SouthEast,
+    /// Where south meets west.
+    SouthWest,
+    /// Where north meets west.
+    NorthWest,
+}
+
+impl TerrainCorner {
+    /// All corners, in ring order.
+    pub const ALL: [Self; 4] = [
+        Self::NorthEast,
+        Self::SouthEast,
+        Self::SouthWest,
+        Self::NorthWest,
+    ];
+}
+
 impl TerrainFacing {
     /// All cardinals, in ring order.
     pub const ALL: [Self; 4] = [Self::North, Self::East, Self::South, Self::West];

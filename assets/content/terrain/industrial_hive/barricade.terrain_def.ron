@@ -12,5 +12,12 @@
     presenter_kind: Cover(
         graphic_name: "cover",
     ),
+    // One row per view a Cover owes — its four facings.
+    views: [
+        (view: Facing(North), sprite: "cover"),
+        (view: Facing(East), sprite: "cover"),
+        (view: Facing(South), sprite: "cover"),
+        (view: Facing(West), sprite: "cover"),
+    ],
     tags: [],
 )

@@ -7,4 +7,5 @@ mod harness;
 mod injuries_save;
 mod save_rearm;
 mod sprites;
+mod terrain_views;
 mod theme;

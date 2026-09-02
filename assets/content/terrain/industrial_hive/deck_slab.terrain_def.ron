@@ -12,5 +12,6 @@
         graphic_name: "slab",
         footfall:     None,
     ),
+    views: [(view: Single, sprite: "slab")],
     tags: [],
 )

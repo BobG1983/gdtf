@@ -3,6 +3,9 @@
 mod finding;
 mod pass;
 
+#[cfg(test)]
+mod test;
+
 pub use finding::{
     ContentFinding, FindingDetail, FindingFamily, FindingReferrer, FindingTarget,
     ReferenceKeyScheme,

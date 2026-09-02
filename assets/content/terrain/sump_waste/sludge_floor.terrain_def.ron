@@ -11,5 +11,6 @@
         graphic_name: "floor",
         footfall:     None,
     ),
+    views: [(view: Single, sprite: "floor")],
     tags: [],
 )

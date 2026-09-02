@@ -10,7 +10,9 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_assets::{ContentFinding, ContentIntegrityReport, ContentValidationDone};
+use gdtf_assets::{
+    ContentFinding, ContentIntegrityReport, ContentValidationDone, ReferenceKeyScheme,
+};
 use gdtf_content_editor::MapEditorPlugin;
 use gdtf_test_utils::advance_until;
 
@@ -70,8 +72,9 @@ pub(crate) fn has_dangling_ref(
     report: &ContentIntegrityReport,
     family: &str,
     target: &str,
+    scheme: ReferenceKeyScheme,
 ) -> bool {
-    dangling_ref_referrer(report, family, target).is_some()
+    dangling_ref_referrer(report, family, target, scheme).is_some()
 }
 
 pub(crate) fn has_malformed(report: &ContentIntegrityReport, stem: &str) -> bool {
@@ -87,14 +90,36 @@ pub(crate) fn dangling_ref_referrer(
     report: &ContentIntegrityReport,
     family: &str,
     target: &str,
+    scheme: ReferenceKeyScheme,
 ) -> Option<String> {
     report.findings().iter().find_map(|finding| match finding {
         ContentFinding::DanglingRef {
             referrer,
             target: found_target,
             family: found_family,
-            ..
-        } if **found_target == *target && **found_family == *family => Some((**referrer).clone()),
+            scheme: found_scheme,
+        } if **found_target == *target && **found_family == *family && *found_scheme == scheme => {
+            Some((**referrer).clone())
+        }
         _ => None,
     })
+}
+
+/// The view lists of every `MissingViews` finding raised against the def this names.
+pub(crate) fn missing_views(
+    report: &ContentIntegrityReport,
+    referrer_hint: &str,
+) -> Vec<Vec<String>> {
+    report
+        .findings()
+        .iter()
+        .filter_map(|finding| match finding {
+            ContentFinding::MissingViews { referrer, views }
+                if referrer.contains(referrer_hint) =>
+            {
+                Some(views.iter().map(|view| (**view).clone()).collect())
+            }
+            _ => None,
+        })
+        .collect()
 }

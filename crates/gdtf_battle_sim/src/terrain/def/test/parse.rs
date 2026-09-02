@@ -15,6 +15,16 @@ fn wall_named_struct_ron_parses() {
         presenter_kind: Wall(
             graphic_name: "wall",
         ),
+        views: [
+            (view: Edge(North), sprite: "wall"),
+            (view: Edge(East), sprite: "wall"),
+            (view: Edge(South), sprite: "wall"),
+            (view: Edge(West), sprite: "wall"),
+            (view: Corner(NorthEast), sprite: "wall"),
+            (view: Corner(SouthEast), sprite: "wall"),
+            (view: Corner(SouthWest), sprite: "wall"),
+            (view: Corner(NorthWest), sprite: "wall"),
+        ],
     )"#;
     let parsed = ron::de::from_str::<TerrainDef>(ron);
     assert!(parsed.is_ok(), "Wall TerrainDef must parse: {parsed:?}");
@@ -46,6 +56,12 @@ fn cover_named_struct_ron_parses() {
         presenter_kind: Cover(
             graphic_name: "cover",
         ),
+        views: [
+            (view: Facing(North), sprite: "cover"),
+            (view: Facing(East), sprite: "cover"),
+            (view: Facing(South), sprite: "cover"),
+            (view: Facing(West), sprite: "cover"),
+        ],
     )"#;
     let parsed = ron::de::from_str::<TerrainDef>(ron);
     assert!(parsed.is_ok(), "Cover TerrainDef must parse: {parsed:?}");
@@ -77,6 +93,7 @@ fn slab_named_struct_ron_parses() {
             graphic_name: "slab",
             footfall: Some("footfall_metal"),
         ),
+        views: [(view: Single, sprite: "slab")],
     )"#;
     let parsed = ron::de::from_str::<TerrainDef>(ron);
     assert!(parsed.is_ok(), "Slab TerrainDef must parse: {parsed:?}");
@@ -109,6 +126,12 @@ fn emplacement_omitting_entry_sides_parses_with_none() {
         presenter_kind: Emplacement(
             graphic_name: "emplacement",
         ),
+        views: [
+            (view: Facing(North), sprite: "emplacement"),
+            (view: Facing(East), sprite: "emplacement"),
+            (view: Facing(South), sprite: "emplacement"),
+            (view: Facing(West), sprite: "emplacement"),
+        ],
     )"#;
     let parsed = ron::de::from_str::<TerrainDef>(ron);
     assert!(
@@ -134,6 +157,7 @@ fn slab_presenter_footfall_is_optional() {
         display_name: "Deck Slab",
         sim_kind: Slab(hp: 120, armor_protection: 5, armor_hardness: 2),
         presenter_kind: Slab(graphic_name: "slab", footfall: Some("footfall_metal")),
+        views: [(view: Single, sprite: "slab")],
     )"#;
     let with = ron::de::from_str::<TerrainDef>(with_footfall);
     assert!(with.is_ok(), "Slab with footfall must parse: {with:?}");
@@ -156,6 +180,7 @@ fn slab_presenter_footfall_is_optional() {
         display_name: "Deck Slab",
         sim_kind: Slab(hp: 120, armor_protection: 5, armor_hardness: 2),
         presenter_kind: Slab(graphic_name: "slab", footfall: None),
+        views: [(view: Single, sprite: "slab")],
     )"#;
     let without = ron::de::from_str::<TerrainDef>(without_footfall);
     assert!(
@@ -195,6 +220,12 @@ fn a_def_authoring_two_effects_parses_them_in_order() {
         presenter_kind: Cover(
             graphic_name: "cover",
         ),
+        views: [
+            (view: Facing(North), sprite: "cover"),
+            (view: Facing(East), sprite: "cover"),
+            (view: Facing(South), sprite: "cover"),
+            (view: Facing(West), sprite: "cover"),
+        ],
         on_death: [
             Explode(hit_type: Blast(radius: 1), damage: 8, damage_type: Blast),
             LeaveField(field: "burning"),
@@ -234,6 +265,12 @@ fn a_def_omitting_on_death_parses_as_an_empty_list() {
         presenter_kind: Cover(
             graphic_name: "cover",
         ),
+        views: [
+            (view: Facing(North), sprite: "cover"),
+            (view: Facing(East), sprite: "cover"),
+            (view: Facing(South), sprite: "cover"),
+            (view: Facing(West), sprite: "cover"),
+        ],
     )"#;
     let parsed = ron::de::from_str::<TerrainDef>(ron);
     assert!(
@@ -263,6 +300,7 @@ fn sim_kind_and_tag_inventory_is_closed() {
     fn assert_tag_inventory(tag: TerrainTag) {
         match tag {
             TerrainTag::Openable
+            | TerrainTag::Stair
             | TerrainTag::BlocksVision
             | TerrainTag::BlocksPathfinding
             | TerrainTag::Indestructible => {}
@@ -275,6 +313,7 @@ fn sim_kind_and_tag_inventory_is_closed() {
             display_name: "Deck Slab",
             sim_kind: Slab(hp: 120, armor_protection: 5, armor_hardness: 2),
             presenter_kind: Slab(graphic_name: "slab", footfall: None),
+            views: [(view: Single, sprite: "slab")],
         )"#,
     );
     assert!(slab.is_ok(), "inventory fixture must parse: {slab:?}");
@@ -283,6 +322,7 @@ fn sim_kind_and_tag_inventory_is_closed() {
     }
     for tag in [
         TerrainTag::Openable,
+        TerrainTag::Stair,
         TerrainTag::BlocksVision,
         TerrainTag::BlocksPathfinding,
         TerrainTag::Indestructible,

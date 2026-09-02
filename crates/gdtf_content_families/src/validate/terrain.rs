@@ -7,9 +7,11 @@ use gdtf_assets::{
 };
 use gdtf_battle_sim::{
     level::UuidThemeRegistry,
-    terrain::def::{TerrainDefRegistry, TerrainSimKind},
+    terrain::def::{LeavesBehind, TerrainDefRegistry, TerrainSimKind},
     weapon::WeaponRegistry,
 };
+
+use crate::sprites::{SpriteDefRegistry, SpriteName};
 
 /// Record dangling theme → terrain UUID references.
 pub fn check_theme_terrain_refs(
@@ -37,6 +39,45 @@ pub fn check_theme_terrain_refs(
                     family:   FindingFamily::new("TerrainDefRegistry".to_owned()),
                     scheme:   ReferenceKeyScheme::Uuid,
                 });
+            }
+        }
+    }
+}
+
+/// Record dangling `leaves_behind` → terrain-def and sprite-def references.
+pub fn check_terrain_leaves_behind_refs(
+    terrain: Res<TerrainDefRegistry>,
+    sprites: Res<SpriteDefRegistry>,
+    mut report: ResMut<ContentIntegrityReport>,
+) {
+    for (key, def) in terrain.defs() {
+        let referrer = || {
+            FindingReferrer::new(format!(
+                "terrain def `{}` ({}) leaves_behind",
+                *def.display_name, **key,
+            ))
+        };
+        match &def.leaves_behind {
+            LeavesBehind::Nothing => {}
+            LeavesBehind::Piece(successor) => {
+                if terrain.def(successor).is_none() {
+                    report.record(ContentFinding::DanglingRef {
+                        referrer: referrer(),
+                        target:   FindingTarget::new(successor.to_string()),
+                        family:   FindingFamily::new("TerrainDefRegistry".to_owned()),
+                        scheme:   ReferenceKeyScheme::Uuid,
+                    });
+                }
+            }
+            LeavesBehind::Sprite(graphic) => {
+                if !sprites.contains(&SpriteName::new((**graphic).clone())) {
+                    report.record(ContentFinding::DanglingRef {
+                        referrer: referrer(),
+                        target:   FindingTarget::new((**graphic).clone()),
+                        family:   FindingFamily::new("SpriteDefRegistry".to_owned()),
+                        scheme:   ReferenceKeyScheme::FileStem,
+                    });
+                }
             }
         }
     }

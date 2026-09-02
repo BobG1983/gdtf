@@ -6,7 +6,11 @@ use gdtf_battle_sim::{
         on_death::{ExplodeDamage, OnDeathEffect},
     },
     terrain::{
-        def::{LeavesBehind, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind},
+        def::{
+            LeavesBehind, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
+            TerrainView, TerrainViewArt, TerrainViews,
+        },
+        facing::TerrainFacing,
         piece::TerrainGraphicKey,
     },
     weapon::{DamageType, HitType},
@@ -37,6 +41,15 @@ fn save_preserves_every_authored_on_death_effect_in_order() {
         presenter_kind: TerrainPresenterKind::Cover {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
+        views:          TerrainViews::new(
+            TerrainFacing::ALL
+                .into_iter()
+                .map(|facing| TerrainViewArt {
+                    view:   TerrainView::Facing(facing),
+                    sprite: TerrainGraphicKey::new("cover".to_owned()),
+                })
+                .collect(),
+        ),
         tags:           Vec::new(),
         on_death:       vec![explode.clone(), leave.clone()],
         blocks_pathing: None,

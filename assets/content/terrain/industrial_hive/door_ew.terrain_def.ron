@@ -13,5 +13,15 @@
     presenter_kind: Wall(
         graphic_name: "door_ew", // EW door sprite — NS door rotated 90deg
     ),
+    views: [
+        (view: Shut(North), sprite: "door_ew"),
+        (view: Open(North), sprite: "door_ew"),
+        (view: Shut(East), sprite: "door_ew"),
+        (view: Open(East), sprite: "door_ew"),
+        (view: Shut(South), sprite: "door_ew"),
+        (view: Open(South), sprite: "door_ew"),
+        (view: Shut(West), sprite: "door_ew"),
+        (view: Open(West), sprite: "door_ew"),
+    ],
     tags: [Openable, BlocksVision, BlocksPathfinding],
 )

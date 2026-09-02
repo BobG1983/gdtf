@@ -4,8 +4,9 @@ How GDTF validates the authored content graph, what a finding looks like, and
 what happens to a malformed file or a dangling key ( Q3 ruling
 2026-07-02). This is the authoring-facing contract. The HOST-AGNOSTIC per-edge
 checks (gang equipment, weapon attachments, theme/emplacement terrain,
-injury weighting, terrain `graphic_name` — shared by game and editor since
-) live at
+injury weighting, terrain `graphic_name`, a terrain def's own view coverage, its
+`leaves_behind`, and every `views[].sprite` key it names, shared by game and
+editor) live at
 `crates/gdtf_content_families/src/validate/`; the game-bespoke edges
 (situation, prefabs) and the game's registration at
 `crates/gdtf_app/src/states/load/systems/validate/mod.rs`; the editor's
@@ -28,9 +29,11 @@ stay in place. Mistakes become visible at `Load`, not at battle-request time.
 
 The **content editor runs the same pass** over the edges it loads —
 theme → terrain UUIDs, emplacement → mounted-weapon keys, the gang
-equipment keys (weapon / armor / melee incl. the implicit `fists` default —
-), the injury-weighting keys, and the terrain
-`graphic_name` → sprite-def keys — and RE-ARMS it on every
+equipment keys (weapon / armor / melee incl. the implicit `fists` default),
+the injury-weighting keys, the terrain
+`graphic_name` → sprite-def keys, each terrain def's own view coverage, its
+`leaves_behind` → terrain-def or sprite-def key, and every
+`views[].sprite` → sprite-def key — and RE-ARMS it on every
 hot-reload of a watched registry: the
 report is reset, re-checked against the current content, and re-published.
 The watch set spans every registry the registered checks read, so an edit to
@@ -56,14 +59,22 @@ authoring time (at the save/edit), not on the next game launch.
 | theme `default_floor` + `terrain` palette | terrain UUID | terrain defs | UUID |
 | terrain def `Emplacement.mounted_weapon` | weapon key | ranged weapon stems | file stem |
 | terrain def `presenter_kind.graphic_name` | sprite-def name | `assets/content/sprites/` stems | file stem |
+| terrain def `views` | the views its kind and tags owe | the def's own `views[].view` rows | — |
+| terrain def `leaves_behind` | terrain UUID or sprite-def name | terrain defs, or `assets/content/sprites/` stems | UUID / file stem |
+| terrain def `views[].sprite` | sprite-def name | `assets/content/sprites/` stems | file stem |
 | prefab `theme` (`assets/content/maps/`) | theme UUID | theme defs | UUID |
 | prefab `placements[].piece` | terrain UUID | terrain defs | UUID |
 
 A terrain def's `leaves_behind` authors two more references of this kind, one
-naming another terrain def and one naming a sprite def. Neither is checked. A
-`leaves_behind` naming a terrain def no registry holds leaves nothing behind at
-the destroyed cell, and one naming a sprite no registry holds draws the magenta
-missing-sprite marker.
+naming another terrain def and one naming a sprite def. Both are checked, on
+both hosts. A `leaves_behind` naming a terrain def no registry holds leaves
+nothing behind at the destroyed cell, and one naming a sprite no registry holds
+draws the magenta missing-sprite marker. That is what the finding warns about.
+
+The `views` row is the one edge that resolves against the def itself rather
+than another family. A def owes a set of views derived from its `sim_kind` and
+its `tags`, and the check reports one `MissingViews` finding per def naming
+every view that def draws no art for.
 
 The gang path carries TWO key schemes at once — a gang is referenced by its
 FILE STEM, a member by its roster DISPLAY-NAME — and every finding names which
@@ -72,13 +83,16 @@ scheme failed, so a "renamed the file but not the reference" mistake and a
 
 ## What a finding looks like
 
-Each finding prints the referencing file/key context, the dangling target, the
-target family, and the key scheme, consolidated into one `warn!` block:
+Each dangling-reference finding prints the referencing file/key context, the
+dangling target, the target family, and the key scheme. A missing-views finding
+resolves against no other family, so it prints the def and every view it names
+no art for instead. Both go into one `warn!` block:
 
 ```text
-content reference contract: 2 finding(s) at end of Load:
+content reference contract: 3 finding(s) at end of Load:
   - dangling reference: content/situations/skirmish.ron: placed ganger `Vex 9` names `ghost_gang` (file-stem key), not found in GangRegistry
   - dangling reference: gang `gang_0` member `Alex Mercer` names `ghost_vest` (file-stem key), not found in ArmorRegistry
+  - terrain def `Rusted Barrels` (3d3f9b52-6f6e-4b6a-9a3e-2f8c1d7e4a01) is missing Facing(East), Facing(West)
 ```
 
 A clean graph logs one `info!` line instead. The findings also persist in the

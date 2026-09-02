@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
-            TerrainUuid,
+            TerrainUuid, TerrainViews,
         },
         emplacement::EmplacementState,
         entity::TerrainCell,
@@ -154,6 +154,7 @@ pub(crate) fn one_sided_emplacement() -> TerrainDef {
         presenter_kind: TerrainPresenterKind::Emplacement {
             graphic_name: TerrainGraphicKey::new("emplacement".to_owned()),
         },
+        views:          TerrainViews::new(Vec::new()),
         tags:           Vec::new(),
         on_death:       Vec::new(),
         blocks_pathing: None,

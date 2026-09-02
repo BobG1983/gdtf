@@ -1,6 +1,6 @@
 use super::super::{
     LeavesBehind, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainTag,
-    TerrainUuid, derives_path_blocking, sim_kind_blocks_path,
+    TerrainUuid, TerrainViews, derives_path_blocking, sim_kind_blocks_path,
 };
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -24,6 +24,7 @@ fn wall_def(tags: Vec<TerrainTag>) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("wall".to_owned()),
         },
         tags,
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -46,6 +47,7 @@ fn cover_def(tags: Vec<TerrainTag>) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("crate".to_owned()),
         },
         tags,
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -70,6 +72,7 @@ fn emplacement_def(tags: Vec<TerrainTag>) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new("cover".to_owned()),
         },
         tags,
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -92,6 +95,7 @@ fn slab_def(tags: Vec<TerrainTag>) -> TerrainDef {
             footfall:     None,
         },
         tags,
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -148,6 +152,16 @@ fn unrelated_tag_does_not_block_slab() {
             TerrainTag::Openable
         ])),
         "a Slab with only BlocksVision/Openable tags does NOT block the path",
+    );
+}
+
+#[test]
+fn the_stair_tag_leaves_path_blocking_where_it_was() {
+    assert_eq!(
+        derives_path_blocking(&slab_def(vec![TerrainTag::Stair])),
+        derives_path_blocking(&slab_def(vec![])),
+        "the Stair tag marks a staircase for the view derivation and carries no sim behaviour, \
+         so it must answer path blocking exactly as the same def without it",
     );
 }
 

@@ -13,7 +13,7 @@ use crate::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid,
+            TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
         piece::TerrainGraphicKey,
@@ -42,6 +42,7 @@ fn door_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
         },
         tags: vec![crate::terrain::def::TerrainTag::Openable],
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -64,6 +65,7 @@ fn stair_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             footfall:     None,
         },
         tags: Vec::new(),
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -86,6 +88,7 @@ fn door_stair_terrain_defs() -> TerrainDefRegistry {
             footfall:     None,
         },
         tags:           Vec::new(),
+        views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),
 
         blocks_pathing: None,

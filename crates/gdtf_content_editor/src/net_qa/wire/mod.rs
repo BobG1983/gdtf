@@ -54,6 +54,8 @@ pub(in crate::net_qa) use camera::{EditorPanNet, EditorZoomNet};
 pub(in crate::net_qa) use cell::{EditorCellXNet, EditorCellYNet, EditorLevelNet};
 pub(in crate::net_qa) use content_family::ContentFamilyNet;
 pub(in crate::net_qa) use draft::{EditorDraftOutcomeNet, EditorDraftRonNet};
+#[cfg(test)]
+pub(in crate::net_qa) use facing::TerrainCornerNet;
 pub(in crate::net_qa) use facing::TerrainFacingNet;
 pub(in crate::net_qa) use family::{
     EditorFamilyEntryNet, EditorFamilyLabelNet, EditorFamilyRowNet,
@@ -109,7 +111,7 @@ pub(in crate::net_qa) use sprite::{
 pub(in crate::net_qa) use stat_target::StatTargetNet;
 pub(in crate::net_qa) use terrain::{
     BlocksPathingNet, FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet,
-    MountedWeaponNet, TerrainHpNet, TerrainTagNet,
+    MountedWeaponNet, TerrainHpNet, TerrainTagNet, TerrainViewNet, TerrainViewSpriteNet,
 };
 pub(in crate::net_qa) use terrain_kind::TerrainKindNet;
 pub(in crate::net_qa) use tile_role::TileRoleNet;

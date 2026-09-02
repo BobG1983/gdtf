@@ -12,6 +12,12 @@
     presenter_kind: Cover(
         graphic_name: "cover",
     ),
+    views: [
+        (view: Facing(North), sprite: "cover"),
+        (view: Facing(East), sprite: "cover"),
+        (view: Facing(South), sprite: "cover"),
+        (view: Facing(West), sprite: "cover"),
+    ],
     tags: [],
     // Packed with volatile munitions — destroying it leaves a persistent incendiary field.
     on_death: [

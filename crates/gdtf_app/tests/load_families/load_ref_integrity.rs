@@ -41,6 +41,52 @@ fn has_dangling(
     })
 }
 
+// The view lists of every MissingViews finding raised against the def this names.
+fn missing_views(findings: &[ContentFinding], referrer_hint: &str) -> Vec<Vec<String>> {
+    findings
+        .iter()
+        .filter_map(|finding| match finding {
+            ContentFinding::MissingViews { referrer, views }
+                if referrer.contains(referrer_hint) =>
+            {
+                Some(views.iter().map(|view| (**view).clone()).collect())
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+// The referrer of the first dangling finding against this target, family and scheme.
+fn dangling_referrer(
+    findings: &[ContentFinding],
+    target: &str,
+    family: &str,
+    scheme: ReferenceKeyScheme,
+) -> Option<String> {
+    findings.iter().find_map(|finding| match finding {
+        ContentFinding::DanglingRef {
+            referrer,
+            target: found_target,
+            family: found_family,
+            scheme: found_scheme,
+        } if ***found_target == *target
+            && ***found_family == *family
+            && *found_scheme == scheme =>
+        {
+            Some((**referrer).clone())
+        }
+        _ => None,
+    })
+}
+
+fn validated_fixture_report() -> Vec<ContentFinding> {
+    let mut app = GdtfLoadTestAppBuilder::with_asset_root(ref_integrity_root())
+        .starting_in(AppState::Load)
+        .build();
+    advance_until_resource_exists::<ContentValidationDone>(&mut app);
+    findings_snapshot(&app)
+}
+
 fn assert_situation_edges(report: &[ContentFinding]) {
     assert!(
         has_dangling(
@@ -223,6 +269,94 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
     advance_until(&mut app, |app| {
         matches!(app_state(app), AppState::Intro | AppState::Running)
     });
+}
+
+#[test]
+fn a_def_short_of_the_views_it_owes_is_reported_once_naming_all_of_them() {
+    let report = validated_fixture_report();
+
+    let raised = missing_views(&report, "Sparse Views Cover");
+    assert_eq!(
+        raised.len(),
+        1,
+        "the def is short two views and must be reported ONCE naming both, not once per view; \
+         findings: {report:?}",
+    );
+    let Some(views) = raised.first() else { return };
+    for view in ["Facing(South)", "Facing(West)"] {
+        assert!(
+            views.iter().any(|named| named == view),
+            "the one finding must name {view}, a facing the def draws no art for; \
+             findings: {report:?}",
+        );
+    }
+    assert_eq!(
+        views.len(),
+        2,
+        "the finding names exactly the views the def is missing; findings: {report:?}",
+    );
+}
+
+#[test]
+fn a_leaves_behind_naming_no_terrain_def_is_reported_under_the_uuid_scheme() {
+    let report = validated_fixture_report();
+
+    assert!(
+        has_dangling(
+            &report,
+            "Ghost Successor",
+            "00000000-0000-0000-0000-130700000dea",
+            "TerrainDefRegistry",
+            ReferenceKeyScheme::Uuid,
+        ),
+        "a leaves_behind naming a successor def no registry holds must be reported against the \
+         terrain registry under the UUID scheme; findings: {report:?}",
+    );
+}
+
+#[test]
+fn a_leaves_behind_naming_no_sprite_def_is_reported_under_the_file_stem_scheme() {
+    let report = validated_fixture_report();
+
+    assert!(
+        has_dangling(
+            &report,
+            "Ghost Leftover",
+            "ghost_leftover_graphic",
+            "SpriteDefRegistry",
+            ReferenceKeyScheme::FileStem,
+        ),
+        "a leaves_behind naming a sprite no registry holds must be reported against the sprite \
+         registry under the file-stem scheme; findings: {report:?}",
+    );
+}
+
+#[test]
+fn a_view_naming_no_sprite_def_is_reported_against_that_view() {
+    let report = validated_fixture_report();
+
+    let referrer = dangling_referrer(
+        &report,
+        "ghost_view_graphic",
+        "SpriteDefRegistry",
+        ReferenceKeyScheme::FileStem,
+    );
+    assert!(
+        referrer.is_some(),
+        "the one view naming a sprite no registry holds must be reported against the sprite \
+         registry under the file-stem scheme; findings: {report:?}",
+    );
+    let Some(referrer) = referrer else { return };
+    assert!(
+        referrer.contains("Ghost View Cover") && referrer.contains("Facing(West)"),
+        "the referrer names the def AND the view the bad key was authored on, or an author \
+         cannot tell which row to fix; got `{referrer}`",
+    );
+    assert!(
+        missing_views(&report, "Ghost View Cover").is_empty(),
+        "this def's view set is complete, so the finding above cannot be coming from it being \
+         short of views; findings: {report:?}",
+    );
 }
 
 #[test]

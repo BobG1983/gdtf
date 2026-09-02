@@ -1,6 +1,6 @@
 //! the weapon→attachment edge's authoring-time pins — the editor
 use bevy::asset::AssetServer;
-use gdtf_assets::{ContentFamily, ContentIntegrityReport};
+use gdtf_assets::{ContentFamily, ContentIntegrityReport, ReferenceKeyScheme};
 use gdtf_battle_sim::{
     effects::attachments::{AimDelta, AttachmentEffect},
     equipment::attachments::{AttachmentName, AttachmentRegistry, AttachmentSlot},
@@ -101,12 +101,22 @@ fn attachment_save_reload_rearms_validation_and_republishes_weapon_findings() {
     {
         let report = app.world().resource::<ContentIntegrityReport>();
         assert!(
-            !has_dangling_ref(report, "AttachmentRegistry", REARM_SCOPE),
+            !has_dangling_ref(
+                report,
+                "AttachmentRegistry",
+                REARM_SCOPE,
+                ReferenceKeyScheme::FileStem,
+            ),
             "the SAVED attachment must resolve the weapon's key at editor launch (no dangling \
              AttachmentRegistry finding); report: {:?}",
             report.findings(),
         );
-        let referrer = dangling_ref_referrer(report, "AttachmentRegistry", DANGLING_SCOPE);
+        let referrer = dangling_ref_referrer(
+            report,
+            "AttachmentRegistry",
+            DANGLING_SCOPE,
+            ReferenceKeyScheme::FileStem,
+        );
         assert!(
             referrer.is_some(),
             "the weapon's dangling attachment key must surface at authoring time (the \
@@ -156,14 +166,23 @@ fn attachment_save_reload_rearms_validation_and_republishes_weapon_findings() {
             .world()
             .get_resource::<ContentIntegrityReport>()
             .is_some_and(|report| {
-                has_dangling_ref(report, "AttachmentRegistry", DANGLING_SCOPE)
-                    && !has_malformed(report, MALFORMED_STEM)
+                has_dangling_ref(
+                    report,
+                    "AttachmentRegistry",
+                    DANGLING_SCOPE,
+                    ReferenceKeyScheme::FileStem,
+                ) && !has_malformed(report, MALFORMED_STEM)
             });
         registry_rebuilt && report_fresh
     });
     let report = app.world().resource::<ContentIntegrityReport>();
     assert!(
-        !has_dangling_ref(report, "AttachmentRegistry", REARM_SCOPE),
+        !has_dangling_ref(
+            report,
+            "AttachmentRegistry",
+            REARM_SCOPE,
+            ReferenceKeyScheme::FileStem,
+        ),
         "the re-saved attachment key must still resolve after the re-check; report: {:?}",
         report.findings(),
     );

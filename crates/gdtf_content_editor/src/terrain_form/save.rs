@@ -9,7 +9,7 @@ use gdtf_assets::{ContentFamily, FileStem, workspace_assets_root};
 use gdtf_battle_sim::terrain::{
     def::{
         BlocksPathingOverride, TerrainDef, TerrainDisplayName, TerrainPresenterKind,
-        TerrainSimKind, TerrainUuid,
+        TerrainSimKind, TerrainUuid, TerrainViewArt, TerrainViews, owed_views_for,
     },
     piece::TerrainGraphicKey,
 };
@@ -26,6 +26,22 @@ pub(crate) fn sanitize_stem(raw: &str) -> FileStem {
     gdtf_assets::sanitize_file_stem(raw)
 }
 
+// Every view the draft owes, filled from the row it holds or from the picked graphic.
+fn projected_views(draft: &TerrainDraft) -> TerrainViews {
+    TerrainViews::new(
+        owed_views_for(draft.kind().piece_kind(), draft.tags())
+            .iter()
+            .map(|view| TerrainViewArt {
+                view:   *view,
+                sprite: draft.views().sprite(*view).map_or_else(
+                    || TerrainGraphicKey::new(draft.graphic().as_key().to_owned()),
+                    Clone::clone,
+                ),
+            })
+            .collect(),
+    )
+}
+
 /// Build a terrain def from a draft and uuid.
 ///
 /// # Errors
@@ -35,6 +51,7 @@ pub fn draft_to_terrain_def(
     draft: &TerrainDraft,
     uuid: TerrainUuid,
 ) -> Result<TerrainDef, SaveTerrainError> {
+    let views = projected_views(draft);
     let graphic_name = TerrainGraphicKey::new(draft.graphic().as_key().to_owned());
     let (sim_kind, presenter_kind) = match draft.kind() {
         TerrainKindChoice::Wall => (
@@ -88,6 +105,7 @@ pub fn draft_to_terrain_def(
         display_name: TerrainDisplayName::new(draft.display_name().trim().to_owned()),
         sim_kind,
         presenter_kind,
+        views,
         tags: draft.tags().to_vec(),
         on_death: draft.on_death().to_vec(),
         blocks_pathing: draft.blocks_pathing().map(BlocksPathingOverride::new),

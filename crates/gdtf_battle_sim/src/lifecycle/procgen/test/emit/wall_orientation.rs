@@ -13,7 +13,7 @@ use crate::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid,
+            TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
         piece::TerrainGraphicKey,
@@ -38,6 +38,7 @@ fn orientation_wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
         },
         tags: Vec::new(),
+        views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -60,6 +61,7 @@ fn orientation_terrain_defs() -> TerrainDefRegistry {
             footfall:     None,
         },
         tags:           Vec::new(),
+        views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),
 
         blocks_pathing: None,

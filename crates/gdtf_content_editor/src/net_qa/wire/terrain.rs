@@ -4,12 +4,19 @@ use bevy::prelude::Deref;
 use gdtf_battle_sim::{
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
-    terrain::def::{LeavesBehind, LosBlocking, TerrainTag},
+    terrain::{
+        def::{LeavesBehind, LosBlocking, TerrainTag, TerrainView},
+        piece::TerrainGraphicKey,
+    },
     weapon::WeaponName,
 };
 use serde::{Deserialize, Serialize};
 
-use super::{key::TerrainKeyNet, sprite::SpriteKeyNet};
+use super::{
+    facing::{TerrainCornerNet, TerrainFacingNet},
+    key::TerrainKeyNet,
+    sprite::SpriteKeyNet,
+};
 use crate::terrain_form::FootfallChoice;
 
 /// The hit points the one HP input writes to both the cover and the slab field.
@@ -178,11 +185,85 @@ impl LeavesBehindNet {
     }
 }
 
+/// One view a terrain piece can be drawn in, mirroring the sim's own with no wildcard arm.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub(in crate::net_qa) enum TerrainViewNet {
+    /// A wall's straight run along one side.
+    Edge(TerrainFacingNet),
+    /// A wall's turn at one corner.
+    Corner(TerrainCornerNet),
+    /// A cover or emplacement piece seen from one side.
+    Facing(TerrainFacingNet),
+    /// A door standing shut, on one side.
+    Shut(TerrainFacingNet),
+    /// A door standing open, on one side.
+    Open(TerrainFacingNet),
+    /// A staircase seen from the storey below, on one side.
+    FromBelow(TerrainFacingNet),
+    /// A staircase seen from the storey above, on one side.
+    FromAbove(TerrainFacingNet),
+    /// The one view a piece that owes a single drawing carries.
+    Single,
+}
+
+impl TerrainViewNet {
+    /// Mirror the sim's own view.
+    pub(in crate::net_qa) const fn from_view(view: TerrainView) -> Self {
+        match view {
+            TerrainView::Edge(facing) => Self::Edge(TerrainFacingNet::from_facing(facing)),
+            TerrainView::Corner(corner) => Self::Corner(TerrainCornerNet::from_corner(corner)),
+            TerrainView::Facing(facing) => Self::Facing(TerrainFacingNet::from_facing(facing)),
+            TerrainView::Shut(facing) => Self::Shut(TerrainFacingNet::from_facing(facing)),
+            TerrainView::Open(facing) => Self::Open(TerrainFacingNet::from_facing(facing)),
+            TerrainView::FromBelow(facing) => {
+                Self::FromBelow(TerrainFacingNet::from_facing(facing))
+            }
+            TerrainView::FromAbove(facing) => {
+                Self::FromAbove(TerrainFacingNet::from_facing(facing))
+            }
+            TerrainView::Single => Self::Single,
+        }
+    }
+
+    /// Read a client's view back as the sim's own.
+    pub(in crate::net_qa) const fn to_view(self) -> TerrainView {
+        match self {
+            Self::Edge(facing) => TerrainView::Edge(facing.to_facing()),
+            Self::Corner(corner) => TerrainView::Corner(corner.to_corner()),
+            Self::Facing(facing) => TerrainView::Facing(facing.to_facing()),
+            Self::Shut(facing) => TerrainView::Shut(facing.to_facing()),
+            Self::Open(facing) => TerrainView::Open(facing.to_facing()),
+            Self::FromBelow(facing) => TerrainView::FromBelow(facing.to_facing()),
+            Self::FromAbove(facing) => TerrainView::FromAbove(facing.to_facing()),
+            Self::Single => TerrainView::Single,
+        }
+    }
+}
+
+/// The sprite-def key one view names, by file stem.
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub(in crate::net_qa) struct TerrainViewSpriteNet(String);
+
+impl TerrainViewSpriteNet {
+    /// Mirror the sim's own graphic key.
+    pub(in crate::net_qa) fn from_key(key: &TerrainGraphicKey) -> Self {
+        Self((**key).clone())
+    }
+
+    /// Read a client's key back as the sim's own.
+    pub(in crate::net_qa) fn to_key(&self) -> TerrainGraphicKey {
+        TerrainGraphicKey::new(self.0.clone())
+    }
+}
+
 /// One tag of the Terrain form's tick-box row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub(in crate::net_qa) enum TerrainTagNet {
     /// Can be opened and closed.
     Openable,
+    /// A staircase, for the view derivation.
+    Stair,
     /// Blocks vision.
     BlocksVision,
     /// Blocks pathfinding.
@@ -194,8 +275,9 @@ pub(in crate::net_qa) enum TerrainTagNet {
 impl TerrainTagNet {
     /// Every tag the form's row draws, for a case that walks them all.
     #[cfg(test)]
-    pub(in crate::net_qa) const ALL: [Self; 4] = [
+    pub(in crate::net_qa) const ALL: [Self; 5] = [
         Self::Openable,
+        Self::Stair,
         Self::BlocksVision,
         Self::BlocksPathfinding,
         Self::Indestructible,
@@ -205,6 +287,7 @@ impl TerrainTagNet {
     pub(in crate::net_qa) const fn from_tag(tag: TerrainTag) -> Self {
         match tag {
             TerrainTag::Openable => Self::Openable,
+            TerrainTag::Stair => Self::Stair,
             TerrainTag::BlocksVision => Self::BlocksVision,
             TerrainTag::BlocksPathfinding => Self::BlocksPathfinding,
             TerrainTag::Indestructible => Self::Indestructible,
@@ -215,6 +298,7 @@ impl TerrainTagNet {
     pub(in crate::net_qa) const fn to_tag(self) -> TerrainTag {
         match self {
             Self::Openable => TerrainTag::Openable,
+            Self::Stair => TerrainTag::Stair,
             Self::BlocksVision => TerrainTag::BlocksVision,
             Self::BlocksPathfinding => TerrainTag::BlocksPathfinding,
             Self::Indestructible => TerrainTag::Indestructible,

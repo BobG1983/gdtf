@@ -59,6 +59,17 @@ impl TerrainKindChoice {
     pub const fn offers_footfall(self) -> bool {
         matches!(self, Self::Slab)
     }
+
+    /// The sim piece kind this pick stands for.
+    #[must_use]
+    pub const fn piece_kind(self) -> TerrainPieceKind {
+        match self {
+            Self::Wall => TerrainPieceKind::Wall,
+            Self::Cover => TerrainPieceKind::Cover,
+            Self::Slab => TerrainPieceKind::Slab,
+            Self::Emplacement => TerrainPieceKind::Emplacement,
+        }
+    }
 }
 
 impl From<TerrainPieceKind> for TerrainKindChoice {

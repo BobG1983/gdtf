@@ -5,6 +5,7 @@ mod kind;
 mod leaves_behind;
 mod registry;
 mod uuid;
+mod views;
 
 #[cfg(test)]
 mod test;
@@ -22,3 +23,4 @@ pub use leaves_behind::LeavesBehind;
 pub use registry::TerrainDefRegistry;
 pub(crate) use uuid::fnv1a64_u128;
 pub use uuid::{NilKey, TerrainUuid};
+pub use views::{OwedViews, TerrainView, TerrainViewArt, TerrainViews, owed_views, owed_views_for};
