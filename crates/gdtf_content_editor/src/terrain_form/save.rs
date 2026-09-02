@@ -26,20 +26,39 @@ pub(crate) fn sanitize_stem(raw: &str) -> FileStem {
     gdtf_assets::sanitize_file_stem(raw)
 }
 
-// Every view the draft owes, filled from the row it holds or from the picked graphic.
+// Fills an owed view the draft named no sprite for: its first filled row, else the empty key.
+fn fill_key(draft: &TerrainDraft) -> TerrainGraphicKey {
+    let owed = owed_views_for(draft.kind().piece_kind(), draft.tags());
+    owed.iter()
+        .find_map(|view| draft.views().sprite(*view).cloned())
+        .unwrap_or_else(|| TerrainGraphicKey::new(String::new()))
+}
+
+// Every view the draft owes, filled from the row it holds or from its first filled row.
 fn projected_views(draft: &TerrainDraft) -> TerrainViews {
+    let fill = fill_key(draft);
     TerrainViews::new(
         owed_views_for(draft.kind().piece_kind(), draft.tags())
             .iter()
             .map(|view| TerrainViewArt {
                 view:   *view,
-                sprite: draft.views().sprite(*view).map_or_else(
-                    || TerrainGraphicKey::new(draft.graphic().as_key().to_owned()),
-                    Clone::clone,
-                ),
+                sprite: draft
+                    .views()
+                    .sprite(*view)
+                    .cloned()
+                    .unwrap_or_else(|| fill.clone()),
             })
             .collect(),
     )
+}
+
+// The def's own graphic key is the row the draft holds for the first view it owes.
+fn projected_graphic_name(draft: &TerrainDraft, views: &TerrainViews) -> TerrainGraphicKey {
+    owed_views_for(draft.kind().piece_kind(), draft.tags())
+        .first()
+        .and_then(|view| views.sprite(*view))
+        .cloned()
+        .unwrap_or_else(|| TerrainGraphicKey::new(String::new()))
 }
 
 /// Build a terrain def from a draft and uuid.
@@ -52,7 +71,7 @@ pub fn draft_to_terrain_def(
     uuid: TerrainUuid,
 ) -> Result<TerrainDef, SaveTerrainError> {
     let views = projected_views(draft);
-    let graphic_name = TerrainGraphicKey::new(draft.graphic().as_key().to_owned());
+    let graphic_name = projected_graphic_name(draft, &views);
     let (sim_kind, presenter_kind) = match draft.kind() {
         TerrainKindChoice::Wall => (
             TerrainSimKind::Wall {

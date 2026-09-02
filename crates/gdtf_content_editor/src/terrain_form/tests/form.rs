@@ -1,74 +1,90 @@
-use gdtf_battle_presenter::TileRole;
-use gdtf_battle_sim::terrain::def::{TerrainDef, TerrainPresenterKind, TerrainSimKind, TerrainTag};
+use gdtf_battle_sim::terrain::{
+    def::{
+        TerrainDef, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainView, owed_views_for,
+    },
+    facing::TerrainFacing,
+    piece::TerrainGraphicKey,
+};
 
 use super::support::key;
 use crate::terrain_form::{
-    FootfallChoice, TerrainDraft, TerrainKindChoice, draft_to_terrain_def, offered_graphic_roles,
-    serialize_terrain_def,
+    FootfallChoice, TerrainDraft, TerrainKindChoice, draft_to_terrain_def, offers_view_expander,
+    serialize_terrain_def, view_rows,
 };
 
-#[test]
-fn picker_offers_exactly_the_def_authorable_vocabulary() {
-    let offered = offered_graphic_roles();
-    let derived: Vec<TileRole> = TileRole::ALL
-        .into_iter()
-        .filter(|role| role.def_authorable())
-        .collect();
-    assert_eq!(
-        offered, derived,
-        "the offered pick list must be TileRole::ALL filtered by def_authorable (C5)",
-    );
+// A draft of one kind, carrying no tag, which is what the two picker cases start from.
+fn draft_of(kind: TerrainKindChoice) -> TerrainDraft {
+    let mut draft = TerrainDraft::default();
+    draft.set_kind(kind);
+    draft
+}
 
-    for newly_authorable in [
-        TileRole::Emplacement,
-        TileRole::StairNsUp,
-        TileRole::StairNsDown,
-        TileRole::StairEwUp,
-        TileRole::StairEwDown,
-    ] {
-        assert!(
-            offered.contains(&newly_authorable),
-            "{newly_authorable:?} must be offered by the derived picker ",
-        );
-    }
-    for excluded in [TileRole::StairUp, TileRole::StairDown, TileRole::Door] {
-        assert!(
-            !offered.contains(&excluded),
-            "{excluded:?} must NOT be offered by the picker ",
-        );
-    }
+// The sprite key a case names for one view, distinct per view.
+fn view_key(view: TerrainView) -> TerrainGraphicKey {
+    TerrainGraphicKey::new(format!("{view:?}").to_lowercase())
 }
 
 #[test]
-fn graphic_picker_selection_updates_the_draft_graphic_name() {
-    for choice in offered_graphic_roles() {
-        let mut draft = TerrainDraft::default();
-        draft.set_kind(TerrainKindChoice::Wall);
-        draft.set_graphic(choice);
-        assert_eq!(
-            draft.graphic(),
-            choice,
-            "set_graphic updates the draft's active graphic choice (the highlighted cell)",
-        );
+fn view_rows_offers_the_owed_set_and_every_pick_reaches_the_def() {
+    let mut draft = draft_of(TerrainKindChoice::Wall);
+    let rows = view_rows(&draft);
+    let owed = owed_views_for(TerrainKindChoice::Wall.piece_kind(), draft.tags());
+    let missing: Vec<TerrainView> = owed
+        .iter()
+        .filter(|view| !rows.contains(view))
+        .copied()
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "the picker draws one row per view the draft owes, and these were not offered: \
+         {missing:?}",
+    );
+    assert_eq!(
+        *rows, *owed,
+        "the picker's rows are exactly the owed set, in the order the sim derives them",
+    );
 
-        let Ok(def) = draft_to_terrain_def(&draft, key()) else {
-            unreachable!("a Wall draft always projects (no fail-closed gate applies)")
-        };
-        let TerrainPresenterKind::Wall { graphic_name } = &def.presenter_kind else {
-            unreachable!("a Wall draft projects to a Wall presenter kind");
-        };
-        assert_eq!(
-            &***graphic_name,
-            choice.as_key(),
-            "selecting the {choice:?} cell sets the def's graphic_name to that role's key ({})",
-            choice.as_key(),
-        );
-        assert_eq!(
-            TileRole::from_key(graphic_name),
-            Some(choice),
-            "the projected graphic_name must classify back to the picked role",
-        );
+    let slab = draft_of(TerrainKindChoice::Slab);
+    assert!(
+        !slab.has_tag(TerrainTag::Openable) && !slab.has_tag(TerrainTag::Stair),
+        "the slab half needs a draft carrying neither tag, or it would owe a door's or a \
+         stair's rows instead",
+    );
+    assert_eq!(
+        *view_rows(&slab),
+        vec![TerrainView::Single],
+        "a plain slab owes one drawing, so its picker draws one row",
+    );
+
+    for view in rows.iter() {
+        draft.set_view(*view, view_key(*view));
     }
+    let Ok(def) = draft_to_terrain_def(&draft, key()) else {
+        unreachable!("a Wall draft always projects (no fail-closed gate applies)")
+    };
+    let dropped: Vec<TerrainView> = rows
+        .iter()
+        .filter(|view| def.views.sprite(**view) != Some(&view_key(**view)))
+        .copied()
+        .collect();
+    assert!(
+        dropped.is_empty(),
+        "every key the picker wrote through a row must reach the projected def; these did \
+         not: {dropped:?}",
+    );
+}
+
+#[test]
+fn the_view_rows_sit_under_an_expander_only_for_a_def_owing_more_than_one() {
+    assert!(
+        offers_view_expander(&draft_of(TerrainKindChoice::Wall)),
+        "a wall owes a run on each side and a turn at each corner, so its rows get a header",
+    );
+    let slab = draft_of(TerrainKindChoice::Slab);
+    assert!(
+        !offers_view_expander(&slab),
+        "a plain slab owes one view, so its single row is drawn with no header",
+    );
 }
 
 #[test]
@@ -107,7 +123,10 @@ fn wall_draft_projects_to_wall_def() {
     let mut draft = TerrainDraft::default();
     draft.set_display_name("Bulkhead Wall".to_owned());
     draft.set_kind(TerrainKindChoice::Wall);
-    draft.set_graphic(TileRole::Wall);
+    draft.set_view(
+        TerrainView::Edge(TerrainFacing::North),
+        TerrainGraphicKey::new("wall".to_owned()),
+    );
     draft.toggle_tag(TerrainTag::BlocksVision);
 
     let Ok(def) = draft_to_terrain_def(&draft, key()) else {
@@ -123,7 +142,7 @@ fn wall_draft_projects_to_wall_def() {
             &def.presenter_kind,
             TerrainPresenterKind::Wall { graphic_name } if &***graphic_name == "wall"
         ),
-        "the Wall presenter kind carries the chosen graphic role key",
+        "the Wall presenter kind carries the key the draft's first owed view names",
     );
     assert!(
         def.tags.contains(&TerrainTag::BlocksVision),
@@ -136,7 +155,10 @@ fn slab_draft_projects_with_footfall() {
     let mut draft = TerrainDraft::default();
     draft.set_display_name("Deck Slab".to_owned());
     draft.set_kind(TerrainKindChoice::Slab);
-    draft.set_graphic(TileRole::Slab);
+    draft.set_view(
+        TerrainView::Single,
+        TerrainGraphicKey::new("slab".to_owned()),
+    );
     draft.set_footfall(FootfallChoice::Metal);
 
     let Ok(def) = draft_to_terrain_def(&draft, key()) else {
@@ -160,7 +182,10 @@ fn terrain_def_round_trips_through_the_loader_parser() {
     let mut draft = TerrainDraft::default();
     draft.set_display_name("Bulkhead Wall".to_owned());
     draft.set_kind(TerrainKindChoice::Cover);
-    draft.set_graphic(TileRole::Cover);
+    draft.set_view(
+        TerrainView::Facing(TerrainFacing::North),
+        TerrainGraphicKey::new("cover".to_owned()),
+    );
     draft.toggle_tag(TerrainTag::Indestructible);
 
     let Ok(def) = draft_to_terrain_def(&draft, key()) else {
@@ -205,7 +230,10 @@ fn blocking_overrides_project_and_round_trip() {
     let mut draft = TerrainDraft::default();
     draft.set_display_name("Glass Wall".to_owned());
     draft.set_kind(TerrainKindChoice::Wall);
-    draft.set_graphic(TileRole::Wall);
+    draft.set_view(
+        TerrainView::Edge(TerrainFacing::North),
+        TerrainGraphicKey::new("wall".to_owned()),
+    );
     draft.set_blocks_pathing(Some(true));
     draft.set_blocks_los(Some(LosBlocking::None));
 

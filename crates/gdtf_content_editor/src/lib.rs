@@ -44,9 +44,7 @@ pub use attachment_form::{
 #[cfg(debug_assertions)]
 pub use attachment_form::{write_attachment, write_attachment_in};
 pub use canvas::{CanvasZoom, CurrentEditLevel, LevelStep};
-pub use connector_pairing::{
-    PairingOutcome, apply_placement_with_pairing, is_up_connector, resolve_down_counterpart,
-};
+pub use connector_pairing::{PairingOutcome, apply_placement_with_pairing, is_stair};
 pub use editor_map::{EditorMap, PaintedPiece};
 pub use egui_shell::prefab::size_fields::SizeFieldSpans;
 pub use field_form::{FieldDraft, draft_to_field, field_file_name, field_save_path_in};
@@ -96,7 +94,7 @@ pub use sprite_form::{write_sprite, write_sprite_in};
 pub use state::EditorState;
 pub use terrain_form::{
     ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainKindChoice,
-    draft_to_terrain_def, offered_graphic_roles, serialize_terrain_def,
+    draft_to_terrain_def, offers_view_expander, serialize_terrain_def, view_rows,
 };
 #[cfg(debug_assertions)]
 pub use terrain_form::{write_terrain, write_terrain_in};

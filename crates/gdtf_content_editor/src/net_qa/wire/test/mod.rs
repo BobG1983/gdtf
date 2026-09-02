@@ -29,7 +29,6 @@ mod stat_target;
 mod support;
 mod terrain;
 mod terrain_kind;
-mod tile_role;
 mod toggle;
 mod validation;
 mod view;

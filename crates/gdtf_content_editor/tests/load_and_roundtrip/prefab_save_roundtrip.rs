@@ -4,6 +4,7 @@
 
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
+    cover::{CoverHp, HeightBand},
     level::{
         GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabName, PrefabRegistry,
         SpawnRole, ThemeUuid,
@@ -18,6 +19,7 @@ use gdtf_battle_sim::{
         facing::TerrainFacing,
         piece::TerrainGraphicKey,
     },
+    weapon::WeaponName,
 };
 use gdtf_content_editor::{
     EditorMap, MapEditorSession, ProposedPlacement, apply_placement, editor_map_to_prefab,
@@ -28,6 +30,9 @@ use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 const THEME: ThemeUuid = ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0662_0000_0011));
 
 const SLAB: TerrainUuid = TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0662_0000_0012));
+
+const EMPLACEMENT: TerrainUuid =
+    TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0662_0000_0013));
 
 /// Painted deliberately off the [`TerrainFacing`] default, so a dropped field cannot pass.
 const PAINTED_FACING: TerrainFacing = TerrainFacing::East;
@@ -57,6 +62,67 @@ fn slab_def() -> TerrainDef {
         blocks_los:     None,
         leaves_behind:  LeavesBehind::Nothing,
     }
+}
+
+fn emplacement_def() -> TerrainDef {
+    TerrainDef {
+        key:            EMPLACEMENT,
+        display_name:   TerrainDisplayName::new("Roundtrip Emplacement".to_owned()),
+        sim_kind:       TerrainSimKind::Emplacement {
+            hp:               CoverHp::new(60),
+            armor_protection: ArmorProtection::new(5),
+            armor_hardness:   ArmorHardness::new(3),
+            height_band:      HeightBand::Low,
+            mounted_weapon:   WeaponName::new("heavy_stubber".to_owned()),
+            entry_sides:      vec![TerrainFacing::South],
+        },
+        presenter_kind: TerrainPresenterKind::Emplacement {
+            graphic_name: TerrainGraphicKey::new("emplacement".to_owned()),
+        },
+        views:          TerrainViews::new(Vec::new()),
+        tags:           Vec::new(),
+        on_death:       Vec::new(),
+
+        blocks_pathing: None,
+        blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
+    }
+}
+
+#[test]
+fn the_session_facing_reaches_the_saved_prefab_entry() {
+    let Some(size) = small_size() else {
+        unreachable!("the 3x3x1 span is a valid GridSize")
+    };
+    let registry = TerrainDefRegistry::new([(SLAB, slab_def()), (EMPLACEMENT, emplacement_def())]);
+    let mut session = MapEditorSession::new(THEME, None, size);
+    session.select_tile(EMPLACEMENT);
+    session.set_facing(PAINTED_FACING);
+
+    let slot = CellLevel::new(Cell::new(1, 1), Level::new(0));
+    let Some(placement) = session.paint_proposal(slot) else {
+        unreachable!("the session holds a selected tile, so it builds a placement")
+    };
+    let mut map = EditorMap::new();
+    assert!(
+        apply_placement(&mut map, &registry, THEME, &placement, size),
+        "an emplacement classifies as Other, which the rules allow anywhere in bounds",
+    );
+
+    let built = editor_map_to_prefab(&map, &registry, &session);
+    assert!(
+        built.is_ok(),
+        "the painted map must project to a PrefabSpec: {:?}",
+        built.as_ref().err(),
+    );
+    let Ok(built) = built else { return };
+    let entry = built.placements.first();
+    assert_eq!(
+        entry.map(|entry| entry.facing),
+        Some(PAINTED_FACING),
+        "the paint reads the facing off the session, and a proposal built on \
+         TerrainFacing::default() would write North instead; got {entry:?}",
+    );
 }
 
 #[test]

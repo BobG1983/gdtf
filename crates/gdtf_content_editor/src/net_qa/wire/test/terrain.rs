@@ -13,9 +13,8 @@ use crate::{
     net_qa::wire::{
         BlocksPathingNet, FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet,
         MountedWeaponNet, TerrainHpNet, TerrainTagNet, TerrainViewNet, TerrainViewSpriteNet,
-        TileRoleNet,
     },
-    terrain_form::{FootfallChoice, offered_graphic_roles},
+    terrain_form::FootfallChoice,
 };
 
 // Every arm `TerrainViewNet` mirrors, each facing and corner walked in ring order.
@@ -87,29 +86,6 @@ fn every_terrain_view_maps_back_to_the_sim() {
             "the wire view reads back as the sim's own, or a write would land on another view",
         );
     }
-}
-
-#[test]
-fn the_graphic_arms_are_exactly_the_roles_the_form_offers() {
-    let offered = offered_graphic_roles();
-    for role in &offered {
-        assert!(
-            TileRoleNet::from_role(*role).is_some(),
-            "{role:?} is a role the form's picker offers, so the wire needs an arm for it",
-        );
-    }
-    for arm in TileRoleNet::ALL {
-        assert!(
-            offered.contains(&arm.to_role()),
-            "{arm:?} is a wire arm the form's picker does not offer, so a client could send a \
-             role no author can pick",
-        );
-    }
-    assert_eq!(
-        offered.len(),
-        TileRoleNet::ALL.len(),
-        "the picker and the wire hold the same number of roles",
-    );
 }
 
 #[test]

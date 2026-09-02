@@ -1,8 +1,8 @@
-// NS ascending stair. Walkable surface (sim_kind = Slab). Vertical traversal is separate.
+// Deck stair. Walkable surface (sim_kind = Slab). Vertical traversal is separate.
 (
-    // Stable authored key — industrial_hive NS ascending-stair TerrainUuid.
+    // Stable authored key — industrial_hive stair TerrainUuid.
     key: "00000000-0000-0000-0000-01840a91000d",
-    display_name: "Deck Stair Up (NS)",
+    display_name: "Deck Stair",
     sim_kind: Slab(
         hp:               120,   // structural HP — sturdy stepped deck
         armor_protection: 4,     // damage soak
@@ -13,16 +13,17 @@
         footfall:     None,
     ),
     // The Stair tag is what marks a staircase on the def, so it owes the view from below and
-    // the view from above on each of the four facings.
+    // the view from above on each of the four facings. The four art files the deleted twins
+    // used to hold sit on the rows they stood for.
     views: [
         (view: FromBelow(North), sprite: "stair_ns_up"),
-        (view: FromAbove(North), sprite: "stair_ns_up"),
-        (view: FromBelow(East), sprite: "stair_ns_up"),
-        (view: FromAbove(East), sprite: "stair_ns_up"),
+        (view: FromAbove(North), sprite: "stair_ns_down"),
+        (view: FromBelow(East), sprite: "stair_ew_up"),
+        (view: FromAbove(East), sprite: "stair_ew_down"),
         (view: FromBelow(South), sprite: "stair_ns_up"),
-        (view: FromAbove(South), sprite: "stair_ns_up"),
-        (view: FromBelow(West), sprite: "stair_ns_up"),
-        (view: FromAbove(West), sprite: "stair_ns_up"),
+        (view: FromAbove(South), sprite: "stair_ns_down"),
+        (view: FromBelow(West), sprite: "stair_ew_up"),
+        (view: FromAbove(West), sprite: "stair_ew_down"),
     ],
     tags: [Stair],
 )

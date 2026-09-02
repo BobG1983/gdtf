@@ -7,7 +7,7 @@ use gdtf_battle_sim::{
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
-const MIGRATED_TERRAIN_DEF_COUNT: usize = 27;
+const MIGRATED_TERRAIN_DEF_COUNT: usize = 19;
 
 const MIGRATED_THEME_COUNT: usize = 3;
 
@@ -62,8 +62,9 @@ fn shipped_migrated_terrain_and_theme_content_resolves_by_uuid() {
             registry.len(),
             MIGRATED_TERRAIN_DEF_COUNT,
             "the registry must hold every migrated terrain def (reconciled flat 8 + 4 + 4, plus \
-             the EW-wall companions 2 + 1 + 1) — a count mismatch means a piece was \
-             silently dropped (C2)",
+             the door and the stair, now that the orientation-only companions are gone and \
+             each survivor carries both orientations on its own view rows) — a count mismatch \
+             means a piece was silently dropped (C2)",
         );
         for uuid in industrial_hive_flat_eight() {
             assert!(

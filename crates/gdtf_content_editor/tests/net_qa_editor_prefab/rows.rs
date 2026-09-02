@@ -96,7 +96,13 @@ pub(crate) enum PairingRow {
     Rejected,
     PlacedNoPair,
     PlacedPairSkipped,
-    PairPlaced { down: String, at: CellRow },
+    PairPlaced { paired: String, at: CellRow },
+}
+
+/// `editor.select_facing`'s reply body.
+#[derive(Debug, Deserialize)]
+pub(crate) struct SelectFacingReplyRow {
+    pub(crate) facing: FacingRow,
 }
 
 /// `editor.paint`'s reply body.

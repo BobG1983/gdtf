@@ -4,7 +4,6 @@ mod link_draw;
 mod quads;
 mod resolve;
 mod restamp;
-mod roles;
 mod static_draw;
 mod static_map;
 mod swaps;
@@ -24,7 +23,6 @@ pub use resolve::{
     single_rect_layout, source_parts, source_px_size, source_urect,
 };
 pub use restamp::{StampedGraphic, restamp_tiles_on_def_change};
-pub use roles::TileRole;
 pub use static_draw::{TerrainSprite, draw_static_battlefield};
 pub use static_map::{SpriteResolveCtx, StaticMap};
 pub use swaps::stamp_destroyed_cell;

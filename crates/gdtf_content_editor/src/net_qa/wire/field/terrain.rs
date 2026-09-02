@@ -14,7 +14,6 @@ use crate::net_qa::wire::{
         MountedWeaponNet, TerrainHpNet, TerrainViewNet, TerrainViewSpriteNet,
     },
     terrain_kind::TerrainKindNet,
-    tile_role::TileRoleNet,
     weapon::{ExplodeDamageNet, FieldKeyNet},
 };
 
@@ -33,8 +32,6 @@ pub(in crate::net_qa) enum TerrainFieldNet {
     ArmorHardness(ArmorHardnessNet),
     /// The draft's height band, for the kinds that carry one.
     HeightBand(HeightBandNet),
-    /// The draft's graphic role.
-    Graphic(TileRoleNet),
     /// The draft's footfall sound, on a Slab.
     Footfall(FootfallNet),
     /// The draft's mounted weapon, on an Emplacement, set or cleared.

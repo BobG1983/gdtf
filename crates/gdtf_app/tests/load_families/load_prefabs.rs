@@ -1,12 +1,19 @@
 //! Prefab registry load from real assets; gate waits for it before leaving Load.
 use gdtf_app::test_support::{AppState, load_released};
 use gdtf_assets::{ContentFinding, ContentIntegrityReport, ContentValidationDone};
-use gdtf_battle_sim::level::{
-    GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid,
+use gdtf_battle_sim::{
+    level::{
+        GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabName, PrefabRegistry,
+        SpawnRole, ThemeUuid,
+    },
+    terrain::def::TerrainDefRegistry,
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
 const PREFAB_FAMILY: &str = "PrefabRegistry";
+
+/// The three prefabs the game ships, by the file stem the loader keys them under.
+const SHIPPED_PREFABS: [&str; 3] = ["enemy_deployment", "player_deployment", "entry_room"];
 
 const fn industrial_hive_theme() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001))
@@ -78,5 +85,49 @@ fn real_asset_resolves_prefab_registry() {
         app.world().get_resource::<PrefabRegistry>().is_some(),
         "a PrefabRegistry must be present when Load reaches Intro (the gate clause waited \
          for it — not a hand-seeded default)",
+    );
+}
+
+#[test]
+fn every_shipped_placement_names_a_terrain_def_the_registry_holds() {
+    let mut app = GdtfLoadTestAppBuilder::new()
+        .starting_in(AppState::Load)
+        .build();
+    advance_until_resource_exists::<PrefabRegistry>(&mut app);
+    advance_until_resource_exists::<TerrainDefRegistry>(&mut app);
+
+    let Some(prefabs) = app.world().get_resource::<PrefabRegistry>() else {
+        unreachable!("the wait above returns once the prefab registry is in the world");
+    };
+    let Some(terrain) = app.world().get_resource::<TerrainDefRegistry>() else {
+        unreachable!("the wait above returns once the terrain registry is in the world");
+    };
+    for wanted in SHIPPED_PREFABS {
+        assert!(
+            prefabs
+                .iter()
+                .any(|prefab| prefab.name() == &PrefabName::new(wanted.to_owned())),
+            "the loaded registry must hold the shipped prefab `{wanted}`, or the walk below \
+             passes on zero iterations",
+        );
+    }
+
+    let mut visited: usize = 0;
+    for prefab in prefabs.iter() {
+        for placement in &prefab.spec().placements {
+            visited += 1;
+            assert!(
+                terrain.def(&placement.piece).is_some(),
+                "prefab `{}` places `{}`, and the terrain registry holds no def for it, so the \
+                 assembled level would carry an empty cell where a piece was authored",
+                **prefab.name(),
+                *placement.piece,
+            );
+        }
+    }
+    assert!(
+        visited > 0,
+        "the shipped prefabs must carry at least one terrain placement between them, or this \
+         walk asserts nothing",
     );
 }

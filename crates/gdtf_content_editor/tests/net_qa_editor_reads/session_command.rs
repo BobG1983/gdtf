@@ -53,6 +53,11 @@ fn the_reply_names_every_resource_the_authoring_session_is_made_of() -> TestResu
         session.selected_tile().map(|tile| (*tile).to_string()),
         "the selected paint tile comes across as the session holds it, absent included",
     );
+    assert_eq!(
+        format!("{:?}", body.facing),
+        format!("{:?}", session.facing()),
+        "the facing a paint turns its piece to comes across as the session holds it",
+    );
     let size = session.grid_size();
     assert_eq!(
         (

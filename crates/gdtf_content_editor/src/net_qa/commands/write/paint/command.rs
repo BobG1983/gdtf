@@ -3,7 +3,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::{
     metric::{Cell, CellLevel},
-    terrain::{def::TerrainDefRegistry, facing::TerrainFacing},
+    terrain::def::TerrainDefRegistry,
 };
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
@@ -122,9 +122,8 @@ fn proposal(
     edit_level: CurrentEditLevel,
     args: &EditorPaintArgs,
 ) -> Option<ProposedPlacement> {
-    let tile = session.selected_tile()?;
     let slot = CellLevel::new(Cell::new(*args.x, *args.y), edit_level.level());
-    Some(ProposedPlacement::new(slot, tile, TerrainFacing::default()))
+    session.paint_proposal(slot)
 }
 
 fn handle_editor_paint(

@@ -4,7 +4,7 @@ use crate::values::{
     ArmorTypeRow, BandRow, BodyPartRow, CategoryRow, DamageTypeRow, DurationRow, EffectRow,
     FacingRow, FightModeRow, FireModeRow, FootfallRow, GangAttributeRow, HandednessRow, HitTypeRow,
     InjuryEffectRow, LeavesBehindRow, LosRow, OnDeathVariantRow, SeverityRow, SlotDeclRow, SlotRow,
-    SourceRow, TagRow, TerrainKindRow, TileRoleRow, TrajectoryRow, ViewRow,
+    SourceRow, TagRow, TerrainKindRow, TrajectoryRow, ViewRow,
 };
 
 /// Which single-value field a write named, under the form that owns it.
@@ -31,7 +31,6 @@ pub(crate) enum TerrainFieldRow {
     ArmorProtection(i32),
     ArmorHardness(i32),
     HeightBand(BandRow),
-    Graphic(TileRoleRow),
     Footfall(FootfallRow),
     MountedWeapon(Option<String>),
     BlocksPathing(Option<bool>),

@@ -1,4 +1,4 @@
-//! Apply placement with automatic up/down connector pairing.
+//! Apply placement, placing a staircase's second end one storey up with it.
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
@@ -7,27 +7,27 @@ use gdtf_battle_sim::{
     terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
 
-use super::resolve_down_counterpart;
+use super::is_stair;
 use crate::{
     editor_map::EditorMap,
     placement::{ProposedPlacement, apply_placement},
 };
 
-/// Result of placing a tile that may auto-pair a connector.
+/// Result of placing a tile that may auto-pair a staircase.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PairingOutcome {
     /// Placement rejected by rules.
     Rejected,
-    /// Placed; tile is not an up connector.
+    /// Placed; the tile is not a staircase.
     PlacedNoPair,
-    /// Up connector placed; paired down was skipped.
+    /// Staircase placed; the second end one storey up was skipped.
     PlacedPairSkipped,
-    /// Up connector placed and paired down placed above.
+    /// Staircase placed, and its second end placed one storey up.
     PairPlaced {
-        /// Down connector tile key.
-        down: TerrainUuid,
-        /// Slot where the down connector was placed.
-        at:   CellLevel,
+        /// The tile the pass placed one storey up, the same tile that was painted.
+        paired: TerrainUuid,
+        /// Slot where that second tile landed.
+        at:     CellLevel,
     },
 }
 
@@ -39,7 +39,7 @@ impl PairingOutcome {
     }
 }
 
-/// Place a tile and, if it is an up connector, try to place its down pair above.
+/// Place a tile and, if it is a staircase, try to place its second end one storey up.
 pub fn apply_placement_with_pairing(
     map: &mut EditorMap,
     registry: &TerrainDefRegistry,
@@ -51,25 +51,26 @@ pub fn apply_placement_with_pairing(
         return PairingOutcome::Rejected;
     }
 
-    let Some(down) = resolve_down_counterpart(registry, &placement.tile()) else {
+    let paired = placement.tile();
+    if !is_stair(registry, &paired) {
         return PairingOutcome::PlacedNoPair;
-    };
+    }
 
     let Some(above) = level_above(placement.slot(), size) else {
         info!(
-            "up connector placed on the top storey — paired DOWN connector skipped \
-             (fail-closed, no storey above)"
+            "staircase placed on the top storey — its second end was skipped (fail-closed, no \
+             storey above)"
         );
         return PairingOutcome::PlacedPairSkipped;
     };
 
-    let pair = ProposedPlacement::new(above, down, placement.facing());
+    let pair = ProposedPlacement::new(above, paired, placement.facing());
     if apply_placement(map, registry, theme, &pair, size) {
-        PairingOutcome::PairPlaced { down, at: above }
+        PairingOutcome::PairPlaced { paired, at: above }
     } else {
         info!(
-            "up connector placed, but the paired DOWN connector at the storey above was \
-             rejected by the shared placement predicate (conflict) — pair skipped"
+            "staircase placed, but its second end at the storey above was rejected by the \
+             shared placement predicate (conflict) — pair skipped"
         );
         PairingOutcome::PlacedPairSkipped
     }

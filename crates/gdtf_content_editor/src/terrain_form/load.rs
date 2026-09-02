@@ -1,6 +1,5 @@
 //! Load an existing terrain def into the form draft.
 
-use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::terrain::def::{TerrainDef, TerrainPresenterKind, TerrainSimKind};
 
 use super::{
@@ -56,20 +55,13 @@ impl TerrainDraft {
                 self.set_entry_sides(entry_sides.clone());
             }
         }
-        let graphic_name = match &def.presenter_kind {
-            TerrainPresenterKind::Wall { graphic_name }
-            | TerrainPresenterKind::Cover { graphic_name }
-            | TerrainPresenterKind::Emplacement { graphic_name } => graphic_name,
-            TerrainPresenterKind::Slab {
-                graphic_name,
-                footfall,
-            } => {
+        match &def.presenter_kind {
+            TerrainPresenterKind::Wall { .. }
+            | TerrainPresenterKind::Cover { .. }
+            | TerrainPresenterKind::Emplacement { .. } => {}
+            TerrainPresenterKind::Slab { footfall, .. } => {
                 self.set_footfall(FootfallChoice::from_sound(footfall.as_ref()));
-                graphic_name
             }
-        };
-        if let Some(role) = TileRole::from_key(graphic_name) {
-            self.set_graphic(role);
         }
         self.replace_views(def.views.clone());
         self.replace_tags(def.tags.clone());

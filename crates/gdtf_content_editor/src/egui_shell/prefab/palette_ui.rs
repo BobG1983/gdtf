@@ -1,7 +1,10 @@
 use bevy_egui::egui;
 use gdtf_battle_sim::{
     level::UuidThemeRegistry,
-    terrain::def::{TerrainDefRegistry, TerrainSimKind, TerrainUuid},
+    terrain::{
+        def::{TerrainDefRegistry, TerrainSimKind, TerrainUuid},
+        facing::TerrainFacing,
+    },
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
@@ -56,7 +59,29 @@ pub(in crate::egui_shell) fn palette_panel(
         });
 
     ui.separator();
+    facing_row(ui, session);
+    ui.separator();
     selected_tile_stats(ui, session, registry);
+}
+
+// The side a paint turns its piece to, written where both paint entry points read it.
+fn facing_row(ui: &mut egui::Ui, session: &mut MapEditorSession) {
+    ui.label("Paint facing");
+    let active = session.facing();
+    let mut picked: Option<TerrainFacing> = None;
+    ui.horizontal(|ui| {
+        for facing in TerrainFacing::ALL {
+            if ui
+                .selectable_label(facing == active, format!("{facing:?}"))
+                .clicked()
+            {
+                picked = Some(facing);
+            }
+        }
+    });
+    if let Some(facing) = picked {
+        session.set_facing(facing);
+    }
 }
 
 fn palette_row(

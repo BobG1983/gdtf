@@ -1,8 +1,13 @@
-//! Terrain kind and footfall UI choices.
+//! Terrain kind, footfall and view-row UI choices.
 
 use bevy::prelude::Component;
-use gdtf_battle_presenter::TileRole;
-use gdtf_battle_sim::terrain::{entity::TerrainPieceKind, piece::FootfallSound};
+use gdtf_battle_sim::terrain::{
+    def::{OwedViews, owed_views_for},
+    entity::TerrainPieceKind,
+    piece::FootfallSound,
+};
+
+use super::draft::TerrainDraft;
 
 /// Terrain kind selected in the form.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -83,13 +88,17 @@ impl From<TerrainPieceKind> for TerrainKindChoice {
     }
 }
 
-/// Graphic roles authors may pick for a terrain def.
+/// The views the open draft owes art for, one row each in the form's picker.
+/// Read off the draft's own kind and tags, never off a projected def.
 #[must_use]
-pub fn offered_graphic_roles() -> Vec<TileRole> {
-    TileRole::ALL
-        .into_iter()
-        .filter(|role| role.def_authorable())
-        .collect()
+pub fn view_rows(draft: &TerrainDraft) -> OwedViews {
+    owed_views_for(draft.kind().piece_kind(), draft.tags())
+}
+
+/// Whether the draft owes more than one view, which is when the rows get an expander.
+#[must_use]
+pub fn offers_view_expander(draft: &TerrainDraft) -> bool {
+    view_rows(draft).len() > 1
 }
 
 /// Footfall sound choice for slabs.

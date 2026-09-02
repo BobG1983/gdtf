@@ -287,6 +287,7 @@ run(host="editor", command="editor.set_default_floor", arguments="(key: \"000000
 run(host="editor", command="editor.set_mode", arguments="(mode: Prefab)")
 run(host="editor", command="editor.set_grid_size", arguments="(width: 5, height: 5, levels: 3)")
 run(host="editor", command="editor.select_tile", arguments="(key: \"00000000-0000-0000-0000-01840a910004\")")
+run(host="editor", command="editor.select_facing", arguments="(facing: East)")
 run(host="editor", command="editor.set_level", arguments="(level: 1)")
 run(host="editor", command="editor.paint", arguments="(x: 2, y: 3)")
 run(host="editor", command="editor.map", arguments="(level: 1)")
@@ -308,7 +309,7 @@ run(host="editor", command="wait", arguments="(condition: ChecksComplete)")
 run(host="editor", command="wait", arguments="(condition: RegistryRearmed(family: Terrain))")
 ```
 
-The editor offers twenty-six commands today. They are listed in
+The editor offers twenty-seven commands today. They are listed in
 [The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
@@ -759,9 +760,9 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## The editor host
 
-The editor publishes twenty-six commands, all in `EDITOR_COMMANDS`
+The editor publishes twenty-seven commands, all in `EDITOR_COMMANDS`
 ([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
-Twenty-four are `Immediate`. The two the editor publishes under the game host's own
+Twenty-five are `Immediate`. The two the editor publishes under the game host's own
 spellings, `capture.screenshot` and `wait`, are `Deferred`, so a client reads the timing to
 know the reply can land on a later frame than the one that claimed the call. A capture always
 does, because the pipeline settles before it reads the pixels back. A `wait` whose condition
@@ -789,7 +790,7 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.last_save` | always | What the newest save per mode did: the file it wrote, or the fault it reported. [`commands/read/last_save.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/last_save.rs) |
 | `editor.validation` | always | The content integrity report: every finding, plus whether the reference checks have run and whether the report has been published. [`commands/read/validation.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/validation.rs) |
 | `editor.families` | Editing | The registry keys an author can pick, family by family, each with the label the editor's own picker shows. Its `family` argument names a form with the same names `editor.load`'s `mode` uses, and `Prefab` answers `BadArguments`, because that tab is the map canvas and carries no content family. [`commands/read/families/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/families) |
-| `editor.session` | Editing | The theme and its default floor, the grid extent, the selected paint tile, the storey being edited, and the view: draw mode, isolation, zoom and pan. [`commands/read/session.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/session.rs) |
+| `editor.session` | Editing | The theme and its default floor, the grid extent, the selected paint tile, the facing a paint turns it to, the storey being edited, and the view: draw mode, isolation, zoom and pan. [`commands/read/session.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/session.rs) |
 | `editor.draft` | Editing + any form tab | The open form's draft as the RON text its save would write. [`commands/read/draft/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/draft) |
 | `editor.set_mode` | Editing | Opens a mode tab, writing the same `EditorMode` resource the tab bar and the number hotkeys write. [`commands/write/set_mode.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_mode.rs) |
 | `editor.new` | Editing | Replaces a mode's draft with that form's own blank-draft constructor. [`commands/write/blank/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/blank) |
@@ -803,6 +804,7 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.map` | Editing + the Prefab tab | Every painted cell on one storey with its tile and facing, plus the grid extent. Nothing is filtered out, so a slot a shrink left outside the grid is still listed. [`commands/read/painted_map.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/painted_map.rs) |
 | `editor.set_grid_size` | Editing + the Prefab tab | Sets the grid's width, height and storey count through the same commit the size fields call, clamping each span and re-clamping the edit storey. [`commands/write/set_grid_size.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_grid_size.rs) |
 | `editor.select_tile` | Editing + the Prefab tab | Selects the tile the canvas paints, from the same rows the palette draws. [`commands/write/select_tile.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_tile.rs) |
+| `editor.select_facing` | Editing + the Prefab tab | Selects the side the canvas turns the tile it paints to, the same choice the palette's facing row writes. Both paint entry points read it off the session. [`commands/write/select_facing.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_facing.rs) |
 | `editor.set_level` | Editing + the Prefab tab | Jumps the storey the canvas paints on, the way clicking a row of the level rail does, clamping to the grid's extent. [`commands/write/set_level.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_level.rs) |
 | `editor.paint` | Editing + the Prefab tab | Paints the selected tile in one cell of the storey being edited, through the same placement and connector pairing a canvas click runs. [`commands/write/paint/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/paint) |
 | `editor.select_injury_tab` | Editing + the Injury tab | Opens the Injury def form or the Injury weighting table, writing the same `InjurySubTab` resource the sub-tab row writes. [`commands/write/select_injury_tab.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_injury_tab.rs) |
@@ -823,7 +825,7 @@ reading the draft-presence fact `EditorFactsParam::sample` takes for the mode th
 `editor.set_default_floor` are scoped the same way to the Theme tab, because the terrain
 library and the default-floor picker are both drawn only in the Theme arm of the central
 and right panels, and both answer `Unavailable { code: WrongState }` on any other tab. The
-five prefab-canvas commands are scoped to the Prefab tab for the same reason: the palette,
+six prefab-canvas commands are scoped to the Prefab tab for the same reason: the palette,
 the size fields, the level rail and the viewport are drawn only in the Prefab arm, and the
 painted map is that canvas's own model. The Prefab tab carries `EditorMode`'s own default,
 so a fresh process reaches them with no `editor.set_mode` first.
@@ -918,7 +920,7 @@ Every field goes inside its form's own arm, which the middle column names. The A
 | Armor | `Armor` | `Name`; per `BodyPart`, `Floor`, `Protection`, `Hardness` (`ArmorDraft::STAT_RANGE`, `0..=100`), `Integrity` (`ArmorDraft::INTEGRITY_RANGE`, `0..=1000`) and `Type` (one of `ArmorType::ALL`) |
 | Sprite | `Sprite` | `Name`; `BaseSource`; `AnchorX` and `AnchorY` (clamped to the sheet rect); `Animated`; and behind that gate `Fps` (`SpriteDraft::FPS_RANGE`), `Frame`; `FacingOverride`, set to a source or cleared with `None` |
 | Attachment | `Attachment` | `Name`; `DisplayName`; `Slot` (one of `AttachmentSlot::ALL`); `Effect`, variant and payload together |
-| Terrain | `Terrain` | `Kind` (Wall, Cover, Slab, Emplacement); `DisplayName`; `Hp`, which writes both the cover and the slab field, clamped to `TerrainDraft::HP_RANGE`; `ArmorProtection` and `ArmorHardness`, clamped to `TerrainDraft::ARMOR_RANGE`; `HeightBand`, on a kind whose `has_height_band` is true; `Graphic`, one of `offered_graphic_roles()`; `Footfall`, on a kind whose `offers_footfall` is true; `MountedWeapon`, a `WeaponRegistry` key or `None`, on an `Emplacement` kind; `BlocksPathing` and `BlocksLos`, each set or cleared with `None`; `LeavesBehind`, one of `Nothing`, `Piece("…")` naming a `TerrainDefRegistry` key, or `Sprite("…")` naming a `SpriteDefRegistry` key; `View`, carrying the view and the sprite key that draws it, refused with `WrongState` for a view the open draft's kind and tags do not owe; per on-death `index`, `OnDeathVariant` (Explode or LeaveField), then `OnDeathHitType`, `OnDeathDamage` and `OnDeathDamageType` while the effect at that index is `Explode`, and `OnDeathField` while it is `LeaveField` |
+| Terrain | `Terrain` | `Kind` (Wall, Cover, Slab, Emplacement); `DisplayName`; `Hp`, which writes both the cover and the slab field, clamped to `TerrainDraft::HP_RANGE`; `ArmorProtection` and `ArmorHardness`, clamped to `TerrainDraft::ARMOR_RANGE`; `HeightBand`, on a kind whose `has_height_band` is true; `Footfall`, on a kind whose `offers_footfall` is true; `MountedWeapon`, a `WeaponRegistry` key or `None`, on an `Emplacement` kind; `BlocksPathing` and `BlocksLos`, each set or cleared with `None`; `LeavesBehind`, one of `Nothing`, `Piece("…")` naming a `TerrainDefRegistry` key, or `Sprite("…")` naming a `SpriteDefRegistry` key; `View`, carrying the view and the sprite key that draws it, refused with `WrongState` for a view the open draft's kind and tags do not owe; per on-death `index`, `OnDeathVariant` (Explode or LeaveField), then `OnDeathHitType`, `OnDeathDamage` and `OnDeathDamageType` while the effect at that index is `Explode`, and `OnDeathField` while it is `LeaveField` |
 | Theme | `Theme` | `Name`, the display name its name box writes. Its default floor is written with `editor.set_default_floor` |
 | Injury | `Injury` | `Key`; `Name`; `Category` (one of `InjuryCategory::ALL`); `Severity` (Minor, Major or Critical, so `None` and `Fatal` fail to decode); `PopupText`, `LogText`, `InspectText`; `Effect`, an index with that effect's variant and payload |
 | Injury weighting | `Weighting` | `RowInjury` and `RowWeight`, each naming a `bucket` (Minor, Major or Critical, so `None` and `Fatal` fail to decode) and a row `index`. The key must be one the `InjuryRegistry` holds, because that is all the row's combo offers, so a key it does not hold answers `BadArguments` naming the key, and an absent registry answers `MissingModel`. Which table the rows belong to is `editor.select_weighting_table`, not a field |
@@ -983,9 +985,9 @@ theme helpers do. An illegal paint is a `Ran` reply whose verdict is
 `Illegal(OutOfBounds)` or `Illegal(SlabSealsLadder)`, because the verdict is the reply's
 content, not a fact about the host. That verdict is read before the write, so a placement
 that clears a slab above names the slot it is about to empty. The reply also carries what
-the connector pairing pass did, and `PairPlaced` names the down connector and the slot one
-storey up it landed in, so the next `editor.map` read holds no cell the caller cannot
-account for.
+the connector pairing pass did. `PairPlaced` names the tile the pass placed one storey up,
+the same tile that was painted, and the slot it landed in, so the next `editor.map` read
+holds no cell the caller cannot account for.
 
 `editor.save` writes under `EditorQaAssetsRoot`
 ([`net_qa/assets_root.rs`](../../crates/gdtf_content_editor/src/net_qa/assets_root.rs)),

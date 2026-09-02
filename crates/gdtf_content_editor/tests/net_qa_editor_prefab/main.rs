@@ -1,5 +1,5 @@
-//! The editor's five prefab-canvas commands over the editor net-QA listener: `editor.map`,
-//! `editor.set_grid_size`, `editor.select_tile`, `editor.set_level` and `editor.paint`.
+//! The editor's six prefab-canvas commands over its net-QA listener: `editor.map`,
+//! `set_grid_size`, `select_tile`, `select_facing`, `set_level` and `paint`.
 #![cfg(debug_assertions)]
 
 mod canvas;
@@ -19,6 +19,7 @@ mod paint_command;
 mod pairing_command;
 mod refusal;
 mod rows;
+mod select_facing_command;
 mod select_tile_command;
 mod setup;
 #[path = "../net_qa_shared/socket.rs"]

@@ -226,8 +226,9 @@ does not know. That list is `EDITOR_COMMANDS` in
 `editor.set_mode`, `editor.new`, `editor.load`, `editor.save`,
 `editor.set_field`, `editor.list_op`, `editor.select_theme`,
 `editor.toggle_terrain`, `editor.set_default_floor`, `editor.map`,
-`editor.set_grid_size`, `editor.select_tile`, `editor.set_level`,
-`editor.paint`, `editor.select_injury_tab`, `editor.select_weighting_table`,
+`editor.set_grid_size`, `editor.select_tile`, `editor.select_facing`,
+`editor.set_level`, `editor.paint`, `editor.select_injury_tab`,
+`editor.select_weighting_table`,
 `editor.weighting`, `editor.save_weighting`, `capture.screenshot` and `wait`.
 Capture is wired here. `crates/gdtf_content_editor/Cargo.toml` depends on
 `gdtf_screenshot`, and `register_editor_capture` in
@@ -410,8 +411,8 @@ Notes an agent relies on:
   level keys and the action bar's level buttons take. `battle.set_fire_mode`
   picks a fire mode on the weapon the selected shooter fires, the same weapon the
   action bar's mode panel sets it on, through the same lookup.
-  The EDITOR host publishes twenty-six commands. `editor.phase` reports the phase
-  the editor is in, the mode tab open right now — absent while it is still
+  The EDITOR host publishes twenty-seven commands. `editor.phase` reports the
+  phase the editor is in, the mode tab open right now — absent while it is still
   loading — and every mode tab in tab-bar order, `editor.last_save` reports what
   the newest save per mode did, and `editor.validation` reports the content
   integrity report. `capture.screenshot` writes a PNG of what the editor is
@@ -428,18 +429,19 @@ Notes an agent relies on:
   `editor.load`, `editor.save`, `editor.set_field`, `editor.list_op`,
   `editor.select_theme`, `editor.toggle_terrain` and `editor.set_default_floor`
   drive the authoring forms, and `editor.set_grid_size`, `editor.select_tile`,
-  `editor.set_level` and `editor.paint` drive the prefab canvas, and
-  `editor.select_injury_tab` opens one of the Injury tab's two sub-tabs.
+  `editor.select_facing`, `editor.set_level` and `editor.paint` drive the prefab
+  canvas, and `editor.select_injury_tab` opens one of the Injury tab's two
+  sub-tabs.
   `editor.select_weighting_table`, `editor.weighting` and
   `editor.save_weighting` pick, read and write the Injury tab's weighting
-  table. All twenty-one need the authoring scene, so during the editor's Load
+  table. All twenty-two need the authoring scene, so during the editor's Load
   pass they answer `Unavailable { code: WrongState }`. `editor.draft` needs a
   form tab open on top of that, because the default Prefab tab carries no draft,
   `editor.set_field` and `editor.list_op` need a form tab whose draft is in the
   world, because both write the open form's own draft,
   `editor.toggle_terrain` and `editor.set_default_floor` need the Theme tab,
   because the terrain library and the default-floor picker are drawn only there,
-  the five canvas commands need the Prefab tab, because the palette, the
+  the six canvas commands need the Prefab tab, because the palette, the
   size fields, the level rail and the viewport are drawn only there, and
   `editor.select_injury_tab` and the three weighting commands need the Injury
   tab, because the sub-tab row and the weighting panel are drawn only there.

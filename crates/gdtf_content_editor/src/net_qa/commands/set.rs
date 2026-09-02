@@ -11,9 +11,9 @@ use super::{
     wait::EditorWait,
     write::{
         EditorListOp, EditorLoad, EditorNew, EditorPaint, EditorSave, EditorSaveWeighting,
-        EditorSelectInjuryTab, EditorSelectTheme, EditorSelectTile, EditorSelectWeightingTable,
-        EditorSetDefaultFloor, EditorSetField, EditorSetGridSize, EditorSetLevel, EditorSetMode,
-        EditorToggleTerrain,
+        EditorSelectFacing, EditorSelectInjuryTab, EditorSelectTheme, EditorSelectTile,
+        EditorSelectWeightingTable, EditorSetDefaultFloor, EditorSetField, EditorSetGridSize,
+        EditorSetLevel, EditorSetMode, EditorToggleTerrain,
     },
 };
 use crate::net_qa::facts::EditorFacts;
@@ -37,6 +37,7 @@ pub(in crate::net_qa) const EDITOR_COMMANDS: &[&dyn ErasedCommand<EditorFacts>] 
     &EditorPaintedMap,
     &EditorSetGridSize,
     &EditorSelectTile,
+    &EditorSelectFacing,
     &EditorSetLevel,
     &EditorPaint,
     &EditorSelectInjuryTab,

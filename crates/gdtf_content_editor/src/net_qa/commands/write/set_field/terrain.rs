@@ -20,10 +20,9 @@ use crate::{
             ArmorHardnessNet, ArmorProtectionNet, BlocksPathingNet, EditorDraftNameNet,
             FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet, MountedWeaponNet,
             TerrainFieldNet, TerrainHpNet, TerrainKindNet, TerrainViewNet, TerrainViewSpriteNet,
-            TileRoleNet,
         },
     },
-    terrain_form::{TerrainDraft, TerrainKindChoice, offered_graphic_roles},
+    terrain_form::{TerrainDraft, TerrainKindChoice},
 };
 
 /// The registries the leaves-behind control reads its two choice lists from.
@@ -120,21 +119,6 @@ const fn write_height_band(
     Ok(TerrainFieldNet::HeightBand(HeightBandNet::from_band(
         draft.height_band(),
     )))
-}
-
-fn write_graphic(
-    draft: &mut TerrainDraft,
-    role: TileRoleNet,
-) -> Result<TerrainFieldNet, FormWriteFault> {
-    let wanted = role.to_role();
-    if !offered_graphic_roles().contains(&wanted) {
-        return Err(FormWriteFault::bad(format!(
-            "{wanted:?} is not a role the Terrain form's graphic picker offers"
-        )));
-    }
-    draft.set_graphic(wanted);
-    let stored = TileRoleNet::from_role(draft.graphic()).unwrap_or(role);
-    Ok(TerrainFieldNet::Graphic(stored))
 }
 
 const fn write_footfall(
@@ -300,7 +284,6 @@ pub(super) fn write(
             ))
         }
         TerrainFieldNet::HeightBand(band) => write_height_band(draft, band),
-        TerrainFieldNet::Graphic(role) => write_graphic(draft, role),
         TerrainFieldNet::Footfall(footfall) => write_footfall(draft, footfall),
         TerrainFieldNet::MountedWeapon(named) => write_mounted_weapon(draft, weapons, named),
         TerrainFieldNet::BlocksPathing(blocks) => {

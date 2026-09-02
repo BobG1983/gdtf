@@ -13,11 +13,12 @@
         graphic_name: "wall",
     ),
     // One row per view a Wall owes — its four straight runs and the four turns between them.
+    // The east and west runs carry the east-west art the deleted EW twin used to hold.
     views: [
         (view: Edge(North), sprite: "wall"),
-        (view: Edge(East), sprite: "wall"),
+        (view: Edge(East), sprite: "wall_ew"),
         (view: Edge(South), sprite: "wall"),
-        (view: Edge(West), sprite: "wall"),
+        (view: Edge(West), sprite: "wall_ew"),
         (view: Corner(NorthEast), sprite: "wall"),
         (view: Corner(SouthEast), sprite: "wall"),
         (view: Corner(SouthWest), sprite: "wall"),

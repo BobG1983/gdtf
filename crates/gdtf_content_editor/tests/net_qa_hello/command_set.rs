@@ -60,6 +60,7 @@ fn the_editor_offers_the_reads_the_lifecycle_the_form_writes_the_theme_helpers_a
             CommandName::from_static("editor.map"),
             CommandName::from_static("editor.set_grid_size"),
             CommandName::from_static("editor.select_tile"),
+            CommandName::from_static("editor.select_facing"),
             CommandName::from_static("editor.set_level"),
             CommandName::from_static("editor.paint"),
             CommandName::from_static("editor.select_injury_tab"),

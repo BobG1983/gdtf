@@ -34,7 +34,6 @@ mod terrain;
 mod terrain_kind;
 #[cfg(test)]
 mod test;
-mod tile_role;
 mod toggle;
 mod validation;
 mod view;
@@ -114,7 +113,6 @@ pub(in crate::net_qa) use terrain::{
     MountedWeaponNet, TerrainHpNet, TerrainTagNet, TerrainViewNet, TerrainViewSpriteNet,
 };
 pub(in crate::net_qa) use terrain_kind::TerrainKindNet;
-pub(in crate::net_qa) use tile_role::TileRoleNet;
 pub(in crate::net_qa) use toggle::TerrainToggleNet;
 pub(in crate::net_qa) use validation::{
     ChecksCompleteNet, ValidationFindingNet, ValidationPublishedNet,

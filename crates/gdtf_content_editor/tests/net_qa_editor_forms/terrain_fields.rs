@@ -1,6 +1,5 @@
 use bevy::app::App;
 use gdtf_assets::ContentFolderHandle;
-use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     cover::HeightBand,
     effects::{fields::FieldKey, on_death::OnDeathEffect},
@@ -23,7 +22,7 @@ use crate::{
     support::{TestError, TestResult},
     values::{
         BandRow, DamageTypeRow, FacingRow, FootfallRow, HitTypeRow, LosRow, OnDeathVariantRow,
-        TerrainKindRow, TileRoleRow, ViewRow,
+        TerrainKindRow, ViewRow,
     },
 };
 
@@ -100,13 +99,6 @@ fn every_terrain_field_writes_the_draft_and_reads_back_as_stored() -> TestResult
         FieldRow::Terrain(TerrainFieldRow::ArmorHardness(8)),
     );
     assert_eq!(*terrain_draft(&app)?.armor_hardness(), 8);
-
-    let graphic = set_field(&mut app, &mut client, "(field: Terrain(Graphic(Rubble)))")?;
-    assert_eq!(
-        graphic.field,
-        FieldRow::Terrain(TerrainFieldRow::Graphic(TileRoleRow::Rubble)),
-    );
-    assert_eq!(terrain_draft(&app)?.graphic(), TileRole::Rubble);
 
     let pathing = set_field(
         &mut app,
@@ -292,21 +284,6 @@ fn a_view_naming_a_sprite_no_registry_holds_is_written_anyway() -> TestResult {
             .sprite(TerrainView::Facing(TerrainFacing::East)),
         Some(&TerrainGraphicKey::new("no_such_sprite".to_owned())),
         "the draft holds the unresolvable key the write was asked for",
-    );
-    Ok(())
-}
-
-#[test]
-fn a_graphic_role_the_picker_does_not_offer_is_bad_arguments() -> TestResult {
-    let (mut app, mut client) = form_tab_app_and_client(EditorMode::Terrain)?;
-    let before = terrain_draft(&app)?.graphic();
-
-    let reply = try_set_field(&mut app, &mut client, "(field: Terrain(Graphic(Door)))")?;
-    crate::bad_arguments::bad_arguments_detail(&reply)?;
-    assert_eq!(
-        terrain_draft(&app)?.graphic(),
-        before,
-        "the refused write left the graphic role as it was",
     );
     Ok(())
 }

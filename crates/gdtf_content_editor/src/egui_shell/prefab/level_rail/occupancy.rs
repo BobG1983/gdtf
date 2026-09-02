@@ -1,19 +1,21 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use bevy_egui::egui;
-use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     level::GridSize,
     metric::{CellLevel, Level},
-    terrain::def::{TerrainDefRegistry, TerrainUuid},
+    terrain::{
+        def::{TerrainDef, TerrainDefRegistry, TerrainTag, TerrainUuid},
+        entity::TerrainPieceKind,
+    },
 };
 
 use crate::{
     editor_map::{EditorMap, PaintedPiece},
-    terrain_graphics::graphic_key,
+    placement::names_a_ladder,
 };
 
-const FALLBACK_HUE: egui::Color32 = egui::Color32::from_rgb(200, 60, 200);
+pub(super) const FALLBACK_HUE: egui::Color32 = egui::Color32::from_rgb(200, 60, 200);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) struct StoreySignature(u64);
@@ -86,28 +88,24 @@ fn texel_index(slot: &CellLevel, size: GridSize) -> Option<usize> {
 fn cell_hue(registry: Option<&TerrainDefRegistry>, tile: &TerrainUuid) -> egui::Color32 {
     registry
         .and_then(|registry| registry.def(tile))
-        .and_then(|def| TileRole::from_key(graphic_key(def)))
         .map_or(FALLBACK_HUE, rail_hue)
 }
 
-const fn rail_hue(role: TileRole) -> egui::Color32 {
-    match role {
-        TileRole::Floor => egui::Color32::from_rgb(100, 110, 90),
-        TileRole::FloorAltPanel => egui::Color32::from_rgb(105, 105, 115),
-        TileRole::Wall => egui::Color32::from_rgb(200, 200, 205),
-        TileRole::WallEw => egui::Color32::from_rgb(170, 170, 180),
-        TileRole::Cover => egui::Color32::from_rgb(190, 150, 60),
-        TileRole::Emplacement => egui::Color32::from_rgb(200, 90, 40),
-        TileRole::Slab => egui::Color32::from_rgb(110, 130, 160),
-        TileRole::Rubble => egui::Color32::from_rgb(130, 100, 70),
-        TileRole::Door | TileRole::DoorNs => egui::Color32::from_rgb(60, 160, 150),
-        TileRole::DoorEw => egui::Color32::from_rgb(50, 140, 135),
-        TileRole::StairUp | TileRole::StairNsUp | TileRole::StairEwUp => {
-            egui::Color32::from_rgb(90, 200, 90)
-        }
-        TileRole::StairDown | TileRole::StairNsDown | TileRole::StairEwDown => {
-            egui::Color32::from_rgb(60, 140, 60)
-        }
-        TileRole::Ladder => egui::Color32::from_rgb(210, 200, 80),
+// The kind and the two tags the rail tells apart, plus the ladder its display name names.
+fn rail_hue(def: &TerrainDef) -> egui::Color32 {
+    if names_a_ladder(&def.display_name) {
+        return egui::Color32::from_rgb(210, 200, 80);
+    }
+    if def.tags.contains(&TerrainTag::Openable) {
+        return egui::Color32::from_rgb(60, 160, 150);
+    }
+    if def.tags.contains(&TerrainTag::Stair) {
+        return egui::Color32::from_rgb(90, 200, 90);
+    }
+    match def.sim_kind.kind() {
+        TerrainPieceKind::Wall => egui::Color32::from_rgb(200, 200, 205),
+        TerrainPieceKind::Cover => egui::Color32::from_rgb(190, 150, 60),
+        TerrainPieceKind::Emplacement => egui::Color32::from_rgb(200, 90, 40),
+        TerrainPieceKind::Slab => egui::Color32::from_rgb(110, 130, 160),
     }
 }

@@ -81,6 +81,15 @@ pub(crate) struct ViewRow {
     pub(crate) pan:     PanRow,
 }
 
+/// A client's own reading of a cardinal side.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum FacingRow {
+    North,
+    East,
+    South,
+    West,
+}
+
 /// `editor.session`'s reply body.
 #[derive(Debug, Deserialize)]
 pub(crate) struct SessionReplyRow {
@@ -88,6 +97,7 @@ pub(crate) struct SessionReplyRow {
     pub(crate) default_floor: Option<String>,
     pub(crate) grid_size:     GridSizeRow,
     pub(crate) selected_tile: Option<String>,
+    pub(crate) facing:        FacingRow,
     pub(crate) level:         u8,
     pub(crate) view:          ViewRow,
 }

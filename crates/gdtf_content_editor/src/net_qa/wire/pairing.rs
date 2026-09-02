@@ -12,14 +12,14 @@ pub(in crate::net_qa) enum PairingOutcomeNet {
     Rejected,
     /// The tile landed and pairs with nothing.
     PlacedNoPair,
-    /// The tile landed, and its paired down connector could not follow.
+    /// The tile landed, and its second end could not follow.
     PlacedPairSkipped,
     /// The tile landed, and a second tile went in one storey above it.
     PairPlaced {
-        /// The down connector the pass chose.
-        down: TerrainKeyNet,
+        /// The tile the pass placed one storey up.
+        paired: TerrainKeyNet,
         /// The slot that second tile landed in.
-        at:   EditorCellLevelNet,
+        at:     EditorCellLevelNet,
     },
 }
 
@@ -30,9 +30,9 @@ impl PairingOutcomeNet {
             PairingOutcome::Rejected => Self::Rejected,
             PairingOutcome::PlacedNoPair => Self::PlacedNoPair,
             PairingOutcome::PlacedPairSkipped => Self::PlacedPairSkipped,
-            PairingOutcome::PairPlaced { down, at } => Self::PairPlaced {
-                down: TerrainKeyNet::new((*down).to_string()),
-                at:   EditorCellLevelNet::from_slot(at),
+            PairingOutcome::PairPlaced { paired, at } => Self::PairPlaced {
+                paired: TerrainKeyNet::new((*paired).to_string()),
+                at:     EditorCellLevelNet::from_slot(at),
             },
         }
     }

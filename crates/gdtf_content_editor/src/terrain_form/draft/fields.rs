@@ -1,7 +1,6 @@
 //! The terrain draft's own fields and their accessors.
 
 use bevy::prelude::Resource;
-use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
@@ -30,7 +29,6 @@ pub struct TerrainDraft {
     armor_protection:    ArmorProtection,
     armor_hardness:      ArmorHardness,
     height_band:         HeightBand,
-    graphic:             TileRole,
     views:               TerrainViews,
     footfall:            FootfallChoice,
     mounted_weapon:      Option<WeaponName>,
@@ -77,17 +75,6 @@ impl TerrainDraft {
             self.mounted_weapon = None;
             self.entry_sides = Vec::new();
         }
-    }
-
-    /// Presenter graphic role.
-    #[must_use]
-    pub const fn graphic(&self) -> TileRole {
-        self.graphic
-    }
-
-    /// Set the graphic role.
-    pub const fn set_graphic(&mut self, graphic: TileRole) {
-        self.graphic = graphic;
     }
 
     /// The per-view art rows the draft holds.
@@ -292,7 +279,6 @@ impl Default for TerrainDraft {
             armor_protection: ArmorProtection::new(4),
             armor_hardness:   ArmorHardness::new(2),
             height_band:      HeightBand::High,
-            graphic:          TileRole::Floor,
             views:            TerrainViews::new(Vec::new()),
             footfall:         FootfallChoice::default(),
             mounted_weapon:   None,

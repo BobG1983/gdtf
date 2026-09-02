@@ -1,10 +1,9 @@
-// NS-orientation door — distinct authored visual tile. Closed door blocks LOS + pathfinding
-// like a wall (sim_kind = Wall); Openable tag marks it as openable later.
-// Orientation is never inferred — author places the correct orientation in a prefab.
+// Bulkhead door. Closed door blocks LOS + pathfinding like a wall (sim_kind = Wall);
+// the Openable tag marks it as openable later. One def, drawn per facing off its views.
 (
-    // Stable authored key — industrial_hive NS door TerrainUuid.
+    // Stable authored key — industrial_hive door TerrainUuid.
     key: "00000000-0000-0000-0000-01840a91000b",
-    display_name: "Bulkhead Door (NS)",
+    display_name: "Bulkhead Door",
     sim_kind: Wall(
         hp:               40,    // structural HP — as sturdy as a bulkhead wall
         armor_protection: 6,     // damage soak
@@ -15,15 +14,16 @@
         graphic_name: "door_ns", // NS-running door sprite
     ),
     // The Openable tag is what makes this a door, so it owes shut and open on all four sides.
+    // East and west carry the east-west art the deleted EW twin used to hold.
     views: [
         (view: Shut(North), sprite: "door_ns"),
         (view: Open(North), sprite: "door_ns"),
-        (view: Shut(East), sprite: "door_ns"),
-        (view: Open(East), sprite: "door_ns"),
+        (view: Shut(East), sprite: "door_ew"),
+        (view: Open(East), sprite: "door_ew"),
         (view: Shut(South), sprite: "door_ns"),
         (view: Open(South), sprite: "door_ns"),
-        (view: Shut(West), sprite: "door_ns"),
-        (view: Open(West), sprite: "door_ns"),
+        (view: Shut(West), sprite: "door_ew"),
+        (view: Open(West), sprite: "door_ew"),
     ],
     // Openable marks this as a door. Blocks vision + pathfinding while closed.
     tags: [Openable, BlocksVision, BlocksPathfinding],

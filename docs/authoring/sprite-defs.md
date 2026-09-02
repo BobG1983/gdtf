@@ -122,18 +122,20 @@ set re-arms the pass when the sprite registry rebuilds).
 
 ## Part 4 — The seeded catalog and how it resolves
 
-The catalog holds 19 files, counted by listing `assets/content/sprites/`. Count
-it that way rather than off the `TileRole` table, which is 18 keys:
-`slab_destroyed.spritedef.ron` outlives the role variant that named it, and the
-file stays. One of the 19 is named by render code as a string literal.
-`draw_vertical_links` draws `ladder.spritedef.ron` on a ladder endpoint, taken
-from the link kind. Three are named by tests and by no def:
-`assert_orientation_rects_all_distinct`
+The catalog holds 19 files, counted by listing `assets/content/sprites/`. That
+listing is the only count there is. No role table enumerates the catalog, and
+nothing bars a def from naming any file in it: the Terrain form's view rows
+offer every key `SpriteDefRegistry::keys()` answers.
+
+Five of the 19 are named by no terrain def. `draw_vertical_links` draws
+`ladder.spritedef.ron` on a ladder endpoint, taken from the link kind, and that
+is the one name render code still holds as a string literal. Three are named by
+tests: `assert_orientation_rects_all_distinct`
 (`crates/gdtf_battle_presenter/tests/terrain_draw/door_stair_tiles.rs`) names
 `door`, `stair_up` and `stair_down`, and the `test_door()` fixture
-(`crates/gdtf_battle_sim/src/test_support/terrain/`) names `door` again. All
-three keep their `TileRole` variants, which `def_authorable` refuses, so no
-theme can author them. Each def was mechanically derived from the
+(`crates/gdtf_battle_sim/src/test_support/terrain/`) names `door` again. The
+fifth is `slab_destroyed.spritedef.ron`, named by a sim view fixture and by no
+def, and the file stays. Each def was mechanically derived from the
 then-live table:
 sheet = the presenter's terrain sheet, rect = the role's atlas index unpacked
 on the sheet's 16-column/16-px grid, anchor = the implicit CENTER anchor

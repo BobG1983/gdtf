@@ -17,7 +17,6 @@ use crate::{
         EditorFieldNet, EditorListIndexNet, ExplodeDamageNet, FieldKeyNet, FootfallNet,
         HeightBandNet, HitTypeNet, LosBlockingNet, MountedWeaponNet, OnDeathVariantNet,
         TerrainFieldNet, TerrainHpNet, TerrainKindNet, TerrainViewNet, TerrainViewSpriteNet,
-        TileRoleNet,
     },
     terrain_form::TerrainKindChoice,
 };
@@ -47,7 +46,6 @@ fn every_terrain_field_arm_round_trips() {
     assert_ron_round_trip(&terrain(TerrainFieldNet::HeightBand(
         HeightBandNet::from_band(HeightBand::Mid),
     )));
-    assert_ron_round_trip(&terrain(TerrainFieldNet::Graphic(TileRoleNet::Slab)));
     assert_ron_round_trip(&terrain(TerrainFieldNet::Footfall(FootfallNet::Grate)));
     assert_ron_round_trip(&terrain(TerrainFieldNet::MountedWeapon(Some(
         MountedWeaponNet::from_name(&WeaponName::new("autogun".to_owned())),

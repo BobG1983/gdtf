@@ -2,7 +2,6 @@
 #![cfg(debug_assertions)]
 
 use bevy::prelude::*;
-use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     level::UuidThemeRegistry,
     terrain::{
@@ -10,32 +9,23 @@ use gdtf_battle_sim::{
             TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind, TerrainTag,
             TerrainUuid, TerrainView, owed_views, owed_views_for,
         },
+        facing::TerrainFacing,
         piece::TerrainGraphicKey,
     },
     weapon::{WeaponName, WeaponRegistry},
 };
 use gdtf_content_editor::{
-    EditorMode, EditorState, MapEditorPlugin, MapEditorSession, SaveTerrainError, TerrainDraft,
-    TerrainKindChoice, draft_to_terrain_def, serialize_terrain_def, write_terrain_in,
+    EditorMode, MapEditorSession, SaveTerrainError, TerrainDraft, TerrainKindChoice,
+    draft_to_terrain_def, serialize_terrain_def, write_terrain_in,
 };
-use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
-fn editor_app() -> App {
-    let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
-    app.add_plugins(MapEditorPlugin);
-    app
-}
+use crate::support::{advance_to_editing, editor_app};
 
-fn advance_to_editing(app: &mut App) {
-    advance_until(app, |app| {
-        app.world()
-            .get_resource::<State<EditorState>>()
-            .is_some_and(|s| *s.get() == EditorState::Editing)
-    });
-    for _ in 0..4 {
-        app.update();
-    }
-}
+// The sprite key these cases name on a Cover draft's own first owed view.
+const COVER_SPRITE: &str = "cover";
+
+// The same, for an Emplacement draft.
+const EMPLACEMENT_SPRITE: &str = "emplacement";
 
 #[test]
 fn terrain_save_round_trips_through_the_loader() {
@@ -51,7 +41,10 @@ fn terrain_save_round_trips_through_the_loader() {
     };
     draft.set_display_name("Roundtrip Probe".to_owned());
     draft.set_kind(TerrainKindChoice::Cover);
-    draft.set_graphic(TileRole::Cover);
+    draft.set_view(
+        TerrainView::Facing(TerrainFacing::North),
+        TerrainGraphicKey::new(COVER_SPRITE.to_owned()),
+    );
     draft.toggle_tag(TerrainTag::BlocksVision);
     draft.toggle_tag(TerrainTag::Indestructible);
     let _ = draft.ensure_uuid();
@@ -117,7 +110,10 @@ fn terrain_tab_rework_keeps_stat_picker_and_preview_wired() {
     };
     draft.set_display_name("Rework Probe".to_owned());
     draft.set_kind(TerrainKindChoice::Cover);
-    draft.set_graphic(TileRole::Cover);
+    draft.set_view(
+        TerrainView::Facing(TerrainFacing::North),
+        TerrainGraphicKey::new(COVER_SPRITE.to_owned()),
+    );
     draft.set_cover_hp(gdtf_battle_sim::cover::CoverHp::new(77));
 
     let Some(draft) = app.world().get_resource::<TerrainDraft>().cloned() else {
@@ -131,9 +127,8 @@ fn terrain_tab_rework_keeps_stat_picker_and_preview_wired() {
         unreachable!("a Cover kind must project a Cover presenter kind carrying the picked graphic")
     };
     assert_eq!(
-        &**graphic_name,
-        TileRole::Cover.as_key(),
-        "the sprite-picker selection must reach the projected def's graphic_name (C3)",
+        &***graphic_name, COVER_SPRITE,
+        "the view-row selection must reach the projected def's graphic_name (C3)",
     );
 
     let TerrainSimKind::Cover { hp, .. } = &def.sim_kind else {
@@ -152,8 +147,8 @@ fn terrain_tab_rework_keeps_stat_picker_and_preview_wired() {
         "the demoted RON preview must still re-serialize the edited display name (C3):\n{preview}",
     );
     assert!(
-        preview.contains(TileRole::Cover.as_key()),
-        "the demoted RON preview must still re-serialize the picked graphic role (C3):\n{preview}",
+        preview.contains(COVER_SPRITE),
+        "the demoted RON preview must still re-serialize the picked sprite key (C3):\n{preview}",
     );
 }
 
@@ -197,7 +192,10 @@ fn emplacement_save_round_trips_with_mounted_weapon() {
     };
     draft.set_display_name("Emplacement Probe".to_owned());
     draft.set_kind(TerrainKindChoice::Emplacement);
-    draft.set_graphic(TileRole::Emplacement);
+    draft.set_view(
+        TerrainView::Facing(TerrainFacing::North),
+        TerrainGraphicKey::new(EMPLACEMENT_SPRITE.to_owned()),
+    );
     draft.set_mounted_weapon(Some(weapon.clone()));
     let _ = draft.ensure_uuid();
 
@@ -235,9 +233,10 @@ fn emplacement_save_round_trips_with_mounted_weapon() {
         matches!(
             &reloaded.presenter_kind,
             TerrainPresenterKind::Emplacement { graphic_name }
-                if &***graphic_name == TileRole::Emplacement.as_key()
+                if &***graphic_name == EMPLACEMENT_SPRITE
         ),
-        "the reloaded presenter kind must be Emplacement carrying the chosen graphic role",
+        "the reloaded presenter kind must be Emplacement carrying the key its first owed view \
+         names",
     );
 
     let registry = TerrainDefRegistry::new([(uuid, reloaded)]);
@@ -305,7 +304,6 @@ fn wall_draft(app: &mut App, name: &str) -> Option<TerrainDraft> {
     let mut draft = app.world_mut().get_resource_mut::<TerrainDraft>()?;
     draft.set_display_name(name.to_owned());
     draft.set_kind(TerrainKindChoice::Wall);
-    draft.set_graphic(TileRole::Wall);
     let _ = draft.ensure_uuid();
     app.world().get_resource::<TerrainDraft>().cloned()
 }
@@ -344,22 +342,27 @@ fn every_view_set_on_the_draft_survives_the_save() {
 }
 
 #[test]
-fn a_draft_with_no_view_set_saves_a_complete_set_off_its_graphic() {
+fn a_draft_with_one_view_set_saves_a_complete_set_off_that_row() {
     let mut app = editor_app();
     advance_to_editing(&mut app);
 
-    let Some(draft) = wall_draft(&mut app, "Unset Views Probe") else {
+    let Some(mut draft) = wall_draft(&mut app, "Unset Views Probe") else {
         unreachable!("the TerrainDraft must be inserted in Editing")
     };
     assert!(
         draft.views().is_empty(),
         "the case starts from a draft with no view set, or the fill below would prove nothing",
     );
+    let owed = owed_views_for(draft.kind().piece_kind(), draft.tags());
+    let Some(only) = owed.first().copied() else {
+        unreachable!("a Wall draft owes at least one view")
+    };
+    let picked = view_key(only);
+    draft.set_view(only, picked.clone());
 
     let Some((reloaded, _dir)) = saved_def(&app, &draft) else {
         unreachable!("a named Wall draft must write and parse back out of a TempDir")
     };
-    let picked = TerrainGraphicKey::new(draft.graphic().as_key().to_owned());
     let unfilled: Vec<TerrainView> = owed_views(&reloaded)
         .iter()
         .filter(|view| reloaded.views.sprite(**view) != Some(&picked))
@@ -367,7 +370,7 @@ fn a_draft_with_no_view_set_saves_a_complete_set_off_its_graphic() {
         .collect();
     assert!(
         unfilled.is_empty(),
-        "a save fills every owed view from the picked graphic, so the next def authored in the \
-         form passes the coverage check; these views did not: {unfilled:?}",
+        "a save fills every owed view from the draft's first filled row, so the next def \
+         authored in the form passes the coverage check; these views did not: {unfilled:?}",
     );
 }

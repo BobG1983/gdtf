@@ -10,7 +10,7 @@ use crate::{
     net_qa::wire::{PairingOutcomeNet, cell::EditorCellLevelNet},
 };
 
-fn a_down_connector() -> TerrainUuid {
+fn a_painted_stair() -> TerrainUuid {
     TerrainUuid::new(Uuid::from_u128(0x51A1))
 }
 
@@ -29,8 +29,8 @@ fn every_outcome() -> [PairingOutcome; 4] {
         PairingOutcome::PlacedNoPair,
         PairingOutcome::PlacedPairSkipped,
         PairingOutcome::PairPlaced {
-            down: a_down_connector(),
-            at:   slot_above(),
+            paired: a_painted_stair(),
+            at:     slot_above(),
         },
     ]
 }
@@ -43,18 +43,18 @@ fn every_pairing_outcome_round_trips() {
 }
 
 #[test]
-fn a_placed_pair_names_the_down_key_and_the_slot_it_landed_in() {
+fn a_placed_pair_names_the_paired_key_and_the_slot_it_landed_in() {
     let mirrored = PairingOutcomeNet::from_outcome(PairingOutcome::PairPlaced {
-        down: a_down_connector(),
-        at:   slot_above(),
+        paired: a_painted_stair(),
+        at:     slot_above(),
     });
-    let PairingOutcomeNet::PairPlaced { down, at } = &mirrored else {
+    let PairingOutcomeNet::PairPlaced { paired, at } = &mirrored else {
         unreachable!("built as a PairPlaced above, got {mirrored:?}");
     };
     assert_eq!(
-        **down,
-        (*a_down_connector()).to_string(),
-        "the reply names the down connector the pass chose, so a caller knows which key \
+        **paired,
+        (*a_painted_stair()).to_string(),
+        "the reply names the tile the pass placed one storey up, so a caller knows which key \
          appeared in a cell it never asked for",
     );
     assert_ne!(

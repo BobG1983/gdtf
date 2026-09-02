@@ -21,7 +21,7 @@ use crate::{
         schedule::EditorNetQaSystems,
         wire::{
             EditorGridSizeNet, EditorIsolateViewNet, EditorKeyNet, EditorLevelNet, EditorPanNet,
-            EditorViewModeNet, EditorViewNet, EditorZoomNet,
+            EditorViewModeNet, EditorViewNet, EditorZoomNet, TerrainFacingNet,
         },
     },
     preview::view::PreviewPan,
@@ -59,6 +59,7 @@ pub(in crate::net_qa) struct EditorSessionReply {
     default_floor: Option<EditorKeyNet>,
     grid_size:     EditorGridSizeNet,
     selected_tile: Option<EditorKeyNet>,
+    facing:        TerrainFacingNet,
     level:         EditorLevelNet,
     view:          EditorViewNet,
 }
@@ -74,9 +75,9 @@ impl QaCommand for EditorSession {
     const NAME: CommandName = CommandName::from_static("editor.session");
     const SUMMARY: CommandSummary = CommandSummary::from_static(
         "Read the authoring session the canvas draws from: the theme and its default floor, \
-         the grid extent, the selected paint tile, the storey being edited, and the view. The \
-         view is the draw mode, the onion isolation, the zoom and the pan. Needs the authoring \
-         scene.",
+         the grid extent, the selected paint tile, the facing a paint turns it to, the storey \
+         being edited, and the view. The view is the draw mode, the onion isolation, the zoom \
+         and the pan. Needs the authoring scene.",
     );
     const TIMING: CommandTiming = CommandTiming::Immediate;
 
@@ -113,6 +114,7 @@ fn reply_from(
         default_floor: session.default_floor().map(terrain_key),
         grid_size: EditorGridSizeNet::from_size(session.grid_size()),
         selected_tile: session.selected_tile().map(terrain_key),
+        facing: TerrainFacingNet::from_facing(session.facing()),
         level: EditorLevelNet::new(*level.level()),
         view,
     }

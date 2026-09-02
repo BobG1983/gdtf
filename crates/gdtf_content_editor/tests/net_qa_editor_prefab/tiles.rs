@@ -1,6 +1,6 @@
 use bevy::{app::App, asset::uuid::Uuid};
 use gdtf_battle_sim::terrain::def::TerrainUuid;
-use gdtf_content_editor::is_up_connector;
+use gdtf_content_editor::is_stair;
 
 use crate::{
     support::TestError,
@@ -34,13 +34,9 @@ fn palette_keys(app: &App) -> Result<Vec<TerrainUuid>, TestError> {
 pub(crate) fn a_plain_palette_tile(app: &App) -> Result<TerrainUuid, TestError> {
     let terrain = terrain_registry(app)?;
     let keys = palette_keys(app)?;
-    let Some(key) = keys
-        .iter()
-        .copied()
-        .find(|key| !is_up_connector(&terrain, key))
-    else {
+    let Some(key) = keys.iter().copied().find(|key| !is_stair(&terrain, key)) else {
         return Err(format!(
-            "this case needs a palette tile that is not an up connector, and the seeded theme \
+            "this case needs a palette tile that is not a staircase, and the seeded theme \
              offers {keys:?}"
         )
         .into());
@@ -48,17 +44,13 @@ pub(crate) fn a_plain_palette_tile(app: &App) -> Result<TerrainUuid, TestError> 
     Ok(key)
 }
 
-/// A palette tile whose paint places a second, paired tile one storey above it.
-pub(crate) fn an_up_connector_palette_tile(app: &App) -> Result<TerrainUuid, TestError> {
+/// A palette tile whose paint places a second tile one storey above it.
+pub(crate) fn a_stair_palette_tile(app: &App) -> Result<TerrainUuid, TestError> {
     let terrain = terrain_registry(app)?;
     let keys = palette_keys(app)?;
-    let Some(key) = keys
-        .iter()
-        .copied()
-        .find(|key| is_up_connector(&terrain, key))
-    else {
+    let Some(key) = keys.iter().copied().find(|key| is_stair(&terrain, key)) else {
         return Err(format!(
-            "this case needs the seeded theme to offer an up connector, or the pairing half of \
+            "this case needs the seeded theme to offer a staircase, or the pairing half of \
              the paint reply would never be exercised, and it offers {keys:?}"
         )
         .into());

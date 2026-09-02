@@ -1,4 +1,4 @@
-//! Stair connector pairing: place up, auto-place down, round-trip both endpoints.
+//! Stair pairing: paint a staircase, auto-place its second end, round-trip both endpoints.
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     level::{
@@ -10,7 +10,7 @@ use gdtf_battle_sim::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid, TerrainViews,
+            TerrainSimKind, TerrainTag, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
         piece::TerrainGraphicKey,
@@ -29,8 +29,7 @@ const fn tu(n: u128) -> TerrainUuid {
     TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(n))
 }
 
-const STAIR_NS_UP: TerrainUuid = tu(0x0531_000d);
-const STAIR_NS_DOWN: TerrainUuid = tu(0x0531_000e);
+const STAIR: TerrainUuid = tu(0x0531_000d);
 
 fn size() -> GridSize {
     GridSize::new(GridWidth::new(4), GridHeight::new(4), GridLevels::new(3))
@@ -50,7 +49,7 @@ fn stair_def(key: TerrainUuid, label: &str, graphic: &str) -> TerrainDef {
             graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
             footfall:     None,
         },
-        tags: Vec::new(),
+        tags: vec![TerrainTag::Stair],
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
 
@@ -61,16 +60,7 @@ fn stair_def(key: TerrainUuid, label: &str, graphic: &str) -> TerrainDef {
 }
 
 fn registry() -> TerrainDefRegistry {
-    TerrainDefRegistry::new([
-        (
-            STAIR_NS_UP,
-            stair_def(STAIR_NS_UP, "Deck Stair Up (NS)", "stair_ns_up"),
-        ),
-        (
-            STAIR_NS_DOWN,
-            stair_def(STAIR_NS_DOWN, "Deck Stair Down (NS)", "stair_ns_down"),
-        ),
-    ])
+    TerrainDefRegistry::new([(STAIR, stair_def(STAIR, "Deck Stair", "stair_ns_up"))])
 }
 
 fn at(cell: Cell, level: u8) -> CellLevel {
@@ -84,26 +74,26 @@ fn up_connector_pairs_down_above_and_round_trips_both_endpoints() {
     let mut map = EditorMap::new();
     let cell = Cell::new(1, 1);
 
-    let placement = ProposedPlacement::new(at(cell, 0), STAIR_NS_UP, TerrainFacing::default());
+    let placement = ProposedPlacement::new(at(cell, 0), STAIR, TerrainFacing::default());
     let outcome = apply_placement_with_pairing(&mut map, &reg, theme(), &placement, size());
 
     assert_eq!(
         outcome,
         PairingOutcome::PairPlaced {
-            down: STAIR_NS_DOWN,
-            at:   at(cell, 1),
+            paired: STAIR,
+            at:     at(cell, 1),
         },
-        "placing an up connector at N must auto-place the down pair at N+1 (C2/C5)",
+        "painting a staircase at N must auto-place its second end at N+1 (C2/C5)",
     );
     assert_eq!(
         map.tile_at_level(at(cell, 0)),
-        Some(PaintedPiece::new(STAIR_NS_UP, TerrainFacing::default())),
-        "the up connector is placed at N",
+        Some(PaintedPiece::new(STAIR, TerrainFacing::default())),
+        "the painted staircase is at N",
     );
     assert_eq!(
         map.tile_at_level(at(cell, 1)),
-        Some(PaintedPiece::new(STAIR_NS_DOWN, TerrainFacing::default())),
-        "the paired down connector is auto-placed at N+1 (the auto-placement FIRED)",
+        Some(PaintedPiece::new(STAIR, TerrainFacing::default())),
+        "the second end is auto-placed at N+1 (the auto-placement FIRED)",
     );
     assert_eq!(
         map.painted_count(),
@@ -145,17 +135,20 @@ fn up_connector_pairs_down_above_and_round_trips_both_endpoints() {
         "the round-tripped prefab carries BOTH endpoints (up at N + down at N+1) (C3/C5)",
     );
 
-    let has_up = reloaded
+    let has_lower = reloaded
         .placements
         .iter()
-        .any(|p| p.piece == STAIR_NS_UP && p.at == at(cell, 0));
-    let has_down = reloaded
+        .any(|p| p.piece == STAIR && p.at == at(cell, 0));
+    let has_upper = reloaded
         .placements
         .iter()
-        .any(|p| p.piece == STAIR_NS_DOWN && p.at == at(cell, 1));
-    assert!(has_up, "the reloaded prefab has the UP connector at N (C3)");
+        .any(|p| p.piece == STAIR && p.at == at(cell, 1));
     assert!(
-        has_down,
-        "the reloaded prefab has the paired DOWN connector at N+1 (C3)"
+        has_lower,
+        "the reloaded prefab has the painted staircase at N (C3)"
+    );
+    assert!(
+        has_upper,
+        "the reloaded prefab has its second end at N+1 (C3)"
     );
 }

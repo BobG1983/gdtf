@@ -1,9 +1,9 @@
-use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     terrain::{
-        def::{TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind},
+        def::{TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind, TerrainView},
         entity::TerrainPieceKind,
         facing::TerrainFacing,
+        piece::TerrainGraphicKey,
     },
     weapon::WeaponName,
 };
@@ -55,6 +55,12 @@ fn segment_order_covers_every_piece_kind() {
             "SEGMENT_ORDER must offer {kind:?} (its pick-list image {choice:?}) — the editor \
              pick list may never silently drop a canonical kind ",
         );
+        assert_eq!(
+            choice.piece_kind(),
+            kind,
+            "piece_kind must invert From<TerrainPieceKind> for {kind:?}, or the view rows the \
+             form draws would be derived for another kind than the one the author picked",
+        );
     }
     assert_eq!(
         TerrainKindChoice::SEGMENT_ORDER.len(),
@@ -70,7 +76,10 @@ fn emplacement_draft_projects_serializes_and_registers() {
     let mut draft = TerrainDraft::default();
     draft.set_display_name("Heavy Stubber Nest".to_owned());
     draft.set_kind(TerrainKindChoice::Emplacement);
-    draft.set_graphic(TileRole::Emplacement);
+    draft.set_view(
+        TerrainView::Facing(TerrainFacing::North),
+        TerrainGraphicKey::new("emplacement".to_owned()),
+    );
     draft.set_mounted_weapon(Some(weapon.clone()));
     draft.set_entry_sides(sides.clone());
 
@@ -97,9 +106,10 @@ fn emplacement_draft_projects_serializes_and_registers() {
         matches!(
             &def.presenter_kind,
             TerrainPresenterKind::Emplacement { graphic_name }
-                if &***graphic_name == TileRole::Emplacement.as_key()
+                if &***graphic_name == "emplacement"
         ),
-        "the projected presenter kind must be Emplacement carrying the chosen graphic role",
+        "the projected presenter kind must be Emplacement carrying the key its first owed \
+         view names",
     );
 
     let Ok(text) = serialize_terrain_def(&def) else {

@@ -166,16 +166,6 @@ pub(crate) enum LeavesBehindRow {
     Sprite(String),
 }
 
-/// A client's own reading of a graphic role, for the arms this suite drives.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-pub(crate) enum TileRoleRow {
-    Floor,
-    Wall,
-    Cover,
-    Slab,
-    Rubble,
-}
-
 /// A client's own reading of an injury's category.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub(crate) enum CategoryRow {

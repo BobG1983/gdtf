@@ -2,7 +2,7 @@ use crate::{
     rows::PairingRow,
     setup::{paint, prefab_app_and_client, read_map, select_tile},
     support::TestResult,
-    tiles::an_up_connector_palette_tile,
+    tiles::a_stair_palette_tile,
 };
 
 // A cell inside the default grid with a storey above it, so the pair has somewhere to land.
@@ -12,24 +12,24 @@ const PAINTED_Y: i32 = 2;
 #[test]
 fn painting_an_up_connector_names_the_paired_tile_and_the_slot_it_landed_in() -> TestResult {
     let (mut app, mut client) = prefab_app_and_client()?;
-    let up = an_up_connector_palette_tile(&app)?;
-    select_tile(&mut app, &mut client, up)?;
+    let stair = a_stair_palette_tile(&app)?;
+    select_tile(&mut app, &mut client, stair)?;
 
     let body = paint(&mut app, &mut client, PAINTED_X, PAINTED_Y)?;
     app.update();
 
-    let Some(PairingRow::PairPlaced { down, at }) = body.pairing else {
+    let Some(PairingRow::PairPlaced { paired, at }) = body.pairing else {
         return Err(format!(
-            "an up connector on a storey with room above it pairs a down connector one storey \
-             up, and without that in the reply the next map read shows a cell the caller never \
+            "a staircase on a storey with room above it places its second end one storey up, \
+             and without that in the reply the next map read shows a cell the caller never \
              asked for: {body:?}"
         )
         .into());
     };
-    assert_ne!(
-        down,
-        (*up).to_string(),
-        "the pair is the down counterpart, not a second copy of the tile that was painted",
+    assert_eq!(
+        paired,
+        (*stair).to_string(),
+        "the second end is the painted tile itself, now that one def carries every view",
     );
     assert_eq!(
         (at.x, at.y, at.level),
@@ -46,9 +46,9 @@ fn painting_an_up_connector_names_the_paired_tile_and_the_slot_it_landed_in() ->
         .into());
     };
     assert_eq!(
-        row.tile, down,
-        "the storey above holds the down connector the reply named, so a client can read back \
-         what it did not ask for: {row:?}",
+        row.tile, paired,
+        "the storey above holds the tile the reply named, so a client can read back what it \
+         did not ask for: {row:?}",
     );
     Ok(())
 }
