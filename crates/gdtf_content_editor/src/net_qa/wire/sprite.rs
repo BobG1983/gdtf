@@ -108,6 +108,18 @@ impl SpriteImagePathNet {
     }
 }
 
+/// A sprite registry key, as the name text a client sends.
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub(in crate::net_qa) struct SpriteKeyNet(String);
+
+impl SpriteKeyNet {
+    /// Wrap a sprite registry key.
+    pub(in crate::net_qa) const fn new(key: String) -> Self {
+        Self(key)
+    }
+}
+
 /// A rectangle inside a sprite sheet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub(in crate::net_qa) struct SpriteRectNet {

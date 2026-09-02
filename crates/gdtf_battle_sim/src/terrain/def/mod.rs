@@ -2,6 +2,7 @@
 mod blocking;
 mod definition;
 mod kind;
+mod leaves_behind;
 mod registry;
 mod uuid;
 
@@ -17,6 +18,7 @@ pub use definition::{BlocksPathingOverride, TerrainDef, TerrainDisplayName};
 pub use kind::{
     LosBlocking, TerrainPresenterKind, TerrainSimKind, TerrainTag, rotated_entry_sides,
 };
+pub use leaves_behind::LeavesBehind;
 pub use registry::TerrainDefRegistry;
 pub(crate) use uuid::fnv1a64_u128;
 pub use uuid::{NilKey, TerrainUuid};

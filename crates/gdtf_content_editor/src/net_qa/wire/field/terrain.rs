@@ -10,8 +10,8 @@ use crate::net_qa::wire::{
     list::EditorListIndexNet,
     on_death::OnDeathVariantNet,
     terrain::{
-        BlocksPathingNet, FootfallNet, HeightBandNet, LosBlockingNet, MountedWeaponNet,
-        TerrainHpNet,
+        BlocksPathingNet, FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet,
+        MountedWeaponNet, TerrainHpNet,
     },
     terrain_kind::TerrainKindNet,
     tile_role::TileRoleNet,
@@ -43,6 +43,8 @@ pub(in crate::net_qa) enum TerrainFieldNet {
     BlocksPathing(Option<BlocksPathingNet>),
     /// The draft's line-of-sight override, set or cleared.
     BlocksLos(Option<LosBlockingNet>),
+    /// What the draft's piece leaves standing when it is destroyed.
+    LeavesBehind(LeavesBehindNet),
     /// Which variant the on-death effect at one index is on.
     OnDeathVariant {
         /// Which effect of the list.

@@ -47,6 +47,16 @@ impl TerrainIndex {
         self.entries.get(key).copied()
     }
 
+    /// Point a key at an entity, replacing whatever it named before.
+    pub fn set(&mut self, key: TerrainIndexKey, entity: Entity) -> Option<Entity> {
+        self.entries.insert(key, entity)
+    }
+
+    /// Drop a key, returning the entity it named.
+    pub fn remove(&mut self, key: &TerrainIndexKey) -> Option<Entity> {
+        self.entries.remove(key)
+    }
+
     /// Number of entries.
     #[must_use]
     pub fn len(&self) -> usize {

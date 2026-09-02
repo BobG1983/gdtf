@@ -18,7 +18,9 @@ use crate::{
     equipment::attachments::{AttachmentRegistry, resolve_pending_attachments},
     ganger::Position,
     metric::CellLevel,
-    occupancy_sync::{SimSystems, sync_dead_gangers, sync_destroyed_piece, sync_moved_gangers},
+    occupancy::project_path_blocking,
+    occupancy_sync::{SimSystems, sync_dead_gangers, sync_moved_gangers},
+    successor::replace_destroyed_piece,
     terrain::entity::TerrainCell,
     weapon::{MountedWeapon, WeaponRegistry, WieldedBy},
 };
@@ -187,7 +189,8 @@ impl Plugin for EmplacementTogglePlugin {
                 Update,
                 eject_on_destroy
                     .in_set(SimSystems::Simulate)
-                    .after(sync_destroyed_piece)
+                    .after(replace_destroyed_piece)
+                    .after(project_path_blocking)
                     .after(apply_emplacement_toggle)
                     .before(dispatch_fire)
                     .before(dispatch_melee),

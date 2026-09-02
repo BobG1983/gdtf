@@ -92,6 +92,7 @@ pub fn draft_to_terrain_def(
         on_death: draft.on_death().to_vec(),
         blocks_pathing: draft.blocks_pathing().map(BlocksPathingOverride::new),
         blocks_los: draft.blocks_los(),
+        leaves_behind: draft.leaves_behind().clone(),
     })
 }
 

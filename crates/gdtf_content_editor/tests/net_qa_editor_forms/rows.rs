@@ -3,8 +3,8 @@ use serde::Deserialize;
 use crate::values::{
     ArmorTypeRow, BandRow, BodyPartRow, CategoryRow, DamageTypeRow, DurationRow, EffectRow,
     FacingRow, FightModeRow, FireModeRow, FootfallRow, GangAttributeRow, HandednessRow, HitTypeRow,
-    InjuryEffectRow, LosRow, OnDeathVariantRow, SeverityRow, SlotDeclRow, SlotRow, SourceRow,
-    TagRow, TerrainKindRow, TileRoleRow, TrajectoryRow,
+    InjuryEffectRow, LeavesBehindRow, LosRow, OnDeathVariantRow, SeverityRow, SlotDeclRow, SlotRow,
+    SourceRow, TagRow, TerrainKindRow, TileRoleRow, TrajectoryRow,
 };
 
 /// Which single-value field a write named, under the form that owns it.
@@ -36,6 +36,7 @@ pub(crate) enum TerrainFieldRow {
     MountedWeapon(Option<String>),
     BlocksPathing(Option<bool>),
     BlocksLos(Option<LosRow>),
+    LeavesBehind(LeavesBehindRow),
     OnDeathVariant {
         index:   usize,
         variant: OnDeathVariantRow,

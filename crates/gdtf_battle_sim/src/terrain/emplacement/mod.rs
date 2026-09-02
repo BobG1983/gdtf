@@ -11,6 +11,7 @@ mod vacate;
 #[cfg(test)]
 mod test;
 
+pub(crate) use eject::eject_on_destroy;
 pub use entry::{EntryCells, emplacement_entry_cells};
 pub use relationship::{Mounted, MountedBy};
 pub use state::{

@@ -1,6 +1,6 @@
 use super::super::{
-    TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid,
-    derives_vision_occlusion, sim_kind_occludes_vision,
+    LeavesBehind, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainTag,
+    TerrainUuid, derives_vision_occlusion, sim_kind_occludes_vision,
 };
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -28,6 +28,7 @@ fn wall_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 
@@ -49,6 +50,7 @@ fn cover_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 
@@ -72,6 +74,7 @@ fn emplacement_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 
@@ -93,6 +96,7 @@ fn slab_def(tags: Vec<TerrainTag>) -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 

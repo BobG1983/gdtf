@@ -147,7 +147,9 @@ reads occupied. A message at a plain cover cell reaches no emplacement. A
 has no occupant to set down. It writes the occupant's `Position` and then gives
 the seat up through the same `clear_seat`, so the state, the occupant record,
 the remembered origin cell, the despawned mount and the new position all land
-in one update.
+in one update. The destroyed piece itself is despawned in that same update,
+after the ejection has read its seat, so nothing survives to read the vacated
+state off.
 
 The destination is the remembered origin cell when that cell is free, and
 otherwise the first free cell an outward scan reaches. Free means not
@@ -159,15 +161,17 @@ level, taking them in ascending `(y, x)` inside one distance, and stops when a
 whole ring falls off the grid. Finding nothing leaves the `Position` where it
 is; the state change, the dropped records and the despawned mount still happen.
 
-The mount's own cell is a candidate because `sync_destroyed_piece`
-(`terrain/occupancy_sync/systems.rs`) marks the destroyed cover first, and
-`is_path_blocked` answers false for a marked cell whatever `path_blocking`
-holds. `eject_on_destroy` runs after that mark, after
-`apply_emplacement_toggle`, and before `dispatch_fire` and `dispatch_melee`, so
-a message either dispatcher writes is read on the following update, with the
-mark already in. Nothing can take the mount's cell while the occupant stands on
-it, so the scan itself never passes distance 0 today: the occupant lands on the
-origin cell or on the mount's own cell.
+Whether the mount's own cell is a candidate is read from the piece standing in
+it. `replace_destroyed_piece` (`terrain/successor/`) puts what the destroyed
+def's `leaves_behind` names in the cell, and `project_path_blocking` carries
+that onto the grid `is_path_blocked` answers from. A def whose `leaves_behind`
+names a blocking piece puts that piece in the seat, so distance 0 reads blocked
+and the scan passes it. A def that leaves nothing behind leaves the seat free,
+so the occupant can still be set down on the mount's own cell when nothing
+nearer is free. `eject_on_destroy` runs after `replace_destroyed_piece`, after
+`project_path_blocking`, after `apply_emplacement_toggle`, and before
+`dispatch_fire` and `dispatch_melee`, so a message either dispatcher writes is
+read on the following update, with the successor already standing.
 
 The route out is planned from the seat's rotated entry cells: the first step may
 land only on one of them, and the rest of the route carries on from there. A

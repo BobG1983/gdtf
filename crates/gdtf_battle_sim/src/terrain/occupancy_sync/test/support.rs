@@ -4,7 +4,7 @@ use super::super::OccupancyMaintenancePlugin;
 use crate::{
     cover::HeightBand,
     metric::{Cell, CellLevel, Level},
-    occupancy::OccupancyGrid,
+    occupancy::{OccupancyGrid, TerrainKind},
     surface::SurfaceGrid,
 };
 
@@ -33,10 +33,16 @@ pub(super) fn grid_band(app: &App, at: CellLevel) -> Option<HeightBand> {
         .and_then(|g| g.occupant_band(&at))
 }
 
-pub(super) fn cover_destroyed(app: &App, at: CellLevel) -> Option<bool> {
+pub(super) fn cell_terrain(app: &App, at: CellLevel) -> Option<TerrainKind> {
     app.world()
         .get_resource::<OccupancyGrid>()
-        .map(|g| *g.is_cover_destroyed(&at))
+        .map(|g| g.terrain(&at))
+}
+
+pub(super) fn set_cell_terrain(app: &mut App, at: CellLevel, kind: TerrainKind) {
+    if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
+        grid.set_terrain(at, kind);
+    }
 }
 
 pub(super) fn mark_stair(app: &mut App, cell: CellLevel) {

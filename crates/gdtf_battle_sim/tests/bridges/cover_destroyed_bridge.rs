@@ -155,9 +155,10 @@ fn fired_round_destroys_cover_and_the_bridge_frees_the_cell() {
             *grid.is_blocked(&cover_cell()),
             "BEFORE: the standing cover cell must block",
         );
-        assert!(
-            !*grid.is_cover_destroyed(&cover_cell()),
-            "BEFORE: the cover cell must not yet be in the destroyed-cover set",
+        assert_eq!(
+            grid.terrain(&cover_cell()),
+            TerrainKind::Cover,
+            "BEFORE: the cover piece must still be standing in the cell",
         );
         assert!(
             probe_stops_on_cover(grid, &surface_before, cover_res, &tuning),
@@ -176,10 +177,11 @@ fn fired_round_destroys_cover_and_the_bridge_frees_the_cell() {
 
     let grid = app.world().resource::<OccupancyGrid>();
     let cover_res = app.world().resource::<CoverLedger>();
-    assert!(
-        *grid.is_cover_destroyed(&cover_cell()),
-        "AFTER: sync_destroyed_piece must have marked the smashed cell destroyed (the bridge \
-         drove the real wiring) — got destroyed-set miss",
+    assert_eq!(
+        grid.terrain(&cover_cell()),
+        TerrainKind::Open,
+        "AFTER: replace_destroyed_piece must have cleared the smashed cell, because this app \
+         holds no def registry and so nothing is left behind (the bridge drove the real wiring)",
     );
     assert!(
         !*grid.is_blocked(&cover_cell()),

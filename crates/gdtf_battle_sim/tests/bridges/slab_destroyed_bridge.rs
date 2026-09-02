@@ -201,7 +201,7 @@ fn fired_rounds_deplete_then_destroy_slab_and_open_los_without_walkability() {
             .world()
             .resource::<SurfaceGrid>()
             .slab_state(&slab_key())
-            == SlabState::Destroyed
+            == SlabState::Absent
         {
             break;
         }
@@ -218,9 +218,10 @@ fn fired_rounds_deplete_then_destroy_slab_and_open_los_without_walkability() {
         app.world()
             .resource::<SurfaceGrid>()
             .slab_state(&slab_key()),
-        SlabState::Destroyed,
-        "C9(a): the bridge (dispatch_fire → TerrainPieceDestroyed → sync_destroyed_piece → \
-         destroy_slab) must set the slab Destroyed once its persistent pool hits zero",
+        SlabState::Absent,
+        "C9(a): the bridge (dispatch_fire → TerrainPieceDestroyed → replace_destroyed_piece) \
+         must leave the cell with no slab standing once its persistent pool hits zero, because \
+         this app holds no def registry and so nothing is left behind",
     );
 
     {
@@ -228,8 +229,8 @@ fn fired_rounds_deplete_then_destroy_slab_and_open_los_without_walkability() {
         let occ = app.world().resource::<OccupancyGrid>();
         assert!(
             !probe_stops_on_slab(occ, surface_res, &cover_probe, &tuning),
-            "C9(b): a probe ray fired UP must now PASS THROUGH the destroyed slab (rounds + LOS \
-             pass — the shared march honors SlabState::Destroyed)",
+            "C9(b): a probe ray fired UP must now PASS THROUGH the smashed slab (rounds + LOS \
+             pass — the shared march stops only on SlabState::Present)",
         );
     }
 

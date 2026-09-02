@@ -1,6 +1,6 @@
 use bevy_egui::egui;
 use gdtf_battle_presenter::{TileRole, resolve_sprite};
-use gdtf_battle_sim::weapon::WeaponRegistry;
+use gdtf_battle_sim::{terrain::def::TerrainDefRegistry, weapon::WeaponRegistry};
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use super::fields::{TerrainSaveContext, field_stack};
@@ -20,12 +20,13 @@ pub(in crate::egui_shell) fn primary_panel(
     save: TerrainSaveContext<'_>,
     sprites: Option<&SpriteDefRegistry>,
     weapons: Option<&WeaponRegistry>,
+    terrain: Option<&TerrainDefRegistry>,
     textures: &SpriteTextures,
 ) {
     ui.columns(2, |columns| {
         if let [picker_col, fields_col] = columns {
             graphic_picker(picker_col, draft, sprites, textures);
-            field_stack(fields_col, draft, save, weapons);
+            field_stack(fields_col, draft, save, weapons, terrain, sprites);
         }
     });
 }

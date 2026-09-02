@@ -1,6 +1,6 @@
 use super::super::{
-    BlocksPathingOverride, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
-    TerrainTag, TerrainUuid,
+    BlocksPathingOverride, LeavesBehind, TerrainDef, TerrainDisplayName, TerrainPresenterKind,
+    TerrainSimKind, TerrainTag, TerrainUuid,
 };
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -53,6 +53,7 @@ fn wall_def_round_trips() {
 
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     };
     assert_round_trips(&def);
 }
@@ -76,6 +77,7 @@ fn cover_def_round_trips() {
 
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     };
     assert_round_trips(&def);
 }
@@ -99,6 +101,7 @@ fn slab_def_round_trips() {
 
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     };
     assert_round_trips(&def);
 }
@@ -121,6 +124,7 @@ fn slab_with_path_override(over: Option<BlocksPathingOverride>) -> TerrainDef {
 
         blocks_pathing: over,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     }
 }
 
@@ -182,6 +186,73 @@ fn emplacement_def_round_trips() {
 
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     };
     assert_round_trips(&def);
+}
+
+#[test]
+fn a_def_with_no_leaves_behind_key_parses_as_nothing() {
+    let ron = r#"(
+        key: "01840a3e-0000-4000-8000-000000000005",
+        display_name: "Plain Wall",
+        sim_kind: Wall(
+            hp: 40,
+            armor_protection: 6,
+            armor_hardness: 3,
+            height_band: High,
+        ),
+        presenter_kind: Wall(
+            graphic_name: "wall",
+        ),
+    )"#;
+    let parsed = ron::de::from_str::<TerrainDef>(ron);
+    assert!(
+        parsed.is_ok(),
+        "a def that omits leaves_behind must still parse, which is what #[serde(default)] buys: \
+         {parsed:?}",
+    );
+    let Ok(def) = parsed else { return };
+    assert_eq!(
+        def.leaves_behind,
+        LeavesBehind::Nothing,
+        "an omitted leaves_behind reads as Nothing, so no shipped content has to migrate",
+    );
+}
+
+#[test]
+fn a_def_that_leaves_a_piece_behind_round_trips() {
+    let successor = TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_0006));
+    let def = TerrainDef {
+        key:            TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_0007)),
+        display_name:   TerrainDisplayName::new("Collapsing Wall".to_owned()),
+        sim_kind:       TerrainSimKind::Wall {
+            hp:               CoverHp::new(40),
+            armor_protection: ArmorProtection::new(6),
+            armor_hardness:   ArmorHardness::new(3),
+            height_band:      HeightBand::High,
+        },
+        presenter_kind: TerrainPresenterKind::Wall {
+            graphic_name: TerrainGraphicKey::new("wall".to_owned()),
+        },
+        tags:           Vec::new(),
+        on_death:       Vec::new(),
+        blocks_pathing: None,
+        blocks_los:     None,
+        leaves_behind:  LeavesBehind::Piece(successor),
+    };
+    assert_round_trips(&def);
+
+    let serialized = ron::ser::to_string(&def);
+    assert!(serialized.is_ok(), "def must serialize: {serialized:?}");
+    let Ok(text) = serialized else { return };
+    let reparsed = ron::de::from_str::<TerrainDef>(&text);
+    let Ok(round_tripped) = reparsed else {
+        unreachable!("assert_round_trips already parsed this text")
+    };
+    assert_eq!(
+        round_tripped.leaves_behind,
+        LeavesBehind::Piece(successor),
+        "the successor key comes back as the same key, not as another def and not as Nothing",
+    );
 }

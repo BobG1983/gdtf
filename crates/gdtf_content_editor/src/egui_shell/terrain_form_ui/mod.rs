@@ -2,6 +2,7 @@
 mod blocking;
 mod entry_sides;
 mod fields;
+mod leaves_behind;
 mod on_death;
 mod panel;
 mod preview;

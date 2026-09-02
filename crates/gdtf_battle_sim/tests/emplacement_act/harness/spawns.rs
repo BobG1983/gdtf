@@ -10,7 +10,10 @@ use gdtf_battle_sim::{
     prelude::{Faction, Stance, StanceKind},
     situation::GangerSpawn,
     terrain::{
-        def::{TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainUuid},
+        def::{
+            LeavesBehind, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
+            TerrainUuid,
+        },
         emplacement::EmplacementState,
         entity::TerrainCell,
         facing::TerrainFacing,
@@ -155,5 +158,6 @@ pub(crate) fn one_sided_emplacement() -> TerrainDef {
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     }
 }

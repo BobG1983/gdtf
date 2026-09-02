@@ -83,6 +83,7 @@ Every `.terrain_def.ron` deserializes into `TerrainDef`
 | `on_death` | `Vec<OnDeathEffect>` | list of variants | What the piece fans when DESTROYED (see 1e). `#[serde(default)]` — omitted = `[]`. |
 | `blocks_pathing` | `Option<bool>` | `Some(true)` \| `Some(false)` | OPTIONAL path-blocking OVERRIDE (see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
 | `blocks_los` | `Option<LosBlocking>` | `Some(Full)` \| `Some(UpToHeightBand)` \| `Some(None)` | OPTIONAL line-of-sight blocking OVERRIDE (see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
+| `leaves_behind` | `LeavesBehind` | `Nothing` \| `Piece("…")` \| `Sprite("…")` | What stands in the cell once this piece is destroyed: another def by its `TerrainUuid`, a sprite with no mechanics by its registry key, or nothing. `#[serde(default)]` — omitted = `Nothing`. |
 
 Kind variants are **struct variants**, so RON uses the single-paren named-field
 form: `Slab(hp: 120, …)` — never the double-paren `Slab((…))` tuple form.

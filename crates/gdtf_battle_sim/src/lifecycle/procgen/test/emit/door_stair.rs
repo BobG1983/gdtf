@@ -12,7 +12,7 @@ use crate::{
     rng::{BattleSeed, ProcgenRng},
     terrain::{
         def::{
-            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
         facing::TerrainFacing,
@@ -46,6 +46,7 @@ fn door_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 
@@ -67,6 +68,7 @@ fn stair_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 
@@ -88,6 +90,7 @@ fn door_stair_terrain_defs() -> TerrainDefRegistry {
 
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     };
     TerrainDefRegistry::new([
         (DOOR_NS, door_def(DOOR_NS, "door_ns")),

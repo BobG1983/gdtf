@@ -31,6 +31,14 @@ fn destroyed_slab_stays_non_pathable_and_los_flies_through() {
 
     destroy_slab_and_settle(&mut app, 1, TerrainPieceKind::Slab);
 
+    assert_eq!(
+        app.world()
+            .resource::<SurfaceGrid>()
+            .slab_state(&CellLevel::new(column_cell(), Level::new(1))),
+        SlabState::Absent,
+        "this app holds no def registry, so the smashed slab leaves nothing behind and the \
+         cell reads Absent",
+    );
     assert!(
         !probe_stops_on_slab(&app),
         "a destroyed slab must let the probe ray fly THROUGH (LOS passthrough — unchanged)"

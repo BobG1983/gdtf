@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
     slab::SlabHp,
     terrain::{
         def::{
-            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
         facing::TerrainFacing,
@@ -54,6 +54,7 @@ fn slab_def() -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     }
 }
 

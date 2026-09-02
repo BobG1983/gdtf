@@ -40,7 +40,7 @@ fn arc_is_blocked_by_an_intact_roof_between_the_thrower_and_a_lower_target() {
 #[test]
 fn arc_passes_through_a_roof_hole_and_lands_on_the_lower_target() {
     let mut surface = SurfaceGrid::new();
-    surface.set_slab(at_level(6, 5, 1), SlabState::Destroyed);
+    surface.set_slab(at_level(6, 5, 1), SlabState::Absent);
     let landing = march_arc(at_level(6, 5, 1), ground(6, 5), &surface, &arc_tuning());
     assert_eq!(
         (landing.at.x, landing.at.y, landing.at.z),
@@ -119,7 +119,7 @@ fn a_steep_drop_stops_at_the_highest_roof_in_flight_order() {
 #[test]
 fn march_arc_is_a_pure_function() {
     let mut surface = SurfaceGrid::new();
-    surface.set_slab(at_level(6, 5, 1), SlabState::Destroyed);
+    surface.set_slab(at_level(6, 5, 1), SlabState::Absent);
     let a = march_arc(at_level(6, 5, 2), ground(9, 6), &surface, &arc_tuning());
     let b = march_arc(at_level(6, 5, 2), ground(9, 6), &surface, &arc_tuning());
     assert_eq!(a, b, "march_arc is deterministic (no RNG): {a:?} vs {b:?}");

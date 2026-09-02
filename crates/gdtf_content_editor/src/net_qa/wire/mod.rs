@@ -103,13 +103,13 @@ pub(in crate::net_qa) use prefab_refusal::{PaintRefusalNet, SelectTileRefusalNet
 pub(in crate::net_qa) use refusal::EditorRefusalNet;
 pub(in crate::net_qa) use save_fault::EditorSaveFaultNet;
 pub(in crate::net_qa) use sprite::{
-    SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet, SpritePxNet, SpriteSourceNet,
+    SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet, SpriteKeyNet, SpritePxNet, SpriteSourceNet,
 };
 #[cfg(test)]
 pub(in crate::net_qa) use stat_target::StatTargetNet;
 pub(in crate::net_qa) use terrain::{
-    BlocksPathingNet, FootfallNet, HeightBandNet, LosBlockingNet, MountedWeaponNet, TerrainHpNet,
-    TerrainTagNet,
+    BlocksPathingNet, FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet,
+    MountedWeaponNet, TerrainHpNet, TerrainTagNet,
 };
 pub(in crate::net_qa) use terrain_kind::TerrainKindNet;
 pub(in crate::net_qa) use tile_role::TileRoleNet;

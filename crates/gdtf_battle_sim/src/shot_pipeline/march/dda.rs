@@ -85,8 +85,7 @@ pub(super) fn impact_at(
             impact: here_point,
         });
     }
-    if !*occupancy.is_cover_destroyed(&here)
-        && let Some(entry) = cover.peek(&here)
+    if let Some(entry) = cover.peek(&here)
         && !*entry.destroyed
         && round_clears_occupant(test_band, entry.height_band) == Clearance::Impacts
     {

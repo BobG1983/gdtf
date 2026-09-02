@@ -135,6 +135,14 @@ pub(crate) enum LosRow {
     None,
 }
 
+/// A client's own reading of what a destroyed piece leaves standing.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub(crate) enum LeavesBehindRow {
+    Nothing,
+    Piece(String),
+    Sprite(String),
+}
+
 /// A client's own reading of a graphic role, for the arms this suite drives.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub(crate) enum TileRoleRow {

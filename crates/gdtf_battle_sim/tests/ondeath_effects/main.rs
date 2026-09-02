@@ -5,3 +5,4 @@ mod fixtures;
 mod harness;
 mod leave_field;
 mod slab;
+mod successor_on_death;

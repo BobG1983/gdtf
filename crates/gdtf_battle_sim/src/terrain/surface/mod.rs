@@ -1,4 +1,4 @@
-//! Surface grid: present / destroyed / absent slabs and accrued ground damage.
+//! Surface grid: present or absent slabs, and accrued ground damage.
 
 mod grid;
 

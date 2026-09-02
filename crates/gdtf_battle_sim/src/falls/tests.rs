@@ -72,10 +72,10 @@ fn drop_lands_on_first_present_slab_below() {
 }
 
 #[test]
-fn drop_falls_through_absent_and_destroyed_to_first_support() {
+fn drop_falls_through_every_absent_level_to_first_support() {
     let mut surface = SurfaceGrid::new();
     surface.set_slab(CellLevel::new(cell(), Level::new(3)), SlabState::Present);
-    surface.destroy_slab(CellLevel::new(cell(), Level::new(3)));
+    surface.set_slab(CellLevel::new(cell(), Level::new(3)), SlabState::Absent);
     surface.set_slab(CellLevel::new(cell(), Level::new(1)), SlabState::Present);
 
     let resolved = resolve_drop(cell(), Level::new(4), &surface);
@@ -88,7 +88,7 @@ fn drop_falls_through_absent_and_destroyed_to_first_support() {
     assert_eq!(
         landing.landing,
         Level::new(1),
-        "falls through Destroyed (3) + Absent (2), lands on Present (1)"
+        "falls through a smashed slab (3) and bare air (2), lands on Present (1)"
     );
     assert_eq!(
         landing.storeys,

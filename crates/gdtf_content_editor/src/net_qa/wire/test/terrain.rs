@@ -1,14 +1,17 @@
 use gdtf_battle_sim::{
     cover::HeightBand,
-    terrain::def::{LosBlocking, TerrainTag},
+    terrain::{
+        def::{LeavesBehind, LosBlocking, TerrainTag, TerrainUuid},
+        piece::TerrainGraphicKey,
+    },
     weapon::WeaponName,
 };
 
 use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::{
     net_qa::wire::{
-        BlocksPathingNet, FootfallNet, HeightBandNet, LosBlockingNet, MountedWeaponNet,
-        TerrainHpNet, TerrainTagNet, TileRoleNet,
+        BlocksPathingNet, FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet,
+        MountedWeaponNet, TerrainHpNet, TerrainTagNet, TileRoleNet,
     },
     terrain_form::{FootfallChoice, offered_graphic_roles},
 };
@@ -35,6 +38,13 @@ fn every_terrain_value_round_trips() {
     }
     for tag in TerrainTagNet::ALL {
         assert_ron_round_trip(&tag);
+    }
+    for leaves in [
+        LeavesBehind::Nothing,
+        LeavesBehind::Piece(TerrainUuid::nil()),
+        LeavesBehind::Sprite(TerrainGraphicKey::new("rubble".to_owned())),
+    ] {
+        assert_ron_round_trip(&LeavesBehindNet::from_leaves_behind(&leaves));
     }
 }
 
@@ -86,4 +96,5 @@ fn the_terrain_values_trace_usable_shapes() {
     assert_schema_is_usable::<BlocksPathingNet>("BlocksPathingNet");
     assert_schema_is_usable::<LosBlockingNet>("LosBlockingNet");
     assert_schema_is_usable::<TerrainTagNet>("TerrainTagNet");
+    assert_schema_is_usable::<LeavesBehindNet>("LeavesBehindNet");
 }

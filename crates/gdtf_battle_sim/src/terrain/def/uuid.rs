@@ -1,13 +1,28 @@
 //! Terrain piece content key.
 
-use bevy::{asset::uuid::Uuid, prelude::Deref, reflect::TypePath};
+use bevy::{
+    asset::uuid::Uuid,
+    prelude::{Component, Deref},
+    reflect::TypePath,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::terrain::piece::TerrainName;
 
-/// Content key for a terrain piece definition.
+/// Content key for a terrain piece definition, and the def a live piece was built from.
 #[derive(
-    Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize, TypePath,
+    Component,
+    Deref,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Default,
+    Deserialize,
+    Serialize,
+    TypePath,
 )]
 #[serde(transparent)]
 pub struct TerrainUuid(Uuid);

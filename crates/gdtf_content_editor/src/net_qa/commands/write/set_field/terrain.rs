@@ -1,9 +1,15 @@
 //! The Terrain form's own field arms, written through the draft its field stack writes.
 
+use bevy::asset::uuid::Uuid;
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
+    terrain::{
+        def::{LeavesBehind, TerrainDefRegistry, TerrainUuid},
+        piece::TerrainGraphicKey,
+    },
     weapon::{WeaponName, WeaponRegistry},
 };
+use gdtf_content_families::sprites::{SpriteDefRegistry, SpriteName};
 use gdtf_qa_protocol::command::RefusalNote;
 
 use super::terrain_on_death;
@@ -12,12 +18,22 @@ use crate::{
         commands::write::form_fault::{FormWriteFault, NOT_AN_EMPLACEMENT},
         wire::{
             ArmorHardnessNet, ArmorProtectionNet, BlocksPathingNet, EditorDraftNameNet,
-            FootfallNet, HeightBandNet, LosBlockingNet, MountedWeaponNet, TerrainFieldNet,
-            TerrainHpNet, TerrainKindNet, TileRoleNet,
+            FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet, MountedWeaponNet,
+            TerrainFieldNet, TerrainHpNet, TerrainKindNet, TileRoleNet,
         },
     },
     terrain_form::{TerrainDraft, TerrainKindChoice, offered_graphic_roles},
 };
+
+/// The registries the leaves-behind control reads its two choice lists from.
+pub(super) struct TerrainWriteRegistries<'a> {
+    /// Every weapon the mounted-weapon pick offers.
+    pub(super) weapons: Option<&'a WeaponRegistry>,
+    /// Every def the leaves-behind piece pick offers.
+    pub(super) terrain: Option<&'a TerrainDefRegistry>,
+    /// Every sprite the leaves-behind sprite pick offers.
+    pub(super) sprites: Option<&'a SpriteDefRegistry>,
+}
 
 const NO_HEIGHT_BAND: RefusalNote = RefusalNote::from_static(
     "the Terrain form draws the height band only for a kind whose has_height_band is true, so \
@@ -32,6 +48,16 @@ const NO_FOOTFALL: RefusalNote = RefusalNote::from_static(
 const NO_WEAPON_REGISTRY: RefusalNote = RefusalNote::from_static(
     "the mounted-weapon pick reads the weapon registry, and it is not in the world, so the form \
      itself offers no name to choose",
+);
+
+const NO_TERRAIN_REGISTRY: RefusalNote = RefusalNote::from_static(
+    "the leaves-behind piece pick reads the terrain registry, and it is not in the world, so the \
+     form itself offers no def to choose",
+);
+
+const NO_SPRITE_REGISTRY: RefusalNote = RefusalNote::from_static(
+    "the leaves-behind sprite pick reads the sprite registry, and it is not in the world, so the \
+     form itself offers no sprite to choose",
 );
 
 // The value clamped the way the HP input's own range clamps a drag.
@@ -144,12 +170,78 @@ fn write_mounted_weapon(
     ))
 }
 
+// The def key the piece pick holds, or the fault a key it does not hold answers.
+fn known_piece(
+    registry: &TerrainDefRegistry,
+    named: &crate::net_qa::wire::TerrainKeyNet,
+) -> Result<TerrainUuid, FormWriteFault> {
+    let Ok(parsed) = Uuid::parse_str(named) else {
+        return Err(FormWriteFault::bad(format!(
+            "`{}` is not the hyphenated UUID text a terrain key is written as",
+            **named
+        )));
+    };
+    let wanted = TerrainUuid::new(parsed);
+    if registry.def(&wanted).is_some() {
+        Ok(wanted)
+    } else {
+        Err(FormWriteFault::bad(format!(
+            "`{}` is not a def the terrain registry holds, so the leaves-behind pick offers no \
+             such row",
+            **named
+        )))
+    }
+}
+
+// The sprite name the sprite pick holds, or the fault a name it does not hold answers.
+fn known_sprite(
+    registry: &SpriteDefRegistry,
+    named: &crate::net_qa::wire::SpriteKeyNet,
+) -> Result<TerrainGraphicKey, FormWriteFault> {
+    if registry.contains(&SpriteName::new((**named).clone())) {
+        Ok(TerrainGraphicKey::new((**named).clone()))
+    } else {
+        Err(FormWriteFault::bad(format!(
+            "`{}` is not a sprite the registry holds, so the leaves-behind pick offers no such \
+             row",
+            **named
+        )))
+    }
+}
+
+fn write_leaves_behind(
+    draft: &mut TerrainDraft,
+    registries: &TerrainWriteRegistries<'_>,
+    leaves: LeavesBehindNet,
+) -> Result<TerrainFieldNet, FormWriteFault> {
+    let wanted = match leaves {
+        LeavesBehindNet::Nothing => LeavesBehind::Nothing,
+        LeavesBehindNet::Piece(named) => {
+            let Some(registry) = registries.terrain else {
+                return Err(FormWriteFault::MissingModel(NO_TERRAIN_REGISTRY));
+            };
+            LeavesBehind::Piece(known_piece(registry, &named)?)
+        }
+        LeavesBehindNet::Sprite(named) => {
+            let Some(registry) = registries.sprites else {
+                return Err(FormWriteFault::MissingModel(NO_SPRITE_REGISTRY));
+            };
+            LeavesBehind::Sprite(known_sprite(registry, &named)?)
+        }
+    };
+    draft.set_leaves_behind(wanted);
+    Ok(TerrainFieldNet::LeavesBehind(
+        LeavesBehindNet::from_leaves_behind(draft.leaves_behind()),
+    ))
+}
+
 /// Write one Terrain field, answering the field as the draft stores it.
 pub(super) fn write(
     draft: &mut TerrainDraft,
-    weapons: Option<&WeaponRegistry>,
+    registries: &TerrainWriteRegistries<'_>,
     field: TerrainFieldNet,
 ) -> Result<TerrainFieldNet, FormWriteFault> {
+    let weapons = registries.weapons;
     match field {
         TerrainFieldNet::Kind(kind) => {
             draft.set_kind(kind.to_choice());
@@ -192,6 +284,7 @@ pub(super) fn write(
                 draft.blocks_los().map(LosBlockingNet::from_blocking),
             ))
         }
+        TerrainFieldNet::LeavesBehind(leaves) => write_leaves_behind(draft, registries, leaves),
         TerrainFieldNet::OnDeathVariant { index, variant } => {
             terrain_on_death::variant(draft, index, variant)
         }

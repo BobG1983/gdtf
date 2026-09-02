@@ -6,9 +6,8 @@ use crate::{
     clearance::silhouette_band,
     ganger::{LifeState, Position, Stance, StanceKind},
     occupancy::OccupancyGrid,
-    occupancy_sync::{GroundAccrued, PrevSlot, TerrainPieceDestroyed},
+    occupancy_sync::{GroundAccrued, PrevSlot},
     surface::SurfaceGrid,
-    terrain::entity::TerrainPieceKind,
 };
 
 type MovedReads<'a> = (
@@ -74,22 +73,6 @@ pub fn sync_dead_gangers(
         }
         if let Some(upper) = prev.upper() {
             grid.clear_stair_upper(upper, entity);
-        }
-    }
-}
-
-/// Project a destroyed piece onto the grid its kind lives in.
-pub fn sync_destroyed_piece(
-    mut grid: ResMut<OccupancyGrid>,
-    mut surface: ResMut<SurfaceGrid>,
-    mut destroyed: MessageReader<TerrainPieceDestroyed>,
-) {
-    for event in destroyed.read() {
-        match event.kind {
-            TerrainPieceKind::Slab => surface.destroy_slab(event.at),
-            TerrainPieceKind::Wall | TerrainPieceKind::Cover | TerrainPieceKind::Emplacement => {
-                grid.mark_cover_destroyed(event.at);
-            }
         }
     }
 }

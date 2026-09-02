@@ -40,6 +40,8 @@ pub(super) fn seed_cover_terrain(
         let entity = commands
             .spawn((
                 TerrainCell::new(cover.at),
+                cover.piece,
+                cover.facing,
                 resolved.piece_kind,
                 entry.max_hp,
                 entry.height_band,

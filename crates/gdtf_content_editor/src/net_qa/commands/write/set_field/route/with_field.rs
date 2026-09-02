@@ -30,13 +30,13 @@ use crate::{
 /// Route a field write on the Terrain tab, which owns the Terrain form's own arms.
 pub(in crate::net_qa::commands::write::set_field) fn terrain(
     draft: Option<&mut ResMut<'_, TerrainDraft>>,
-    weapons: Option<&WeaponRegistry>,
+    registries: &terrain::TerrainWriteRegistries<'_>,
     field: EditorFieldNet,
 ) -> Written {
     match field {
         EditorFieldNet::Terrain(arm) => Ok(EditorFieldNet::Terrain(terrain::write(
             present(draft)?,
-            weapons,
+            registries,
             arm,
         )?)),
         EditorFieldNet::Armor(_)

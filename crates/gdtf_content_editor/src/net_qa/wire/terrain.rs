@@ -4,11 +4,12 @@ use bevy::prelude::Deref;
 use gdtf_battle_sim::{
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
-    terrain::def::{LosBlocking, TerrainTag},
+    terrain::def::{LeavesBehind, LosBlocking, TerrainTag},
     weapon::WeaponName,
 };
 use serde::{Deserialize, Serialize};
 
+use super::{key::TerrainKeyNet, sprite::SpriteKeyNet};
 use crate::terrain_form::FootfallChoice;
 
 /// The hit points the one HP input writes to both the cover and the slab field.
@@ -151,6 +152,28 @@ impl LosBlockingNet {
             Self::Full => LosBlocking::Full,
             Self::UpToHeightBand => LosBlocking::UpToHeightBand,
             Self::None => LosBlocking::None,
+        }
+    }
+}
+
+/// What a destroyed piece leaves standing in its cell.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub(in crate::net_qa) enum LeavesBehindNet {
+    /// Nothing stands here afterwards.
+    Nothing,
+    /// Another authored def, named by its registry key.
+    Piece(TerrainKeyNet),
+    /// A sprite with no mechanics, named by its registry key.
+    Sprite(SpriteKeyNet),
+}
+
+impl LeavesBehindNet {
+    /// Mirror the sim's own choice.
+    pub(in crate::net_qa) fn from_leaves_behind(leaves: &LeavesBehind) -> Self {
+        match leaves {
+            LeavesBehind::Nothing => Self::Nothing,
+            LeavesBehind::Piece(key) => Self::Piece(TerrainKeyNet::new((**key).to_string())),
+            LeavesBehind::Sprite(graphic) => Self::Sprite(SpriteKeyNet::new((**graphic).clone())),
         }
     }
 }

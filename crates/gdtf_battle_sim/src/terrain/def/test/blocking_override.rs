@@ -2,8 +2,9 @@
 use bevy::math::Vec3;
 
 use super::super::{
-    BlocksPathingOverride, LosBlocking, TerrainDef, TerrainDisplayName, TerrainPresenterKind,
-    TerrainSimKind, TerrainTag, TerrainUuid, derives_path_blocking, derives_vision_occlusion,
+    BlocksPathingOverride, LeavesBehind, LosBlocking, TerrainDef, TerrainDisplayName,
+    TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid, derives_path_blocking,
+    derives_vision_occlusion,
 };
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -39,6 +40,7 @@ fn slab_def(blocks_pathing: Option<bool>, blocks_los: Option<LosBlocking>) -> Te
         on_death: Vec::new(),
         blocks_pathing: blocks_pathing.map(BlocksPathingOverride::new),
         blocks_los,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 
@@ -64,6 +66,7 @@ fn wall_def(
         on_death: Vec::new(),
         blocks_pathing: blocks_pathing.map(BlocksPathingOverride::new),
         blocks_los,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 

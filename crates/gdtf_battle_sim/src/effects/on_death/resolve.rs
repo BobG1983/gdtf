@@ -38,6 +38,11 @@ impl TerrainOnDeathRegistry {
         self.0.insert(at, effects)
     }
 
+    /// Drop a key's effects, returning what it held.
+    pub fn remove(&mut self, at: &TerrainIndexKey) -> Option<Vec<OnDeathEffect>> {
+        self.0.remove(at)
+    }
+
     /// Look up a key's effects, in the authored order.
     #[must_use]
     pub fn effects(&self, at: &TerrainIndexKey) -> Option<&[OnDeathEffect]> {

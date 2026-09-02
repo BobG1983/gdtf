@@ -11,7 +11,7 @@ use gdtf_qa_protocol::command::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::route;
+use super::{route, terrain::TerrainWriteRegistries};
 use crate::{
     EditorMode,
     net_qa::{
@@ -120,9 +120,15 @@ fn write_to(
     field: EditorFieldNet,
 ) -> Written {
     match mode {
-        EditorModeNet::Terrain => {
-            route::terrain(forms.terrain.as_mut(), registries.weapons.as_deref(), field)
-        }
+        EditorModeNet::Terrain => route::terrain(
+            forms.terrain.as_mut(),
+            &TerrainWriteRegistries {
+                weapons: registries.weapons.as_deref(),
+                terrain: registries.terrain.as_deref(),
+                sprites: registries.sprites.as_deref(),
+            },
+            field,
+        ),
         EditorModeNet::Theme => route::theme(forms.theme.as_mut(), field),
         EditorModeNet::Prefab => route::prefab(field),
         EditorModeNet::Gang => route::gang(

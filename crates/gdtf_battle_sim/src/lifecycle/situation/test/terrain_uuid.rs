@@ -21,6 +21,7 @@ fn wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 
@@ -42,6 +43,7 @@ fn slab_def(key: TerrainUuid, graphic: &str, footfall: Option<&str>) -> TerrainD
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 
@@ -238,5 +240,58 @@ fn spawned_entities_carry_blocks_pathfinding_per_def() {
         has_marker(world, barricade_slab_at),
         Some(true),
         "C1: a Slab def with an explicit BlocksPathfinding tag DOES carry the marker",
+    );
+}
+
+#[test]
+fn every_seeded_piece_carries_its_def_key_and_its_placement_facing() {
+    let wall_at = key(10, 11, 0);
+    let slab_at = key(12, 13, 1);
+    let wall_key = TerrainUuid::new(Uuid::from_u128(0x0149_c0de_0000_0041));
+    let slab_key = TerrainUuid::new(Uuid::from_u128(0x0149_c0de_0000_0042));
+    let wall_facing = TerrainFacing::East;
+    let slab_facing = TerrainFacing::South;
+
+    let registry = TerrainDefRegistry::new([
+        (wall_key, wall_def(wall_key, "keyed-wall")),
+        (slab_key, slab_def(slab_key, "keyed-slab", None)),
+    ]);
+
+    let (mut situation, gangs) = SituationBuilder::new()
+        .with_ganger(ganger_at(key(0, 0, 0), 0))
+        .build_with_gangs();
+    situation
+        .walls
+        .push(CoverSpawn::new(wall_at, wall_key, wall_facing));
+    situation
+        .slabs
+        .push(SlabSpawn::new(slab_at, slab_key, slab_facing));
+
+    let Some((mut app, _setup)) = run_setup_with(
+        situation,
+        gangs,
+        test_registry(),
+        test_armor_registry(),
+        Some(&registry),
+    ) else {
+        return;
+    };
+    let world: &mut World = app.world_mut();
+
+    let mut pieces = world.query::<(&TerrainCell, &TerrainUuid, &TerrainFacing)>();
+    let seeded: Vec<(CellLevel, TerrainUuid, TerrainFacing)> = pieces
+        .iter(world)
+        .map(|(cell, uuid, facing)| (**cell, *uuid, *facing))
+        .collect();
+
+    assert!(
+        seeded.contains(&(wall_at, wall_key, wall_facing)),
+        "the wall entity carries its own def's key and the facing its placement authored, \
+         got {seeded:?}",
+    );
+    assert!(
+        seeded.contains(&(slab_at, slab_key, slab_facing)),
+        "the slab entity carries its own def's key and the facing its placement authored, \
+         got {seeded:?}",
     );
 }

@@ -23,46 +23,6 @@ fn settle_destruction(app: &mut App) {
     app.update();
 }
 
-/// The whole result of an ejection: the seat gives everything up, the gunner stands on `landing`.
-fn assert_ejected(app: &App, seat: &MannedSeat, landing: CellLevel) {
-    assert_eq!(
-        state(app, seat.emplacement),
-        Some(EmplacementState::Vacant),
-        "a destroyed emplacement gives its seat up; the state reads {:?}",
-        state(app, seat.emplacement),
-    );
-    assert_eq!(
-        occupant(app, seat.emplacement),
-        None,
-        "the occupant record goes with the seat; it names {:?}",
-        occupant(app, seat.emplacement),
-    );
-    assert_eq!(
-        entered_from(app, seat.emplacement),
-        None,
-        "the entered-from record goes with the seat; it still holds {:?}",
-        entered_from(app, seat.emplacement),
-    );
-    assert_eq!(
-        mount_entity(app, seat.emplacement),
-        None,
-        "the mounted weapon is despawned with the piece; the seat holds {:?}",
-        mount_entity(app, seat.emplacement),
-    );
-    assert_eq!(
-        firing_damage_type(app, seat.occupant),
-        Some(OWN_DAMAGE_TYPE),
-        "the ejected gunner fires its own carried gun again, not the mount; it would fire {:?}",
-        firing_damage_type(app, seat.occupant),
-    );
-    assert_eq!(
-        pos_of(app, seat.occupant),
-        Some(landing),
-        "the ejected gunner stands on {landing:?}; it stands on {:?}",
-        pos_of(app, seat.occupant),
-    );
-}
-
 /// The cell a plain cover piece stands on, with a ganger standing on top of it.
 fn cover_cell() -> CellLevel {
     ground(2, 2)
@@ -183,11 +143,9 @@ fn only_an_occupied_emplacement_the_message_names_gives_up_its_gunner() {
         "that gunner is still on its seat; it stands on {:?}",
         pos_of(&app, subjects.floored_gunner),
     );
-    assert_eq!(
-        state(&app, subjects.empty),
-        Some(EmplacementState::Vacant),
-        "a vacant emplacement has no gunner to set down and stays vacant; its state reads {:?}",
-        state(&app, subjects.empty),
+    assert!(
+        app.world().get_entity(subjects.empty).is_err(),
+        "a vacant emplacement has no gunner to set down, and the destroyed piece is despawned",
     );
 }
 
@@ -216,7 +174,7 @@ fn a_mount_shot_apart_sets_its_gunner_down_on_the_cell_it_entered_from() {
          destroyed emplacement",
         seat_cell(),
     );
-    assert_ejected(&app, &seat, entry_cell());
+    assert_ejected(&mut app, &seat, entry_cell());
 }
 
 #[test]
@@ -240,7 +198,7 @@ fn a_mount_smashed_apart_sets_its_gunner_down_on_the_cell_it_entered_from() {
          destroyed emplacement",
         seat_cell(),
     );
-    assert_ejected(&app, &seat, entry_cell());
+    assert_ejected(&mut app, &seat, entry_cell());
 }
 
 #[test]
@@ -281,5 +239,5 @@ fn a_gunner_whose_entry_cell_is_taken_is_set_down_on_the_mounts_own_cell() {
          destroyed emplacement",
         seat_cell(),
     );
-    assert_ejected(&app, &seat, seat_cell());
+    assert_ejected(&mut app, &seat, seat_cell());
 }

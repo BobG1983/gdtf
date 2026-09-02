@@ -6,7 +6,7 @@ use gdtf_battle_sim::{
         on_death::{ExplodeDamage, OnDeathEffect},
     },
     terrain::{
-        def::{TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind},
+        def::{LeavesBehind, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind},
         piece::TerrainGraphicKey,
     },
     weapon::{DamageType, HitType},
@@ -41,6 +41,7 @@ fn save_preserves_every_authored_on_death_effect_in_order() {
         on_death:       vec![explode.clone(), leave.clone()],
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     };
 
     let mut draft = TerrainDraft::default();

@@ -38,5 +38,5 @@ pub use shot_pipeline::{
 };
 pub use terrain::{
     cover, def, emplacement, entity, floor, occupancy, occupancy_sync, openable, piece, slab,
-    surface, vertical,
+    successor, surface, vertical,
 };

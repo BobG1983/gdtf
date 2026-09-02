@@ -22,8 +22,8 @@ use gdtf_battle_sim::{
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     terrain::def::{
-        TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
-        TerrainUuid,
+        LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+        TerrainSimKind, TerrainUuid,
     },
     test_support::{
         GangerSpawnBuilder, TEST_MELEE_WEAPON_KEY, TEST_WEAPON_KEY, field_turns, single_mode,
@@ -101,6 +101,7 @@ pub(crate) fn barrel_terrain_registry() -> TerrainDefRegistry {
 
             blocks_pathing: None,
             blocks_los:     None,
+            leaves_behind:  LeavesBehind::Nothing,
         },
     );
     base.insert(FUEL_SLAB, fuel_slab_def());
@@ -129,6 +130,7 @@ fn fuel_slab_def() -> TerrainDef {
         }],
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     }
 }
 

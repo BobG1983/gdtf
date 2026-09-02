@@ -111,12 +111,13 @@ fn kind_default_wall_still_blocks() {
 }
 
 #[test]
-fn destroyed_marked_cell_does_not_block() {
+fn a_cell_whose_path_blocking_was_cleared_does_not_block() {
     let mut grid = walled_corridor();
     grid.set_path_blocking(cell(0, 1, 0));
-    grid.mark_cover_destroyed(cell(0, 1, 0));
+    grid.clear_path_blocking(cell(0, 1, 0));
     assert!(
         corridor_reaches_goal(&grid),
-        "C6(c·destroyed): a destroyed path-blocking cell re-opens the route",
+        "a destroyed piece loses BlocksPathfinding, project_path_blocking clears the cell it \
+         tracked, and the route re-opens",
     );
 }

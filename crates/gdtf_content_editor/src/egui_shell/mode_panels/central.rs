@@ -31,6 +31,7 @@ pub(in crate::egui_shell) fn central_panel(
                 },
                 ctx.sprite.registry.as_deref(),
                 ctx.weapons,
+                ctx.terrain_registry,
                 &ctx.textures.sprites,
             );
         }

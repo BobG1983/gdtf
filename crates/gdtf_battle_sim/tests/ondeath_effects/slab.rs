@@ -37,8 +37,14 @@ fn died_at(app: &App, at: CellLevel) -> bool {
 
 /// Fire up at the overhead slab until it is destroyed or the cap runs out.
 fn fire_until_destroyed(app: &mut App, shooter: Entity) {
+    assert_eq!(
+        slab_state(app, overhead()),
+        SlabState::Present,
+        "the slab must be standing before the firing loop, or its exit test reads Absent on the \
+         first pass and the case asserts nothing",
+    );
     for _ in 0..64 {
-        if slab_state(app, overhead()) == SlabState::Destroyed {
+        if slab_state(app, overhead()) == SlabState::Absent {
             return;
         }
         app.world_mut().write_message(FireRequested::new(
@@ -73,7 +79,7 @@ fn a_destroyed_slab_leaves_its_authored_field_at_its_cell() {
 
     assert_eq!(
         slab_state(&app, overhead()),
-        SlabState::Destroyed,
+        SlabState::Absent,
         "the slab must be destroyed before its on-death effect can be judged; it reads {:?}",
         slab_state(&app, overhead()),
     );
@@ -101,7 +107,7 @@ fn a_destroyed_slab_records_a_died_at_for_its_cell() {
 
     assert_eq!(
         slab_state(&app, overhead()),
-        SlabState::Destroyed,
+        SlabState::Absent,
         "the slab must be destroyed before its death record can be judged; it reads {:?}",
         slab_state(&app, overhead()),
     );

@@ -7,7 +7,7 @@ use crate::occupancy::TerrainKind;
 #[test]
 fn same_storey_total_equals_summed_steps() {
     let mut grid = grid_with(&[(cell(4, 3, 0), TerrainKind::Cover)]);
-    grid.mark_cover_destroyed(cell(4, 3, 0));
+    grid.set_terrain(cell(4, 3, 0), TerrainKind::Open);
     let links = super::support::no_links();
     let tuning = tuning();
     let floor_costs = default_floor_costs(&tuning);

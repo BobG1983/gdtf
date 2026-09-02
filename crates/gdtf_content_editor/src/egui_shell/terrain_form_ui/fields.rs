@@ -4,9 +4,10 @@ use gdtf_battle_sim::{
     cover::{CoverHp, HeightBand},
     level::UuidThemeRegistry,
     slab::SlabHp,
-    terrain::def::TerrainTag,
+    terrain::def::{TerrainDefRegistry, TerrainTag},
     weapon::{WeaponName, WeaponRegistry},
 };
+use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use crate::{
     save_record::LastSaveRecord,
@@ -57,6 +58,8 @@ pub(in crate::egui_shell) fn field_stack(
     draft: &mut TerrainDraft,
     save: TerrainSaveContext<'_>,
     weapons: Option<&WeaponRegistry>,
+    terrain: Option<&TerrainDefRegistry>,
+    sprites: Option<&SpriteDefRegistry>,
 ) {
     ui.heading("Terrain");
     ui.separator();
@@ -71,6 +74,7 @@ pub(in crate::egui_shell) fn field_stack(
     super::entry_sides::entry_sides(ui, draft);
     tag_checkboxes(ui, draft);
     super::blocking::blocking_overrides(ui, draft);
+    super::leaves_behind::leaves_behind_row(ui, draft, terrain, sprites);
     super::on_death::on_death_form(ui, draft);
 
     ui.separator();

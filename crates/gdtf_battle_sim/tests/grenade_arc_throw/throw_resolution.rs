@@ -42,7 +42,7 @@ fn a_grenade_lobbed_through_a_roof_hole_damages_the_room_occupants() {
     set_roof(
         &mut app,
         &[(5, 5), (5, 6), (5, 7), (6, 6), (6, 7)],
-        SlabState::Destroyed,
+        SlabState::Absent,
     );
 
     let (Some(thrower_e), Some(occ_a), Some(occ_b)) = (

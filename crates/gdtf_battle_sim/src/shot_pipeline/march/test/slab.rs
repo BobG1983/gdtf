@@ -34,7 +34,7 @@ fn present_slab_stops_climbing_ray_destroyed_crosses() {
 
     let mut destroyed = SurfaceGrid::new();
     destroyed.set_slab(slab_at, SlabState::Present);
-    destroyed.destroy_slab(slab_at);
+    destroyed.set_slab(slab_at, SlabState::Absent);
     let r_destroyed = march_vector(
         muzzle,
         MarchDir::new(dir),
@@ -50,7 +50,7 @@ fn present_slab_stops_climbing_ray_destroyed_crosses() {
     assert_ne!(
         r_destroyed.kind,
         MarchKind::Slab,
-        "a Destroyed slab must NOT stop the round",
+        "a slab a destruction left Absent must NOT stop the round",
     );
 
     let absent = SurfaceGrid::new();

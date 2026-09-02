@@ -46,6 +46,7 @@ mod terrain_clamps;
 mod terrain_clears;
 mod terrain_fields;
 mod terrain_gates;
+mod terrain_leaves_behind;
 mod terrain_on_death;
 mod theme_tab;
 mod values;

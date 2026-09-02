@@ -1,11 +1,12 @@
 //! Which way a placed terrain piece is turned.
 
+use bevy::prelude::Component;
 use serde::{Deserialize, Serialize};
 
 use crate::metric::Cell;
 
 /// Cardinal facing of a placed terrain piece.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
 pub enum TerrainFacing {
     /// North (-Y).
     #[default]

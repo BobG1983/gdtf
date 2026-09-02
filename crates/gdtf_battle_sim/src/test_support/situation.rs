@@ -40,6 +40,9 @@ pub mod test_pieces {
         TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0007));
     /// Emplacement piece.
     pub const EMPLACEMENT: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0008));
+    /// Emplacement piece that leaves a blocking wall behind when it is destroyed.
+    pub const EMPLACEMENT_LEAVING_WALL: TerrainUuid =
+        TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0009));
 }
 
 /// Wall spawn at a cell.

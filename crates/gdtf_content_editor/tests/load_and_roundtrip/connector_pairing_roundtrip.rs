@@ -9,7 +9,7 @@ use gdtf_battle_sim::{
     slab::SlabHp,
     terrain::{
         def::{
-            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
         facing::TerrainFacing,
@@ -55,6 +55,7 @@ fn stair_def(key: TerrainUuid, label: &str, graphic: &str) -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 

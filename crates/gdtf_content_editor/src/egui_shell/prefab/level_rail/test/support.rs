@@ -6,7 +6,7 @@ use gdtf_battle_sim::{
     slab::SlabHp,
     terrain::{
         def::{
-            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
         piece::TerrainGraphicKey,
@@ -44,6 +44,7 @@ fn cover_def(key: TerrainUuid) -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 
@@ -65,6 +66,7 @@ fn slab_def(key: TerrainUuid) -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 

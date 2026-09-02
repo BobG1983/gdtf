@@ -22,7 +22,7 @@ pub(super) use crate::{
     surface::{SlabState, SurfaceGrid},
     terrain::{
         def::{
-            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainTag, TerrainUuid,
         },
         entity::{BlocksPathfinding, TerrainCell, TerrainPieceKind},

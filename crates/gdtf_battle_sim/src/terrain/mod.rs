@@ -22,6 +22,8 @@ pub mod openable;
 pub mod piece;
 /// Slabs and surface damage.
 pub mod slab;
+/// What a destroyed piece leaves behind.
+pub mod successor;
 /// Surface grid resource.
 pub mod surface;
 /// Vertical links between levels.

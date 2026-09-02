@@ -76,13 +76,13 @@ fn destroyed_overhead_slab_revokes_brace() {
     let brace = brace_cells(&[stair]);
     let mut surface = SurfaceGrid::new();
     surface.set_slab(overhead_slab, SlabState::Present);
-    surface.destroy_slab(overhead_slab);
+    surface.set_slab(overhead_slab, SlabState::Absent);
     let pos = Position::new(stair);
 
     let result = terrain_braces(pos, StanceKind::Crouching, &brace, &surface);
     assert!(
         !*result,
-        "a Destroyed overhead slab must revoke the terrain brace (C4)",
+        "an overhead slab a destruction left Absent must revoke the terrain brace (C4)",
     );
 }
 

@@ -5,28 +5,15 @@ use bevy::{
     prelude::{Deref, Resource},
 };
 
-use crate::{
-    metric::{Cell, CellLevel},
-    slab::SlabDestroyedFlag,
-};
+use crate::metric::{Cell, CellLevel};
 
-/// Whether a slab is present, destroyed, or never existed at a cell.
+/// Whether a slab stands at a cell, or no slab does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SlabState {
     /// Intact slab.
     Present,
-    /// Destroyed (stays destroyed).
-    Destroyed,
-    /// No slab authored here.
+    /// No slab stands here.
     Absent,
-}
-
-impl SlabState {
-    /// True when this state is Destroyed.
-    #[must_use]
-    pub const fn is_destroyed(self) -> SlabDestroyedFlag {
-        SlabDestroyedFlag::new(matches!(self, Self::Destroyed))
-    }
 }
 
 /// Accrued damage to open ground at a cell.
@@ -82,20 +69,9 @@ impl SurfaceGrid {
         self.slabs.get(key).copied().unwrap_or(SlabState::Absent)
     }
 
-    /// Set slab state; no-ops if already Destroyed.
+    /// Set slab state, in either direction.
     pub fn set_slab(&mut self, key: CellLevel, state: SlabState) {
-        if *self.slab_state(&key).is_destroyed() {
-            return;
-        }
         self.slabs.insert(key, state);
-    }
-
-    /// Mark a Present slab destroyed permanently; bare ground is left alone.
-    pub fn destroy_slab(&mut self, key: CellLevel) {
-        if self.slab_state(&key) != SlabState::Present {
-            return;
-        }
-        self.slabs.insert(key, SlabState::Destroyed);
     }
 
     /// Current ground damage at a cell.

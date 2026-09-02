@@ -1,6 +1,6 @@
 use super::super::{
-    TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
-    TerrainUuid,
+    LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+    TerrainSimKind, TerrainUuid,
 };
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -28,6 +28,7 @@ fn registry_inserts_and_looks_up_by_uuid() {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     };
 
     let mut registry = TerrainDefRegistry::default();
@@ -79,6 +80,7 @@ fn registry_new_keys_by_uuid() {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     };
 
     let registry = TerrainDefRegistry::new([(key, def.clone())]);

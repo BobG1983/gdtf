@@ -3,7 +3,9 @@
 use bevy::{prelude::Deref, reflect::TypePath};
 use serde::{Deserialize, Serialize};
 
-use super::{LosBlocking, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid};
+use super::{
+    LeavesBehind, LosBlocking, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid,
+};
 
 /// Display name for tooling and authoring.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
@@ -54,4 +56,7 @@ pub struct TerrainDef {
     /// Optional LOS-blocking override.
     #[serde(default)]
     pub blocks_los:     Option<LosBlocking>,
+    /// What destroying this piece leaves standing in its cell.
+    #[serde(default)]
+    pub leaves_behind:  LeavesBehind,
 }

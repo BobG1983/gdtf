@@ -7,7 +7,7 @@ use crate::{
     slab::SlabHp,
     terrain::{
         def::{
-            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainTag,
         },
         facing::TerrainFacing,
@@ -41,6 +41,7 @@ fn test_wall() -> TerrainDef {
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     }
 }
 
@@ -61,6 +62,7 @@ fn test_slab() -> TerrainDef {
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     }
 }
 
@@ -81,6 +83,7 @@ fn test_cover() -> TerrainDef {
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     }
 }
 
@@ -101,6 +104,7 @@ fn test_floor() -> TerrainDef {
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     }
 }
 
@@ -121,6 +125,7 @@ fn test_vision_slab() -> TerrainDef {
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     }
 }
 
@@ -141,6 +146,7 @@ fn test_path_slab() -> TerrainDef {
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     }
 }
 
@@ -161,6 +167,7 @@ fn test_low_vision_cover() -> TerrainDef {
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     }
 }
 
@@ -183,6 +190,16 @@ fn test_emplacement() -> TerrainDef {
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
+    }
+}
+
+fn test_emplacement_leaving_wall() -> TerrainDef {
+    TerrainDef {
+        key: test_pieces::EMPLACEMENT_LEAVING_WALL,
+        display_name: display("Test Emplacement Leaving A Wall"),
+        leaves_behind: LeavesBehind::Piece(test_pieces::WALL),
+        ..test_emplacement()
     }
 }
 
@@ -198,6 +215,10 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
         (test_pieces::PATH_SLAB, test_path_slab()),
         (test_pieces::LOW_VISION_COVER, test_low_vision_cover()),
         (test_pieces::EMPLACEMENT, test_emplacement()),
+        (
+            test_pieces::EMPLACEMENT_LEAVING_WALL,
+            test_emplacement_leaving_wall(),
+        ),
     ])
 }
 

@@ -19,32 +19,32 @@ use crate::{
     weapon::WeaponName,
 };
 
-pub(super) struct ResolvedCoverPiece {
-    pub(super) max_hp:           CoverHp,
-    pub(super) height_band:      HeightBand,
-    pub(super) armor_protection: ArmorProtection,
-    pub(super) armor_hardness:   ArmorHardness,
-    pub(super) piece_kind:       TerrainPieceKind,
-    pub(super) graphic:          TerrainGraphicKey,
-    pub(super) blocks_path:      PathBlocked,
-    pub(super) occludes_vision:  Option<HeightBand>,
-    pub(super) openable:         Option<HeightBand>,
-    pub(super) emplacement:      Option<WeaponName>,
-    pub(super) entry_sides:      Vec<TerrainFacing>,
+pub(crate) struct ResolvedCoverPiece {
+    pub(crate) max_hp:           CoverHp,
+    pub(crate) height_band:      HeightBand,
+    pub(crate) armor_protection: ArmorProtection,
+    pub(crate) armor_hardness:   ArmorHardness,
+    pub(crate) piece_kind:       TerrainPieceKind,
+    pub(crate) graphic:          TerrainGraphicKey,
+    pub(crate) blocks_path:      PathBlocked,
+    pub(crate) occludes_vision:  Option<HeightBand>,
+    pub(crate) openable:         Option<HeightBand>,
+    pub(crate) emplacement:      Option<WeaponName>,
+    pub(crate) entry_sides:      Vec<TerrainFacing>,
 }
 
-pub(super) struct ResolvedSlabPiece {
-    pub(super) max_hp:           SlabHp,
-    pub(super) armor_protection: ArmorProtection,
-    pub(super) armor_hardness:   ArmorHardness,
-    pub(super) graphic:          TerrainGraphicKey,
-    pub(super) footfall:         Option<FootfallSound>,
-    pub(super) blocks_path:      PathBlocked,
-    pub(super) occludes_vision:  Option<HeightBand>,
-    pub(super) openable:         Option<HeightBand>,
+pub(crate) struct ResolvedSlabPiece {
+    pub(crate) max_hp:           SlabHp,
+    pub(crate) armor_protection: ArmorProtection,
+    pub(crate) armor_hardness:   ArmorHardness,
+    pub(crate) graphic:          TerrainGraphicKey,
+    pub(crate) footfall:         Option<FootfallSound>,
+    pub(crate) blocks_path:      PathBlocked,
+    pub(crate) occludes_vision:  Option<HeightBand>,
+    pub(crate) openable:         Option<HeightBand>,
 }
 
-pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<ResolvedCoverPiece> {
+pub(crate) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<ResolvedCoverPiece> {
     let (max_hp, armor_protection, armor_hardness, height_band, mounted_weapon, entry_sides) =
         match &def.sim_kind {
             TerrainSimKind::Wall {
@@ -106,7 +106,7 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
     })
 }
 
-pub(super) fn resolve_slab_def(key: &TerrainUuid, def: &TerrainDef) -> Option<ResolvedSlabPiece> {
+pub(crate) fn resolve_slab_def(key: &TerrainUuid, def: &TerrainDef) -> Option<ResolvedSlabPiece> {
     let TerrainSimKind::Slab {
         hp,
         armor_protection,

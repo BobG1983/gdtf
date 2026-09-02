@@ -7,9 +7,6 @@ impl OccupancyGrid {
     /// Height band of the vision occluder at this cell, if any.
     #[must_use]
     pub fn vision_occluder_at(&self, cell_level: &CellLevel) -> Option<HeightBand> {
-        if *self.is_cover_destroyed(cell_level) {
-            return None;
-        }
         self.vision_blocking.get(cell_level).copied()
     }
 

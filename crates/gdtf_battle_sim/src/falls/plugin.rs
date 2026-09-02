@@ -5,7 +5,8 @@ use bevy::prelude::{App, IntoScheduleConfigs, Plugin, Update};
 use crate::{
     acts::dispatch_fire,
     falls::{FallOccurred, apply_falls},
-    occupancy_sync::{SimSystems, sync_destroyed_piece},
+    occupancy_sync::SimSystems,
+    successor::replace_destroyed_piece,
 };
 
 /// Registers [`FallOccurred`] and the [`apply_falls`] system.
@@ -18,7 +19,7 @@ impl Plugin for FallsPlugin {
             Update,
             apply_falls
                 .after(dispatch_fire)
-                .after(sync_destroyed_piece)
+                .after(replace_destroyed_piece)
                 .in_set(SimSystems::Simulate),
         );
     }

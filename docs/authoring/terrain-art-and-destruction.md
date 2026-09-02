@@ -11,8 +11,9 @@ pillars: [1, 5]
 **A terrain def owns its own art in every state it can be in, and says what it
 leaves behind when it dies; the renderer owns no content.**
 
-Status: decided, not built. "What exists today" below records the state this
-replaces, so a reader can tell canon from code.
+Status: `leaves_behind` is built; the per-def view sets are not. "What exists
+today" below records the state they replace, so a reader can tell canon from
+code.
 
 ## The claim
 
@@ -81,7 +82,8 @@ piece, resolves art by the role's own name — so roughly twenty sprite records
 are claimed by render code rather than by any content. A test asserts those
 files exist. The missing-tile texture is already generated at runtime; it is
 simply reached more often than it should be. The `on_death` list the claim
-names is built on terrain defs and weapon specs both; `leaves_behind` is not.
+names is built on terrain defs and weapon specs both, and `leaves_behind` is
+built on terrain defs.
 
 ## Consequence for the editor
 
@@ -114,10 +116,11 @@ slot can become a list without disturbing anything else.
   [sprite-defs.md](sprite-defs.md),
   [on-death-authoring.md](on-death-authoring.md),
   [reference-integrity.md](reference-integrity.md).
-- Code sites: the sim's terrain kinds and the `on_death` field live in
-  `crates/gdtf_battle_sim`; role-name art resolution lives in
-  `crates/gdtf_battle_presenter`; the authoring forms live in
-  `crates/gdtf_content_editor`. **TBD (Bevy):** `leaves_behind`, the per-def
-  view sets, emplacement facing, and the per-def completeness check are not
-  built.
+- Code sites: the sim's terrain kinds, the `on_death` field and the
+  `leaves_behind` field live in `crates/gdtf_battle_sim/src/terrain/def/`, and
+  `crates/gdtf_battle_sim/src/terrain/successor/` acts on it when a piece is
+  destroyed; role-name art resolution lives in `crates/gdtf_battle_presenter`;
+  the authoring forms live in `crates/gdtf_content_editor`. **TBD (Bevy):** the
+  per-def view sets, the per-def completeness check, the mounted weapon's arc
+  reading the mount's facing, and turning a mount as an act are not built.
 - Source: owner rulings, given directly in conversation, 2026-08-14.

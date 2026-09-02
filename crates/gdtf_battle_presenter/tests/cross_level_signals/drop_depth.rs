@@ -24,7 +24,7 @@ fn destroyed_slab_bordering_drawn_floor_emits_drop_depth() {
 
     let mut surface = SurfaceGrid::new();
     surface.set_slab(floor, SlabState::Present);
-    surface.destroy_slab(hole);
+    surface.set_slab(hole, SlabState::Absent);
     app.world_mut().insert_resource(surface);
     app.world_mut().insert_resource(OccupancyGrid::default());
 

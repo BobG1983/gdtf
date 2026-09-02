@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
     metric::CellLevel,
     occupancy::OccupancyGrid,
     prelude::Tu,
-    terrain::emplacement::{EmplacementState, EnteredFrom, MountedBy, MountedWeaponEntity},
+    terrain::emplacement::{EmplacementState, MountedBy, MountedWeaponEntity},
     tuning::CombatTuning,
 };
 
@@ -22,11 +22,6 @@ pub(crate) fn state(app: &App, entity: Entity) -> Option<EmplacementState> {
 
 pub(crate) fn occupant(app: &App, entity: Entity) -> Option<Entity> {
     app.world().get::<MountedBy>(entity).map(Relationship::get)
-}
-
-/// The cell an emplacement remembers its occupant entered from.
-pub(crate) fn entered_from(app: &App, entity: Entity) -> Option<CellLevel> {
-    app.world().get::<EnteredFrom>(entity).map(|from| **from)
 }
 
 /// Where a ganger stands right now.

@@ -13,9 +13,10 @@ use gdtf_battle_sim::{
     march::MarchGrids,
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, StairEyeOffset, TerrainKind},
-    occupancy_sync::{TerrainPieceDestroyed, sync_destroyed_piece},
+    occupancy_sync::TerrainPieceDestroyed,
     peek_sync::{peek_population_needed, sync_peek_offsets},
     prelude::{Direction, Faction, Position, Stance, StanceKind},
+    successor::{SlabLeftOpen, replace_destroyed_piece},
     surface::SurfaceGrid,
     test_support::GangerEntityBuilder,
     tuning::CombatTuning,
@@ -207,12 +208,14 @@ fn cover_destroyed_clears_a_stationary_peek() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_message::<TerrainPieceDestroyed>();
+    // `replace_destroyed_piece` writes this message, and its writer needs the buffer.
+    app.add_message::<SlabLeftOpen>();
     app.insert_resource(corner_grid(TerrainKind::Cover));
     app.insert_resource(SurfaceGrid::new());
     app.add_systems(
         bevy::prelude::Update,
         (
-            sync_destroyed_piece,
+            replace_destroyed_piece,
             sync_peek_offsets.run_if(peek_population_needed),
         )
             .chain(),

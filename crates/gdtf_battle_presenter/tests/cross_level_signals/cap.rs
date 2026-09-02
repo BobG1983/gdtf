@@ -84,7 +84,7 @@ fn four_candidates_across_producers_draw_only_the_top_three_in_priority_order() 
 
     let mut surface = SurfaceGrid::new();
     surface.set_slab(floor, SlabState::Present);
-    surface.destroy_slab(hole);
+    surface.set_slab(hole, SlabState::Absent);
     app.world_mut().insert_resource(surface);
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().spawn(TerrainSprite { at: floor });

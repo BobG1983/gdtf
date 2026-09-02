@@ -19,7 +19,7 @@ fn destroyed_slab_adjacent_to_drawn_floor_emits_drop_depth() {
 
     let mut surface = SurfaceGrid::new();
     surface.set_slab(floor, SlabState::Present);
-    surface.destroy_slab(hole);
+    surface.set_slab(hole, SlabState::Absent);
 
     let occupancy = OccupancyGrid::new();
 
@@ -60,7 +60,7 @@ fn unexplored_hole_emits_no_drop_depth() {
 
     let mut surface = SurfaceGrid::new();
     surface.set_slab(floor, SlabState::Present);
-    surface.destroy_slab(hole);
+    surface.set_slab(hole, SlabState::Absent);
 
     let occupancy = OccupancyGrid::new();
     let drawn: HashSet<Cell> = std::iter::once(floor.cell()).collect();

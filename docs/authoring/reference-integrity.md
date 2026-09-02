@@ -59,6 +59,12 @@ authoring time (at the save/edit), not on the next game launch.
 | prefab `theme` (`assets/content/maps/`) | theme UUID | theme defs | UUID |
 | prefab `placements[].piece` | terrain UUID | terrain defs | UUID |
 
+A terrain def's `leaves_behind` authors two more references of this kind, one
+naming another terrain def and one naming a sprite def. Neither is checked. A
+`leaves_behind` naming a terrain def no registry holds leaves nothing behind at
+the destroyed cell, and one naming a sprite no registry holds draws the magenta
+missing-sprite marker.
+
 The gang path carries TWO key schemes at once — a gang is referenced by its
 FILE STEM, a member by its roster DISPLAY-NAME — and every finding names which
 scheme failed, so a "renamed the file but not the reference" mistake and a

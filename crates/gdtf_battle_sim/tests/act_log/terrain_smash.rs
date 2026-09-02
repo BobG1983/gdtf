@@ -129,14 +129,14 @@ fn a_slab_shot_to_pieces_records_one_smash_deed_naming_the_slab() {
     seed_slab(&mut app);
 
     for _ in 0..64 {
-        if slab_state(&app) == Some(SlabState::Destroyed) {
+        if slab_state(&app) == Some(SlabState::Absent) {
             break;
         }
         fire_one_round(&mut app, shooter);
     }
     assert_eq!(
         slab_state(&app),
-        Some(SlabState::Destroyed),
+        Some(SlabState::Absent),
         "precondition: the fire path must destroy the slab, or the deed assertion is vacuous",
     );
 

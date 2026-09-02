@@ -61,7 +61,7 @@ fn blocked_neighbour_excluded_open_included() {
 }
 
 #[test]
-fn destroyed_cover_neighbour_is_walkable() {
+fn a_cleared_cover_neighbour_is_walkable() {
     let cover = key(6, 5, 0);
     let mut grid = grid_with(&[(cover, TerrainKind::Cover)]);
     let floor_costs = default_floor_costs();
@@ -71,10 +71,12 @@ fn destroyed_cover_neighbour_is_walkable() {
         !yields_neighbour(origin, cover, &grid, &floor_costs),
         "a standing cover neighbour must be excluded (C4)",
     );
-    grid.mark_cover_destroyed(cover);
+    grid.set_terrain(cover, TerrainKind::Open);
+    grid.clear_path_blocking(cover);
     assert!(
         yields_neighbour(origin, cover, &grid, &floor_costs),
-        "a destroyed-cover neighbour must be walkable (C4)",
+        "a cell a destroyed cover left Open, with its path blocking projected away, must be \
+         walkable (C4)",
     );
 }
 

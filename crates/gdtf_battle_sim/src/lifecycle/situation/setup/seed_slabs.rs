@@ -49,6 +49,7 @@ pub(super) fn seed_slab_terrain(
     brace_cells: &HashSet<CellLevel>,
     commands: &mut Commands,
 ) -> Vec<(TerrainIndexKey, Entity)> {
+    let brace_stair_cells = BraceStairCells::new(brace_cells.clone());
     let mut surface_grid = SurfaceGrid::new();
     let mut slab_ledger = SlabLedger::new();
     let mut terrain_pairs: Vec<(TerrainIndexKey, Entity)> = Vec::new();
@@ -65,6 +66,8 @@ pub(super) fn seed_slab_terrain(
         let slab_entity = commands
             .spawn((
                 TerrainCell::new(slab_spawn.at),
+                slab_spawn.piece,
+                slab_spawn.facing,
                 TerrainPieceKind::Slab,
                 resolved.max_hp,
                 resolved.armor_protection,
@@ -91,9 +94,7 @@ pub(super) fn seed_slab_terrain(
             ));
         }
 
-        if let Some(below) = cell_below(slab_spawn.at)
-            && brace_cells.contains(&below)
-        {
+        if brace_stair_cells.braces_slab_at(&slab_spawn.at) {
             commands.entity(slab_entity).insert(TerrainBrace);
         }
 
@@ -102,15 +103,7 @@ pub(super) fn seed_slab_terrain(
     commands.insert_resource(surface_grid);
     commands.insert_resource(slab_ledger);
 
-    commands.insert_resource(BraceStairCells::new(brace_cells.clone()));
+    commands.insert_resource(brace_stair_cells);
 
     terrain_pairs
-}
-
-fn cell_below(cell: crate::metric::CellLevel) -> Option<crate::metric::CellLevel> {
-    let storey = (*cell.level()).checked_sub(1)?;
-    Some(crate::metric::CellLevel::new(
-        cell.cell(),
-        crate::metric::Level::new(storey),
-    ))
 }

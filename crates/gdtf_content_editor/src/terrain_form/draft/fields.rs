@@ -8,7 +8,7 @@ use gdtf_battle_sim::{
     effects::on_death::OnDeathEffect,
     slab::SlabHp,
     terrain::{
-        def::{LosBlocking, TerrainTag, TerrainUuid},
+        def::{LeavesBehind, LosBlocking, TerrainTag, TerrainUuid},
         facing::TerrainFacing,
     },
     weapon::WeaponName,
@@ -33,6 +33,7 @@ pub struct TerrainDraft {
     tags:                Vec<TerrainTag>,
     blocks_pathing:      Option<bool>,
     blocks_los:          Option<LosBlocking>,
+    leaves_behind:       LeavesBehind,
     pub(super) on_death: Vec<OnDeathEffect>,
     uuid:                Option<TerrainUuid>,
 }
@@ -226,6 +227,17 @@ impl TerrainDraft {
         self.blocks_los = blocks_los;
     }
 
+    /// What destroying this piece leaves standing in its cell.
+    #[must_use]
+    pub const fn leaves_behind(&self) -> &LeavesBehind {
+        &self.leaves_behind
+    }
+
+    /// Set what destroying this piece leaves behind.
+    pub fn set_leaves_behind(&mut self, leaves_behind: LeavesBehind) {
+        self.leaves_behind = leaves_behind;
+    }
+
     /// Assigned terrain uuid, if any.
     #[must_use]
     pub const fn uuid(&self) -> Option<TerrainUuid> {
@@ -260,6 +272,7 @@ impl Default for TerrainDraft {
             tags:             Vec::new(),
             blocks_pathing:   None,
             blocks_los:       None,
+            leaves_behind:    LeavesBehind::Nothing,
             on_death:         Vec::new(),
             uuid:             None,
         }

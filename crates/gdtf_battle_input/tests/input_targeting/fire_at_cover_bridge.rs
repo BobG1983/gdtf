@@ -150,9 +150,10 @@ fn clicking_cover_fires_and_the_sim_depletes_it() {
             *grid.is_blocked(&cover_cell()),
             "BEFORE: the standing cover cell must block",
         );
-        assert!(
-            !*grid.is_cover_destroyed(&cover_cell()),
-            "BEFORE: the cover cell must not yet be in the destroyed-cover set",
+        assert_eq!(
+            grid.terrain(&cover_cell()),
+            TerrainKind::Cover,
+            "BEFORE: the cover piece must still be standing in the cell",
         );
     }
 
@@ -165,11 +166,12 @@ fn clicking_cover_fires_and_the_sim_depletes_it() {
     app.update();
 
     let grid = app.world().resource::<OccupancyGrid>();
-    assert!(
-        *grid.is_cover_destroyed(&cover_cell()),
+    assert_eq!(
+        grid.terrain(&cover_cell()),
+        TerrainKind::Open,
         "AFTER: clicking the cover must have fired a real shot that depleted it — \
-         sync_destroyed_piece marks the smashed cell destroyed (the click→fire→free chain); \
-         got destroyed-set miss",
+         replace_destroyed_piece clears the smashed cell, because this app holds no def \
+         registry and so nothing is left behind (the click→fire→free chain)",
     );
     assert!(
         !*grid.is_blocked(&cover_cell()),

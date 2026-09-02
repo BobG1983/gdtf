@@ -3,7 +3,7 @@
 mod error;
 mod setup;
 mod spawn;
-mod terrain_resolve;
+pub(crate) mod terrain_resolve;
 
 #[cfg(test)]
 mod test;

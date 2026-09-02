@@ -12,7 +12,7 @@ use crate::{
     rng::{BattleSeed, ProcgenRng},
     terrain::{
         def::{
-            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
         facing::TerrainFacing,
@@ -44,6 +44,7 @@ fn facing_wall_def(key: TerrainUuid) -> TerrainDef {
 
         blocks_pathing: None,
         blocks_los: None,
+        leaves_behind: LeavesBehind::Nothing,
     }
 }
 
@@ -65,6 +66,7 @@ fn facing_terrain_defs() -> TerrainDefRegistry {
 
         blocks_pathing: None,
         blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
     };
     TerrainDefRegistry::new([
         (TURNED_WALL, facing_wall_def(TURNED_WALL)),

@@ -74,6 +74,7 @@ impl TerrainDraft {
         self.replace_tags(def.tags.clone());
         self.set_blocks_pathing(def.blocks_pathing.map(|flag| *flag));
         self.set_blocks_los(def.blocks_los);
+        self.set_leaves_behind(def.leaves_behind.clone());
         self.replace_on_death(def.on_death.clone());
         self.set_uuid(Some(def.key));
     }

@@ -14,7 +14,7 @@ use gdtf_battle_sim::{
     metric::CellLevel,
     terrain::{
         def::{
-            TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+            LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
             TerrainSimKind, TerrainUuid,
         },
         piece::TerrainGraphicKey,
@@ -106,6 +106,7 @@ pub(crate) fn ordered_cover_registry(on_death: Vec<OnDeathEffect>) -> TerrainDef
             on_death,
             blocks_pathing: None,
             blocks_los: None,
+            leaves_behind: LeavesBehind::Nothing,
         },
     );
     base
