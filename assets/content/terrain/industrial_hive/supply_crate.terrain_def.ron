@@ -9,9 +9,7 @@
         armor_hardness:   1,     // punch ignored
         height_band:      Low,   // shootable-over: Mid/High round clears it
     ),
-    presenter_kind: Cover(
-        graphic_name: "cover",
-    ),
+    presenter_kind: Cover,
     views: [
         (view: Facing(North), sprite: "cover"),
         (view: Facing(East), sprite: "cover"),

@@ -10,9 +10,7 @@
         armor_hardness:   3,     // punch ignored
         height_band:      High,  // closed door fills the cell
     ),
-    presenter_kind: Wall(
-        graphic_name: "door_ns", // NS-running door sprite
-    ),
+    presenter_kind: Wall,
     // The Openable tag is what makes this a door, so it owes shut and open on all four sides.
     // East and west carry the east-west art the deleted EW twin used to hold.
     views: [

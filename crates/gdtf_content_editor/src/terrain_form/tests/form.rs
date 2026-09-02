@@ -138,11 +138,15 @@ fn wall_draft_projects_to_wall_def() {
         "a Wall draft projects to a Wall sim kind",
     );
     assert!(
-        matches!(
-            &def.presenter_kind,
-            TerrainPresenterKind::Wall { graphic_name } if &***graphic_name == "wall"
-        ),
-        "the Wall presenter kind carries the key the draft's first owed view names",
+        matches!(&def.presenter_kind, TerrainPresenterKind::Wall),
+        "a Wall draft projects to the Wall presenter kind",
+    );
+    assert_eq!(
+        def.views
+            .sprite(TerrainView::Edge(TerrainFacing::North))
+            .map(|sprite| (**sprite).clone()),
+        Some("wall".to_owned()),
+        "the projected def carries the sprite key the draft set on its `Edge(North)` view",
     );
     assert!(
         def.tags.contains(&TerrainTag::BlocksVision),

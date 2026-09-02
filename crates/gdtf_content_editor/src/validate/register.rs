@@ -18,7 +18,7 @@ use gdtf_content_families::{
     sprites::SpriteDefRegistry,
     validate::{
         check_emplacement_weapon_refs, check_gang_equipment_refs, check_injury_weighting_refs,
-        check_terrain_graphic_refs, check_terrain_leaves_behind_refs, check_terrain_view_coverage,
+        check_terrain_leaves_behind_refs, check_terrain_view_coverage,
         check_terrain_view_sprite_refs, check_theme_terrain_refs, check_weapon_attachment_refs,
     },
 };
@@ -61,7 +61,6 @@ pub(crate) fn register_validation(app: &mut App) {
         .register_reference_check(check_emplacement_weapon_refs)
         .register_reference_check(check_gang_equipment_refs)
         .register_reference_check(check_injury_weighting_refs)
-        .register_reference_check(check_terrain_graphic_refs)
         .register_reference_check(check_terrain_view_coverage)
         .register_reference_check(check_terrain_view_sprite_refs)
         .register_reference_check(check_terrain_leaves_behind_refs)

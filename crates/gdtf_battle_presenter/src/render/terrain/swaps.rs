@@ -7,7 +7,7 @@ use super::{
     band::{DrawnStoreys, cell_level_in_band},
     restamp::{StampedGraphic, stamp_tile_quiet},
     static_draw::TerrainSprite,
-    static_map::{SpriteResolveCtx, StaticMap, graphic_name_at},
+    static_map::{SpriteResolveCtx, StaticMap, sprite_name_at},
 };
 use crate::{TerrainFogMaterial, playback::Played};
 
@@ -48,12 +48,14 @@ pub fn stamp_destroyed_cell(
     )>,
 ) {
     let band = storeys.band();
-    let graphic_facts = map.graphic_facts();
+    let piece_facts = map.piece_facts();
+    let leftovers = map.leftover_sprites();
+    let defs = map.defs();
     for event in destroyed.read() {
         if !cell_level_in_band(event.at, &band) {
             continue;
         }
-        let stamp = graphic_name_at(&event.at, &graphic_facts)
+        let stamp = sprite_name_at(&event.at, &piece_facts, &leftovers, defs)
             .map_or(StampedGraphic::Marker, StampedGraphic::from_key);
         retarget_tile(event.at, &stamp, &resolve, &mut materials, &mut tiles);
     }

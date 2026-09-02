@@ -47,7 +47,6 @@ pub(super) fn seed_cover_terrain(
                 entry.height_band,
                 entry.armor_protection,
                 entry.armor_hardness,
-                resolved.graphic,
             ))
             .id();
         if *resolved.blocks_path {

@@ -24,4 +24,4 @@ pub use seeds::{empty_slab_ledger, fight_rng, injury_rng, reaction_rng, severity
 pub use situation::{
     SituationBuilder, emplacement_at, fixtures, test_gang_registry, test_pieces, wall_at,
 };
-pub use terrain::test_terrain_registry;
+pub use terrain::{UNRESOLVABLE_SPRITE, test_terrain_registry};

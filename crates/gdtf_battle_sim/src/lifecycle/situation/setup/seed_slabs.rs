@@ -72,7 +72,6 @@ pub(super) fn seed_slab_terrain(
                 resolved.max_hp,
                 resolved.armor_protection,
                 resolved.armor_hardness,
-                resolved.graphic.clone(),
             ))
             .id();
         if let Some(footfall) = resolved.footfall.clone() {

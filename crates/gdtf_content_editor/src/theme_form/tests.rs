@@ -3,12 +3,9 @@ use gdtf_battle_sim::{
     cover::{CoverHp, HeightBand},
     level::{ThemeUuid, UuidThemeDef},
     slab::SlabHp,
-    terrain::{
-        def::{
-            LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid, TerrainViews,
-        },
-        piece::TerrainGraphicKey,
+    terrain::def::{
+        LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+        TerrainSimKind, TerrainUuid, TerrainViews,
     },
 };
 
@@ -35,10 +32,7 @@ fn slab_def(key: TerrainUuid, name: &str) -> TerrainDef {
             armor_protection: ArmorProtection::new(6),
             armor_hardness:   ArmorHardness::new(3),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("slab".to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -59,9 +53,7 @@ fn wall_def(key: TerrainUuid, name: &str) -> TerrainDef {
             armor_hardness:   ArmorHardness::new(5),
             height_band:      HeightBand::High,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: TerrainGraphicKey::new("wall".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -82,9 +74,7 @@ fn cover_def(key: TerrainUuid, name: &str) -> TerrainDef {
             armor_hardness:   ArmorHardness::new(2),
             height_band:      HeightBand::Low,
         },
-        presenter_kind: TerrainPresenterKind::Cover {
-            graphic_name: TerrainGraphicKey::new("cover".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Cover,
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),

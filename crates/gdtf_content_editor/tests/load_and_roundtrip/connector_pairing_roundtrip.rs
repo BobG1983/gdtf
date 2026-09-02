@@ -13,7 +13,6 @@ use gdtf_battle_sim::{
             TerrainSimKind, TerrainTag, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
-        piece::TerrainGraphicKey,
     },
 };
 use gdtf_content_editor::{
@@ -36,7 +35,7 @@ fn size() -> GridSize {
         .unwrap_or_else(|_| GridSize::default())
 }
 
-fn stair_def(key: TerrainUuid, label: &str, graphic: &str) -> TerrainDef {
+fn stair_def(key: TerrainUuid, label: &str) -> TerrainDef {
     TerrainDef {
         key,
         display_name: TerrainDisplayName::new(label.to_owned()),
@@ -45,10 +44,7 @@ fn stair_def(key: TerrainUuid, label: &str, graphic: &str) -> TerrainDef {
             armor_protection: ArmorProtection::new(6),
             armor_hardness:   ArmorHardness::new(3),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags: vec![TerrainTag::Stair],
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -60,7 +56,7 @@ fn stair_def(key: TerrainUuid, label: &str, graphic: &str) -> TerrainDef {
 }
 
 fn registry() -> TerrainDefRegistry {
-    TerrainDefRegistry::new([(STAIR, stair_def(STAIR, "Deck Stair", "stair_ns_up"))])
+    TerrainDefRegistry::new([(STAIR, stair_def(STAIR, "Deck Stair"))])
 }
 
 fn at(cell: Cell, level: u8) -> CellLevel {

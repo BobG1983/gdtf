@@ -52,15 +52,6 @@ fn projected_views(draft: &TerrainDraft) -> TerrainViews {
     )
 }
 
-// The def's own graphic key is the row the draft holds for the first view it owes.
-fn projected_graphic_name(draft: &TerrainDraft, views: &TerrainViews) -> TerrainGraphicKey {
-    owed_views_for(draft.kind().piece_kind(), draft.tags())
-        .first()
-        .and_then(|view| views.sprite(*view))
-        .cloned()
-        .unwrap_or_else(|| TerrainGraphicKey::new(String::new()))
-}
-
 /// Build a terrain def from a draft and uuid.
 ///
 /// # Errors
@@ -71,7 +62,6 @@ pub fn draft_to_terrain_def(
     uuid: TerrainUuid,
 ) -> Result<TerrainDef, SaveTerrainError> {
     let views = projected_views(draft);
-    let graphic_name = projected_graphic_name(draft, &views);
     let (sim_kind, presenter_kind) = match draft.kind() {
         TerrainKindChoice::Wall => (
             TerrainSimKind::Wall {
@@ -80,7 +70,7 @@ pub fn draft_to_terrain_def(
                 armor_hardness:   draft.armor_hardness(),
                 height_band:      draft.height_band(),
             },
-            TerrainPresenterKind::Wall { graphic_name },
+            TerrainPresenterKind::Wall,
         ),
         TerrainKindChoice::Cover => (
             TerrainSimKind::Cover {
@@ -89,7 +79,7 @@ pub fn draft_to_terrain_def(
                 armor_hardness:   draft.armor_hardness(),
                 height_band:      draft.height_band(),
             },
-            TerrainPresenterKind::Cover { graphic_name },
+            TerrainPresenterKind::Cover,
         ),
         TerrainKindChoice::Slab => (
             TerrainSimKind::Slab {
@@ -98,7 +88,6 @@ pub fn draft_to_terrain_def(
                 armor_hardness:   draft.armor_hardness(),
             },
             TerrainPresenterKind::Slab {
-                graphic_name,
                 footfall: draft.footfall().footfall(),
             },
         ),
@@ -115,7 +104,7 @@ pub fn draft_to_terrain_def(
                     mounted_weapon,
                     entry_sides: draft.entry_sides().to_vec(),
                 },
-                TerrainPresenterKind::Emplacement { graphic_name },
+                TerrainPresenterKind::Emplacement,
             )
         }
     };

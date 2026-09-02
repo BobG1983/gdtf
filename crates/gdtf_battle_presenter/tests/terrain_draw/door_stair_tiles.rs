@@ -3,12 +3,19 @@ use gdtf_battle_sim::{
     battle::BattleReady,
     cover::CoverLedger,
     occupancy::{TerrainKind, TerrainPlacement},
+    openable::OpenState,
     prelude::{BattleInProgress, Cell, CellLevel, Level},
-    surface::{SlabState, SurfaceGrid},
+    surface::SurfaceGrid,
+    terrain::facing::TerrainFacing,
+    test_support::test_pieces,
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use super::harness::*;
+
+// The `Open(North)` and `Open(East)` rows `test_door()` authors.
+const DOOR_OPEN_NORTH: &str = "door_ns";
+const DOOR_OPEN_EAST: &str = "door_ew";
 
 #[test]
 fn door_and_stair_orientation_tiles_resolve_to_distinct_sprites() {
@@ -18,10 +25,6 @@ fn door_and_stair_orientation_tiles_resolve_to_distinct_sprites() {
     let l0 = Level::new(0);
     let door_ns = CellLevel::new(Cell::new(3, 3), l0);
     let door_ew = CellLevel::new(Cell::new(4, 3), l0);
-    let stair_ns_up = CellLevel::new(Cell::new(5, 3), l0);
-    let stair_ns_down = CellLevel::new(Cell::new(6, 3), l0);
-    let stair_ew_up = CellLevel::new(Cell::new(7, 3), l0);
-    let stair_ew_down = CellLevel::new(Cell::new(8, 3), l0);
 
     insert_occupancy(
         &mut app,
@@ -31,20 +34,16 @@ fn door_and_stair_orientation_tiles_resolve_to_distinct_sprites() {
         ],
     );
     app.world_mut().insert_resource(CoverLedger::new());
-    let mut surface = SurfaceGrid::new();
-    surface.set_slab(stair_ns_up, SlabState::Present);
-    surface.set_slab(stair_ns_down, SlabState::Present);
-    surface.set_slab(stair_ew_up, SlabState::Present);
-    surface.set_slab(stair_ew_down, SlabState::Present);
-    app.world_mut().insert_resource(surface);
+    app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(BattleInProgress);
 
-    spawn_terrain_entity(&mut app, door_ns, "door_ns", None);
-    spawn_terrain_entity(&mut app, door_ew, "door_ew", None);
-    spawn_terrain_entity(&mut app, stair_ns_up, "stair_ns_up", None);
-    spawn_terrain_entity(&mut app, stair_ns_down, "stair_ns_down", None);
-    spawn_terrain_entity(&mut app, stair_ew_up, "stair_ew_up", None);
-    spawn_terrain_entity(&mut app, stair_ew_down, "stair_ew_down", None);
+    for (at, facing) in [
+        (door_ns, TerrainFacing::North),
+        (door_ew, TerrainFacing::East),
+    ] {
+        let door = spawn_terrain_entity(&mut app, at, test_pieces::DOOR, facing, None);
+        app.world_mut().entity_mut(door).insert(OpenState::Open);
+    }
 
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()
@@ -58,35 +57,32 @@ fn door_and_stair_orientation_tiles_resolve_to_distinct_sprites() {
     );
     let Some(defs) = defs else { return };
 
+    let open_north = def_rect(&defs, DOOR_OPEN_NORTH);
+    let open_east = def_rect(&defs, DOOR_OPEN_EAST);
+    assert!(
+        open_north.is_some() && open_east.is_some(),
+        "`{DOOR_OPEN_NORTH}` and `{DOOR_OPEN_EAST}` must both resolve to a sheet rect, or the \
+         comparisons below pass on two missing-tile markers — got {open_north:?} and \
+         {open_east:?}",
+    );
+    assert_ne!(
+        open_north, open_east,
+        "the two orientation tiles must draw different rects, or a cell turned east cannot be \
+         told from one turned north",
+    );
+
     assert_eq!(
         sprite_rect_at(&mut app, door_ns),
-        def_rect(&defs, "door_ns"),
-        "the NS-door cell must draw the `door_ns` def's sheet rect",
+        open_north,
+        "the north-facing open door must draw its def's `Open(North)` view, the `door_ns` \
+         sheet rect",
     );
     assert_eq!(
         sprite_rect_at(&mut app, door_ew),
-        def_rect(&defs, "door_ew"),
-        "the EW-door cell must draw the `door_ew` def's sheet rect",
-    );
-    assert_eq!(
-        sprite_rect_at(&mut app, stair_ns_up),
-        def_rect(&defs, "stair_ns_up"),
-        "the NS-up-stair cell must draw the `stair_ns_up` def's sheet rect",
-    );
-    assert_eq!(
-        sprite_rect_at(&mut app, stair_ns_down),
-        def_rect(&defs, "stair_ns_down"),
-        "the NS-down-stair cell must draw the `stair_ns_down` def's sheet rect",
-    );
-    assert_eq!(
-        sprite_rect_at(&mut app, stair_ew_up),
-        def_rect(&defs, "stair_ew_up"),
-        "the EW-up-stair cell must draw the `stair_ew_up` def's sheet rect",
-    );
-    assert_eq!(
-        sprite_rect_at(&mut app, stair_ew_down),
-        def_rect(&defs, "stair_ew_down"),
-        "the EW-down-stair cell must draw the `stair_ew_down` def's sheet rect",
+        open_east,
+        "the east-facing open door must draw its def's `Open(East)` view, the `door_ew` sheet \
+         rect — both doors are open, so a resolver that drops the facing stamps one view on \
+         both cells",
     );
 
     assert_orientation_rects_all_distinct(&defs);

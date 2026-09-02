@@ -11,7 +11,6 @@ use gdtf_battle_sim::{
             TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
-        piece::TerrainGraphicKey,
     },
 };
 
@@ -48,9 +47,7 @@ fn ladder_def() -> TerrainDef {
             armor_hardness:   ArmorHardness::new(1),
             height_band:      HeightBand::Low,
         },
-        presenter_kind: TerrainPresenterKind::Cover {
-            graphic_name: TerrainGraphicKey::new("ladder".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Cover,
         tags:           Vec::new(),
         views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),
@@ -69,10 +66,7 @@ fn slab_def() -> TerrainDef {
             armor_protection: ArmorProtection::new(6),
             armor_hardness:   ArmorHardness::new(3),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("slab".to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags:           Vec::new(),
         views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),

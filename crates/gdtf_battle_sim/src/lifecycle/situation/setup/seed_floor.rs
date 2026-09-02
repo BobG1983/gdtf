@@ -12,7 +12,6 @@ use crate::{
         def::{TerrainDefRegistry, TerrainUuid},
         entity::TerrainCell,
         facing::TerrainFacing,
-        piece::TerrainGraphicKey,
     },
 };
 
@@ -43,18 +42,29 @@ fn axis_bound(extent: GridExtent) -> CellUnit {
     CellUnit::new(i32::try_from(*extent).unwrap_or(i32::MAX))
 }
 
-// The graphic a floor uuid draws, resolved once per uuid so a refused def logs once.
-fn graphic_for<'a>(
-    seen: &'a mut HashMap<TerrainUuid, Option<TerrainGraphicKey>>,
+// Whether a floor uuid stands a piece up: the registry holds it and it is a Slab.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct FloorStands(bool);
+
+impl FloorStands {
+    #[must_use]
+    const fn new(stands: bool) -> Self {
+        Self(stands)
+    }
+}
+
+// Whether a floor uuid resolves, answered once per uuid so a refused def logs once.
+fn floor_stands(
+    seen: &mut HashMap<TerrainUuid, FloorStands>,
     registry: &TerrainDefRegistry,
     piece: TerrainUuid,
-) -> Option<&'a TerrainGraphicKey> {
-    seen.entry(piece)
-        .or_insert_with(|| {
-            let def = registry.def(&piece)?;
-            resolve_slab_def(&piece, def).map(|resolved| resolved.graphic)
-        })
-        .as_ref()
+) -> FloorStands {
+    *seen.entry(piece).or_insert_with(|| {
+        let stands = registry
+            .def(&piece)
+            .is_some_and(|def| resolve_slab_def(&piece, def).is_some());
+        FloorStands::new(stands)
+    })
 }
 
 /// Spawn a floor piece on every storey-0 cell of the drawn extent that holds no
@@ -68,7 +78,7 @@ pub(super) fn seed_floor_terrain(
         return;
     };
     let taken: HashSet<CellLevel> = situation.authored_cells().collect();
-    let mut seen: HashMap<TerrainUuid, Option<TerrainGraphicKey>> = HashMap::new();
+    let mut seen: HashMap<TerrainUuid, FloorStands> = HashMap::new();
     let width = axis_bound(GridExtent::new(GRID_WIDTH));
     let height = axis_bound(GridExtent::new(GRID_HEIGHT));
     for y in 0..*height {
@@ -78,10 +88,10 @@ pub(super) fn seed_floor_terrain(
                 continue;
             }
             let (piece, facing) = floor_for(situation, at);
-            let Some(graphic) = graphic_for(&mut seen, registry, piece).cloned() else {
+            if !*floor_stands(&mut seen, registry, piece) {
                 continue;
-            };
-            commands.spawn((TerrainCell::new(at), piece, facing, graphic));
+            }
+            commands.spawn((TerrainCell::new(at), piece, facing));
         }
     }
 }

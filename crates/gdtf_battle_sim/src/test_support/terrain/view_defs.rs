@@ -3,7 +3,7 @@
 
 use super::{
     super::situation::test_pieces,
-    defs::{display, graphic, view_row},
+    defs::{display, one_key_views, view_row},
 };
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -14,9 +14,14 @@ use crate::{
             LeavesBehind, TerrainDef, TerrainPresenterKind, TerrainSimKind, TerrainTag,
             TerrainView, TerrainViewArt, TerrainViews,
         },
+        entity::TerrainPieceKind,
         facing::{TerrainCorner, TerrainFacing},
     },
 };
+
+/// The sprite key the test registry's unresolvable slab def names, which no shipped
+/// sprite def holds.
+pub const UNRESOLVABLE_SPRITE: &str = "no_such_sprite_fixture";
 
 // The sprite a facing that no assertion reads names, so every owed row is filled.
 const fn filler(facing: TerrainFacing) -> &'static str {
@@ -100,9 +105,7 @@ pub(super) fn test_door() -> TerrainDef {
             armor_hardness:   ArmorHardness::new(1),
             height_band:      HeightBand::High,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: graphic("door"),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         tags:           vec![TerrainTag::Openable],
         views:          TerrainViews::new(door_views()),
         on_death:       Vec::new(),
@@ -124,9 +127,7 @@ pub(super) fn test_facing_wall() -> TerrainDef {
             armor_hardness:   ArmorHardness::new(4),
             height_band:      HeightBand::High,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: graphic("wall"),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         tags:           Vec::new(),
         views:          TerrainViews::new(facing_wall_views()),
         on_death:       Vec::new(),
@@ -147,12 +148,76 @@ pub(super) fn test_stair() -> TerrainDef {
             armor_protection: ArmorProtection::new(4),
             armor_hardness:   ArmorHardness::new(2),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: graphic("stair_ns_up"),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags:           vec![TerrainTag::Stair],
         views:          TerrainViews::new(stair_views()),
+        on_death:       Vec::new(),
+        blocks_pathing: None,
+        blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
+    }
+}
+
+/// A `Cover`-kind def whose four facing rows all name the `rubble` sprite, so two Cover
+/// defs at two cells can be told apart by the sprite each draws.
+#[must_use]
+pub(super) fn test_rubble_cover() -> TerrainDef {
+    TerrainDef {
+        key:            test_pieces::RUBBLE_COVER,
+        display_name:   display("Test Rubble Cover"),
+        sim_kind:       TerrainSimKind::Cover {
+            hp:               CoverHp::new(30),
+            armor_protection: ArmorProtection::new(2),
+            armor_hardness:   ArmorHardness::new(1),
+            height_band:      HeightBand::Low,
+        },
+        presenter_kind: TerrainPresenterKind::Cover,
+        tags:           Vec::new(),
+        views:          one_key_views(TerrainPieceKind::Cover, &[], "rubble"),
+        on_death:       Vec::new(),
+        blocks_pathing: None,
+        blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
+    }
+}
+
+/// A plain `Slab`-kind def drawn with the alternate floor panel, the successor a
+/// destruction case stands up where a smashed piece was.
+#[must_use]
+pub(super) fn test_successor_floor() -> TerrainDef {
+    TerrainDef {
+        key:            test_pieces::SUCCESSOR_FLOOR,
+        display_name:   display("Test Successor Floor"),
+        sim_kind:       TerrainSimKind::Slab {
+            hp:               SlabHp::new(60),
+            armor_protection: ArmorProtection::new(1),
+            armor_hardness:   ArmorHardness::new(0),
+        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
+        tags:           Vec::new(),
+        views:          one_key_views(TerrainPieceKind::Slab, &[], "floor_alt_panel"),
+        on_death:       Vec::new(),
+        blocks_pathing: None,
+        blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
+    }
+}
+
+/// A plain `Slab`-kind def whose one view names [`UNRESOLVABLE_SPRITE`], so the draw falls
+/// back to the missing-sprite marker and warns.
+#[must_use]
+pub(super) fn test_unresolvable() -> TerrainDef {
+    TerrainDef {
+        key:            test_pieces::UNRESOLVABLE,
+        display_name:   display("Test Unresolvable Slab"),
+        sim_kind:       TerrainSimKind::Slab {
+            hp:               SlabHp::new(60),
+            armor_protection: ArmorProtection::new(1),
+            armor_hardness:   ArmorHardness::new(0),
+        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
+        tags:           Vec::new(),
+        views:          one_key_views(TerrainPieceKind::Slab, &[], UNRESOLVABLE_SPRITE),
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,

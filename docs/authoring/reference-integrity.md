@@ -3,10 +3,9 @@
 How GDTF validates the authored content graph, what a finding looks like, and
 what happens to a malformed file or a dangling key ( Q3 ruling
 2026-07-02). This is the authoring-facing contract. The HOST-AGNOSTIC per-edge
-checks (gang equipment, weapon attachments, theme/emplacement terrain,
-injury weighting, terrain `graphic_name`, a terrain def's own view coverage, its
-`leaves_behind`, and every `views[].sprite` key it names, shared by game and
-editor) live at
+checks (gang equipment, weapon attachments, theme/emplacement terrain, injury
+weighting, a terrain def's own view coverage, its `leaves_behind`, and every
+`views[].sprite` key it names, shared by game and editor) live at
 `crates/gdtf_content_families/src/validate/`; the game-bespoke edges
 (situation, prefabs) and the game's registration at
 `crates/gdtf_app/src/states/load/systems/validate/mod.rs`; the editor's
@@ -30,11 +29,9 @@ stay in place. Mistakes become visible at `Load`, not at battle-request time.
 The **content editor runs the same pass** over the edges it loads —
 theme → terrain UUIDs, emplacement → mounted-weapon keys, the gang
 equipment keys (weapon / armor / melee incl. the implicit `fists` default),
-the injury-weighting keys, the terrain
-`graphic_name` → sprite-def keys, each terrain def's own view coverage, its
-`leaves_behind` → terrain-def or sprite-def key, and every
-`views[].sprite` → sprite-def key — and RE-ARMS it on every
-hot-reload of a watched registry: the
+the injury-weighting keys, each terrain def's own view coverage, its
+`leaves_behind` → terrain-def or sprite-def key, and every `views[].sprite` →
+sprite-def key — and RE-ARMS it on every hot-reload of a watched registry: the
 report is reset, re-checked against the current content, and re-published.
 The watch set spans every registry the registered checks read, so an edit to
 EITHER side of an edge — the gang file OR the weapons/armor/melee folder it
@@ -58,7 +55,6 @@ authoring time (at the save/edit), not on the next game launch.
 | situation `fields[].field` | field key | `assets/content/fields/` stems | file stem |
 | theme `default_floor` + `terrain` palette | terrain UUID | terrain defs | UUID |
 | terrain def `Emplacement.mounted_weapon` | weapon key | ranged weapon stems | file stem |
-| terrain def `presenter_kind.graphic_name` | sprite-def name | `assets/content/sprites/` stems | file stem |
 | terrain def `views` | the views its kind and tags owe | the def's own `views[].view` rows | — |
 | terrain def `leaves_behind` | terrain UUID or sprite-def name | terrain defs, or `assets/content/sprites/` stems | UUID / file stem |
 | terrain def `views[].sprite` | sprite-def name | `assets/content/sprites/` stems | file stem |

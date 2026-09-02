@@ -11,9 +11,10 @@ use gdtf_battle_sim::{
     def::TerrainUuid,
     entity::{TerrainCell, TerrainPieceKind},
     occupancy::{OccupancyInput, TerrainPlacement},
-    piece::{FootfallSound, TerrainGraphicKey},
+    piece::{FootfallSound, LeftoverSprite, TerrainGraphicKey},
     prelude::{CellLevel, OccupancyGrid},
     terrain::facing::TerrainFacing,
+    test_support::test_pieces,
 };
 
 pub(crate) fn insert_occupancy(app: &mut App, terrain: Vec<TerrainPlacement>) {
@@ -38,36 +39,31 @@ pub(crate) const fn low_cover_entry() -> CoverEntry {
     )
 }
 
+/// Spawn a piece the view resolver can read: its cell, its def uuid, the way it is turned,
+/// and the surface it sounds like underfoot.
 pub(crate) fn spawn_terrain_entity(
-    app: &mut App,
-    key: CellLevel,
-    graphic: &str,
-    footfall: Option<&str>,
-) {
-    let mut entity = app.world_mut().spawn((
-        TerrainCell::new(key),
-        TerrainGraphicKey::new(graphic.to_owned()),
-    ));
-    if let Some(footfall) = footfall {
-        entity.insert(FootfallSound::new(footfall.to_owned()));
-    }
-}
-
-/// Spawn a piece the view resolver can read: its cell, its def uuid, its facing and the
-/// graphic key the static draw stamps before any view is resolved.
-pub(crate) fn spawn_piece_entity(
     app: &mut App,
     key: CellLevel,
     piece: TerrainUuid,
     facing: TerrainFacing,
-    graphic: &str,
+    footfall: Option<&str>,
 ) -> Entity {
+    let mut entity = app
+        .world_mut()
+        .spawn((TerrainCell::new(key), piece, facing));
+    if let Some(footfall) = footfall {
+        entity.insert(FootfallSound::new(footfall.to_owned()));
+    }
+    entity.id()
+}
+
+/// Stand the sprite a destroyed def leaves behind in a cell, the way the sim's successor
+/// does: a cell and a sprite key, and no piece identity at all.
+pub(crate) fn spawn_leftover_sprite(app: &mut App, key: CellLevel, sprite: &str) -> Entity {
     app.world_mut()
         .spawn((
             TerrainCell::new(key),
-            piece,
-            facing,
-            TerrainGraphicKey::new(graphic.to_owned()),
+            LeftoverSprite::new(TerrainGraphicKey::new(sprite.to_owned())),
         ))
         .id()
 }
@@ -111,7 +107,7 @@ pub(crate) fn draw_one_wall(app: &mut App, key: CellLevel) {
         .insert_resource(gdtf_battle_sim::surface::SurfaceGrid::new());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::prelude::BattleInProgress);
-    spawn_terrain_entity(app, key, "wall", None);
+    spawn_terrain_entity(app, key, test_pieces::WALL, TerrainFacing::North, None);
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()
         .write(BattleReady);

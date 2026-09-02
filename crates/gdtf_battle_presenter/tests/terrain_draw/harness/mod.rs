@@ -21,5 +21,5 @@ pub(crate) use probes::{
 pub(crate) use setup::{drive_setup, spawn_test_ganger};
 pub(crate) use world::{
     CENTER_WALL_DEF, despawn_terrain_entity, draw_one_wall, insert_occupancy, low_cover_entry,
-    spawn_piece_entity, spawn_terrain_entity,
+    spawn_leftover_sprite, spawn_terrain_entity,
 };

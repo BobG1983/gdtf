@@ -9,9 +9,7 @@
         armor_hardness:   0,     // punch ignored
         height_band:      Low,
     ),
-    presenter_kind: Cover(
-        graphic_name: "rubble",
-    ),
+    presenter_kind: Cover,
     views: [
         (view: Facing(North), sprite: "rubble"),
         (view: Facing(East), sprite: "rubble"),

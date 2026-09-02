@@ -29,7 +29,8 @@ pub(super) fn register_terrain_draw(app: &mut App) {
                     .and_then(resource_exists::<AssetServer>)
                     .and_then(resource_exists::<MissingTileTexture>)
                     .and_then(resource_exists::<OccupancyGrid>)
-                    .and_then(resource_exists::<SurfaceGrid>),
+                    .and_then(resource_exists::<SurfaceGrid>)
+                    .and_then(resource_exists::<TerrainDefRegistry>),
             ),
     );
 }
@@ -42,7 +43,8 @@ pub(super) fn register_destruction_swaps(app: &mut App) {
                 .and_then(sprite_resolution_ready)
                 .and_then(resource_exists::<Messages<Played<TerrainPieceDestroyed>>>)
                 .and_then(resource_exists::<OccupancyGrid>)
-                .and_then(resource_exists::<SurfaceGrid>),
+                .and_then(resource_exists::<SurfaceGrid>)
+                .and_then(resource_exists::<TerrainDefRegistry>),
         ),
     )
     .add_systems(

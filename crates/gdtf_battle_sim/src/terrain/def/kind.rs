@@ -7,11 +7,7 @@ use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
-    terrain::{
-        entity::TerrainPieceKind,
-        facing::TerrainFacing,
-        piece::{FootfallSound, TerrainGraphicKey},
-    },
+    terrain::{entity::TerrainPieceKind, facing::TerrainFacing, piece::FootfallSound},
     weapon::WeaponName,
 };
 
@@ -112,28 +108,17 @@ pub fn rotated_entry_sides(
 /// Presenter side of a terrain piece.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
 pub enum TerrainPresenterKind {
-    /// Wall graphic.
-    Wall {
-        /// Graphic key.
-        graphic_name: TerrainGraphicKey,
-    },
-    /// Cover graphic.
-    Cover {
-        /// Graphic key.
-        graphic_name: TerrainGraphicKey,
-    },
-    /// Slab graphic and optional footfall.
+    /// Wall piece.
+    Wall,
+    /// Cover piece.
+    Cover,
+    /// Slab piece and its optional footfall.
     Slab {
-        /// Graphic key.
-        graphic_name: TerrainGraphicKey,
         /// Optional footfall sound.
-        footfall:     Option<FootfallSound>,
+        footfall: Option<FootfallSound>,
     },
-    /// Emplacement graphic.
-    Emplacement {
-        /// Graphic key.
-        graphic_name: TerrainGraphicKey,
-    },
+    /// Emplacement piece.
+    Emplacement,
 }
 
 impl TerrainPresenterKind {
@@ -141,10 +126,10 @@ impl TerrainPresenterKind {
     #[must_use]
     pub const fn kind(&self) -> TerrainPieceKind {
         match self {
-            Self::Wall { .. } => TerrainPieceKind::Wall,
-            Self::Cover { .. } => TerrainPieceKind::Cover,
+            Self::Wall => TerrainPieceKind::Wall,
+            Self::Cover => TerrainPieceKind::Cover,
             Self::Slab { .. } => TerrainPieceKind::Slab,
-            Self::Emplacement { .. } => TerrainPieceKind::Emplacement,
+            Self::Emplacement => TerrainPieceKind::Emplacement,
         }
     }
 }

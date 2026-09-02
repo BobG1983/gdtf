@@ -12,12 +12,9 @@ use gdtf_battle_sim::{
         on_death::{ExplodeDamage, OnDeathEffect},
     },
     metric::CellLevel,
-    terrain::{
-        def::{
-            LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid, TerrainViews,
-        },
-        piece::TerrainGraphicKey,
+    terrain::def::{
+        LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+        TerrainSimKind, TerrainUuid, TerrainViews,
     },
     test_support::{TEST_WEAPON_KEY, field_turns},
     weapon::{BlastRadius, DamageType, HitType, WeaponName, WeaponRegistry, WeaponSpec},
@@ -99,9 +96,7 @@ pub(crate) fn ordered_cover_registry(on_death: Vec<OnDeathEffect>) -> TerrainDef
                 armor_hardness:   ArmorHardness::new(0),
                 height_band:      HeightBand::Low,
             },
-            presenter_kind: TerrainPresenterKind::Cover {
-                graphic_name: TerrainGraphicKey::new("cover".to_owned()),
-            },
+            presenter_kind: TerrainPresenterKind::Cover,
             views: TerrainViews::new(Vec::new()),
             tags: Vec::new(),
             on_death,

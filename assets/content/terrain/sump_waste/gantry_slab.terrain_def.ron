@@ -8,8 +8,7 @@
         armor_hardness:   2,
     ),
     presenter_kind: Slab(
-        graphic_name: "slab",
-        footfall:     None,
+        footfall: None,
     ),
     views: [(view: Single, sprite: "slab")],
     tags: [],

@@ -1,26 +1,20 @@
-use gdtf_battle_presenter::resolve_sprite;
+use gdtf_battle_presenter::{resolve_sprite, view_key_for};
 use gdtf_battle_sim::terrain::{
-    def::{TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainUuid},
-    piece::TerrainGraphicKey,
+    def::{TerrainDefRegistry, TerrainUuid},
+    facing::TerrainFacing,
 };
 use gdtf_content_families::sprites::{SpriteDef, SpriteDefRegistry};
 
-#[must_use]
-pub(crate) const fn graphic_key(def: &TerrainDef) -> &TerrainGraphicKey {
-    match &def.presenter_kind {
-        TerrainPresenterKind::Wall { graphic_name }
-        | TerrainPresenterKind::Cover { graphic_name }
-        | TerrainPresenterKind::Emplacement { graphic_name }
-        | TerrainPresenterKind::Slab { graphic_name, .. } => graphic_name,
-    }
-}
-
+/// The sprite def a terrain piece draws when it is turned `facing`, resolved through the
+/// view its own def names for that facing.
 #[must_use]
 pub(crate) fn terrain_sprite_def<'a>(
     registry: &TerrainDefRegistry,
     sprites: &'a SpriteDefRegistry,
     key: &TerrainUuid,
+    facing: TerrainFacing,
 ) -> Option<&'a SpriteDef> {
     let def = registry.def(key)?;
-    resolve_sprite(sprites, graphic_key(def))
+    let sprite = view_key_for(def, facing, None, None)?;
+    resolve_sprite(sprites, sprite)
 }

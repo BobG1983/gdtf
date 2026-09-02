@@ -8,8 +8,9 @@ use crate::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
-            TerrainTag, TerrainView, TerrainViewArt, TerrainViews,
+            TerrainTag, TerrainView, TerrainViewArt, TerrainViews, owed_views_for,
         },
+        entity::TerrainPieceKind,
         facing::TerrainFacing,
         piece::{FootfallSound, TerrainGraphicKey},
     },
@@ -31,6 +32,20 @@ pub(super) fn view_row(view: TerrainView, sprite: &str) -> TerrainViewArt {
     }
 }
 
+/// Every view this kind and these tags owe, each row naming the same sprite key.
+pub(super) fn one_key_views(
+    kind: TerrainPieceKind,
+    tags: &[TerrainTag],
+    sprite: &str,
+) -> TerrainViews {
+    TerrainViews::new(
+        owed_views_for(kind, tags)
+            .iter()
+            .map(|view| view_row(*view, sprite))
+            .collect(),
+    )
+}
+
 pub(super) fn test_wall() -> TerrainDef {
     TerrainDef {
         key:            test_pieces::WALL,
@@ -41,11 +56,9 @@ pub(super) fn test_wall() -> TerrainDef {
             armor_hardness:   ArmorHardness::new(4),
             height_band:      HeightBand::High,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: graphic("wall"),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         tags:           Vec::new(),
-        views:          TerrainViews::new(Vec::new()),
+        views:          one_key_views(TerrainPieceKind::Wall, &[], "wall"),
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
@@ -63,8 +76,7 @@ pub(super) fn test_slab() -> TerrainDef {
             armor_hardness:   ArmorHardness::new(2),
         },
         presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: graphic("slab"),
-            footfall:     Some(FootfallSound::new("test-step".to_owned())),
+            footfall: Some(FootfallSound::new("test-step".to_owned())),
         },
         tags:           Vec::new(),
         views:          TerrainViews::new(vec![view_row(TerrainView::Single, "slab")]),
@@ -85,11 +97,9 @@ pub(super) fn test_cover() -> TerrainDef {
             armor_hardness:   ArmorHardness::new(1),
             height_band:      HeightBand::Low,
         },
-        presenter_kind: TerrainPresenterKind::Cover {
-            graphic_name: graphic("cover"),
-        },
+        presenter_kind: TerrainPresenterKind::Cover,
         tags:           Vec::new(),
-        views:          TerrainViews::new(Vec::new()),
+        views:          one_key_views(TerrainPieceKind::Cover, &[], "cover"),
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
@@ -106,12 +116,9 @@ pub(super) fn test_floor() -> TerrainDef {
             armor_protection: ArmorProtection::new(1),
             armor_hardness:   ArmorHardness::new(0),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: graphic("floor"),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags:           Vec::new(),
-        views:          TerrainViews::new(Vec::new()),
+        views:          one_key_views(TerrainPieceKind::Slab, &[], "floor"),
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,
@@ -128,10 +135,7 @@ pub(super) fn test_vision_slab() -> TerrainDef {
             armor_protection: ArmorProtection::new(4),
             armor_hardness:   ArmorHardness::new(2),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: graphic("vision-slab"),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags:           vec![TerrainTag::BlocksVision],
         views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),
@@ -150,10 +154,7 @@ pub(super) fn test_path_slab() -> TerrainDef {
             armor_protection: ArmorProtection::new(4),
             armor_hardness:   ArmorHardness::new(2),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: graphic("path-slab"),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags:           vec![TerrainTag::BlocksPathfinding],
         views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),
@@ -173,9 +174,7 @@ pub(super) fn test_low_vision_cover() -> TerrainDef {
             armor_hardness:   ArmorHardness::new(1),
             height_band:      HeightBand::Low,
         },
-        presenter_kind: TerrainPresenterKind::Cover {
-            graphic_name: graphic("low-cover"),
-        },
+        presenter_kind: TerrainPresenterKind::Cover,
         tags:           Vec::new(),
         views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),
@@ -197,11 +196,9 @@ pub(super) fn test_emplacement() -> TerrainDef {
             mounted_weapon:   WeaponName::new(TEST_MOUNTED_WEAPON_KEY.to_owned()),
             entry_sides:      TerrainFacing::ALL.to_vec(),
         },
-        presenter_kind: TerrainPresenterKind::Emplacement {
-            graphic_name: graphic("emplacement"),
-        },
+        presenter_kind: TerrainPresenterKind::Emplacement,
         tags:           Vec::new(),
-        views:          TerrainViews::new(Vec::new()),
+        views:          one_key_views(TerrainPieceKind::Emplacement, &[], "emplacement"),
         on_death:       Vec::new(),
         blocks_pathing: None,
         blocks_los:     None,

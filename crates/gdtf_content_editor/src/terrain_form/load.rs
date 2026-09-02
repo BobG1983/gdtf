@@ -56,9 +56,9 @@ impl TerrainDraft {
             }
         }
         match &def.presenter_kind {
-            TerrainPresenterKind::Wall { .. }
-            | TerrainPresenterKind::Cover { .. }
-            | TerrainPresenterKind::Emplacement { .. } => {}
+            TerrainPresenterKind::Wall
+            | TerrainPresenterKind::Cover
+            | TerrainPresenterKind::Emplacement => {}
             TerrainPresenterKind::Slab { footfall, .. } => {
                 self.set_footfall(FootfallChoice::from_sound(footfall.as_ref()));
             }

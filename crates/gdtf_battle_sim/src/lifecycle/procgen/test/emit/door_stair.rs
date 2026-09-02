@@ -16,7 +16,6 @@ use crate::{
             TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
-        piece::TerrainGraphicKey,
     },
 };
 
@@ -28,7 +27,7 @@ const STAIR_EW_UP: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0470_00
 const STAIR_EW_DOWN: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0470_0000_0006));
 const DOOR_STAIR_FLOOR: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0470_0000_0007));
 
-fn door_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
+fn door_def(key: TerrainUuid) -> TerrainDef {
     TerrainDef {
         key,
         display_name: TerrainDisplayName::new("Test Door".to_owned()),
@@ -38,9 +37,7 @@ fn door_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             armor_hardness:   ArmorHardness::new(3),
             height_band:      HeightBand::High,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         tags: vec![crate::terrain::def::TerrainTag::Openable],
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -51,7 +48,7 @@ fn door_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
     }
 }
 
-fn stair_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
+fn stair_def(key: TerrainUuid) -> TerrainDef {
     TerrainDef {
         key,
         display_name: TerrainDisplayName::new("Test Stair".to_owned()),
@@ -60,10 +57,7 @@ fn stair_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             armor_protection: ArmorProtection::new(4),
             armor_hardness:   ArmorHardness::new(2),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -83,10 +77,7 @@ fn door_stair_terrain_defs() -> TerrainDefRegistry {
             armor_protection: ArmorProtection::new(1),
             armor_hardness:   ArmorHardness::new(0),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("floor".to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags:           Vec::new(),
         views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),
@@ -96,12 +87,12 @@ fn door_stair_terrain_defs() -> TerrainDefRegistry {
         leaves_behind:  LeavesBehind::Nothing,
     };
     TerrainDefRegistry::new([
-        (DOOR_NS, door_def(DOOR_NS, "door_ns")),
-        (DOOR_EW, door_def(DOOR_EW, "door_ew")),
-        (STAIR_NS_UP, stair_def(STAIR_NS_UP, "stair_ns_up")),
-        (STAIR_NS_DOWN, stair_def(STAIR_NS_DOWN, "stair_ns_down")),
-        (STAIR_EW_UP, stair_def(STAIR_EW_UP, "stair_ew_up")),
-        (STAIR_EW_DOWN, stair_def(STAIR_EW_DOWN, "stair_ew_down")),
+        (DOOR_NS, door_def(DOOR_NS)),
+        (DOOR_EW, door_def(DOOR_EW)),
+        (STAIR_NS_UP, stair_def(STAIR_NS_UP)),
+        (STAIR_NS_DOWN, stair_def(STAIR_NS_DOWN)),
+        (STAIR_EW_UP, stair_def(STAIR_EW_UP)),
+        (STAIR_EW_DOWN, stair_def(STAIR_EW_DOWN)),
         (DOOR_STAIR_FLOOR, floor),
     ])
 }

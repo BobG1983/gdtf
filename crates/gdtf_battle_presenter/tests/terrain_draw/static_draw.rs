@@ -9,6 +9,8 @@ use gdtf_battle_sim::{
     occupancy::{TerrainKind, TerrainPlacement},
     prelude::{BattleInProgress, Cell, CellLevel, Level},
     surface::{SlabState, SurfaceGrid},
+    terrain::facing::TerrainFacing,
+    test_support::test_pieces,
 };
 
 use super::harness::*;
@@ -64,9 +66,27 @@ fn battle_ready_draws_role_correct_sized_positioned_sprites() {
     app.world_mut().insert_resource(surface);
     app.world_mut().insert_resource(BattleInProgress);
 
-    spawn_terrain_entity(&mut app, wall_key, "wall", None);
-    spawn_terrain_entity(&mut app, cover_key, "cover", None);
-    spawn_terrain_entity(&mut app, slab_key, "slab", None);
+    spawn_terrain_entity(
+        &mut app,
+        wall_key,
+        test_pieces::WALL,
+        TerrainFacing::North,
+        None,
+    );
+    spawn_terrain_entity(
+        &mut app,
+        cover_key,
+        test_pieces::COVER,
+        TerrainFacing::North,
+        None,
+    );
+    spawn_terrain_entity(
+        &mut app,
+        slab_key,
+        test_pieces::SLAB,
+        TerrainFacing::North,
+        None,
+    );
 
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()

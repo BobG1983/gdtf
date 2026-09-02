@@ -9,7 +9,6 @@ use crate::{
             TerrainTag, TerrainUuid,
         },
         facing::{TerrainCorner, TerrainFacing},
-        piece::TerrainGraphicKey,
     },
 };
 
@@ -18,9 +17,7 @@ fn def(sim_kind: TerrainSimKind, tags: Vec<TerrainTag>) -> TerrainDef {
         key: TerrainUuid::generate(),
         display_name: TerrainDisplayName::new("Owed Probe".to_owned()),
         sim_kind,
-        presenter_kind: TerrainPresenterKind::Cover {
-            graphic_name: TerrainGraphicKey::new("cover".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Cover,
         views: TerrainViews::new(Vec::new()),
         tags,
         on_death: Vec::new(),

@@ -9,8 +9,7 @@
         armor_hardness:   2,     // punch ignored
     ),
     presenter_kind: Slab(
-        graphic_name: "stair_ns_up",
-        footfall:     None,
+        footfall: None,
     ),
     // The Stair tag is what marks a staircase on the def, so it owes the view from below and
     // the view from above on each of the four facings. The four art files the deleted twins

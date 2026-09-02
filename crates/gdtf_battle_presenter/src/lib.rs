@@ -74,12 +74,13 @@ pub use plugin::{
 };
 pub use render::{
     terrain::{
-        ActiveLevel, ContextDepth, DrawnStoreys, IsolateView, MissingTileTexture, PresenterSystems,
-        SpriteResolveCtx, StampedGraphic, StaticMap, StoreyTreatment, StoreyViewMode, TerrainQuads,
-        TerrainSprite, VerticalLinkSprite, ViewMode, anchor_world_offset, draw_static_battlefield,
+        ActiveLevel, ContextDepth, DrawnStoreys, IsolateView, LeftoverArt, LinkEnd,
+        MissingTileTexture, PresenterSystems, SpriteResolveCtx, StampedGraphic, StandingTerrain,
+        StaticMap, StoreyTreatment, StoreyViewMode, TerrainQuads, TerrainSprite,
+        VerticalLinkSprite, ViewMode, anchor_world_offset, draw_static_battlefield,
         draw_vertical_links, resolve_sprite, restamp_terrain_views, restamp_tiles_on_def_change,
         setup_missing_tile_texture, single_rect_layout, source_parts, source_px_size, source_urect,
-        stamp_destroyed_cell, storey_treatment,
+        stamp_destroyed_cell, storey_treatment, view_key_for,
     },
     topdown::{
         CELL_PX, GANGER_Z_BIAS, Layer, SheetAtlas, SheetRole, TileIndex, TopDownAtlases,

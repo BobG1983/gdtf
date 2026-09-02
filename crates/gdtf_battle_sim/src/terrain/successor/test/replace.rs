@@ -3,7 +3,10 @@ use crate::{
     occupancy::{OccupancyGrid, TerrainKind},
     occupancy_sync::TerrainPieceDestroyed,
     surface::{SlabState, SurfaceGrid},
-    terrain::entity::{TerrainIndex, TerrainIndexKey},
+    terrain::{
+        entity::{TerrainIndex, TerrainIndexKey},
+        piece::TerrainGraphicKey,
+    },
 };
 
 #[test]
@@ -50,6 +53,37 @@ fn a_piece_that_leaves_nothing_behind_clears_its_own_kind() {
     assert!(
         pieces_keyed(&mut app, at, PLAIN_COVER).is_empty(),
         "no entity carries both that cell and the destroyed def's key",
+    );
+}
+
+#[test]
+fn a_piece_that_leaves_a_sprite_behind_stands_that_sprite_in_its_cell() {
+    let at = key(11, 6, 0);
+    let mut app = battle_with(&[(at, SCORCHED_COVER)]);
+    assert!(
+        leftover_sprites_at(&mut app, at).is_empty(),
+        "the case needs the cell holding no leftover sprite before the smash",
+    );
+
+    app.world_mut()
+        .write_message(TerrainPieceDestroyed::new(at, COVER_KIND));
+    app.update();
+
+    assert_eq!(
+        leftover_sprites_at(&mut app, at),
+        vec![TerrainGraphicKey::new(SCORCH_SPRITE.to_owned())],
+        "the smashed cell holds one leftover sprite naming the key the def's leaves_behind \
+         names, which is what the presenter draws there",
+    );
+    assert!(
+        pieces_keyed(&mut app, at, SCORCHED_COVER).is_empty(),
+        "the destroyed piece is despawned, so the leftover sprite is what stands at the cell",
+    );
+    let grid = app.world().get_resource::<OccupancyGrid>();
+    assert_eq!(
+        grid.map(|grid| grid.terrain(&at)),
+        Some(TerrainKind::Open),
+        "a sprite with no mechanics leaves the cell open, the way Nothing does",
     );
 }
 

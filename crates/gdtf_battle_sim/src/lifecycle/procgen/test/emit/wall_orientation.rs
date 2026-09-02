@@ -16,7 +16,6 @@ use crate::{
             TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
-        piece::TerrainGraphicKey,
     },
 };
 
@@ -24,7 +23,7 @@ const WALL_NS_EW_NS: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0469_
 const WALL_NS_EW_EW: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0469_0000_0002));
 const WALL_NS_EW_FLOOR: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0469_0000_0003));
 
-fn orientation_wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
+fn orientation_wall_def(key: TerrainUuid) -> TerrainDef {
     TerrainDef {
         key,
         display_name: TerrainDisplayName::new("Test Wall".to_owned()),
@@ -34,9 +33,7 @@ fn orientation_wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             armor_hardness:   ArmorHardness::new(3),
             height_band:      HeightBand::High,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -56,10 +53,7 @@ fn orientation_terrain_defs() -> TerrainDefRegistry {
             armor_protection: ArmorProtection::new(1),
             armor_hardness:   ArmorHardness::new(0),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("floor".to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags:           Vec::new(),
         views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),
@@ -69,11 +63,8 @@ fn orientation_terrain_defs() -> TerrainDefRegistry {
         leaves_behind:  LeavesBehind::Nothing,
     };
     TerrainDefRegistry::new([
-        (WALL_NS_EW_NS, orientation_wall_def(WALL_NS_EW_NS, "wall")),
-        (
-            WALL_NS_EW_EW,
-            orientation_wall_def(WALL_NS_EW_EW, "wall_ew"),
-        ),
+        (WALL_NS_EW_NS, orientation_wall_def(WALL_NS_EW_NS)),
+        (WALL_NS_EW_EW, orientation_wall_def(WALL_NS_EW_EW)),
         (WALL_NS_EW_FLOOR, floor),
     ])
 }

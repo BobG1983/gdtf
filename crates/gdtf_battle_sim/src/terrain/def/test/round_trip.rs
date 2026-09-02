@@ -59,9 +59,7 @@ fn wall_def_round_trips() {
             armor_hardness:   ArmorHardness::new(3),
             height_band:      HeightBand::High,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: TerrainGraphicKey::new("wall".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         views:          owed_art(
             TerrainPieceKind::Wall,
             &[TerrainTag::BlocksVision, TerrainTag::BlocksPathfinding],
@@ -88,9 +86,7 @@ fn cover_def_round_trips() {
             armor_hardness:   ArmorHardness::new(1),
             height_band:      HeightBand::Low,
         },
-        presenter_kind: TerrainPresenterKind::Cover {
-            graphic_name: TerrainGraphicKey::new("cover".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Cover,
         views:          owed_art(TerrainPieceKind::Cover, &[], "cover"),
         tags:           Vec::new(),
         on_death:       Vec::new(),
@@ -113,8 +109,7 @@ fn slab_def_round_trips() {
             armor_hardness:   ArmorHardness::new(2),
         },
         presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("slab".to_owned()),
-            footfall:     Some(FootfallSound::new("footfall_metal".to_owned())),
+            footfall: Some(FootfallSound::new("footfall_metal".to_owned())),
         },
         views:          owed_art(TerrainPieceKind::Slab, &[], "slab"),
         tags:           Vec::new(),
@@ -136,10 +131,7 @@ fn slab_with_path_override(over: Option<BlocksPathingOverride>) -> TerrainDef {
             armor_protection: ArmorProtection::new(4),
             armor_hardness:   ArmorHardness::new(2),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("floor".to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         views:          owed_art(TerrainPieceKind::Slab, &[], "floor"),
         tags:           Vec::new(),
         on_death:       Vec::new(),
@@ -200,9 +192,7 @@ fn emplacement_def_round_trips() {
             mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
             entry_sides:      vec![TerrainFacing::South, TerrainFacing::West],
         },
-        presenter_kind: TerrainPresenterKind::Emplacement {
-            graphic_name: TerrainGraphicKey::new("cover".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Emplacement,
         views:          owed_art(TerrainPieceKind::Emplacement, &[], "cover"),
         tags:           Vec::new(),
         on_death:       Vec::new(),
@@ -225,9 +215,7 @@ fn a_def_with_no_leaves_behind_key_parses_as_nothing() {
             armor_hardness: 3,
             height_band: High,
         ),
-        presenter_kind: Wall(
-            graphic_name: "wall",
-        ),
+        presenter_kind: Wall,
         views: [
             (view: Edge(North), sprite: "wall"),
             (view: Edge(East), sprite: "wall"),
@@ -265,9 +253,7 @@ fn a_def_that_leaves_a_piece_behind_round_trips() {
             armor_hardness:   ArmorHardness::new(3),
             height_band:      HeightBand::High,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: TerrainGraphicKey::new("wall".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         views:          owed_art(TerrainPieceKind::Wall, &[], "wall"),
         tags:           Vec::new(),
         on_death:       Vec::new(),

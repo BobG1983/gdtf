@@ -9,9 +9,7 @@
         armor_hardness:   1,     // penetration shrugged off
         height_band:      Low,   // LOW cover; MID/HIGH round clears it
     ),
-    presenter_kind: Cover(
-        graphic_name: "cover",
-    ),
+    presenter_kind: Cover,
     // One row per view a Cover owes — its four facings.
     views: [
         (view: Facing(North), sprite: "cover"),

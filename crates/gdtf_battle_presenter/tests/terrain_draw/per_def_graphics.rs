@@ -5,6 +5,8 @@ use gdtf_battle_sim::{
     occupancy::{TerrainKind, TerrainPlacement},
     prelude::{BattleInProgress, Cell, CellLevel, Level},
     surface::{SlabState, SurfaceGrid},
+    terrain::facing::TerrainFacing,
+    test_support::test_pieces,
 };
 
 use super::harness::*;
@@ -32,8 +34,20 @@ fn per_def_graphic_distinguishes_same_kind_cells() {
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(BattleInProgress);
 
-    spawn_terrain_entity(&mut app, cover_a, "cover", None);
-    spawn_terrain_entity(&mut app, cover_b, "rubble", None);
+    spawn_terrain_entity(
+        &mut app,
+        cover_a,
+        test_pieces::COVER,
+        TerrainFacing::North,
+        None,
+    );
+    spawn_terrain_entity(
+        &mut app,
+        cover_b,
+        test_pieces::RUBBLE_COVER,
+        TerrainFacing::North,
+        None,
+    );
 
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()
@@ -63,17 +77,18 @@ fn per_def_graphic_distinguishes_same_kind_cells() {
 
     assert_eq!(
         rect_a, cover_rect,
-        "cell A (graphic_name \"cover\") must draw the `cover` def's sheet rect",
+        "cell A holds the Cover def whose views name `cover`, so it draws the `cover` def's \
+         sheet rect",
     );
     assert_eq!(
         rect_b, rubble_rect,
-        "cell B (graphic_name \"rubble\") must draw the `rubble` def's sheet rect, NOT the \
-         shared TerrainKind::Cover default",
+        "cell B holds the Cover def whose views name `rubble`, so it draws the `rubble` def's \
+         sheet rect, NOT the shared TerrainKind::Cover default",
     );
     assert_ne!(
         rect_a, rect_b,
-        "two cells of the SAME TerrainKind but DIFFERENT graphic_name must draw DIFFERENT \
-         sprites (kind-keyed-only resolution would make them identical and fail here)",
+        "two cells of the SAME TerrainKind holding DIFFERENT defs must draw DIFFERENT sprites \
+         (kind-keyed-only resolution would make them identical and fail here)",
     );
 }
 
@@ -97,8 +112,20 @@ fn ns_and_ew_wall_resolve_to_distinct_sprites() {
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(BattleInProgress);
 
-    spawn_terrain_entity(&mut app, wall_ns, "wall", None);
-    spawn_terrain_entity(&mut app, wall_ew, "wall_ew", None);
+    spawn_terrain_entity(
+        &mut app,
+        wall_ns,
+        test_pieces::FACING_WALL,
+        TerrainFacing::North,
+        None,
+    );
+    spawn_terrain_entity(
+        &mut app,
+        wall_ew,
+        test_pieces::FACING_WALL,
+        TerrainFacing::East,
+        None,
+    );
 
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()
@@ -128,17 +155,18 @@ fn ns_and_ew_wall_resolve_to_distinct_sprites() {
 
     assert_eq!(
         rect_ns, wall_rect,
-        "the NS-wall cell (graphic_name \"wall\") must draw the `wall` def's sheet rect",
+        "the north-facing wall cell must draw its def's `Edge(North)` view, the `wall` def's \
+         sheet rect",
     );
     assert_eq!(
         rect_ew, wall_ew_rect,
-        "the EW-wall cell (graphic_name \"wall_ew\") must draw the `wall_ew` def's sheet rect, \
-         NOT the shared TerrainKind::Wall default",
+        "the east-facing wall cell must draw its def's `Edge(East)` view, the `wall_ew` def's \
+         sheet rect, NOT the shared TerrainKind::Wall default",
     );
     assert_ne!(
         rect_ns, rect_ew,
-        "an NS-wall cell and an EW-wall cell (SAME TerrainKind::Wall, DIFFERENT graphic_name) \
-         must draw DIFFERENT sprites (kind-keyed-only resolution would make them identical)",
+        "one wall def turned two ways must draw DIFFERENT sprites (dropping the facing, or \
+         resolving by kind alone, would make them identical)",
     );
 }
 
@@ -159,8 +187,20 @@ fn slab_footfall_optional_is_read_without_panic() {
     app.world_mut().insert_resource(surface);
     app.world_mut().insert_resource(BattleInProgress);
 
-    spawn_terrain_entity(&mut app, slab_with, "slab", Some("step_metal"));
-    spawn_terrain_entity(&mut app, slab_without, "slab", None);
+    spawn_terrain_entity(
+        &mut app,
+        slab_with,
+        test_pieces::SLAB,
+        TerrainFacing::North,
+        Some("step_metal"),
+    );
+    spawn_terrain_entity(
+        &mut app,
+        slab_without,
+        test_pieces::SLAB,
+        TerrainFacing::North,
+        None,
+    );
 
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()

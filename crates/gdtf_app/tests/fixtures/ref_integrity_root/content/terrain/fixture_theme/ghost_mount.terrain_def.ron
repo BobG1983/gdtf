@@ -12,9 +12,7 @@
         height_band:      High,
         mounted_weapon:   "ghost_cannon",  // DANGLING weapon key — no ghost_cannon.weapon.ron
     ),
-    presenter_kind: Emplacement(
-        graphic_name: "emplacement",
-    ),
+    presenter_kind: Emplacement,
     views: [
         (view: Facing(North), sprite: "emplacement"),
         (view: Facing(East), sprite: "emplacement"),

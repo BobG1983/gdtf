@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
 
 /// Which end of a vertical link a cell sits on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) enum LinkEnd {
+pub enum LinkEnd {
     /// The link's lower cell, where you ascend from.
     Lower,
     /// The link's upper cell, where you descend from.
@@ -25,36 +25,40 @@ fn view_for(
     facing: TerrainFacing,
     open: Option<OpenState>,
     link_end: Option<LinkEnd>,
-) -> Option<TerrainView> {
+) -> TerrainView {
     if def.tags.contains(&TerrainTag::Openable) {
-        return Some(match open {
+        return match open {
             Some(OpenState::Open) => TerrainView::Open(facing),
             Some(OpenState::Closed) | None => TerrainView::Shut(facing),
-        });
-    }
-    if def.tags.contains(&TerrainTag::Stair) {
-        return match link_end? {
-            LinkEnd::Lower => Some(TerrainView::FromBelow(facing)),
-            LinkEnd::Upper => Some(TerrainView::FromAbove(facing)),
         };
     }
-    Some(match def.sim_kind {
+    if def.tags.contains(&TerrainTag::Stair) {
+        return match link_end {
+            Some(LinkEnd::Upper) => TerrainView::FromAbove(facing),
+            Some(LinkEnd::Lower) | None => TerrainView::FromBelow(facing),
+        };
+    }
+    match def.sim_kind {
         TerrainSimKind::Wall { .. } => TerrainView::Edge(facing),
         TerrainSimKind::Cover { .. } | TerrainSimKind::Emplacement { .. } => {
             TerrainView::Facing(facing)
         }
         TerrainSimKind::Slab { .. } => TerrainView::Single,
-    })
+    }
 }
 
 /// The sprite key this def names for the view its state and facing select.
-pub(super) fn view_key_for(
+///
+/// A stair resolved with no link end answers its `FromBelow` row, the tile a static
+/// draw and an editor thumbnail show.
+#[must_use]
+pub fn view_key_for(
     def: &TerrainDef,
     facing: TerrainFacing,
     open: Option<OpenState>,
     link_end: Option<LinkEnd>,
 ) -> Option<&TerrainGraphicKey> {
-    def.views.sprite(view_for(def, facing, open, link_end)?)
+    def.views.sprite(view_for(def, facing, open, link_end))
 }
 
 /// Terrain pieces read by cell, def key, facing and open state, each carrying its own

@@ -8,7 +8,7 @@ use crate::harness::{advance_to_published, editor_app_on_fixture_root, has_dangl
 const DANGLING_GRAPHIC: &str = "ghost_graphic";
 
 #[test]
-fn dangling_terrain_graphic_name_surfaces_in_the_editor_at_authoring_time() {
+fn a_dangling_terrain_view_sprite_surfaces_in_the_editor_at_authoring_time() {
     let mut app = editor_app_on_fixture_root();
     advance_to_published(&mut app);
 
@@ -25,8 +25,8 @@ fn dangling_terrain_graphic_name_surfaces_in_the_editor_at_authoring_time() {
             DANGLING_GRAPHIC,
             ReferenceKeyScheme::FileStem,
         ),
-        "the terrain def's dangling graphic_name must be reported at authoring time \
-         (the terrain→sprite-def edge); report: {:?}",
+        "the terrain def's dangling view sprite key must be reported at authoring time \
+         (the terrain view→sprite-def edge); report: {:?}",
         report.findings(),
     );
 }

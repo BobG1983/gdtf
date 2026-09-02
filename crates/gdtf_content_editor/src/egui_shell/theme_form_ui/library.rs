@@ -1,5 +1,8 @@
 use bevy_egui::egui;
-use gdtf_battle_sim::terrain::def::{TerrainDefRegistry, TerrainUuid};
+use gdtf_battle_sim::terrain::{
+    def::{TerrainDefRegistry, TerrainUuid},
+    facing::TerrainFacing,
+};
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use crate::{
@@ -49,7 +52,8 @@ fn terrain_library_row(
     label: &str,
 ) {
     ui.horizontal(|ui| {
-        let def = sprites.and_then(|sprites| terrain_sprite_def(reg, sprites, &key));
+        let def = sprites
+            .and_then(|sprites| terrain_sprite_def(reg, sprites, &key, TerrainFacing::default()));
         sprite_thumb::draw_thumb(ui, def, textures);
         let mut checked = draft.has_terrain(key);
         if ui.checkbox(&mut checked, label).changed() {

@@ -73,7 +73,7 @@ fn distinct_views(
 }
 
 fn spawn_door(app: &mut App, at: CellLevel, facing: TerrainFacing) -> Entity {
-    let door = spawn_piece_entity(app, at, test_pieces::DOOR, facing, DOOR_SHUT_NORTH);
+    let door = spawn_terrain_entity(app, at, test_pieces::DOOR, facing, None);
     app.world_mut().entity_mut(door).insert(OpenState::Closed);
     door
 }
@@ -134,9 +134,8 @@ fn a_doors_view_survives_a_band_change_redraw() {
     assert_eq!(
         sprite_rect_at(&mut app, cell),
         open,
-        "raising the active level despawns and respawns every tile with its `graphic_name` \
-         stamp and no OpenState change on that frame, so restamping only on a row's own change \
-         leaves the door on its shut view",
+        "raising the active level despawns and respawns every tile with no OpenState change on \
+         that frame, so restamping only on a row's own change leaves the door on its shut view",
     );
 }
 
@@ -164,8 +163,8 @@ fn a_doors_view_survives_a_battle_ready_redraw() {
     assert_eq!(
         sprite_rect_at(&mut app, cell),
         open,
-        "a battle-ready redraw restamps every tile with the piece's `graphic_name`, which is \
-         the door's shut key, so a restamp that ignores the respawn leaves the shut rect here",
+        "a battle-ready redraw restamps every tile from its piece, and the door's resolved view \
+         is read afresh, so a restamp that ignores the respawn leaves the shut rect here",
     );
 }
 
@@ -211,19 +210,19 @@ fn one_wall_def_at_two_facings_draws_two_sprites() {
     let north_cell = CellLevel::new(Cell::new(3, 3), Level::new(0));
     let east_cell = CellLevel::new(Cell::new(5, 3), Level::new(0));
     empty_battle(&mut app);
-    spawn_piece_entity(
+    spawn_terrain_entity(
         &mut app,
         north_cell,
         test_pieces::FACING_WALL,
         TerrainFacing::North,
-        WALL_EDGE_NORTH,
+        None,
     );
-    spawn_piece_entity(
+    spawn_terrain_entity(
         &mut app,
         east_cell,
         test_pieces::FACING_WALL,
         TerrainFacing::East,
-        WALL_EDGE_NORTH,
+        None,
     );
     battle_ready(&mut app);
 

@@ -24,7 +24,7 @@ use gdtf_battle_sim::{
     situation::{GangerSpawn, Situation},
     test_support::{
         GangerSpawnBuilder, test_armor_registry, test_gang_registry, test_melee_weapon_registry,
-        test_weapon_registry,
+        test_terrain_registry, test_weapon_registry,
     },
     tuning::CombatTuning,
     visibility::SquadVisibility,
@@ -81,6 +81,7 @@ pub(crate) fn headless_renderer_app() -> App {
     app.insert_resource(test_melee_weapon_registry());
     app.insert_resource(test_armor_registry());
     app.insert_resource(test_gang_registry());
+    app.insert_resource(test_terrain_registry());
     app.insert_resource(CombatTuning::default());
     app.set_error_handler(warn);
     app

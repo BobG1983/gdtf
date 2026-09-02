@@ -275,8 +275,8 @@ fn a_view_naming_a_sprite_no_registry_holds_is_written_anyway() -> TestResult {
             view:   ViewRow::Facing(FacingRow::East),
             sprite: "no_such_sprite".to_owned(),
         }),
-        "a view takes any sprite key, exactly as a .terrain_def.ron takes any graphic_name — a \
-         key no sprite def holds is reported at authoring time, not refused at the write",
+        "a view takes any sprite key, exactly as a .terrain_def.ron does — a key no sprite def \
+         holds is reported at authoring time, not refused at the write",
     );
     assert_eq!(
         terrain_draft(&app)?

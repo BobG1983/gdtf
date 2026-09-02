@@ -95,7 +95,9 @@ fn palette_row(
 ) -> bool {
     let response = ui
         .horizontal(|ui| {
-            let def = sprites.and_then(|sprites| terrain_sprite_def(registry, sprites, &key));
+            let def = sprites.and_then(|sprites| {
+                terrain_sprite_def(registry, sprites, &key, TerrainFacing::default())
+            });
             sprite_thumb::draw_thumb(ui, def, textures);
             ui.selectable_label(selected, name)
         })

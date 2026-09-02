@@ -14,7 +14,7 @@ use crate::{
         },
         entity::TerrainPieceKind,
         facing::TerrainFacing,
-        piece::{FootfallSound, TerrainGraphicKey},
+        piece::FootfallSound,
     },
     weapon::WeaponName,
 };
@@ -25,7 +25,6 @@ pub(crate) struct ResolvedCoverPiece {
     pub(crate) armor_protection: ArmorProtection,
     pub(crate) armor_hardness:   ArmorHardness,
     pub(crate) piece_kind:       TerrainPieceKind,
-    pub(crate) graphic:          TerrainGraphicKey,
     pub(crate) blocks_path:      PathBlocked,
     pub(crate) occludes_vision:  Option<HeightBand>,
     pub(crate) openable:         Option<HeightBand>,
@@ -37,7 +36,6 @@ pub(crate) struct ResolvedSlabPiece {
     pub(crate) max_hp:           SlabHp,
     pub(crate) armor_protection: ArmorProtection,
     pub(crate) armor_hardness:   ArmorHardness,
-    pub(crate) graphic:          TerrainGraphicKey,
     pub(crate) footfall:         Option<FootfallSound>,
     pub(crate) blocks_path:      PathBlocked,
     pub(crate) occludes_vision:  Option<HeightBand>,
@@ -99,7 +97,6 @@ pub(crate) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
         piece_kind: def.sim_kind.kind(),
         emplacement: mounted_weapon,
         entry_sides,
-        graphic: presenter_graphic(&def.presenter_kind),
         blocks_path: derives_path_blocking(def),
         occludes_vision: derives_vision_occlusion(def),
         openable: is_openable(def).then(|| closed_openable_vision_band(def)),
@@ -125,26 +122,16 @@ pub(crate) fn resolve_slab_def(key: &TerrainUuid, def: &TerrainDef) -> Option<Re
         max_hp:           *hp,
         armor_protection: *armor_protection,
         armor_hardness:   *armor_hardness,
-        graphic:          presenter_graphic(&def.presenter_kind),
         footfall:         match &def.presenter_kind {
-            TerrainPresenterKind::Slab { footfall, .. } => footfall.clone(),
-            TerrainPresenterKind::Wall { .. }
-            | TerrainPresenterKind::Cover { .. }
-            | TerrainPresenterKind::Emplacement { .. } => None,
+            TerrainPresenterKind::Slab { footfall } => footfall.clone(),
+            TerrainPresenterKind::Wall
+            | TerrainPresenterKind::Cover
+            | TerrainPresenterKind::Emplacement => None,
         },
         blocks_path:      derives_path_blocking(def),
         occludes_vision:  derives_vision_occlusion(def),
         openable:         is_openable(def).then(|| closed_openable_vision_band(def)),
     })
-}
-
-fn presenter_graphic(presenter_kind: &TerrainPresenterKind) -> TerrainGraphicKey {
-    match presenter_kind {
-        TerrainPresenterKind::Wall { graphic_name }
-        | TerrainPresenterKind::Cover { graphic_name }
-        | TerrainPresenterKind::Emplacement { graphic_name }
-        | TerrainPresenterKind::Slab { graphic_name, .. } => graphic_name.clone(),
-    }
 }
 
 pub(super) fn resolve_terrain_or_err<'a>(

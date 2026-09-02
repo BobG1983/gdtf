@@ -23,6 +23,7 @@ use crate::{
             TerrainPieceKind,
         },
         openable::{OpenState, OpenableBlocking},
+        piece::LeftoverSprite,
     },
 };
 
@@ -44,7 +45,7 @@ pub(super) fn apply(
         LeftBehind::Nothing => clear_cell(writes, opened, key, at, kind),
         LeftBehind::Sprite(graphic) => {
             clear_cell(writes, opened, key, at, kind);
-            commands.spawn((TerrainCell::new(at), graphic));
+            commands.spawn((TerrainCell::new(at), LeftoverSprite::new(graphic)));
         }
         LeftBehind::Cover(successor) => spawn_cover(commands, writes, at, *successor),
         LeftBehind::Slab(successor) => spawn_slab(commands, writes, at, *successor),
@@ -106,7 +107,6 @@ fn spawn_cover(
             entry.height_band,
             entry.armor_protection,
             entry.armor_hardness,
-            resolved.graphic,
         ))
         .id();
     if *resolved.blocks_path {
@@ -169,7 +169,6 @@ fn spawn_slab(
             resolved.max_hp,
             resolved.armor_protection,
             resolved.armor_hardness,
-            resolved.graphic,
         ))
         .id();
     if let Some(footfall) = resolved.footfall {

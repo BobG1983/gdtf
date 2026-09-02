@@ -95,11 +95,13 @@ whose floor def does not resolve. Occupied-emplacement art is gone and the
 occupant draws itself on the seat. A ladder endpoint is the one sprite record
 render code still names, taken from the link kind rather than from a def.
 
-`draw_static_battlefield` still stamps each tile with the piece's
-`graphic_name` before any view is resolved, and `stamp_destroyed_cell` reads
-the same field for a cell whose piece was just smashed. Those two reads go when
-the field does. The `on_death` list the claim names is built on terrain defs
-and weapon specs both, and `leaves_behind` is built on terrain defs.
+`draw_static_battlefield` stamps each tile with the view the piece's own def
+names for its facing and its open state, resolved through `view_key_for`, and
+`stamp_destroyed_cell` resolves a smashed cell's successor the same way. A def
+whose `leaves_behind` names a sprite stands that sprite in the cell instead, and
+both reads draw it ahead of any piece still standing there. The `on_death` list
+the claim names is built on terrain defs and weapon specs both, and
+`leaves_behind` is built on terrain defs.
 
 ## Consequence for the editor
 

@@ -6,7 +6,6 @@ use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
-    terrain::piece::TerrainGraphicKey,
     weapon::WeaponName,
 };
 
@@ -20,9 +19,7 @@ fn wall_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
             armor_hardness:   ArmorHardness::new(3),
             height_band:      band,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: TerrainGraphicKey::new("wall".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         tags,
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -43,9 +40,7 @@ fn cover_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
             armor_hardness:   ArmorHardness::new(1),
             height_band:      band,
         },
-        presenter_kind: TerrainPresenterKind::Cover {
-            graphic_name: TerrainGraphicKey::new("crate".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Cover,
         tags,
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -68,9 +63,7 @@ fn emplacement_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
             mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
             entry_sides:      Vec::new(),
         },
-        presenter_kind: TerrainPresenterKind::Emplacement {
-            graphic_name: TerrainGraphicKey::new("cover".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Emplacement,
         tags,
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -90,10 +83,7 @@ fn slab_def(tags: Vec<TerrainTag>) -> TerrainDef {
             armor_protection: ArmorProtection::new(4),
             armor_hardness:   ArmorHardness::new(2),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("floor".to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags,
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),

@@ -78,7 +78,7 @@ Every `.terrain_def.ron` deserializes into `TerrainDef`
 | `key` | `TerrainUuid` | UUID string | The stable key themes / prefabs / the registry reference. Required, unique. |
 | `display_name` | `TerrainDisplayName` | bare string | Human label for tooling / the editor. |
 | `sim_kind` | `TerrainSimKind` | struct variant | The SIM half — structural kind + combat stats (see 1c). |
-| `presenter_kind` | `TerrainPresenterKind` | struct variant | The PRESENTER half — graphic role key (+ optional slab footfall; see 1d). |
+| `presenter_kind` | `TerrainPresenterKind` | bare or struct variant | The PRESENTER half — the structural kind, plus a slab's optional footfall and nothing else (see 1d). |
 | `views` | `TerrainViews` | list of `(view: …, sprite: "…")` rows | The art this def carries, one row per view its kind and tags owe. REQUIRED — it carries no `#[serde(default)]`, so a file omitting it fails to parse. |
 | `tags` | `Vec<TerrainTag>` | list of variants | SIM-owned pathing/vision traits (see 1e). `#[serde(default)]` — omitted = `[]`. |
 | `on_death` | `Vec<OnDeathEffect>` | list of variants | What the piece fans when DESTROYED (see 1e). `#[serde(default)]` — omitted = `[]`. |
@@ -86,8 +86,10 @@ Every `.terrain_def.ron` deserializes into `TerrainDef`
 | `blocks_los` | `Option<LosBlocking>` | `Some(Full)` \| `Some(UpToHeightBand)` \| `Some(None)` | OPTIONAL line-of-sight blocking OVERRIDE (see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
 | `leaves_behind` | `LeavesBehind` | `Nothing` \| `Piece("…")` \| `Sprite("…")` | What stands in the cell once this piece is destroyed: another def by its `TerrainUuid`, a sprite with no mechanics by its registry key, or nothing. `#[serde(default)]` — omitted = `Nothing`. |
 
-Kind variants are **struct variants**, so RON uses the single-paren named-field
-form: `Slab(hp: 120, …)` — never the double-paren `Slab((…))` tuple form.
+Every `sim_kind` variant is a **struct variant**, so RON uses the single-paren
+named-field form: `Slab(hp: 120, …)` — never the double-paren `Slab((…))` tuple
+form. On the presenter half only `Slab` carries a field; the rest are bare
+variants (see 1d).
 
 ### 1c. `sim_kind:` — the structural kinds
 
@@ -133,29 +135,19 @@ intact slab regardless of the shot's band, `resolution.md` §2 — do not author
 
 `TerrainPresenterKind` (same file as `TerrainSimKind`) mirrors the sim kinds
 and carries ONLY presentation hooks; by the one-way sim→presenter dependency
-the presenter reads this half and never the sim half. Every variant carries a
-`graphic_name:` (`TerrainGraphicKey`, a bare string) — a **FOREIGN KEY by
-name into the sprite-def registry**: the key
-is the file stem of a `assets/content/sprites/<name>.spritedef.ron` member
-(see [sprite-defs.md](sprite-defs.md)), and the reference-integrity pass
-reports a `DanglingRef` finding — at the game's `Load` AND live in the editor
-— for a `graphic_name` that resolves no sprite def
-([reference-integrity.md](reference-integrity.md)). The RENDERER resolves the
-same key through the sprite-def registry to a texture + rect + anchor
-(the legacy `TileRoles` role table is retired; a key that resolves
-no def draws the loud magenta missing-sprite marker); the sim never touches
-pixels either way. It is the first stamp a drawn tile carries and the one that
-stays where no view row resolves: a piece whose def names a `views` row for its
-state and facing is restamped to that row's sprite instead (see
-[terrain-art-and-destruction.md](terrain-art-and-destruction.md)). Only `Slab`
-adds an optional footfall:
+the presenter reads this half and never the sim half. It names no art. A def's
+art is its `views:` list (the 1b schema row, and the worked example in 1g), one
+row per view the def owes, each row naming a sprite def by file stem; which
+views a def owes follows from its kind and its tags
+([terrain-art-and-destruction.md](terrain-art-and-destruction.md)). Only `Slab`
+carries a field at all, and that field is its optional footfall:
 
-| `presenter_kind:` variant | Fields |
-|---------------------------|--------|
-| `Wall(…)` | `graphic_name` |
-| `Cover(…)` | `graphic_name` |
-| `Slab(…)` | `graphic_name`, `footfall: Option<FootfallSound>` (`Some("footfall_metal")` / `None`) |
-| `Emplacement(…)` | `graphic_name` |
+| `presenter_kind:` variant | RON form | Fields |
+|---------------------------|----------|--------|
+| `Wall` | `presenter_kind: Wall` | none — write the bare variant, with no parentheses |
+| `Cover` | `presenter_kind: Cover` | none — write the bare variant, with no parentheses |
+| `Slab(…)` | `presenter_kind: Slab(footfall: Some("footfall_metal"))` | `footfall: Option<FootfallSound>` (`Some("footfall_metal")` / `None`) |
+| `Emplacement` | `presenter_kind: Emplacement` | none — write the bare variant, with no parentheses |
 
 Author the SAME structural kind on both halves (a `Slab` sim kind takes a
 `Slab` presenter kind).
@@ -225,9 +217,7 @@ Create `rusted_barrels.terrain_def.ron` under `assets/content/terrain/underhive/
         armor_hardness:   0,     // no punch resistance
         height_band:      Low,   // LOW cover; a MID/HIGH round clears it
     ),
-    presenter_kind: Cover(
-        graphic_name: "cover",   // sprite-def name -> texture + rect + anchor
-    ),
+    presenter_kind: Cover,       // bare variant — the art is the views below
     views: [                     // REQUIRED: every view a Cover owes, no default
         (view: Facing(North), sprite: "cover"),
         (view: Facing(East), sprite: "cover"),
@@ -378,8 +368,13 @@ File: `crates/gdtf_battle_sim/src/terrain/def/kind.rs`
 Add a STRUCT variant (named fields — keeps the single-paren RON form) reusing
 existing newtypes (`CoverHp`, `SlabHp`, `ArmorProtection`, `ArmorHardness`,
 `HeightBand`, …) — no bare types. Add the mirroring `TerrainPresenterKind`
-variant (graphic key only, unless the kind is walked on). The `Emplacement`
-kind is the template for a stateful kind.
+variant, which carries no fields unless the kind is walked on and needs a
+footfall. Say which views the kind owes in `owed_views_for`
+(`crates/gdtf_battle_sim/src/terrain/def/views/owed.rs`) and which of them a
+piece draws in `view_for`
+(`crates/gdtf_battle_presenter/src/render/terrain/view_resolve.rs`); both match
+the kind exhaustively, so neither compiles until you do. The `Emplacement` kind
+is the template for a stateful kind.
 
 Both payload-carrying kinds project onto the CANONICAL fieldless discriminant
 `TerrainPieceKind` (—
@@ -425,7 +420,8 @@ resolution) and by the pathfinder / shot-march systems:
 The def round-trip tests live beside the types
 (`crates/gdtf_battle_sim/src/terrain/def/test/`,
 `crates/gdtf_battle_sim/src/level/theme_def/test/`); the shipped-content
-integration test is `crates/gdtf_app/tests/migrated_terrain_content.rs`. A new
+integration test is
+`crates/gdtf_app/tests/migrated_content/migrated_terrain_content.rs`. A new
 required field breaks their inline RON — add the field or `#[serde(default)]`.
 
 ### Step 5 — Update authoring docs

@@ -5,7 +5,7 @@ use super::super::{
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
     slab::SlabHp,
-    terrain::piece::{FootfallSound, TerrainGraphicKey},
+    terrain::piece::FootfallSound,
 };
 
 #[test]
@@ -20,8 +20,7 @@ fn registry_inserts_and_looks_up_by_uuid() {
             armor_hardness:   ArmorHardness::new(2),
         },
         presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("slab".to_owned()),
-            footfall:     Some(FootfallSound::new("footfall_metal".to_owned())),
+            footfall: Some(FootfallSound::new("footfall_metal".to_owned())),
         },
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
@@ -72,10 +71,7 @@ fn registry_new_keys_by_uuid() {
             armor_protection: ArmorProtection::new(5),
             armor_hardness:   ArmorHardness::new(2),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("slab".to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),

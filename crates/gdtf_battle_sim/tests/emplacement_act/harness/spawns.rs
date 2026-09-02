@@ -17,7 +17,6 @@ use gdtf_battle_sim::{
         emplacement::EmplacementState,
         entity::TerrainCell,
         facing::TerrainFacing,
-        piece::TerrainGraphicKey,
     },
     test_support::{GangerSpawnBuilder, TEST_MOUNTED_WEAPON_KEY},
     weapon::WeaponName,
@@ -151,9 +150,7 @@ pub(crate) fn one_sided_emplacement() -> TerrainDef {
             mounted_weapon:   WeaponName::new(TEST_MOUNTED_WEAPON_KEY.to_owned()),
             entry_sides:      vec![AUTHORED_SIDE],
         },
-        presenter_kind: TerrainPresenterKind::Emplacement {
-            graphic_name: TerrainGraphicKey::new("emplacement".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Emplacement,
         views:          TerrainViews::new(Vec::new()),
         tags:           Vec::new(),
         on_death:       Vec::new(),

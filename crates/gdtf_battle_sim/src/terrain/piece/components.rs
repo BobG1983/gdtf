@@ -22,8 +22,8 @@ impl TerrainName {
     }
 }
 
-/// Key into the terrain graphic atlas.
-#[derive(Component, Deref, Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+/// Key into the terrain graphic atlas, named by an authored view row.
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct TerrainGraphicKey(String);
 
@@ -32,6 +32,19 @@ impl TerrainGraphicKey {
     #[must_use]
     pub const fn new(key: String) -> Self {
         Self(key)
+    }
+}
+
+/// The sprite a destroyed piece leaves standing in its cell, named by its def's
+/// `leaves_behind`. It carries no mechanics, only art.
+#[derive(Component, Deref, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LeftoverSprite(TerrainGraphicKey);
+
+impl LeftoverSprite {
+    /// Wrap the sprite key a destroyed piece leaves behind.
+    #[must_use]
+    pub const fn new(sprite: TerrainGraphicKey) -> Self {
+        Self(sprite)
     }
 }
 

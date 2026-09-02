@@ -9,9 +9,7 @@
         armor_hardness:   3,     // punch ignored
         height_band:      High,  // fills the cell
     ),
-    presenter_kind: Wall(
-        graphic_name: "wall",
-    ),
+    presenter_kind: Wall,
     // One row per view a Wall owes — its four straight runs and the four turns between them.
     // The east and west runs carry the east-west art the deleted EW twin used to hold.
     views: [

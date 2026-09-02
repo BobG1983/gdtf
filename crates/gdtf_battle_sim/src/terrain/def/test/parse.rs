@@ -1,5 +1,5 @@
 use super::super::{TerrainDef, TerrainPresenterKind, TerrainSimKind, TerrainTag};
-use crate::{effects::on_death::OnDeathEffect, terrain::piece::TerrainGraphicKey};
+use crate::effects::on_death::OnDeathEffect;
 
 #[test]
 fn wall_named_struct_ron_parses() {
@@ -12,9 +12,7 @@ fn wall_named_struct_ron_parses() {
             armor_hardness: 3,
             height_band: High,
         ),
-        presenter_kind: Wall(
-            graphic_name: "wall",
-        ),
+        presenter_kind: Wall,
         views: [
             (view: Edge(North), sprite: "wall"),
             (view: Edge(East), sprite: "wall"),
@@ -35,8 +33,8 @@ fn wall_named_struct_ron_parses() {
             def.sim_kind,
         );
         assert!(
-            matches!(def.presenter_kind, TerrainPresenterKind::Wall { .. }),
-            "presenter_kind must be the Wall struct variant, got {:?}",
+            matches!(def.presenter_kind, TerrainPresenterKind::Wall),
+            "presenter_kind must be the Wall unit variant, got {:?}",
             def.presenter_kind,
         );
     }
@@ -53,9 +51,7 @@ fn cover_named_struct_ron_parses() {
             armor_hardness: 1,
             height_band: Low,
         ),
-        presenter_kind: Cover(
-            graphic_name: "cover",
-        ),
+        presenter_kind: Cover,
         views: [
             (view: Facing(North), sprite: "cover"),
             (view: Facing(East), sprite: "cover"),
@@ -72,8 +68,8 @@ fn cover_named_struct_ron_parses() {
             def.sim_kind,
         );
         assert!(
-            matches!(def.presenter_kind, TerrainPresenterKind::Cover { .. }),
-            "presenter_kind must be the Cover struct variant, got {:?}",
+            matches!(def.presenter_kind, TerrainPresenterKind::Cover),
+            "presenter_kind must be the Cover unit variant, got {:?}",
             def.presenter_kind,
         );
     }
@@ -90,7 +86,6 @@ fn slab_named_struct_ron_parses() {
             armor_hardness: 2,
         ),
         presenter_kind: Slab(
-            graphic_name: "slab",
             footfall: Some("footfall_metal"),
         ),
         views: [(view: Single, sprite: "slab")],
@@ -123,9 +118,7 @@ fn emplacement_omitting_entry_sides_parses_with_none() {
             height_band: High,
             mounted_weapon: "heavy_bolter",
         ),
-        presenter_kind: Emplacement(
-            graphic_name: "emplacement",
-        ),
+        presenter_kind: Emplacement,
         views: [
             (view: Facing(North), sprite: "emplacement"),
             (view: Facing(East), sprite: "emplacement"),
@@ -156,7 +149,7 @@ fn slab_presenter_footfall_is_optional() {
         key: "01840a3e-0000-4000-8000-000000000010",
         display_name: "Deck Slab",
         sim_kind: Slab(hp: 120, armor_protection: 5, armor_hardness: 2),
-        presenter_kind: Slab(graphic_name: "slab", footfall: Some("footfall_metal")),
+        presenter_kind: Slab(footfall: Some("footfall_metal")),
         views: [(view: Single, sprite: "slab")],
     )"#;
     let with = ron::de::from_str::<TerrainDef>(with_footfall);
@@ -165,10 +158,7 @@ fn slab_presenter_footfall_is_optional() {
         assert!(
             matches!(
                 def.presenter_kind,
-                TerrainPresenterKind::Slab {
-                    footfall: Some(_),
-                    ..
-                }
+                TerrainPresenterKind::Slab { footfall: Some(_) }
             ),
             "Slab presenter_kind must carry the Some(footfall), got {:?}",
             def.presenter_kind,
@@ -179,7 +169,7 @@ fn slab_presenter_footfall_is_optional() {
         key: "01840a3e-0000-4000-8000-000000000011",
         display_name: "Deck Slab",
         sim_kind: Slab(hp: 120, armor_protection: 5, armor_hardness: 2),
-        presenter_kind: Slab(graphic_name: "slab", footfall: None),
+        presenter_kind: Slab(footfall: None),
         views: [(view: Single, sprite: "slab")],
     )"#;
     let without = ron::de::from_str::<TerrainDef>(without_footfall);
@@ -191,19 +181,12 @@ fn slab_presenter_footfall_is_optional() {
         assert!(
             matches!(
                 def.presenter_kind,
-                TerrainPresenterKind::Slab { footfall: None, .. }
+                TerrainPresenterKind::Slab { footfall: None }
             ),
             "Slab presenter_kind must carry footfall None, got {:?}",
             def.presenter_kind,
         );
     }
-
-    let _wall: TerrainPresenterKind = TerrainPresenterKind::Wall {
-        graphic_name: TerrainGraphicKey::new("wall".to_owned()),
-    };
-    let _cover: TerrainPresenterKind = TerrainPresenterKind::Cover {
-        graphic_name: TerrainGraphicKey::new("cover".to_owned()),
-    };
 }
 
 #[test]
@@ -217,9 +200,7 @@ fn a_def_authoring_two_effects_parses_them_in_order() {
             armor_hardness: 1,
             height_band: Low,
         ),
-        presenter_kind: Cover(
-            graphic_name: "cover",
-        ),
+        presenter_kind: Cover,
         views: [
             (view: Facing(North), sprite: "cover"),
             (view: Facing(East), sprite: "cover"),
@@ -262,9 +243,7 @@ fn a_def_omitting_on_death_parses_as_an_empty_list() {
             armor_hardness: 1,
             height_band: Low,
         ),
-        presenter_kind: Cover(
-            graphic_name: "cover",
-        ),
+        presenter_kind: Cover,
         views: [
             (view: Facing(North), sprite: "cover"),
             (view: Facing(East), sprite: "cover"),
@@ -312,7 +291,7 @@ fn sim_kind_and_tag_inventory_is_closed() {
             key: "01840a3e-0000-4000-8000-000000000020",
             display_name: "Deck Slab",
             sim_kind: Slab(hp: 120, armor_protection: 5, armor_hardness: 2),
-            presenter_kind: Slab(graphic_name: "slab", footfall: None),
+            presenter_kind: Slab(footfall: None),
             views: [(view: Single, sprite: "slab")],
         )"#,
     );

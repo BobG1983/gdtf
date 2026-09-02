@@ -9,6 +9,8 @@ use gdtf_battle_sim::{
     occupancy_sync::TerrainPieceDestroyed,
     prelude::{BattleInProgress, Cell, CellLevel, Level},
     surface::{SlabState, SurfaceGrid},
+    terrain::facing::TerrainFacing,
+    test_support::test_pieces,
 };
 
 use super::harness::*;
@@ -27,6 +29,22 @@ fn draw_two_slabs(app: &mut App, slab_key: CellLevel, other_slab_key: CellLevel)
     app.update();
 }
 
+// A plain slab piece, north-facing, drawing the `slab` view its own def names.
+fn spawn_slab(app: &mut App, at: CellLevel) {
+    spawn_terrain_entity(app, at, test_pieces::SLAB, TerrainFacing::North, None);
+}
+
+// The successor def a smashed slab leaves behind, drawing its own `floor_alt_panel` view.
+fn spawn_successor(app: &mut App, at: CellLevel) {
+    spawn_terrain_entity(
+        app,
+        at,
+        test_pieces::SUCCESSOR_FLOOR,
+        TerrainFacing::North,
+        None,
+    );
+}
+
 fn absent_slab(app: &mut App, key: CellLevel) {
     if let Some(mut surface) = app.world_mut().get_resource_mut::<SurfaceGrid>() {
         surface.set_slab(key, SlabState::Absent);
@@ -42,8 +60,8 @@ fn the_stamp_waits_until_the_cursor_plays_the_smash() {
     let slab_key = CellLevel::new(Cell::new(4, 5), l0);
     let other_slab_key = CellLevel::new(Cell::new(6, 7), l0);
     // A real piece at each cell: one for the smash to despawn, one the smash leaves alone.
-    spawn_terrain_entity(&mut app, slab_key, "slab", None);
-    spawn_terrain_entity(&mut app, other_slab_key, "slab", None);
+    spawn_slab(&mut app, slab_key);
+    spawn_slab(&mut app, other_slab_key);
     draw_two_slabs(&mut app, slab_key, other_slab_key);
 
     let defs = sprite_defs(&app);
@@ -78,7 +96,6 @@ fn the_stamp_waits_until_the_cursor_plays_the_smash() {
         .write(TerrainPieceDestroyed::new(slab_key, TerrainPieceKind::Slab));
     despawn_terrain_entity(&mut app, slab_key);
     absent_slab(&mut app, slab_key);
-    spawn_terrain_entity(&mut app, slab_key, "floor_alt_panel", None);
 
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
     app.update();
@@ -97,11 +114,12 @@ fn the_stamp_waits_until_the_cursor_plays_the_smash() {
         sprite_rect_at(&mut app, slab_key),
         def_rect(&defs, "slab"),
         "the cell must still draw the INTACT slab while the cursor holds short of the smash — \
-         the raw message the sim wrote at resolve time must draw nothing on its own, and \
-         neither must the successor already standing in the world — found {:?}",
+         the raw message the sim wrote at resolve time must draw nothing on its own — found \
+         {:?}",
         sprite_rect_at(&mut app, slab_key),
     );
 
+    spawn_successor(&mut app, slab_key);
     play_past(&mut app, smash, |_| {});
 
     assert_eq!(
@@ -138,7 +156,7 @@ fn the_stamp_runs_with_only_the_played_destroyed_buffer_in_the_app() {
     let l0 = Level::new(0);
     let slab_key = CellLevel::new(Cell::new(4, 5), l0);
     let other_slab_key = CellLevel::new(Cell::new(6, 7), l0);
-    spawn_terrain_entity(&mut app, slab_key, "slab", None);
+    spawn_slab(&mut app, slab_key);
     draw_two_slabs(&mut app, slab_key, other_slab_key);
 
     let defs = sprite_defs(&app);

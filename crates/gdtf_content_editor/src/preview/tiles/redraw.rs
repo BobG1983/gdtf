@@ -4,7 +4,7 @@ use gdtf_battle_sim::{
     level::GridSize,
     metric::{CellLevel, Level},
     prelude::Cell,
-    terrain::def::TerrainUuid,
+    terrain::{def::TerrainUuid, facing::TerrainFacing},
 };
 
 use super::{
@@ -115,13 +115,18 @@ fn draw_storey(
         for x in 0..i32::from(*pass.size.width()) {
             let cell = Cell::new(x, y);
             let slot = CellLevel::new(cell, storey_level);
-            let painted = pass.map.tile_at_level(slot).map(|piece| piece.tile());
+            let painted = pass.map.tile_at_level(slot);
             let tile = if storey == GROUND_STOREY {
-                painted.or(pass.default_floor)
-            } else {
                 painted
+                    .map(|piece| (piece.tile(), piece.facing()))
+                    .or_else(|| {
+                        pass.default_floor
+                            .map(|floor| (floor, TerrainFacing::default()))
+                    })
+            } else {
+                painted.map(|piece| (piece.tile(), piece.facing()))
             };
-            let Some(tile) = tile else {
+            let Some((tile, facing)) = tile else {
                 if is_active_storey {
                     spawn_overlay_sprite(
                         commands,
@@ -133,7 +138,7 @@ fn draw_storey(
                 }
                 continue;
             };
-            match terrain_sprite_def(pass.art.registry, pass.art.sprites, &tile) {
+            match terrain_sprite_def(pass.art.registry, pass.art.sprites, &tile, facing) {
                 Some(def) => {
                     spawn_tile_sprite(commands, pass.art.assets, cell, def, tint, z);
                 }

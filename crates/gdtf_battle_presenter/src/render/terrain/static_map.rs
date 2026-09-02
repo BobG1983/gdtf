@@ -1,51 +1,122 @@
-use bevy::{ecs::system::SystemParam, image::Image, platform::collections::HashMap, prelude::*};
+use bevy::{
+    ecs::{query::QueryData, system::SystemParam},
+    image::Image,
+    platform::collections::HashMap,
+    prelude::*,
+};
 use gdtf_battle_sim::{
+    def::{TerrainDefRegistry, TerrainUuid},
     entity::TerrainCell,
     occupancy::TerrainKind,
-    piece::{FootfallSound, TerrainGraphicKey},
+    openable::OpenState,
+    piece::{FootfallSound, LeftoverSprite},
     prelude::{CellLevel, OccupancyGrid},
     surface::{SlabState, SurfaceGrid},
+    terrain::facing::TerrainFacing,
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
-use super::resolve::{
-    MissingTileTexture, anchor_world_offset, resolve_sprite, single_rect_layout, source_parts,
-    source_px_size, source_urect,
+use super::{
+    resolve::{
+        MissingTileTexture, anchor_world_offset, resolve_sprite, single_rect_layout, source_parts,
+        source_px_size, source_urect,
+    },
+    view_resolve::view_key_for,
 };
 use crate::{Brightness, CELL_PX, TerrainFogMaterial};
+
+/// What the piece standing at a cell brings to a sprite lookup: its def key, the way it
+/// is turned, whether it stands open, and the surface it sounds like underfoot.
+pub(super) struct PieceFacts<'a> {
+    pub(super) piece:    TerrainUuid,
+    pub(super) facing:   TerrainFacing,
+    pub(super) open:     Option<OpenState>,
+    pub(super) footfall: Option<&'a FootfallSound>,
+}
+
+/// The columns a terrain piece carries that the static draw reads: where it stands, which
+/// def it is, how it is turned, whether it stands open, and its footfall.
+#[derive(QueryData)]
+pub struct TerrainPieceRow {
+    cell:     &'static TerrainCell,
+    piece:    &'static TerrainUuid,
+    facing:   &'static TerrainFacing,
+    open:     Option<&'static OpenState>,
+    footfall: Option<&'static FootfallSound>,
+}
+
+/// The sprite keys destroyed pieces left standing, keyed by the cell each stands in.
+pub(super) type LeftoverSprites<'a> = HashMap<CellLevel, &'a str>;
+
+/// The sprites destroyed pieces left standing in their cells, carrying no mechanics.
+#[derive(SystemParam)]
+pub struct LeftoverArt<'w, 's> {
+    left: Query<'w, 's, (&'static TerrainCell, &'static LeftoverSprite)>,
+}
+
+impl LeftoverArt<'_, '_> {
+    /// Every cell holding a leftover sprite, and the sprite key it names.
+    pub(super) fn by_cell(&self) -> LeftoverSprites<'_> {
+        self.left
+            .iter()
+            .map(|(cell, sprite)| (**cell, sprite.as_str()))
+            .collect()
+    }
+}
 
 /// A `#[derive(SystemParam)]` borrow-bundle (the system-analogue of a cohesive ctor
 #[derive(SystemParam)]
 pub struct StaticMap<'w, 's> {
     occupancy: Res<'w, OccupancyGrid>,
     surface:   Res<'w, SurfaceGrid>,
-    terrain: Query<
-        'w,
-        's,
-        (
-            &'static TerrainCell,
-            &'static TerrainGraphicKey,
-            Option<&'static FootfallSound>,
-        ),
-    >,
+    defs:      Res<'w, TerrainDefRegistry>,
+    terrain:   Query<'w, 's, TerrainPieceRow>,
+    leftovers: LeftoverArt<'w, 's>,
 }
 
 impl StaticMap<'_, '_> {
-    pub(super) fn graphic_facts(
-        &self,
-    ) -> HashMap<CellLevel, (&TerrainGraphicKey, Option<&FootfallSound>)> {
+    /// The sprite each destroyed piece left standing, keyed by cell.
+    pub(super) fn leftover_sprites(&self) -> LeftoverSprites<'_> {
+        self.leftovers.by_cell()
+    }
+
+    pub(super) fn piece_facts(&self) -> HashMap<CellLevel, PieceFacts<'_>> {
         self.terrain
             .iter()
-            .map(|(cell, graphic, footfall)| (**cell, (graphic, footfall)))
+            .map(|row| {
+                (
+                    **row.cell,
+                    PieceFacts {
+                        piece:    *row.piece,
+                        facing:   *row.facing,
+                        open:     row.open.copied(),
+                        footfall: row.footfall,
+                    },
+                )
+            })
             .collect()
+    }
+
+    /// The def registry each cell's view is resolved against.
+    pub(super) fn defs(&self) -> &TerrainDefRegistry {
+        &self.defs
     }
 }
 
-pub(super) fn graphic_name_at<'a>(
+/// The sprite key the cell at `key` draws: the sprite a destroyed piece left standing
+/// there, or the view the piece standing there resolves through its own def.
+pub(super) fn sprite_name_at<'a>(
     key: &CellLevel,
-    facts: &HashMap<CellLevel, (&'a TerrainGraphicKey, Option<&FootfallSound>)>,
+    facts: &HashMap<CellLevel, PieceFacts<'_>>,
+    leftovers: &LeftoverSprites<'a>,
+    defs: &'a TerrainDefRegistry,
 ) -> Option<&'a str> {
-    facts.get(key).map(|(graphic, _footfall)| graphic.as_str())
+    if let Some(sprite) = leftovers.get(key) {
+        return Some(sprite);
+    }
+    let at = facts.get(key)?;
+    let def = defs.def(&at.piece)?;
+    view_key_for(def, at.facing, at.open, None).map(|sprite| sprite.as_str())
 }
 
 /// A `#[derive(SystemParam)]` bundle (the [`StaticMap`] shape) so the draw + the three
@@ -116,10 +187,12 @@ impl SpriteResolveCtx<'_> {
 
 pub(super) fn storey_has_terrain(
     key: &CellLevel,
-    facts: &HashMap<CellLevel, (&TerrainGraphicKey, Option<&FootfallSound>)>,
+    facts: &HashMap<CellLevel, PieceFacts<'_>>,
+    leftovers: &LeftoverSprites<'_>,
     map: &StaticMap,
 ) -> bool {
     facts.contains_key(key)
+        || leftovers.contains_key(key)
         || matches!(map.surface.slab_state(key), SlabState::Present)
         || !matches!(map.occupancy.terrain(key), TerrainKind::Open)
 }

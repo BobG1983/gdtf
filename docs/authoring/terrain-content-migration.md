@@ -54,11 +54,12 @@ terrain:
    `deck_floor` def's UUID.
 3. **`atlas_index` is INTENTIONALLY DROPPED.** The old `ThemeTileCatalog`
    `CatalogTile.atlas_index` does not survive the migration. The presenter (at
-   migration time) resolved the atlas index via `TileRoles` keyed by the def's
-   `presenter_kind.graphic_name` (the old flat file's `graphic` `TileRoles` key),
-   NEVER a per-def atlas index. (has since retired the `TileRoles`
-   table itself — the same `graphic_name` now resolves through the sprite-def
-   registry, see [sprite-defs.md](sprite-defs.md).)
+   migration time) resolved the atlas index via `TileRoles` keyed by the one art
+   key the def's presenter half carried then (the old flat file's `graphic`
+   `TileRoles` key), NEVER a per-def atlas index. (Both the `TileRoles` table and
+   that presenter-half key have since been retired. A def's art is now its
+   `views:` rows, each naming a sprite def by file stem, see
+   [sprite-defs.md](sprite-defs.md).)
 
 ## Kind mapping (the new model)
 

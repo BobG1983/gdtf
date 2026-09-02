@@ -5,3 +5,4 @@ mod registry;
 mod view_defs;
 
 pub use registry::test_terrain_registry;
+pub use view_defs::UNRESOLVABLE_SPRITE;

@@ -7,8 +7,9 @@ use gdtf_battle_sim::{
     terrain::{
         def::{
             LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainTag, TerrainUuid, TerrainViews,
+            TerrainSimKind, TerrainTag, TerrainUuid, TerrainViewArt, TerrainViews, owed_views_for,
         },
+        entity::TerrainPieceKind,
         facing::TerrainFacing,
         piece::TerrainGraphicKey,
     },
@@ -33,7 +34,14 @@ fn size() -> GridSize {
         .unwrap_or_else(|_| GridSize::default())
 }
 
-fn slab_def(key: TerrainUuid, label: &str, graphic: &str, tags: Vec<TerrainTag>) -> TerrainDef {
+fn slab_def(key: TerrainUuid, label: &str, sprite: &str, tags: Vec<TerrainTag>) -> TerrainDef {
+    let views = owed_views_for(TerrainPieceKind::Slab, &tags)
+        .iter()
+        .map(|view| TerrainViewArt {
+            view:   *view,
+            sprite: TerrainGraphicKey::new(sprite.to_owned()),
+        })
+        .collect();
     TerrainDef {
         key,
         display_name: TerrainDisplayName::new(label.to_owned()),
@@ -42,12 +50,9 @@ fn slab_def(key: TerrainUuid, label: &str, graphic: &str, tags: Vec<TerrainTag>)
             armor_protection: ArmorProtection::new(6),
             armor_hardness:   ArmorHardness::new(3),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags,
-        views: TerrainViews::new(Vec::new()),
+        views: TerrainViews::new(views),
         on_death: Vec::new(),
 
         blocks_pathing: None,
@@ -59,7 +64,7 @@ fn slab_def(key: TerrainUuid, label: &str, graphic: &str, tags: Vec<TerrainTag>)
 const STAIR: TerrainUuid = tu(0x0d);
 const PLAIN_SLAB: TerrainUuid = tu(0x0e);
 
-// The two defs swap graphic keys against their tags, so only the tag tells them apart.
+// The two defs swap sprite keys against their tags, so only the tag tells them apart.
 fn registry() -> TerrainDefRegistry {
     TerrainDefRegistry::new([
         (
@@ -78,15 +83,15 @@ fn at(cell: Cell, level: u8) -> CellLevel {
 }
 
 #[test]
-fn is_stair_reads_the_tag_not_the_graphic_key() {
+fn is_stair_reads_the_tag_not_the_sprite_key() {
     let reg = registry();
     assert!(
         is_stair(&reg, &STAIR),
-        "the def carries TerrainTag::Stair, so it is a staircase however its graphic key reads",
+        "the def carries TerrainTag::Stair, so it is a staircase however its sprite keys read",
     );
     assert!(
         !is_stair(&reg, &PLAIN_SLAB),
-        "the def carries no stair tag, so a `stair_ns_up` graphic key must not make it one",
+        "the def carries no stair tag, so a `stair_ns_up` sprite key must not make it one",
     );
 }
 

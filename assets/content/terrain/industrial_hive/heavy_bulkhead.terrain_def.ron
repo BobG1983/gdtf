@@ -9,9 +9,7 @@
         armor_hardness:   4,     // penetration shrugged off
         height_band:      High,  // tall wall; nothing flies over within a storey
     ),
-    presenter_kind: Wall(
-        graphic_name: "wall",
-    ),
+    presenter_kind: Wall,
     // The east and west runs carry the east-west art the deleted EW twin used to hold.
     views: [
         (view: Edge(North), sprite: "wall"),

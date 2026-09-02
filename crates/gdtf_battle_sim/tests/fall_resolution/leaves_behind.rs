@@ -14,12 +14,9 @@ use gdtf_battle_sim::{
     situation::{GangerSpawn, Situation},
     slab::SlabHp,
     surface::{SlabState, SurfaceGrid},
-    terrain::{
-        def::{
-            LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
-            TerrainSimKind, TerrainUuid, TerrainViews,
-        },
-        piece::TerrainGraphicKey,
+    terrain::def::{
+        LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+        TerrainSimKind, TerrainUuid, TerrainViews,
     },
     test_support::{
         GangerSpawnBuilder, SimAppBuilder, SituationBuilder, single_mode, test_terrain_registry,
@@ -53,10 +50,7 @@ fn slab_def(key: TerrainUuid, name: &str, hp: u32, leaves_behind: LeavesBehind) 
             armor_protection: ArmorProtection::new(0),
             armor_hardness:   ArmorHardness::new(0),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("floor".to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         views: TerrainViews::new(Vec::new()),
         tags: Vec::new(),
         on_death: Vec::new(),

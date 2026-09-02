@@ -1,17 +1,25 @@
 //! Stamp each terrain tile with the view its piece's def, facing and open state select.
 
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::def::TerrainDefRegistry;
 
 use super::{
     band::{DrawnStoreys, cell_level_in_band},
     restamp::StampedGraphic,
     static_draw::TerrainSprite,
-    static_map::SpriteResolveCtx,
+    static_map::{LeftoverArt, SpriteResolveCtx},
     swaps::retarget_tile,
     view_resolve::{TerrainPieces, view_key_for},
 };
 use crate::TerrainFogMaterial;
+
+/// What stands in the cells a restamp reads: the terrain pieces with their change ticks,
+/// and the sprites destroyed pieces left behind.
+#[derive(SystemParam)]
+pub struct StandingTerrain<'w, 's> {
+    pieces:    TerrainPieces<'w, 's>,
+    leftovers: LeftoverArt<'w, 's>,
+}
 
 /// Restamp the tile under each terrain piece with the view that piece's def names.
 pub fn restamp_terrain_views(
@@ -19,7 +27,7 @@ pub fn restamp_terrain_views(
     defs: Res<TerrainDefRegistry>,
     resolve: SpriteResolveCtx,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
-    pieces: TerrainPieces,
+    standing: StandingTerrain,
     mut tiles: Query<(
         &TerrainSprite,
         &MeshMaterial2d<TerrainFogMaterial>,
@@ -30,9 +38,10 @@ pub fn restamp_terrain_views(
 ) {
     let band = storeys.band();
     let band_wide = *storeys.changed() || !respawned.is_empty();
-    for (cell, piece, facing, open) in &pieces {
+    let left_standing = standing.leftovers.by_cell();
+    for (cell, piece, facing, open) in &standing.pieces {
         let at = **cell;
-        if !cell_level_in_band(at, &band) {
+        if !cell_level_in_band(at, &band) || left_standing.contains_key(&at) {
             continue;
         }
         let row_changed =

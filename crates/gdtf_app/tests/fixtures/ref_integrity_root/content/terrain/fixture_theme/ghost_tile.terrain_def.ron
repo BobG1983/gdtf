@@ -1,9 +1,8 @@
-// fixture terrain def — a registry-PRESENT def whose presenter-half `graphic_name`
-// names a sprite def this root never defines. The root DOES ship sprite defs under
-// content/sprites/, and `ghost_graphic` is deliberately not among them, so the
-// terrain→sprite-def edge dangles ON PURPOSE (the graphic_name edge; NOT shipped content;
-// loaded only by tests/load_ref_integrity.rs). Its own views name the same dangling key.
-// Structural magnitudes are arbitrary schema-valid values.
+// fixture terrain def — a registry-PRESENT def whose four `Facing` view rows all name a
+// sprite def this root never defines. The root DOES ship sprite defs under
+// content/sprites/, and `ghost_graphic` is deliberately not among them, so the terrain
+// view→sprite-def edge dangles ON PURPOSE on every row (NOT shipped content; loaded only by
+// tests/load_ref_integrity.rs). Structural magnitudes are arbitrary schema-valid values.
 (
     key: "00000000-0000-0000-0000-0663000000a2",  // this def IS in the registry
     display_name: "Ghost Tile",
@@ -13,9 +12,8 @@
         armor_hardness:   0,
         height_band:      Low,
     ),
-    presenter_kind: Cover(
-        graphic_name: "ghost_graphic",  // DANGLING sprite-def key — no ghost_graphic.spritedef.ron
-    ),
+    presenter_kind: Cover,
+    // DANGLING sprite-def key on every row — no ghost_graphic.spritedef.ron
     views: [
         (view: Facing(North), sprite: "ghost_graphic"),
         (view: Facing(East), sprite: "ghost_graphic"),

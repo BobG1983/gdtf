@@ -7,7 +7,7 @@ fn tags_default_empty_when_omitted() {
         key: "01840a3e-0000-4000-8000-000000000030",
         display_name: "Bulkhead Wall",
         sim_kind: Wall(hp: 40, armor_protection: 6, armor_hardness: 3, height_band: High),
-        presenter_kind: Wall(graphic_name: "wall"),
+        presenter_kind: Wall,
         views: [
             (view: Edge(North), sprite: "wall"),
             (view: Edge(East), sprite: "wall"),
@@ -39,7 +39,7 @@ fn tags_round_trip_when_present() {
         key: "01840a3e-0000-4000-8000-000000000031",
         display_name: "Blast Door",
         sim_kind: Wall(hp: 80, armor_protection: 10, armor_hardness: 6, height_band: High),
-        presenter_kind: Wall(graphic_name: "door"),
+        presenter_kind: Wall,
         views: [
             (view: Shut(North), sprite: "door"),
             (view: Open(North), sprite: "door"),

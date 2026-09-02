@@ -10,9 +10,7 @@
         armor_hardness:   0,
         height_band:      Low,
     ),
-    presenter_kind: Cover(
-        graphic_name: "cover",
-    ),
+    presenter_kind: Cover,
     views: [
         (view: Facing(North), sprite: "cover"),
         (view: Facing(East), sprite: "cover"),

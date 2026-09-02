@@ -6,7 +6,7 @@ const DEF_TEMPLATE: &str = r#"(
     key: "01840a3e-0000-4000-8000-0000000000a1",
     display_name: "View Probe",
     sim_kind: Cover(hp: 20, armor_protection: 3, armor_hardness: 1, height_band: Low),
-    presenter_kind: Cover(graphic_name: "cover"),
+    presenter_kind: Cover,
 {views})"#;
 
 // The one entry the short reading below deletes and nothing else.

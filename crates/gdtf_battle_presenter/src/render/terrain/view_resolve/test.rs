@@ -35,9 +35,7 @@ fn def_with(
     TerrainDef {
         key: TerrainUuid::generate(),
         display_name: TerrainDisplayName::new("Row Fixture".to_owned()),
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: key("stamped"),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         sim_kind,
         tags,
         views: TerrainViews::new(rows),
@@ -116,7 +114,7 @@ fn an_openable_def_picks_shut_or_open_on_its_facing() {
 }
 
 #[test]
-fn a_stair_def_picks_its_end_of_the_link_and_nothing_as_a_tile() {
+fn a_stair_def_picks_its_end_of_the_link_and_from_below_as_a_tile() {
     let stair = def_with(
         slab_kind(),
         vec![TerrainTag::Stair],
@@ -139,9 +137,9 @@ fn a_stair_def_picks_its_end_of_the_link_and_nothing_as_a_tile() {
     );
     assert_eq!(
         view_key_for(&stair, TerrainFacing::North, None, None),
-        None,
-        "a Stair def resolved as a tile rather than a link endpoint answers nothing, never the \
-         `Single` row its `sim_kind: Slab` would give a kind-first read",
+        Some(&key("up_north")),
+        "a Stair def resolved as a tile rather than a link endpoint draws its FromBelow row, \
+         never the `Single` row its `sim_kind: Slab` would give a kind-first read",
     );
 }
 

@@ -17,7 +17,6 @@ use gdtf_battle_sim::{
             TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
-        piece::TerrainGraphicKey,
     },
     weapon::WeaponName,
 };
@@ -50,10 +49,7 @@ fn slab_def() -> TerrainDef {
             armor_protection: ArmorProtection::new(4),
             armor_hardness:   ArmorHardness::new(2),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("slab".to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         views:          TerrainViews::new(Vec::new()),
         tags:           Vec::new(),
         on_death:       Vec::new(),
@@ -76,9 +72,7 @@ fn emplacement_def() -> TerrainDef {
             mounted_weapon:   WeaponName::new("heavy_stubber".to_owned()),
             entry_sides:      vec![TerrainFacing::South],
         },
-        presenter_kind: TerrainPresenterKind::Emplacement {
-            graphic_name: TerrainGraphicKey::new("emplacement".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Emplacement,
         views:          TerrainViews::new(Vec::new()),
         tags:           Vec::new(),
         on_death:       Vec::new(),

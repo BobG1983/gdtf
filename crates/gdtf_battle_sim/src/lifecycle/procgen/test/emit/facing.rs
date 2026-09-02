@@ -16,7 +16,6 @@ use crate::{
             TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
-        piece::TerrainGraphicKey,
     },
 };
 
@@ -36,9 +35,7 @@ fn facing_wall_def(key: TerrainUuid) -> TerrainDef {
             armor_hardness:   ArmorHardness::new(3),
             height_band:      HeightBand::High,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: TerrainGraphicKey::new("wall".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -58,10 +55,7 @@ fn facing_terrain_defs() -> TerrainDefRegistry {
             armor_protection: ArmorProtection::new(1),
             armor_hardness:   ArmorHardness::new(0),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("floor".to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags:           Vec::new(),
         views:          TerrainViews::new(Vec::new()),
         on_death:       Vec::new(),

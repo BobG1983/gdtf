@@ -16,7 +16,7 @@ use super::{
     band::DrawnStoreys,
     quads::TerrainQuads,
     restamp::StampedGraphic,
-    static_map::{SpriteResolveCtx, StaticMap, graphic_name_at, i32_extent, storey_has_terrain},
+    static_map::{SpriteResolveCtx, StaticMap, i32_extent, sprite_name_at, storey_has_terrain},
 };
 use crate::cell_to_world;
 
@@ -48,24 +48,28 @@ pub fn draw_static_battlefield(
 
     let mesh = quads.quad();
 
-    let graphic_facts = map.graphic_facts();
+    let piece_facts = map.piece_facts();
+    let leftovers = map.leftover_sprites();
+    let defs = map.defs();
 
     for level in storeys.levels() {
         for y in 0..i32_extent(GRID_HEIGHT) {
             for x in 0..i32_extent(GRID_WIDTH) {
                 let cell = Cell::new(x, y);
                 let key = CellLevel::new(cell, level);
-                if let Some((_graphic, Some(footfall))) = graphic_facts.get(&key) {
+                if let Some(footfall) = piece_facts.get(&key).and_then(|facts| facts.footfall) {
                     let footfall_key: &str = footfall;
                     debug!(
                         "terrain footfall present at {key:?}: `{footfall_key}` (no \
                          footfall-audio system yet — default: silent)",
                     );
                 }
-                if level != Level::new(0) && !storey_has_terrain(&key, &graphic_facts, &map) {
+                if level != Level::new(0)
+                    && !storey_has_terrain(&key, &piece_facts, &leftovers, &map)
+                {
                     continue;
                 }
-                let stamp = graphic_name_at(&key, &graphic_facts)
+                let stamp = sprite_name_at(&key, &piece_facts, &leftovers, defs)
                     .map_or(StampedGraphic::Marker, StampedGraphic::from_key);
                 let (material, offset) = match stamp.named() {
                     Some(name) => resolve.resolved(name, &key),

@@ -2,9 +2,7 @@
 #![cfg(debug_assertions)]
 
 use bevy::asset::uuid::Uuid;
-use gdtf_battle_sim::terrain::def::{
-    TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainUuid,
-};
+use gdtf_battle_sim::terrain::def::{TerrainDefRegistry, TerrainUuid};
 use gdtf_content_editor::{TerrainDraft, draft_to_terrain_def};
 
 use crate::support::{advance_to_editing, editor_app};
@@ -22,17 +20,8 @@ const SURVIVORS: [(&str, &str); 6] = [
     ),
 ];
 
-fn graphic_name(def: &TerrainDef) -> &str {
-    match &def.presenter_kind {
-        TerrainPresenterKind::Wall { graphic_name }
-        | TerrainPresenterKind::Cover { graphic_name }
-        | TerrainPresenterKind::Emplacement { graphic_name }
-        | TerrainPresenterKind::Slab { graphic_name, .. } => graphic_name,
-    }
-}
-
 #[test]
-fn every_shipped_def_reprojects_the_graphic_name_it_was_authored_with() {
+fn every_shipped_def_reprojects_the_views_it_was_authored_with() {
     let mut app = editor_app();
     advance_to_editing(&mut app);
 
@@ -60,11 +49,10 @@ fn every_shipped_def_reprojects_the_graphic_name_it_was_authored_with() {
             )
         };
         assert_eq!(
-            graphic_name(&projected),
-            graphic_name(def),
+            *projected.views, *def.views,
             "opening {} ({key:?}) in the Terrain form and saving it again must write the same \
-             graphic_name it was authored with",
-            *def.display_name,
+             views it was authored with, row for row — projected {:?}, authored {:?}",
+            *def.display_name, *projected.views, *def.views,
         );
     }
 }

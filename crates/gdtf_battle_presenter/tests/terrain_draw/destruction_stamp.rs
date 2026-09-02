@@ -7,6 +7,8 @@ use gdtf_battle_sim::{
     occupancy::{TerrainKind, TerrainPlacement},
     prelude::{BattleInProgress, Cell, CellLevel, Level},
     surface::SurfaceGrid,
+    terrain::facing::TerrainFacing,
+    test_support::test_pieces,
 };
 
 use super::harness::*;
@@ -33,8 +35,20 @@ fn a_played_smash_stamps_the_cover_cell_with_its_successors_key() {
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(BattleInProgress);
 
-    spawn_terrain_entity(&mut app, wall_key, "wall", None);
-    spawn_terrain_entity(&mut app, cover_key, "cover", None);
+    spawn_terrain_entity(
+        &mut app,
+        wall_key,
+        test_pieces::WALL,
+        TerrainFacing::North,
+        None,
+    );
+    spawn_terrain_entity(
+        &mut app,
+        cover_key,
+        test_pieces::COVER,
+        TerrainFacing::North,
+        None,
+    );
 
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()
@@ -53,7 +67,13 @@ fn a_played_smash_stamps_the_cover_cell_with_its_successors_key() {
 
     // The successor the sim spawns for the smashed piece, standing at the same cell.
     despawn_terrain_entity(&mut app, cover_key);
-    spawn_terrain_entity(&mut app, cover_key, "floor_alt_panel", None);
+    spawn_terrain_entity(
+        &mut app,
+        cover_key,
+        test_pieces::SUCCESSOR_FLOOR,
+        TerrainFacing::North,
+        None,
+    );
     let smash = detained_smash_log(&mut app, &[(cover_key, TerrainPieceKind::Cover)]);
     play_past(&mut app, smash, |_| {});
 
@@ -67,14 +87,101 @@ fn a_played_smash_stamps_the_cover_cell_with_its_successors_key() {
     assert_eq!(
         stamped_graphic_at(&mut app, cover_key),
         Some(StampedGraphic::from_key("floor_alt_panel")),
-        "the stamp names what graphic_name_at answered for the cell, which is the successor \
-         piece's own graphic key — found {:?}",
+        "the stamp names what sprite_name_at answered for the cell, which is the view the \
+         successor piece's own def names — found {:?}",
         stamped_graphic_at(&mut app, cover_key),
     );
     assert_eq!(
         sprite_rect_at(&mut app, wall_key),
         wall_rect_before,
         "the other (wall) terrain sprite must be untouched by the cover destruction",
+    );
+}
+
+#[test]
+fn a_played_smash_stamps_the_sprite_the_smashed_def_leaves_behind() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+
+    let cover_key = CellLevel::new(Cell::new(9, 8), Level::new(0));
+
+    insert_occupancy(
+        &mut app,
+        vec![TerrainPlacement::new(cover_key, TerrainKind::Cover)],
+    );
+    let mut cover_ledger = CoverLedger::new();
+    cover_ledger.insert(cover_key, low_cover_entry());
+    app.world_mut().insert_resource(cover_ledger);
+    app.world_mut().insert_resource(SurfaceGrid::new());
+    app.world_mut().insert_resource(BattleInProgress);
+
+    spawn_terrain_entity(
+        &mut app,
+        cover_key,
+        test_pieces::FLOOR,
+        TerrainFacing::North,
+        None,
+    );
+    let cover = spawn_terrain_entity(
+        &mut app,
+        cover_key,
+        test_pieces::COVER,
+        TerrainFacing::North,
+        None,
+    );
+
+    app.world_mut()
+        .resource_mut::<Messages<BattleReady>>()
+        .write(BattleReady);
+    app.update();
+
+    let defs = sprite_defs(&app);
+    assert!(defs.is_some(), "the SpriteDefRegistry must be resident");
+    let Some(defs) = defs else { return };
+    assert!(
+        def_rect(&defs, "rubble").is_some() && def_rect(&defs, "floor").is_some(),
+        "the `rubble` + `floor` seeded defs must resolve with Sheet rects",
+    );
+    assert_ne!(
+        def_rect(&defs, "rubble"),
+        def_rect(&defs, "floor"),
+        "the `rubble` and `floor` def rects must differ (else the pin is vacuous)",
+    );
+
+    // What the sim does for a def whose `leaves_behind` names a sprite: the piece goes, the
+    // floor under it stays standing, and the sprite stands in the cell.
+    assert!(
+        app.world_mut().despawn(cover),
+        "the smashed cover must still be alive to despawn",
+    );
+    spawn_leftover_sprite(&mut app, cover_key, "rubble");
+    let smash = detained_smash_log(&mut app, &[(cover_key, TerrainPieceKind::Cover)]);
+    play_past(&mut app, smash, |_| {});
+
+    assert_eq!(
+        stamped_graphic_at(&mut app, cover_key),
+        Some(StampedGraphic::from_key("rubble")),
+        "the smashed cell is stamped the sprite its def leaves behind, not the `floor` view \
+         of the piece still standing under it — found {:?}",
+        stamped_graphic_at(&mut app, cover_key),
+    );
+    assert_eq!(
+        sprite_rect_at(&mut app, cover_key),
+        def_rect(&defs, "rubble"),
+        "the tile draws the leftover sprite's own sheet rect",
+    );
+
+    app.world_mut()
+        .resource_mut::<Messages<BattleReady>>()
+        .write(BattleReady);
+    app.update();
+
+    assert_eq!(
+        stamped_graphic_at(&mut app, cover_key),
+        Some(StampedGraphic::from_key("rubble")),
+        "a full redraw draws the leftover sprite too, and the view restamp that runs after \
+         the draw leaves that cell alone — found {:?}",
+        stamped_graphic_at(&mut app, cover_key),
     );
 }
 
@@ -103,7 +210,13 @@ fn a_played_smash_stamps_a_drawn_lower_storey_and_ignores_above_active() {
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(BattleInProgress);
 
-    spawn_terrain_entity(&mut app, lower_cover, "cover", None);
+    spawn_terrain_entity(
+        &mut app,
+        lower_cover,
+        test_pieces::COVER,
+        TerrainFacing::North,
+        None,
+    );
 
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
     app.world_mut()
@@ -130,7 +243,13 @@ fn a_played_smash_stamps_a_drawn_lower_storey_and_ignores_above_active() {
     );
 
     despawn_terrain_entity(&mut app, lower_cover);
-    spawn_terrain_entity(&mut app, lower_cover, "floor_alt_panel", None);
+    spawn_terrain_entity(
+        &mut app,
+        lower_cover,
+        test_pieces::SUCCESSOR_FLOOR,
+        TerrainFacing::North,
+        None,
+    );
     let smash = detained_smash_log(
         &mut app,
         &[
@@ -150,7 +269,7 @@ fn a_played_smash_stamps_a_drawn_lower_storey_and_ignores_above_active() {
     assert_eq!(
         stamped_graphic_at(&mut app, lower_cover),
         Some(StampedGraphic::from_key("floor_alt_panel")),
-        "the lower-storey cell must be stamped with the successor's graphic key — found {:?}",
+        "the lower-storey cell must be stamped with the successor def's own view — found {:?}",
         stamped_graphic_at(&mut app, lower_cover),
     );
     assert_eq!(
@@ -169,7 +288,13 @@ fn a_played_stamp_and_a_forced_redraw_agree_on_a_pieceless_level_0_cell() {
     let pieceless = CellLevel::new(Cell::new(4, 4), Level::new(0));
 
     // The cell's only piece, so the smash leaves it pieceless and drawing the marker.
-    spawn_terrain_entity(&mut app, pieceless, "wall", None);
+    spawn_terrain_entity(
+        &mut app,
+        pieceless,
+        test_pieces::WALL,
+        TerrainFacing::North,
+        None,
+    );
     insert_occupancy(&mut app, Vec::new());
     app.world_mut().insert_resource(CoverLedger::new());
     app.world_mut().insert_resource(SurfaceGrid::new());
@@ -217,7 +342,7 @@ fn a_played_stamp_and_a_forced_redraw_agree_on_a_pieceless_level_0_cell() {
         stamped_graphic_at(&mut app, pieceless),
         stamped_after_play,
         "the played stamp and a full redraw must answer the same thing for that cell — the \
-         stamp resolves through graphic_name_at, the same function draw_static_battlefield \
+         stamp resolves through sprite_name_at, the same function draw_static_battlefield \
          calls — found {:?} after the redraw",
         stamped_graphic_at(&mut app, pieceless),
     );

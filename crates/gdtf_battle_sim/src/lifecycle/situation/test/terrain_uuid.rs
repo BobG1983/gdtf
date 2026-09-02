@@ -3,7 +3,7 @@ use bevy::asset::uuid::Uuid;
 
 use super::support::*;
 
-fn wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
+fn wall_def(key: TerrainUuid) -> TerrainDef {
     TerrainDef {
         key,
         display_name: TerrainDisplayName::new("Spec Wall".to_owned()),
@@ -13,9 +13,7 @@ fn wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
             armor_hardness:   ArmorHardness::new(5),
             height_band:      HeightBand::High,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -26,7 +24,7 @@ fn wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
     }
 }
 
-fn slab_def(key: TerrainUuid, graphic: &str, footfall: Option<&str>) -> TerrainDef {
+fn slab_def(key: TerrainUuid, footfall: Option<&str>) -> TerrainDef {
     TerrainDef {
         key,
         display_name: TerrainDisplayName::new("Spec Slab".to_owned()),
@@ -36,8 +34,7 @@ fn slab_def(key: TerrainUuid, graphic: &str, footfall: Option<&str>) -> TerrainD
             armor_hardness:   ArmorHardness::new(1),
         },
         presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new(graphic.to_owned()),
-            footfall:     footfall.map(|s| FootfallSound::new(s.to_owned())),
+            footfall: footfall.map(|s| FootfallSound::new(s.to_owned())),
         },
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
@@ -53,7 +50,7 @@ fn slab_def(key: TerrainUuid, graphic: &str, footfall: Option<&str>) -> TerrainD
 fn cover_uuid_resolves_against_def_registry_seeding_entry_and_kind() {
     let wall_at = key(2, 3, 0);
     let wall_key = TerrainUuid::new(Uuid::from_u128(0x0149_c0de_0000_0011));
-    let registry = single_def_registry(wall_def(wall_key, "spec-wall"));
+    let registry = single_def_registry(wall_def(wall_key));
 
     let (mut situation, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
@@ -109,18 +106,15 @@ fn cover_uuid_resolves_against_def_registry_seeding_entry_and_kind() {
 }
 
 #[test]
-fn wall_entity_carries_graphic_and_slab_carries_footfall() {
+fn wall_entity_carries_its_def_key_and_slab_carries_footfall() {
     let wall_at = key(4, 5, 0);
     let slab_at = key(6, 7, 1);
     let wall_key = TerrainUuid::new(Uuid::from_u128(0x0149_c0de_0000_0021));
     let slab_key = TerrainUuid::new(Uuid::from_u128(0x0149_c0de_0000_0022));
 
     let registry = TerrainDefRegistry::new([
-        (wall_key, wall_def(wall_key, "spec-wall-graphic")),
-        (
-            slab_key,
-            slab_def(slab_key, "spec-slab-graphic", Some("spec-step")),
-        ),
+        (wall_key, wall_def(wall_key)),
+        (slab_key, slab_def(slab_key, Some("spec-step"))),
     ]);
 
     let (mut situation, gangs) = SituationBuilder::new()
@@ -144,17 +138,16 @@ fn wall_entity_carries_graphic_and_slab_carries_footfall() {
     };
     let world: &mut World = app.world_mut();
 
-    let mut wall_query =
-        world.query::<(&TerrainCell, &TerrainPieceKind, Option<&TerrainGraphicKey>)>();
-    let wall_graphic = wall_query
+    let mut wall_query = world.query::<(&TerrainCell, &TerrainPieceKind, &TerrainUuid)>();
+    let seeded_wall_key = wall_query
         .iter(world)
         .find(|(cell, kind, _)| ***cell == wall_at && **kind == TerrainPieceKind::Wall)
-        .and_then(|(_, _, graphic)| graphic.cloned());
+        .map(|(_, _, piece)| *piece);
     assert_eq!(
-        wall_graphic,
-        Some(TerrainGraphicKey::new("spec-wall-graphic".to_owned())),
-        "the spawned WALL entity must carry the def's presenter graphic (NET-NEW: a \
-         wall carried NO graphic on the old model)",
+        seeded_wall_key,
+        Some(wall_key),
+        "the spawned WALL entity must carry its own def's key, which is what the presenter \
+         resolves its art from",
     );
 
     let mut slab_query = world.query::<(&TerrainCell, &TerrainPieceKind, Option<&FootfallSound>)>();
@@ -169,8 +162,8 @@ fn wall_entity_carries_graphic_and_slab_carries_footfall() {
     );
 }
 
-fn blocking_slab_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
-    let mut def = slab_def(key, graphic, None);
+fn blocking_slab_def(key: TerrainUuid) -> TerrainDef {
+    let mut def = slab_def(key, None);
     def.tags = vec![TerrainTag::BlocksPathfinding];
     def
 }
@@ -185,12 +178,9 @@ fn spawned_entities_carry_blocks_pathfinding_per_def() {
     let barricade_slab_key = TerrainUuid::new(Uuid::from_u128(0x0149_c0de_0000_0033));
 
     let registry = TerrainDefRegistry::new([
-        (wall_key, wall_def(wall_key, "w")),
-        (plain_slab_key, slab_def(plain_slab_key, "s", None)),
-        (
-            barricade_slab_key,
-            blocking_slab_def(barricade_slab_key, "b"),
-        ),
+        (wall_key, wall_def(wall_key)),
+        (plain_slab_key, slab_def(plain_slab_key, None)),
+        (barricade_slab_key, blocking_slab_def(barricade_slab_key)),
     ]);
 
     let (mut situation, gangs) = SituationBuilder::new()
@@ -255,8 +245,8 @@ fn every_seeded_piece_carries_its_def_key_and_its_placement_facing() {
     let slab_facing = TerrainFacing::South;
 
     let registry = TerrainDefRegistry::new([
-        (wall_key, wall_def(wall_key, "keyed-wall")),
-        (slab_key, slab_def(slab_key, "keyed-slab", None)),
+        (wall_key, wall_def(wall_key)),
+        (slab_key, slab_def(slab_key, None)),
     ]);
 
     let (mut situation, gangs) = SituationBuilder::new()

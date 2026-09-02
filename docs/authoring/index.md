@@ -48,7 +48,7 @@ validation window), and the one-owner path-spelling rule.
   (`.gang.ron` rosters + the current in-game gang editor).
 - [sprite-defs.md](sprite-defs.md) — `.spritedef.ron` sprite definitions
   (source file or sheet+rect, anchor, optional facings/animation): the
-  catalog a terrain def's `graphic_name` foreign-keys into.
+  catalog a terrain def's view rows foreign-key into.
 - [reference-integrity.md](reference-integrity.md) — the unified
   dangling-reference contract: every cross-file key validated at the end of
   `Load` into one loud, never-fatal report; per-file salvage; the editor
@@ -57,7 +57,7 @@ validation window), and the one-owner path-spelling rule.
   part built: a def owns its art in every state it can be in and says what it
   `leaves_behind` when it dies, and the renderer owns no content.
   `leaves_behind`, the per-def view sets and the presenter's view resolution
-  are built; the presenter still reads one `graphic_name` per def.
+  are built, and a def's art is its view rows and nothing else.
 
 ## Combat text (the view side)
 

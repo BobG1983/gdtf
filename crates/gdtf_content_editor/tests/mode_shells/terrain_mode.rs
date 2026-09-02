@@ -123,12 +123,16 @@ fn terrain_tab_rework_keeps_stat_picker_and_preview_wired() {
         unreachable!("a populated Cover draft must project (no fail-closed gate applies)")
     };
 
-    let TerrainPresenterKind::Cover { graphic_name } = &def.presenter_kind else {
-        unreachable!("a Cover kind must project a Cover presenter kind carrying the picked graphic")
-    };
+    assert!(
+        matches!(&def.presenter_kind, TerrainPresenterKind::Cover),
+        "a Cover kind must project a Cover presenter kind",
+    );
     assert_eq!(
-        &***graphic_name, COVER_SPRITE,
-        "the view-row selection must reach the projected def's graphic_name (C3)",
+        def.views
+            .sprite(TerrainView::Facing(TerrainFacing::North))
+            .map(|sprite| (**sprite).clone()),
+        Some(COVER_SPRITE.to_owned()),
+        "the view-row selection must reach the projected def's `Facing(North)` row (C3)",
     );
 
     let TerrainSimKind::Cover { hp, .. } = &def.sim_kind else {
@@ -230,13 +234,14 @@ fn emplacement_save_round_trips_with_mounted_weapon() {
         reloaded.sim_kind,
     );
     assert!(
-        matches!(
-            &reloaded.presenter_kind,
-            TerrainPresenterKind::Emplacement { graphic_name }
-                if &***graphic_name == EMPLACEMENT_SPRITE
-        ),
-        "the reloaded presenter kind must be Emplacement carrying the key its first owed view \
-         names",
+        matches!(&reloaded.presenter_kind, TerrainPresenterKind::Emplacement),
+        "the reloaded presenter kind must be Emplacement",
+    );
+    let first_owed = owed_views(&reloaded).first().copied();
+    assert_eq!(
+        first_owed.and_then(|view| reloaded.views.sprite(view).map(|s| (**s).clone())),
+        Some(EMPLACEMENT_SPRITE.to_owned()),
+        "the reloaded def's first owed view ({first_owed:?}) must name the key the draft set",
     );
 
     let registry = TerrainDefRegistry::new([(uuid, reloaded)]);

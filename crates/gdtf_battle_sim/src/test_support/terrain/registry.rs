@@ -6,7 +6,10 @@ use super::{
         test_cover, test_emplacement, test_emplacement_leaving_wall, test_floor,
         test_low_vision_cover, test_path_slab, test_slab, test_vision_slab, test_wall,
     },
-    view_defs::{test_door, test_facing_wall, test_stair},
+    view_defs::{
+        test_door, test_facing_wall, test_rubble_cover, test_stair, test_successor_floor,
+        test_unresolvable,
+    },
 };
 use crate::terrain::def::TerrainDefRegistry;
 
@@ -29,6 +32,9 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
         (test_pieces::DOOR, test_door()),
         (test_pieces::FACING_WALL, test_facing_wall()),
         (test_pieces::STAIR, test_stair()),
+        (test_pieces::RUBBLE_COVER, test_rubble_cover()),
+        (test_pieces::SUCCESSOR_FLOOR, test_successor_floor()),
+        (test_pieces::UNRESOLVABLE, test_unresolvable()),
     ])
 }
 
@@ -78,6 +84,14 @@ mod test {
             test_pieces::FACING_WALL,
             test_pieces::STAIR,
             test_pieces::SLAB,
+            test_pieces::WALL,
+            test_pieces::COVER,
+            test_pieces::FLOOR,
+            test_pieces::EMPLACEMENT,
+            test_pieces::EMPLACEMENT_LEAVING_WALL,
+            test_pieces::RUBBLE_COVER,
+            test_pieces::SUCCESSOR_FLOOR,
+            test_pieces::UNRESOLVABLE,
         ];
         for key in authored {
             let Some(def) = registry.def(&key) else {

@@ -38,9 +38,7 @@ fn save_preserves_every_authored_on_death_effect_in_order() {
             armor_hardness:   ArmorHardness::new(1),
             height_band:      HeightBand::Low,
         },
-        presenter_kind: TerrainPresenterKind::Cover {
-            graphic_name: TerrainGraphicKey::new("cover".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Cover,
         views:          TerrainViews::new(
             TerrainFacing::ALL
                 .into_iter()

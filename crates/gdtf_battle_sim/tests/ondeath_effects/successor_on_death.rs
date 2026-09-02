@@ -21,7 +21,6 @@ use gdtf_battle_sim::{
             TerrainSimKind, TerrainUuid, TerrainViews,
         },
         facing::TerrainFacing,
-        piece::TerrainGraphicKey,
     },
     test_support::{SituationBuilder, field_turns, single_mode, test_terrain_registry},
     weapon::DamageType,
@@ -65,9 +64,7 @@ fn barrel_def(key: TerrainUuid, field: Option<FieldKey>, leaves: LeavesBehind) -
             armor_hardness:   ArmorHardness::new(0),
             height_band:      HeightBand::Low,
         },
-        presenter_kind: TerrainPresenterKind::Cover {
-            graphic_name: TerrainGraphicKey::new("cover".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Cover,
         views: TerrainViews::new(Vec::new()),
         tags: Vec::new(),
         on_death: field

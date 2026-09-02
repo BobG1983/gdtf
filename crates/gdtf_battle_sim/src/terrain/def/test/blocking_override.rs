@@ -15,7 +15,7 @@ use crate::{
     occupancy::{OccupancyGrid, pathable_neighbors},
     slab::SlabHp,
     surface::{SlabState, SurfaceGrid},
-    terrain::{floor::FloorCostGrid, piece::TerrainGraphicKey},
+    terrain::floor::FloorCostGrid,
     tuning::{CombatTuning, MoveCosts},
 };
 
@@ -32,10 +32,7 @@ fn slab_def(blocks_pathing: Option<bool>, blocks_los: Option<LosBlocking>) -> Te
             armor_protection: ArmorProtection::new(4),
             armor_hardness:   ArmorHardness::new(2),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: TerrainGraphicKey::new("floor".to_owned()),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -60,9 +57,7 @@ fn wall_def(
             armor_hardness:   ArmorHardness::new(3),
             height_band:      band,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: TerrainGraphicKey::new("wall".to_owned()),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         tags,
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),

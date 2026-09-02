@@ -1,4 +1,4 @@
-// fixture sprite def — the key the fixture emplacement's graphic_name and views name.
+// fixture sprite def — the key the fixture emplacement's view rows name.
 (
     source: Sheet(
         sheet: "sprites/alt_tileset_terrain.png",

@@ -50,6 +50,13 @@ pub mod test_pieces {
     pub const FACING_WALL: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_000B));
     /// Slab piece tagged as a staircase, with the climb art on every facing.
     pub const STAIR: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_000C));
+    /// Cover piece whose art is the rubble sprite, told apart from [`COVER`].
+    pub const RUBBLE_COVER: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_000D));
+    /// Slab piece a destroyed cover leaves behind, drawn with its own floor sprite.
+    pub const SUCCESSOR_FLOOR: TerrainUuid =
+        TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_000E));
+    /// Slab piece whose one view names a sprite key no sprite def holds.
+    pub const UNRESOLVABLE: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_000F));
 }
 
 /// Wall spawn at a cell.

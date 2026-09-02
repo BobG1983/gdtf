@@ -3,10 +3,7 @@ use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
-    terrain::{
-        entity::TerrainPieceKind,
-        piece::{FootfallSound, TerrainGraphicKey},
-    },
+    terrain::{entity::TerrainPieceKind, piece::FootfallSound},
     weapon::WeaponName,
 };
 
@@ -41,15 +38,13 @@ fn sim_kind_of(kind: TerrainPieceKind) -> TerrainSimKind {
 }
 
 fn presenter_kind_of(kind: TerrainPieceKind) -> TerrainPresenterKind {
-    let graphic_name = TerrainGraphicKey::new("floor".to_owned());
     match kind {
-        TerrainPieceKind::Wall => TerrainPresenterKind::Wall { graphic_name },
-        TerrainPieceKind::Cover => TerrainPresenterKind::Cover { graphic_name },
+        TerrainPieceKind::Wall => TerrainPresenterKind::Wall,
+        TerrainPieceKind::Cover => TerrainPresenterKind::Cover,
         TerrainPieceKind::Slab => TerrainPresenterKind::Slab {
-            graphic_name,
             footfall: Some(FootfallSound::new("footfall_metal".to_owned())),
         },
-        TerrainPieceKind::Emplacement => TerrainPresenterKind::Emplacement { graphic_name },
+        TerrainPieceKind::Emplacement => TerrainPresenterKind::Emplacement,
     }
 }
 

@@ -209,7 +209,7 @@ fn assert_item_edges(report: &[ContentFinding]) {
             "SpriteDefRegistry",
             ReferenceKeyScheme::FileStem,
         ),
-        "the terrain def's dangling graphic_name must be reported; findings: {report:?}",
+        "the terrain def's dangling view→sprite-def edge must be reported; findings: {report:?}",
     );
 }
 

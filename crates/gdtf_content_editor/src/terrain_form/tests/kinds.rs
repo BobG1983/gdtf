@@ -103,13 +103,15 @@ fn emplacement_draft_projects_serializes_and_registers() {
         "the projected sim kind must be Emplacement carrying the EXACT selected weapon key",
     );
     assert!(
-        matches!(
-            &def.presenter_kind,
-            TerrainPresenterKind::Emplacement { graphic_name }
-                if &***graphic_name == "emplacement"
-        ),
-        "the projected presenter kind must be Emplacement carrying the key its first owed \
-         view names",
+        matches!(&def.presenter_kind, TerrainPresenterKind::Emplacement),
+        "the projected presenter kind must be Emplacement",
+    );
+    assert_eq!(
+        def.views
+            .sprite(TerrainView::Facing(TerrainFacing::North))
+            .map(|sprite| (**sprite).clone()),
+        Some("emplacement".to_owned()),
+        "the projected def carries the sprite key the draft set on its `Facing(North)` view",
     );
 
     let Ok(text) = serialize_terrain_def(&def) else {

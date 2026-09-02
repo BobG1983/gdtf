@@ -15,9 +15,10 @@ use gdtf_battle_sim::{
     entity::TerrainCell,
     ganger::Position,
     occupancy::{TerrainKind, TerrainPlacement},
-    piece::TerrainGraphicKey,
     prelude::{BattleInProgress, Cell, CellLevel, Level},
     surface::SurfaceGrid,
+    terrain::facing::TerrainFacing,
+    test_support::test_pieces,
 };
 
 use super::harness::*;
@@ -29,7 +30,8 @@ fn spawn_emplacement_entity(app: &mut App, key: CellLevel) -> Entity {
     app.world_mut()
         .spawn((
             TerrainCell::new(key),
-            TerrainGraphicKey::new("emplacement".to_owned()),
+            test_pieces::EMPLACEMENT,
+            TerrainFacing::North,
             EmplacementState::Vacant,
         ))
         .id()
@@ -72,7 +74,13 @@ fn emplacement_draws_its_own_distinct_tile() {
     app.world_mut().insert_resource(BattleInProgress);
 
     spawn_emplacement_entity(&mut app, emp_cell);
-    spawn_terrain_entity(&mut app, cover_cell, "cover", None);
+    spawn_terrain_entity(
+        &mut app,
+        cover_cell,
+        test_pieces::COVER,
+        TerrainFacing::North,
+        None,
+    );
 
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()

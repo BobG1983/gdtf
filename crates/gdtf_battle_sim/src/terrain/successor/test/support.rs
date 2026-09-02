@@ -15,7 +15,7 @@ use crate::{
         },
         entity::{TerrainBrace, TerrainCell, TerrainPieceKind},
         facing::TerrainFacing,
-        piece::TerrainGraphicKey,
+        piece::{LeftoverSprite, TerrainGraphicKey},
         vertical::{LinkKind, VerticalLink},
     },
     test_support::{SimAppBuilder, SituationBuilder, TEST_SEED, ganger_at, test_terrain_registry},
@@ -33,6 +33,11 @@ pub(super) const PLAIN_SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x01
 pub(super) const BRACED_SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1308_0005));
 /// The slab spawned in a braced slab's place.
 pub(super) const SUCCESSOR_SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1308_0006));
+/// A cover piece that leaves a sprite with no mechanics behind.
+pub(super) const SCORCHED_COVER: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1308_0007));
+
+/// The sprite key [`SCORCHED_COVER`] leaves standing in its cell.
+pub(super) const SCORCH_SPRITE: &str = "scorch_mark";
 
 pub(super) fn key(x: i32, y: i32, level: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(level))
@@ -40,10 +45,6 @@ pub(super) fn key(x: i32, y: i32, level: u8) -> CellLevel {
 
 fn display(name: &str) -> TerrainDisplayName {
     TerrainDisplayName::new(name.to_owned())
-}
-
-fn graphic(role: &str) -> TerrainGraphicKey {
-    TerrainGraphicKey::new(role.to_owned())
 }
 
 fn cover_def(key: TerrainUuid, name: &str, leaves_behind: LeavesBehind) -> TerrainDef {
@@ -56,9 +57,7 @@ fn cover_def(key: TerrainUuid, name: &str, leaves_behind: LeavesBehind) -> Terra
             armor_hardness:   ArmorHardness::new(0),
             height_band:      HeightBand::Low,
         },
-        presenter_kind: TerrainPresenterKind::Cover {
-            graphic_name: graphic("cover"),
-        },
+        presenter_kind: TerrainPresenterKind::Cover,
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -78,9 +77,7 @@ fn wall_def(key: TerrainUuid, name: &str) -> TerrainDef {
             armor_hardness:   ArmorHardness::new(2),
             height_band:      HeightBand::High,
         },
-        presenter_kind: TerrainPresenterKind::Wall {
-            graphic_name: graphic("wall"),
-        },
+        presenter_kind: TerrainPresenterKind::Wall,
         tags: vec![TerrainTag::BlocksPathfinding],
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -99,10 +96,7 @@ fn slab_def(key: TerrainUuid, name: &str, leaves_behind: LeavesBehind) -> Terrai
             armor_protection: ArmorProtection::new(1),
             armor_hardness:   ArmorHardness::new(0),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: graphic("floor"),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         tags: Vec::new(),
         views: TerrainViews::new(Vec::new()),
         on_death: Vec::new(),
@@ -112,7 +106,7 @@ fn slab_def(key: TerrainUuid, name: &str, leaves_behind: LeavesBehind) -> Terrai
     }
 }
 
-/// The test registry plus the six defs these cases author.
+/// The test registry plus the seven defs these cases author.
 pub(super) fn successor_registry() -> TerrainDefRegistry {
     let mut registry = test_terrain_registry();
     registry.insert(
@@ -143,6 +137,14 @@ pub(super) fn successor_registry() -> TerrainDefRegistry {
     registry.insert(
         SUCCESSOR_SLAB,
         slab_def(SUCCESSOR_SLAB, "Successor Slab", LeavesBehind::Nothing),
+    );
+    registry.insert(
+        SCORCHED_COVER,
+        cover_def(
+            SCORCHED_COVER,
+            "Scorched Cover",
+            LeavesBehind::Sprite(TerrainGraphicKey::new(SCORCH_SPRITE.to_owned())),
+        ),
     );
     registry
 }
@@ -201,6 +203,17 @@ pub(super) fn pieces_keyed(app: &mut App, at: CellLevel, piece: TerrainUuid) -> 
         .iter(world)
         .filter(|(_, cell, uuid)| ***cell == at && **uuid == piece)
         .map(|(entity, ..)| entity)
+        .collect()
+}
+
+/// Every sprite key a destroyed piece left standing at this cell.
+pub(super) fn leftover_sprites_at(app: &mut App, at: CellLevel) -> Vec<TerrainGraphicKey> {
+    let world = app.world_mut();
+    let mut query = world.query::<(&TerrainCell, &LeftoverSprite)>();
+    query
+        .iter(world)
+        .filter(|(cell, _)| ***cell == at)
+        .map(|(_, sprite)| (**sprite).clone())
         .collect()
 }
 

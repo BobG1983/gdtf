@@ -22,9 +22,7 @@
         // the placement's own facing. A def naming none is a mount authored as scenery.
         entry_sides:      [South],
     ),
-    presenter_kind: Emplacement(
-        graphic_name: "emplacement",   // The dedicated weapon-mount tile, drawn distinctly from generic cover. The seat keeps this tile while it is occupied; the occupant draws itself on top of it.
-    ),
+    presenter_kind: Emplacement,
     // One row per view an Emplacement owes — its four facings.
     views: [
         (view: Facing(North), sprite: "emplacement"),

@@ -89,11 +89,7 @@ pub(crate) fn barrel_terrain_registry() -> TerrainDefRegistry {
                 armor_hardness:   gdtf_battle_sim::armor::ArmorHardness::new(0),
                 height_band:      gdtf_battle_sim::cover::HeightBand::Low,
             },
-            presenter_kind: TerrainPresenterKind::Cover {
-                graphic_name: gdtf_battle_sim::terrain::piece::TerrainGraphicKey::new(
-                    "cover".to_owned(),
-                ),
-            },
+            presenter_kind: TerrainPresenterKind::Cover,
             views:          TerrainViews::new(Vec::new()),
             tags:           Vec::new(),
             on_death:       vec![OnDeathEffect::LeaveField {
@@ -119,12 +115,7 @@ fn fuel_slab_def() -> TerrainDef {
             armor_protection: gdtf_battle_sim::armor::ArmorProtection::new(4),
             armor_hardness:   gdtf_battle_sim::armor::ArmorHardness::new(2),
         },
-        presenter_kind: TerrainPresenterKind::Slab {
-            graphic_name: gdtf_battle_sim::terrain::piece::TerrainGraphicKey::new(
-                "slab".to_owned(),
-            ),
-            footfall:     None,
-        },
+        presenter_kind: TerrainPresenterKind::Slab { footfall: None },
         views:          TerrainViews::new(Vec::new()),
         tags:           Vec::new(),
         on_death:       vec![OnDeathEffect::LeaveField {

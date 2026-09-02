@@ -9,11 +9,10 @@ optionally *how it faces and animates*.
 
 **Status today:** the defs are the authoritative sprite data model AND the
 authoritative RESOLUTION: since **** the battle renderer and the
-content editor both resolve a terrain `graphic_name` to its sprite def
-(texture + rect + anchor) through this registry — the legacy terrain role
-table (`tile_roles.spritedef.ron` → `TileRoles`) is retired and deleted. The
-editor authoring mode is ****; restamping shipped content is
-****.
+content editor both resolve the sprite key a terrain def's view row names to its
+sprite def (texture + rect + anchor) through this registry — the legacy terrain
+role table (`tile_roles.spritedef.ron` → `TileRoles`) is retired and deleted.
+The editor authoring mode is ****; restamping shipped content is ****.
 
 ---
 
@@ -22,7 +21,7 @@ editor authoring mode is ****; restamping shipped content is
 Sprite defs live under `assets/content/sprites/` — one file per sprite, flat.
 The file is named `<name>.spritedef.ron`; the FILE STEM is the sprite's
 registry name (`floor.spritedef.ron` → name `"floor"`), exactly the string a
-terrain def's `graphic_name:` references.
+terrain def's view row names in its `sprite:` field.
 
 Do NOT confuse this family with the OLD role tables under `assets/sprites/`
 (`character_roles.spritedef.ron`, `effect_roles.spritedef.ron`) — same
@@ -111,11 +110,11 @@ The registry is `SpriteDefRegistry`
 family its spec/registry types live in the GLUE crate, not the sim: sprite
 data is presentation-side, and the render-free sim cannot own it.
 
-**The `graphic_name` foreign key.** A terrain def's `graphic_name:` is a
-foreign key by NAME into this registry — see
-[terrain-authoring.md](terrain-authoring.md) §1d. The reference-integrity
-pass ([reference-integrity.md](reference-integrity.md)) checks the edge in
-BOTH hosts: a `graphic_name` that resolves no sprite def lands a
+**The view row's sprite key.** The `sprite:` field of a terrain def's view row
+is a foreign key by NAME into this registry — see
+[terrain-authoring.md](terrain-authoring.md) §1b. The reference-integrity
+pass ([reference-integrity.md](reference-integrity.md)) checks every row in
+BOTH hosts: a sprite key that resolves no sprite def lands a
 `DanglingRef` finding against `SpriteDefRegistry` on the consolidated report,
 at the end of the game's `Load` and live at editor authoring time (the watch
 set re-arms the pass when the sprite registry rebuilds).
@@ -144,8 +143,8 @@ on the sheet's 16-column/16-px grid, anchor = the implicit CENTER anchor
 
 Since the defs ARE what renders: the presenter's ONE resolution
 (`resolve_sprite`,
-`crates/gdtf_battle_presenter/src/render/terrain/resolve.rs`) looks a
-`graphic_name` up in the registry by NAME; `source` picks the pixels (a
+`crates/gdtf_battle_presenter/src/render/terrain/resolve.rs`) looks a view
+row's sprite key up in the registry by NAME; `source` picks the pixels (a
 `Sheet` source's rect, or a `File` image), and `anchor` places the sprite (the
 authored anchor point sits ON the cell position — a center anchor reproduces
 the old centered draw exactly). The content editor's palette / preview
@@ -153,7 +152,7 @@ thumbnails consume the SAME resolution — one resolution, two consumers. The
  derivation-truth pin retired with the table, per its own retirement
 note: there is no second artifact left to drift from.
 
-A `graphic_name` that resolves NO def draws the LOUD magenta missing-sprite
+A sprite key that resolves NO def draws the LOUD magenta missing-sprite
 marker (never a panic, never an invisible tile) and warns naming the key and
 the cell — possible mid-authoring, since the integrity edge warns without
 blocking load.
@@ -161,20 +160,20 @@ blocking load.
 ## Part 5 — Verify
 
 - **Suite:** `cargo dtest` — the family binds the generic load suite
-  (`crates/gdtf_app/tests/load_sprites.rs`), the schema
+  (`crates/gdtf_app/tests/load_families/load_sprites.rs`), the schema
   pins live in-crate (`crates/gdtf_content_families/src/sprites/test/`), the
   def-driven draw / off-center-anchor / missing-marker behavior is pinned in
   `crates/gdtf_battle_presenter/tests/terrain_draw/` and
   `crates/gdtf_battle_presenter/tests/terrain_missing_sprite.rs`, and
-  the dangling-`graphic_name` finding is pinned in both hosts
-  (`crates/gdtf_app/tests/load_ref_integrity.rs`,
+  the dangling view-sprite finding is pinned in both hosts
+  (`crates/gdtf_app/tests/load_families/load_ref_integrity.rs`,
   `crates/gdtf_content_editor/tests/authoring_validation/sprites.rs`).
 - **Hot-reload:** `cargo drun`, edit a `.spritedef.ron`, watch the
   "hot-reload: rebuilt … from content/sprites" info line — and the already-
   drawn tiles using that def swap rect/anchor in place (pinned in
   `crates/gdtf_battle_presenter/tests/terrain_draw/def_restamp.rs` and
   `crates/gdtf_content_editor/tests/prefab_mode/registry_redraw.rs`).
-- **Dangling key:** author a `graphic_name` with no matching sprite def and
+- **Dangling key:** author a view row whose `sprite:` has no matching def and
   watch the `DanglingRef … SpriteDefRegistry` finding on the end-of-`Load`
   report (game) or the live editor report (authoring time) — and the magenta
   missing-sprite marker at any cell that draws it.

@@ -28,7 +28,7 @@ pub(super) use crate::{
         entity::{BlocksPathfinding, TerrainCell, TerrainPieceKind},
         facing::TerrainFacing,
         floor::FloorCostGrid,
-        piece::{FootfallSound, TerrainGraphicKey},
+        piece::FootfallSound,
     },
     test_support::{
         GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, arbitrary_armor, ganger_at, key,

@@ -1,5 +1,5 @@
-//! Terrain piece name, graphic key, and footfall sound components.
+//! Terrain piece name, graphic key, leftover sprite, and footfall sound components.
 
 mod components;
 
-pub use components::{FootfallSound, TerrainGraphicKey, TerrainName};
+pub use components::{FootfallSound, LeftoverSprite, TerrainGraphicKey, TerrainName};

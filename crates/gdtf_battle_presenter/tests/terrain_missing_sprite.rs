@@ -34,14 +34,15 @@ use gdtf_battle_sim::{
     entity::{TerrainCell, TerrainPieceKind},
     occupancy::{OccupancyInput, TerrainKind, TerrainPlacement},
     occupancy_sync::TerrainPieceDestroyed,
-    piece::TerrainGraphicKey,
     prelude::{BattleInProgress, Cell, CellLevel, Level, OccupancyGrid},
     surface::SurfaceGrid,
+    terrain::facing::TerrainFacing,
+    test_support::{UNRESOLVABLE_SPRITE, test_pieces, test_terrain_registry},
 };
 use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
 use gdtf_test_utils::advance_until_resource_exists;
 
-const MISSING_NAME: &str = "no_such_sprite_fixture";
+const MISSING_NAME: &str = UNRESOLVABLE_SPRITE;
 
 static CAPTURED: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
@@ -117,7 +118,8 @@ fn headless_renderer_app() -> App {
     )
     .add_message::<BattleReady>()
     .add_message::<TerrainPieceDestroyed>()
-    .add_plugins(TopDownRendererPlugin);
+    .add_plugins(TopDownRendererPlugin)
+    .insert_resource(test_terrain_registry());
     app.register_content_family::<SpriteDefsFamily>();
     app.set_error_handler(warn);
     app
@@ -159,7 +161,8 @@ fn missing_sprite_def_warns_and_draws_the_magenta_marker() {
 
     app.world_mut().spawn((
         TerrainCell::new(cell),
-        TerrainGraphicKey::new(MISSING_NAME.to_owned()),
+        test_pieces::UNRESOLVABLE,
+        TerrainFacing::North,
     ));
 
     app.world_mut()
@@ -291,7 +294,8 @@ fn a_cell_whose_piece_resolves_does_not_draw_the_marker() {
     empty_ground_battle(&mut app);
     app.world_mut().spawn((
         TerrainCell::new(cell),
-        TerrainGraphicKey::new("floor".to_owned()),
+        test_pieces::FLOOR,
+        TerrainFacing::North,
     ));
 
     app.world_mut()
@@ -312,8 +316,8 @@ fn a_cell_whose_piece_resolves_does_not_draw_the_marker() {
     assert_ne!(
         material.image.id(),
         missing.id(),
-        "a cell whose piece's graphic resolves must NOT draw the marker — the marker is not \
-         drawn everywhere",
+        "a cell whose piece's view resolves must NOT draw the marker — the marker is not drawn \
+         everywhere",
     );
     assert!(
         material.atlas_layout.is_some(),

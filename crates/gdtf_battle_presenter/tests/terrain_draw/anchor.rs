@@ -10,6 +10,8 @@ use gdtf_battle_sim::{
     occupancy::{TerrainKind, TerrainPlacement},
     prelude::{BattleInProgress, Cell, CellLevel, Level},
     surface::SurfaceGrid,
+    terrain::facing::TerrainFacing,
+    test_support::test_pieces,
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
 use gdtf_test_utils::advance_until_resource_exists;
@@ -67,7 +69,13 @@ fn off_center_anchor_displaces_the_drawn_tile_transform() {
     app.world_mut().insert_resource(CoverLedger::new());
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(BattleInProgress);
-    spawn_terrain_entity(&mut app, wall_key, "wall", None);
+    spawn_terrain_entity(
+        &mut app,
+        wall_key,
+        test_pieces::WALL,
+        TerrainFacing::North,
+        None,
+    );
 
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()

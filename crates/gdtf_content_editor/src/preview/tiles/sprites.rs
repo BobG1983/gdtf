@@ -4,14 +4,14 @@ use gdtf_battle_presenter::{StoreyTreatment, anchor_world_offset, source_parts, 
 use gdtf_battle_sim::{
     metric::{CellLevel, Level},
     prelude::Cell,
-    terrain::{def::TerrainDefRegistry, facing::TerrainFacing},
+    terrain::def::TerrainDefRegistry,
 };
 use gdtf_content_families::sprites::{SpriteDef, SpriteDefRegistry};
 
 use crate::{
     editor_map::EditorMap,
     hovered_cell::HoveredCell,
-    placement::{ProposedPlacement, evaluate_placement},
+    placement::evaluate_placement,
     preview::{
         coords::{CELL_WORLD, cell_center_world},
         target::{PreviewTile, preview_layer},
@@ -67,11 +67,11 @@ pub(super) fn draw_hover_ghost(
     let Some(cell) = hovered.cell() else {
         return;
     };
-    let Some(tile) = session.selected_tile() else {
+    let slot = CellLevel::new(cell, level);
+    let Some(placement) = session.paint_proposal(slot) else {
         return;
     };
-    let slot = CellLevel::new(cell, level);
-    let placement = ProposedPlacement::new(slot, tile, TerrainFacing::default());
+    let tile = placement.tile();
     let verdict = evaluate_placement(
         map,
         art.registry,
@@ -84,7 +84,7 @@ pub(super) fn draw_hover_ghost(
     } else {
         GHOST_LEGAL
     };
-    match terrain_sprite_def(art.registry, art.sprites, &tile) {
+    match terrain_sprite_def(art.registry, art.sprites, &tile, placement.facing()) {
         Some(def) => spawn_tile_sprite(commands, art.assets, cell, def, tint, GHOST_Z),
         None => spawn_color_tile(commands, cell, tint, GHOST_Z),
     }
