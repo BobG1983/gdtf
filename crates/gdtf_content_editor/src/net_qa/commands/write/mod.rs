@@ -24,7 +24,8 @@ pub(in crate::net_qa) use blank::EditorNew;
 pub(in crate::net_qa) use list_op::EditorListOp;
 pub(in crate::net_qa) use load::{
     EditorLoadArmor, EditorLoadAttachment, EditorLoadField, EditorLoadGang, EditorLoadInjury,
-    EditorLoadMeleeWeapon, EditorLoadSprite, EditorLoadTerrain, EditorLoadTheme, EditorLoadWeapon,
+    EditorLoadMeleeWeapon, EditorLoadPrefab, EditorLoadSprite, EditorLoadTerrain, EditorLoadTheme,
+    EditorLoadWeapon,
 };
 pub(in crate::net_qa) use paint::EditorPaint;
 pub(in crate::net_qa) use save::EditorSave;

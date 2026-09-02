@@ -65,14 +65,19 @@ never a prefab placement.
 
 ### 2c. Loading, procgen, and the editor
 
-Prefabs load through a bespoke resolve (a nested tree into a bucketed
-registry — `crates/gdtf_app/src/states/load/systems/resolve/prefab.rs`,
+In the game, prefabs load through a bespoke resolve (a nested tree into a
+bucketed registry — `crates/gdtf_app/src/states/load/systems/resolve/prefab.rs`,
 building the `PrefabRegistry` bucketed per `(theme, size, role)` key,
 `crates/gdtf_battle_sim/src/level/prefab/registry.rs`). At
 battle generation, procgen packs fragments for the requested theme/size into
 the board and DEPLOYS the situation's roster members into the resulting
-player/enemy deployment zones. The content editor (`cargo edrun`)
-authors and saves prefabs to the same tree with the same one-owner path consts.
+player/enemy deployment zones. The content editor (`cargo edrun`) reads the same
+tree through `PrefabsFamily` (`crates/gdtf_content_families/src/prefabs.rs`) into
+a `PrefabRegistry` of its own, and authors and saves prefabs back to the tree with
+the same one-owner path consts. Prefab mode's picker opens one onto the canvas:
+its extent and theme onto the session, its cells into the painted map, and the
+edit storey clamped into the loaded extent (`open_prefab` in
+`crates/gdtf_content_editor/src/open.rs`).
 
 ## Part 3 — Situations (the battle request)
 

@@ -226,7 +226,8 @@ does not know. That list is `EDITOR_COMMANDS` in
 `editor.load_theme`, `editor.load_gang`, `editor.load_armor`,
 `editor.load_injury`, `editor.load_sprite`, `editor.load_attachment`,
 `editor.load_weapon`, `editor.load_melee_weapon`, `editor.load_field`,
-`editor.load_terrain`, `editor.save`, `editor.set_field`, `editor.list_op`,
+`editor.load_terrain`, `editor.load_prefab`, `editor.save`, `editor.set_field`,
+`editor.list_op`,
 `editor.select_theme`, `editor.toggle_terrain`, `editor.set_default_floor`,
 `editor.map`, `editor.set_grid_size`, `editor.select_tile`,
 `editor.select_facing`, `editor.set_level`, `editor.paint`,
@@ -413,7 +414,7 @@ Notes an agent relies on:
   level keys and the action bar's level buttons take. `battle.set_fire_mode`
   picks a fire mode on the weapon the selected shooter fires, the same weapon the
   action bar's mode panel sets it on, through the same lookup.
-  The EDITOR host publishes thirty-six commands. `editor.phase` reports the
+  The EDITOR host publishes thirty-seven commands. `editor.phase` reports the
   phase the editor is in, the mode tab open right now — absent while it is still
   loading — and every mode tab in tab-bar order, `editor.last_save` reports what
   the newest save per mode did, and `editor.validation` reports the content
@@ -428,29 +429,35 @@ Notes an agent relies on:
   authoring scene: the registry keys an author can pick, the session and the
   view, the open form's draft as the RON its save would write, and every painted
   cell on one storey of the prefab canvas. `editor.set_mode`, `editor.new`, the
-  ten `editor.load_*` commands, `editor.save`, `editor.set_field`,
+  ten `editor.load_*` commands that fill a form draft, `editor.save`,
+  `editor.set_field`,
   `editor.list_op`, `editor.select_theme`, `editor.toggle_terrain` and
   `editor.set_default_floor` drive the authoring forms, and
   `editor.set_grid_size`, `editor.select_tile`, `editor.select_facing`,
-  `editor.set_level` and `editor.paint` drive the prefab canvas, and
+  `editor.set_level`, `editor.paint` and `editor.load_prefab` drive the prefab
+  canvas, and
   `editor.select_injury_tab` opens one of the Injury tab's two sub-tabs.
   `editor.select_weighting_table`, `editor.weighting` and
   `editor.save_weighting` pick, read and write the Injury tab's weighting
-  table. All thirty-one need the authoring scene, so during the editor's Load
+  table. All thirty-two need the authoring scene, so during the editor's Load
   pass they answer `Unavailable { code: WrongState }`. `editor.draft` needs a
   form tab open on top of that, because the default Prefab tab carries no draft,
   `editor.set_field` and `editor.list_op` need a form tab whose draft is in the
   world, because both write the open form's own draft,
   `editor.toggle_terrain` and `editor.set_default_floor` need the Theme tab,
   because the terrain library and the default-floor picker are drawn only there,
-  the six canvas commands need the Prefab tab, because the palette, the
-  size fields, the level rail and the viewport are drawn only there,
+  the seven canvas commands need the Prefab tab, because the palette, the
+  size fields, the level rail, the viewport and the open picker are drawn only
+  there,
   `editor.select_injury_tab` and the three weighting commands need the Injury
   tab, because the sub-tab row and the weighting panel are drawn only there, and
-  each `editor.load_*` command needs the one tab whose draft it fills, because a
+  each of the ten `editor.load_*` commands that fill a form draft needs the one
+  tab whose draft it fills, because a
   form only fills its draft from the registry while its own tab is drawn.
   `editor.load_terrain` takes the Terrain tab through that same
-  `only_on_the_tab` check.
+  `only_on_the_tab` check, and `editor.load_prefab` takes the Prefab tab through
+  it, filling the session, the painted map and the edit storey rather than a
+  draft.
   A name it does not know answers `Unknown`, listing what it does offer. The
   editor-host section of [qa-commands.md](qa-commands.md) has the whole list.
 - **`logs` is the first thing to try when a launch came up but the app is not

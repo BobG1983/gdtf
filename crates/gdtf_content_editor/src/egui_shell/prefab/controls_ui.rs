@@ -1,7 +1,7 @@
 //! Prefab name field and debug-only save button.
 use bevy_egui::egui;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
-use gdtf_battle_sim::level::UuidThemeRegistry;
+use gdtf_battle_sim::level::{Prefab, PrefabRegistry, UuidThemeRegistry};
 
 use crate::{
     canvas::CurrentEditLevel,
@@ -10,15 +10,21 @@ use crate::{
         level_rail::{self, RailCtx, RailUiState},
         size_fields,
     },
+    open::{open_prefab, prefab_candidates},
     save_record::LastSaveRecord,
     session::MapEditorSession,
 };
 
-/// The prefab the controls panel edits: its painted cells, its session, and its active storey.
+/// The id salt the open picker's combo carries, which its draw test derives the popup id from.
+pub(crate) const PREFAB_PICKER_SALT: &str = "prefab_open_picker";
+
+/// The prefab the controls panel edits: its painted cells, its session, its active storey, and
+/// the authored prefabs its open picker lists.
 pub(crate) struct EditedPrefab<'a> {
-    pub(crate) map:        &'a EditorMap,
+    pub(crate) map:        &'a mut EditorMap,
     pub(crate) session:    &'a mut MapEditorSession,
     pub(crate) edit_level: &'a mut CurrentEditLevel,
+    pub(crate) prefabs:    Option<&'a PrefabRegistry>,
 }
 
 /// The storey visibility toggles the controls panel drives.
@@ -47,18 +53,21 @@ pub(crate) fn controls_panel(
         map,
         session,
         edit_level,
+        prefabs,
     } = prefab;
     let StoreyToggles { view, isolate } = storeys;
 
     ui.heading("Prefab");
     ui.separator();
 
+    open_picker(ui, session, map, edit_level, prefabs, library.themes);
+    ui.separator();
     size_fields::size_fields(ui, session, edit_level);
     ui.separator();
     level_rail::level_rail(
         ui,
         &mut RailCtx {
-            map,
+            map: &*map,
             session,
             edit_level,
             registry: library.terrain,
@@ -72,13 +81,46 @@ pub(crate) fn controls_panel(
     #[cfg(debug_assertions)]
     {
         ui.separator();
-        save_control(ui, map, session, library, save_name, last_save);
+        save_control(ui, &*map, session, library, save_name, last_save);
     }
     #[cfg(not(debug_assertions))]
     {
-        let _ = library.themes;
         let _ = save_name;
         let _ = last_save;
+    }
+}
+
+/// The combo of authored prefabs; a clicked row loads that prefab onto the canvas.
+///
+/// Drawn on the panel's own `ui`, because the combo's button id comes from `ui.id()`.
+fn open_picker(
+    ui: &mut egui::Ui,
+    session: &mut MapEditorSession,
+    map: &mut EditorMap,
+    edit_level: &mut CurrentEditLevel,
+    prefabs: Option<&PrefabRegistry>,
+    themes: Option<&UuidThemeRegistry>,
+) {
+    ui.label("Open prefab");
+    let (Some(prefabs), Some(themes)) = (prefabs, themes) else {
+        ui.label("(loading…)");
+        return;
+    };
+    let candidates = prefab_candidates(prefabs);
+    let mut chosen: Option<&Prefab> = None;
+    let mut clicked = false;
+    egui::ComboBox::from_id_salt(PREFAB_PICKER_SALT)
+        .selected_text("(select…)")
+        .show_ui(ui, |ui| {
+            for (prefab, label) in &candidates {
+                if ui.selectable_label(false, label).clicked() {
+                    chosen = Some(prefab);
+                    clicked = true;
+                }
+            }
+        });
+    if clicked && let Some(prefab) = chosen {
+        open_prefab(session, map, edit_level, themes, prefab.spec());
     }
 }
 

@@ -309,7 +309,7 @@ run(host="editor", command="wait", arguments="(condition: ChecksComplete)")
 run(host="editor", command="wait", arguments="(condition: RegistryRearmed(family: Terrain))")
 ```
 
-The editor offers thirty-six commands today. They are listed in
+The editor offers thirty-seven commands today. They are listed in
 [The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
@@ -760,9 +760,9 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## The editor host
 
-The editor publishes thirty-six commands, all in `EDITOR_COMMANDS`
+The editor publishes thirty-seven commands, all in `EDITOR_COMMANDS`
 ([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
-Thirty-four are `Immediate`. The two the editor publishes under the game host's own
+Thirty-five are `Immediate`. The two the editor publishes under the game host's own
 spellings, `capture.screenshot` and `wait`, are `Deferred`, so a client reads the timing to
 know the reply can land on a later frame than the one that claimed the call. A capture always
 does, because the pipeline settles before it reads the pixels back. A `wait` whose condition
@@ -773,7 +773,7 @@ Five commands answer at every point in the lifecycle: the three reads `editor.ph
 neither the authoring scene nor a tab. Five more reads need the authoring scene:
 `editor.families`, `editor.session`, `editor.draft`, `editor.map` and `editor.weighting`.
 `editor.draft` also needs a form tab open, `editor.map` needs the Prefab tab, and
-`editor.weighting` needs the Injury tab. All twenty-six writes need the authoring scene too.
+`editor.weighting` needs the Injury tab. All twenty-seven writes need the authoring scene too.
 During the editor's Load pass every scene-scoped command answers `Unavailable { code: WrongState }`. `EditorMode`,
 `MapEditorSession` and every draft are state-scoped to `EditorState::Editing` by the
 `init_state_scoped_resource` calls in `MapEditorPlugin::build`
@@ -804,6 +804,7 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.load_melee_weapon` | Editing + the MeleeWeapon tab | Loads a melee weapon by key into the MeleeWeapon draft, through that draft's own `load_melee_weapon` method. [`commands/write/load/commands/melee_weapon.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/melee_weapon.rs) |
 | `editor.load_field` | Editing + the Field tab | Loads a field def by key into the Field draft, through that draft's own `load_field` method. [`commands/write/load/commands/field.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/field.rs) |
 | `editor.load_terrain` | Editing + the Terrain tab | Loads a terrain def into the Terrain draft, through that draft's own `load_from_def` method. The key is the hyphenated UUID text `editor.families` answers. A key that is not UUID text, and a key the registry does not hold, come back as `NoSuchKey` carrying that registry's own keys, sorted, with the draft left alone. [`commands/write/load/commands/terrain.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/terrain.rs) |
+| `editor.load_prefab` | Editing + the Prefab tab | Opens an authored prefab onto the canvas the way the Prefab tab's own picker does: its grid size and theme onto the session, its painted cells onto the map, and the edit storey clamped into the loaded extent. The arguments are the prefab name and its key, which is the theme's UUID text, the grid size and the spawn role. A name and key no prefab sits under answers `NoSuchPrefab` and writes nothing. [`commands/write/load/commands/prefab.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/prefab.rs) |
 | `editor.save` | Editing | Writes a mode's draft through the same `write_*_in` its save button calls. [`commands/write/save/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save) |
 | `editor.set_field` | Editing + any form tab | Writes one single-value field of the open form's draft, the way that form's own widget writes it. [`commands/write/set_field/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_field) |
 | `editor.list_op` | Editing + any form tab | Edits one list-valued field of the open form's draft through that form's own setter. [`commands/write/list_op/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/list_op) |
@@ -834,9 +835,9 @@ reading the draft-presence fact `EditorFactsParam::sample` takes for the mode th
 `editor.set_default_floor` are scoped the same way to the Theme tab, because the terrain
 library and the default-floor picker are both drawn only in the Theme arm of the central
 and right panels, and both answer `Unavailable { code: WrongState }` on any other tab. The
-six prefab-canvas commands are scoped to the Prefab tab for the same reason: the palette,
-the size fields, the level rail and the viewport are drawn only in the Prefab arm, and the
-painted map is that canvas's own model. The Prefab tab carries `EditorMode`'s own default,
+seven prefab-canvas commands are scoped to the Prefab tab for the same reason: the palette,
+the size fields, the level rail, the viewport and the open picker are drawn only in the
+Prefab arm, and the painted map is that canvas's own model. The Prefab tab carries `EditorMode`'s own default,
 so a fresh process reaches them with no `editor.set_mode` first.
 `editor.select_injury_tab` is scoped to the Injury tab, because the sub-tab row it writes is
 drawn only in the Injury arm of the central panel. So are the three weighting-table

@@ -112,3 +112,45 @@ pub(crate) struct PaintReplyRow {
     pub(crate) verdict: Option<VerdictRow>,
     pub(crate) pairing: Option<PairingRow>,
 }
+
+/// A client's own reading of a prefab's spawn role.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub(crate) enum SpawnRoleRow {
+    Player,
+    Enemy,
+    Fill,
+}
+
+/// What `editor.load_prefab` did to the canvas.
+#[derive(Debug, Deserialize)]
+pub(crate) enum LoadPrefabOutcomeRow {
+    Opened {
+        /// The extent the loaded prefab put on the session.
+        grid_size:  GridSizeRow,
+        /// How many cells it painted.
+        placements: usize,
+    },
+    NoSuchPrefab {
+        /// The prefab name that was asked for.
+        name:  String,
+        /// The theme half of the key that was asked for.
+        theme: String,
+        /// The extent half of the key that was asked for.
+        size:  GridSizeRow,
+        /// The role half of the key that was asked for.
+        role:  SpawnRoleRow,
+    },
+}
+
+/// `editor.load_prefab`'s reply body.
+#[derive(Debug, Deserialize)]
+pub(crate) struct LoadPrefabReplyRow {
+    pub(crate) outcome: LoadPrefabOutcomeRow,
+}
+
+/// The two `editor.session` fields this suite reads back after a load.
+#[derive(Debug, Deserialize)]
+pub(crate) struct SessionGridRow {
+    pub(crate) theme:     String,
+    pub(crate) grid_size: GridSizeRow,
+}

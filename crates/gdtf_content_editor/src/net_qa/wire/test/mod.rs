@@ -21,6 +21,7 @@ mod painted;
 mod pairing;
 mod phase;
 mod placement;
+mod prefab;
 mod prefab_refusal;
 mod refusal;
 mod save_fault;

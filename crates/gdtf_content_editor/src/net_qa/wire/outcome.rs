@@ -3,7 +3,9 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    key::{EditorKeyNet, SavedPathNet},
+    grid::EditorGridSizeNet,
+    key::{EditorContentNameNet, EditorKeyNet, SavedPathNet, ThemeKeyNet},
+    prefab::{PrefabPlacementCountNet, SpawnRoleNet},
     refusal::EditorRefusalNet,
     save_fault::EditorSaveFaultNet,
 };
@@ -32,6 +34,29 @@ pub(in crate::net_qa) enum EditorLoadOutcomeNet {
         key:   EditorKeyNet,
         /// Every key that registry does hold.
         known: Vec<EditorKeyNet>,
+    },
+}
+
+/// What `editor.load_prefab` did to the prefab canvas.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub(in crate::net_qa) enum EditorLoadPrefabOutcomeNet {
+    /// The authored prefab was loaded onto the canvas.
+    Opened {
+        /// The grid extent the prefab put on the session.
+        grid_size:  EditorGridSizeNet,
+        /// How many cells it painted.
+        placements: PrefabPlacementCountNet,
+    },
+    /// No prefab sits under that name and key; the canvas is untouched.
+    NoSuchPrefab {
+        /// The prefab name that was asked for.
+        name:  EditorContentNameNet,
+        /// The theme half of the key that was asked for.
+        theme: ThemeKeyNet,
+        /// The grid extent half of the key that was asked for.
+        size:  EditorGridSizeNet,
+        /// The spawn role half of the key that was asked for.
+        role:  SpawnRoleNet,
     },
 }
 

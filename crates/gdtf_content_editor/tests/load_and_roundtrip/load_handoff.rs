@@ -1,16 +1,5 @@
 //! Editor load path: all registries resolve through real families; empty root falls back.
-use std::path::Path;
-
-use bevy::{
-    DefaultPlugins,
-    app::PluginGroup,
-    asset::AssetPlugin,
-    ecs::error::warn,
-    prelude::*,
-    render::{RenderPlugin, settings::WgpuSettings},
-    window::{ExitCondition, WindowPlugin},
-    winit::WinitPlugin,
-};
+use bevy::prelude::*;
 use gdtf_assets::ContentFolderHandle;
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
@@ -28,40 +17,10 @@ use gdtf_content_families::{
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
+use crate::support::editor_app_with_asset_root;
+
 fn editor_app() -> App {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
-    app.add_plugins(MapEditorPlugin);
-    app
-}
-
-fn editor_app_with_asset_root(root: &Path) -> App {
-    let mut app = App::new();
-    app.add_plugins(
-        DefaultPlugins
-            .set(RenderPlugin {
-                render_creation: WgpuSettings {
-                    backends: None,
-                    ..default()
-                }
-                .into(),
-                ..default()
-            })
-            .disable::<WinitPlugin>()
-            .disable::<bevy::log::LogPlugin>()
-            .disable::<bevy::app::TerminalCtrlCHandlerPlugin>()
-            .disable::<bevy::gizmos::GizmoPlugin>()
-            .disable::<bevy::audio::AudioPlugin>()
-            .set(WindowPlugin {
-                primary_window: None,
-                exit_condition: ExitCondition::DontExit,
-                ..default()
-            })
-            .set(AssetPlugin {
-                file_path: root.to_string_lossy().into_owned(),
-                ..default()
-            }),
-    );
-    app.set_error_handler(warn);
     app.add_plugins(MapEditorPlugin);
     app
 }

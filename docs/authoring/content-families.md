@@ -41,7 +41,7 @@ The generic systems live in `crates/gdtf_assets/src/family/systems.rs`; the
 salvage in `crates/gdtf_assets/src/family/salvage.rs`; the report vocabulary in
 `crates/gdtf_assets/src/family/report/`.
 
-## Part 2 — Why the glue crate, and the two keying shapes
+## Part 2 — Why the glue crate, and the three keying shapes
 
 `gdtf_assets` is a deliberate leaf (bevy/ron/serde only) and cannot name sim
 registry types; `gdtf_app` cannot host the impls because the content editor
@@ -50,12 +50,14 @@ live in the shared glue crate — the module rustdoc of
 `crates/gdtf_content_families/src/lib.rs` is the canonical statement of this
 mechanism (link, don't fork).
 
-The shipped families vary on ONE axis — where a member's key comes from:
+The shipped families vary on ONE axis — where a member's key comes from. The third
+shape varies on a second axis as well: one key holds many members rather than one.
 
 | Keying | Families | Key |
 |--------|----------|-----|
 | Stem-keyed | `WeaponsFamily`, `MeleeWeaponsFamily`, `ArmorFamily`, `FieldsFamily`, `GangsFamily`, `AttachmentsFamily`, `SpriteDefsFamily` | File stem, infix stripped (`stub_pistol.weapon.ron` → `stub_pistol`) |
 | Payload-keyed | `TerrainDefsFamily`, `ThemeDefsFamily` | The UUID inside the def; the filename is a courtesy |
+| Payload-keyed into a bucketed multimap | `PrefabsFamily` | The `PrefabKey` (theme, size, role) `PrefabRegistry::insert` derives from the spec. The file stem becomes the `PrefabName` inside each `Prefab` rather than the key, so one key holds every prefab authored under it |
 
 One placement exception: `SpriteDefsFamily` is the one family whose
 `Spec`/`Registry` live IN the glue crate
@@ -76,24 +78,32 @@ invisible to the loader):
   editor's savers return a save error, and the game and editor apps log it and
   keep Bevy's default asset path.
 - Generic families: `<Family>::FOLDER` / `<Family>::EXTENSION` — the assoc consts
-  on each marker impl in `crates/gdtf_content_families/src/`.
-- The two bespoke (non-generic) families, which have no `ContentFamily` impl to
-  carry consts: `gdtf_content_families::prefabs::{PREFABS_FOLDER,
-  PREFAB_EXTENSION}` and `gdtf_content_families::injuries::{INJURIES_FOLDER,
+  on each marker impl in `crates/gdtf_content_families/src/`. `PrefabsFamily::FOLDER`
+  and `PrefabsFamily::EXTENSION` are set from
+  `gdtf_content_families::prefabs::{PREFABS_FOLDER, PREFAB_EXTENSION}`, which stay
+  the single declaration and which the game's bespoke prefab chain and the editor's
+  prefab saver still import directly.
+- The one bespoke (non-generic) family, which has no `ContentFamily` impl to
+  carry consts: `gdtf_content_families::injuries::{INJURIES_FOLDER,
   INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION}` (declared once, imported
   by the game's bespoke Load chain AND the editor's savers).
 
 New code (docs too) cites the consts, never a re-spelled literal.
 
-## Part 4 — The two deliberate exclusions + the single-file loads
+## Part 4 — The deliberate exclusion + the single-file loads
 
-Two families stay BESPOKE by design (their shapes don't fit
+One family stays BESPOKE by design (its shape does not fit
 folder→one-registry):
 
-- **Prefabs** — a nested `content/maps/<theme>/<size>/` tree resolving into a
-  bucketed multimap (`crates/gdtf_app/src/states/load/systems/resolve/prefab.rs`).
 - **Injuries** — ONE folder, TWO asset types (defs + weightings), TWO
   resources (`crates/gdtf_app/src/states/load/systems/resolve/injuries.rs`).
+
+Prefabs are folder-loaded on one host and bespoke on the other. The editor reads
+them through `PrefabsFamily`; the game keeps its own chain over the same folder in
+`crates/gdtf_app/src/states/load/systems/resolve/prefab.rs`. Both hand each spec to
+`PrefabRegistry::insert`, so both derive the same key, and both strip the `.prefab`
+infix off the file stem, so `content/maps/<theme>/<size>/entry_room.prefab.ron` is
+`entry_room` on either path.
 
 Single FILES (not folders) load through the hot-RON chain instead:
 the authored situation (`content/situations/skirmish.ron`) and the
@@ -102,16 +112,19 @@ file per chain, with a fallback so a bad file never strands `Load`.
 
 ## Part 5 — Verify
 
-- **Suite:** `cargo dtest`. Every family binds the ONE generic load suite
-  (`crates/gdtf_app/tests/load_suite/`) through a thin
-  `FamilyLoadContract` wrapper — one file per family
-  (`crates/gdtf_app/tests/load_weapons.rs`, `load_melee_weapons.rs`,
-  `load_armor.rs`, `load_fields.rs`, `load_gangs.rs`, `load_attachments.rs`,
-  `load_terrain.rs`, `load_themes.rs`, `load_sprites.rs`) pinning: the headless
+- **Suite:** `cargo dtest`. Every family the GAME registers binds the ONE generic
+  load suite (`crates/gdtf_app/tests/load_families/load_suite/`) through a thin
+  `FamilyLoadContract` wrapper — one file per family under
+  `crates/gdtf_app/tests/load_families/` (`load_weapons.rs`,
+  `load_melee_weapons.rs`, `load_armor.rs`, `load_fields.rs`, `load_gangs.rs`,
+  `load_attachments.rs`, `load_terrain.rs`, `load_themes.rs`, `load_sprites.rs`)
+  pinning: the headless
   `MinimalPlugins` no-op + fallback seed, the Load→Intro gate on the registry,
   and the real-asset folder resolve with the shipped member stems
-  (value-agnostic — presence, never magnitudes). A NEW family adds its own
-  thin wrapper.
+  (value-agnostic — presence, never magnitudes). A NEW family the game registers
+  adds its own thin wrapper. `PrefabsFamily` gets none while only the editor
+  registers it; `crates/gdtf_content_editor/tests/load_and_roundtrip/prefab_family_load.rs`
+  covers it instead.
 - **Hot-reload:** `cargo drun`, edit a member `.ron`, watch the
   "hot-reload: rebuilt … from …" info line name the registry and folder.
 - **Reference integrity:** dangling cross-family keys surface on the

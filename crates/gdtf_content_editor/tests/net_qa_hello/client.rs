@@ -66,6 +66,9 @@ pub(crate) const EDITOR_LOAD_FIELD: &str = "editor.load_field";
 /// The Terrain tab's registry-load write the editor host publishes.
 pub(crate) const EDITOR_LOAD_TERRAIN: &str = "editor.load_terrain";
 
+/// The Prefab tab's authored-prefab load the editor host publishes.
+pub(crate) const EDITOR_LOAD_PREFAB: &str = "editor.load_prefab";
+
 /// The draft-save write the editor host publishes.
 pub(crate) const EDITOR_SAVE: &str = "editor.save";
 
@@ -121,7 +124,7 @@ pub(crate) const CAPTURE_SCREENSHOT: &str = "capture.screenshot";
 pub(crate) const WAIT: &str = "wait";
 
 /// Every command name the editor host publishes today.
-pub(crate) const EDITOR_COMMAND_NAMES: [&str; 36] = [
+pub(crate) const EDITOR_COMMAND_NAMES: [&str; 37] = [
     EDITOR_PHASE,
     EDITOR_LAST_SAVE,
     EDITOR_VALIDATION,
@@ -140,6 +143,7 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 36] = [
     EDITOR_LOAD_MELEE_WEAPON,
     EDITOR_LOAD_FIELD,
     EDITOR_LOAD_TERRAIN,
+    EDITOR_LOAD_PREFAB,
     EDITOR_SAVE,
     EDITOR_SET_FIELD,
     EDITOR_LIST_OP,
@@ -164,7 +168,7 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 36] = [
 pub(crate) const EDITOR_DEFERRED: [&str; 2] = [CAPTURE_SCREENSHOT, WAIT];
 
 /// Command names that need the authoring scene, so they refuse the editor's Load pass.
-pub(crate) const EDITOR_EDITING_ONLY: [&str; 14] = [
+pub(crate) const EDITOR_EDITING_ONLY: [&str; 15] = [
     EDITOR_FAMILIES,
     EDITOR_SESSION,
     EDITOR_SET_MODE,
@@ -179,6 +183,7 @@ pub(crate) const EDITOR_EDITING_ONLY: [&str; 14] = [
     EDITOR_SELECT_FACING,
     EDITOR_SET_LEVEL,
     EDITOR_PAINT,
+    EDITOR_LOAD_PREFAB,
 ];
 
 /// Command names that also need the Theme tab, so they refuse every other tab.

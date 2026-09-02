@@ -26,7 +26,7 @@ pub(in crate::egui_shell) fn right_panel(
                 ctx.prefab.edit_level.as_deref_mut(),
                 ctx.prefab.view.as_deref_mut(),
                 ctx.prefab.isolate.as_deref_mut(),
-                ctx.prefab.map.as_deref(),
+                ctx.prefab.map.as_deref_mut(),
             ) {
                 controls_ui::controls_panel(
                     ui,
@@ -34,6 +34,7 @@ pub(in crate::egui_shell) fn right_panel(
                         map,
                         session: ctx.session,
                         edit_level,
+                        prefabs: ctx.prefab.prefabs.as_deref(),
                     },
                     StoreyToggles { view, isolate },
                     TerrainLibrary {

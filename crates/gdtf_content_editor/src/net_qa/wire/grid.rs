@@ -1,7 +1,7 @@
 //! The prefab grid's extent on the wire.
 
 use bevy::prelude::Deref;
-use gdtf_battle_sim::level::GridSize;
+use gdtf_battle_sim::level::{GridHeight, GridLevels, GridSize, GridWidth};
 use serde::{Deserialize, Serialize};
 
 /// Grid width in cells.
@@ -64,5 +64,16 @@ impl EditorGridSizeNet {
             height: EditorGridHeightNet::new(*size.height()),
             levels: EditorGridLevelsNet::new(*size.levels()),
         }
+    }
+
+    /// The validated grid size these spans name, or `None` when they fail the sim's bands.
+    #[must_use]
+    pub(in crate::net_qa) fn size(self) -> Option<GridSize> {
+        GridSize::new(
+            GridWidth::new(*self.width),
+            GridHeight::new(*self.height),
+            GridLevels::new(*self.levels),
+        )
+        .ok()
     }
 }

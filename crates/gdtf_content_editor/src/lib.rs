@@ -17,6 +17,7 @@ mod melee_weapon_form;
 mod mode;
 #[cfg(debug_assertions)]
 mod net_qa;
+mod open;
 mod placement;
 mod plugin;
 mod preview;
@@ -72,6 +73,7 @@ pub use net_qa::{
     EDITOR_QA_SERVER_NAME, EditorNetQaSystems, EditorQaAssetsRoot, NetQaEditorPlugin,
     assert_editor_command_set_is_conformant, editor_command_names, shorten_editor_wait_budget,
 };
+pub use open::{open_prefab, prefab_candidates};
 pub use placement::{
     EditorTileClass, IllegalReason, PlacementVerdict, ProposedPlacement, apply_placement, classify,
     evaluate_placement, names_a_ladder,

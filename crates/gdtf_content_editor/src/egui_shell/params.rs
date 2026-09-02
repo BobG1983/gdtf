@@ -10,7 +10,7 @@ use gdtf_battle_sim::{
     equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
-    level::UuidThemeRegistry,
+    level::{PrefabRegistry, UuidThemeRegistry},
     terrain::def::TerrainDefRegistry,
     tuning::GangerStatTuning,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
@@ -65,6 +65,7 @@ pub(crate) struct PrefabParams<'w, 's> {
     pub(super) view:           Option<ResMut<'w, ViewMode>>,
     pub(super) isolate:        Option<ResMut<'w, IsolateView>>,
     pub(super) preview_target: Option<Res<'w, PreviewTarget>>,
+    pub(super) prefabs:        Option<Res<'w, PrefabRegistry>>,
     pub(super) rail_state:     Local<'s, RailUiState>,
     pub(super) save_name:      Local<'s, String>,
 }

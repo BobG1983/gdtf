@@ -86,6 +86,7 @@ fn the_editor_offers_the_reads_the_lifecycle_the_form_writes_the_theme_helpers_a
             CommandName::from_static("editor.load_melee_weapon"),
             CommandName::from_static("editor.load_field"),
             CommandName::from_static("editor.load_terrain"),
+            CommandName::from_static("editor.load_prefab"),
             CommandName::from_static("editor.save"),
             CommandName::from_static("editor.set_field"),
             CommandName::from_static("editor.list_op"),

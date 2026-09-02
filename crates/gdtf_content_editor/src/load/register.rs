@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use gdtf_assets::ContentFamilyAppExt;
 use gdtf_content_families::{
-    ArmorFamily, AttachmentsFamily, FieldsFamily, GangsFamily, MeleeWeaponsFamily,
+    ArmorFamily, AttachmentsFamily, FieldsFamily, GangsFamily, MeleeWeaponsFamily, PrefabsFamily,
     SpriteDefsFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily,
 };
 
@@ -20,6 +20,7 @@ pub(crate) fn register_load(app: &mut App) {
     app.register_content_family::<SpriteDefsFamily>();
     app.register_content_family::<AttachmentsFamily>();
     app.register_content_family::<FieldsFamily>();
+    app.register_content_family::<PrefabsFamily>();
 
     register_injuries(app);
 

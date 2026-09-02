@@ -11,11 +11,11 @@ use super::{
     wait::EditorWait,
     write::{
         EditorListOp, EditorLoadArmor, EditorLoadAttachment, EditorLoadField, EditorLoadGang,
-        EditorLoadInjury, EditorLoadMeleeWeapon, EditorLoadSprite, EditorLoadTerrain,
-        EditorLoadTheme, EditorLoadWeapon, EditorNew, EditorPaint, EditorSave, EditorSaveWeighting,
-        EditorSelectFacing, EditorSelectInjuryTab, EditorSelectTheme, EditorSelectTile,
-        EditorSelectWeightingTable, EditorSetDefaultFloor, EditorSetField, EditorSetGridSize,
-        EditorSetLevel, EditorSetMode, EditorToggleTerrain,
+        EditorLoadInjury, EditorLoadMeleeWeapon, EditorLoadPrefab, EditorLoadSprite,
+        EditorLoadTerrain, EditorLoadTheme, EditorLoadWeapon, EditorNew, EditorPaint, EditorSave,
+        EditorSaveWeighting, EditorSelectFacing, EditorSelectInjuryTab, EditorSelectTheme,
+        EditorSelectTile, EditorSelectWeightingTable, EditorSetDefaultFloor, EditorSetField,
+        EditorSetGridSize, EditorSetLevel, EditorSetMode, EditorToggleTerrain,
     },
 };
 use crate::net_qa::facts::EditorFacts;
@@ -39,6 +39,7 @@ pub(in crate::net_qa) const EDITOR_COMMANDS: &[&dyn ErasedCommand<EditorFacts>] 
     &EditorLoadMeleeWeapon,
     &EditorLoadField,
     &EditorLoadTerrain,
+    &EditorLoadPrefab,
     &EditorSave,
     &EditorSetField,
     &EditorListOp,

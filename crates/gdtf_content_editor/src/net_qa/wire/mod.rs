@@ -25,6 +25,7 @@ mod painted;
 mod pairing;
 mod phase;
 mod placement;
+mod prefab;
 mod prefab_refusal;
 mod refusal;
 mod save_fault;
@@ -94,12 +95,13 @@ pub(in crate::net_qa) use melee_weapon::{
 pub(in crate::net_qa) use mode::EditorModeNet;
 pub(in crate::net_qa) use on_death::{OnDeathEffectNet, OnDeathVariantNet};
 pub(in crate::net_qa) use outcome::{
-    EditorLoadOutcomeNet, EditorNewOutcomeNet, EditorSaveOutcomeNet,
+    EditorLoadOutcomeNet, EditorLoadPrefabOutcomeNet, EditorNewOutcomeNet, EditorSaveOutcomeNet,
 };
 pub(in crate::net_qa) use painted::{PaintedMapNet, PaintedRowNet};
 pub(in crate::net_qa) use pairing::PairingOutcomeNet;
 pub(in crate::net_qa) use phase::EditorPhaseNet;
 pub(in crate::net_qa) use placement::PlacementVerdictNet;
+pub(in crate::net_qa) use prefab::{PrefabPlacementCountNet, SpawnRoleNet};
 pub(in crate::net_qa) use prefab_refusal::{PaintRefusalNet, SelectTileRefusalNet};
 pub(in crate::net_qa) use refusal::EditorRefusalNet;
 pub(in crate::net_qa) use save_fault::EditorSaveFaultNet;

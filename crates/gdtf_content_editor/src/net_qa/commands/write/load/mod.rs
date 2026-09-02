@@ -8,5 +8,6 @@ mod theme;
 
 pub(in crate::net_qa) use commands::{
     EditorLoadArmor, EditorLoadAttachment, EditorLoadField, EditorLoadGang, EditorLoadInjury,
-    EditorLoadMeleeWeapon, EditorLoadSprite, EditorLoadTerrain, EditorLoadTheme, EditorLoadWeapon,
+    EditorLoadMeleeWeapon, EditorLoadPrefab, EditorLoadSprite, EditorLoadTerrain, EditorLoadTheme,
+    EditorLoadWeapon,
 };
