@@ -23,7 +23,7 @@
         entry_sides:      [South],
     ),
     presenter_kind: Emplacement(
-        graphic_name: "emplacement",   // TileRoles `emplacement` key — the dedicated VACANT weapon-mount tile, drawn distinctly from generic cover. While OCCUPIED the presenter swaps this tile in place to the `emplacement_occupied` tile (a Changed<EmplacementState> signal), so occupancy reads distinctly.
+        graphic_name: "emplacement",   // The dedicated weapon-mount tile, drawn distinctly from generic cover. The seat keeps this tile while it is occupied; the occupant draws itself on top of it.
     ),
     // One row per view an Emplacement owes — its four facings.
     views: [

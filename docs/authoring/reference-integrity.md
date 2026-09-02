@@ -118,7 +118,8 @@ Two generation-time degradations survive, as last resorts only, and both
 
 - **nil-floor pour** — procgen pours a level whose theme resolves no
   `default_floor` with the nil sentinel (setup then falls back to the tuning
-  move cost);
+  move cost, and every storey-0 cell with no authored piece draws the magenta
+  missing-tile marker, because no floor def resolves);
 - **empty-board fallback** — when procgen cannot assemble a level at all (no
   prefabs for the theme), the battle uses the authored situation's terrain
   as-is.

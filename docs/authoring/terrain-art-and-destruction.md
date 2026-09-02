@@ -11,9 +11,11 @@ pillars: [1, 5]
 **A terrain def owns its own art in every state it can be in, and says what it
 leaves behind when it dies; the renderer owns no content.**
 
-Status: `leaves_behind` and the per-def view sets are both built. "What exists
-today" below records the state they replace, so a reader can tell canon from
-code.
+Status: `leaves_behind`, the per-def view sets and the presenter's view
+resolution are built. A wall's corner views are authored and unreachable: the
+resolver picks an edge view from the piece's own facing, and nothing scans a
+cell's neighbours. "What exists today" below records what the code does, so a
+reader can tell canon from code.
 
 ## The claim
 
@@ -85,13 +87,19 @@ hide behind, a fungus stack simply goes.
 
 ## What exists today
 
-The presenter derives a role for each cell and, when a cell has no authored
-piece, resolves art by the role's own name — so roughly twenty sprite records
-are claimed by render code rather than by any content. A test asserts those
-files exist. The missing-tile texture is already generated at runtime; it is
-simply reached more often than it should be. The `on_death` list the claim
-names is built on terrain defs and weapon specs both, and `leaves_behind` is
-built on terrain defs.
+The presenter resolves a drawn view from the piece standing at the cell: the
+def it was placed from, the facing it carries and its open state. Battle setup
+seeds a floor piece from the situation's default floor across the whole extent
+the presenter draws, so the missing-tile marker shows only on a storey-0 cell
+whose floor def does not resolve. Occupied-emplacement art is gone and the
+occupant draws itself on the seat. A ladder endpoint is the one sprite record
+render code still names, taken from the link kind rather than from a def.
+
+`draw_static_battlefield` still stamps each tile with the piece's
+`graphic_name` before any view is resolved, and `stamp_destroyed_cell` reads
+the same field for a cell whose piece was just smashed. Those two reads go when
+the field does. The `on_death` list the claim names is built on terrain defs
+and weapon specs both, and `leaves_behind` is built on terrain defs.
 
 ## Consequence for the editor
 
@@ -104,8 +112,9 @@ case in the delete surface.
 naming another — caught by the same check and fixed the same way. Chains make
 that graph deeper, not different.
 
-This must land before sprite deletion is built. Until it does, those names are
-claimed by render code and no replacement can satisfy them.
+Sprite deletion is not built. The one name still claimed by render code is
+`ladder`, which a link endpoint draws from its link kind, and `door`,
+`stair_up` and `stair_down` are named by tests and by no def.
 
 ## Left open
 
@@ -130,8 +139,12 @@ slot can become a list without disturbing anything else.
   destroyed; `TerrainView`, `TerrainViewArt`, `TerrainViews` and `owed_views`
   live in `crates/gdtf_battle_sim/src/terrain/def/views/`, and the per-def
   completeness check in
-  `crates/gdtf_content_families/src/validate/terrain_views.rs`; role-name art
-  resolution lives in `crates/gdtf_battle_presenter`; the authoring forms live
-  in `crates/gdtf_content_editor`. **TBD (Bevy):** the mounted weapon's arc
-  reading the mount's facing, and turning a mount as an act, are not built.
+  `crates/gdtf_content_families/src/validate/terrain_views.rs`; per-def view
+  resolution lives in
+  `crates/gdtf_battle_presenter/src/render/terrain/view_resolve.rs` and the
+  restamp that drives it in `view_restamp.rs`; the floor seeding lives in
+  `crates/gdtf_battle_sim/src/lifecycle/situation/setup/seed_floor.rs`; the
+  authoring forms live in `crates/gdtf_content_editor`. **TBD (Bevy):** the
+  mounted weapon's arc reading the mount's facing, and turning a mount as an
+  act, are not built.
 - Source: owner rulings, given directly in conversation, 2026-08-14.

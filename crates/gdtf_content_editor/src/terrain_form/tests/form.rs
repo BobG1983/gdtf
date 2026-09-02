@@ -31,12 +31,7 @@ fn picker_offers_exactly_the_def_authorable_vocabulary() {
             "{newly_authorable:?} must be offered by the derived picker ",
         );
     }
-    for excluded in [
-        TileRole::EmplacementOccupied,
-        TileRole::StairUp,
-        TileRole::StairDown,
-        TileRole::Door,
-    ] {
+    for excluded in [TileRole::StairUp, TileRole::StairDown, TileRole::Door] {
         assert!(
             !offered.contains(&excluded),
             "{excluded:?} must NOT be offered by the picker ",

@@ -77,10 +77,7 @@ impl TileRoleNet {
             TileRole::StairNsDown => Some(Self::StairNsDown),
             TileRole::StairEwUp => Some(Self::StairEwUp),
             TileRole::StairEwDown => Some(Self::StairEwDown),
-            TileRole::EmplacementOccupied
-            | TileRole::Door
-            | TileRole::StairUp
-            | TileRole::StairDown => None,
+            TileRole::Door | TileRole::StairUp | TileRole::StairDown => None,
         }
     }
 

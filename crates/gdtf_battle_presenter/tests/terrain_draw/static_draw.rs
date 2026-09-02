@@ -64,6 +64,10 @@ fn battle_ready_draws_role_correct_sized_positioned_sprites() {
     app.world_mut().insert_resource(surface);
     app.world_mut().insert_resource(BattleInProgress);
 
+    spawn_terrain_entity(&mut app, wall_key, "wall", None);
+    spawn_terrain_entity(&mut app, cover_key, "cover", None);
+    spawn_terrain_entity(&mut app, slab_key, "slab", None);
+
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()
         .write(BattleReady);

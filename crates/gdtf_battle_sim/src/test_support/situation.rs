@@ -6,9 +6,10 @@ use super::{
 };
 use crate::{
     ganger::{Faction, GangName, GangRegistry, GangRoster},
+    level::GridSize,
     metric::CellLevel,
-    situation::{CoverSpawn, GangerSpawn, Situation, SlabSpawn},
-    terrain::facing::TerrainFacing,
+    situation::{CoverSpawn, FloorSpawn, GangerSpawn, Situation, SlabSpawn},
+    terrain::{def::TerrainUuid, facing::TerrainFacing},
     vertical::VerticalLink,
 };
 
@@ -43,6 +44,12 @@ pub mod test_pieces {
     /// Emplacement piece that leaves a blocking wall behind when it is destroyed.
     pub const EMPLACEMENT_LEAVING_WALL: TerrainUuid =
         TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0009));
+    /// Openable wall piece with shut and open art on every facing.
+    pub const DOOR: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_000A));
+    /// Wall piece whose four edge views each name a different sprite key.
+    pub const FACING_WALL: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_000B));
+    /// Slab piece tagged as a staircase, with the climb art on every facing.
+    pub const STAIR: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_000C));
 }
 
 /// Wall spawn at a cell.
@@ -114,6 +121,29 @@ impl SituationBuilder {
         self.situation
             .slabs
             .push(SlabSpawn::new(at, piece, TerrainFacing::North));
+        self
+    }
+
+    /// Set the terrain piece every cell with no authored floor takes.
+    #[must_use]
+    pub const fn default_floor(mut self, piece: TerrainUuid) -> Self {
+        self.situation.default_floor = piece;
+        self
+    }
+
+    /// Author a per-cell floor override.
+    #[must_use]
+    pub fn floor_at(mut self, at: CellLevel, piece: TerrainUuid, facing: TerrainFacing) -> Self {
+        self.situation
+            .floors
+            .push(FloorSpawn::new(at, piece, facing));
+        self
+    }
+
+    /// Set the authored board size.
+    #[must_use]
+    pub const fn grid_size(mut self, size: GridSize) -> Self {
+        self.situation.grid_size = size;
         self
     }
 

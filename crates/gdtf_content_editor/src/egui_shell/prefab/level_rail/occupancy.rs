@@ -98,7 +98,6 @@ const fn rail_hue(role: TileRole) -> egui::Color32 {
         TileRole::WallEw => egui::Color32::from_rgb(170, 170, 180),
         TileRole::Cover => egui::Color32::from_rgb(190, 150, 60),
         TileRole::Emplacement => egui::Color32::from_rgb(200, 90, 40),
-        TileRole::EmplacementOccupied => egui::Color32::from_rgb(170, 60, 40),
         TileRole::Slab => egui::Color32::from_rgb(110, 130, 160),
         TileRole::Rubble => egui::Color32::from_rgb(130, 100, 70),
         TileRole::Door | TileRole::DoorNs => egui::Color32::from_rgb(60, 160, 150),

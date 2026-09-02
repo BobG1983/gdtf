@@ -26,6 +26,9 @@ fn full_view_toggle_draws_upper_storeys_and_round_trips() {
     app.world_mut().insert_resource(surface);
     app.world_mut().insert_resource(BattleInProgress);
 
+    spawn_terrain_entity(&mut app, CellLevel::new(slab_cell, l0), "slab", None);
+    spawn_terrain_entity(&mut app, CellLevel::new(slab_cell, l1), "slab", None);
+
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()
         .write(BattleReady);

@@ -29,6 +29,9 @@ fn raising_active_level_redraws_the_whole_drawn_band() {
     app.world_mut().insert_resource(surface);
     app.world_mut().insert_resource(BattleInProgress);
 
+    spawn_terrain_entity(&mut app, slab0, "slab", None);
+    spawn_terrain_entity(&mut app, slab1, "slab", None);
+
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()
         .write(BattleReady);
@@ -150,6 +153,10 @@ fn upper_storey_gap_peeks_through_to_the_storey_beneath() {
     surface.set_slab(gap_lower, SlabState::Present);
     app.world_mut().insert_resource(surface);
     app.world_mut().insert_resource(BattleInProgress);
+
+    // `gap_upper` takes no piece: a piece there makes `storey_has_terrain` answer true.
+    spawn_terrain_entity(&mut app, gap_lower, "slab", None);
+    spawn_terrain_entity(&mut app, wall_upper, "wall", None);
 
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
     app.world_mut()

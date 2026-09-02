@@ -1,6 +1,6 @@
 use bevy::{ecs::message::Messages, image::Image, prelude::*};
 use gdtf_battle_sim::{
-    cover::CoverLedger,
+    def::TerrainDefRegistry,
     occupancy_sync::TerrainPieceDestroyed,
     prelude::{BattleInProgress, OccupancyGrid},
     surface::SurfaceGrid,
@@ -10,7 +10,7 @@ use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use crate::{
     MissingTileTexture, Played, PresenterSystems, draw_static_battlefield, draw_vertical_links,
-    indicate_emplacement_occupied, render::terrain::setup_missing_tile_texture,
+    render::terrain::setup_missing_tile_texture, restamp_terrain_views,
     restamp_tiles_on_def_change, stamp_destroyed_cell,
 };
 
@@ -29,7 +29,6 @@ pub(super) fn register_terrain_draw(app: &mut App) {
                     .and_then(resource_exists::<AssetServer>)
                     .and_then(resource_exists::<MissingTileTexture>)
                     .and_then(resource_exists::<OccupancyGrid>)
-                    .and_then(resource_exists::<CoverLedger>)
                     .and_then(resource_exists::<SurfaceGrid>),
             ),
     );
@@ -43,15 +42,19 @@ pub(super) fn register_destruction_swaps(app: &mut App) {
                 .and_then(sprite_resolution_ready)
                 .and_then(resource_exists::<Messages<Played<TerrainPieceDestroyed>>>)
                 .and_then(resource_exists::<OccupancyGrid>)
-                .and_then(resource_exists::<CoverLedger>)
                 .and_then(resource_exists::<SurfaceGrid>),
         ),
     )
     .add_systems(
         Update,
-        indicate_emplacement_occupied
+        restamp_terrain_views
             .in_set(PresenterSystems::Scene)
-            .run_if(resource_exists::<BattleInProgress>.and_then(sprite_resolution_ready)),
+            .after(draw_static_battlefield)
+            .run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(sprite_resolution_ready)
+                    .and_then(resource_exists::<TerrainDefRegistry>),
+            ),
     )
     .add_systems(
         Update,
@@ -59,7 +62,7 @@ pub(super) fn register_destruction_swaps(app: &mut App) {
             .in_set(PresenterSystems::Scene)
             .after(draw_static_battlefield)
             .after(stamp_destroyed_cell)
-            .after(indicate_emplacement_occupied)
+            .after(restamp_terrain_views)
             .run_if(resource_exists::<BattleInProgress>.and_then(sprite_resolution_ready)),
     );
 }
@@ -78,7 +81,8 @@ pub(super) fn register_vertical_links(app: &mut App) {
         draw_vertical_links.in_set(PresenterSystems::Scene).run_if(
             resource_exists::<BattleInProgress>
                 .and_then(resource_exists::<VerticalLinkGraph>)
-                .and_then(sprite_resolution_ready),
+                .and_then(sprite_resolution_ready)
+                .and_then(resource_exists::<TerrainDefRegistry>),
         ),
     );
 }

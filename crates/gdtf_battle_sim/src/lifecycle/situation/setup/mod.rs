@@ -6,6 +6,7 @@ mod orchestrate;
 mod registries;
 mod resolve;
 mod seed_cover;
+mod seed_floor;
 mod seed_slabs;
 mod spawn_gangers;
 mod weapon_scenes;

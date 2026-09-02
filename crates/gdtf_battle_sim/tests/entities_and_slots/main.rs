@@ -4,3 +4,4 @@ mod armor_entities;
 mod attachment_slot_fit;
 mod dot_attach;
 mod field_seeding;
+mod floor_seeding;

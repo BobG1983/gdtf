@@ -1,6 +1,5 @@
 use bevy::{ecs::system::SystemParam, image::Image, platform::collections::HashMap, prelude::*};
 use gdtf_battle_sim::{
-    cover::CoverLedger,
     entity::TerrainCell,
     occupancy::TerrainKind,
     piece::{FootfallSound, TerrainGraphicKey},
@@ -9,12 +8,9 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
-use super::{
-    resolve::{
-        MissingTileTexture, anchor_world_offset, resolve_sprite, single_rect_layout, source_parts,
-        source_px_size, source_urect,
-    },
-    roles::TileRole,
+use super::resolve::{
+    MissingTileTexture, anchor_world_offset, resolve_sprite, single_rect_layout, source_parts,
+    source_px_size, source_urect,
 };
 use crate::{Brightness, CELL_PX, TerrainFogMaterial};
 
@@ -22,7 +18,6 @@ use crate::{Brightness, CELL_PX, TerrainFogMaterial};
 #[derive(SystemParam)]
 pub struct StaticMap<'w, 's> {
     occupancy: Res<'w, OccupancyGrid>,
-    cover:     Res<'w, CoverLedger>,
     surface:   Res<'w, SurfaceGrid>,
     terrain: Query<
         'w,
@@ -36,20 +31,6 @@ pub struct StaticMap<'w, 's> {
 }
 
 impl StaticMap<'_, '_> {
-    pub(super) fn role_at(&self, key: &CellLevel) -> TileRole {
-        if matches!(self.surface.slab_state(key), SlabState::Present) {
-            return TileRole::Slab;
-        }
-        match self.occupancy.terrain(key) {
-            TerrainKind::Wall => TileRole::Wall,
-            TerrainKind::Cover | TerrainKind::Emplacement => {
-                let _ = self.cover.peek(key);
-                TileRole::Cover
-            }
-            TerrainKind::Open => TileRole::Floor,
-        }
-    }
-
     pub(super) fn graphic_facts(
         &self,
     ) -> HashMap<CellLevel, (&TerrainGraphicKey, Option<&FootfallSound>)> {
@@ -63,12 +44,8 @@ impl StaticMap<'_, '_> {
 pub(super) fn graphic_name_at<'a>(
     key: &CellLevel,
     facts: &HashMap<CellLevel, (&'a TerrainGraphicKey, Option<&FootfallSound>)>,
-    map: &StaticMap,
-) -> &'a str {
-    match facts.get(key) {
-        Some((graphic, _footfall)) => graphic,
-        None => map.role_at(key).as_key(),
-    }
+) -> Option<&'a str> {
+    facts.get(key).map(|(graphic, _footfall)| graphic.as_str())
 }
 
 /// A `#[derive(SystemParam)]` bundle (the [`StaticMap`] shape) so the draw + the three
@@ -96,6 +73,19 @@ impl SpriteResolveCtx<'_> {
             brightness: Brightness::FULL,
         };
         (material, offset)
+    }
+
+    /// The magenta missing-tile material a cell with no resolved floor draws.
+    pub(super) fn marker_material(&self) -> (TerrainFogMaterial, Vec2) {
+        let material = TerrainFogMaterial {
+            image:        self.missing.handle(),
+            atlas_layout: None,
+            atlas_index:  0,
+            custom_size:  Some(Vec2::splat(CELL_PX)),
+            saturation:   1.0,
+            brightness:   Brightness::FULL,
+        };
+        (material, Vec2::ZERO)
     }
 
     pub(super) fn resolved_sprite(&self, name: &str, at: &CellLevel) -> (Sprite, Vec2) {

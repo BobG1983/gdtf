@@ -135,17 +135,20 @@ intact slab regardless of the shot's band, `resolution.md` §2 — do not author
 and carries ONLY presentation hooks; by the one-way sim→presenter dependency
 the presenter reads this half and never the sim half. Every variant carries a
 `graphic_name:` (`TerrainGraphicKey`, a bare string) — a **FOREIGN KEY by
-name into the sprite-def registry** (the ruling): the key
+name into the sprite-def registry**: the key
 is the file stem of a `assets/content/sprites/<name>.spritedef.ron` member
 (see [sprite-defs.md](sprite-defs.md)), and the reference-integrity pass
 reports a `DanglingRef` finding — at the game's `Load` AND live in the editor
 — for a `graphic_name` that resolves no sprite def
 ([reference-integrity.md](reference-integrity.md)). The RENDERER resolves the
 same key through the sprite-def registry to a texture + rect + anchor
-(— the legacy `TileRoles` role table is retired; a key that resolves
+(the legacy `TileRoles` role table is retired; a key that resolves
 no def draws the loud magenta missing-sprite marker); the sim never touches
-pixels either way. Only `Slab` adds an
-optional footfall:
+pixels either way. It is the first stamp a drawn tile carries and the one that
+stays where no view row resolves: a piece whose def names a `views` row for its
+state and facing is restamped to that row's sprite instead (see
+[terrain-art-and-destruction.md](terrain-art-and-destruction.md)). Only `Slab`
+adds an optional footfall:
 
 | `presenter_kind:` variant | Fields |
 |---------------------------|--------|

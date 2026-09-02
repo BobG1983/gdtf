@@ -65,8 +65,12 @@ pub fn draw_static_battlefield(
                 if level != Level::new(0) && !storey_has_terrain(&key, &graphic_facts, &map) {
                     continue;
                 }
-                let name = graphic_name_at(&key, &graphic_facts, &map);
-                let (material, offset) = resolve.resolved(name, &key);
+                let stamp = graphic_name_at(&key, &graphic_facts)
+                    .map_or(StampedGraphic::Marker, StampedGraphic::from_key);
+                let (material, offset) = match stamp.named() {
+                    Some(name) => resolve.resolved(name, &key),
+                    None => resolve.marker_material(),
+                };
                 let mesh2d = Mesh2d(mesh.clone());
                 let material2d = MeshMaterial2d(quads.material(material));
                 let transform =
@@ -79,7 +83,7 @@ pub fn draw_static_battlefield(
                         template_value(transform),
                         template_value(layers),
                     ))
-                    .insert((TerrainSprite { at: key }, StampedGraphic::from_key(name)));
+                    .insert((TerrainSprite { at: key }, stamp));
             }
         }
     }

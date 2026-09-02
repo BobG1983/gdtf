@@ -41,8 +41,9 @@ fn the_stamp_waits_until_the_cursor_plays_the_smash() {
     let l0 = Level::new(0);
     let slab_key = CellLevel::new(Cell::new(4, 5), l0);
     let other_slab_key = CellLevel::new(Cell::new(6, 7), l0);
-    // A real piece at the cell, so the smash step has something to despawn.
+    // A real piece at each cell: one for the smash to despawn, one the smash leaves alone.
     spawn_terrain_entity(&mut app, slab_key, "slab", None);
+    spawn_terrain_entity(&mut app, other_slab_key, "slab", None);
     draw_two_slabs(&mut app, slab_key, other_slab_key);
 
     let defs = sprite_defs(&app);
@@ -57,12 +58,6 @@ fn the_stamp_waits_until_the_cursor_plays_the_smash() {
         def_rect(&defs, "slab"),
         "the successor's def rect must differ from the intact slab rect, or the stamp is \
          invisible on this cell",
-    );
-    assert_ne!(
-        def_rect(&defs, "floor_alt_panel"),
-        def_rect(&defs, "floor"),
-        "the successor's def rect must differ from the `floor` fallback an absent slab gives, \
-         or the after-assertion cannot tell the successor's art from role_at's answer",
     );
     assert_eq!(
         sprite_rect_at(&mut app, slab_key),
@@ -143,6 +138,7 @@ fn the_stamp_runs_with_only_the_played_destroyed_buffer_in_the_app() {
     let l0 = Level::new(0);
     let slab_key = CellLevel::new(Cell::new(4, 5), l0);
     let other_slab_key = CellLevel::new(Cell::new(6, 7), l0);
+    spawn_terrain_entity(&mut app, slab_key, "slab", None);
     draw_two_slabs(&mut app, slab_key, other_slab_key);
 
     let defs = sprite_defs(&app);
@@ -163,6 +159,7 @@ fn the_stamp_runs_with_only_the_played_destroyed_buffer_in_the_app() {
 
     let smash = detained_smash_log(&mut app, &[(slab_key, TerrainPieceKind::Slab)]);
     absent_slab(&mut app, slab_key);
+    despawn_terrain_entity(&mut app, slab_key);
     play_past(&mut app, smash, |app| {
         assert!(
             !raw_destroyed_present(app),
@@ -173,17 +170,17 @@ fn the_stamp_runs_with_only_the_played_destroyed_buffer_in_the_app() {
 
     assert_eq!(
         sprite_rect_at(&mut app, slab_key),
-        def_rect(&defs, "floor"),
+        None,
         "the log alone must drive the stamp: a gate left on the raw TerrainPieceDestroyed \
-         buffer never runs stamp_destroyed_cell in this app, leaving the cell intact — \
-         found {:?}",
+         buffer never runs stamp_destroyed_cell in this app, leaving the cell on the intact \
+         slab rect — found {:?}",
         sprite_rect_at(&mut app, slab_key),
     );
     assert_eq!(
         stamped_graphic_at(&mut app, slab_key),
-        Some(StampedGraphic::from_key("floor")),
-        "the cell holding no slab and no piece must be stamped `floor` with no raw buffer in \
-         the app — found {:?}",
+        Some(StampedGraphic::Marker),
+        "the cell holding no slab, no piece and no theme default must be stamped the \
+         missing-tile marker with no raw buffer in the app — found {:?}",
         stamped_graphic_at(&mut app, slab_key),
     );
 }

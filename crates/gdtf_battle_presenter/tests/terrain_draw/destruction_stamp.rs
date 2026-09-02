@@ -33,6 +33,9 @@ fn a_played_smash_stamps_the_cover_cell_with_its_successors_key() {
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(BattleInProgress);
 
+    spawn_terrain_entity(&mut app, wall_key, "wall", None);
+    spawn_terrain_entity(&mut app, cover_key, "cover", None);
+
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()
         .write(BattleReady);
@@ -49,6 +52,7 @@ fn a_played_smash_stamps_the_cover_cell_with_its_successors_key() {
     let wall_rect_before = sprite_rect_at(&mut app, wall_key);
 
     // The successor the sim spawns for the smashed piece, standing at the same cell.
+    despawn_terrain_entity(&mut app, cover_key);
     spawn_terrain_entity(&mut app, cover_key, "floor_alt_panel", None);
     let smash = detained_smash_log(&mut app, &[(cover_key, TerrainPieceKind::Cover)]);
     play_past(&mut app, smash, |_| {});
@@ -99,6 +103,8 @@ fn a_played_smash_stamps_a_drawn_lower_storey_and_ignores_above_active() {
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(BattleInProgress);
 
+    spawn_terrain_entity(&mut app, lower_cover, "cover", None);
+
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()
@@ -123,6 +129,7 @@ fn a_played_smash_stamps_a_drawn_lower_storey_and_ignores_above_active() {
         "the above-active cover must NOT be drawn (culled)",
     );
 
+    despawn_terrain_entity(&mut app, lower_cover);
     spawn_terrain_entity(&mut app, lower_cover, "floor_alt_panel", None);
     let smash = detained_smash_log(
         &mut app,
@@ -161,7 +168,7 @@ fn a_played_stamp_and_a_forced_redraw_agree_on_a_pieceless_level_0_cell() {
 
     let pieceless = CellLevel::new(Cell::new(4, 4), Level::new(0));
 
-    // No TerrainPlacement anywhere, so role_at answers Floor once the piece is gone.
+    // The cell's only piece, so the smash leaves it pieceless and drawing the marker.
     spawn_terrain_entity(&mut app, pieceless, "wall", None);
     insert_occupancy(&mut app, Vec::new());
     app.world_mut().insert_resource(CoverLedger::new());
@@ -178,22 +185,22 @@ fn a_played_stamp_and_a_forced_redraw_agree_on_a_pieceless_level_0_cell() {
         "the SpriteDefRegistry must be resident after settle"
     );
     let Some(defs) = defs else { return };
-    assert_ne!(
-        def_rect(&defs, "wall"),
-        def_rect(&defs, "floor"),
-        "the wall and floor def rects must differ, or a stamp that never runs would look like \
-         one that agrees with the redraw",
-    );
     assert_eq!(
         sprite_rect_at(&mut app, pieceless),
         def_rect(&defs, "wall"),
         "precondition: the cell draws its piece's `wall` key before the smash",
     );
+    assert_eq!(
+        stamped_graphic_at(&mut app, pieceless),
+        Some(StampedGraphic::from_key("wall")),
+        "precondition: the cell is stamped its piece's `wall` key before the smash, so a stamp \
+         that never runs is told apart from one that agrees with the redraw",
+    );
 
     despawn_terrain_entity(&mut app, pieceless);
     let smash = detained_smash_log(&mut app, &[(pieceless, TerrainPieceKind::Wall)]);
     play_past(&mut app, smash, |_| {});
-    let stamped_rect = sprite_rect_at(&mut app, pieceless);
+    let stamped_after_play = stamped_graphic_at(&mut app, pieceless);
 
     app.world_mut()
         .resource_mut::<Messages<BattleReady>>()
@@ -201,11 +208,17 @@ fn a_played_stamp_and_a_forced_redraw_agree_on_a_pieceless_level_0_cell() {
     app.update();
 
     assert_eq!(
-        sprite_rect_at(&mut app, pieceless),
-        stamped_rect,
-        "on a level-0 cell left with no piece, the played stamp and a full redraw must answer \
-         the same graphic — the stamp resolves through graphic_name_at, the same function \
-         draw_static_battlefield calls — found {:?} after the redraw",
-        sprite_rect_at(&mut app, pieceless),
+        stamped_after_play,
+        Some(StampedGraphic::Marker),
+        "a level-0 cell left with no piece and no theme default is stamped the missing-tile \
+         marker by the played stamp — found {stamped_after_play:?}",
+    );
+    assert_eq!(
+        stamped_graphic_at(&mut app, pieceless),
+        stamped_after_play,
+        "the played stamp and a full redraw must answer the same thing for that cell — the \
+         stamp resolves through graphic_name_at, the same function draw_static_battlefield \
+         calls — found {:?} after the redraw",
+        stamped_graphic_at(&mut app, pieceless),
     );
 }

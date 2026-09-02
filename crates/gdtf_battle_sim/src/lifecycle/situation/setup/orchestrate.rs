@@ -4,7 +4,7 @@ use bevy::prelude::Commands;
 
 use super::{
     registries::{BattleRegistries, BattleSetup},
-    resolve, seed_cover, seed_slabs, spawn_gangers,
+    resolve, seed_cover, seed_floor, seed_slabs, spawn_gangers,
 };
 use crate::{
     occupancy::{OccupancyGrid, OccupancyInput, TerrainPlacement},
@@ -74,6 +74,8 @@ pub fn setup_battle(
         &brace_stair_cells_set,
         commands,
     ));
+
+    seed_floor::seed_floor_terrain(situation, terrain, commands);
 
     let setup = BattleSetup { occupants };
 

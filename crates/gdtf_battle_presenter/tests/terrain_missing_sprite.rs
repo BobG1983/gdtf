@@ -16,6 +16,7 @@ use bevy::{
         },
         tracing_subscriber::{Layer, layer::Context, prelude::*, registry::Registry},
     },
+    math::Vec2,
     prelude::{MeshMaterial2d, default},
     render::{RenderPlugin, settings::WgpuSettings},
     window::{ExitCondition, WindowPlugin},
@@ -23,7 +24,8 @@ use bevy::{
 };
 use gdtf_assets::ContentFamilyAppExt;
 use gdtf_battle_presenter::{
-    MissingTileTexture, TerrainFogMaterial, TerrainSprite, TopDownAtlases, TopDownRendererPlugin,
+    Brightness, CELL_PX, MissingTileTexture, TerrainFogMaterial, TerrainSprite, TopDownAtlases,
+    TopDownRendererPlugin,
 };
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
@@ -203,6 +205,119 @@ fn missing_sprite_def_warns_and_draws_the_magenta_marker() {
         }),
         "the draw must warn, naming the unresolvable sprite name (`{MISSING_NAME}`) and the \
          cell ({expected_cell}); captured: {captured:?}",
+    );
+}
+
+// The empty storey-0 battle both marker cases draw.
+fn empty_ground_battle(app: &mut App) {
+    let input = OccupancyInput {
+        terrain:   Vec::new(),
+        occupants: Vec::new(),
+    };
+    let grid = OccupancyGrid::build_from_occupancy_input(
+        &input,
+        &bevy::platform::collections::HashSet::default(),
+    );
+    app.world_mut().insert_resource(grid);
+    app.world_mut().insert_resource(CoverLedger::new());
+    app.world_mut().insert_resource(SurfaceGrid::new());
+    app.world_mut().insert_resource(BattleInProgress);
+}
+
+#[test]
+fn a_cell_with_no_piece_and_no_theme_default_draws_the_marker_material() {
+    let mut app = headless_renderer_app();
+    advance_until_resource_exists::<SpriteDefRegistry>(&mut app);
+    advance_until_resource_exists::<TopDownAtlases>(&mut app);
+
+    let cell = CellLevel::new(Cell::new(3, 3), Level::new(0));
+    empty_ground_battle(&mut app);
+
+    app.world_mut()
+        .resource_mut::<Messages<BattleReady>>()
+        .write(BattleReady);
+    app.update();
+
+    let missing = app
+        .world()
+        .get_resource::<MissingTileTexture>()
+        .map(MissingTileTexture::handle);
+    assert!(
+        missing.is_some(),
+        "the MissingTileTexture marker must be minted at Startup",
+    );
+    let Some(missing) = missing else { return };
+    let material = material_at(&mut app, cell);
+    assert!(
+        material.is_some(),
+        "a storey-0 cell with no piece must still draw a tile",
+    );
+    let Some(material) = material else { return };
+
+    assert_eq!(
+        material.image.id(),
+        missing.id(),
+        "a storey-0 cell with no piece and no theme default draws the magenta \
+         MissingTileTexture, not whatever def happens to be named `floor`",
+    );
+    assert!(
+        material.atlas_layout.is_none(),
+        "the marker draws the whole 1x1 magenta image (identity UV, no layout)",
+    );
+    assert_eq!(
+        material.custom_size,
+        Some(Vec2::splat(CELL_PX)),
+        "the marker tile is drawn at the same cell size as every other terrain tile",
+    );
+    assert!(
+        (material.saturation - 1.0).abs() < f32::EPSILON,
+        "the marker is built at full colour; got saturation {}",
+        material.saturation,
+    );
+    assert_eq!(
+        material.brightness,
+        Brightness::FULL,
+        "the marker is built at full brightness, so a reader sees the authoring gap",
+    );
+}
+
+#[test]
+fn a_cell_whose_piece_resolves_does_not_draw_the_marker() {
+    let mut app = headless_renderer_app();
+    advance_until_resource_exists::<SpriteDefRegistry>(&mut app);
+    advance_until_resource_exists::<TopDownAtlases>(&mut app);
+
+    let cell = CellLevel::new(Cell::new(3, 3), Level::new(0));
+    empty_ground_battle(&mut app);
+    app.world_mut().spawn((
+        TerrainCell::new(cell),
+        TerrainGraphicKey::new("floor".to_owned()),
+    ));
+
+    app.world_mut()
+        .resource_mut::<Messages<BattleReady>>()
+        .write(BattleReady);
+    app.update();
+
+    let missing = app
+        .world()
+        .get_resource::<MissingTileTexture>()
+        .map(MissingTileTexture::handle);
+    assert!(missing.is_some(), "the marker texture must be minted");
+    let Some(missing) = missing else { return };
+    let material = material_at(&mut app, cell);
+    assert!(material.is_some(), "the cell must draw a tile");
+    let Some(material) = material else { return };
+
+    assert_ne!(
+        material.image.id(),
+        missing.id(),
+        "a cell whose piece's graphic resolves must NOT draw the marker — the marker is not \
+         drawn everywhere",
+    );
+    assert!(
+        material.atlas_layout.is_some(),
+        "a resolved sprite carries its sheet region as an atlas layout",
     );
 }
 

@@ -1,25 +1,19 @@
-//! Live terrain graphic stamps for destruction and emplacement occupancy.
+//! The played-destruction stamp and the tile retarget its siblings share.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{
-    emplacement::EmplacementState, entity::TerrainCell, occupancy_sync::TerrainPieceDestroyed,
-    prelude::CellLevel,
-};
+use gdtf_battle_sim::{occupancy_sync::TerrainPieceDestroyed, prelude::CellLevel};
 
 use super::{
-    active_level::{ActiveLevel, ViewMode},
-    band::{DrawnStoreys, cell_level_in_band, drawn_band},
+    band::{DrawnStoreys, cell_level_in_band},
     restamp::{StampedGraphic, stamp_tile_quiet},
-    roles::TileRole,
     static_draw::TerrainSprite,
     static_map::{SpriteResolveCtx, StaticMap, graphic_name_at},
-    treatment::{IsolateView, StoreyViewMode},
 };
 use crate::{TerrainFogMaterial, playback::Played};
 
-fn retarget_tile(
+pub(super) fn retarget_tile(
     at: CellLevel,
-    name: &str,
+    stamp: &StampedGraphic,
     resolve: &SpriteResolveCtx,
     materials: &mut ResMut<Assets<TerrainFogMaterial>>,
     tiles: &mut Query<(
@@ -33,8 +27,8 @@ fn retarget_tile(
         if terrain.at != at {
             continue;
         }
-        stamp_tile_quiet(resolve, materials, name, at, mat_handle, &mut transform);
-        stamped.set_if_neq(StampedGraphic::from_key(name));
+        stamp_tile_quiet(resolve, materials, stamp, at, mat_handle, &mut transform);
+        stamped.set_if_neq(stamp.clone());
     }
 }
 
@@ -59,37 +53,8 @@ pub fn stamp_destroyed_cell(
         if !cell_level_in_band(event.at, &band) {
             continue;
         }
-        let name = graphic_name_at(&event.at, &graphic_facts, &map);
-        retarget_tile(event.at, name, &resolve, &mut materials, &mut tiles);
-    }
-}
-
-/// Swap emplacement tiles between empty and occupied graphics.
-pub fn indicate_emplacement_occupied(
-    active: Res<ActiveLevel>,
-    view: Res<ViewMode>,
-    isolate: Res<IsolateView>,
-    resolve: SpriteResolveCtx,
-    mut materials: ResMut<Assets<TerrainFogMaterial>>,
-    emplacements: Query<(&EmplacementState, &TerrainCell), Changed<EmplacementState>>,
-    mut tiles: Query<(
-        &TerrainSprite,
-        &MeshMaterial2d<TerrainFogMaterial>,
-        &mut Transform,
-        &mut StampedGraphic,
-    )>,
-) {
-    let band = drawn_band(*active, StoreyViewMode::new(*view, *isolate));
-    for (state, cell) in &emplacements {
-        let at = **cell;
-        if !cell_level_in_band(at, &band) {
-            continue;
-        }
-        let role = if *state.is_occupied() {
-            TileRole::EmplacementOccupied
-        } else {
-            TileRole::Emplacement
-        };
-        retarget_tile(at, role.as_key(), &resolve, &mut materials, &mut tiles);
+        let stamp = graphic_name_at(&event.at, &graphic_facts)
+            .map_or(StampedGraphic::Marker, StampedGraphic::from_key);
+        retarget_tile(event.at, &stamp, &resolve, &mut materials, &mut tiles);
     }
 }
