@@ -5,7 +5,7 @@ use crate::{
     drafts::theme_draft,
     harness::editing_app_and_client,
     mirror::ModeRow,
-    names::{EDITOR_LOAD, EDITOR_SET_MODE},
+    names::{EDITOR_LOAD_THEME, EDITOR_SET_MODE},
     outcome::ran_body,
     rows::SetModeReplyRow,
     socket::{Client, run_editor},
@@ -28,8 +28,8 @@ pub(crate) fn theme_tab_app_and_client() -> Result<(App, Client), TestError> {
         )
         .into());
     }
-    let load = format!("(mode: Theme, key: \"{}\")", *theme);
-    client.exchange(&mut app, &run_editor(EDITOR_LOAD, &load))?;
+    let load = format!("(key: \"{}\")", *theme);
+    client.exchange(&mut app, &run_editor(EDITOR_LOAD_THEME, &load))?;
     app.update();
 
     let mode = editor_mode(&app)?;

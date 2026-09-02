@@ -7,7 +7,6 @@ use crate::{mirror::ModeRow, save_fault::SaveFaultRow};
 pub(crate) enum RefusalRow {
     NoNewAction,
     ThemeNewIsUndoneBySync,
-    NoLoadAction,
     NameBelongsToPrefabOnly,
     PrefabNeedsAName,
 }
@@ -31,15 +30,14 @@ pub(crate) struct NewReplyRow {
     pub(crate) outcome: NewOutcomeRow,
 }
 
-/// What `editor.load` did.
+/// What a per-tab load did.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub(crate) enum LoadOutcomeRow {
     Loaded { key: String },
     NoSuchKey { key: String, known: Vec<String> },
-    Refused(RefusalRow),
 }
 
-/// `editor.load`'s reply body.
+/// A per-tab load's reply body.
 #[derive(Debug, Deserialize)]
 pub(crate) struct LoadReplyRow {
     pub(crate) outcome: LoadOutcomeRow,

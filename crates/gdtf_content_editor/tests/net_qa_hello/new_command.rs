@@ -1,8 +1,8 @@
 use crate::{
-    client::EDITOR_NEW,
+    client::{EDITOR_LOAD_ARMOR, EDITOR_LOAD_FIELD, EDITOR_NEW},
     harness::editing_app_and_client,
     lifecycle::{
-        armor_draft, field_draft, first_armor_key, first_field_key, load_by_key, new_mode,
+        armor_draft, field_draft, first_armor_key, first_field_key, load_by_key, new_mode, open_tab,
     },
     outcome::ran_body,
     rows::{LoadOutcomeRow, NewOutcomeRow, NewReplyRow, RefusalRow},
@@ -17,7 +17,8 @@ const NO_NEW_BUTTON: [&str; 2] = ["Terrain", "Prefab"];
 fn new_blanks_a_loaded_armor_draft_and_settles_its_autoload() -> TestResult {
     let (mut app, mut client) = editing_app_and_client()?;
     let key = first_armor_key(&app)?;
-    let loaded = load_by_key(&mut app, &mut client, "Armor", &key)?;
+    open_tab(&mut app, &mut client, "Armor")?;
+    let loaded = load_by_key(&mut app, &mut client, EDITOR_LOAD_ARMOR, &key)?;
     let LoadOutcomeRow::Loaded { .. } = loaded else {
         unreachable!("`{key}` came from the live registry, got {loaded:?}");
     };
@@ -53,7 +54,8 @@ fn new_blanks_a_loaded_armor_draft_and_settles_its_autoload() -> TestResult {
 fn new_blanks_a_loaded_field_draft_and_settles_its_autoload() -> TestResult {
     let (mut app, mut client) = editing_app_and_client()?;
     let key = first_field_key(&app)?;
-    let loaded = load_by_key(&mut app, &mut client, "Field", &key)?;
+    open_tab(&mut app, &mut client, "Field")?;
+    let loaded = load_by_key(&mut app, &mut client, EDITOR_LOAD_FIELD, &key)?;
     let LoadOutcomeRow::Loaded { .. } = loaded else {
         unreachable!("`{key}` came from the live registry, got {loaded:?}");
     };

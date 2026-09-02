@@ -36,8 +36,32 @@ pub(crate) const EDITOR_SET_MODE: &str = "editor.set_mode";
 /// The blank-draft write the editor host publishes.
 pub(crate) const EDITOR_NEW: &str = "editor.new";
 
-/// The registry-load write the editor host publishes.
-pub(crate) const EDITOR_LOAD: &str = "editor.load";
+/// The Theme tab's registry-load write the editor host publishes.
+pub(crate) const EDITOR_LOAD_THEME: &str = "editor.load_theme";
+
+/// The Gang tab's registry-load write the editor host publishes.
+pub(crate) const EDITOR_LOAD_GANG: &str = "editor.load_gang";
+
+/// The Armor tab's registry-load write the editor host publishes.
+pub(crate) const EDITOR_LOAD_ARMOR: &str = "editor.load_armor";
+
+/// The Injury tab's registry-load write the editor host publishes.
+pub(crate) const EDITOR_LOAD_INJURY: &str = "editor.load_injury";
+
+/// The Sprite tab's registry-load write the editor host publishes.
+pub(crate) const EDITOR_LOAD_SPRITE: &str = "editor.load_sprite";
+
+/// The Attachment tab's registry-load write the editor host publishes.
+pub(crate) const EDITOR_LOAD_ATTACHMENT: &str = "editor.load_attachment";
+
+/// The Weapon tab's registry-load write the editor host publishes.
+pub(crate) const EDITOR_LOAD_WEAPON: &str = "editor.load_weapon";
+
+/// The `MeleeWeapon` tab's registry-load write the editor host publishes.
+pub(crate) const EDITOR_LOAD_MELEE_WEAPON: &str = "editor.load_melee_weapon";
+
+/// The Field tab's registry-load write the editor host publishes.
+pub(crate) const EDITOR_LOAD_FIELD: &str = "editor.load_field";
 
 /// The draft-save write the editor host publishes.
 pub(crate) const EDITOR_SAVE: &str = "editor.save";
@@ -66,6 +90,9 @@ pub(crate) const EDITOR_SET_GRID_SIZE: &str = "editor.set_grid_size";
 /// The paint-tile write the editor host publishes.
 pub(crate) const EDITOR_SELECT_TILE: &str = "editor.select_tile";
 
+/// The paint-facing write the editor host publishes.
+pub(crate) const EDITOR_SELECT_FACING: &str = "editor.select_facing";
+
 /// The edit-storey write the editor host publishes.
 pub(crate) const EDITOR_SET_LEVEL: &str = "editor.set_level";
 
@@ -91,7 +118,7 @@ pub(crate) const CAPTURE_SCREENSHOT: &str = "capture.screenshot";
 pub(crate) const WAIT: &str = "wait";
 
 /// Every command name the editor host publishes today.
-pub(crate) const EDITOR_COMMAND_NAMES: [&str; 26] = [
+pub(crate) const EDITOR_COMMAND_NAMES: [&str; 35] = [
     EDITOR_PHASE,
     EDITOR_LAST_SAVE,
     EDITOR_VALIDATION,
@@ -100,7 +127,15 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 26] = [
     EDITOR_DRAFT,
     EDITOR_SET_MODE,
     EDITOR_NEW,
-    EDITOR_LOAD,
+    EDITOR_LOAD_THEME,
+    EDITOR_LOAD_GANG,
+    EDITOR_LOAD_ARMOR,
+    EDITOR_LOAD_INJURY,
+    EDITOR_LOAD_SPRITE,
+    EDITOR_LOAD_ATTACHMENT,
+    EDITOR_LOAD_WEAPON,
+    EDITOR_LOAD_MELEE_WEAPON,
+    EDITOR_LOAD_FIELD,
     EDITOR_SAVE,
     EDITOR_SET_FIELD,
     EDITOR_LIST_OP,
@@ -110,6 +145,7 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 26] = [
     EDITOR_MAP,
     EDITOR_SET_GRID_SIZE,
     EDITOR_SELECT_TILE,
+    EDITOR_SELECT_FACING,
     EDITOR_SET_LEVEL,
     EDITOR_PAINT,
     EDITOR_SELECT_INJURY_TAB,
@@ -129,7 +165,6 @@ pub(crate) const EDITOR_EDITING_ONLY: [&str; 14] = [
     EDITOR_SESSION,
     EDITOR_SET_MODE,
     EDITOR_NEW,
-    EDITOR_LOAD,
     EDITOR_SAVE,
     EDITOR_SET_FIELD,
     EDITOR_LIST_OP,
@@ -137,24 +172,41 @@ pub(crate) const EDITOR_EDITING_ONLY: [&str; 14] = [
     EDITOR_MAP,
     EDITOR_SET_GRID_SIZE,
     EDITOR_SELECT_TILE,
+    EDITOR_SELECT_FACING,
     EDITOR_SET_LEVEL,
     EDITOR_PAINT,
 ];
 
 /// Command names that also need the Theme tab, so they refuse every other tab.
-pub(crate) const EDITOR_THEME_TAB_ONLY: [&str; 2] =
-    [EDITOR_TOGGLE_TERRAIN, EDITOR_SET_DEFAULT_FLOOR];
+pub(crate) const EDITOR_THEME_TAB_ONLY: [&str; 3] = [
+    EDITOR_TOGGLE_TERRAIN,
+    EDITOR_SET_DEFAULT_FLOOR,
+    EDITOR_LOAD_THEME,
+];
 
 /// Command names that also need the Injury tab, so they refuse every other tab.
-pub(crate) const EDITOR_INJURY_TAB_ONLY: [&str; 4] = [
+pub(crate) const EDITOR_INJURY_TAB_ONLY: [&str; 5] = [
     EDITOR_SELECT_INJURY_TAB,
     EDITOR_SELECT_WEIGHTING_TABLE,
     EDITOR_WEIGHTING,
     EDITOR_SAVE_WEIGHTING,
+    EDITOR_LOAD_INJURY,
 ];
 
 /// Command names that need any form tab, so they refuse the default Prefab tab.
 pub(crate) const EDITOR_FORM_TAB_ONLY: [&str; 3] = [EDITOR_DRAFT, EDITOR_SET_FIELD, EDITOR_LIST_OP];
+
+/// Command names scoped to one form tab that the catalogue is never read on, so both phases
+/// refuse them.
+pub(crate) const EDITOR_ONE_FORM_TAB_ONLY: [&str; 7] = [
+    EDITOR_LOAD_GANG,
+    EDITOR_LOAD_ARMOR,
+    EDITOR_LOAD_SPRITE,
+    EDITOR_LOAD_ATTACHMENT,
+    EDITOR_LOAD_WEAPON,
+    EDITOR_LOAD_MELEE_WEAPON,
+    EDITOR_LOAD_FIELD,
+];
 
 pub(crate) fn run_editor_phase(arguments: &str) -> QaRequest {
     run_editor(EDITOR_PHASE, arguments)

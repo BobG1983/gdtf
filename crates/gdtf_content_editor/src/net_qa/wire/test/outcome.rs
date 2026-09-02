@@ -26,9 +26,6 @@ fn every_load_outcome_arm_round_trips() {
         key:   EditorKeyNet::new("no_such_vest".to_owned()),
         known: vec![EditorKeyNet::new("flak_vest".to_owned())],
     });
-    assert_ron_round_trip(&EditorLoadOutcomeNet::Refused(
-        EditorRefusalNet::NoLoadAction,
-    ));
 }
 
 #[test]

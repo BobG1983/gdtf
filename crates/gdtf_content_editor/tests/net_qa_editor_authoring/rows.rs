@@ -13,7 +13,6 @@ pub(crate) struct SetModeReplyRow {
 pub(crate) enum RefusalRow {
     NoNewAction,
     ThemeNewIsUndoneBySync,
-    NoLoadAction,
     NameBelongsToPrefabOnly,
     PrefabNeedsAName,
 }

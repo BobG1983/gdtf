@@ -25,6 +25,32 @@ fn the_editor_command_set_is_conformant() {
 }
 
 #[test]
+fn the_suites_own_name_list_and_the_published_set_hold_the_same_names() {
+    let published: Vec<String> = editor_command_names()
+        .into_iter()
+        .map(|name| name.as_str().to_owned())
+        .collect();
+    let listed: Vec<String> = EDITOR_COMMAND_NAMES
+        .iter()
+        .map(|name| (*name).to_owned())
+        .collect();
+    let unlisted: Vec<&String> = published
+        .iter()
+        .filter(|name| !listed.contains(name))
+        .collect();
+    let unpublished: Vec<&String> = listed
+        .iter()
+        .filter(|name| !published.contains(name))
+        .collect();
+    assert!(
+        unlisted.is_empty() && unpublished.is_empty(),
+        "every case in this suite reads EDITOR_COMMAND_NAMES, so a name the editor publishes and \
+         the list omits is a command nothing here checks. Published but not listed: {unlisted:?}. \
+         Listed but not published: {unpublished:?}",
+    );
+}
+
+#[test]
 fn the_editor_offers_the_lifecycle_commands() {
     let published = editor_command_names();
     for name in EDITOR_COMMAND_NAMES {
@@ -50,7 +76,15 @@ fn the_editor_offers_the_reads_the_lifecycle_the_form_writes_the_theme_helpers_a
             CommandName::from_static("editor.draft"),
             CommandName::from_static("editor.set_mode"),
             CommandName::from_static("editor.new"),
-            CommandName::from_static("editor.load"),
+            CommandName::from_static("editor.load_theme"),
+            CommandName::from_static("editor.load_gang"),
+            CommandName::from_static("editor.load_armor"),
+            CommandName::from_static("editor.load_injury"),
+            CommandName::from_static("editor.load_sprite"),
+            CommandName::from_static("editor.load_attachment"),
+            CommandName::from_static("editor.load_weapon"),
+            CommandName::from_static("editor.load_melee_weapon"),
+            CommandName::from_static("editor.load_field"),
             CommandName::from_static("editor.save"),
             CommandName::from_static("editor.set_field"),
             CommandName::from_static("editor.list_op"),

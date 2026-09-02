@@ -5,15 +5,18 @@
 mod assertions;
 mod client;
 mod command_set;
+mod drafts;
 #[path = "../net_qa_shared/harness.rs"]
 mod harness;
 #[path = "../net_qa_shared/hello.rs"]
 mod hello;
+mod keys;
 mod last_save_command;
 mod lifecycle;
 #[path = "../net_qa_shared/load_case.rs"]
 mod load_case;
 mod load_command;
+mod load_tab_scope;
 #[path = "../net_qa_shared/mirror.rs"]
 mod mirror;
 mod new_command;

@@ -6,7 +6,7 @@ use gdtf_qa_protocol::{
 
 use crate::client::{
     EDITOR_COMMAND_NAMES, EDITOR_DEFERRED, EDITOR_EDITING_ONLY, EDITOR_FORM_TAB_ONLY,
-    EDITOR_INJURY_TAB_ONLY, EDITOR_THEME_TAB_ONLY,
+    EDITOR_INJURY_TAB_ONLY, EDITOR_ONE_FORM_TAB_ONLY, EDITOR_THEME_TAB_ONLY,
 };
 
 /// The lifecycle phase a reply says the frame that answered it was in.
@@ -95,7 +95,8 @@ fn assert_availability(name: &str, availability: &CommandAvailability, phase: An
     let editing = phase == AnsweringPhase::Editing;
     let tab_scoped = EDITOR_THEME_TAB_ONLY.contains(&name)
         || EDITOR_INJURY_TAB_ONLY.contains(&name)
-        || EDITOR_FORM_TAB_ONLY.contains(&name);
+        || EDITOR_FORM_TAB_ONLY.contains(&name)
+        || EDITOR_ONE_FORM_TAB_ONLY.contains(&name);
     if !tab_scoped && (editing || !EDITOR_EDITING_ONLY.contains(&name)) {
         assert_eq!(
             *availability,

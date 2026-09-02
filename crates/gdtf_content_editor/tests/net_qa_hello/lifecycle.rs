@@ -6,11 +6,12 @@ use gdtf_content_editor::{ArmorDraft, EditorQaAssetsRoot, FieldDraft, WeaponDraf
 use tempfile::TempDir;
 
 use crate::{
-    client::{EDITOR_LOAD, EDITOR_NEW, EDITOR_SAVE},
+    client::{EDITOR_LOAD_ARMOR, EDITOR_LOAD_FIELD, EDITOR_NEW, EDITOR_SAVE, EDITOR_SET_MODE},
     harness::editing_app_and_client,
     outcome::ran_body,
     rows::{
         LoadOutcomeRow, LoadReplyRow, NewOutcomeRow, NewReplyRow, SaveOutcomeRow, SaveReplyRow,
+        SetModeReplyRow,
     },
     socket::{Client, run_editor},
     support::TestError,
@@ -71,7 +72,8 @@ pub(crate) fn field_draft(app: &App) -> Result<FieldDraft, TestError> {
 pub(crate) fn field_save_case() -> Result<DraftSaveCase, TestError> {
     let (mut app, mut client) = editing_app_and_client()?;
     let key = first_field_key(&app)?;
-    let loaded = load_by_key(&mut app, &mut client, "Field", &key)?;
+    open_tab(&mut app, &mut client, "Field")?;
+    let loaded = load_by_key(&mut app, &mut client, EDITOR_LOAD_FIELD, &key)?;
     let LoadOutcomeRow::Loaded { .. } = loaded else {
         return Err(format!("`{key}` came from the live registry, got {loaded:?}").into());
     };
@@ -108,17 +110,26 @@ pub(crate) fn new_mode(
     Ok(body.outcome)
 }
 
-/// Run `editor.load` and hand back what it answered.
+/// Run one tab's load command at a key and hand back what it answered.
 pub(crate) fn load_by_key(
     app: &mut App,
     client: &mut Client,
-    mode: &str,
+    command: &'static str,
     key: &str,
 ) -> Result<LoadOutcomeRow, TestError> {
-    let arguments = format!("(mode: {mode}, key: \"{key}\")");
-    let reply = client.exchange(app, &run_editor(EDITOR_LOAD, &arguments))?;
-    let body: LoadReplyRow = ran_body(&reply, EDITOR_LOAD)?;
+    let reply = client.exchange(app, &run_editor(command, &format!("(key: \"{key}\")")))?;
+    let body: LoadReplyRow = ran_body(&reply, command)?;
     Ok(body.outcome)
+}
+
+/// Open a mode tab, which every per-tab command needs before it will answer.
+pub(crate) fn open_tab(app: &mut App, client: &mut Client, mode: &str) -> Result<(), TestError> {
+    let reply = client.exchange(
+        app,
+        &run_editor(EDITOR_SET_MODE, &format!("(mode: {mode})")),
+    )?;
+    let _opened: SetModeReplyRow = ran_body(&reply, EDITOR_SET_MODE)?;
+    Ok(())
 }
 
 /// An editing app whose QA saves land in a temp root, with one draft loaded from content.
@@ -132,7 +143,8 @@ pub(crate) struct DraftSaveCase {
 pub(crate) fn armor_save_case() -> Result<DraftSaveCase, TestError> {
     let (mut app, mut client) = editing_app_and_client()?;
     let key = first_armor_key(&app)?;
-    let loaded = load_by_key(&mut app, &mut client, "Armor", &key)?;
+    open_tab(&mut app, &mut client, "Armor")?;
+    let loaded = load_by_key(&mut app, &mut client, EDITOR_LOAD_ARMOR, &key)?;
     let LoadOutcomeRow::Loaded { .. } = loaded else {
         return Err(format!("`{key}` came from the live registry, got {loaded:?}").into());
     };

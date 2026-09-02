@@ -9,8 +9,6 @@ pub(in crate::net_qa) enum EditorRefusalNet {
     NoNewAction,
     /// A blank Theme draft cannot survive the form's own sync, which reloads the session theme.
     ThemeNewIsUndoneBySync,
-    /// That form loads nothing by key, so there is no registry entry to fetch.
-    NoLoadAction,
     /// Only Prefab carries its own name field, so no other mode accepts a name.
     NameBelongsToPrefabOnly,
     /// Prefab saves under the name its form's own field holds, so the name is required.

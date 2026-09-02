@@ -267,7 +267,7 @@ commands(host="editor", command="editor.phase", detail="Full")
 run(host="editor", command="editor.phase", arguments="()")
 run(host="editor", command="editor.set_mode", arguments="(mode: Armor)")
 run(host="editor", command="editor.new", arguments="(mode: Armor)")
-run(host="editor", command="editor.load", arguments="(mode: Armor, key: \"flak_vest\")")
+run(host="editor", command="editor.load_armor", arguments="(key: \"flak_vest\")")
 run(host="editor", command="editor.save", arguments="(mode: Armor)")
 run(host="editor", command="editor.last_save", arguments="()")
 run(host="editor", command="editor.validation", arguments="()")
@@ -309,7 +309,7 @@ run(host="editor", command="wait", arguments="(condition: ChecksComplete)")
 run(host="editor", command="wait", arguments="(condition: RegistryRearmed(family: Terrain))")
 ```
 
-The editor offers twenty-seven commands today. They are listed in
+The editor offers thirty-five commands today. They are listed in
 [The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
@@ -760,9 +760,9 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## The editor host
 
-The editor publishes twenty-seven commands, all in `EDITOR_COMMANDS`
+The editor publishes thirty-five commands, all in `EDITOR_COMMANDS`
 ([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
-Twenty-five are `Immediate`. The two the editor publishes under the game host's own
+Thirty-three are `Immediate`. The two the editor publishes under the game host's own
 spellings, `capture.screenshot` and `wait`, are `Deferred`, so a client reads the timing to
 know the reply can land on a later frame than the one that claimed the call. A capture always
 does, because the pipeline settles before it reads the pixels back. A `wait` whose condition
@@ -773,7 +773,7 @@ Five commands answer at every point in the lifecycle: the three reads `editor.ph
 neither the authoring scene nor a tab. Five more reads need the authoring scene:
 `editor.families`, `editor.session`, `editor.draft`, `editor.map` and `editor.weighting`.
 `editor.draft` also needs a form tab open, `editor.map` needs the Prefab tab, and
-`editor.weighting` needs the Injury tab. All sixteen writes need the authoring scene too.
+`editor.weighting` needs the Injury tab. All twenty-five writes need the authoring scene too.
 During the editor's Load pass every scene-scoped command answers `Unavailable { code: WrongState }`. `EditorMode`,
 `MapEditorSession` and every draft are state-scoped to `EditorState::Editing` by the
 `init_state_scoped_resource` calls in `MapEditorPlugin::build`
@@ -789,12 +789,20 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.phase` | always | The lifecycle phase, the mode tab open now, and every tab in tab-bar order. [`commands/read/editor_phase.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/editor_phase.rs) |
 | `editor.last_save` | always | What the newest save per mode did: the file it wrote, or the fault it reported. [`commands/read/last_save.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/last_save.rs) |
 | `editor.validation` | always | The content integrity report: every finding, plus whether the reference checks have run and whether the report has been published. [`commands/read/validation.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/validation.rs) |
-| `editor.families` | Editing | The registry keys an author can pick, family by family, each with the label the editor's own picker shows. Its `family` argument names a form with the same names `editor.load`'s `mode` uses, and `Prefab` answers `BadArguments`, because that tab is the map canvas and carries no content family. [`commands/read/families/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/families) |
+| `editor.families` | Editing | The registry keys an author can pick, family by family, each with the label the editor's own picker shows. Its `family` argument names a form with the same names `editor.set_mode`'s `mode` takes, and `Prefab` answers `BadArguments`, because that tab is the map canvas and carries no content family. [`commands/read/families/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/families) |
 | `editor.session` | Editing | The theme and its default floor, the grid extent, the selected paint tile, the facing a paint turns it to, the storey being edited, and the view: draw mode, isolation, zoom and pan. [`commands/read/session.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/session.rs) |
 | `editor.draft` | Editing + any form tab | The open form's draft as the RON text its save would write. [`commands/read/draft/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/draft) |
 | `editor.set_mode` | Editing | Opens a mode tab, writing the same `EditorMode` resource the tab bar and the number hotkeys write. [`commands/write/set_mode.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_mode.rs) |
 | `editor.new` | Editing | Replaces a mode's draft with that form's own blank-draft constructor. [`commands/write/blank/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/blank) |
-| `editor.load` | Editing | Loads a registry entry by key through that draft's own `load_*` method. Its `mode` argument names a form with the same names `editor.families`'s `family` uses. [`commands/write/load/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load) |
+| `editor.load_theme` | Editing + the Theme tab | Selects a theme in the authoring session and loads its def into the Theme draft, the same pair the Theme tab's own sync runs when the top bar picks a theme. The Theme form draws no load picker of its own. [`commands/write/load/commands/theme.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/theme.rs) |
+| `editor.load_gang` | Editing + the Gang tab | Loads a gang roster by key into the Gang draft, through that draft's own `load_gang` method. [`commands/write/load/commands/gang.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/gang.rs) |
+| `editor.load_armor` | Editing + the Armor tab | Loads an armor by key into the Armor draft, through that draft's own `load_armor` method. [`commands/write/load/commands/armor.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/armor.rs) |
+| `editor.load_injury` | Editing + the Injury tab | Loads an injury by key into the Injury draft, through that draft's own `load_injury` method. [`commands/write/load/commands/injury.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/injury.rs) |
+| `editor.load_sprite` | Editing + the Sprite tab | Loads a sprite def by key into the Sprite draft, through that draft's own `load_sprite` method. [`commands/write/load/commands/sprite.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/sprite.rs) |
+| `editor.load_attachment` | Editing + the Attachment tab | Loads an attachment by key into the Attachment draft, through that draft's own `load_attachment` method. [`commands/write/load/commands/attachment.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/attachment.rs) |
+| `editor.load_weapon` | Editing + the Weapon tab | Loads a ranged weapon by key into the Weapon draft, through that draft's own `load_weapon` method. [`commands/write/load/commands/weapon.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/weapon.rs) |
+| `editor.load_melee_weapon` | Editing + the MeleeWeapon tab | Loads a melee weapon by key into the MeleeWeapon draft, through that draft's own `load_melee_weapon` method. [`commands/write/load/commands/melee_weapon.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/melee_weapon.rs) |
+| `editor.load_field` | Editing + the Field tab | Loads a field def by key into the Field draft, through that draft's own `load_field` method. [`commands/write/load/commands/field.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/field.rs) |
 | `editor.save` | Editing | Writes a mode's draft through the same `write_*_in` its save button calls. [`commands/write/save/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save) |
 | `editor.set_field` | Editing + any form tab | Writes one single-value field of the open form's draft, the way that form's own widget writes it. [`commands/write/set_field/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_field) |
 | `editor.list_op` | Editing + any form tab | Edits one list-valued field of the open form's draft through that form's own setter. [`commands/write/list_op/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/list_op) |
@@ -956,9 +964,8 @@ A mode a command does not handle is a **typed outcome inside a successful reply*
 `Unavailable` — that is reserved for host state. `editor.new` refuses Terrain and Prefab
 because neither form draws a New button, and refuses Theme because the theme form's own
 sync reloads the session theme's def over any draft whose key differs, so a blank Theme
-draft would not survive a frame. `editor.load` refuses Terrain and Prefab, which load
-nothing by key. A key no registry holds answers `NoSuchKey` with the keys it does hold, and
-leaves the draft untouched.
+draft would not survive a frame. A key no registry holds answers `NoSuchKey` with the keys
+it does hold, and leaves the draft untouched.
 
 The three theme helpers take one key and no mode, so they have no typed outcome to carry a
 miss. All three answer `Unavailable { code: MissingModel }` for a key that is not UUID text.
@@ -1017,11 +1024,11 @@ through the same `Display` the editor's own log prints.
 `editor.families` sorts every family's entries by rendered key before replying, because each
 registry is a `HashMap` underneath and its own order changes between runs. A `family`
 argument narrows the reply to that family; without one, all ten answer. The argument takes
-the same form names `editor.load`'s `mode` takes, so one set of names picks a form across
-the whole editor. The one name it will not answer is `Prefab`: that tab is the map canvas
-and owns no registry, so it comes back as `BadArguments` with a detail saying so. For the
-two UUID-keyed families the label is the def's display name, which is what the editor's own
-theme picker shows; for the eight name-keyed families the label is the key.
+the same form names `editor.set_mode`'s `mode` takes, so one set of names picks a form
+across the whole editor. The one name it will not answer is `Prefab`: that tab is the map
+canvas and owns no registry, so it comes back as `BadArguments` with a detail saying so.
+For the two UUID-keyed families the label is the def's display name, which is what the
+editor's own theme picker shows; for the eight name-keyed families the label is the key.
 
 `editor.draft` reads the active tab and takes no mode argument. The RON is the mode's own
 `draft_to_*` conversion followed by `gdtf_assets::serialize_ron_pretty`, the two calls

@@ -22,7 +22,10 @@ mod weighting_rows;
 
 pub(in crate::net_qa) use blank::EditorNew;
 pub(in crate::net_qa) use list_op::EditorListOp;
-pub(in crate::net_qa) use load::EditorLoad;
+pub(in crate::net_qa) use load::{
+    EditorLoadArmor, EditorLoadAttachment, EditorLoadField, EditorLoadGang, EditorLoadInjury,
+    EditorLoadMeleeWeapon, EditorLoadSprite, EditorLoadTheme, EditorLoadWeapon,
+};
 pub(in crate::net_qa) use paint::EditorPaint;
 pub(in crate::net_qa) use save::EditorSave;
 pub(in crate::net_qa) use save_weighting::EditorSaveWeighting;

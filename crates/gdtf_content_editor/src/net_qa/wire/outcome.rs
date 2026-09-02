@@ -18,7 +18,7 @@ pub(in crate::net_qa) enum EditorNewOutcomeNet {
     Refused(EditorRefusalNet),
 }
 
-/// What `editor.load` did to the named mode's draft.
+/// What a per-tab load did to that tab's draft.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub(in crate::net_qa) enum EditorLoadOutcomeNet {
     /// The registry entry was loaded into the draft.
@@ -33,8 +33,6 @@ pub(in crate::net_qa) enum EditorLoadOutcomeNet {
         /// Every key that registry does hold.
         known: Vec<EditorKeyNet>,
     },
-    /// This build loads no draft for that mode.
-    Refused(EditorRefusalNet),
 }
 
 /// What `editor.save` wrote, or why it wrote nothing.
