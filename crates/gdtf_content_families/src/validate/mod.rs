@@ -3,6 +3,7 @@
 mod attachments;
 mod gangs;
 mod injuries;
+mod on_death;
 mod prefabs;
 mod situation;
 mod sprites;
@@ -12,6 +13,7 @@ mod terrain_views;
 pub use attachments::check_weapon_attachment_refs;
 pub use gangs::check_gang_equipment_refs;
 pub use injuries::check_injury_weighting_refs;
+pub use on_death::check_on_death_field_refs;
 pub use prefabs::check_prefab_refs;
 pub use situation::{
     check_situation_field_refs, check_situation_gang_refs, check_situation_terrain_refs,

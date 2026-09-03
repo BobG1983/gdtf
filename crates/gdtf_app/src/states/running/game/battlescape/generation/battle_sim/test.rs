@@ -7,9 +7,10 @@ use gdtf_battle_sim::{
     situation::Situation,
     terrain::def::TerrainDefRegistry,
 };
+use gdtf_content_families::situation::LoadedSituation;
 
 use super::systems::request_battle_setup;
-use crate::states::load::{LoadedSituation, hot_reload_test_support::capture_logs};
+use crate::states::load::hot_reload_test_support::capture_logs;
 
 fn procgen_app_with_absent_theme(theme: ThemeUuid) -> App {
     let mut app = App::new();

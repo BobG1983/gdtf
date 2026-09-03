@@ -5,7 +5,7 @@ use crate::{
 };
 
 // The mode tab each family names, so the two vocabularies can be compared by name.
-const TABS: [EditorModeNet; 9] = [
+const TABS: [EditorModeNet; 10] = [
     EditorModeNet::Weapon,
     EditorModeNet::MeleeWeapon,
     EditorModeNet::Armor,
@@ -15,6 +15,7 @@ const TABS: [EditorModeNet; 9] = [
     EditorModeNet::Injury,
     EditorModeNet::Sprite,
     EditorModeNet::Attachment,
+    EditorModeNet::Field,
 ];
 
 #[test]
@@ -45,6 +46,12 @@ fn every_family_is_listed_once() {
 
 #[test]
 fn every_family_is_spelled_the_way_its_mode_tab_is() {
+    assert_eq!(
+        ContentFamilyNet::ALL.len(),
+        TABS.len(),
+        "zip stops at the shorter side, so a family added without its tab would pair off \
+         silently and be spelled by nothing",
+    );
     for (family, tab) in ContentFamilyNet::ALL.into_iter().zip(TABS) {
         assert_eq!(
             format!("{family:?}"),
@@ -56,22 +63,20 @@ fn every_family_is_spelled_the_way_its_mode_tab_is() {
 }
 
 #[test]
-fn the_prefab_and_field_tabs_name_no_family() {
+fn the_prefab_tab_names_no_family() {
     let named: Vec<String> = ContentFamilyNet::ALL
         .into_iter()
         .map(|family| format!("{family:?}"))
         .collect();
-    for absent in [EditorModeNet::Prefab, EditorModeNet::Field] {
-        assert!(
-            !named.contains(&format!("{absent:?}")),
-            "{absent:?} rearms no validation pass — Prefab owns no registry and \
-             FieldDefRegistry is not watched — so a wait on it could never come true: {named:?}",
-        );
-    }
+    let absent = EditorModeNet::Prefab;
+    assert!(
+        !named.contains(&format!("{absent:?}")),
+        "{absent:?} owns no registry, so a wait on it could never come true: {named:?}",
+    );
     assert_eq!(
-        ContentFamilyNet::ALL.len() + 2,
+        ContentFamilyNet::ALL.len() + 1,
         EditorMode::TAB_ORDER.len(),
-        "every mode tab but Prefab and Field owns a watched registry, so a new tab nobody \
-         classified is missing from ContentFamilyNet::ALL",
+        "every mode tab but Prefab owns a watched registry, so a new tab nobody classified is \
+         missing from ContentFamilyNet::ALL",
     );
 }

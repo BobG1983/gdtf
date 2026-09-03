@@ -64,6 +64,7 @@ const fn slot(family: ContentFamilyNet) -> usize {
         ContentFamilyNet::Injury => 6,
         ContentFamilyNet::Sprite => 7,
         ContentFamilyNet::Attachment => 8,
+        ContentFamilyNet::Field => 9,
     }
 }
 
@@ -104,6 +105,10 @@ fn changed(registries: &EditorRegistries<'_>, family: ContentFamilyNet) -> bool 
             .is_some_and(DetectChanges::is_changed),
         ContentFamilyNet::Attachment => registries
             .attachments
+            .as_ref()
+            .is_some_and(DetectChanges::is_changed),
+        ContentFamilyNet::Field => registries
+            .fields
             .as_ref()
             .is_some_and(DetectChanges::is_changed),
     }

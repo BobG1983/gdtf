@@ -4,13 +4,12 @@ use bevy::{
     ecs::{entity::Entity, prelude::With},
     state::state::State,
 };
-use gdtf_app::test_support::{
-    BattleRunningComplete, BattleScapeState, GameState, LoadedSituation, RunningState,
-};
+use gdtf_app::test_support::{BattleRunningComplete, BattleScapeState, GameState, RunningState};
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::{
     injuries::InjuryRegistry, situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry,
 };
+use gdtf_content_families::situation::LoadedSituation;
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 

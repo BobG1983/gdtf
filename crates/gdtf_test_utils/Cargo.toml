@@ -10,6 +10,7 @@ gdtf_app = { path = "../gdtf_app", features = ["headless_test"] }
 # name it as well as the harnesses under src/.
 gdtf_assets = { path = "../gdtf_assets" }
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
+gdtf_content_families = { path = "../gdtf_content_families" }
 gdtf_ui = { path = "../gdtf_ui" }
 wgpu = "=29.0.3"
 

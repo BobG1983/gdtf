@@ -1,6 +1,6 @@
 //! Explicitly placed ganger and its placement bag.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     ganger::{Aiming, Facing, Faction, GangName, GangerName, LifeState, Stance},
@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// One ganger placed at a fixed cell from a gang roster.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct PlacedGanger {
     /// Gang key.
     pub gang:       GangName,

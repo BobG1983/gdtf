@@ -9,6 +9,7 @@ mod load_gangs_spawn;
 mod load_injuries;
 mod load_injury_contexts;
 mod load_melee_weapons;
+mod load_on_death_refs;
 mod load_prefab;
 mod load_prefabs;
 mod load_ref_integrity;

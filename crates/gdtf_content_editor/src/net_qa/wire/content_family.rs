@@ -25,11 +25,13 @@ pub(in crate::net_qa) enum ContentFamilyNet {
     Sprite,
     /// The attachment registry.
     Attachment,
+    /// The field def registry.
+    Field,
 }
 
 impl ContentFamilyNet {
     /// Every family a wait can name, in the order `WatchedRegistries` holds them.
-    pub(in crate::net_qa) const ALL: [Self; 9] = [
+    pub(in crate::net_qa) const ALL: [Self; 10] = [
         Self::Weapon,
         Self::MeleeWeapon,
         Self::Armor,
@@ -39,5 +41,6 @@ impl ContentFamilyNet {
         Self::Injury,
         Self::Sprite,
         Self::Attachment,
+        Self::Field,
     ];
 }

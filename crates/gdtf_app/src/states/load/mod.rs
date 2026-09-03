@@ -8,4 +8,3 @@ mod fallbacks;
 #[cfg(feature = "headless_test")]
 pub use fallbacks::seed_load_fallbacks;
 mod resources;
-crate::support_use!(gdtf_content_families::situation::LoadedSituation;);

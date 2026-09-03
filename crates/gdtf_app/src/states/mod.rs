@@ -14,8 +14,6 @@ pub(in crate::states) use intro::IntroScenePlugin;
 
 mod load;
 pub(in crate::states) use load::LoadScenePlugin;
-#[cfg(any(feature = "headless_test", feature = "dev_tools"))]
-crate::support_use!(load::LoadedSituation;);
 #[cfg(feature = "headless_test")]
 pub use load::seed_load_fallbacks;
 

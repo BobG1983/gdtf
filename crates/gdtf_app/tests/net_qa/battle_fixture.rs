@@ -6,7 +6,7 @@ use bevy::{
     state::state::State,
 };
 use gdtf_app::test_support::{
-    AppState, BattleScapeState, LoadedSituation, NetQaPlugin, RunningState, StartBattleRequested,
+    AppState, BattleScapeState, NetQaPlugin, RunningState, StartBattleRequested,
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_presenter::playback::PlaybackCursor;
@@ -23,6 +23,7 @@ use gdtf_battle_sim::{
     tuning::{CombatTuning, GangerStatTuning},
     weapon::{FireMode, MeleeWeapon, MountedWeapon, WieldedBy, Wields},
 };
+use gdtf_content_families::situation::LoadedSituation;
 use gdtf_net_qa_transport::{IncomingRequest, Responder};
 use gdtf_qa_protocol::{
     command::{CommandArgsRon, CommandName, CommandOutcome, RunOptions},

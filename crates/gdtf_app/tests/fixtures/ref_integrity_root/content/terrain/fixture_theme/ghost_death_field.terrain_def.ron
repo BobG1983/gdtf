@@ -1,0 +1,24 @@
+// fixture terrain def — a Cover whose `on_death` leaves a field key no field def in this
+// root holds, so the on-death → field-def edge dangles ON PURPOSE under the file-stem
+// scheme. Its view set is complete and every other row resolves.
+(
+    key: "00000000-0000-0000-0000-130700000a05",
+    display_name: "Ghost Death Field",
+    sim_kind: Cover(
+        hp:               10,
+        armor_protection: 0,
+        armor_hardness:   0,
+        height_band:      Low,
+    ),
+    presenter_kind: Cover,
+    views: [
+        (view: Facing(North), sprite: "cover"),
+        (view: Facing(East), sprite: "cover"),
+        (view: Facing(South), sprite: "cover"),
+        (view: Facing(West), sprite: "cover"),
+    ],
+    tags: [],
+    on_death: [
+        LeaveField(field: "ghost_death_field"),
+    ],
+)

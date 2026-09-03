@@ -1,13 +1,14 @@
 //! Scene scaffold: Load-scoped resources live only across the Load span.
 
 use bevy::{app::App, ecs::resource::Resource};
-use gdtf_app::test_support::{AppState, LoadedSituation, app_state, load_released};
+use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
     situation::Situation,
     tuning::{CombatTuning, GangerStatTuning},
     weapon::WeaponRegistry,
 };
+use gdtf_content_families::situation::LoadedSituation;
 use gdtf_state_scoped::StateScopedResourceAppExt as _;
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 

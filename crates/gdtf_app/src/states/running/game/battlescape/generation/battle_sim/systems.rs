@@ -5,14 +5,13 @@ use gdtf_battle_sim::{
     rng::BattleSeed,
     situation::Situation,
 };
+use gdtf_content_families::situation::LoadedSituation;
 
 use super::{
     content::ProcgenContent, procgen::procgen_battle_situation, resolved::ResolvedBattleSeed,
     seed::resolve_root_seed,
 };
-use crate::states::{
-    load::LoadedSituation, running::game::battlescape::generation::resources::GenerationComplete,
-};
+use crate::states::running::game::battlescape::generation::resources::GenerationComplete;
 
 pub(in crate::states::running::game::battlescape::generation::battle_sim) fn request_battle_setup(
     loaded: Option<Res<LoadedSituation>>,

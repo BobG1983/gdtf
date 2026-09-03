@@ -4,7 +4,7 @@ use bevy::{
     math::Vec3,
     prelude::{Component, Deref},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::metric::Cell;
 
@@ -42,7 +42,7 @@ impl RingSteps {
 }
 
 /// Compass facing on the grid.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
 pub enum Direction {
     /// North (-Y).
     #[default]
@@ -165,7 +165,9 @@ impl Direction {
 }
 
 /// Current facing direction component.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(
+    Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize,
+)]
 #[serde(transparent)]
 pub struct Facing(Direction);
 

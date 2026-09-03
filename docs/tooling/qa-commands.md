@@ -1082,13 +1082,12 @@ beside the holds themselves, so the host that parks a held reply is the host tha
 two-minute budget, which expires well inside the socket's own 180-second wait for a reply.
 The editor has two conditions. `ChecksComplete` comes true once `ContentChecksComplete` is
 in the world, which is the same marker `editor.validation` reports. `RegistryRearmed` names
-one of nine content families — Weapon, MeleeWeapon, Armor, Gang, Terrain, Theme, Injury,
-Sprite and Attachment, spelled as the mode tabs are — and comes true when that family's
-registry changes after the call was parked. Validation watches all nine
+one of ten content families — Weapon, MeleeWeapon, Armor, Gang, Terrain, Theme, Injury,
+Sprite, Attachment and Field, spelled as the mode tabs are — and comes true when that
+family's registry changes after the call was parked. Validation watches all ten
 ([`validate/rearm.rs`](../../crates/gdtf_content_editor/src/validate/rearm.rs)), so a rearm
 of the validation pass is what a wait on one of them sees. Validation also watches
-`PrefabRegistry`, which no wait condition names. Field is absent for a different reason:
-`FieldDefRegistry` is unwatched, so a Field write rearms nothing. A condition that never
+`PrefabRegistry`, which no wait condition names. A condition that never
 comes true answers `Timeout` and leaves the connection open, never a refusal and never an
 "unsatisfied" reply.
 

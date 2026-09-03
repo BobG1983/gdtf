@@ -62,9 +62,10 @@ on_death: [
 ```
 
 The `field:` key resolves against the `FieldDefRegistry` at fan time
-([field-authoring.md](field-authoring.md)); a dangling key fails closed with a
-`warn!` (no field spawns) and surfaces on the `Load` reference-integrity
-report.
+([field-authoring.md](field-authoring.md)); a dangling key fans nothing at all,
+and the fan itself logs nothing. It surfaces on the `Load` reference-integrity
+report instead. Both hosts check the same key at load, the game and the content
+editor, so a dangling one is a finding rather than a silent no-op.
 
 ### 1c. The runtime contract (what an author can rely on)
 

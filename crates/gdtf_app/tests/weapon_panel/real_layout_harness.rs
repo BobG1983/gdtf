@@ -12,7 +12,8 @@ use bevy::{
     window::{ExitCondition, Window, WindowPlugin, WindowResolution},
     winit::WinitPlugin,
 };
-use gdtf_app::test_support::{self, AppState, BattleScapeState, LoadedSituation, RunningState};
+use gdtf_app::test_support::{self, AppState, BattleScapeState, RunningState};
+use gdtf_content_families::situation::LoadedSituation;
 use gdtf_test_utils::advance_until;
 use gdtf_ui::theme::default_theme;
 

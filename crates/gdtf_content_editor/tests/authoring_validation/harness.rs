@@ -106,6 +106,32 @@ pub(crate) fn dangling_ref_referrer(
     })
 }
 
+/// The referring record of the first dangling finding matching family, target and scheme,
+/// as its family name, key and field name.
+pub(crate) fn dangling_ref_record(
+    report: &ContentIntegrityReport,
+    family: &str,
+    target: &str,
+    scheme: ReferenceKeyScheme,
+) -> Option<(String, String, String)> {
+    report.findings().iter().find_map(|finding| match finding {
+        ContentFinding::DanglingRef {
+            referring_record,
+            target: found_target,
+            family: found_family,
+            scheme: found_scheme,
+            ..
+        } if **found_target == *target && **found_family == *family && *found_scheme == scheme => {
+            Some((
+                (*referring_record.family).clone(),
+                (*referring_record.key).clone(),
+                (*referring_record.field).clone(),
+            ))
+        }
+        _ => None,
+    })
+}
+
 /// The view lists of every `MissingViews` finding raised against the def this names.
 pub(crate) fn missing_views(
     report: &ContentIntegrityReport,

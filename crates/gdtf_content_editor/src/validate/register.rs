@@ -20,10 +20,10 @@ use gdtf_content_families::{
     sprites::SpriteDefRegistry,
     validate::{
         check_emplacement_weapon_refs, check_gang_equipment_refs, check_injury_weighting_refs,
-        check_prefab_refs, check_situation_field_refs, check_situation_gang_refs,
-        check_situation_terrain_refs, check_situation_theme_ref, check_terrain_leaves_behind_refs,
-        check_terrain_view_coverage, check_terrain_view_sprite_refs, check_theme_terrain_refs,
-        check_weapon_attachment_refs,
+        check_on_death_field_refs, check_prefab_refs, check_situation_field_refs,
+        check_situation_gang_refs, check_situation_terrain_refs, check_situation_theme_ref,
+        check_terrain_leaves_behind_refs, check_terrain_view_coverage,
+        check_terrain_view_sprite_refs, check_theme_terrain_refs, check_weapon_attachment_refs,
     },
 };
 
@@ -79,6 +79,7 @@ pub(crate) fn register_validation(app: &mut App) {
         .register_reference_check(check_situation_gang_refs)
         .register_reference_check(check_situation_theme_ref)
         .register_reference_check(check_situation_terrain_refs)
-        .register_reference_check(check_situation_field_refs);
+        .register_reference_check(check_situation_field_refs)
+        .register_reference_check(check_on_death_field_refs);
     app.add_systems(Update, rearm_validation_on_content_change);
 }

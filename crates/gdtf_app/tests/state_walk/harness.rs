@@ -2,13 +2,14 @@ use bevy::{
     app::App,
     state::state::{NextState, State},
 };
-use gdtf_app::test_support::{BattleScapeState, LoadedSituation, RunningState};
+use gdtf_app::test_support::{BattleScapeState, RunningState};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
     situation::Situation,
     tuning::{CombatTuning, GangerStatTuning},
     weapon::WeaponRegistry,
 };
+use gdtf_content_families::situation::LoadedSituation;
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 

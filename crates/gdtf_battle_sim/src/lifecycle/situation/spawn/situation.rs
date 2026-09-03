@@ -1,7 +1,7 @@
 //! Authored battlefield aggregate.
 
 use bevy::reflect::TypePath;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{
     piece_spawns::{CoverSpawn, FieldSpawn, FloorSpawn, SlabSpawn},
@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Complete authored situation for one battle.
-#[derive(Debug, Clone, Default, Deserialize, TypePath)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize, TypePath)]
 #[serde(default)]
 pub struct Situation {
     /// Explicitly placed gangers.

@@ -6,17 +6,15 @@ use gdtf_battle_sim::{
     rng::BattleSeed,
     situation::Situation,
 };
+use gdtf_content_families::situation::LoadedSituation;
 
 use super::{
     clock::AutoStepClock,
     commands::{AutoRunning, AutoStepTimer, PendingStepCommand, StepCommand},
 };
-use crate::states::{
-    LoadedSituation,
-    running::game::battlescape::generation::battle_sim::{
-        ProcgenContent, ResolvedBattleSeed, deploy_over_generated, outcome_from_packing_error,
-        resolve_root_seed,
-    },
+use crate::states::running::game::battlescape::generation::battle_sim::{
+    ProcgenContent, ResolvedBattleSeed, deploy_over_generated, outcome_from_packing_error,
+    resolve_root_seed,
 };
 
 #[derive(Resource, Debug, Clone)]

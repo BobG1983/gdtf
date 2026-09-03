@@ -19,6 +19,11 @@ impl LoadedSituation {
     pub const fn new(situation: Situation) -> Self {
         Self(situation)
     }
+
+    /// The situation, borrowed for editing.
+    pub const fn situation_mut(&mut self) -> &mut Situation {
+        &mut self.0
+    }
 }
 
 /// Wrap a situation the hot-RON loader resolved.

@@ -1,7 +1,10 @@
-// A fixture situation naming one gang this root does not hold, and nothing else.
-// Every other field defaults, so the only finding it raises is the dangling gang key.
+// A fixture situation naming one gang and one field key this root does not hold.
+// Every other field defaults, so it raises the dangling gang key and the dangling field key.
 (
     rosters: [
         (gang: "ghost_gang", member: "Nobody", faction: 0),
+    ],
+    fields: [
+        (at: (cell: (x: 2, y: 2), level: 0), field: "ghost_field"),
     ],
 )

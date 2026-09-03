@@ -6,6 +6,7 @@ use bevy::{
 use gdtf_assets::{ContentChecksComplete, ContentIntegrityReport, ContentValidationDone};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
+    effects::fields::FieldDefRegistry,
     equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
@@ -29,6 +30,7 @@ pub(super) struct WatchedRegistries<'w> {
     attachments:   Option<Res<'w, AttachmentRegistry>>,
     prefabs:       Option<Res<'w, PrefabRegistry>>,
     injury_tables: Option<Res<'w, InjuryTables>>,
+    fields:        Option<Res<'w, FieldDefRegistry>>,
 }
 
 impl WatchedRegistries<'_> {
@@ -59,6 +61,7 @@ impl WatchedRegistries<'_> {
                 .injury_tables
                 .as_ref()
                 .is_some_and(DetectChanges::is_changed)
+            || self.fields.as_ref().is_some_and(DetectChanges::is_changed)
     }
 }
 

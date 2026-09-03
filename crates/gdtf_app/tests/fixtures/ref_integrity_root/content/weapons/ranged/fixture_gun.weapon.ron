@@ -24,4 +24,9 @@
         (Sight, 1),  // a sight dovetail — the dangling item WOULD fit here if it existed
     ],
     attachments:   ["ghost_scope"],  // DANGLING attachment key — no ghost_scope.attachment.ron
+    // DANGLING field key — the fields folder is not materialized in this root, so the
+    // weapon on-death → field-def edge dangles too.
+    on_death: [
+        LeaveField(field: "ghost_gun_field"),
+    ],
 )

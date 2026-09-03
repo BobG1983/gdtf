@@ -5,6 +5,7 @@ mod attachments;
 mod gangs;
 mod harness;
 mod injuries_save;
+mod on_death;
 mod prefabs;
 mod save_rearm;
 mod situation;

@@ -1,11 +1,11 @@
 //! Roster entry without a fixed cell (procgen places it).
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::ganger::{Faction, GangName, GangerName};
 
 /// One ganger drawn from a gang roster for side placement.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct RosterMember {
     /// Gang key.
     pub gang:    GangName,

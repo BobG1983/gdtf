@@ -1,6 +1,7 @@
 //! Skirmish load: shipped situation names a migrated theme UUID that resolves.
-use gdtf_app::test_support::{AppState, LoadedSituation, load_released};
+use gdtf_app::test_support::{AppState, load_released};
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
+use gdtf_content_families::situation::LoadedSituation;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
 const fn industrial_hive_theme() -> ThemeUuid {

@@ -1,7 +1,8 @@
 //! `AppState::Load` loads the authored `Situation` `.ron`.
 use std::path::PathBuf;
 
-use gdtf_app::test_support::{AppState, LoadedSituation, app_state, load_released};
+use gdtf_app::test_support::{AppState, app_state, load_released};
+use gdtf_content_families::situation::LoadedSituation;
 use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
 };

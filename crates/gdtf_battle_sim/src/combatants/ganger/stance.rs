@@ -1,10 +1,10 @@
 //! Stance, aiming, and faction markers.
 
 use bevy::prelude::{Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Standing / crouching / prone.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
 pub enum StanceKind {
     /// Upright.
     #[default]
@@ -16,7 +16,9 @@ pub enum StanceKind {
 }
 
 /// Current posture.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(
+    Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize,
+)]
 #[serde(transparent)]
 pub struct Stance(StanceKind);
 
@@ -29,7 +31,9 @@ impl Stance {
 }
 
 /// Whether the ganger is aiming.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(
+    Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize,
+)]
 #[serde(transparent)]
 pub struct Aiming(bool);
 
@@ -42,7 +46,9 @@ impl Aiming {
 }
 
 /// Team / gang index (0 or 1 in the two-faction model).
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(
+    Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize,
+)]
 #[serde(transparent)]
 pub struct Faction(u8);
 

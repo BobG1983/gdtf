@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use gdtf_app::test_support::{AppState, LoadedSituation, ModePanelRoot, ModeSingleButton};
+use gdtf_app::test_support::{AppState, ModePanelRoot, ModeSingleButton};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     armor::{
@@ -13,6 +13,7 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     weapon::{FatalBias, WeaponName, WeaponRegistry, WeaponSpec},
 };
+use gdtf_content_families::situation::LoadedSituation;
 use gdtf_test_utils::GdtfTestAppBuilder;
 use gdtf_ui::theme::default_theme;
 

@@ -1,10 +1,11 @@
-use gdtf_app::test_support::{BattleScapeState, LoadedSituation};
+use gdtf_app::test_support::BattleScapeState;
 use gdtf_battle_sim::{
     level::{PrefabRegistry, UuidThemeRegistry},
     procgen::{ProcgenTuning, StagedProcgen, StagedProcgenRegistries},
     rng::BattleSeed,
     terrain::def::TerrainDefRegistry,
 };
+use gdtf_content_families::situation::LoadedSituation;
 use gdtf_test_utils::advance_until;
 
 use super::harness::{

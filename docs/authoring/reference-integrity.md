@@ -5,8 +5,8 @@ what happens to a malformed file or a dangling key ( Q3 ruling
 2026-07-02). This is the authoring-facing contract. The HOST-AGNOSTIC per-edge
 checks (gang equipment, weapon attachments, theme/emplacement terrain, injury
 weighting, a terrain def's own view coverage, its `leaves_behind`, every
-`views[].sprite` key it names, and a prefab's theme and placed terrain UUIDs,
-shared by game and editor) live at
+`views[].sprite` key it names, a prefab's theme and placed terrain UUIDs, and
+every `on_death` `LeaveField.field` key, shared by game and editor) live at
 `crates/gdtf_content_families/src/validate/`, and so do the situation's own
 edges; the game's registration at
 `crates/gdtf_app/src/states/load/systems/validate/register.rs`; the editor's
@@ -34,18 +34,19 @@ member leaving one out authors no edge to check),
 the injury-weighting keys, each terrain def's own view coverage, its
 `leaves_behind` → terrain-def or sprite-def key, every `views[].sprite` →
 sprite-def key, the prefab `theme` → theme UUID, every prefab
-`placements[].piece` → terrain UUID, and the situation's `gangers[].gang`,
-`gangers[].member`, `theme`, terrain and `fields[].field` keys — and RE-ARMS it
+`placements[].piece` → terrain UUID, every `on_death` `LeaveField.field` key
+a terrain def or a ranged weapon spec authors, and the situation's
+`gangers[].gang`, `gangers[].member`, `theme`, terrain and `fields[].field` keys — and RE-ARMS it
 on every hot-reload of a watched registry: the report is reset, re-checked
 against the current content, and re-published.
 The watch set spans every registry the registered checks read, so an edit to
 EITHER side of an edge — the gang file OR the weapons/armor/melee folder it
-references — re-runs every check onto the one consolidated report. Two of the
-registries the editor's checks read sit outside its watch set today, the loaded
-situation and the field defs, so an edit to either re-runs nothing until the
-next launch. A dangling terrain UUID or equipment key authored in the editor
-therefore surfaces at authoring time (at the save/edit), not on the next game
-launch.
+references — re-runs every check onto the one consolidated report. The field
+defs are watched, so dropping a field key re-runs every check that reads it.
+One registry the editor's checks read sits outside the watch set today, the
+loaded situation, so an edit to it re-runs nothing until the next launch. A
+dangling terrain UUID or equipment key authored in the editor therefore
+surfaces at authoring time (at the save/edit), not on the next game launch.
 
 ## What is validated (the reference graph)
 
@@ -66,6 +67,8 @@ launch.
 | terrain def `views` | the views its kind and tags owe | the def's own `views[].view` rows | — |
 | terrain def `leaves_behind` | terrain UUID or sprite-def name | terrain defs, or `assets/content/sprites/` stems | UUID / file stem |
 | terrain def `views[].sprite` | sprite-def name | `assets/content/sprites/` stems | file stem |
+| terrain def `on_death` `LeaveField.field` | field key | `assets/content/fields/` stems | file stem |
+| ranged weapon spec `on_death` `LeaveField.field` | field key | `assets/content/fields/` stems | file stem |
 | prefab `theme` (`assets/content/maps/`) | theme UUID | theme defs | UUID |
 | prefab `placements[].piece` | terrain UUID | terrain defs | UUID |
 

@@ -51,8 +51,7 @@ pub use crate::states::running::options::test_support::{
     ProcgenStepperToggle, ProcgenStepperValueLabel,
 };
 pub use crate::states::{
-    AfterMathState, AppState, BattleScapeState, GameState, LoadedSituation, RunningState,
-    ScenesPlugin,
+    AfterMathState, AppState, BattleScapeState, GameState, RunningState, ScenesPlugin,
     running::{
         game::battlescape::{
             BottomBarRoot,

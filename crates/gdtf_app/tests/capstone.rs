@@ -5,15 +5,16 @@ use std::sync::mpsc;
 
 use bevy::{prelude::*, state::state::State};
 use gdtf_app::test_support::{
-    AimToggleButton, BattleScapeState, EndTurnButton, LevelDownButton, LevelUpButton,
-    LoadedSituation, NetQaPlugin, RunningState, StanceKneelingButton, StanceProneButton,
-    StanceStandingButton, StartBattleRequested,
+    AimToggleButton, BattleScapeState, EndTurnButton, LevelDownButton, LevelUpButton, NetQaPlugin,
+    RunningState, StanceKneelingButton, StanceProneButton, StanceStandingButton,
+    StartBattleRequested,
 };
 use gdtf_battle_input::InspectTarget;
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::{
     injuries::InjuryRegistry, situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry,
 };
+use gdtf_content_families::situation::LoadedSituation;
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 

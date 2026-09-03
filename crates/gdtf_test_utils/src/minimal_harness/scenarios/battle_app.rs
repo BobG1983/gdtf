@@ -5,7 +5,7 @@ use bevy::{
     state::state::{NextState, State},
     time::TimeUpdateStrategy,
 };
-use gdtf_app::test_support::{AppState, BattleScapeState, LoadedSituation, RunningState};
+use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
 use gdtf_battle_sim::{
     effects::fields::FieldDefRegistry,
     rng::BattleSeed,
@@ -16,6 +16,7 @@ use gdtf_battle_sim::{
     },
     tuning::{CombatTuning, GangerStatTuning},
 };
+use gdtf_content_families::situation::LoadedSituation;
 use gdtf_ui::theme::default_theme;
 
 use crate::{GdtfTestAppBuilder, advance_until};

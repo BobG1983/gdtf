@@ -28,6 +28,7 @@ mod right_panel;
 mod save;
 mod save_record;
 mod session;
+mod situation;
 mod sprite_form;
 mod state;
 mod terrain_form;
@@ -97,6 +98,8 @@ pub use save_record::{
     EditorSaveFault, LastSaveRecord, SaveFaultMessage, SaveOutcome, SavedAssetPath,
 };
 pub use session::MapEditorSession;
+#[cfg(debug_assertions)]
+pub use situation::write_situation_in;
 pub use sprite_form::{SpriteDraft, draft_to_sprite_def, sprite_file_name, sprite_save_path_in};
 #[cfg(debug_assertions)]
 pub use sprite_form::{write_sprite, write_sprite_in};
