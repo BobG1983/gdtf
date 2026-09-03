@@ -4,17 +4,19 @@ use bevy::prelude::Entity;
 
 use crate::{
     clearance::{Clearance, round_band_for_cell, round_clears_occupant, silhouette_band},
-    cover::{CoverLedger, HeightBand},
+    cover::HeightBand,
     ganger::StanceKind,
     march::{
         geom::{
             AxisDir, AxisStep, MarchDir, RayParam, VoxelIndex, key_of, key_of_clamped, point_at,
             xy_in_grid, z_in_grid,
         },
+        grids::MarchGrids,
         result::{MarchKind, MarchResult},
+        skip::SkippedOccupant,
     },
     metric::{CellLevel, MAX_LEVELS, SimPos, SimUnit},
-    occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH},
     surface::{SlabState, SurfaceGrid},
     tuning::CombatTuning,
 };
@@ -82,13 +84,14 @@ pub(super) fn impact_at(
     here: CellLevel,
     here_point: SimPos,
     test_band: HeightBand,
-    occupancy: &OccupancyGrid,
-    surface: &SurfaceGrid,
-    cover: &CoverLedger,
+    grids: MarchGrids<'_>,
+    skipped: SkippedOccupant,
     is_dead: &impl Fn(Entity) -> bool,
 ) -> Option<MarchResult> {
+    let (occupancy, surface, cover) = (grids.occupancy, grids.surface, grids.cover);
     if let (Some(entity), Some(occ_band)) =
         (occupancy.occupant(&here), occupancy.occupant_band(&here))
+        && !skipped.skips(entity)
         && round_clears_occupant(test_band, occluding_band(entity, occ_band, is_dead))
             == Clearance::Impacts
     {
@@ -100,6 +103,7 @@ pub(super) fn impact_at(
         });
     }
     if let Some(body) = occupancy.body(&here)
+        && !skipped.skips(body.body())
         && round_clears_occupant(test_band, body.band()) == Clearance::Impacts
     {
         return Some(MarchResult {

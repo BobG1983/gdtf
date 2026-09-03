@@ -9,7 +9,7 @@ use crate::{
     central_axis::{clamp_within_cell, muzzle_height, target_aim_point},
     cover::CoverLedger,
     ganger::{Facing, Position, Stance, StanceKind},
-    march::{MarchDir, MarchGrids, MarchKind, march_vector},
+    march::{MarchDir, MarchGrids, MarchKind, SkippedOccupant, march_vector_skipping},
     metric::{CellLevel, SimPos, SimUnit, cell_center},
     occupancy::{OccupancyGrid, StairEyeOffset},
     tuning::CombatTuning,
@@ -72,6 +72,19 @@ pub fn has_los(
     tuning: &CombatTuning,
     is_dead: impl Fn(Entity) -> bool,
 ) -> Sighted {
+    has_los_skipping(from, to, SkippedOccupant::none(), grids, tuning, is_dead)
+}
+
+/// Same as [`has_los`], with one body the ray crosses as if its cell were empty.
+#[must_use]
+pub fn has_los_skipping(
+    from: &Observer,
+    to: &Target,
+    skipped: SkippedOccupant,
+    grids: MarchGrids<'_>,
+    tuning: &CombatTuning,
+    is_dead: impl Fn(Entity) -> bool,
+) -> Sighted {
     let observer_cell = cell_level_of(from.position);
     let target_cell = cell_level_of(to.position);
 
@@ -84,7 +97,7 @@ pub fn has_los(
 
     let dir = MarchDir::new((*aim - *eye).normalize_or_zero());
 
-    let result = march_vector(eye, dir, grids, tuning, observer_cell, is_dead);
+    let result = march_vector_skipping(eye, dir, grids, tuning, observer_cell, skipped, is_dead);
 
     is_clear(&result, target_cell, eye, aim)
 }

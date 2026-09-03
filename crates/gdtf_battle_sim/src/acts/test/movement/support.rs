@@ -10,6 +10,13 @@ pub(super) const AFOOT: DismountSurcharge = DismountSurcharge::NONE;
 
 /// The pose a mover holds unless a case poses it otherwise.
 pub(super) const STANDING: Stance = Stance::new(StanceKind::Standing);
+
+/// A mover flat on the floor, whose eye sits below the low band's top edge.
+pub(super) const PRONE: Stance = Stance::new(StanceKind::Prone);
+
+/// A mover down on one knee.
+pub(super) const CROUCHING: Stance = Stance::new(StanceKind::Crouching);
+
 pub(super) const NORTH: Facing = Facing::new(Direction::North);
 
 /// The mover in a fixture with no world behind it, so no body on the grid answers to it.
@@ -38,8 +45,20 @@ impl BareTerrain {
             .set_occupant_band(at, Some(silhouette_band(StanceKind::Standing)));
     }
 
+    /// Lay a body flat at `at`, which publishes the floor band a low ray still stops on.
+    pub(super) fn lie(&mut self, at: CellLevel, who: Entity) {
+        self.occupancy.set_occupant(at, Some(who));
+        self.occupancy
+            .set_occupant_band(at, Some(silhouette_band(StanceKind::Prone)));
+    }
+
     pub(super) fn sight(&self) -> SightWorld<'_, impl Fn(Entity) -> bool> {
-        SightWorld::new(&self.occupancy, &self.surface, &self.tuning, |_| false)
+        self.sight_where(|_| false)
+    }
+
+    /// The same grids, with a death test naming the bodies a ray reads as downed.
+    pub(super) fn sight_where<F: Fn(Entity) -> bool>(&self, is_dead: F) -> SightWorld<'_, F> {
+        SightWorld::new(&self.occupancy, &self.surface, &self.tuning, is_dead)
     }
 }
 

@@ -9,6 +9,7 @@ use crate::{
         geom::{MarchDir, VoxelIndex, key_of, key_of_clamped, point_at, xy_in_grid, z_in_grid},
         grids::MarchGrids,
         result::{MarchKind, MarchResult},
+        skip::SkippedOccupant,
     },
     metric::{CellLevel, SimPos, pos_to_cell},
     tuning::CombatTuning,
@@ -22,6 +23,28 @@ pub fn march_vector(
     grids: MarchGrids<'_>,
     tuning: &CombatTuning,
     shooter_cell: CellLevel,
+    is_dead: impl Fn(Entity) -> bool,
+) -> MarchResult {
+    march_vector_skipping(
+        muzzle,
+        dir,
+        grids,
+        tuning,
+        shooter_cell,
+        SkippedOccupant::none(),
+        is_dead,
+    )
+}
+
+/// Same as [`march_vector`], with one body the ray crosses as if its cell were empty.
+#[must_use]
+pub fn march_vector_skipping(
+    muzzle: SimPos,
+    dir: MarchDir,
+    grids: MarchGrids<'_>,
+    tuning: &CombatTuning,
+    shooter_cell: CellLevel,
+    skipped: SkippedOccupant,
     is_dead: impl Fn(Entity) -> bool,
 ) -> MarchResult {
     let (start_cell, start_level) = pos_to_cell(muzzle);
@@ -49,15 +72,7 @@ pub fn march_vector(
         let exit_band = round_band_for_cell(state.exit_point(muzzle, dir), tuning);
         let test_band = lower_band(entry_band, exit_band);
         if here != shooter_cell
-            && let Some(result) = impact_at(
-                here,
-                here_point,
-                test_band,
-                grids.occupancy,
-                grids.surface,
-                grids.cover,
-                &is_dead,
-            )
+            && let Some(result) = impact_at(here, here_point, test_band, grids, skipped, &is_dead)
         {
             return result;
         }

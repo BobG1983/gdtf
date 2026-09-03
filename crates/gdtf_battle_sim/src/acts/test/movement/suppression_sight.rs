@@ -38,24 +38,41 @@ fn nothing_beside(cover: &CoverLedger, dest: CellLevel, suppressor: CellLevel) -
     beside(dest, suppressor).is_some_and(|cell| cover.peek(&cell).is_none())
 }
 
+// Where a mover starts, where it is headed, and the cell the fire came from.
+#[derive(Debug, Clone, Copy)]
+struct Walk {
+    start:      CellLevel,
+    dest:       CellLevel,
+    suppressor: CellLevel,
+}
+
+fn verdict_seen_by<F: Fn(Entity) -> bool>(
+    sight: &SightWorld<'_, F>,
+    mover: Entity,
+    stance: Stance,
+    walk: Walk,
+    cover: &CoverLedger,
+) -> MoveVerdict {
+    let at = Position::new(walk.start);
+    let pool = Tu::new(100);
+    let pinned = Suppressed::new(SuppressorCell::new(walk.suppressor));
+    can_move(
+        Mover::new(mover, &at, &pool, &stance, &NORTH, Some(&pinned), AFOOT),
+        &walk.dest,
+        &one_step(walk.start, walk.dest),
+        cover,
+        sight,
+    )
+}
+
 fn verdict_in(
     terrain: &BareTerrain,
     mover: Entity,
-    start: CellLevel,
-    dest: CellLevel,
-    suppressor: CellLevel,
+    stance: Stance,
+    walk: Walk,
     cover: &CoverLedger,
 ) -> MoveVerdict {
-    let at = Position::new(start);
-    let pool = Tu::new(100);
-    let pinned = Suppressed::new(SuppressorCell::new(suppressor));
-    can_move(
-        Mover::new(mover, &at, &pool, &STANDING, &NORTH, Some(&pinned), AFOOT),
-        &dest,
-        &one_step(start, dest),
-        cover,
-        &terrain.sight(),
-    )
+    verdict_seen_by(&terrain.sight(), mover, stance, walk, cover)
 }
 
 fn verdict(
@@ -65,7 +82,12 @@ fn verdict(
     cover: &CoverLedger,
 ) -> MoveVerdict {
     let terrain = BareTerrain::new();
-    verdict_in(&terrain, UNSPAWNED_MOVER, start, dest, suppressor, cover)
+    let walk = Walk {
+        start,
+        dest,
+        suppressor,
+    };
+    verdict_in(&terrain, UNSPAWNED_MOVER, STANDING, walk, cover)
 }
 
 fn occupant_at(app: &App, at: CellLevel) -> Option<Entity> {
@@ -149,12 +171,100 @@ fn the_mover_does_not_hide_from_the_shot_cell_behind_its_own_body() {
     let empty = CoverLedger::new();
     let mut terrain = BareTerrain::new();
     terrain.stand(start, mover);
+    let walk = Walk {
+        start,
+        dest,
+        suppressor: shot_cell,
+    };
 
     assert_eq!(
-        verdict_in(&terrain, mover, start, dest, shot_cell, &empty),
+        verdict_in(&terrain, mover, STANDING, walk, &empty),
         MoveVerdict::Suppressed,
         "the mover stands on the line it is asked about until it walks, and a break-away is \
          judged from where it will be: its own body cannot be what hides it",
+    );
+}
+
+#[test]
+fn a_prone_mover_does_not_hide_from_the_shot_cell_behind_its_own_body() {
+    let mut world = World::new();
+    let mover = world.spawn_empty().id();
+    let (start, dest) = (on(1, 0, 0), on(0, 0, 0));
+    let shot_cell = on(10, 0, 0);
+    let empty = CoverLedger::new();
+    let mut terrain = BareTerrain::new();
+    terrain.stand(start, mover);
+    let walk = Walk {
+        start,
+        dest,
+        suppressor: shot_cell,
+    };
+
+    assert_eq!(
+        verdict_in(&terrain, mover, PRONE, walk, &empty),
+        MoveVerdict::Suppressed,
+        "a prone eye keeps its ray in the low band all the way out, which is the band the \
+         mover's own body is read at: the mover still cannot be what hides it",
+    );
+}
+
+#[test]
+fn a_crouching_mover_does_not_hide_from_the_shot_cell_behind_its_own_body() {
+    let mut world = World::new();
+    let mover = world.spawn_empty().id();
+    let lying = world.spawn_empty().id();
+    let (start, dest) = (on(1, 0, 0), on(0, 0, 0));
+    let shot_cell = on(2, 0, 0);
+    let empty = CoverLedger::new();
+    let mut terrain = BareTerrain::new();
+    terrain.stand(start, mover);
+    terrain.lie(shot_cell, lying);
+    let walk = Walk {
+        start,
+        dest,
+        suppressor: shot_cell,
+    };
+
+    assert_eq!(
+        verdict_in(&terrain, mover, CROUCHING, walk, &empty),
+        MoveVerdict::Suppressed,
+        "a crouching eye aimed down at a body lying on the cell the fire came from crosses the \
+         mover's own cell in the low band, and the mover is still not what hides it",
+    );
+}
+
+#[test]
+fn a_downed_body_on_the_line_still_hides_a_prone_mover() {
+    let mut world = World::new();
+    let mover = world.spawn_empty().id();
+    let downed = world.spawn_empty().id();
+    let (start, dest) = (on(1, 1, 0), on(0, 0, 0));
+    let shot_cell = on(10, 0, 0);
+    let empty = CoverLedger::new();
+    let mut terrain = BareTerrain::new();
+    terrain.stand(start, mover);
+    terrain.stand(on(1, 0, 0), downed);
+    let walk = Walk {
+        start,
+        dest,
+        suppressor: shot_cell,
+    };
+
+    assert!(
+        nothing_beside(&empty, dest, shot_cell),
+        "nothing may stand beside the destination, or the cover branch frees this walk",
+    );
+    assert_eq!(
+        verdict_seen_by(
+            &terrain.sight_where(|entity| entity == downed),
+            mover,
+            PRONE,
+            walk,
+            &empty,
+        ),
+        MoveVerdict::Allowed,
+        "a body the death test names drops to the floor band rather than vanishing, so it still \
+         breaks a low ray: the mover's own body is the only one the probe skips",
     );
 }
 
@@ -169,13 +279,18 @@ fn another_body_on_the_line_hides_the_mover_and_frees_the_walk() {
     let mut terrain = BareTerrain::new();
     terrain.stand(start, mover);
     terrain.stand(on(5, 0, 0), bystander);
+    let walk = Walk {
+        start,
+        dest,
+        suppressor: shot_cell,
+    };
 
     assert!(
         nothing_beside(&empty, dest, shot_cell),
         "nothing may stand beside the destination, or the cover branch frees this walk",
     );
     assert_eq!(
-        verdict_in(&terrain, mover, start, dest, shot_cell, &empty),
+        verdict_in(&terrain, mover, STANDING, walk, &empty),
         MoveVerdict::Allowed,
         "the probe reads the bodies on the grid: someone else between the destination and the \
          shot cell breaks the line, which is the only difference from the case above",

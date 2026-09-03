@@ -40,7 +40,7 @@ Moving away on its own is not enough, and neither route helps a walk that stays 
 
 The shot cell records no stance, so the ray aims at it **standing**. That is the strictest choice: a lower aim point ducks behind cover the standing one clears, which would free walks this rule refuses.
 
-The question asked is what the mover would see **standing on the destination**, so the mover's own body — still on the cell it is leaving until the walk runs — never counts as what hides it. Anyone else's does: a living ganger between the destination and the shot cell breaks the line like any other obstruction, and a body on the floor there — downed or dead — breaks it only at the LOW band ([resolution.md](resolution.md) §2), so a ray that stays above the floor crosses it, because this is the one geometry truth.
+The question asked is what the mover would see **from the destination**, at whatever stance it holds, so the mover's own body — still on the cell it is leaving until the walk runs — never counts as what hides it. Anyone else's does: a living ganger between the destination and the shot cell breaks the line like any other obstruction, and a body on the floor there — downed or dead — breaks it only at the LOW band ([resolution.md](resolution.md) §2), so a ray that stays above the floor crosses it, because this is the one geometry truth.
 
 **Height is not distance.** The distance check ignores the storey. Climbing a floor gains no ground on the suppressor, so a suppressed ganger who moves straight up is refused however good the cover is up there, and however completely the climb breaks the line back to the shot cell. This is the rule, not a gap in it.
 

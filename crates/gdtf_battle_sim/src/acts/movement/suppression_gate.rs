@@ -6,7 +6,8 @@ use super::sight::SightWorld;
 use crate::{
     cover::CoverLedger,
     ganger::{Direction, Facing, Position, Stance, StanceKind},
-    los::{Observer, PeekOffset, Sighted, Target, has_los},
+    los::{Observer, PeekOffset, Sighted, Target, has_los_skipping},
+    march::SkippedOccupant,
     metric::{Cell, CellDistance, CellLevel},
 };
 
@@ -82,7 +83,7 @@ fn ends_behind_cover(
     EndsBehindCover::new(cover.peek(&CellLevel::new(toward, dest.level())).is_some())
 }
 
-// Whether the mover would still see the cell the fire came from once it stands on `dest`.
+// Whether the mover would still see the cell the fire came from once it is on `dest`, at its own stance.
 fn sees_shot_cell<F: Fn(Entity) -> bool>(
     mover: &BreakAwayMover<'_>,
     dest: &CellLevel,
@@ -103,14 +104,14 @@ fn sees_shot_cell<F: Fn(Entity) -> bool>(
         position: &at,
         stance:   &SHOT_CELL_STANCE,
     };
-    // The mover is asked what it would see standing on `dest`, so its body at `start` is gone.
-    let passes_through = |entity: Entity| entity == mover.entity || (sight.is_dead())(entity);
-    has_los(
+    // The mover's own cell is crossed as if empty; a dead body still occludes at the floor band.
+    has_los_skipping(
         &observer,
         &shot_cell,
+        SkippedOccupant::new(mover.entity),
         sight.march(cover),
         sight.tuning(),
-        passes_through,
+        sight.is_dead(),
     )
 }
 
