@@ -4,6 +4,7 @@ mod entries;
 mod offered;
 mod registry;
 mod request;
+mod resolution;
 mod systems;
 
 #[cfg(test)]
@@ -15,4 +16,5 @@ pub use registry::{
     TakenRecord, take_matching_assets,
 };
 pub use request::{DeleteOutcome, DeleteRefusal, DeleteRequest};
+pub use resolution::{DropReferences, DroppedReferences};
 pub(crate) use systems::register_delete;

@@ -440,8 +440,9 @@ Notes an agent relies on:
   `editor.select_injury_tab` opens one of the Injury tab's two sub-tabs.
   `editor.select_weighting_table`, `editor.weighting` and
   `editor.save_weighting` pick, read and write the Injury tab's weighting
-  table, and `editor.delete_record` deletes one authored record after its
-  in-use check clears. All thirty-three need the authoring scene, so during the
+  table, and `editor.delete_record` deletes one authored record: for a family
+  whose delete carries a drop it rewrites every record that named the key
+  first, and it removes the record only once the in-use check clears. All thirty-three need the authoring scene, so during the
   editor's Load pass they answer `Unavailable { code: WrongState }`.
   `editor.draft` needs a form tab open on top of that, because the default Prefab tab carries no draft,
   `editor.set_field` and `editor.list_op` need a form tab whose draft is in the

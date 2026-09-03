@@ -2,18 +2,28 @@
 
 use crate::{
     delete::{
-        entries::{PREFAB_FAMILY, WEIGHTING_FAMILY, prefab_delete_entry, weighting_delete_entry},
+        entries::{
+            ARMOR_FAMILY, ATTACHMENT_FAMILY, FIELD_FAMILY, INJURY_FAMILY, MELEE_WEAPON_FAMILY,
+            PREFAB_FAMILY, WEIGHTING_FAMILY, armor_delete_entry, attachment_delete_entry,
+            field_delete_entry, injury_delete_entry, melee_weapon_delete_entry,
+            prefab_delete_entry, weighting_delete_entry,
+        },
         offered::entries_offered_on,
         registry::DeleteRegistry,
     },
     mode::{EditorMode, InjurySubTab},
 };
 
-// The registry the editor builds: the prefab entry and the weighting entry.
+// The registry the editor builds, in registration order.
 fn registry() -> DeleteRegistry {
     let mut registry = DeleteRegistry::default();
     registry.add(prefab_delete_entry());
     registry.add(weighting_delete_entry());
+    registry.add(armor_delete_entry());
+    registry.add(melee_weapon_delete_entry());
+    registry.add(attachment_delete_entry());
+    registry.add(injury_delete_entry());
+    registry.add(field_delete_entry());
     registry
 }
 
@@ -36,11 +46,12 @@ fn the_weighting_delete_is_offered_on_the_injury_tables_sub_tab() {
 }
 
 #[test]
-fn no_delete_is_offered_on_the_injury_def_sub_tab() {
+fn the_injury_def_delete_is_offered_on_the_injury_def_sub_tab() {
     assert_eq!(
         labels_on(EditorMode::Injury, Some(InjurySubTab::Def)),
-        Vec::<String>::new(),
-        "the injury def has no delete in this build, so the Def sub-tab offers none",
+        vec![INJURY_FAMILY.to_owned()],
+        "the injury def is the Def sub-tab's own record, and the weighting delete belongs to \
+         the other sub-tab",
     );
 }
 
@@ -50,5 +61,29 @@ fn the_prefab_delete_is_offered_on_the_prefab_tab() {
         labels_on(EditorMode::Prefab, None),
         vec![PREFAB_FAMILY.to_owned()],
         "the prefab canvas is where a prefab is deleted from",
+    );
+}
+
+#[test]
+fn each_loadout_delete_is_offered_on_its_own_tab() {
+    assert_eq!(
+        labels_on(EditorMode::Armor, None),
+        vec![ARMOR_FAMILY.to_owned()],
+        "armor is deleted from the Armor tab",
+    );
+    assert_eq!(
+        labels_on(EditorMode::MeleeWeapon, None),
+        vec![MELEE_WEAPON_FAMILY.to_owned()],
+        "a melee weapon is deleted from the Melee weapon tab",
+    );
+    assert_eq!(
+        labels_on(EditorMode::Attachment, None),
+        vec![ATTACHMENT_FAMILY.to_owned()],
+        "an attachment is deleted from the Attachment tab",
+    );
+    assert_eq!(
+        labels_on(EditorMode::Field, None),
+        vec![FIELD_FAMILY.to_owned()],
+        "a field def is deleted from the Field tab",
     );
 }

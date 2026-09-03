@@ -1,11 +1,11 @@
-//! The delete registry the editor builds holds exactly the two families this build deletes.
+//! The delete registry the editor builds holds exactly the families this build deletes.
 
 use gdtf_content_editor::DeleteRegistry;
 
 use crate::harness::{advance_to_published, editor_app_with_asset_root};
 
 #[test]
-fn the_editor_app_offers_a_delete_for_the_prefab_and_the_weighting_table_and_nothing_else() {
+fn the_editor_app_offers_a_delete_for_every_family_this_build_deletes_and_nothing_else() {
     let dir = tempfile::tempdir();
     assert!(dir.is_ok(), "creating the TempDir assets root must succeed");
     let Ok(dir) = dir else { return };
@@ -23,8 +23,17 @@ fn the_editor_app_offers_a_delete_for_the_prefab_and_the_weighting_table_and_not
 
     assert_eq!(
         labels,
-        vec!["InjuryTables".to_owned(), "PrefabRegistry".to_owned()],
-        "this build deletes the prefab and the injury weighting table and nothing else; every \
-         other content type belongs to a later child. Found: {labels:?}",
+        vec![
+            "ArmorRegistry".to_owned(),
+            "AttachmentRegistry".to_owned(),
+            "FieldDefRegistry".to_owned(),
+            "InjuryRegistry".to_owned(),
+            "InjuryTables".to_owned(),
+            "MeleeWeaponRegistry".to_owned(),
+            "PrefabRegistry".to_owned(),
+        ],
+        "this build deletes the prefab, the injury weighting table, and the five families whose \
+         reference is optional; terrain, theme, gang and weapon belong to a later child. Found: \
+         {labels:?}",
     );
 }

@@ -24,6 +24,11 @@ impl MeleeWeaponRegistry {
         self.0.insert(name, spec)
     }
 
+    /// Take the spec under `name` out; answers it if it was there.
+    pub fn remove(&mut self, name: &WeaponName) -> Option<MeleeWeaponSpec> {
+        self.0.remove(name)
+    }
+
     /// Lookup by name.
     #[must_use]
     pub fn spec(&self, name: &WeaponName) -> Option<&MeleeWeaponSpec> {

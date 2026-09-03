@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use bevy::asset::uuid::Uuid;
 use gdtf_battle_sim::{
     armor::InjuryCategory,
+    ganger::{GangMember, GangName, GangRoster},
     injuries::{DamageContext, InjuryName, InjuryTables, InjuryWeight, WeightedInjuryEntry},
     level::{GridHeight, GridLevels, GridSize, GridWidth, PrefabSpec, SpawnRole, ThemeUuid},
     severity::Severity,
@@ -12,8 +13,8 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_editor::{
     GangDraft, InjuryDraft, WeaponDraft, WeightingDraft, draft_to_def, draft_to_roster,
-    draft_to_weapon_spec, draft_to_weighting, write_gang_in, write_injury_in, write_weapon_in,
-    write_weighting_in,
+    draft_to_weapon_spec, draft_to_weighting, gang_save_path_in, write_gang_in, write_injury_in,
+    write_weapon_in, write_weighting_in,
 };
 use gdtf_content_families::prefabs::{PREFAB_EXTENSION, PREFABS_FOLDER};
 
@@ -44,6 +45,32 @@ pub(crate) fn write_fixture_gang(root: &Path, weapon: &str) -> bool {
     }
     let (name, roster) = draft_to_roster(&draft);
     write_gang_in(root, &name, &roster).is_ok()
+}
+
+/// Write a one-member gang under `root`, `equip` setting that member's loadout.
+pub(crate) fn write_gang_equipped(root: &Path, equip: impl Fn(&mut GangMember)) -> bool {
+    let mut draft = GangDraft::new_gang();
+    draft.set_name(FIXTURE_GANG.to_owned());
+    draft.add_member();
+    if let Some(member) = draft.members_mut().first_mut() {
+        equip(member);
+    }
+    let (name, roster) = draft_to_roster(&draft);
+    write_gang_in(root, &name, &roster).is_ok()
+}
+
+/// The file the fixture gang is written to under `root`.
+#[must_use]
+pub(crate) fn fixture_gang_path(root: &Path) -> PathBuf {
+    gang_save_path_in(root, &GangName::new(FIXTURE_GANG.to_owned()))
+}
+
+/// The fixture gang's one member, as the file under `root` holds it.
+#[must_use]
+pub(crate) fn fixture_gang_member(root: &Path) -> Option<GangMember> {
+    let ron = std::fs::read_to_string(fixture_gang_path(root)).ok()?;
+    let roster: GangRoster = ron::from_str(&ron).ok()?;
+    roster.members.first().cloned()
 }
 
 /// A weapon name from a file stem.

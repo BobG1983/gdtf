@@ -8,6 +8,7 @@ use bevy::{
 };
 use gdtf_assets::{ContentMemberKey, ContentSourcePath, FindingFamily};
 
+use super::resolution::{DropReferences, DroppedReferences};
 use crate::mode::{EditorMode, InjurySubTab};
 
 /// A record taken out of its registry, held while the delete waits.
@@ -74,6 +75,7 @@ pub struct DeleteEntry {
     take:     TakeRecord,
     restore:  RestoreRecord,
     relative: RecordFilePath,
+    drop:     Option<DropReferences>,
 }
 
 impl DeleteEntry {
@@ -92,7 +94,24 @@ impl DeleteEntry {
             take,
             restore,
             relative,
+            drop: None,
         }
+    }
+
+    /// Carry the drop resolution that rewrites every record referring to a deleted key.
+    #[must_use]
+    pub fn with_drop(mut self, drop: DropReferences) -> Self {
+        self.drop = Some(drop);
+        self
+    }
+
+    /// Rewrite every record referring to `key`; `None` when this entry drops nothing.
+    pub fn drop_references(
+        &self,
+        world: &mut World,
+        key: &ContentMemberKey,
+    ) -> Option<DroppedReferences> {
+        self.drop.as_ref().map(|drop| drop(world, key))
     }
 
     /// The finding family label this entry deletes.

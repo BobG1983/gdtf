@@ -6,14 +6,18 @@ use bevy::{
     prelude::{App, Update, World},
 };
 use gdtf_assets::{
-    ContentFinding, ContentIntegrityReport, ContentMemberKey, ContentValidationDone, FindingFamily,
-    ReferringRecord,
+    ContentChecksComplete, ContentFinding, ContentIntegrityReport, ContentMemberKey,
+    ContentValidationDone, FindingFamily, ReferringRecord,
 };
 
 use super::{
-    entries::{prefab_delete_entry, weighting_delete_entry},
+    entries::{
+        armor_delete_entry, attachment_delete_entry, field_delete_entry, injury_delete_entry,
+        melee_weapon_delete_entry, prefab_delete_entry, weighting_delete_entry,
+    },
     registry::{DeleteEntry, DeleteRegistry, TakenRecord},
     request::{DeleteOutcome, DeleteRefusal, DeleteRequest},
+    resolution::DroppedReferences,
 };
 use crate::net_qa::EditorQaAssetsRoot;
 
@@ -24,13 +28,15 @@ enum Pending {
     Idle,
     AwaitingClear(InFlight),
     AwaitingPublish(InFlight),
+    AwaitingDropCheck(InFlight),
 }
 
 // The delete in progress, holding the record it took out.
 struct InFlight {
-    family: FindingFamily,
-    key:    ContentMemberKey,
-    record: TakenRecord,
+    family:    FindingFamily,
+    key:       ContentMemberKey,
+    record:    TakenRecord,
+    referring: Vec<ReferringRecord>,
 }
 
 /// Register the delete driver.
@@ -39,6 +45,11 @@ pub(crate) fn register_delete(app: &mut App) {
     let mut registry = app.world_mut().resource_mut::<DeleteRegistry>();
     registry.add(prefab_delete_entry());
     registry.add(weighting_delete_entry());
+    registry.add(armor_delete_entry());
+    registry.add(melee_weapon_delete_entry());
+    registry.add(attachment_delete_entry());
+    registry.add(injury_delete_entry());
+    registry.add(field_delete_entry());
     app.add_systems(Update, run_pending_delete);
 }
 
@@ -55,10 +66,16 @@ fn run_pending_delete(world: &mut World, mut pending: Local<Pending>) {
         }
         Pending::AwaitingPublish(flight) => {
             *pending = if world.get_resource::<ContentValidationDone>().is_some() {
-                settle_delete(world, flight);
-                Pending::Idle
+                settle_delete(world, flight)
             } else {
                 Pending::AwaitingPublish(flight)
+            };
+        }
+        Pending::AwaitingDropCheck(flight) => {
+            *pending = if world.get_resource::<ContentValidationDone>().is_some() {
+                settle_after_drop(world, flight)
+            } else {
+                Pending::AwaitingDropCheck(flight)
             };
         }
     }
@@ -89,26 +106,74 @@ fn start_delete(world: &mut World) -> Pending {
             family: request.family().clone(),
             key: request.key().clone(),
             record,
+            referring: Vec::new(),
         })
     })
 }
 
-// Read the republished report and either put the record back or drop its file.
-fn settle_delete(world: &mut World, flight: InFlight) {
+// Read the republished report, and rewrite every referrer the entry can drop.
+fn settle_delete(world: &mut World, flight: InFlight) -> Pending {
     world.resource_scope::<DeleteRegistry, _>(|world, registry| {
         let Some(entry) = registry.entry(&flight.family) else {
             world.insert_resource(DeleteOutcome::Refused(DeleteRefusal::NoEntry));
-            return;
+            return Pending::Idle;
         };
         let referring = referring_records(world, &flight.family, &flight.key);
         if referring.is_empty() {
-            remove_record_file(world, entry, &flight.key);
-            world.insert_resource(DeleteOutcome::Removed);
-        } else {
-            entry.restore(world, &flight.key, flight.record);
-            world.insert_resource(DeleteOutcome::Refused(DeleteRefusal::InUse(referring)));
+            finish_removal(world, entry, &flight.key);
+            return Pending::Idle;
         }
-    });
+        if entry.drop_references(world, &flight.key) == Some(DroppedReferences::Rewritten) {
+            rearm_validation(world);
+            return Pending::AwaitingDropCheck(InFlight {
+                referring,
+                ..flight
+            });
+        }
+        refuse_in_use(world, entry, flight, referring);
+        Pending::Idle
+    })
+}
+
+// Read the report the rewrites re-armed, and remove the record only once it is clean.
+fn settle_after_drop(world: &mut World, flight: InFlight) -> Pending {
+    world.resource_scope::<DeleteRegistry, _>(|world, registry| {
+        let Some(entry) = registry.entry(&flight.family) else {
+            world.insert_resource(DeleteOutcome::Refused(DeleteRefusal::NoEntry));
+            return Pending::Idle;
+        };
+        if referring_records(world, &flight.family, &flight.key).is_empty() {
+            finish_removal(world, entry, &flight.key);
+        } else {
+            let referring = flight.referring.clone();
+            refuse_in_use(world, entry, flight, referring);
+        }
+        Pending::Idle
+    })
+}
+
+// The record stays out, and its own file goes.
+fn finish_removal(world: &mut World, entry: &DeleteEntry, key: &ContentMemberKey) {
+    remove_record_file(world, entry, key);
+    world.insert_resource(DeleteOutcome::Removed);
+}
+
+// The record goes back, and the refusal names the records that still refer to it.
+fn refuse_in_use(
+    world: &mut World,
+    entry: &DeleteEntry,
+    flight: InFlight,
+    referring: Vec<ReferringRecord>,
+) {
+    entry.restore(world, &flight.key, flight.record);
+    world.insert_resource(DeleteOutcome::Refused(DeleteRefusal::InUse(referring)));
+}
+
+// The rewritten referrers need a report of their own, so ask for one pass more.
+fn rearm_validation(world: &mut World) {
+    world.insert_resource(ContentIntegrityReport::default());
+    world.remove_resource::<ContentChecksComplete>();
+    world.remove_resource::<ContentValidationDone>();
 }
 
 // Every referring record the republished report raises against the dropped key.

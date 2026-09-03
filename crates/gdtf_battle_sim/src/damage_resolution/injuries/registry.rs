@@ -21,6 +21,11 @@ impl InjuryRegistry {
         self.0.insert(name, def)
     }
 
+    /// Take the definition under `name` out; answers it if it was there.
+    pub fn remove(&mut self, name: &InjuryName) -> Option<InjuryDef> {
+        self.0.remove(name)
+    }
+
     /// Look up a definition by name.
     #[must_use]
     pub fn def(&self, name: &InjuryName) -> Option<&InjuryDef> {

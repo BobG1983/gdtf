@@ -52,7 +52,8 @@ pub use connector_pairing::{PairingOutcome, apply_placement_with_pairing, is_sta
 #[cfg(debug_assertions)]
 pub use delete::{
     DeleteEntry, DeleteOutcome, DeleteRefusal, DeleteRegistry, DeleteRequest, DeleteScreen,
-    RecordFilePath, RestoreRecord, TakeRecord, TakenRecord, take_matching_assets,
+    DropReferences, DroppedReferences, RecordFilePath, RestoreRecord, TakeRecord, TakenRecord,
+    take_matching_assets,
 };
 pub use editor_map::{EditorMap, PaintedPiece};
 pub use egui_shell::prefab::size_fields::SizeFieldSpans;

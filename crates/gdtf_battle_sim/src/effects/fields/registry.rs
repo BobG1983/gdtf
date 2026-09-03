@@ -42,6 +42,11 @@ impl FieldDefRegistry {
         self.0.insert(key, def)
     }
 
+    /// Take the def under `key` out; answers it if it was there.
+    pub fn remove(&mut self, key: &FieldKey) -> Option<FieldDef> {
+        self.0.remove(key)
+    }
+
     /// Look up a def.
     #[must_use]
     pub fn def(&self, key: &FieldKey) -> Option<&FieldDef> {
