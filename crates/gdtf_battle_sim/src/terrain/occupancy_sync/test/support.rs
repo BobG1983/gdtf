@@ -4,7 +4,7 @@ use super::super::OccupancyMaintenancePlugin;
 use crate::{
     cover::HeightBand,
     metric::{Cell, CellLevel, Level},
-    occupancy::{OccupancyGrid, TerrainKind},
+    occupancy::{BodyOcclusion, OccupancyGrid, TerrainKind},
     surface::SurfaceGrid,
 };
 
@@ -31,6 +31,12 @@ pub(super) fn grid_band(app: &App, at: CellLevel) -> Option<HeightBand> {
     app.world()
         .get_resource::<OccupancyGrid>()
         .and_then(|g| g.occupant_band(&at))
+}
+
+pub(super) fn grid_body(app: &App, at: CellLevel) -> Option<BodyOcclusion> {
+    app.world()
+        .get_resource::<OccupancyGrid>()
+        .and_then(|g| g.body(&at))
 }
 
 pub(super) fn cell_terrain(app: &App, at: CellLevel) -> Option<TerrainKind> {

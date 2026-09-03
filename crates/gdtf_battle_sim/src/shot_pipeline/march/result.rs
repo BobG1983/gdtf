@@ -10,7 +10,7 @@ use crate::{
 /// Kind of impact a march produced.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MarchKind {
-    /// Living combatant.
+    /// Combatant: a living one, or a body lying on the floor.
     Ganger(Entity),
     /// Cover entry.
     Cover(CoverEntry),

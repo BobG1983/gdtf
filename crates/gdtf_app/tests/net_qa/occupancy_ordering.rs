@@ -24,11 +24,11 @@ fn the_successor_spawn_runs_after_the_dead_gangers_leave_the_grid() -> TestResul
     let update = update_schedule(&app)?;
     let graph = update.graph();
 
-    let dead = a_system_named(update, "sync_dead_gangers")?;
+    let dead = a_system_named(update, "sync_inactive_gangers")?;
     let piece = a_system_named(update, "replace_destroyed_piece")?;
     assert!(
         ordered_before(graph, NodeId::System(dead), piece),
-        "sync_dead_gangers must be ordered before replace_destroyed_piece; both write the \
+        "sync_inactive_gangers must be ordered before replace_destroyed_piece; both write the \
          occupancy grid and unordered the executor picks which clears the cell last",
     );
     Ok(())

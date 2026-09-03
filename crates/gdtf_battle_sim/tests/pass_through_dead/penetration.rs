@@ -1,5 +1,6 @@
 use bevy::prelude::World;
 use gdtf_battle_sim::{
+    cover::HeightBand,
     ganger::Wounds,
     inflicted_wound::InflictedWounds,
     prelude::{LifeState, OccupancyGrid},
@@ -33,12 +34,12 @@ fn burst_kills_front_then_passes_through_to_live_behind() {
         let behind = line_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
 
         let mut occupancy = OccupancyGrid::new();
-        place_occupant(&mut occupancy, front_cell(), front);
-        place_occupant(&mut occupancy, behind_cell(), behind);
+        place_occupant(&mut occupancy, front_cell(), front, HeightBand::High);
+        place_occupant(&mut occupancy, behind_cell(), behind, HeightBand::High);
 
         let behind_wounds_before = world.get::<Wounds>(behind).map_or(0, |w| **w);
 
-        let volley = fire_volley(&mut world, shooter, mode, &occupancy, seed);
+        let volley = fire_volley(&mut world, shooter, mode, &occupancy, front_cell(), seed);
 
         let front_died_round_one =
             applied_on(&volley, front).is_some_and(|a| a.life_after == LifeState::Dead);
@@ -58,7 +59,9 @@ fn burst_kills_front_then_passes_through_to_live_behind() {
         assert!(
             behind_struck,
             "seed {seed:#x}: a round must pass THROUGH the corpse and strike the live ganger \
-             behind it — got reports {:?}",
+             behind it. The grid never republishes the front ganger inside the volley, so the \
+             later rounds clear the body by height, not by skipping the occupant — got reports \
+             {:?}",
             volley.reports,
         );
         assert!(
@@ -101,9 +104,9 @@ fn burst_kills_front_with_nothing_behind_does_not_re_wound_corpse() {
         let front = line_ganger(&mut world, front_cell(), 1, LifeState::Alive);
 
         let mut occupancy = OccupancyGrid::new();
-        place_occupant(&mut occupancy, front_cell(), front);
+        place_occupant(&mut occupancy, front_cell(), front, HeightBand::High);
 
-        let volley = fire_volley(&mut world, shooter, mode, &occupancy, seed);
+        let volley = fire_volley(&mut world, shooter, mode, &occupancy, front_cell(), seed);
 
         let front_died_round_one =
             applied_on(&volley, front).is_some_and(|a| a.life_after == LifeState::Dead);
@@ -143,12 +146,19 @@ fn single_shot_passes_through_preexisting_corpse_to_live_target() {
     let live = line_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
 
     let mut occupancy = OccupancyGrid::new();
-    place_occupant(&mut occupancy, front_cell(), corpse);
-    place_occupant(&mut occupancy, behind_cell(), live);
+    place_occupant(&mut occupancy, front_cell(), corpse, HeightBand::High);
+    place_occupant(&mut occupancy, behind_cell(), live, HeightBand::High);
 
     let live_wounds_before = world.get::<Wounds>(live).map_or(0, |w| **w);
 
-    let volley = fire_volley(&mut world, shooter, mode, &occupancy, 0xC0FF_EE17);
+    let volley = fire_volley(
+        &mut world,
+        shooter,
+        mode,
+        &occupancy,
+        front_cell(),
+        0xC0FF_EE17,
+    );
 
     assert_eq!(volley.reports.len(), 1, "exactly one round fired");
     assert!(
@@ -185,9 +195,9 @@ fn same_seed_reproduces_byte_equal_volley_with_corpse_skip() {
         let front = line_ganger(&mut world, front_cell(), 1, LifeState::Alive);
         let behind = line_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
         let mut occupancy = OccupancyGrid::new();
-        place_occupant(&mut occupancy, front_cell(), front);
-        place_occupant(&mut occupancy, behind_cell(), behind);
-        fire_volley(&mut world, shooter, mode, &occupancy, seed)
+        place_occupant(&mut occupancy, front_cell(), front, HeightBand::High);
+        place_occupant(&mut occupancy, behind_cell(), behind, HeightBand::High);
+        fire_volley(&mut world, shooter, mode, &occupancy, front_cell(), seed)
     };
 
     assert_eq!(
@@ -195,5 +205,66 @@ fn same_seed_reproduces_byte_equal_volley_with_corpse_skip() {
         run(),
         "the same battle seed must reproduce a byte-equal volley (reports + shots) with the \
          corpse-skip predicate active",
+    );
+}
+
+#[test]
+fn burst_downs_front_then_passes_through_to_live_behind() {
+    let seeds: [u64; 12] = [
+        0x5A1C_AC75,
+        0x0BAD_F00D,
+        0xDEAD_BEEF,
+        0xFEED_FACE,
+        0x1234_5678,
+        0xCAFE_B0BA,
+        0x9E37_79B9,
+        0xA11C_E5ED,
+        0x0000_0001,
+        0x7FFF_FFFF,
+        0xABCD_1234,
+        0x1357_9BDF,
+    ];
+
+    let mut proved = false;
+    for seed in seeds {
+        let mut world = World::new();
+        let mode = burst_mode(3);
+        let shooter = spawn_shooter(&mut world, mode);
+        let front = tough_line_ganger(&mut world, front_cell(), 12);
+        let behind = line_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
+
+        let mut occupancy = OccupancyGrid::new();
+        place_occupant(&mut occupancy, front_cell(), front, HeightBand::High);
+        place_occupant(&mut occupancy, behind_cell(), behind, HeightBand::High);
+
+        let volley = fire_volley(&mut world, shooter, mode, &occupancy, front_cell(), seed);
+
+        let front_downed_round_one =
+            applied_on(&volley, front).is_some_and(|a| a.life_after == LifeState::Downed);
+        if !front_downed_round_one {
+            continue;
+        }
+
+        assert_eq!(
+            world.get::<LifeState>(front).copied(),
+            Some(LifeState::Downed),
+            "seed {seed:#x}: the front ganger must be Downed, not Dead, after the burst",
+        );
+        assert!(
+            report_struck(&volley, behind),
+            "seed {seed:#x}: a ganger DOWNED by round 1 is on the floor for the rest of the \
+             burst, so a later round must cross it and strike the live ganger behind. The grid \
+             never republishes the front ganger inside the volley, so only the march-side \
+             lowering of an inactive occupant lets it through. Got reports {:?}",
+            volley.reports,
+        );
+        proved = true;
+        break;
+    }
+
+    assert!(
+        proved,
+        "no seed downed the front ganger on round 1 without killing it. Widen the seed set; \
+         the pass-through could not be witnessed",
     );
 }

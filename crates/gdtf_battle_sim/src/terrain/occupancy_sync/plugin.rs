@@ -5,7 +5,7 @@ use bevy::prelude::{App, IntoScheduleConfigs, Plugin, SystemSet, Update};
 use crate::{
     occupancy::{project_path_blocking, project_vision_blocking},
     occupancy_sync::{
-        GroundAccrued, TerrainPieceDestroyed, sync_accrued_ground, sync_dead_gangers,
+        GroundAccrued, TerrainPieceDestroyed, sync_accrued_ground, sync_inactive_gangers,
         sync_moved_gangers,
     },
     terrain::{
@@ -38,7 +38,7 @@ impl Plugin for OccupancyMaintenancePlugin {
                 Update,
                 (
                     sync_moved_gangers,
-                    sync_dead_gangers,
+                    sync_inactive_gangers,
                     replace_destroyed_piece,
                     project_path_blocking,
                     project_vision_blocking,

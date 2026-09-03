@@ -3,8 +3,9 @@
 use bevy::prelude::Entity;
 
 use crate::{
-    clearance::{Clearance, round_band_for_cell, round_clears_occupant},
+    clearance::{Clearance, round_band_for_cell, round_clears_occupant, silhouette_band},
     cover::{CoverLedger, HeightBand},
+    ganger::StanceKind,
     march::{
         geom::{
             AxisDir, AxisStep, MarchDir, RayParam, VoxelIndex, key_of, key_of_clamped, point_at,
@@ -63,7 +64,20 @@ enum SteppedAxis {
     Z,
 }
 
-/// Test whether the current cell contains an impact (ganger, cover, or Present slab).
+// An occupant the predicate names is on the floor, whatever the grid last published.
+fn occluding_band(
+    entity: Entity,
+    published: HeightBand,
+    is_dead: &impl Fn(Entity) -> bool,
+) -> HeightBand {
+    if is_dead(entity) {
+        silhouette_band(StanceKind::Prone)
+    } else {
+        published
+    }
+}
+
+/// Test whether the current cell contains an impact (ganger, body, cover, or Present slab).
 pub(super) fn impact_at(
     here: CellLevel,
     here_point: SimPos,
@@ -75,11 +89,21 @@ pub(super) fn impact_at(
 ) -> Option<MarchResult> {
     if let (Some(entity), Some(occ_band)) =
         (occupancy.occupant(&here), occupancy.occupant_band(&here))
-        && round_clears_occupant(test_band, occ_band) == Clearance::Impacts
-        && !is_dead(entity)
+        && round_clears_occupant(test_band, occluding_band(entity, occ_band, is_dead))
+            == Clearance::Impacts
     {
         return Some(MarchResult {
             kind:   MarchKind::Ganger(entity),
+            at:     here,
+            band:   test_band,
+            impact: here_point,
+        });
+    }
+    if let Some(body) = occupancy.body(&here)
+        && round_clears_occupant(test_band, body.band()) == Clearance::Impacts
+    {
+        return Some(MarchResult {
+            kind:   MarchKind::Ganger(body.body()),
             at:     here,
             band:   test_band,
             impact: here_point,

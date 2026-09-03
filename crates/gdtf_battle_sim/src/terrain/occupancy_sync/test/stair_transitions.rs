@@ -185,7 +185,7 @@ fn dead_on_stair_clears_upper_presence() {
 }
 
 #[test]
-fn downed_on_stair_retains_both_cells() {
+fn downed_on_stair_clears_upper_presence() {
     let mut app = headless_app();
     let stair = key(7, 7, 3);
     let upper = key(7, 7, 4);
@@ -216,21 +216,25 @@ fn downed_on_stair_retains_both_cells() {
     assert_eq!(
         grid_occupant(&app, stair),
         Some(ganger),
-        "a downed stair-occupant HOLDS its lower cell ",
+        "a downed stair-occupant HOLDS its lower cell; found {:?}",
+        grid_occupant(&app, stair),
     );
     assert_eq!(
         grid_band(&app, stair),
-        Some(HeightBand::High),
-        "the downed lower cell keeps its stance band, still occluding fire ",
+        Some(HeightBand::Low),
+        "a downed body on a stair lies on the floor of its lower cell; found {:?}",
+        grid_band(&app, stair),
     );
     assert_eq!(
         grid_occupant(&app, upper),
-        Some(ganger),
-        "a downed stair-occupant HOLDS its upper cell too ",
+        None,
+        "a body claims no upper cell — it is on the floor; found {:?}",
+        grid_occupant(&app, upper),
     );
     assert_eq!(
         grid_band(&app, upper),
-        Some(HeightBand::Low),
-        "the downed upper cell keeps its Low band, still occluding fire ",
+        None,
+        "the released upper cell carries no band; found {:?}",
+        grid_band(&app, upper),
     );
 }

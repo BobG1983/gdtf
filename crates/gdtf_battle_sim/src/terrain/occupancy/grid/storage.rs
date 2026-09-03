@@ -5,7 +5,10 @@ use bevy::{
     prelude::{Deref, Entity, Resource},
 };
 
-use super::types::{GRID_HEIGHT, GRID_WIDTH, OccupancySlot, SLOT_COUNT};
+use super::{
+    bodies::BodyOcclusion,
+    types::{GRID_HEIGHT, GRID_WIDTH, OccupancySlot, SLOT_COUNT},
+};
 use crate::{
     cover::HeightBand,
     metric::{CellLevel, MAX_LEVELS},
@@ -27,6 +30,7 @@ impl SlotIndex {
 pub struct OccupancyGrid {
     pub(super) slots:           Box<[OccupancySlot]>,
     pub(super) occupant_bands:  HashMap<CellLevel, HeightBand>,
+    pub(super) bodies:          HashMap<CellLevel, BodyOcclusion>,
     pub(super) stair_cells:     HashSet<CellLevel>,
     pub(super) path_blocking:   PathBlocking,
     pub(super) vision_blocking: VisionBlocking,
@@ -37,6 +41,7 @@ impl Default for OccupancyGrid {
         Self {
             slots:           vec![OccupancySlot::default(); SLOT_COUNT].into_boxed_slice(),
             occupant_bands:  HashMap::default(),
+            bodies:          HashMap::default(),
             stair_cells:     HashSet::default(),
             path_blocking:   PathBlocking::new(),
             vision_blocking: VisionBlocking::new(),

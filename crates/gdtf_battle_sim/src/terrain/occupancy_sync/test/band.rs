@@ -3,6 +3,7 @@ use crate::{
     clearance::silhouette_band,
     cover::HeightBand,
     ganger::{LifeState, Position, Stance, StanceKind},
+    occupancy::BodyOcclusion,
 };
 
 #[test]
@@ -76,5 +77,29 @@ fn dead_ganger_clears_its_band() {
         grid_band(&app, at),
         None,
         "a dead ganger's band must be cleared too ",
+    );
+    assert_eq!(
+        grid_body(&app, at),
+        Some(BodyOcclusion::new(ganger, HeightBand::Low)),
+        "the corpse must be recorded in the body channel on the floor; found {:?}",
+        grid_body(&app, at),
+    );
+
+    if let Some(mut stance) = app.world_mut().get_mut::<Stance>(ganger) {
+        *stance = Stance::new(StanceKind::Crouching);
+    }
+    app.update();
+
+    assert_eq!(
+        grid_occupant(&app, at),
+        None,
+        "a stance written on a corpse must not put it back in the occupant slot; found {:?}",
+        grid_occupant(&app, at),
+    );
+    assert_eq!(
+        grid_body(&app, at),
+        Some(BodyOcclusion::new(ganger, HeightBand::Low)),
+        "the corpse stays in the body channel after the stance write; found {:?}",
+        grid_body(&app, at),
     );
 }

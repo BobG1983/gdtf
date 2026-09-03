@@ -12,6 +12,7 @@ use gdtf_battle_sim::{
     inflicted_wound::InflictedWounds,
     injuries::{InjuryRegistry, InjuryTables},
     magazine::{LoadedRounds, Magazine, ReloadTu},
+    occupancy::BodyOcclusion,
     prelude::{
         Cell, CellLevel, Direction, Level, LifeState, OccupancyGrid, Position, Stance, StanceKind,
         Tu,
@@ -130,9 +131,35 @@ pub(crate) fn line_ganger(
     ganger
 }
 
-pub(crate) fn place_occupant(occupancy: &mut OccupancyGrid, cell: CellLevel, entity: Entity) {
+pub(crate) fn tough_line_ganger(world: &mut World, cell: CellLevel, wounds: u8) -> Entity {
+    let ganger = GangerEntityBuilder::new()
+        .at(cell)
+        .stance(StanceKind::Standing)
+        .combat_vitals(40, wounds)
+        .toughness(60.0)
+        .life_state(LifeState::Alive)
+        .spawn(world);
+    equip_thin_armor(world, ganger);
+    ganger
+}
+
+pub(crate) fn place_occupant(
+    occupancy: &mut OccupancyGrid,
+    cell: CellLevel,
+    entity: Entity,
+    band: HeightBand,
+) {
     occupancy.set_occupant(cell, Some(entity));
-    occupancy.set_occupant_band(cell, Some(HeightBand::High));
+    occupancy.set_occupant_band(cell, Some(band));
+}
+
+pub(crate) fn place_body(
+    occupancy: &mut OccupancyGrid,
+    cell: CellLevel,
+    entity: Entity,
+    band: HeightBand,
+) {
+    occupancy.set_body(cell, Some(BodyOcclusion::new(entity, band)));
 }
 
 pub(crate) fn fire_volley(
@@ -140,6 +167,7 @@ pub(crate) fn fire_volley(
     shooter: Entity,
     mode: FireModeSpec,
     occupancy: &OccupancyGrid,
+    target: CellLevel,
     seed: u64,
 ) -> Volley {
     type FireQueries<'w, 's> = (
@@ -163,8 +191,8 @@ pub(crate) fn fire_volley(
             FireOrder {
                 shooter,
                 mode: &mode,
-                target_cell: Cell::new(front_cell().x, front_cell().y),
-                target_level: Level::new(0),
+                target_cell: Cell::new(target.x, target.y),
+                target_level: target.level(),
             },
             &mut shooters,
             &mut arms,

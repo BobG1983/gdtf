@@ -6,8 +6,8 @@ pub(super) use crate::{
     march::{MarchDir, MarchKind, march_vector},
     metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center},
     occupancy::{
-        GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainKind,
-        TerrainPlacement,
+        BodyOcclusion, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupantPlacement,
+        TerrainKind, TerrainPlacement,
     },
     surface::{SlabState, SurfaceGrid},
     terrain::entity::TerrainPieceKind,

@@ -33,7 +33,7 @@ fn dead_ganger_clears_its_slot() {
 }
 
 #[test]
-fn downed_ganger_retains_its_slot() {
+fn downed_body_keeps_its_cell_and_loses_its_silhouette() {
     let mut app = headless_app();
     let at = key(20, 20, 0);
 
@@ -55,12 +55,32 @@ fn downed_ganger_retains_its_slot() {
     assert_eq!(
         grid_occupant(&app, at),
         Some(ganger),
-        "a downed ganger HOLDS its occupant slot — only Dead frees it ",
+        "a downed ganger HOLDS its occupant slot — only Dead frees it; found {:?}",
+        grid_occupant(&app, at),
     );
     assert_eq!(
         grid_band(&app, at),
-        Some(HeightBand::High),
-        "a downed ganger retains its silhouette band, still occluding fire ",
+        Some(HeightBand::Low),
+        "a downed body lies on the floor, so it publishes the Low band; found {:?}",
+        grid_band(&app, at),
+    );
+
+    if let Some(mut stance) = app.world_mut().get_mut::<Stance>(ganger) {
+        *stance = Stance::new(StanceKind::Crouching);
+    }
+    app.update();
+
+    assert_eq!(
+        grid_band(&app, at),
+        Some(HeightBand::Low),
+        "a stance written on a downed body must not raise it off the floor; found {:?}",
+        grid_band(&app, at),
+    );
+    assert_eq!(
+        grid_occupant(&app, at),
+        Some(ganger),
+        "the downed body still holds its cell after the stance write; found {:?}",
+        grid_occupant(&app, at),
     );
 }
 

@@ -5,7 +5,8 @@ use bevy::prelude::{Changed, Commands, Entity, MessageReader, Or, Query, ResMut}
 use crate::{
     clearance::silhouette_band,
     ganger::{LifeState, Position, Stance, StanceKind},
-    occupancy::OccupancyGrid,
+    metric::CellLevel,
+    occupancy::{BodyOcclusion, OccupancyGrid},
     occupancy_sync::{GroundAccrued, PrevSlot},
     surface::SurfaceGrid,
 };
@@ -14,10 +15,26 @@ type MovedReads<'a> = (
     Entity,
     &'a Position,
     Option<&'a Stance>,
+    Option<&'a LifeState>,
     Option<&'a PrevSlot>,
 );
 
 type MovedOrReposed = Or<(Changed<Position>, Changed<Stance>)>;
+
+// At `slot`, prone: a corpse goes in the body channel, a downed ganger keeps the occupant slot.
+fn publish_body(grid: &mut OccupancyGrid, entity: Entity, life: LifeState, slot: CellLevel) {
+    let band = silhouette_band(StanceKind::Prone);
+    if matches!(life, LifeState::Dead) {
+        if grid.occupant(&slot) == Some(entity) {
+            grid.set_occupant(slot, None);
+            grid.set_occupant_band(slot, None);
+        }
+        grid.set_body(slot, Some(BodyOcclusion::new(entity, band)));
+    } else {
+        grid.set_occupant(slot, Some(entity));
+        grid.set_occupant_band(slot, Some(band));
+    }
+}
 
 /// Update grid occupancy when a ganger moves or changes stance.
 pub fn sync_moved_gangers(
@@ -25,10 +42,11 @@ pub fn sync_moved_gangers(
     mut grid: ResMut<OccupancyGrid>,
     moved: Query<MovedReads, MovedOrReposed>,
 ) {
-    for (entity, position, stance, prev) in &moved {
+    for (entity, position, stance, life, prev) in &moved {
         let new_lower = **position;
         let stance_kind = stance.map_or(StanceKind::Standing, |s| **s);
         let band = silhouette_band(stance_kind);
+        let life = life.copied().unwrap_or_default();
 
         if let Some(prev) = prev {
             let old_lower = prev.slot();
@@ -41,7 +59,10 @@ pub fn sync_moved_gangers(
             }
         }
 
-        let new_upper = if *grid.is_stair_cell(&new_lower) && stance_kind != StanceKind::Prone {
+        let new_upper = if !*life.is_active() {
+            publish_body(&mut grid, entity, life, new_lower);
+            None
+        } else if *grid.is_stair_cell(&new_lower) && stance_kind != StanceKind::Prone {
             grid.register_stair_presence(new_lower, entity, band)
         } else {
             grid.set_occupant(new_lower, Some(entity));
@@ -57,20 +78,16 @@ pub fn sync_moved_gangers(
     }
 }
 
-/// Clear occupancy when a ganger dies.
-pub fn sync_dead_gangers(
+/// Drop a ganger to the floor when it can no longer act.
+pub fn sync_inactive_gangers(
     mut grid: ResMut<OccupancyGrid>,
     downed: Query<(Entity, &LifeState, &PrevSlot), Changed<LifeState>>,
 ) {
     for (entity, life, prev) in &downed {
-        if !matches!(life, LifeState::Dead) {
+        if *life.is_active() {
             continue;
         }
-        let slot = prev.slot();
-        if grid.occupant(&slot) == Some(entity) {
-            grid.set_occupant(slot, None);
-            grid.set_occupant_band(slot, None);
-        }
+        publish_body(&mut grid, entity, *life, prev.slot());
         if let Some(upper) = prev.upper() {
             grid.clear_stair_upper(upper, entity);
         }

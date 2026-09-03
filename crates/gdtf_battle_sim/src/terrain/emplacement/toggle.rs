@@ -19,7 +19,7 @@ use crate::{
     ganger::Position,
     metric::CellLevel,
     occupancy::project_path_blocking,
-    occupancy_sync::{SimSystems, sync_dead_gangers, sync_moved_gangers},
+    occupancy_sync::{SimSystems, sync_inactive_gangers, sync_moved_gangers},
     successor::replace_destroyed_piece,
     terrain::entity::TerrainCell,
     weapon::{MountedWeapon, WeaponRegistry, WieldedBy},
@@ -183,7 +183,7 @@ impl Plugin for EmplacementTogglePlugin {
                     .in_set(SimSystems::Simulate)
                     .after(apply_emplacement_toggle)
                     .after(resolve_on_death)
-                    .after(sync_dead_gangers),
+                    .after(sync_inactive_gangers),
             )
             .add_systems(
                 Update,

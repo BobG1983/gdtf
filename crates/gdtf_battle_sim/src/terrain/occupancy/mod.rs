@@ -17,8 +17,8 @@ mod path_blocking_test;
 mod vision_blocking_test;
 
 pub use grid::{
-    Blocked, GRID_HEIGHT, GRID_WIDTH, OccludesVision, OccupancyGrid, OccupancySlot, PathBlocked,
-    StairCell, StairEyeOffset,
+    Blocked, BodyOcclusion, GRID_HEIGHT, GRID_WIDTH, OccludesVision, OccupancyGrid, OccupancySlot,
+    PathBlocked, StairCell, StairEyeOffset,
 };
 pub use input::{OccupancyInput, OccupantPlacement, TerrainPlacement};
 pub use kind::TerrainKind;

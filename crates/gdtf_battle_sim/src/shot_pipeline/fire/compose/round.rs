@@ -12,7 +12,7 @@ use crate::{
     aim::{cone_for, stability_for},
     cover::CoverLedger,
     effects::attachments::WeaponBraceBonus,
-    ganger::{LifeState, Position, Stance, StanceKind},
+    ganger::{Position, Stance, StanceKind},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     resolve_and_apply::{HitReport, WoundRoll},
@@ -124,7 +124,7 @@ pub(in crate::shot_pipeline::fire) fn resolve_round(
     let is_dead = |e: Entity| {
         targets
             .get(e)
-            .is_ok_and(|(_, _, life, ..)| *life == LifeState::Dead)
+            .is_ok_and(|(_, _, life, ..)| !*life.is_active())
     };
     let outcome = resolve_coarse(
         &shot,
