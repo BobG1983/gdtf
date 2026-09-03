@@ -60,6 +60,10 @@ fn spawn_armored_ganger(app: &mut App, hp: u16, armor_type: ArmorType) -> Entity
     ganger
 }
 
+fn spawn_bare_ganger(app: &mut App, hp: u16) -> Entity {
+    app.world_mut().spawn((Hp::new(hp), LifeState::Alive)).id()
+}
+
 fn hp_of(app: &App, ganger: Entity) -> u16 {
     app.world().get::<Hp>(ganger).map_or(0, |h| **h)
 }
@@ -117,6 +121,38 @@ fn field_damages_an_unprotected_occupant_each_round() {
         tick_count_for(&app, ganger),
         usize::from(rounds),
         "a FieldTicked is emitted once per draining round",
+    );
+}
+
+#[test]
+fn a_ganger_wearing_no_armor_is_drained_each_round() {
+    let cell = ground(6, 6);
+    let per_turn = 4u16;
+    let start_hp = 60u16;
+
+    let mut app = tick_app();
+    let ganger = spawn_bare_ganger(&mut app, start_hp);
+    grid_with_occupant(&mut app, cell, ganger);
+    let mut registry = FieldRegistry::new();
+    registry.spawn(
+        cell,
+        field(per_turn, &[ArmorType::Flak], FieldDuration::Permanent),
+    );
+    app.world_mut().insert_resource(registry);
+
+    let rounds = 3u16;
+    for _ in 0..rounds {
+        app.update();
+    }
+    assert_eq!(
+        hp_of(&app, ganger),
+        start_hp - per_turn * rounds,
+        "an occupant with no Wears is still matched and drained per_turn HP each round",
+    );
+    assert_eq!(
+        tick_count_for(&app, ganger),
+        usize::from(rounds),
+        "wearing nothing is not immunity against a field listing Flak: a tick per round",
     );
 }
 

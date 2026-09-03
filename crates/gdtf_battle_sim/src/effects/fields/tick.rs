@@ -64,7 +64,15 @@ impl FieldAfflicted {
 /// Combatants a field can drain, their worn armor, and who is already draining.
 #[derive(SystemParam)]
 pub struct FieldOccupants<'w, 's> {
-    vitals:  Query<'w, 's, (&'static mut Hp, &'static mut LifeState, &'static Wears)>,
+    vitals: Query<
+        'w,
+        's,
+        (
+            &'static mut Hp,
+            &'static mut LifeState,
+            Option<&'static Wears>,
+        ),
+    >,
     worn:    Query<'w, 's, &'static ArmorType, With<WornBy>>,
     ongoing: Query<'w, 's, Entity, With<FieldOngoing>>,
 }

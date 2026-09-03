@@ -12,8 +12,8 @@ use crate::{
 
 /// Armor worn by an occupant, for immunity checks.
 pub struct OccupantArmor<'a, 'w, 's> {
-    /// Wears relationship on the ganger.
-    pub wears: &'a Wears,
+    /// Wears relationship on the ganger, absent when nothing is worn.
+    pub wears: Option<&'a Wears>,
     /// Armor type components on worn pieces.
     pub worn:  &'a Query<'w, 's, &'static ArmorType, With<WornBy>>,
 }

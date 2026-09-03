@@ -59,8 +59,12 @@ impl<'s> ApplyImmunity<'s> {
 }
 
 impl ApplyFieldEffect for ApplyImmunity<'_> {
+    /// An occupant wearing nothing is never exempt.
     fn exempts_occupant(&self, armor: &OccupantArmor<'_, '_, '_>) -> DrainExempt {
-        DrainExempt::new(armor.wears.pieces().any(|piece| {
+        let Some(wears) = armor.wears else {
+            return DrainExempt::new(false);
+        };
+        DrainExempt::new(wears.pieces().any(|piece| {
             armor
                 .worn
                 .get(piece)
@@ -94,7 +98,10 @@ mod tests {
         let Some(wears) = world.get::<Wears>(ganger) else {
             unreachable!("spawning the WornBy piece populates the ganger's Wears");
         };
-        let armor = OccupantArmor { wears, worn: &worn };
+        let armor = OccupantArmor {
+            wears: Some(wears),
+            worn:  &worn,
+        };
         let set = ImmuneArmorTypes::new(immune.iter().copied());
         *ApplyImmunity::new(&set).exempts_occupant(&armor)
     }

@@ -44,7 +44,7 @@ From the shipped `assets/content/fields/toxic_waste_pool.field.ron`
 |-------|-----------|----------|-------|
 | `damage` | `FieldDamage` | bare integer | Flat per-turn HP drain — no armor matchup, no injury roll, no RNG |
 | `damage_type` | `DamageType` | enum variant | Wheel-node flavour, presentation only (the drain bypasses soak) |
-| `immune_armor_types` | `ImmuneArmorTypes` | list of `ArmorType` variants | WHOLE-SOURCE immunity: a ganger wearing ANY piece of a listed type takes zero |
+| `immune_armor_types` | `ImmuneArmorTypes` | list of `ArmorType` variants | WHOLE-SOURCE immunity: a ganger wearing ANY piece of a listed type takes zero. A ganger wearing no armor at all is never exempt. It is drained like any other unprotected occupant |
 | `duration` | `FieldDuration` | `Permanent` \| `Turns(n)` | `Turns(n)` = exactly `n` draining rounds, then the field is removed (the same round boundary that spends the last turn removes it). `n` must be ≥ 1 — `Turns(0)` is unrepresentable and FAILS the file's load (per-file salvage, `MalformedFile` finding); there is no clamp |
 
 ### 1c. Placing a field (three producers)
