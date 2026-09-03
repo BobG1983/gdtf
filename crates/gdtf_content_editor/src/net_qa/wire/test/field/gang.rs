@@ -27,11 +27,19 @@ fn every_gang_field_arm_round_trips() {
     assert_ron_round_trip(&GangAttributeValueNet::new(7.25));
     assert_ron_round_trip(&EditorFieldNet::Gang(GangFieldNet::MemberWeapon {
         index,
-        key: a_key(),
+        key: Some(a_key()),
+    }));
+    assert_ron_round_trip(&EditorFieldNet::Gang(GangFieldNet::MemberWeapon {
+        index,
+        key: None,
     }));
     assert_ron_round_trip(&EditorFieldNet::Gang(GangFieldNet::MemberArmor {
         index,
-        key: a_key(),
+        key: Some(a_key()),
+    }));
+    assert_ron_round_trip(&EditorFieldNet::Gang(GangFieldNet::MemberArmor {
+        index,
+        key: None,
     }));
     assert_ron_round_trip(&EditorFieldNet::Gang(GangFieldNet::MemberMeleeWeapon {
         index,

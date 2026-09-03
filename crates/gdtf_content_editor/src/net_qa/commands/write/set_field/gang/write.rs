@@ -121,14 +121,20 @@ fn write_weapon(
     draft: &mut GangDraft,
     weapons: Option<&WeaponRegistry>,
     index: EditorListIndexNet,
-    key: &EditorKeyNet,
+    key: Option<&EditorKeyNet>,
 ) -> Result<GangFieldNet, FormWriteFault> {
-    let wanted = registry::weapon(weapons, key)?;
+    let wanted = match key {
+        Some(key) => Some(registry::weapon(weapons, key)?),
+        None => None,
+    };
     let member = member_at(draft, index)?;
     member.weapon = wanted;
     Ok(GangFieldNet::MemberWeapon {
         index,
-        key: EditorKeyNet::new(member.weapon.as_str().to_owned()),
+        key: member
+            .weapon
+            .as_ref()
+            .map(|name| EditorKeyNet::new(name.as_str().to_owned())),
     })
 }
 
@@ -136,14 +142,20 @@ fn write_armor(
     draft: &mut GangDraft,
     armor: Option<&ArmorRegistry>,
     index: EditorListIndexNet,
-    key: &EditorKeyNet,
+    key: Option<&EditorKeyNet>,
 ) -> Result<GangFieldNet, FormWriteFault> {
-    let wanted = registry::armor(armor, key)?;
+    let wanted = match key {
+        Some(key) => Some(registry::armor(armor, key)?),
+        None => None,
+    };
     let member = member_at(draft, index)?;
     member.armor = wanted;
     Ok(GangFieldNet::MemberArmor {
         index,
-        key: EditorKeyNet::new(member.armor.as_str().to_owned()),
+        key: member
+            .armor
+            .as_ref()
+            .map(|name| EditorKeyNet::new(name.as_str().to_owned())),
     })
 }
 
@@ -187,8 +199,10 @@ pub(in crate::net_qa::commands::write::set_field) fn write(
             attribute,
             value,
         } => write_attribute(draft, index, attribute, value),
-        GangFieldNet::MemberWeapon { index, key } => write_weapon(draft, weapons, index, &key),
-        GangFieldNet::MemberArmor { index, key } => write_armor(draft, armor, index, &key),
+        GangFieldNet::MemberWeapon { index, key } => {
+            write_weapon(draft, weapons, index, key.as_ref())
+        }
+        GangFieldNet::MemberArmor { index, key } => write_armor(draft, armor, index, key.as_ref()),
         GangFieldNet::MemberMeleeWeapon { index, key } => {
             write_melee_weapon(draft, melee, index, key.as_ref())
         }

@@ -15,8 +15,8 @@
             cool:      5.0,
             grit:      15.0,
             luck:      1.0,
-            armor:     "ghost_vest",           // DANGLING armor key — the armor folder is empty here
-            weapon:    "ghost_gun",            // DANGLING weapon key — not among this root's weapons
+            armor:     Some("ghost_vest"),           // DANGLING armor key — the armor folder is empty here
+            weapon:    Some("ghost_gun"),            // DANGLING weapon key — not among this root's weapons
             melee_weapon: Some("ghost_blade"), // DANGLING melee key — the melee folder is empty here
         ),
     ],

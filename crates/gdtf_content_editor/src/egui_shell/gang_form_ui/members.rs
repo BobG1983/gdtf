@@ -11,8 +11,12 @@ use gdtf_battle_sim::{
 
 use crate::gang_form::GangDraft;
 
+#[cfg(test)]
+mod test;
+
 const SKILL_DECIMALS: usize = 1;
 const MELEE_DEFAULT_LABEL: &str = "(default: fists)";
+const NO_KEY_LABEL: &str = "(none)";
 
 struct LoadoutOptions {
     weapons: Vec<String>,
@@ -93,14 +97,14 @@ fn loadout_rows(
     member: &mut GangMember,
     options: &LoadoutOptions,
 ) {
-    if let Some(key) = key_combo(
+    if let Some(choice) = key_combo(
         ui,
         ("gang_member_weapon", index),
         "Weapon",
-        member.weapon.as_str(),
+        member.weapon.as_ref().map(|key| key.as_str()),
         &options.weapons,
     ) {
-        member.weapon = WeaponName::new(key);
+        member.weapon = chosen_key(choice).map(WeaponName::new);
     }
     if let Some(choice) = melee_combo(ui, index, member.melee_weapon.as_ref(), &options.melee) {
         member.melee_weapon = match choice {
@@ -108,14 +112,31 @@ fn loadout_rows(
             MeleeChoice::Key(key) => Some(WeaponName::new(key)),
         };
     }
-    if let Some(key) = key_combo(
+    if let Some(choice) = key_combo(
         ui,
         ("gang_member_armor", index),
         "Armor",
-        member.armor.as_str(),
+        member.armor.as_ref().map(|key| key.as_str()),
         &options.armor,
     ) {
-        member.armor = ArmorName::new(key);
+        member.armor = chosen_key(choice).map(ArmorName::new);
+    }
+}
+
+/// A pick from a combo over a loadout key the member may leave unset.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum KeyChoice {
+    /// Clear the key.
+    Clear,
+    /// Hold this key.
+    Key(String),
+}
+
+/// The key a combo pick leaves the member holding.
+fn chosen_key(choice: KeyChoice) -> Option<String> {
+    match choice {
+        KeyChoice::Clear => None,
+        KeyChoice::Key(key) => Some(key),
     }
 }
 
@@ -123,23 +144,26 @@ fn key_combo(
     ui: &mut egui::Ui,
     id_salt: (&str, usize),
     label: &str,
-    current: &str,
+    current: Option<&str>,
     keys: &[String],
-) -> Option<String> {
+) -> Option<KeyChoice> {
     let mut chosen = None;
     ui.horizontal(|ui| {
         ui.label(label);
-        let preview = if current.is_empty() {
-            "(select…)"
-        } else {
-            current
-        };
+        let preview = current.unwrap_or(NO_KEY_LABEL);
         egui::ComboBox::from_id_salt(id_salt)
             .selected_text(preview)
             .show_ui(ui, |ui| {
+                if ui
+                    .selectable_label(current.is_none(), NO_KEY_LABEL)
+                    .clicked()
+                {
+                    chosen = Some(KeyChoice::Clear);
+                }
                 for key in keys {
-                    if ui.selectable_label(current == key, key).clicked() {
-                        chosen = Some(key.clone());
+                    let selected = current == Some(key.as_str());
+                    if ui.selectable_label(selected, key).clicked() {
+                        chosen = Some(KeyChoice::Key(key.clone()));
                     }
                 }
             });

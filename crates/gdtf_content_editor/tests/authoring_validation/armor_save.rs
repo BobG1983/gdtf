@@ -84,8 +84,8 @@ fn armor_save_reload_rearms_validation_and_republishes_findings() {
     gang_draft.set_name("armor_rearm_gang".to_owned());
     gang_draft.add_member();
     if let Some(member) = gang_draft.members_mut().first_mut() {
-        member.armor = ArmorName::new(REARM_ARMOR.to_owned());
-        member.weapon = WeaponName::new(DANGLING_WEAPON.to_owned());
+        member.armor = Some(ArmorName::new(REARM_ARMOR.to_owned()));
+        member.weapon = Some(WeaponName::new(DANGLING_WEAPON.to_owned()));
     }
     let (gang_name, roster) = draft_to_roster(&gang_draft);
     let gang_written = write_gang_in(dir.path(), &gang_name, &roster);

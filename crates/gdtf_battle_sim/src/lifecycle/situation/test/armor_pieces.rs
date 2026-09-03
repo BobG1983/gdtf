@@ -1,9 +1,142 @@
 use bevy::ecs::relationship::{Relationship, RelationshipTarget};
 
 use super::support::*;
-use crate::armor::{
-    ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, Wears, WornBy,
+use crate::{
+    armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, Wears, WornBy},
+    ganger::{Aim, Cool, GangMember, Grit, Reflexes, Speed, Strength},
+    test_support::TEST_ARMOR_KEY,
+    weapon::{MeleeWeapon, MountedWeapon},
 };
+
+/// One hand-built roster member holding the loadout keys the case needs.
+fn member(name: &str, armor: Option<ArmorName>, weapon: Option<WeaponName>) -> GangMember {
+    GangMember {
+        name: GangerName::new(name.to_owned()),
+        speed: Speed::new(3.0),
+        aim: Aim::new(2.0),
+        strength: Strength::new(3.0),
+        toughness: Toughness::new(10.0),
+        reflexes: Reflexes::new(2.0),
+        cool: Cool::new(8.0),
+        grit: Grit::new(18.0),
+        luck: Luck::new(1.0),
+        armor,
+        weapon,
+        melee_weapon: None,
+    }
+}
+
+/// Two faction-0 gangers whose roster members carry the given loadouts, set up for real.
+fn two_member_setup(
+    first: GangMember,
+    second: GangMember,
+) -> Option<(bevy::app::App, crate::situation::BattleSetup)> {
+    let situation = SituationBuilder::new()
+        .with_gangers([
+            GangerSpawnBuilder::new()
+                .faction(Faction::new(0))
+                .at(key(5, 6, 0))
+                .name(first.name.clone())
+                .build(),
+            GangerSpawnBuilder::new()
+                .faction(Faction::new(0))
+                .at(key(7, 6, 0))
+                .name(second.name.clone())
+                .build(),
+        ])
+        .build();
+    // `gang_name_for` is private to test_support, so the key is spelled here.
+    let gangs = GangRegistry::new([(
+        GangName::new("gang_0".to_owned()),
+        GangRoster::new([first, second]),
+    )]);
+    run_setup_with(
+        situation,
+        gangs,
+        test_registry(),
+        test_armor_registry(),
+        None,
+    )
+}
+
+/// The armor key `test_armor_registry` holds.
+fn held_armor() -> ArmorName {
+    ArmorName::new(TEST_ARMOR_KEY.to_owned())
+}
+
+/// The weapon key `test_weapon_registry` holds.
+fn held_weapon() -> WeaponName {
+    WeaponName::new(TEST_WEAPON_KEY.to_owned())
+}
+
+#[test]
+fn a_member_holding_no_armor_wears_none_and_the_next_member_keeps_its_own() {
+    let Some((app, setup)) = two_member_setup(
+        member("Bare", None, Some(held_weapon())),
+        member("Clad", Some(held_armor()), Some(held_weapon())),
+    ) else {
+        return;
+    };
+    assert_eq!(setup.occupants.len(), 2, "both authored gangers must spawn");
+    let (Some(bare), Some(clad)) = (setup.occupants.first(), setup.occupants.get(1)) else {
+        return;
+    };
+
+    let clad_pieces = app
+        .world()
+        .get::<Wears>(clad.occupant)
+        .map_or(0, |wears| wears.iter().count());
+    assert_eq!(
+        clad_pieces, 6,
+        "the second member wears the six body-part pieces of its own armor spec",
+    );
+    let bare_pieces = app
+        .world()
+        .get::<Wears>(bare.occupant)
+        .map_or(0, |wears| wears.iter().count());
+    assert_eq!(
+        bare_pieces, 0,
+        "the member holding no armor key wears no pieces",
+    );
+}
+
+#[test]
+fn a_member_holding_no_weapon_still_wields_its_melee_and_fires_nothing() {
+    let Some((app, setup)) = two_member_setup(
+        member("Unarmed", Some(held_armor()), None),
+        member("Armed", Some(held_armor()), Some(held_weapon())),
+    ) else {
+        return;
+    };
+    assert_eq!(setup.occupants.len(), 2, "both authored gangers must spawn");
+    let (Some(unarmed), Some(armed)) = (setup.occupants.first(), setup.occupants.get(1)) else {
+        return;
+    };
+    let is_melee = |entity| app.world().get::<MeleeWeapon>(entity).is_some();
+    let is_mounted = |entity| app.world().get::<MountedWeapon>(entity).is_some();
+
+    let held = app.world().get::<Wields>(unarmed.occupant);
+    assert!(
+        held.is_some(),
+        "the member holding no ranged key still wields its melee weapon",
+    );
+    let Some(held) = held else { return };
+    assert!(
+        held.melee_weapon(is_melee).is_some(),
+        "that member's `Wields` holds a melee weapon entity",
+    );
+    assert_eq!(
+        held.firing_weapon(is_mounted, is_melee),
+        None,
+        "the member holding no ranged key fires nothing",
+    );
+
+    let armed_wields = app.world().get::<Wields>(armed.occupant);
+    assert!(
+        armed_wields.is_some_and(|wields| wields.firing_weapon(is_mounted, is_melee).is_some()),
+        "the second member keeps its own ranged weapon",
+    );
+}
 
 fn single_ganger_setup() -> Option<(bevy::app::App, crate::situation::BattleSetup)> {
     let situation = SituationBuilder::new()

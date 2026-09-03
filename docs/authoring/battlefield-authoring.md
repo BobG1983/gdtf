@@ -151,19 +151,24 @@ fielded on any side. Abridged from the shipped
             cool:      6.0,
             grit:      19.0,
             luck:      1.0,            // severity-roll tail (not a computed stat)
-            armor:     "flak_vest",    // armor KEY — a assets/content/armor/ file stem
-            weapon:    "volatile_charge",  // ranged weapon KEY — a assets/content/weapons/ranged/ stem
-                                           // (the satchel charge — its on_death Explode fires
-                                           // when Alex dies; see on-death-authoring.md)
-            // melee_weapon: "chainsword",  // OPTIONAL melee KEY; omitted → the "fists" default
+            armor:     Some("flak_vest"),    // armor KEY — a assets/content/armor/ file stem
+            weapon:    Some("volatile_charge"),  // ranged weapon KEY — a assets/content/weapons/ranged/ stem
+                                                 // (the satchel charge — its on_death Explode fires
+                                                 // when Alex dies; see on-death-authoring.md)
+            // melee_weapon: Some("chainsword"),  // OPTIONAL melee KEY; omitted → the "fists" default
         ),
     ],
 )
 ```
 
 Schema types: `GangRoster` / `GangMember`
-(`crates/gdtf_battle_sim/src/combatants/ganger/gang.rs`). `melee_weapon:` is
-`#[serde(default)]` — an omitting member resolves to the shipped `fists`
+(`crates/gdtf_battle_sim/src/combatants/ganger/gang.rs`). All three loadout
+keys — `armor:`, `weapon:` and `melee_weapon:` — are `#[serde(default)]`
+`Option`s, so each is written as `Some("key")` or left out. Ron rejects a bare
+value for an `Option` without the `IMPLICIT_SOME` extension, which no
+`.gang.ron` in this workspace enables. An omitted or `None` armor means the
+member wears none, and an omitted or `None` weapon means it carries no ranged
+weapon. A member that omits `melee_weapon` resolves to the shipped `fists`
 melee weapon at setup, so EVERY ganger can melee
 ([weapon-authoring.md](weapon-authoring.md)). Attribute magnitudes are
 per-ganger DATA, never pinned tuning.
@@ -180,7 +185,8 @@ the game binary, and the old in-game debug gang editor is GONE). The mode
 (`crates/gdtf_content_editor/src/gang_form/` — model; the egui form is its
 `egui_shell/gang_form_ui/` sibling) loads any gang from the registry (or
 starts a new one), edits members — add/remove/rename, the eight attributes,
-weapon/armor picks plus the `melee_weapon` key — shows the live derived
+weapon/armor picks, each with a `(none)` row that clears it, plus the
+`melee_weapon` key — shows the live derived
 stats through the real pipeline, and SAVES back to
 `assets/content/gangs/<name>.gang.ron` in the exact loader schema (the
 round-trip contract; the write path derives its folder + extension from the

@@ -172,14 +172,14 @@ fn assert_roster_keys(gangs: &GangRegistry, want: &Expected) {
         return;
     };
     assert_eq!(
-        (*member.weapon).as_str(),
-        want.weapon,
+        member.weapon.as_ref().map(|key| key.as_str()),
+        Some(want.weapon),
         "{}: migrated roster weapon key must match the pre-migration value",
         want.name,
     );
     assert_eq!(
-        (*member.armor).as_str(),
-        want.armor,
+        member.armor.as_ref().map(|key| key.as_str()),
+        Some(want.armor),
         "{}: migrated roster armor key must match the pre-migration value",
         want.name,
     );

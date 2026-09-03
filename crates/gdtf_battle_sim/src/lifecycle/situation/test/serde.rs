@@ -183,7 +183,12 @@ fn every_shipped_ganger_references_a_loaded_weapon() {
         let weapon_resolves = gangs
             .roster(&roster.gang)
             .and_then(|gang_roster| gang_roster.member(&roster.member))
-            .map(|member| registry.spec(&member.weapon).is_some());
+            .map(|member| {
+                member
+                    .weapon
+                    .as_ref()
+                    .is_some_and(|key| registry.spec(key).is_some())
+            });
         assert_eq!(
             weapon_resolves,
             Some(true),
@@ -210,7 +215,12 @@ fn every_shipped_ganger_references_a_loaded_armor() {
         let armor_resolves = gangs
             .roster(&roster.gang)
             .and_then(|gang_roster| gang_roster.member(&roster.member))
-            .map(|member| armor.spec(&member.armor).is_some());
+            .map(|member| {
+                member
+                    .armor
+                    .as_ref()
+                    .is_some_and(|key| armor.spec(key).is_some())
+            });
         assert_eq!(
             armor_resolves,
             Some(true),
@@ -248,6 +258,32 @@ fn shipped_situation_ron_is_per_line_commented() {
             "every value-bearing line must carry a `//` comment; bare line: {trimmed:?}",
         );
     }
+}
+
+#[test]
+fn a_roster_member_writing_no_loadout_keys_parses_with_both_reading_none() {
+    let authored = "(
+        members: [(
+            name: \"Bare\",
+            speed: 4, aim: 4, strength: 4, toughness: 4,
+            reflexes: 4, cool: 4, grit: 4, luck: 4,
+        )],
+    )";
+
+    let parsed = ron::de::from_str::<GangRoster>(authored);
+    assert!(
+        parsed.is_ok(),
+        "a member writing neither armor nor weapon must parse: {parsed:?}",
+    );
+    let Ok(roster) = parsed else {
+        return;
+    };
+    assert_eq!(roster.members.len(), 1, "the roster authors one member");
+    let Some(member) = roster.members.first() else {
+        return;
+    };
+    assert_eq!(member.armor, None, "an omitted armor key reads None");
+    assert_eq!(member.weapon, None, "an omitted weapon key reads None");
 }
 
 fn deploy_shipped_rosters(mut situation: Situation) -> Situation {

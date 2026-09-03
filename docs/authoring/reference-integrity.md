@@ -29,7 +29,8 @@ stay in place. Mistakes become visible at `Load`, not at battle-request time.
 
 The **content editor runs the same pass** over the edges it loads —
 theme → terrain UUIDs, emplacement → mounted-weapon keys, the gang
-equipment keys (weapon / armor / melee incl. the implicit `fists` default),
+equipment keys (weapon / armor / melee incl. the implicit `fists` default; a
+member leaving one out authors no edge to check),
 the injury-weighting keys, each terrain def's own view coverage, its
 `leaves_behind` → terrain-def or sprite-def key, every `views[].sprite` →
 sprite-def key, the prefab `theme` → theme UUID, every prefab
@@ -52,8 +53,8 @@ launch.
 | --- | --- | --- | --- |
 | situation `gangers[].gang` (`assets/content/situations/skirmish.ron`) | gang name | gang files' stems (`assets/content/gangs/`) | file stem |
 | situation `gangers[].member` | member name | that gang's roster `members[].name` | display name |
-| gang member `weapon` | weapon key | `assets/content/weapons/ranged/` stems | file stem |
-| gang member `armor` | armor key | `assets/content/armor/` stems | file stem |
+| gang member `weapon`, when authored | weapon key | `assets/content/weapons/ranged/` stems | file stem |
+| gang member `armor`, when authored | armor key | `assets/content/armor/` stems | file stem |
 | gang member `melee_weapon` (or the implicit `fists` default) | melee key | `assets/content/weapons/melee/` stems | file stem |
 | weapon / melee-weapon `attachments[]` | item key | `assets/content/attachments/` stems | file stem |
 | injury weighting rows (`assets/content/injuries/weighting/`) | injury key | `assets/content/injuries/<category>/` stems | file stem |

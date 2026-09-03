@@ -24,7 +24,7 @@ fn gang_save_reload_rearms_validation_with_the_saved_keys() {
     draft.set_name(REARM_GANG.to_owned());
     draft.add_member();
     if let Some(member) = draft.members_mut().first_mut() {
-        member.weapon = WeaponName::new(SAVED_DANGLING_WEAPON.to_owned());
+        member.weapon = Some(WeaponName::new(SAVED_DANGLING_WEAPON.to_owned()));
     }
     let (name, roster) = draft_to_roster(&draft);
     let written = write_gang_in(dir.path(), &name, &roster);
@@ -51,7 +51,7 @@ fn gang_save_reload_rearms_validation_with_the_saved_keys() {
     }
 
     if let Some(member) = draft.members_mut().first_mut() {
-        member.weapon = WeaponName::new(RESAVED_DANGLING_WEAPON.to_owned());
+        member.weapon = Some(WeaponName::new(RESAVED_DANGLING_WEAPON.to_owned()));
     }
     let (name, roster) = draft_to_roster(&draft);
     let rewritten = write_gang_in(dir.path(), &name, &roster);

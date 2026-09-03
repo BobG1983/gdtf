@@ -4,7 +4,7 @@ How a hit resolves: weapon stats vs armor stats, the per-hit formula, and how th
 
 > The *structure* is settled. All magnitudes (weapon and armor numbers, the matchup swing) are **TBD (tuning)**.
 
-> **Where equipment lives (the ECS shape).** The stat components below live on the related **weapon** and **armor-piece entities**, not on the ganger: a ganger `Wields` a weapon entity (carrying the weapon stats) and `Wears` six armor-piece entities (each carrying its piece stats), via Bevy ECS relationships. This page defines the stat *vocabulary*; for *where* those stats are stored — and why — see [Equipment lives on its own entities](#equipment-lives-on-its-own-entities) below.
+> **Where equipment lives (the ECS shape).** The stat components below live on the related **weapon** and **armor-piece entities**, not on the ganger: a ganger `Wields` a weapon entity (carrying the weapon stats) and `Wears` six armor-piece entities (each carrying its piece stats), via Bevy ECS relationships. Both keys are optional on the roster: a member authoring no armor wears no pieces and takes every hit as bare flesh, and a member authoring no ranged weapon wields only its melee weapon. This page defines the stat *vocabulary*; for *where* those stats are stored — and why — see [Equipment lives on its own entities](#equipment-lives-on-its-own-entities) below.
 
 ## The 7 types
 
@@ -113,7 +113,8 @@ components stored on the ganger.**
 - `ganger --Wears--> {head, torso, left_arm, right_arm, left_leg, right_leg}` — one
   armor-piece entity per worn piece, each tagged with its `BodyPart`. The piece's stat
   components (`ArmorFloor`, `ArmorProtection`, `ArmorIntegrity`, `ArmorHardness`,
-  `ArmorType`) live **on the piece entity**.
+  `ArmorType`) live **on the piece entity**. An armorless ganger carries no `Wears` at
+  all, and the hit path reads the missing piece as no protection.
 - `ganger --Wields--> weapon` — the weapon's stat components live on the weapon entity,
   not the ganger.
 
@@ -122,7 +123,8 @@ for the weapon, defined against Bevy's `#[relationship]` /
 `#[relationship_target(linked_spawn)]` API.
 
 `setup_battle` spawns an armor-piece entity per `ArmorSpec` piece and a weapon entity from
-the `WeaponSpec`, then relates them to the ganger. Registry lookups are unchanged — only
+the `WeaponSpec`, then relates them to the ganger. It spawns neither for a member whose
+roster leaves that key out. Registry lookups are unchanged — only
 the terminal step differs: spawn an equipment entity and relate it, rather than inserting
 a bundle onto the ganger.
 

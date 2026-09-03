@@ -28,8 +28,8 @@
             cool:      6.0,            // Cool attribute — nerves; feeds derived Shooting/Fight/Reactions/HP/Morale
             grit:      19.0,           // Grit attribute — resilience; the dominant derived HP + Morale term (→ HP ~34)
             luck:      1.0,            // Luck attribute — directional fortune; the severity-roll tail (not a computed stat)
-            armor:     "flak_vest",    // armor KEY — resolves to assets/content/armor/flak_vest.armor.ron at setup
-            weapon:    "volatile_charge",  // volatile satchel-charge weapon — its `on_death` Explode effect detonates a radius-1 blast at Alex's body when Alex dies (resolves to assets/content/weapons/ranged/volatile_charge.weapon.ron at setup)
+            armor:     Some("flak_vest"),    // armor KEY — resolves to assets/content/armor/flak_vest.armor.ron at setup
+            weapon:    Some("volatile_charge"),  // volatile satchel-charge weapon — its `on_death` Explode effect detonates a radius-1 blast at Alex's body when Alex dies (resolves to assets/content/weapons/ranged/volatile_charge.weapon.ron at setup)
         ),
         // A grenadier — carries the ARC-trajectory grenade launcher, so the contextual
         // THROW button is LIVE in the shipped playable skirmish (a player ganger that wields a
@@ -48,8 +48,8 @@
             cool:      6.0,            // Cool attribute — nerves
             grit:      19.0,           // Grit attribute — resilience (→ HP ~34, a survivable grenadier)
             luck:      1.0,            // Luck attribute — the severity-roll tail
-            armor:     "flak_vest",    // armor KEY — resolves to assets/content/armor/flak_vest.armor.ron at setup
-            weapon:    "grenade_launcher",  // the ARC-trajectory, magazine-fed grenade launcher (resolves to assets/content/weapons/ranged/grenade_launcher.weapon.ron)
+            armor:     Some("flak_vest"),    // armor KEY — resolves to assets/content/armor/flak_vest.armor.ron at setup
+            weapon:    Some("grenade_launcher"),  // the ARC-trajectory, magazine-fed grenade launcher (resolves to assets/content/weapons/ranged/grenade_launcher.weapon.ron)
         ),
     ],
 )

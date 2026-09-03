@@ -31,20 +31,24 @@ pub fn check_gang_equipment_refs(
                     ReferenceField::new(field.to_owned()),
                 )
             };
-            if weapons.spec(&member.weapon).is_none() {
+            if let Some(key) = member.weapon.as_ref()
+                && weapons.spec(key).is_none()
+            {
                 report.record(ContentFinding::DanglingRef {
                     referrer:         referrer(),
                     referring_record: record("members[].weapon"),
-                    target:           FindingTarget::new((*member.weapon).clone()),
+                    target:           FindingTarget::new((**key).clone()),
                     family:           FindingFamily::new("WeaponRegistry".to_owned()),
                     scheme:           ReferenceKeyScheme::FileStem,
                 });
             }
-            if armor.spec(&member.armor).is_none() {
+            if let Some(key) = member.armor.as_ref()
+                && armor.spec(key).is_none()
+            {
                 report.record(ContentFinding::DanglingRef {
                     referrer:         referrer(),
                     referring_record: record("members[].armor"),
-                    target:           FindingTarget::new((*member.armor).clone()),
+                    target:           FindingTarget::new((**key).clone()),
                     family:           FindingFamily::new("ArmorRegistry".to_owned()),
                     scheme:           ReferenceKeyScheme::FileStem,
                 });

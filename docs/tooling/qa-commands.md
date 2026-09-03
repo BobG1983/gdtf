@@ -909,7 +909,10 @@ answers itself, in the order it checks:
    registry that is absent, or present and empty, offers the combo no row at all, so that one
    answers `Unavailable { code: MissingModel }`. Clearing a member's melee weapon with
    `Gang(MemberMeleeWeapon(index: 0, key: None))` reads no registry, so it lands with
-   `MeleeWeaponRegistry` out of the world. A fitted attachment key the `AttachmentRegistry`
+   `MeleeWeaponRegistry` out of the world. The same holds for `Gang(MemberArmor(index: 0,
+   key: None))` and `Gang(MemberWeapon(index: 0, key: None))`: a `key: None` clear reads no
+   registry, so each lands with `ArmorRegistry` or `WeaponRegistry` out of the world. A
+   fitted attachment key the `AttachmentRegistry`
    holds no spec for answers `BadArguments` too, on the Weapon lists as on the Melee Weapon
    ones.
 
@@ -937,7 +940,7 @@ Every field goes inside its form's own arm, which the middle column names. The A
 | Injury | `Injury` | `Key`; `Name`; `Category` (one of `InjuryCategory::ALL`); `Severity` (Minor, Major or Critical, so `None` and `Fatal` fail to decode); `PopupText`, `LogText`, `InspectText`; `Effect`, an index with that effect's variant and payload |
 | Injury weighting | `Weighting` | `RowInjury` and `RowWeight`, each naming a `bucket` (Minor, Major or Critical, so `None` and `Fatal` fail to decode) and a row `index`. The key must be one the `InjuryRegistry` holds, because that is all the row's combo offers, so a key it does not hold answers `BadArguments` naming the key, and an absent registry answers `MissingModel`. Which table the rows belong to is `editor.select_weighting_table`, not a field |
 | Melee Weapon | `MeleeWeapon` | `Name`; `Damage`, `Punch`, `Shred`, `DamageType` (one of `DamageType::ALL`), `FatalBias`, `Handedness`; `Reach`, clamped at 1; `Shove` |
-| Gang | `Gang` | `Name`; per member index, `MemberName`; `MemberAttribute`, naming one of `Speed`, `Aim`, `Strength`, `Toughness`, `Reflexes`, `Cool`, `Grit` and `Luck`, with a value inside `GangDraft::ATTRIBUTE_RANGE` (`0.0..=100.0`); `MemberWeapon`, a `WeaponRegistry` key; `MemberArmor`, an `ArmorRegistry` key; `MemberMeleeWeapon`, a `MeleeWeaponRegistry` key or `None` for the fists default |
+| Gang | `Gang` | `Name`; per member index, `MemberName`; `MemberAttribute`, naming one of `Speed`, `Aim`, `Strength`, `Toughness`, `Reflexes`, `Cool`, `Grit` and `Luck`, with a value inside `GangDraft::ATTRIBUTE_RANGE` (`0.0..=100.0`); `MemberWeapon`, a `WeaponRegistry` key or `None` clearing it; `MemberArmor`, an `ArmorRegistry` key or `None` clearing it; `MemberMeleeWeapon`, a `MeleeWeaponRegistry` key or `None` for the fists default |
 | Field | `Field` | `Name`, the save stem; `Damage`, the flat HP drained per tick; `DamageType` (one of `DamageType::ALL`); `Duration`, `Permanent` or `Turns(n)` where `n` is at least 1, and `Turns(0)` answers `BadArguments` rather than being clamped |
 | Weapon | `Weapon` | `Name`; `BaseSpread`, `Accuracy`, `Kickback`; `Damage`, `Punch`, `Shred`, `DamageType` (one of `DamageType::ALL`), `FatalBias`, `Handedness`; `Trajectory` (Straight or Arc), `Stable`, `Shove`; `MagazineSize`, `MagazineReloadTu`; `Dot`, and behind that tick box `DotDamage`, `DotTurns` (zero is stored as 1) and `DotDamageType`; per on-death `index`, `OnDeathVariant` (Explode or LeaveField), then `OnDeathHitType`, `OnDeathDamage` and `OnDeathDamageType` while the effect at that index is `Explode`, and `OnDeathField` while it is `LeaveField`. There is no `accepts` arm, because the form draws no control for it |
 

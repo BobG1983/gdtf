@@ -26,8 +26,8 @@ fn fixture_roster() -> GangRoster {
             cool:         Cool::new(6.0),
             grit:         Grit::new(18.0),
             luck:         Luck::new(1.0),
-            armor:        ArmorName::new("flak_vest".to_owned()),
-            weapon:       WeaponName::new("stub_pistol".to_owned()),
+            armor:        Some(ArmorName::new("flak_vest".to_owned())),
+            weapon:       Some(WeaponName::new("stub_pistol".to_owned())),
             melee_weapon: Some(WeaponName::new("chainsword".to_owned())),
         },
         GangMember {
@@ -40,8 +40,8 @@ fn fixture_roster() -> GangRoster {
             cool:         Cool::new(7.0),
             grit:         Grit::new(15.0),
             luck:         Luck::new(2.0),
-            armor:        ArmorName::new("mesh_armor".to_owned()),
-            weapon:       WeaponName::new("autogun".to_owned()),
+            armor:        Some(ArmorName::new("mesh_armor".to_owned())),
+            weapon:       Some(WeaponName::new("autogun".to_owned())),
             melee_weapon: None,
         },
     ])
@@ -85,8 +85,11 @@ fn add_and_remove_member_own_the_list_structure() {
         return;
     };
     assert_eq!(member.name.as_str(), "New Member");
-    assert_eq!(member.weapon.as_str(), "");
-    assert_eq!(member.armor.as_str(), "");
+    assert_eq!(
+        member.weapon, None,
+        "a minted member holds no ranged weapon"
+    );
+    assert_eq!(member.armor, None, "a minted member holds no armor");
     assert_eq!(member.melee_weapon, None);
 
     assert!(!draft.remove_member(5), "out of range removes nothing");

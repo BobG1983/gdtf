@@ -107,11 +107,11 @@ fn a_key_none_of_the_three_registries_holds_is_refused_bad_arguments_naming_it()
     for field in [
         GangFieldNet::MemberWeapon {
             index: FIRST,
-            key:   asked_key("no_such_key"),
+            key:   Some(asked_key("no_such_key")),
         },
         GangFieldNet::MemberArmor {
             index: FIRST,
-            key:   asked_key("no_such_key"),
+            key:   Some(asked_key("no_such_key")),
         },
         GangFieldNet::MemberMeleeWeapon {
             index: FIRST,
@@ -135,8 +135,8 @@ fn a_key_none_of_the_three_registries_holds_is_refused_bad_arguments_naming_it()
     let Some(member) = draft.members().first() else {
         unreachable!("the draft was built holding one member");
     };
-    assert_eq!(member.weapon.as_str(), "");
-    assert_eq!(member.armor.as_str(), "");
+    assert_eq!(member.weapon, None);
+    assert_eq!(member.armor, None);
     assert_eq!(member.melee_weapon, None);
 }
 
@@ -151,7 +151,7 @@ fn a_registry_that_is_absent_answers_missing_model() {
         Some(&armor()),
         GangFieldNet::MemberWeapon {
             index: FIRST,
-            key:   asked_key(SEEDED_KEY),
+            key:   Some(asked_key(SEEDED_KEY)),
         },
     );
 
@@ -170,7 +170,7 @@ fn a_registry_that_is_present_and_empty_answers_missing_model() {
         Some(&empty),
         GangFieldNet::MemberArmor {
             index: FIRST,
-            key:   asked_key(SEEDED_KEY),
+            key:   Some(asked_key(SEEDED_KEY)),
         },
     );
 

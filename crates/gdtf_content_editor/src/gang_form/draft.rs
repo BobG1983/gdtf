@@ -1,11 +1,7 @@
 //! Gang roster form draft resource.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{
-    armor::ArmorName,
-    ganger::{GangMember, GangName, GangRoster, GangerName},
-    weapon::WeaponName,
-};
+use gdtf_battle_sim::ganger::{GangMember, GangName, GangRoster, GangerName};
 
 const DEFAULT_MEMBER_NAME: &str = "New Member";
 
@@ -90,8 +86,8 @@ impl GangDraft {
             cool:         default(),
             grit:         default(),
             luck:         default(),
-            armor:        ArmorName::new(String::new()),
-            weapon:       WeaponName::new(String::new()),
+            armor:        None,
+            weapon:       None,
             melee_weapon: None,
         });
     }

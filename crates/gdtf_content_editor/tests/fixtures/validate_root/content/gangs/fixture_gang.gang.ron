@@ -17,8 +17,8 @@
             cool:      5.0,              // inert
             grit:      15.0,             // inert
             luck:      1.0,              // inert
-            armor:     "missing_armor",  // DANGLING armor KEY — no armor folder in this root
-            weapon:    "missing_weapon", // DANGLING weapon KEY — the pinned C3(a) finding
+            armor:     Some("missing_armor"),  // DANGLING armor KEY — no armor folder in this root
+            weapon:    Some("missing_weapon"), // DANGLING weapon KEY — the pinned C3(a) finding
             // melee_weapon omitted — resolves to the implicit `fists` default, which ALSO
             // dangles here (no melee folder): the check's documented default-edge behavior.
         ),

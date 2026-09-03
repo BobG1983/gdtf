@@ -40,7 +40,7 @@ pub(crate) fn write_fixture_gang(root: &Path, weapon: &str) -> bool {
     draft.set_name(FIXTURE_GANG.to_owned());
     draft.add_member();
     if let Some(member) = draft.members_mut().first_mut() {
-        member.weapon = WeaponName::new(weapon.to_owned());
+        member.weapon = Some(WeaponName::new(weapon.to_owned()));
     }
     let (name, roster) = draft_to_roster(&draft);
     write_gang_in(root, &name, &roster).is_ok()

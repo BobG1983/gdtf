@@ -77,8 +77,8 @@ impl GangerSpawn {
             cool:         self.cool,
             grit:         self.grit,
             luck:         self.luck,
-            armor:        self.armor.clone(),
-            weapon:       self.weapon.clone(),
+            armor:        Some(self.armor.clone()),
+            weapon:       Some(self.weapon.clone()),
             melee_weapon: None,
         };
         (placed, member)

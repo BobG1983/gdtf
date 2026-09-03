@@ -46,10 +46,12 @@ pub struct GangMember {
     pub grit:         Grit,
     /// Luck attribute.
     pub luck:         Luck,
-    /// Armor loadout key.
-    pub armor:        ArmorName,
-    /// Primary weapon key.
-    pub weapon:       WeaponName,
+    /// Optional armor loadout key.
+    #[serde(default)]
+    pub armor:        Option<ArmorName>,
+    /// Optional primary weapon key.
+    #[serde(default)]
+    pub weapon:       Option<WeaponName>,
     /// Optional melee weapon key.
     #[serde(default)]
     pub melee_weapon: Option<WeaponName>,

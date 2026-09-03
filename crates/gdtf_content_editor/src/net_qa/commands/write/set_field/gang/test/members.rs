@@ -97,19 +97,25 @@ fn a_member_weapon_answers_with_the_key_the_member_holds_afterwards() {
         &mut draft,
         GangFieldNet::MemberWeapon {
             index: FIRST,
-            key:   asked_key(SEEDED_KEY),
+            key:   Some(asked_key(SEEDED_KEY)),
         },
     );
 
     let Some(member) = draft.members().first() else {
         unreachable!("the draft was built holding one member");
     };
-    assert_eq!(member.weapon.as_str(), SEEDED_KEY);
+    assert_eq!(
+        member.weapon.as_ref().map(|key| key.as_str()),
+        Some(SEEDED_KEY),
+    );
     assert_eq!(
         written,
         Ok(GangFieldNet::MemberWeapon {
             index: FIRST,
-            key:   EditorKeyNet::new(member.weapon.as_str().to_owned()),
+            key:   member
+                .weapon
+                .as_ref()
+                .map(|key| EditorKeyNet::new(key.as_str().to_owned())),
         }),
         "the reply carries the key read back off the member",
     );
@@ -123,7 +129,7 @@ fn a_member_armor_key_lands_on_the_member_the_index_names() {
         &mut draft,
         GangFieldNet::MemberArmor {
             index: FIRST,
-            key:   asked_key(SEEDED_KEY),
+            key:   Some(asked_key(SEEDED_KEY)),
         },
     );
 
@@ -132,10 +138,48 @@ fn a_member_armor_key_lands_on_the_member_the_index_names() {
         "a seeded armor key is written: {written:?}"
     );
     assert_eq!(
-        draft.members().first().map(|member| member.armor.as_str()),
+        draft
+            .members()
+            .first()
+            .and_then(|member| member.armor.as_ref())
+            .map(|key| key.as_str()),
         Some(SEEDED_KEY),
         "the member holds the armor key the write named, read off the draft",
     );
+}
+
+#[test]
+fn a_member_armor_set_with_no_key_clears_the_key_and_answers_with_none() {
+    let mut draft = one_member();
+    let set = write_field(
+        &mut draft,
+        GangFieldNet::MemberArmor {
+            index: FIRST,
+            key:   Some(asked_key(SEEDED_KEY)),
+        },
+    );
+    assert!(set.is_ok(), "the seeded armor key is written: {set:?}");
+
+    let cleared = write_field(
+        &mut draft,
+        GangFieldNet::MemberArmor {
+            index: FIRST,
+            key:   None,
+        },
+    );
+
+    assert_eq!(
+        cleared,
+        Ok(GangFieldNet::MemberArmor {
+            index: FIRST,
+            key:   None,
+        }),
+        "the reply carries no key, read back off the member the write cleared",
+    );
+    let Some(member) = draft.members().first() else {
+        unreachable!("the draft was built holding one member");
+    };
+    assert_eq!(member.armor, None, "the cleared member holds no armor");
 }
 
 #[test]

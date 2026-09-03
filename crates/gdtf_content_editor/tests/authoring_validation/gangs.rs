@@ -7,16 +7,16 @@ use gdtf_assets::{
     ReferenceKeyScheme, RonAsset,
 };
 use gdtf_battle_sim::{
-    ganger::{GangName, GangRoster},
+    ganger::{GangName, GangRoster, GangerName},
     weapon::{FISTS_KEY, WeaponName},
 };
-use gdtf_content_editor::gang_file_name;
+use gdtf_content_editor::{GangDraft, draft_to_roster, gang_file_name, write_gang_in};
 use gdtf_content_families::GangsFamily;
 use gdtf_test_utils::advance_until;
 
 use crate::harness::{
     DANGLING_DEFAULT_FLOOR, advance_to_published, dangling_ref_referrer,
-    editor_app_on_fixture_root, has_dangling_ref,
+    editor_app_on_fixture_root, editor_app_with_asset_root, has_dangling_ref,
 };
 
 const FIXTURE_GANG_STEM: &str = "fixture_gang";
@@ -106,7 +106,7 @@ fn gang_hot_edit_rearms_validation_and_republishes_current_findings() {
         let member = asset.members.first_mut();
         assert!(member.is_some(), "the fixture gang must have one member");
         let Some(member) = member else { return };
-        member.weapon = WeaponName::new(EDITED_DANGLING_WEAPON.to_owned());
+        member.weapon = Some(WeaponName::new(EDITED_DANGLING_WEAPON.to_owned()));
     }
     assert!(
         app.world()
@@ -152,6 +152,63 @@ fn gang_hot_edit_rearms_validation_and_republishes_current_findings() {
         ),
         "the gang re-arm must re-run EVERY registered check onto the one report — the theme's \
          untouched dangling default_floor must be re-reported; report: {:?}",
+        report.findings(),
+    );
+}
+
+const CLEARED_ARMOR_GANG: &str = "cleared_armor_gang";
+
+const CLEARED_ARMOR_MEMBER: &str = "Cleared Armor Member";
+
+const CLEARED_GANG_DANGLING_WEAPON: &str = "cleared_gang_missing_weapon";
+
+/// Whether any `DanglingRef` against `family` names this gang and member as its referrer.
+fn referrer_reported(report: &ContentIntegrityReport, family: &str, referrer_hint: &str) -> bool {
+    report.findings().iter().any(|finding| {
+        matches!(
+            finding,
+            ContentFinding::DanglingRef { referrer, family: found_family, .. }
+                if **found_family == *family && referrer.contains(referrer_hint)
+        )
+    })
+}
+
+#[test]
+fn a_member_holding_no_armor_key_raises_no_armor_finding_against_it() {
+    let dir = tempfile::tempdir();
+    assert!(dir.is_ok(), "creating the TempDir assets root must succeed");
+    let Ok(dir) = dir else { return };
+
+    let mut draft = GangDraft::new_gang();
+    draft.set_name(CLEARED_ARMOR_GANG.to_owned());
+    draft.add_member();
+    if let Some(member) = draft.members_mut().first_mut() {
+        member.name = GangerName::new(CLEARED_ARMOR_MEMBER.to_owned());
+        member.armor = None;
+        member.weapon = Some(WeaponName::new(CLEARED_GANG_DANGLING_WEAPON.to_owned()));
+    }
+    let (gang_name, roster) = draft_to_roster(&draft);
+    let written = write_gang_in(dir.path(), &gang_name, &roster);
+    assert!(
+        written.is_ok(),
+        "the real gang write must succeed: {:?}",
+        written.as_ref().err(),
+    );
+
+    let mut app = editor_app_with_asset_root(dir.path());
+    advance_to_published(&mut app);
+    let report = app.world().resource::<ContentIntegrityReport>();
+
+    assert!(
+        referrer_reported(report, "WeaponRegistry", CLEARED_ARMOR_MEMBER),
+        "the same member's dangling weapon key must still be reported, so the gang was read; \
+         report: {:?}",
+        report.findings(),
+    );
+    assert!(
+        !referrer_reported(report, "ArmorRegistry", CLEARED_ARMOR_MEMBER),
+        "a member holding no armor key must raise no ArmorRegistry finding naming it, whatever \
+         the finding's target; report: {:?}",
         report.findings(),
     );
 }

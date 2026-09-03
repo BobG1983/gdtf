@@ -73,13 +73,13 @@ fn edited_draft() -> GangDraft {
     if let Some(first) = members.first_mut() {
         first.name = GangerName::new("Round Tripper".to_owned());
         first.toughness = Toughness::new(11.5);
-        first.weapon = WeaponName::new("stub_pistol".to_owned());
-        first.armor = ArmorName::new("flak_vest".to_owned());
+        first.weapon = Some(WeaponName::new("stub_pistol".to_owned()));
+        first.armor = Some(ArmorName::new("flak_vest".to_owned()));
         first.melee_weapon = Some(WeaponName::new("chainsword".to_owned()));
     }
     if let Some(second) = members.get_mut(1) {
         second.name = GangerName::new("Second Member".to_owned());
-        second.weapon = WeaponName::new("autogun".to_owned());
+        second.weapon = Some(WeaponName::new("autogun".to_owned()));
     }
     draft
 }

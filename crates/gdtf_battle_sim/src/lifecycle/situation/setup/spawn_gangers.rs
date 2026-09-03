@@ -8,6 +8,7 @@ use bevy::{
 use super::{
     armor_scenes::worn_piece_scenes,
     ganger_scene::ganger_scene,
+    resolve::ResolvedWeapon,
     weapon_scenes::{wielded_melee_weapon_scenes, wielded_weapon_scenes},
 };
 use crate::{
@@ -17,25 +18,19 @@ use crate::{
     occupancy::OccupantPlacement,
     situation::PlacedGanger,
     tuning::GangerStatTuning,
-    weapon::{MeleeWeaponBundle, PendingAttachments, WeaponBundle, WeaponSpawnSiblings, Wields},
+    weapon::{MeleeWeaponBundle, PendingAttachments, Wields},
 };
 
 pub(super) fn spawn_gangers(
     commands: &mut Commands,
     resolved: &[(&PlacedGanger, &GangMember)],
-    weapon_bundles: Vec<(WeaponBundle, WeaponSpawnSiblings, PendingAttachments)>,
+    weapon_bundles: Vec<Option<ResolvedWeapon>>,
     melee_bundles: Vec<(MeleeWeaponBundle, PendingAttachments)>,
-    armor_specs: Vec<ArmorSpec>,
+    armor_specs: Vec<Option<ArmorSpec>>,
     stat_tuning: &GangerStatTuning,
 ) -> Vec<OccupantPlacement> {
     let mut occupants = Vec::with_capacity(resolved.len());
-    for (
-        (
-            ((placed, member), (weapon_bundle, weapon_siblings, weapon_pending)),
-            (melee_bundle, melee_pending),
-        ),
-        armor_spec,
-    ) in resolved
+    for ((((placed, member), weapon), (melee_bundle, melee_pending)), armor_spec) in resolved
         .iter()
         .copied()
         .zip(weapon_bundles)
@@ -45,16 +40,23 @@ pub(super) fn spawn_gangers(
         let entity = commands
             .spawn_scene(ganger_scene(placed, member, stat_tuning))
             .id();
-        commands
-            .entity(entity)
-            .queue_spawn_related_scenes::<Wears>(worn_piece_scenes(&armor_spec));
-        commands
-            .entity(entity)
-            .queue_spawn_related_scenes::<Wields>(wielded_weapon_scenes(
-                &weapon_bundle,
-                weapon_siblings,
-                weapon_pending,
-            ));
+        if let Some(armor_spec) = armor_spec {
+            commands
+                .entity(entity)
+                .queue_spawn_related_scenes::<Wears>(worn_piece_scenes(&armor_spec));
+        }
+        if let Some(ResolvedWeapon {
+            bundle,
+            siblings,
+            pending,
+        }) = weapon
+        {
+            commands
+                .entity(entity)
+                .queue_spawn_related_scenes::<Wields>(wielded_weapon_scenes(
+                    &bundle, siblings, pending,
+                ));
+        }
         commands
             .entity(entity)
             .queue_spawn_related_scenes::<Wields>(wielded_melee_weapon_scenes(

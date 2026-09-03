@@ -87,7 +87,7 @@ fn a_member_weapon_takes_a_key_the_live_registry_holds() -> TestResult {
         &mut app,
         &mut client,
         &format!(
-            "(field: Gang(MemberWeapon(index: 0, key: \"{}\")))",
+            "(field: Gang(MemberWeapon(index: 0, key: Some(\"{}\"))))",
             key.as_str()
         ),
     )?;
@@ -100,10 +100,10 @@ fn a_member_weapon_takes_a_key_the_live_registry_holds() -> TestResult {
         row.field,
         FieldRow::Gang(GangFieldRow::MemberWeapon {
             index: 0,
-            key:   member.weapon.as_str().to_owned(),
+            key:   member.weapon.as_ref().map(|k| k.as_str().to_owned()),
         })
     );
-    assert_eq!(member.weapon, key);
+    assert_eq!(member.weapon, Some(key));
     Ok(())
 }
 

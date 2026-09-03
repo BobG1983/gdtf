@@ -30,19 +30,19 @@ pub(in crate::net_qa) enum GangFieldNet {
         /// The value it is set to.
         value:     GangAttributeValueNet,
     },
-    /// One member's primary weapon key.
+    /// One member's primary weapon key, set or cleared.
     MemberWeapon {
         /// Which member.
         index: EditorListIndexNet,
-        /// The weapon registry key it is set to.
-        key:   EditorKeyNet,
+        /// The weapon registry key it is set to, or none for no ranged weapon.
+        key:   Option<EditorKeyNet>,
     },
-    /// One member's armor key.
+    /// One member's armor key, set or cleared.
     MemberArmor {
         /// Which member.
         index: EditorListIndexNet,
-        /// The armor registry key it is set to.
-        key:   EditorKeyNet,
+        /// The armor registry key it is set to, or none for no armor.
+        key:   Option<EditorKeyNet>,
     },
     /// One member's melee weapon key, set or cleared to the fists default.
     MemberMeleeWeapon {

@@ -45,21 +45,39 @@ pub(super) fn resolve_members<'s, 'g>(
     Ok(resolved_members)
 }
 
+/// One member's resolved ranged weapon, ready to spawn.
+pub(super) struct ResolvedWeapon {
+    /// Components the weapon entity carries.
+    pub(super) bundle:   WeaponBundle,
+    /// Sibling entities the weapon spawns beside itself.
+    pub(super) siblings: WeaponSpawnSiblings,
+    /// Attachments waiting to be fitted to the weapon.
+    pub(super) pending:  PendingAttachments,
+}
+
 pub(super) fn resolve_weapon_bundles(
     resolved_members: &[(&PlacedGanger, &GangMember)],
     weapons: &WeaponRegistry,
     attachments: Option<&AttachmentRegistry>,
-) -> Result<Vec<(WeaponBundle, WeaponSpawnSiblings, PendingAttachments)>, BattleSetupError> {
+) -> Result<Vec<Option<ResolvedWeapon>>, BattleSetupError> {
     let mut weapon_bundles = Vec::with_capacity(resolved_members.len());
     for (_placed, member) in resolved_members {
-        let Some(spec) = weapons.spec(&member.weapon) else {
+        let Some(key) = member.weapon.as_ref() else {
+            weapon_bundles.push(None);
+            continue;
+        };
+        let Some(spec) = weapons.spec(key) else {
             return Err(BattleSetupError::WeaponNotFound {
-                weapon: member.weapon.clone(),
+                weapon: key.clone(),
             });
         };
         let pending = resolve_pending_attachments(&spec.slots, &spec.attachments, attachments);
-        let (bundle, siblings) = spec.clone().into_bundle(member.weapon.clone());
-        weapon_bundles.push((bundle, siblings, pending));
+        let (bundle, siblings) = spec.clone().into_bundle(key.clone());
+        weapon_bundles.push(Some(ResolvedWeapon {
+            bundle,
+            siblings,
+            pending,
+        }));
     }
     Ok(weapon_bundles)
 }
@@ -87,15 +105,17 @@ pub(super) fn resolve_melee_bundles(
 pub(super) fn resolve_armor_specs(
     resolved_members: &[(&PlacedGanger, &GangMember)],
     armor: &ArmorRegistry,
-) -> Result<Vec<ArmorSpec>, BattleSetupError> {
+) -> Result<Vec<Option<ArmorSpec>>, BattleSetupError> {
     let mut armor_specs = Vec::with_capacity(resolved_members.len());
     for (_placed, member) in resolved_members {
-        let Some(spec) = armor.spec(&member.armor) else {
-            return Err(BattleSetupError::ArmorNotFound {
-                armor: member.armor.clone(),
-            });
+        let Some(key) = member.armor.as_ref() else {
+            armor_specs.push(None);
+            continue;
         };
-        armor_specs.push(*spec);
+        let Some(spec) = armor.spec(key) else {
+            return Err(BattleSetupError::ArmorNotFound { armor: key.clone() });
+        };
+        armor_specs.push(Some(*spec));
     }
     Ok(armor_specs)
 }

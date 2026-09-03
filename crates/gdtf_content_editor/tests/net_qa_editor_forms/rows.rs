@@ -161,11 +161,11 @@ pub(crate) enum GangFieldRow {
     },
     MemberWeapon {
         index: usize,
-        key:   String,
+        key:   Option<String>,
     },
     MemberArmor {
         index: usize,
-        key:   String,
+        key:   Option<String>,
     },
     MemberMeleeWeapon {
         index: usize,
