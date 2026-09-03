@@ -16,7 +16,7 @@ use gdtf_battle_sim::{
     weapon::{MeleeWeaponRegistry, WeaponName, WeaponRegistry},
 };
 use gdtf_content_families::{
-    TerrainDefsFamily,
+    TerrainDefsFamily, ThemeDefsFamily,
     sprites::{
         SpriteAnchor, SpriteDef, SpriteDefRegistry, SpriteImagePath, SpriteName, SpritePx,
         SpriteSource,
@@ -131,6 +131,18 @@ pub(super) fn theme_def() -> UuidThemeDef {
 
 pub(super) fn themes(def: &UuidThemeDef) -> UuidThemeRegistry {
     UuidThemeRegistry::new([(def.key, def.clone())])
+}
+
+/// The file the fixture theme def was read from, as the family records it.
+pub(super) const THEME_SOURCE_FILE: &str =
+    "content/terrain/ash_wastes/ash_wastes.terrain_theme.ron";
+
+/// The path table the theme family publishes beside that one-def registry.
+pub(super) fn theme_sources(def: &UuidThemeDef) -> ContentSourcePaths<ThemeDefsFamily> {
+    ContentSourcePaths::new([(
+        ContentMemberKey::new((*def.key).to_string()),
+        ContentSourcePath::new(PathBuf::from(THEME_SOURCE_FILE)),
+    )])
 }
 
 fn sprite_def() -> SpriteDef {

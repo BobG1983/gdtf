@@ -68,6 +68,9 @@ pub fn validate_for_save(draft: &ThemeDraft) -> Result<(), SaveThemeError> {
 
 /// Write theme RON under `assets_root`.
 ///
+/// A draft opened from a file writes that file back. A draft that was never opened
+/// takes its folder and stem from the display name.
+///
 /// # Errors
 ///
 /// Returns [`SaveThemeError`] on validation or write failure.
@@ -83,7 +86,10 @@ pub fn write_theme_in(
         return Err(SaveThemeError::EmptyName);
     }
     let def = draft_to_theme_def(draft, key);
-    let path = theme_save_path_in(assets_root, &slug);
+    let path = draft.source().map_or_else(
+        || theme_save_path_in(assets_root, &slug),
+        |source| assets_root.join(&**source),
+    );
     gdtf_assets::write_ron_pretty(&path, &def)?;
     Ok(path)
 }

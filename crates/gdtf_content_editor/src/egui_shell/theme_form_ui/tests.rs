@@ -155,7 +155,7 @@ fn load_theme_into_form_replaces_draft_with_def_parts() {
     };
 
     let mut draft = ThemeDraft::new_theme();
-    load_theme_into_form(&mut draft, &def);
+    load_theme_into_form(&mut draft, &def, None);
 
     assert_eq!(
         draft.key(),
@@ -199,7 +199,7 @@ fn load_then_save_round_trips_identical() {
     };
 
     let mut draft = ThemeDraft::new_theme();
-    load_theme_into_form(&mut draft, &original);
+    load_theme_into_form(&mut draft, &original, None);
 
     let projected = draft_to_theme_def(&draft, t_key);
     let serialized = serialize_theme_def(&projected);

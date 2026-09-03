@@ -250,6 +250,11 @@ rewrites that file rather than leaving a second one under the same UUID. A def
 the editor mints instead lands in the session theme's folder, under a stem taken
 from its display name.
 
+A theme opened in the editor's Theme tab is saved the same way. Renaming it
+rewrites the file it was read from: the file keeps its old stem and folder, and
+only the display name inside it changes. A theme the editor mints instead lands
+in a folder named for its display name, under a stem taken from the same name.
+
 ### 1h. `blocks_pathing:` / `blocks_los:` — per-def blocking overrides
 
 Blocking is normally DERIVED from the `sim_kind` (a `Wall` blocks path + sight,

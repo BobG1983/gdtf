@@ -1,3 +1,4 @@
+use gdtf_assets::ContentSourcePaths;
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
     effects::fields::FieldDefRegistry,
@@ -7,7 +8,7 @@ use gdtf_battle_sim::{
     level::UuidThemeRegistry,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
-use gdtf_content_families::sprites::SpriteDefRegistry;
+use gdtf_content_families::{ThemeDefsFamily, sprites::SpriteDefRegistry};
 
 use crate::{
     armor_form::ArmorDraft,
@@ -59,9 +60,10 @@ pub(super) fn run_form_syncs(
     session: &MapEditorSession,
     themes: Option<&UuidThemeRegistry>,
     theme_draft: &mut ThemeDraft,
+    theme_sources: Option<&ContentSourcePaths<ThemeDefsFamily>>,
     bundles: ModeSyncBundles<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
-    theme_form_sync(mode, session, themes, theme_draft);
+    theme_form_sync(mode, session, themes, theme_draft, theme_sources);
     gang_form_sync(
         mode,
         bundles.gang.draft.as_deref_mut(),
@@ -111,11 +113,12 @@ fn theme_form_sync(
     session: &MapEditorSession,
     themes: Option<&UuidThemeRegistry>,
     draft: &mut ThemeDraft,
+    sources: Option<&ContentSourcePaths<ThemeDefsFamily>>,
 ) {
     let Some(themes) = themes else {
         return;
     };
-    theme_form_ui::sync_theme_draft(mode, session.theme(), themes, draft);
+    theme_form_ui::sync_theme_draft(mode, session.theme(), themes, draft, sources);
 }
 
 fn gang_form_sync(mode: EditorMode, draft: Option<&mut GangDraft>, gangs: Option<&GangRegistry>) {

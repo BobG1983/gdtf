@@ -794,7 +794,7 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.draft` | Editing + any form tab | The open form's draft as the RON text its save would write. [`commands/read/draft/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/draft) |
 | `editor.set_mode` | Editing | Opens a mode tab, writing the same `EditorMode` resource the tab bar and the number hotkeys write. [`commands/write/set_mode.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_mode.rs) |
 | `editor.new` | Editing | Replaces a mode's draft with that form's own blank-draft constructor. [`commands/write/blank/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/blank) |
-| `editor.load_theme` | Editing + the Theme tab | Selects a theme in the authoring session and loads its def into the Theme draft, the same pair the Theme tab's own sync runs when the top bar picks a theme. The Theme form draws no load picker of its own. [`commands/write/load/commands/theme.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/theme.rs) |
+| `editor.load_theme` | Editing + the Theme tab | Selects a theme in the authoring session and loads its def into the Theme draft, the same pair the Theme tab's own sync runs when the top bar picks a theme. The Theme form draws no load picker of its own. The load also takes the file the def was read from, so a later `editor.save` rewrites that file. [`commands/write/load/commands/theme.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/theme.rs) |
 | `editor.load_gang` | Editing + the Gang tab | Loads a gang roster by key into the Gang draft, through that draft's own `load_gang` method. [`commands/write/load/commands/gang.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/gang.rs) |
 | `editor.load_armor` | Editing + the Armor tab | Loads an armor by key into the Armor draft, through that draft's own `load_armor` method. [`commands/write/load/commands/armor.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/armor.rs) |
 | `editor.load_injury` | Editing + the Injury tab | Loads an injury by key into the Injury draft, through that draft's own `load_injury` method. [`commands/write/load/commands/injury.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/injury.rs) |
@@ -1004,11 +1004,14 @@ which defaults to the workspace `assets/` and falls back to a temp directory whe
 marker search finds no workspace. Only Prefab takes a `name`, because only the prefab form
 carries its own name field; a name on any other mode is refused rather than dropped.
 
-On the Terrain tab where the write lands depends on where the draft came from. A draft
-filled by `editor.load_terrain` rewrites the file that def was read from, whatever its
-display name and the session theme now say; a draft the tab minted lands in the session
-theme's folder under a stem taken from the display name. `editor.last_save` reports
-whichever path the save wrote.
+On the Terrain and Theme tabs where the write lands depends on where the draft came from.
+A draft filled by `editor.load_terrain` rewrites the file that def was read from, whatever
+its display name and the session theme now say; a draft the tab minted lands in the session
+theme's folder under a stem taken from the display name. A draft filled by
+`editor.load_theme` rewrites its own file the same way, keeping the stem and folder it was
+read under; a theme the tab minted lands in a folder under `content/terrain/` named for its
+display name, under a stem taken from the same name. `editor.last_save` reports whichever
+path the save wrote.
 
 `MapEditorPlugin` seeds that root, not the QA channel, so it is in the world whether or not
 the listener bound. `editor.save_weighting` and the Injury tab's own Save weighting button

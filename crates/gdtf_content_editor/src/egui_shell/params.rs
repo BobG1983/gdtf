@@ -16,7 +16,7 @@ use gdtf_battle_sim::{
     tuning::GangerStatTuning,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
-use gdtf_content_families::{TerrainDefsFamily, sprites::SpriteDefRegistry};
+use gdtf_content_families::{TerrainDefsFamily, ThemeDefsFamily, sprites::SpriteDefRegistry};
 
 #[cfg(debug_assertions)]
 use crate::net_qa::EditorQaAssetsRoot;
@@ -55,6 +55,8 @@ pub(crate) struct SharedRegistries<'w> {
     pub(super) terrain:        Option<Res<'w, TerrainDefRegistry>>,
     /// The file each terrain def was read from, so a save after a load writes that file.
     pub(super) terrain_source: Option<Res<'w, ContentSourcePaths<TerrainDefsFamily>>>,
+    /// The file each theme def was read from, so a save after a load writes that file.
+    pub(super) theme_source:   Option<Res<'w, ContentSourcePaths<ThemeDefsFamily>>>,
     pub(super) weapons:        Option<Res<'w, WeaponRegistry>>,
 }
 

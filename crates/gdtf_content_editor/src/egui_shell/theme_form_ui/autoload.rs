@@ -1,14 +1,25 @@
+use gdtf_assets::{ContentSourcePath, ContentSourcePaths};
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeDef, UuidThemeRegistry};
+use gdtf_content_families::ThemeDefsFamily;
 
-use crate::{mode::EditorMode, theme_form::ThemeDraft};
+use crate::{
+    mode::EditorMode,
+    theme_form::{ThemeDraft, theme_source},
+};
 
-pub(crate) fn load_theme_into_form(draft: &mut ThemeDraft, def: &UuidThemeDef) {
+/// Fill the draft from a theme def, recording the file that def was read from.
+pub(crate) fn load_theme_into_form(
+    draft: &mut ThemeDraft,
+    def: &UuidThemeDef,
+    source: Option<ContentSourcePath>,
+) {
     *draft = ThemeDraft::from_parts(
         def.key,
         (*def.display_name).clone(),
         def.terrain.clone(),
         def.default_floor,
     );
+    draft.set_source(source);
 }
 
 pub(crate) fn resolve_autoload(
@@ -27,6 +38,7 @@ pub(crate) fn sync_theme_draft(
     session_theme: ThemeUuid,
     themes: &UuidThemeRegistry,
     draft: &mut ThemeDraft,
+    sources: Option<&ContentSourcePaths<ThemeDefsFamily>>,
 ) {
     if mode != EditorMode::Theme {
         return;
@@ -46,7 +58,8 @@ pub(crate) fn sync_theme_draft(
     } else if draft.key() == def.key {
         return;
     }
-    load_theme_into_form(draft, def);
+    let source = theme_source(sources, def.key);
+    load_theme_into_form(draft, def, source);
 }
 
 #[cfg(test)]
@@ -101,11 +114,11 @@ mod tests {
         let registry = UuidThemeRegistry::new([(session, def.clone())]);
 
         let mut draft = ThemeDraft::default();
-        load_theme_into_form(&mut draft, &def);
+        load_theme_into_form(&mut draft, &def, None);
         draft.toggle_terrain(added);
         draft.set_default_floor(second);
 
-        sync_theme_draft(EditorMode::Theme, session, &registry, &mut draft);
+        sync_theme_draft(EditorMode::Theme, session, &registry, &mut draft, None);
 
         assert!(
             draft.has_terrain(added),
@@ -129,7 +142,7 @@ mod tests {
 
         let mut draft = ThemeDraft::new_theme();
         let minted = draft.key();
-        sync_theme_draft(EditorMode::Theme, session, &registry, &mut draft);
+        sync_theme_draft(EditorMode::Theme, session, &registry, &mut draft, None);
 
         assert_eq!(
             draft.key(),
@@ -142,7 +155,7 @@ mod tests {
             "a new_theme() draft must stay blank after sync against a present session theme",
         );
 
-        sync_theme_draft(EditorMode::Theme, session, &registry, &mut draft);
+        sync_theme_draft(EditorMode::Theme, session, &registry, &mut draft, None);
         assert_eq!(
             draft.key(),
             minted,
@@ -161,14 +174,14 @@ mod tests {
         ]);
 
         let mut draft = ThemeDraft::new_theme();
-        sync_theme_draft(EditorMode::Theme, first, &registry, &mut draft);
+        sync_theme_draft(EditorMode::Theme, first, &registry, &mut draft, None);
         assert_eq!(
             draft.display_name(),
             "",
             "fixture: the first sync pins the blank against the first session theme",
         );
 
-        sync_theme_draft(EditorMode::Theme, second, &registry, &mut draft);
+        sync_theme_draft(EditorMode::Theme, second, &registry, &mut draft, None);
         assert_eq!(
             draft.key(),
             second,
@@ -181,7 +194,7 @@ mod tests {
         );
 
         let mut seedable = ThemeDraft::default();
-        sync_theme_draft(EditorMode::Theme, first, &registry, &mut seedable);
+        sync_theme_draft(EditorMode::Theme, first, &registry, &mut seedable, None);
         assert_eq!(
             seedable.key(),
             first,

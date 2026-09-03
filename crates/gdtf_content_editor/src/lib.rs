@@ -103,7 +103,7 @@ pub use terrain_form::{
 pub use terrain_form::{write_terrain, write_terrain_in};
 pub use theme_form::{
     SaveThemeError, ThemeDraft, draft_to_theme_def, floor_candidates, resolved_stats,
-    serialize_theme_def, slab_floor_candidates, validate_for_save,
+    serialize_theme_def, slab_floor_candidates, theme_source, validate_for_save,
 };
 #[cfg(debug_assertions)]
 pub use theme_form::{write_theme, write_theme_in};

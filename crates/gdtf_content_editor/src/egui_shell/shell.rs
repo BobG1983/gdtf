@@ -40,6 +40,7 @@ pub(crate) fn editor_egui_ui(
         &session,
         shared.themes.as_deref(),
         &mut theme_draft,
+        shared.theme_source.as_deref(),
         ModeSyncBundles {
             gang:         &mut forms.gang,
             armor:        &mut forms.armor,

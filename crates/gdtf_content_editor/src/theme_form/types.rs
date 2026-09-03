@@ -1,6 +1,7 @@
 //! Theme draft resource and save errors.
 
 use bevy::prelude::*;
+use gdtf_assets::ContentSourcePath;
 use gdtf_battle_sim::{level::ThemeUuid, terrain::def::TerrainUuid};
 
 /// In-progress theme being authored.
@@ -12,6 +13,7 @@ pub struct ThemeDraft {
     key:            ThemeUuid,
     user_blank:     bool,
     pinned_session: Option<ThemeUuid>,
+    source:         Option<ContentSourcePath>,
 }
 
 impl ThemeDraft {
@@ -23,6 +25,7 @@ impl ThemeDraft {
             key: ThemeUuid::generate(),
             user_blank,
             pinned_session: None,
+            source: None,
         }
     }
 
@@ -47,6 +50,7 @@ impl ThemeDraft {
             key,
             user_blank: false,
             pinned_session: None,
+            source: None,
         }
     }
 
@@ -119,6 +123,17 @@ impl ThemeDraft {
     /// Remember the session theme that must not overwrite this blank.
     pub const fn pin_session(&mut self, session: ThemeUuid) {
         self.pinned_session = Some(session);
+    }
+
+    /// The file this draft was opened from, when it was opened from one.
+    #[must_use]
+    pub const fn source(&self) -> Option<&ContentSourcePath> {
+        self.source.as_ref()
+    }
+
+    /// Record the file this draft was opened from, so the next save writes it.
+    pub fn set_source(&mut self, source: Option<ContentSourcePath>) {
+        self.source = source;
     }
 }
 

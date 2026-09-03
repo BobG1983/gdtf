@@ -1,7 +1,9 @@
 //! `editor.load_theme` selects a theme in the session and fills the Theme draft.
 
 use bevy::prelude::*;
+use gdtf_assets::ContentSourcePaths;
 use gdtf_battle_sim::level::UuidThemeRegistry;
+use gdtf_content_families::ThemeDefsFamily;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
     command::QaCommand,
@@ -82,6 +84,7 @@ fn handle_editor_load_theme(
     draft: Option<ResMut<ThemeDraft>>,
     session: Option<ResMut<MapEditorSession>>,
     registry: Option<Res<UuidThemeRegistry>>,
+    sources: Option<Res<ContentSourcePaths<ThemeDefsFamily>>>,
     mut queue: ResMut<PendingQueue<CommandCall<EditorLoadTheme>>>,
 ) {
     if queue.is_empty() {
@@ -94,7 +97,13 @@ fn handle_editor_load_theme(
         return;
     };
     for (args, responder) in take_calls::<EditorLoadTheme>(&mut queue) {
-        let outcome = match load_theme(&mut draft, &mut session, &registry, &args.key) {
+        let outcome = match load_theme(
+            &mut draft,
+            &mut session,
+            &registry,
+            sources.as_deref(),
+            &args.key,
+        ) {
             KeyLookup::Loaded => EditorLoadOutcomeNet::Loaded { key: args.key },
             KeyLookup::NoSuchKey(known) => EditorLoadOutcomeNet::NoSuchKey {
                 key: args.key,
