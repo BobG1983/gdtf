@@ -1,14 +1,26 @@
+use std::path::PathBuf;
+
+use bevy::asset::uuid::Uuid;
+use gdtf_assets::{ContentMemberKey, ContentSourcePath, ContentSourcePaths};
 use gdtf_battle_sim::{
-    armor::{ArmorName, ArmorPiece, ArmorRegistry, ArmorSpec},
+    armor::{ArmorHardness, ArmorName, ArmorPiece, ArmorProtection, ArmorRegistry, ArmorSpec},
+    cover::{CoverHp, HeightBand},
     equipment::attachments::{AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec},
     ganger::{GangName, GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryName, InjuryRegistry},
     level::{ThemeDisplayName, ThemeUuid, UuidThemeDef, UuidThemeRegistry},
-    terrain::def::TerrainUuid,
+    terrain::def::{
+        LeavesBehind, TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind,
+        TerrainSimKind, TerrainUuid, TerrainViews,
+    },
     weapon::{MeleeWeaponRegistry, WeaponName, WeaponRegistry},
 };
-use gdtf_content_families::sprites::{
-    SpriteAnchor, SpriteDef, SpriteDefRegistry, SpriteImagePath, SpriteName, SpritePx, SpriteSource,
+use gdtf_content_families::{
+    TerrainDefsFamily,
+    sprites::{
+        SpriteAnchor, SpriteDef, SpriteDefRegistry, SpriteImagePath, SpriteName, SpritePx,
+        SpriteSource,
+    },
 };
 
 use crate::{
@@ -69,6 +81,42 @@ pub(super) fn melee_weapons() -> MeleeWeaponRegistry {
     MeleeWeaponRegistry::new([(
         WeaponName::new(SEEDED_KEY.to_owned()),
         MeleeWeaponDraft::new_melee_weapon().spec().clone(),
+    )])
+}
+
+/// The file the fixture terrain def was read from, as the family records it.
+pub(super) const TERRAIN_SOURCE_FILE: &str = "content/terrain/ash_wastes/probe.terrain_def.ron";
+
+/// One Cover def, keyed the way an authored terrain file is.
+pub(super) fn terrain_def() -> TerrainDef {
+    TerrainDef {
+        key:            TerrainUuid::new(Uuid::from_u128(0x0184_0bcd_7001)),
+        display_name:   TerrainDisplayName::new("Ash Drum".to_owned()),
+        sim_kind:       TerrainSimKind::Cover {
+            hp:               CoverHp::new(20),
+            armor_protection: ArmorProtection::new(3),
+            armor_hardness:   ArmorHardness::new(1),
+            height_band:      HeightBand::Low,
+        },
+        presenter_kind: TerrainPresenterKind::Cover,
+        views:          TerrainViews::new(Vec::new()),
+        tags:           Vec::new(),
+        on_death:       Vec::new(),
+        blocks_pathing: None,
+        blocks_los:     None,
+        leaves_behind:  LeavesBehind::Nothing,
+    }
+}
+
+pub(super) fn terrain(def: &TerrainDef) -> TerrainDefRegistry {
+    TerrainDefRegistry::new([(def.key, def.clone())])
+}
+
+/// The path table the terrain family publishes beside that one-def registry.
+pub(super) fn terrain_sources(def: &TerrainDef) -> ContentSourcePaths<TerrainDefsFamily> {
+    ContentSourcePaths::new([(
+        ContentMemberKey::new((*def.key).to_string()),
+        ContentSourcePath::new(PathBuf::from(TERRAIN_SOURCE_FILE)),
     )])
 }
 

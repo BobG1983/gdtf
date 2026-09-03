@@ -1,6 +1,6 @@
 //! Theme definition content family.
 
-use gdtf_assets::{ContentFamily, ContentFileStem};
+use gdtf_assets::{ContentFamily, ContentFileStem, ContentMemberKey};
 use gdtf_battle_sim::level::{UuidThemeDef, UuidThemeRegistry};
 
 use crate::TerrainDefsFamily;
@@ -19,7 +19,8 @@ impl ContentFamily for ThemeDefsFamily {
         registry: &mut UuidThemeRegistry,
         _stem: Option<ContentFileStem>,
         def: &UuidThemeDef,
-    ) {
+    ) -> Option<ContentMemberKey> {
         registry.insert(def.key, def.clone());
+        Some(ContentMemberKey::new((*def.key).to_string()))
     }
 }

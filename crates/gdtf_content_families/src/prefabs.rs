@@ -1,6 +1,6 @@
 //! Prefab content folder layout constants and the prefab content family.
 
-use gdtf_assets::{ContentFamily, ContentFileStem};
+use gdtf_assets::{ContentFamily, ContentFileStem, ContentMemberKey};
 use gdtf_battle_sim::level::{Prefab, PrefabName, PrefabRegistry, PrefabSpec};
 
 /// Root folder for map prefabs.
@@ -23,11 +23,14 @@ impl ContentFamily for PrefabsFamily {
         registry: &mut PrefabRegistry,
         stem: Option<ContentFileStem>,
         spec: &PrefabSpec,
-    ) {
-        let Some(stem) = stem else { return };
+    ) -> Option<ContentMemberKey> {
+        let stem = stem?;
         registry.insert(Prefab::new(
             PrefabName::new(stem.into_inner()),
             spec.clone(),
         ));
+        // The registry keys on name, theme, size and role together, which no single
+        // string names, so a prefab records no source path.
+        None
     }
 }

@@ -17,7 +17,9 @@ A new folder-loaded family costs exactly this:
    (`crates/gdtf_assets/src/family/def.rs`) in the glue crate
    `crates/gdtf_content_families/src/` — naming the payload `Spec`, the
    registry `Resource`, the `FOLDER`, the dedicated compound `EXTENSION`, and
-   how a member keys into the registry (`insert_member`).
+   how a member keys into the registry (`insert_member`, which answers the
+   `ContentMemberKey` it inserted under, or `None` when it inserts nothing or
+   keys on something no single string names).
 2. **One registration line** per host:
    `app.register_content_family::<MyFamily>()` (the `ContentFamilyAppExt`
    extension, `crates/gdtf_assets/src/family/ext.rs`). The game's lines live
@@ -29,17 +31,20 @@ That one line yields the WHOLE chain — encoded once, never per-family:
 
 | Guarantee | What it means |
 |-----------|---------------|
-| Loader + resolve | A `Startup` kick-off folder-loads recursively; the resolve gates on the folder finishing, folds every member through `insert_member`, and inserts the registry EXACTLY once |
+| Loader + resolve | A `Startup` kick-off folder-loads recursively; the resolve gates on the folder finishing, folds every member through `insert_member`, and inserts the registry and its source paths EXACTLY once |
+| Source paths | `ContentSourcePaths<F>` is published beside the registry: the asset-root-relative file each key was read from, answered by `path(&key)`. A member whose `insert_member` returns `None`, and a key the family never answered for, record nothing |
 | Per-file salvage | A malformed member fails ALONE (a `malformed file:` finding on the integrity report); every well-formed sibling still loads |
 | Fail-closed folder | A genuinely un-enumerable folder `warn!`s and publishes an EMPTY registry, so a presence-gated `Load` flow is never stranded |
-| Live redrive (hot-reload) | Editing a member under `cargo drun` rebuilds the whole registry in place via the persistent `ContentFolderHandle`, logging the reload |
+| Live redrive (hot-reload) | Editing a member under `cargo drun` rebuilds the registry and its source paths in place via the persistent `ContentFolderHandle`, logging the reload |
 | `TypeId` member filter | A mixed folder (terrain + theme defs share one tree) never mistypes a member |
-| Headless fallback | A `MinimalPlugins` app (no `AssetServer`) registers no chain and seeds `Registry::default()` instead — no panic, and a presence-gated flow still releases |
+| Headless fallback | A `MinimalPlugins` app (no `AssetServer`) registers no chain and seeds `Registry::default()` with an empty `ContentSourcePaths<F>` instead — no panic, and a presence-gated flow still releases |
 | Validation window | Reference checks registered per host (`register_reference_check`) run once every registry they read has resolved — see [reference-integrity.md](reference-integrity.md) |
 
 The generic systems live in `crates/gdtf_assets/src/family/systems.rs`; the
 salvage in `crates/gdtf_assets/src/family/salvage.rs`; the report vocabulary in
-`crates/gdtf_assets/src/family/report/`.
+`crates/gdtf_assets/src/family/report/`; the source paths, and the
+`PublishedFamily` pair the redrive takes so nothing borrows a registry without
+its paths, in `crates/gdtf_assets/src/family/source.rs`.
 
 ## Part 2 — Why the glue crate, and the three keying shapes
 
@@ -57,7 +62,7 @@ shape varies on a second axis as well: one key holds many members rather than on
 |--------|----------|-----|
 | Stem-keyed | `WeaponsFamily`, `MeleeWeaponsFamily`, `ArmorFamily`, `FieldsFamily`, `GangsFamily`, `AttachmentsFamily`, `SpriteDefsFamily` | File stem, infix stripped (`stub_pistol.weapon.ron` → `stub_pistol`) |
 | Payload-keyed | `TerrainDefsFamily`, `ThemeDefsFamily` | The UUID inside the def; the filename is a courtesy |
-| Payload-keyed into a bucketed multimap | `PrefabsFamily` | The `PrefabKey` (theme, size, role) `PrefabRegistry::insert` derives from the spec. The file stem becomes the `PrefabName` inside each `Prefab` rather than the key, so one key holds every prefab authored under it |
+| Payload-keyed into a bucketed multimap | `PrefabsFamily` | The `PrefabKey` (theme, size, role) `PrefabRegistry::insert` derives from the spec. The file stem becomes the `PrefabName` inside each `Prefab` rather than the key, so one key holds every prefab authored under it. It is also the one family that records no source path, because that key is not one string |
 
 One placement exception: `SpriteDefsFamily` is the one family whose
 `Spec`/`Registry` live IN the glue crate

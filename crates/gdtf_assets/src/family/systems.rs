@@ -1,25 +1,33 @@
 //! Startup folder load, resolve (including salvage), and hot-redrive.
 
 use core::any::TypeId;
+use std::path::Path;
 
 use bevy::{
-    asset::{AssetEvent, AssetServer, Assets, LoadedFolder, RecursiveDependencyLoadState},
+    asset::{
+        AssetEvent, AssetPath, AssetServer, Assets, LoadedFolder, RecursiveDependencyLoadState,
+    },
     prelude::*,
 };
 
 use crate::{
     asset::RonAsset,
     family::{
-        def::{ContentFamily, ContentFileStem},
+        def::{ContentFamily, ContentFileStem, ContentMemberKey},
         handle::ContentFolderHandle,
         report::{ContentIntegrityReport, FindingFamily},
         salvage::{
-            MalformedMember, RonFolderSalvage, RonSalvagePoll, begin_ron_folder_salvage,
-            poll_ron_folder_salvage, report_malformed_members, salvage_members_for_rebuild,
+            MalformedMember, RonFolderSalvage, RonSalvagePoll, SalvagedMember,
+            begin_ron_folder_salvage, poll_ron_folder_salvage, report_malformed_members,
+            salvage_members_for_rebuild,
         },
+        source::{ContentSourcePath, ContentSourcePaths, PublishedFamily},
     },
     hot::short_type_name,
 };
+
+/// One member's key and the file it was read from, as a registry build collects them.
+type MemberSource = (ContentMemberKey, ContentSourcePath);
 
 /// Begin loading the family's folder on startup.
 pub fn kick_off_content_family<F: ContentFamily>(
@@ -54,16 +62,10 @@ pub fn resolve_content_family<F: ContentFamily>(
         if let RonSalvagePoll::Settled { loaded, malformed } =
             poll_ron_folder_salvage(salvage, &asset_server, &specs)
         {
-            let mut registry = F::Registry::default();
-            for member in &loaded {
-                F::insert_member(
-                    &mut registry,
-                    stem_from_path::<F>(member.path.as_str()),
-                    member.spec,
-                );
-            }
+            let (registry, sources) = build_from_salvage::<F>(&loaded);
             record_malformed_members::<F>(malformed, report);
             commands.insert_resource(registry);
+            commands.insert_resource(sources);
         }
         return;
     }
@@ -89,17 +91,20 @@ pub fn resolve_content_family<F: ContentFamily>(
                     short_type_name::<F::Registry>(),
                 );
                 commands.insert_resource(F::Registry::default());
+                commands.insert_resource(ContentSourcePaths::<F>::default());
             }
         }
         return;
     }
 
     if matches!(folder_state, RecursiveDependencyLoadState::Loaded) {
-        let Some(registry) = build_family_registry::<F>(&asset_server, &folders, &specs, &handle)
+        let Some((registry, sources)) =
+            build_family_registry::<F>(&asset_server, &folders, &specs, &handle)
         else {
             return;
         };
         commands.insert_resource(registry);
+        commands.insert_resource(sources);
     }
 }
 
@@ -114,7 +119,7 @@ fn record_malformed_members<F: ContentFamily>(
     );
 }
 
-/// Rebuild the registry when any member RON is modified.
+/// Rebuild the registry and its source paths when any member RON is modified.
 pub fn redrive_content_family<F: ContentFamily>(
     mut events: MessageReader<AssetEvent<RonAsset<F::Spec>>>,
     asset_server: Option<Res<AssetServer>>,
@@ -122,10 +127,17 @@ pub fn redrive_content_family<F: ContentFamily>(
     specs: Option<Res<Assets<RonAsset<F::Spec>>>>,
     handle: Option<Res<ContentFolderHandle<F>>>,
     salvage: Option<Res<RonFolderSalvage<F::Spec>>>,
-    registry: Option<ResMut<F::Registry>>,
+    published: PublishedFamily<F>,
 ) {
-    let (Some(asset_server), Some(folders), Some(specs), Some(handle), Some(mut registry)) =
-        (asset_server, folders, specs, handle, registry)
+    let PublishedFamily { registry, sources } = published;
+    let (
+        Some(asset_server),
+        Some(folders),
+        Some(specs),
+        Some(handle),
+        Some(mut registry),
+        Some(mut sources),
+    ) = (asset_server, folders, specs, handle, registry, sources)
     else {
         events.clear();
         return;
@@ -142,15 +154,7 @@ pub fn redrive_content_family<F: ContentFamily>(
         let Some(members) = salvage_members_for_rebuild(salvage, &asset_server, &specs) else {
             return;
         };
-        let mut rebuilt = F::Registry::default();
-        for member in &members {
-            F::insert_member(
-                &mut rebuilt,
-                stem_from_path::<F>(member.path.as_str()),
-                member.spec,
-            );
-        }
-        rebuilt
+        build_from_salvage::<F>(&members)
     } else if let Some(rebuilt) =
         build_family_registry::<F>(&asset_server, &folders, &specs, &handle)
     {
@@ -158,7 +162,9 @@ pub fn redrive_content_family<F: ContentFamily>(
     } else {
         return;
     };
-    *registry = rebuilt;
+    let (rebuilt_registry, rebuilt_sources) = rebuilt;
+    *registry = rebuilt_registry;
+    *sources = rebuilt_sources;
     info!(
         "hot-reload: rebuilt {} from `{}`",
         short_type_name::<F::Registry>(),
@@ -166,32 +172,55 @@ pub fn redrive_content_family<F: ContentFamily>(
     );
 }
 
+// Salvaged members carry their own asset-root-relative path, so the pair builds in one pass.
+fn build_from_salvage<F: ContentFamily>(
+    members: &[SalvagedMember<'_, F::Spec>],
+) -> (F::Registry, ContentSourcePaths<F>) {
+    let mut registry = F::Registry::default();
+    let mut sources: Vec<MemberSource> = Vec::new();
+    for member in members {
+        let path = member.path.as_str();
+        let key = F::insert_member(&mut registry, stem_from_path::<F>(path), member.spec);
+        record_source(&mut sources, key, Some(Path::new(path)));
+    }
+    (registry, ContentSourcePaths::new(sources))
+}
+
 fn build_family_registry<F: ContentFamily>(
     asset_server: &AssetServer,
     folders: &Assets<LoadedFolder>,
     specs: &Assets<RonAsset<F::Spec>>,
     handle: &ContentFolderHandle<F>,
-) -> Option<F::Registry> {
+) -> Option<(F::Registry, ContentSourcePaths<F>)> {
     let folder = folders.get(&**handle)?;
 
     let mut registry = F::Registry::default();
+    let mut sources: Vec<MemberSource> = Vec::new();
     for untyped in &folder.handles {
         if untyped.type_id() != TypeId::of::<RonAsset<F::Spec>>() {
             continue;
         }
         let typed = untyped.clone().typed_debug_checked::<RonAsset<F::Spec>>();
         let spec = specs.get(&typed)?;
-        F::insert_member(&mut registry, member_stem::<F>(asset_server, untyped), spec);
+        let path = asset_server.get_path(untyped.id());
+        let stem = path
+            .as_ref()
+            .and_then(|path| stem_from_path::<F>(path.path().to_string_lossy().as_ref()));
+        let key = F::insert_member(&mut registry, stem, spec);
+        record_source(&mut sources, key, path.as_ref().map(AssetPath::path));
     }
-    Some(registry)
+    Some((registry, ContentSourcePaths::new(sources)))
 }
 
-fn member_stem<F: ContentFamily>(
-    asset_server: &AssetServer,
-    untyped: &bevy::asset::UntypedHandle,
-) -> Option<ContentFileStem> {
-    let path = asset_server.get_path(untyped.id())?;
-    stem_from_path::<F>(path.path().to_string_lossy().as_ref())
+// A member with no key, or none the asset server can name a path for, records nothing.
+fn record_source(
+    sources: &mut Vec<MemberSource>,
+    key: Option<ContentMemberKey>,
+    path: Option<&Path>,
+) {
+    if let (Some(key), Some(path)) = (key, path) {
+        sources.push((key, ContentSourcePath::new(path.to_path_buf())));
+    }
 }
 
 fn stem_from_path<F: ContentFamily>(path: &str) -> Option<ContentFileStem> {

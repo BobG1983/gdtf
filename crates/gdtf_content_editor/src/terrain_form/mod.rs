@@ -12,7 +12,7 @@ mod tests;
 pub use draft::TerrainDraft;
 pub use error::SaveTerrainError;
 pub use inputs::{ArmorInput, HpInput};
-pub use load::load_candidates;
+pub use load::{load_candidates, terrain_source};
 pub use picks::{FootfallChoice, TerrainKindChoice, offers_view_expander, view_rows};
 pub use save::{draft_to_terrain_def, serialize_terrain_def};
 #[cfg(debug_assertions)]

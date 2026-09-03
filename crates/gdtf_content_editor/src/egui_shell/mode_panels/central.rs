@@ -8,7 +8,7 @@ use crate::{
         melee_weapon_form_ui,
         prefab::{viewport_ui, viewport_ui::ViewportCtx},
         sprite_form_ui,
-        terrain_form_ui::{self, TerrainSaveContext},
+        terrain_form_ui::{self, TerrainLoadContext, TerrainSaveContext},
         theme_form_ui, weapon_form_ui,
     },
     mode::EditorMode,
@@ -31,7 +31,10 @@ pub(in crate::egui_shell) fn central_panel(
                 },
                 ctx.sprite.registry.as_deref(),
                 ctx.weapons,
-                ctx.terrain_registry,
+                TerrainLoadContext {
+                    registry: ctx.terrain_registry,
+                    sources:  ctx.terrain_sources,
+                },
                 &ctx.textures.sprites,
             );
         }

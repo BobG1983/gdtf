@@ -10,7 +10,7 @@ use gdtf_battle_sim::{
     },
 };
 
-use super::super::fields::{TerrainSaveContext, field_stack};
+use super::super::fields::{TerrainLoadContext, TerrainSaveContext, field_stack};
 use crate::{
     save_record::LastSaveRecord,
     session::MapEditorSession,
@@ -89,7 +89,11 @@ fn draw(draft: &mut TerrainDraft, terrain: &TerrainDefRegistry) -> Vec<String> {
             themes:    None,
             last_save: &mut last_save,
         };
-        field_stack(&mut ui, draft, save, None, Some(terrain), None);
+        let load = TerrainLoadContext {
+            registry: Some(terrain),
+            sources:  None,
+        };
+        field_stack(&mut ui, draft, save, None, load, None);
     }
     let output = ctx.end_pass();
     let mut text = Vec::new();

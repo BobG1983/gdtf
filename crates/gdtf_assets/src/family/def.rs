@@ -21,12 +21,27 @@ pub trait ContentFamily: Send + Sync + 'static {
     /// File extension (without leading dot).
     const EXTENSION: &'static str;
 
-    /// Insert one member into the registry.
+    /// Insert one member into the registry, answering the key it was inserted under.
+    ///
+    /// `None` means no source path is recorded for this member: the family inserted
+    /// nothing, or it keys by something no single string names.
     fn insert_member(
         registry: &mut Self::Registry,
         stem: Option<ContentFileStem>,
         spec: &Self::Spec,
-    );
+    ) -> Option<ContentMemberKey>;
+}
+
+/// The key a family inserted a member under, as text.
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ContentMemberKey(String);
+
+impl ContentMemberKey {
+    /// Wrap a member key.
+    #[must_use]
+    pub const fn new(key: String) -> Self {
+        Self(key)
+    }
 }
 
 /// File stem used as a registry key when present.

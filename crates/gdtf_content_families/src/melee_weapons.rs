@@ -1,4 +1,4 @@
-use gdtf_assets::{ContentFamily, ContentFileStem};
+use gdtf_assets::{ContentFamily, ContentFileStem, ContentMemberKey};
 use gdtf_battle_sim::weapon::{MeleeWeaponRegistry, MeleeWeaponSpec, WeaponName};
 
 /// melee weapon against (an authored key or the `fists` default).
@@ -15,8 +15,9 @@ impl ContentFamily for MeleeWeaponsFamily {
         registry: &mut MeleeWeaponRegistry,
         stem: Option<ContentFileStem>,
         spec: &MeleeWeaponSpec,
-    ) {
-        let Some(stem) = stem else { return };
-        registry.insert(WeaponName::new(stem.into_inner()), spec.clone());
+    ) -> Option<ContentMemberKey> {
+        let key = stem?.into_inner();
+        registry.insert(WeaponName::new(key.clone()), spec.clone());
+        Some(ContentMemberKey::new(key))
     }
 }

@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 use bevy::prelude::*;
+use gdtf_assets::ContentSourcePaths;
 use gdtf_battle_presenter::{IsolateView, ViewMode};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
@@ -15,7 +16,7 @@ use gdtf_battle_sim::{
     tuning::GangerStatTuning,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
-use gdtf_content_families::sprites::SpriteDefRegistry;
+use gdtf_content_families::{TerrainDefsFamily, sprites::SpriteDefRegistry};
 
 #[cfg(debug_assertions)]
 use crate::net_qa::EditorQaAssetsRoot;
@@ -50,9 +51,11 @@ pub(crate) struct Workbench<'w> {
 
 #[derive(bevy::ecs::system::SystemParam)]
 pub(crate) struct SharedRegistries<'w> {
-    pub(super) themes:  Option<Res<'w, UuidThemeRegistry>>,
-    pub(super) terrain: Option<Res<'w, TerrainDefRegistry>>,
-    pub(super) weapons: Option<Res<'w, WeaponRegistry>>,
+    pub(super) themes:         Option<Res<'w, UuidThemeRegistry>>,
+    pub(super) terrain:        Option<Res<'w, TerrainDefRegistry>>,
+    /// The file each terrain def was read from, so a save after a load writes that file.
+    pub(super) terrain_source: Option<Res<'w, ContentSourcePaths<TerrainDefsFamily>>>,
+    pub(super) weapons:        Option<Res<'w, WeaponRegistry>>,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]

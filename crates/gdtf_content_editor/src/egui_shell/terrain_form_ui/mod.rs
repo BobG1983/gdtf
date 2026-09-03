@@ -9,6 +9,6 @@ mod preview;
 #[cfg(test)]
 mod test;
 
-pub(in crate::egui_shell) use fields::TerrainSaveContext;
+pub(in crate::egui_shell) use fields::{TerrainLoadContext, TerrainSaveContext};
 pub(in crate::egui_shell) use panel::primary_panel;
 pub(crate) use preview::ron_preview;

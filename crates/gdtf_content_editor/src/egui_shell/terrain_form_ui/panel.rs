@@ -1,15 +1,12 @@
 use bevy_egui::egui;
 use gdtf_battle_presenter::resolve_sprite;
 use gdtf_battle_sim::{
-    terrain::{
-        def::{TerrainDefRegistry, TerrainView},
-        piece::TerrainGraphicKey,
-    },
+    terrain::{def::TerrainView, piece::TerrainGraphicKey},
     weapon::WeaponRegistry,
 };
 use gdtf_content_families::sprites::{SpriteDefRegistry, SpriteName};
 
-use super::fields::{TerrainSaveContext, field_stack};
+use super::fields::{TerrainLoadContext, TerrainSaveContext, field_stack};
 use crate::{
     egui_shell::{
         sprite_thumb::{self, THUMB_EDGE},
@@ -26,13 +23,13 @@ pub(in crate::egui_shell) fn primary_panel(
     save: TerrainSaveContext<'_>,
     sprites: Option<&SpriteDefRegistry>,
     weapons: Option<&WeaponRegistry>,
-    terrain: Option<&TerrainDefRegistry>,
+    load: TerrainLoadContext<'_>,
     textures: &SpriteTextures,
 ) {
     ui.columns(2, |columns| {
         if let [picker_col, fields_col] = columns {
             graphic_picker(picker_col, draft, sprites, textures);
-            field_stack(fields_col, draft, save, weapons, terrain, sprites);
+            field_stack(fields_col, draft, save, weapons, load, sprites);
         }
     });
 }

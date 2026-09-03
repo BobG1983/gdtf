@@ -1,4 +1,4 @@
-use gdtf_assets::{ContentFamily, ContentFileStem};
+use gdtf_assets::{ContentFamily, ContentFileStem, ContentMemberKey};
 use gdtf_battle_sim::effects::fields::{FieldDef, FieldDefRegistry, FieldKey};
 
 /// situation's authored `fields:` placements against.
@@ -15,8 +15,9 @@ impl ContentFamily for FieldsFamily {
         registry: &mut FieldDefRegistry,
         stem: Option<ContentFileStem>,
         def: &FieldDef,
-    ) {
-        let Some(stem) = stem else { return };
-        registry.insert(FieldKey::new(stem.into_inner()), def.clone());
+    ) -> Option<ContentMemberKey> {
+        let key = stem?.into_inner();
+        registry.insert(FieldKey::new(key.clone()), def.clone());
+        Some(ContentMemberKey::new(key))
     }
 }

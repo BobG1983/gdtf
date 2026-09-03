@@ -1,7 +1,9 @@
 use bevy::prelude::ResMut;
+use gdtf_assets::ContentSourcePaths;
 use gdtf_battle_sim::{
     level::UuidThemeRegistry, terrain::def::TerrainDefRegistry, weapon::WeaponRegistry,
 };
+use gdtf_content_families::TerrainDefsFamily;
 
 use crate::{
     egui_shell::{
@@ -40,6 +42,7 @@ pub(in crate::egui_shell) struct ModePanelsCtx<
     pub(in crate::egui_shell) theme_draft:      &'a mut ResMut<'theme, ThemeDraft>,
     pub(in crate::egui_shell) themes:           Option<&'a UuidThemeRegistry>,
     pub(in crate::egui_shell) terrain_registry: Option<&'a TerrainDefRegistry>,
+    pub(in crate::egui_shell) terrain_sources:  Option<&'a ContentSourcePaths<TerrainDefsFamily>>,
     pub(in crate::egui_shell) weapons:          Option<&'a WeaponRegistry>,
     pub(in crate::egui_shell) textures:         &'a ResolvedTextures,
     pub(in crate::egui_shell) prefab:           &'a mut PrefabParams<'prefab, 'ps>,

@@ -1,6 +1,7 @@
 //! The terrain draft's own fields and their accessors.
 
 use bevy::prelude::Resource;
+use gdtf_assets::ContentSourcePath;
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
@@ -39,6 +40,7 @@ pub struct TerrainDraft {
     leaves_behind:       LeavesBehind,
     pub(super) on_death: Vec<OnDeathEffect>,
     uuid:                Option<TerrainUuid>,
+    source:              Option<ContentSourcePath>,
 }
 
 impl TerrainDraft {
@@ -267,6 +269,17 @@ impl TerrainDraft {
     pub fn ensure_uuid(&mut self) -> TerrainUuid {
         *self.uuid.get_or_insert_with(TerrainUuid::generate)
     }
+
+    /// The file this draft was opened from, when it was opened from one.
+    #[must_use]
+    pub const fn source(&self) -> Option<&ContentSourcePath> {
+        self.source.as_ref()
+    }
+
+    /// Record the file this draft was opened from, so the next save writes it.
+    pub fn set_source(&mut self, source: Option<ContentSourcePath>) {
+        self.source = source;
+    }
 }
 
 impl Default for TerrainDraft {
@@ -289,6 +302,7 @@ impl Default for TerrainDraft {
             leaves_behind:    LeavesBehind::Nothing,
             on_death:         Vec::new(),
             uuid:             None,
+            source:           None,
         }
     }
 }

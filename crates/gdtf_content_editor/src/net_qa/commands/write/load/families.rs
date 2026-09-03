@@ -1,6 +1,7 @@
 //! Look a key up in one family's registry and call that draft's own `load_*` method.
 
 use bevy::asset::uuid::Uuid;
+use gdtf_assets::ContentSourcePaths;
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry},
     effects::fields::{FieldDefRegistry, FieldKey},
@@ -10,12 +11,21 @@ use gdtf_battle_sim::{
     terrain::def::{TerrainDefRegistry, TerrainUuid},
     weapon::{MeleeWeaponRegistry, WeaponName, WeaponRegistry},
 };
-use gdtf_content_families::sprites::{SpriteDefRegistry, SpriteName};
+use gdtf_content_families::{
+    TerrainDefsFamily,
+    sprites::{SpriteDefRegistry, SpriteName},
+};
 
 use crate::{
-    armor_form::ArmorDraft, attachment_form::AttachmentDraft, field_form::FieldDraft,
-    gang_form::GangDraft, injury_form::InjuryDraft, melee_weapon_form::MeleeWeaponDraft,
-    net_qa::wire::EditorKeyNet, sprite_form::SpriteDraft, terrain_form::TerrainDraft,
+    armor_form::ArmorDraft,
+    attachment_form::AttachmentDraft,
+    field_form::FieldDraft,
+    gang_form::GangDraft,
+    injury_form::InjuryDraft,
+    melee_weapon_form::MeleeWeaponDraft,
+    net_qa::wire::EditorKeyNet,
+    sprite_form::SpriteDraft,
+    terrain_form::{TerrainDraft, terrain_source},
     weapon_form::WeaponDraft,
 };
 
@@ -170,6 +180,7 @@ pub(in crate::net_qa::commands::write::load) fn load_field(
 pub(in crate::net_qa::commands::write::load) fn load_terrain(
     draft: &mut TerrainDraft,
     registry: &TerrainDefRegistry,
+    sources: Option<&ContentSourcePaths<TerrainDefsFamily>>,
     key: &EditorKeyNet,
 ) -> KeyLookup {
     let known = || {
@@ -182,10 +193,11 @@ pub(in crate::net_qa::commands::write::load) fn load_terrain(
     let Ok(parsed) = Uuid::parse_str(key) else {
         return KeyLookup::NoSuchKey(known());
     };
-    let Some(def) = registry.def(&TerrainUuid::new(parsed)) else {
+    let wanted = TerrainUuid::new(parsed);
+    let Some(def) = registry.def(&wanted) else {
         return KeyLookup::NoSuchKey(known());
     };
-    draft.load_from_def(def);
+    draft.load_from_def(def, terrain_source(sources, wanted));
     KeyLookup::Loaded
 }
 

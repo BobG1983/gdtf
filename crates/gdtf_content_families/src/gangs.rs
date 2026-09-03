@@ -1,6 +1,6 @@
 //! Gangs content family.
 
-use gdtf_assets::{ContentFamily, ContentFileStem};
+use gdtf_assets::{ContentFamily, ContentFileStem, ContentMemberKey};
 use gdtf_battle_sim::ganger::{GangName, GangRegistry, GangRoster};
 
 /// Loads `*.gang.ron` files into [`GangRegistry`].
@@ -17,8 +17,9 @@ impl ContentFamily for GangsFamily {
         registry: &mut GangRegistry,
         stem: Option<ContentFileStem>,
         roster: &GangRoster,
-    ) {
-        let Some(stem) = stem else { return };
-        registry.insert(GangName::new(stem.into_inner()), roster.clone());
+    ) -> Option<ContentMemberKey> {
+        let key = stem?.into_inner();
+        registry.insert(GangName::new(key.clone()), roster.clone());
+        Some(ContentMemberKey::new(key))
     }
 }

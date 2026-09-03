@@ -1,4 +1,4 @@
-use gdtf_assets::{ContentFamily, ContentFileStem};
+use gdtf_assets::{ContentFamily, ContentFileStem, ContentMemberKey};
 use gdtf_battle_sim::equipment::attachments::{AttachmentName, AttachmentRegistry, AttachmentSpec};
 
 /// authored `attachments:` keys against (a missing key fails closed — nothing
@@ -15,8 +15,9 @@ impl ContentFamily for AttachmentsFamily {
         registry: &mut AttachmentRegistry,
         stem: Option<ContentFileStem>,
         spec: &AttachmentSpec,
-    ) {
-        let Some(stem) = stem else { return };
-        registry.insert(AttachmentName::new(stem.into_inner()), spec.clone());
+    ) -> Option<ContentMemberKey> {
+        let key = stem?.into_inner();
+        registry.insert(AttachmentName::new(key.clone()), spec.clone());
+        Some(ContentMemberKey::new(key))
     }
 }

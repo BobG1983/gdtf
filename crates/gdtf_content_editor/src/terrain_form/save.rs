@@ -133,6 +133,9 @@ pub fn serialize_terrain_def(def: &TerrainDef) -> Result<String, SaveTerrainErro
 
 /// Write terrain RON under `assets_root`.
 ///
+/// A draft opened from a file writes that file back. A draft that was never opened
+/// takes its folder from the session theme and its stem from the display name.
+///
 /// # Errors
 ///
 /// Returns [`SaveTerrainError`] on empty name, missing weapon, or write failure.
@@ -148,12 +151,21 @@ pub fn write_terrain_in(
         return Err(SaveTerrainError::EmptyName);
     }
     let def = draft_to_terrain_def(draft, uuid)?;
-    let path = assets_root
-        .join(TerrainDefsFamily::FOLDER)
-        .join(theme_dir(theme_display))
-        .join(format!("{stem}.{}", TerrainDefsFamily::EXTENSION));
+    let path = draft.source().map_or_else(
+        || minted_terrain_path(assets_root, &stem, theme_display),
+        |source| assets_root.join(&**source),
+    );
     gdtf_assets::write_ron_pretty(&path, &def)?;
     Ok(path)
+}
+
+// Where a terrain def that was never opened from a file lands.
+#[cfg(debug_assertions)]
+fn minted_terrain_path(assets_root: &Path, stem: &FileStem, theme_display: &str) -> PathBuf {
+    assets_root
+        .join(TerrainDefsFamily::FOLDER)
+        .join(theme_dir(theme_display))
+        .join(format!("{stem}.{}", TerrainDefsFamily::EXTENSION))
 }
 
 /// Write terrain RON under the workspace assets root.

@@ -1,4 +1,5 @@
 use bevy_egui::egui;
+use gdtf_assets::ContentSourcePaths;
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
@@ -7,13 +8,14 @@ use gdtf_battle_sim::{
     terrain::def::{TerrainDefRegistry, TerrainTag, TerrainUuid},
     weapon::{WeaponName, WeaponRegistry},
 };
-use gdtf_content_families::sprites::SpriteDefRegistry;
+use gdtf_content_families::{TerrainDefsFamily, sprites::SpriteDefRegistry};
 
 use crate::{
     save_record::LastSaveRecord,
     session::MapEditorSession,
     terrain_form::{
         ArmorInput, FootfallChoice, HpInput, TerrainDraft, TerrainKindChoice, load_candidates,
+        terrain_source,
     },
 };
 
@@ -25,6 +27,15 @@ pub(in crate::egui_shell) struct TerrainSaveContext<'a> {
     pub(in crate::egui_shell) themes:    Option<&'a UuidThemeRegistry>,
     /// Where the outcome of this save is recorded.
     pub(in crate::egui_shell) last_save: &'a mut LastSaveRecord,
+}
+
+/// What the terrain form's load picker offers, and where each of those defs was read from.
+#[derive(Clone, Copy)]
+pub(in crate::egui_shell) struct TerrainLoadContext<'a> {
+    /// Every def the picker lists.
+    pub(in crate::egui_shell) registry: Option<&'a TerrainDefRegistry>,
+    /// The file each def was read from, which a save after a load writes back to.
+    pub(in crate::egui_shell) sources:  Option<&'a ContentSourcePaths<TerrainDefsFamily>>,
 }
 
 const TAG_ORDER: [TerrainTag; 5] = [
@@ -62,13 +73,14 @@ pub(in crate::egui_shell) fn field_stack(
     draft: &mut TerrainDraft,
     save: TerrainSaveContext<'_>,
     weapons: Option<&WeaponRegistry>,
-    terrain: Option<&TerrainDefRegistry>,
+    load: TerrainLoadContext<'_>,
     sprites: Option<&SpriteDefRegistry>,
 ) {
+    let terrain = load.registry;
     ui.heading("Terrain");
     ui.separator();
 
-    load_combo(ui, draft, terrain);
+    load_combo(ui, draft, load);
     name_field(ui, draft);
     kind_row(ui, draft);
     hp_field(ui, draft);
@@ -101,9 +113,9 @@ pub(in crate::egui_shell) fn field_stack(
     }
 }
 
-fn load_combo(ui: &mut egui::Ui, draft: &mut TerrainDraft, terrain: Option<&TerrainDefRegistry>) {
+fn load_combo(ui: &mut egui::Ui, draft: &mut TerrainDraft, load: TerrainLoadContext<'_>) {
     ui.label("Load terrain");
-    let Some(registry) = terrain else {
+    let Some(registry) = load.registry else {
         ui.label("(loading…)");
         return;
     };
@@ -126,7 +138,7 @@ fn load_combo(ui: &mut egui::Ui, draft: &mut TerrainDraft, terrain: Option<&Terr
     if let Some(key) = chosen
         && let Some(def) = registry.def(&key)
     {
-        draft.load_from_def(def);
+        draft.load_from_def(def, terrain_source(load.sources, key));
     }
 }
 

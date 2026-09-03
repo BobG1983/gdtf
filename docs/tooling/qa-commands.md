@@ -803,7 +803,7 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.load_weapon` | Editing + the Weapon tab | Loads a ranged weapon by key into the Weapon draft, through that draft's own `load_weapon` method. [`commands/write/load/commands/weapon.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/weapon.rs) |
 | `editor.load_melee_weapon` | Editing + the MeleeWeapon tab | Loads a melee weapon by key into the MeleeWeapon draft, through that draft's own `load_melee_weapon` method. [`commands/write/load/commands/melee_weapon.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/melee_weapon.rs) |
 | `editor.load_field` | Editing + the Field tab | Loads a field def by key into the Field draft, through that draft's own `load_field` method. [`commands/write/load/commands/field.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/field.rs) |
-| `editor.load_terrain` | Editing + the Terrain tab | Loads a terrain def into the Terrain draft, through that draft's own `load_from_def` method. The key is the hyphenated UUID text `editor.families` answers. A key that is not UUID text, and a key the registry does not hold, come back as `NoSuchKey` carrying that registry's own keys, sorted, with the draft left alone. [`commands/write/load/commands/terrain.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/terrain.rs) |
+| `editor.load_terrain` | Editing + the Terrain tab | Loads a terrain def into the Terrain draft, through that draft's own `load_from_def` method. The key is the hyphenated UUID text `editor.families` answers. A key that is not UUID text, and a key the registry does not hold, come back as `NoSuchKey` carrying that registry's own keys, sorted, with the draft left alone. The load also takes the file the def was read from, so a later `editor.save` rewrites that file. [`commands/write/load/commands/terrain.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/terrain.rs) |
 | `editor.load_prefab` | Editing + the Prefab tab | Opens an authored prefab onto the canvas the way the Prefab tab's own picker does: its grid size and theme onto the session, its painted cells onto the map, and the edit storey clamped into the loaded extent. The arguments are the prefab name and its key, which is the theme's UUID text, the grid size and the spawn role. A name and key no prefab sits under answers `NoSuchPrefab` and writes nothing. [`commands/write/load/commands/prefab.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/prefab.rs) |
 | `editor.save` | Editing | Writes a mode's draft through the same `write_*_in` its save button calls. [`commands/write/save/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save) |
 | `editor.set_field` | Editing + any form tab | Writes one single-value field of the open form's draft, the way that form's own widget writes it. [`commands/write/set_field/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_field) |
@@ -1003,6 +1003,12 @@ holds no cell the caller cannot account for.
 which defaults to the workspace `assets/` and falls back to a temp directory when the
 marker search finds no workspace. Only Prefab takes a `name`, because only the prefab form
 carries its own name field; a name on any other mode is refused rather than dropped.
+
+On the Terrain tab where the write lands depends on where the draft came from. A draft
+filled by `editor.load_terrain` rewrites the file that def was read from, whatever its
+display name and the session theme now say; a draft the tab minted lands in the session
+theme's folder under a stem taken from the display name. `editor.last_save` reports
+whichever path the save wrote.
 
 `MapEditorPlugin` seeds that root, not the QA channel, so it is in the world whether or not
 the listener bound. `editor.save_weighting` and the Injury tab's own Save weighting button

@@ -1,6 +1,6 @@
 //! Terrain definition content family.
 
-use gdtf_assets::{ContentFamily, ContentFileStem};
+use gdtf_assets::{ContentFamily, ContentFileStem, ContentMemberKey};
 use gdtf_battle_sim::terrain::def::{TerrainDef, TerrainDefRegistry};
 
 /// Loads `*.terrain_def.ron` files into [`TerrainDefRegistry`].
@@ -17,7 +17,8 @@ impl ContentFamily for TerrainDefsFamily {
         registry: &mut TerrainDefRegistry,
         _stem: Option<ContentFileStem>,
         def: &TerrainDef,
-    ) {
+    ) -> Option<ContentMemberKey> {
         registry.insert(def.key, def.clone());
+        Some(ContentMemberKey::new((*def.key).to_string()))
     }
 }

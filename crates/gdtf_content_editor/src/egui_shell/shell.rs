@@ -110,6 +110,7 @@ pub(crate) fn editor_egui_ui(
         theme_draft: &mut theme_draft,
         themes: shared.themes.as_deref(),
         terrain_registry: shared.terrain.as_deref(),
+        terrain_sources: shared.terrain_source.as_deref(),
         weapons: shared.weapons.as_deref(),
         textures: &textures,
         prefab: &mut prefab,

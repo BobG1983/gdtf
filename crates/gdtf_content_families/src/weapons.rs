@@ -1,6 +1,6 @@
 //! Ranged weapons content family.
 
-use gdtf_assets::{ContentFamily, ContentFileStem};
+use gdtf_assets::{ContentFamily, ContentFileStem, ContentMemberKey};
 use gdtf_battle_sim::weapon::{WeaponName, WeaponRegistry, WeaponSpec};
 
 /// Loads `*.weapon.ron` files into [`WeaponRegistry`].
@@ -17,8 +17,9 @@ impl ContentFamily for WeaponsFamily {
         registry: &mut WeaponRegistry,
         stem: Option<ContentFileStem>,
         spec: &WeaponSpec,
-    ) {
-        let Some(stem) = stem else { return };
-        registry.insert(WeaponName::new(stem.into_inner()), spec.clone());
+    ) -> Option<ContentMemberKey> {
+        let key = stem?.into_inner();
+        registry.insert(WeaponName::new(key.clone()), spec.clone());
+        Some(ContentMemberKey::new(key))
     }
 }

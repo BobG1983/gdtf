@@ -244,6 +244,12 @@ next launch (or live, via hot-reload — Part 3). The content editor
 (`crates/gdtf_content_editor/src/terrain_form/save.rs` /
 `theme_form/save.rs`).
 
+A def opened in the editor's Terrain tab is saved back over the file it was read
+from, so renaming it, or editing it while the session sits on another theme,
+rewrites that file rather than leaving a second one under the same UUID. A def
+the editor mints instead lands in the session theme's folder, under a stem taken
+from its display name.
+
 ### 1h. `blocks_pathing:` / `blocks_los:` — per-def blocking overrides
 
 Blocking is normally DERIVED from the `sim_kind` (a `Wall` blocks path + sight,
@@ -480,10 +486,13 @@ The load flow, per family:
    `UuidThemeRegistry` (`ThemeUuid` → `UuidThemeDef`,
    `crates/gdtf_battle_sim/src/level/theme_def/registry.rs`). Both are named
    newtypes over the foundation `Registry<K, V>` map
-   (`crates/gdtf_battle_sim/src/foundation/registry/map.rs`).
+   (`crates/gdtf_battle_sim/src/foundation/registry/map.rs`). Beside each one the
+   loader inserts a `ContentSourcePaths<F>` table holding the file every key was
+   read from, keyed by the def's UUID text.
 4. On a genuine folder `Failed` the loader `warn!`s and inserts an EMPTY
-   registry so `Load` always exits with one present (safety net); a
-   battle then fails closed on a missing UUID rather than crashing.
+   registry, and an empty path table beside it, so `Load` always exits with a
+   registry present (safety net); a battle then fails closed on a missing UUID
+   rather than crashing.
 
 Key Rust types:
 

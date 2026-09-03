@@ -135,7 +135,7 @@ fn loading_a_slab_fills_the_cover_hp_box_the_form_draws() {
         40,
         "the case starts from the default cover HP, or the assertion below proves nothing",
     );
-    draft.load_from_def(&def);
+    draft.load_from_def(&def, None);
 
     assert_eq!(
         *draft.cover_hp(),
@@ -161,7 +161,7 @@ fn loading_a_wall_fills_the_slab_hp_a_kind_switch_would_read() {
         50,
         "the case starts from the default slab HP, or the assertion below proves nothing",
     );
-    draft.load_from_def(&def);
+    draft.load_from_def(&def, None);
 
     assert_eq!(
         *draft.slab_hp(),
@@ -181,7 +181,7 @@ fn a_load_takes_the_defs_own_key_and_the_next_save_mints_nothing() {
         "the draft minted a key of its own first, so the load has one to overwrite",
     );
 
-    draft.load_from_def(&def);
+    draft.load_from_def(&def, None);
 
     assert_eq!(
         draft.uuid(),
@@ -302,7 +302,7 @@ fn loading_a_def_of_any_kind_and_saving_it_again_writes_the_same_def() {
     for kind in TerrainPieceKind::ALL {
         let def = filled_def(kind);
         let mut loaded = contrasting_draft();
-        loaded.load_from_def(&def);
+        loaded.load_from_def(&def, None);
 
         let Ok(projected) = draft_to_terrain_def(&loaded, def.key) else {
             unreachable!("a loaded {kind:?} draft must project back (the fixture names a weapon)")

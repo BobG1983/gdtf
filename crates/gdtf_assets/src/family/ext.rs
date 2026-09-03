@@ -8,6 +8,7 @@ use crate::{
         def::ContentFamily,
         handle::ContentFolderHandle,
         report::ContentIntegrityReport,
+        source::ContentSourcePaths,
         systems::{kick_off_content_family, redrive_content_family, resolve_content_family},
     },
 };
@@ -22,6 +23,7 @@ impl ContentFamilyAppExt for App {
     fn register_content_family<F: ContentFamily>(&mut self) -> &mut Self {
         if self.world().get_resource::<AssetServer>().is_none() {
             self.init_resource::<F::Registry>();
+            self.init_resource::<ContentSourcePaths<F>>();
             return self;
         }
         self.init_ron_asset_with_extensions::<F::Spec>(vec![F::EXTENSION]);

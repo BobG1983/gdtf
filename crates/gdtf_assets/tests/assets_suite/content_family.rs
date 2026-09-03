@@ -1,9 +1,11 @@
-//! Content family: mixed folder, fail-closed empty, no partial publish, live rebuild.
-use std::collections::HashMap;
+//! Content family: mixed folder, fail-closed empty, no partial publish, live rebuild,
+//! and the source path recorded beside every registry key.
+use std::{collections::HashMap, path::PathBuf};
 
 use bevy::{asset::Assets, prelude::*, reflect::TypePath};
 use gdtf_assets::{
-    ContentFamily, ContentFamilyAppExt, ContentFileStem, ContentFolderHandle, RonAsset,
+    ContentFamily, ContentFamilyAppExt, ContentFileStem, ContentFolderHandle, ContentMemberKey,
+    ContentSourcePaths, RonAsset,
 };
 use gdtf_test_utils::GdtfUiTestAppBuilder;
 use serde::Deserialize;
@@ -25,9 +27,14 @@ impl ContentFamily for SwatchFamily {
     const EXTENSION: &'static str = "swatch.ron";
     const FOLDER: &'static str = "test/content_family";
 
-    fn insert_member(registry: &mut SwatchRegistry, stem: Option<ContentFileStem>, spec: &Swatch) {
-        let Some(stem) = stem else { return };
-        registry.0.insert(stem.into_inner(), spec.tone);
+    fn insert_member(
+        registry: &mut SwatchRegistry,
+        stem: Option<ContentFileStem>,
+        spec: &Swatch,
+    ) -> Option<ContentMemberKey> {
+        let key = stem?.into_inner();
+        registry.0.insert(key.clone(), spec.tone);
+        Some(ContentMemberKey::new(key))
     }
 }
 
@@ -49,8 +56,13 @@ impl ContentFamily for BadgeFamily {
     const EXTENSION: &'static str = "badge.ron";
     const FOLDER: &'static str = "test/content_family";
 
-    fn insert_member(registry: &mut BadgeRegistry, _stem: Option<ContentFileStem>, spec: &Badge) {
+    fn insert_member(
+        registry: &mut BadgeRegistry,
+        _stem: Option<ContentFileStem>,
+        spec: &Badge,
+    ) -> Option<ContentMemberKey> {
         registry.0.insert(spec.key.clone(), spec.glyph.clone());
+        Some(ContentMemberKey::new(spec.key.clone()))
     }
 }
 
@@ -71,9 +83,14 @@ impl ContentFamily for RelicFamily {
     const EXTENSION: &'static str = "relic.ron";
     const FOLDER: &'static str = "test/content_family_missing";
 
-    fn insert_member(registry: &mut RelicRegistry, stem: Option<ContentFileStem>, spec: &Relic) {
-        let Some(stem) = stem else { return };
-        registry.0.insert(stem.into_inner(), spec.age);
+    fn insert_member(
+        registry: &mut RelicRegistry,
+        stem: Option<ContentFileStem>,
+        spec: &Relic,
+    ) -> Option<ContentMemberKey> {
+        let key = stem?.into_inner();
+        registry.0.insert(key.clone(), spec.age);
+        Some(ContentMemberKey::new(key))
     }
 }
 
@@ -212,6 +229,84 @@ fn modified_member_rebuilds_the_registry_live() {
             .and_then(|registry| registry.0.get("alpha").copied())
             == Some(9)
     });
+}
+
+// Every key the swatch registry holds, so the path table is checked against the real set.
+fn swatch_keys(app: &App) -> Vec<String> {
+    app.world()
+        .get_resource::<SwatchRegistry>()
+        .map(|registry| registry.0.keys().cloned().collect())
+        .unwrap_or_default()
+}
+
+// Whether the path table answers for one key, read without holding a world borrow.
+fn swatch_source(app: &App, key: &str) -> Option<PathBuf> {
+    app.world()
+        .get_resource::<ContentSourcePaths<SwatchFamily>>()
+        .and_then(|sources| sources.path(&ContentMemberKey::new(key.to_owned())))
+        .map(|path| (**path).clone())
+}
+
+#[test]
+fn every_registry_key_answers_the_file_it_was_read_from() {
+    let mut app = real_asset_app();
+    app.register_content_family::<SwatchFamily>();
+    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
+
+    let keys = swatch_keys(&app);
+    assert!(
+        !keys.is_empty(),
+        "the swatch folder holds members, or the walk below checks nothing",
+    );
+
+    let mut seen: Vec<PathBuf> = Vec::new();
+    for key in &keys {
+        let Some(path) = swatch_source(&app, key) else {
+            unreachable!("`{key}` is in the registry, so the path table must answer for it")
+        };
+        let starts_with_key = path
+            .file_name()
+            .map(|name| name.to_string_lossy().starts_with(key.as_str()));
+        assert_eq!(
+            starts_with_key,
+            Some(true),
+            "`{key}` must answer the file its own stem names, got {path:?}",
+        );
+        assert!(
+            !seen.contains(&path),
+            "two keys answered {path:?}; a save through one key would overwrite the other",
+        );
+        seen.push(path);
+    }
+    assert_eq!(
+        swatch_source(&app, "no_such_swatch"),
+        None,
+        "a key no member carries answers nothing, so no caller writes to an invented path",
+    );
+
+    let alpha = app
+        .world()
+        .resource::<AssetServer>()
+        .load::<RonAsset<Swatch>>("test/content_family/alpha.swatch.ron");
+    if let Some(mut asset) = app
+        .world_mut()
+        .resource_mut::<Assets<RonAsset<Swatch>>>()
+        .get_mut(&alpha)
+    {
+        **asset = Swatch { tone: 9 };
+    }
+    gdtf_test_utils::advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<SwatchRegistry>()
+            .and_then(|registry| registry.0.get("alpha").copied())
+            == Some(9)
+    });
+
+    assert!(
+        swatch_source(&app, "alpha").is_some(),
+        "the hot rebuild replaces the path table beside the registry; a rebuild that replaces \
+         only the registry leaves an author saving to a path nothing holds",
+    );
 }
 
 #[test]

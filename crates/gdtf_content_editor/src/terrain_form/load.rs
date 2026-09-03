@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use gdtf_assets::{ContentMemberKey, ContentSourcePath, ContentSourcePaths};
 use gdtf_battle_sim::{
     cover::CoverHp,
     slab::SlabHp,
@@ -9,11 +10,26 @@ use gdtf_battle_sim::{
         TerrainDef, TerrainDefRegistry, TerrainPresenterKind, TerrainSimKind, TerrainUuid,
     },
 };
+use gdtf_content_families::TerrainDefsFamily;
 
 use super::{
     draft::TerrainDraft,
     picks::{FootfallChoice, TerrainKindChoice},
 };
+
+/// The file a terrain def was read from, as the family recorded it under the def's key.
+///
+/// The terrain family keys its source paths by the def's hyphenated UUID text, so both
+/// load sites ask for one the same way.
+#[must_use]
+pub fn terrain_source(
+    sources: Option<&ContentSourcePaths<TerrainDefsFamily>>,
+    key: TerrainUuid,
+) -> Option<ContentSourcePath> {
+    sources?
+        .path(&ContentMemberKey::new((*key).to_string()))
+        .cloned()
+}
 
 /// Every terrain def as the (key, label) row the load picker draws, sorted by display name.
 /// A display name two or more defs share carries that def's key, so no two rows read alike.
@@ -42,7 +58,9 @@ pub fn load_candidates(registry: &TerrainDefRegistry) -> Vec<(TerrainUuid, Strin
 
 impl TerrainDraft {
     /// Fill the draft from an existing terrain def, including on-death.
-    pub fn load_from_def(&mut self, def: &TerrainDef) {
+    ///
+    /// `source` is the file the def was read from, which the next save writes back to.
+    pub fn load_from_def(&mut self, def: &TerrainDef, source: Option<ContentSourcePath>) {
         self.set_display_name((*def.display_name).clone());
         self.set_kind(TerrainKindChoice::from(def.sim_kind.kind()));
         match &def.sim_kind {
@@ -106,5 +124,6 @@ impl TerrainDraft {
         self.set_leaves_behind(def.leaves_behind.clone());
         self.replace_on_death(def.on_death.clone());
         self.set_uuid(Some(def.key));
+        self.set_source(source);
     }
 }

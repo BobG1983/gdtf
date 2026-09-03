@@ -134,7 +134,7 @@ fn emplacement_draft_projects_serializes_and_registers() {
     );
 
     let mut opened = TerrainDraft::default();
-    opened.load_from_def(&reloaded);
+    opened.load_from_def(&reloaded, None);
     assert_eq!(
         opened.entry_sides(),
         sides.as_slice(),

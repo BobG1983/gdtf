@@ -1,6 +1,6 @@
 //! Sprite definition content family.
 
-use gdtf_assets::{ContentFamily, ContentFileStem};
+use gdtf_assets::{ContentFamily, ContentFileStem, ContentMemberKey};
 
 use super::{
     def::SpriteDef,
@@ -21,8 +21,9 @@ impl ContentFamily for SpriteDefsFamily {
         registry: &mut SpriteDefRegistry,
         stem: Option<ContentFileStem>,
         def: &SpriteDef,
-    ) {
-        let Some(stem) = stem else { return };
-        registry.insert(SpriteName::new(stem.into_inner()), def.clone());
+    ) -> Option<ContentMemberKey> {
+        let key = stem?.into_inner();
+        registry.insert(SpriteName::new(key.clone()), def.clone());
+        Some(ContentMemberKey::new(key))
     }
 }

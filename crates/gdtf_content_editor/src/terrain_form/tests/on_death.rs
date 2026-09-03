@@ -56,7 +56,7 @@ fn save_preserves_every_authored_on_death_effect_in_order() {
     };
 
     let mut draft = TerrainDraft::default();
-    draft.load_from_def(&def);
+    draft.load_from_def(&def, None);
     let Ok(saved) = draft_to_terrain_def(&draft, def.key) else {
         unreachable!("a loaded Cover draft always projects")
     };

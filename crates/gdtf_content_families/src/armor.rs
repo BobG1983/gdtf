@@ -1,6 +1,6 @@
 //! Armor content family.
 
-use gdtf_assets::{ContentFamily, ContentFileStem};
+use gdtf_assets::{ContentFamily, ContentFileStem, ContentMemberKey};
 use gdtf_battle_sim::armor::{ArmorName, ArmorRegistry, ArmorSpec};
 
 /// Loads `*.armor.ron` files into [`ArmorRegistry`].
@@ -17,8 +17,9 @@ impl ContentFamily for ArmorFamily {
         registry: &mut ArmorRegistry,
         stem: Option<ContentFileStem>,
         spec: &ArmorSpec,
-    ) {
-        let Some(stem) = stem else { return };
-        registry.insert(ArmorName::new(stem.into_inner()), *spec);
+    ) -> Option<ContentMemberKey> {
+        let key = stem?.into_inner();
+        registry.insert(ArmorName::new(key.clone()), *spec);
+        Some(ContentMemberKey::new(key))
     }
 }

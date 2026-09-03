@@ -1,7 +1,9 @@
 //! `editor.load_terrain` fills the Terrain draft from the terrain def registry.
 
 use bevy::prelude::*;
+use gdtf_assets::ContentSourcePaths;
 use gdtf_battle_sim::terrain::def::TerrainDefRegistry;
+use gdtf_content_families::TerrainDefsFamily;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_command::{
     command::QaCommand,
@@ -86,6 +88,7 @@ impl QaCommand for EditorLoadTerrain {
 fn handle_editor_load_terrain(
     draft: Option<ResMut<TerrainDraft>>,
     registry: Option<Res<TerrainDefRegistry>>,
+    sources: Option<Res<ContentSourcePaths<TerrainDefsFamily>>>,
     mut queue: ResMut<PendingQueue<CommandCall<EditorLoadTerrain>>>,
 ) {
     if queue.is_empty() {
@@ -98,7 +101,7 @@ fn handle_editor_load_terrain(
         return;
     };
     for (args, responder) in take_calls::<EditorLoadTerrain>(&mut queue) {
-        let outcome = match load_terrain(&mut draft, &registry, &args.key) {
+        let outcome = match load_terrain(&mut draft, &registry, sources.as_deref(), &args.key) {
             KeyLookup::Loaded => EditorLoadOutcomeNet::Loaded { key: args.key },
             KeyLookup::NoSuchKey(known) => EditorLoadOutcomeNet::NoSuchKey {
                 key: args.key,
