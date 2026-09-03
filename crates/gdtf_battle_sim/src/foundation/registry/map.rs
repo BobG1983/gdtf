@@ -20,6 +20,11 @@ impl<K: Eq + Hash, V> Registry<K, V> {
         self.0.insert(key, value)
     }
 
+    /// Take the value for `key` out; returns it if it was there.
+    pub fn remove(&mut self, key: &K) -> Option<V> {
+        self.0.remove(key)
+    }
+
     /// Borrow the value for `key`.
     #[must_use]
     pub fn get(&self, key: &K) -> Option<&V> {

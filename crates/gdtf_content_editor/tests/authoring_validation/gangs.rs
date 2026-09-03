@@ -1,12 +1,16 @@
 //! the GANG equipment-refs edge joins the editor's authoring-time
+use std::path::Path;
+
 use bevy::asset::{AssetEvent, AssetServer, Assets};
 use gdtf_assets::{
-    ContentFamily, ContentFolderHandle, ContentIntegrityReport, ReferenceKeyScheme, RonAsset,
+    ContentFamily, ContentFinding, ContentFolderHandle, ContentIntegrityReport, ContentSourcePaths,
+    ReferenceKeyScheme, RonAsset,
 };
 use gdtf_battle_sim::{
-    ganger::GangRoster,
+    ganger::{GangName, GangRoster},
     weapon::{FISTS_KEY, WeaponName},
 };
+use gdtf_content_editor::gang_file_name;
 use gdtf_content_families::GangsFamily;
 use gdtf_test_utils::advance_until;
 
@@ -149,5 +153,67 @@ fn gang_hot_edit_rearms_validation_and_republishes_current_findings() {
         "the gang re-arm must re-run EVERY registered check onto the one report — the theme's \
          untouched dangling default_floor must be re-reported; report: {:?}",
         report.findings(),
+    );
+}
+
+#[test]
+fn a_dangling_gang_weapon_ref_names_the_gang_record_and_its_source_file() {
+    let mut app = editor_app_on_fixture_root();
+    advance_to_published(&mut app);
+
+    let world = app.world();
+    let report = world.get_resource::<ContentIntegrityReport>();
+    assert!(
+        report.is_some(),
+        "the ContentIntegrityReport resource must exist in the editor app",
+    );
+    let Some(report) = report else { return };
+
+    let referring = report.findings().iter().find_map(|finding| match finding {
+        ContentFinding::DanglingRef {
+            referring_record,
+            target,
+            family,
+            ..
+        } if **target == *DANGLING_WEAPON && **family == *"WeaponRegistry" => {
+            Some(referring_record.clone())
+        }
+        _ => None,
+    });
+    assert!(
+        referring.is_some(),
+        "the gang member's dangling weapon key must be reported; report: {:?}",
+        report.findings(),
+    );
+    let Some(referring) = referring else { return };
+
+    assert_eq!(
+        &*referring.family, "GangRegistry",
+        "the referring record must name the gang registry",
+    );
+    assert_eq!(
+        &*referring.key, FIXTURE_GANG_STEM,
+        "the referring record must carry the key GangsFamily::insert_member returned",
+    );
+    assert_eq!(
+        &*referring.field, "members[].weapon",
+        "the referring record must name the field holding the reference",
+    );
+
+    let sources = world.get_resource::<ContentSourcePaths<GangsFamily>>();
+    assert!(
+        sources.is_some(),
+        "the gangs family must publish its source paths beside its registry",
+    );
+    let Some(sources) = sources else { return };
+
+    let expected = Path::new(GangsFamily::FOLDER)
+        .join(gang_file_name(&GangName::new(FIXTURE_GANG_STEM.to_owned())));
+    let found = sources.path(&referring.key);
+    assert_eq!(
+        found.map(|path| (**path).clone()),
+        Some(expected.clone()),
+        "the referring record's key must resolve to the gang's source file `{}`",
+        expected.display(),
     );
 }

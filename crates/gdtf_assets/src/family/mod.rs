@@ -14,8 +14,8 @@ pub use handle::ContentFolderHandle;
 pub use report::{
     ContentChecksComplete, ContentFinding, ContentIntegrityReport, ContentValidationAppExt,
     ContentValidationDone, ContentValidationSet, FindingDetail, FindingFamily, FindingReferrer,
-    FindingTarget, ReferenceKeyScheme, mark_content_checks_complete,
-    publish_content_integrity_report,
+    FindingTarget, ReferenceField, ReferenceKeyScheme, ReferringRecord,
+    mark_content_checks_complete, publish_content_integrity_report,
 };
 pub use salvage::{
     MalformedMember, RonFolderSalvage, RonSalvagePoll, SalvageFolder, SalvageMemberPath,

@@ -1,0 +1,11 @@
+// test fixture — a prefab whose theme RESOLVES against this root's fixture theme, and
+// whose one placement names a terrain UUID no def in this root defines. Only the
+// placement edge dangles, so the editor's prefab check raises exactly one finding here.
+(
+    theme: "00000000-0000-0000-0000-0630000000a1",  // the fixture theme's key — RESOLVES
+    size: (width: 3, height: 3, levels: 1),
+    placements: [
+        // DANGLING TerrainUuid — no def in this root carries this key
+        (piece: "00000000-0000-0000-0000-063000000f01", at: (cell: (x: 1, y: 1), level: 0)),
+    ],
+)

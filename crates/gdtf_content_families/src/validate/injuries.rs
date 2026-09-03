@@ -2,8 +2,8 @@
 
 use bevy::prelude::{Assets, Res, ResMut};
 use gdtf_assets::{
-    ContentFinding, ContentIntegrityReport, FindingFamily, FindingReferrer, FindingTarget,
-    ReferenceKeyScheme, RonAsset,
+    ContentFinding, ContentIntegrityReport, ContentMemberKey, FindingFamily, FindingReferrer,
+    FindingTarget, ReferenceField, ReferenceKeyScheme, ReferringRecord, RonAsset,
 };
 use gdtf_battle_sim::{
     injuries::{InjuryRegistry, InjuryWeighting},
@@ -28,13 +28,21 @@ pub fn check_injury_weighting_refs(
             for row in rows {
                 if !injuries.contains(&row.injury) {
                     report.record(ContentFinding::DanglingRef {
-                        referrer: FindingReferrer::new(format!(
+                        referrer:         FindingReferrer::new(format!(
                             "injury weighting `{:?}` ({:?} {severity:?} bucket)",
                             weighting.category, weighting.context,
                         )),
-                        target:   FindingTarget::new((*row.injury).clone()),
-                        family:   FindingFamily::new("InjuryRegistry".to_owned()),
-                        scheme:   ReferenceKeyScheme::FileStem,
+                        referring_record: ReferringRecord::new(
+                            FindingFamily::new("InjuryWeighting".to_owned()),
+                            ContentMemberKey::new(format!(
+                                "{:?}/{:?}",
+                                weighting.category, weighting.context,
+                            )),
+                            ReferenceField::new(format!("{severity:?}[].injury")),
+                        ),
+                        target:           FindingTarget::new((*row.injury).clone()),
+                        family:           FindingFamily::new("InjuryRegistry".to_owned()),
+                        scheme:           ReferenceKeyScheme::FileStem,
                     });
                 }
             }

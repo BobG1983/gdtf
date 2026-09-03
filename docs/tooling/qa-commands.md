@@ -1079,12 +1079,13 @@ The editor has two conditions. `ChecksComplete` comes true once `ContentChecksCo
 in the world, which is the same marker `editor.validation` reports. `RegistryRearmed` names
 one of nine content families — Weapon, MeleeWeapon, Armor, Gang, Terrain, Theme, Injury,
 Sprite and Attachment, spelled as the mode tabs are — and comes true when that family's
-registry changes after the call was parked. Those nine are the registries validation watches
+registry changes after the call was parked. Validation watches all nine
 ([`validate/rearm.rs`](../../crates/gdtf_content_editor/src/validate/rearm.rs)), so a rearm
-of the validation pass is what a wait on one of them sees. Prefab is not one, because the
-map canvas owns no registry, and neither is Field, because `FieldDefRegistry` is unwatched
-and a Field write rearms nothing. A condition that never comes true answers `Timeout` and
-leaves the connection open, never a refusal and never an "unsatisfied" reply.
+of the validation pass is what a wait on one of them sees. Validation also watches
+`PrefabRegistry`, which no wait condition names. Field is absent for a different reason:
+`FieldDefRegistry` is unwatched, so a Field write rearms nothing. A condition that never
+comes true answers `Timeout` and leaves the connection open, never a refusal and never an
+"unsatisfied" reply.
 
 ## Why the shape is what it is
 

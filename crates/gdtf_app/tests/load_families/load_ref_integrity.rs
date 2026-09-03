@@ -33,6 +33,7 @@ fn has_dangling(
             finding,
             ContentFinding::DanglingRef {
                 referrer: r,
+                referring_record: _,
                 target: t,
                 family: f,
                 scheme: s,
@@ -66,6 +67,7 @@ fn dangling_referrer(
     findings.iter().find_map(|finding| match finding {
         ContentFinding::DanglingRef {
             referrer,
+            referring_record: _,
             target: found_target,
             family: found_family,
             scheme: found_scheme,

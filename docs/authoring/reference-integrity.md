@@ -4,10 +4,11 @@ How GDTF validates the authored content graph, what a finding looks like, and
 what happens to a malformed file or a dangling key ( Q3 ruling
 2026-07-02). This is the authoring-facing contract. The HOST-AGNOSTIC per-edge
 checks (gang equipment, weapon attachments, theme/emplacement terrain, injury
-weighting, a terrain def's own view coverage, its `leaves_behind`, and every
-`views[].sprite` key it names, shared by game and editor) live at
-`crates/gdtf_content_families/src/validate/`; the game-bespoke edges
-(situation, prefabs) and the game's registration at
+weighting, a terrain def's own view coverage, its `leaves_behind`, every
+`views[].sprite` key it names, and a prefab's theme and placed terrain UUIDs,
+shared by game and editor) live at
+`crates/gdtf_content_families/src/validate/`; the game-bespoke situation edges
+and the game's registration at
 `crates/gdtf_app/src/states/load/systems/validate/mod.rs`; the editor's
 registration at `crates/gdtf_content_editor/src/validate/`; and the shared
 report/salvage vocabulary at `crates/gdtf_assets/src/family/report/` /
@@ -30,8 +31,10 @@ The **content editor runs the same pass** over the edges it loads —
 theme → terrain UUIDs, emplacement → mounted-weapon keys, the gang
 equipment keys (weapon / armor / melee incl. the implicit `fists` default),
 the injury-weighting keys, each terrain def's own view coverage, its
-`leaves_behind` → terrain-def or sprite-def key, and every `views[].sprite` →
-sprite-def key — and RE-ARMS it on every hot-reload of a watched registry: the
+`leaves_behind` → terrain-def or sprite-def key, every `views[].sprite` →
+sprite-def key, the prefab `theme` → theme UUID, and every prefab
+`placements[].piece` → terrain UUID — and RE-ARMS it on every hot-reload of a
+watched registry: the
 report is reset, re-checked against the current content, and re-published.
 The watch set spans every registry the registered checks read, so an edit to
 EITHER side of an edge — the gang file OR the weapons/armor/melee folder it
@@ -99,8 +102,8 @@ graph integrity is CI-enforced, magnitudes never are).
 
 A `.ron` that fails to parse used to fail its whole folder — Bevy's
 `load_folder` aborts on the first bad member — and the folder then resolved to
-an EMPTY registry: every sibling vanished for one typo. Since the
-resolve SALVAGES the folder per-file: every well-formed sibling still loads,
+an EMPTY registry: every sibling vanished for one typo. The resolve now SALVAGES
+the folder per-file: every well-formed sibling still loads,
 and the malformed file alone fails, loudly, as a `malformed file:` finding on
 the same report. A folder that cannot be enumerated at all (a missing
 directory) still fails closed to the empty registry. The content editor
@@ -138,10 +141,9 @@ registries:
    registries its registered checks read, so an unloaded one would hold the
    whole window shut (and an empty stand-in would false-fail every key).
 
-Only game-bespoke edges (families the editor never loads — situations,
-prefabs) live in the game crate's `validate/` instead (the injuries edge
-moved to the shared crate in when the editor started loading the
-injuries family).
+Only game-bespoke edges (families the editor never loads — situations) live in
+the game crate's `validate/` instead. The injuries edge moved to the shared
+crate when the editor started loading the injuries family.
 
 ## Fixing a finding
 

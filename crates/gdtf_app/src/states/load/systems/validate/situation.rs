@@ -1,8 +1,8 @@
 //! Situation outbound reference edges — gang, theme, terrain, and field keys.
 use bevy::prelude::{Res, ResMut};
 use gdtf_assets::{
-    ContentFinding, ContentIntegrityReport, FindingFamily, FindingReferrer, FindingTarget,
-    ReferenceKeyScheme,
+    ContentFinding, ContentIntegrityReport, ContentMemberKey, FindingFamily, FindingReferrer,
+    FindingTarget, ReferenceField, ReferenceKeyScheme, ReferringRecord,
 };
 use gdtf_battle_sim::{
     effects::fields::FieldDefRegistry, ganger::GangRegistry, level::UuidThemeRegistry,
@@ -10,6 +10,15 @@ use gdtf_battle_sim::{
 };
 
 use crate::states::load::{plugin::SITUATION_RON_PATH, resources::LoadedSituation};
+
+// The situation loads by hardcoded path, so its referring record is that path.
+fn situation_record(field: &str) -> ReferringRecord {
+    ReferringRecord::new(
+        FindingFamily::new("LoadedSituation".to_owned()),
+        ContentMemberKey::new(SITUATION_RON_PATH.to_owned()),
+        ReferenceField::new(field.to_owned()),
+    )
+}
 
 pub(super) fn check_situation_gang_refs(
     situation: Res<LoadedSituation>,
@@ -29,25 +38,27 @@ pub(super) fn check_situation_gang_refs(
     for (gang, member) in combatant_refs {
         let Some(roster) = gangs.roster(gang) else {
             report.record(ContentFinding::DanglingRef {
-                referrer: FindingReferrer::new(format!(
+                referrer:         FindingReferrer::new(format!(
                     "{SITUATION_RON_PATH}: situation ganger `{}`",
                     **member,
                 )),
-                target:   FindingTarget::new((**gang).clone()),
-                family:   FindingFamily::new("GangRegistry".to_owned()),
-                scheme:   ReferenceKeyScheme::FileStem,
+                referring_record: situation_record("gangers[].gang"),
+                target:           FindingTarget::new((**gang).clone()),
+                family:           FindingFamily::new("GangRegistry".to_owned()),
+                scheme:           ReferenceKeyScheme::FileStem,
             });
             continue;
         };
         if roster.member(member).is_none() {
             report.record(ContentFinding::DanglingRef {
-                referrer: FindingReferrer::new(format!(
+                referrer:         FindingReferrer::new(format!(
                     "{SITUATION_RON_PATH}: situation ganger of gang `{}`",
                     **gang,
                 )),
-                target:   FindingTarget::new((**member).clone()),
-                family:   FindingFamily::new(format!("GangRegistry roster `{}`", **gang)),
-                scheme:   ReferenceKeyScheme::DisplayName,
+                referring_record: situation_record("gangers[].member"),
+                target:           FindingTarget::new((**member).clone()),
+                family:           FindingFamily::new(format!("GangRegistry roster `{}`", **gang)),
+                scheme:           ReferenceKeyScheme::DisplayName,
             });
         }
     }
@@ -64,10 +75,11 @@ pub(super) fn check_situation_theme_ref(
     }
     if themes.def(&situation.theme).is_none() {
         report.record(ContentFinding::DanglingRef {
-            referrer: FindingReferrer::new(format!("{SITUATION_RON_PATH}: theme")),
-            target:   FindingTarget::new(situation.theme.to_string()),
-            family:   FindingFamily::new("UuidThemeRegistry".to_owned()),
-            scheme:   ReferenceKeyScheme::Uuid,
+            referrer:         FindingReferrer::new(format!("{SITUATION_RON_PATH}: theme")),
+            referring_record: situation_record("theme"),
+            target:           FindingTarget::new(situation.theme.to_string()),
+            family:           FindingFamily::new("UuidThemeRegistry".to_owned()),
+            scheme:           ReferenceKeyScheme::Uuid,
         });
     }
 }
@@ -97,19 +109,21 @@ pub(super) fn check_situation_terrain_refs(
         seen.push(piece);
         if terrain.def(&piece).is_none() {
             report.record(ContentFinding::DanglingRef {
-                referrer: FindingReferrer::new(format!("{SITUATION_RON_PATH}: {list}")),
-                target:   FindingTarget::new(piece.to_string()),
-                family:   FindingFamily::new("TerrainDefRegistry".to_owned()),
-                scheme:   ReferenceKeyScheme::Uuid,
+                referrer:         FindingReferrer::new(format!("{SITUATION_RON_PATH}: {list}")),
+                referring_record: situation_record(&format!("{list}[].piece")),
+                target:           FindingTarget::new(piece.to_string()),
+                family:           FindingFamily::new("TerrainDefRegistry".to_owned()),
+                scheme:           ReferenceKeyScheme::Uuid,
             });
         }
     }
     if !*situation.default_floor.is_nil() && terrain.def(&situation.default_floor).is_none() {
         report.record(ContentFinding::DanglingRef {
-            referrer: FindingReferrer::new(format!("{SITUATION_RON_PATH}: default_floor")),
-            target:   FindingTarget::new(situation.default_floor.to_string()),
-            family:   FindingFamily::new("TerrainDefRegistry".to_owned()),
-            scheme:   ReferenceKeyScheme::Uuid,
+            referrer:         FindingReferrer::new(format!("{SITUATION_RON_PATH}: default_floor")),
+            referring_record: situation_record("default_floor"),
+            target:           FindingTarget::new(situation.default_floor.to_string()),
+            family:           FindingFamily::new("TerrainDefRegistry".to_owned()),
+            scheme:           ReferenceKeyScheme::Uuid,
         });
     }
 }
@@ -122,10 +136,11 @@ pub(super) fn check_situation_field_refs(
     for spawn in &situation.fields {
         if fields.def(&spawn.field).is_none() {
             report.record(ContentFinding::DanglingRef {
-                referrer: FindingReferrer::new(format!("{SITUATION_RON_PATH}: fields")),
-                target:   FindingTarget::new((*spawn.field).clone()),
-                family:   FindingFamily::new("FieldDefRegistry".to_owned()),
-                scheme:   ReferenceKeyScheme::FileStem,
+                referrer:         FindingReferrer::new(format!("{SITUATION_RON_PATH}: fields")),
+                referring_record: situation_record("fields[].field"),
+                target:           FindingTarget::new((*spawn.field).clone()),
+                family:           FindingFamily::new("FieldDefRegistry".to_owned()),
+                scheme:           ReferenceKeyScheme::FileStem,
             });
         }
     }

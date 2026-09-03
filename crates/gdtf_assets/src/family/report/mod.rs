@@ -7,8 +7,8 @@ mod pass;
 mod test;
 
 pub use finding::{
-    ContentFinding, FindingDetail, FindingFamily, FindingReferrer, FindingTarget,
-    ReferenceKeyScheme,
+    ContentFinding, FindingDetail, FindingFamily, FindingReferrer, FindingTarget, ReferenceField,
+    ReferenceKeyScheme, ReferringRecord,
 };
 pub use pass::{
     ContentChecksComplete, ContentIntegrityReport, ContentValidationAppExt, ContentValidationDone,

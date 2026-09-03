@@ -17,11 +17,11 @@ pub use family::{
     ContentFolderHandle, ContentIntegrityReport, ContentMemberKey, ContentSourcePath,
     ContentSourcePaths, ContentValidationAppExt, ContentValidationDone, ContentValidationSet,
     FindingDetail, FindingFamily, FindingReferrer, FindingTarget, MalformedMember, PublishedFamily,
-    ReferenceKeyScheme, RonFolderSalvage, RonSalvagePoll, SalvageFolder, SalvageMemberPath,
-    SalvagedMember, begin_ron_folder_salvage, kick_off_content_family,
-    mark_content_checks_complete, poll_ron_folder_salvage, publish_content_integrity_report,
-    redrive_content_family, report_malformed_members, resolve_content_family,
-    salvage_members_for_rebuild,
+    ReferenceField, ReferenceKeyScheme, ReferringRecord, RonFolderSalvage, RonSalvagePoll,
+    SalvageFolder, SalvageMemberPath, SalvagedMember, begin_ron_folder_salvage,
+    kick_off_content_family, mark_content_checks_complete, poll_ron_folder_salvage,
+    publish_content_integrity_report, redrive_content_family, report_malformed_members,
+    resolve_content_family, salvage_members_for_rebuild,
 };
 pub use hot::{
     HotRonAppExt, HotRonChain, HotRonFallbackFn, HotRonHandle, HotRonMapFn, HotRonPath,

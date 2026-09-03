@@ -39,6 +39,8 @@ impl Plugin for MapEditorPlugin {
         app.init_state::<EditorState>();
         register_load(app);
         register_validation(app);
+        #[cfg(debug_assertions)]
+        crate::delete::register_delete(app);
         app.init_resource::<LastSaveRecord>();
         // The one root a save writes under, whether or not the QA channel bound a listener.
         #[cfg(debug_assertions)]

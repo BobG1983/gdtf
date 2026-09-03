@@ -2,6 +2,8 @@
 
 use bevy::prelude::Deref;
 
+use crate::family::def::ContentMemberKey;
+
 /// Where a bad reference was authored (file / key context).
 #[derive(Deref, Debug, Clone, PartialEq, Eq)]
 pub struct FindingReferrer(String);
@@ -35,6 +37,37 @@ impl FindingFamily {
     #[must_use]
     pub const fn new(family: String) -> Self {
         Self(family)
+    }
+}
+
+/// Name of the field on the referring record that holds the reference.
+#[derive(Deref, Debug, Clone, PartialEq, Eq)]
+pub struct ReferenceField(String);
+
+impl ReferenceField {
+    /// Wrap a field name.
+    #[must_use]
+    pub const fn new(field: String) -> Self {
+        Self(field)
+    }
+}
+
+/// The record that holds a reference, named so a rewrite can find its file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReferringRecord {
+    /// Family the referring record belongs to.
+    pub family: FindingFamily,
+    /// Key the referring record was inserted under.
+    pub key:    ContentMemberKey,
+    /// Field on that record holding the reference.
+    pub field:  ReferenceField,
+}
+
+impl ReferringRecord {
+    /// Name a referring record by family, key and field.
+    #[must_use]
+    pub const fn new(family: FindingFamily, key: ContentMemberKey, field: ReferenceField) -> Self {
+        Self { family, key, field }
     }
 }
 
@@ -78,13 +111,15 @@ pub enum ContentFinding {
     /// Reference points at a missing member.
     DanglingRef {
         /// Authoring context.
-        referrer: FindingReferrer,
+        referrer:         FindingReferrer,
+        /// The record holding the reference, by family, key and field.
+        referring_record: ReferringRecord,
         /// Missing key.
-        target:   FindingTarget,
+        target:           FindingTarget,
         /// Registry family.
-        family:   FindingFamily,
+        family:           FindingFamily,
         /// Key scheme used.
-        scheme:   ReferenceKeyScheme,
+        scheme:           ReferenceKeyScheme,
     },
     /// A single file failed to load; siblings may still be ok.
     MalformedFile {
@@ -116,6 +151,7 @@ impl core::fmt::Display for ContentFinding {
         match self {
             Self::DanglingRef {
                 referrer,
+                referring_record: _,
                 target,
                 family,
                 scheme,

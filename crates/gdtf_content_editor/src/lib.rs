@@ -6,6 +6,8 @@ mod attachment_form;
 mod camera;
 mod canvas;
 mod connector_pairing;
+#[cfg(debug_assertions)]
+mod delete;
 mod editor_map;
 mod egui_shell;
 mod field_form;
@@ -46,6 +48,11 @@ pub use attachment_form::{
 pub use attachment_form::{write_attachment, write_attachment_in};
 pub use canvas::{CanvasZoom, CurrentEditLevel, LevelStep};
 pub use connector_pairing::{PairingOutcome, apply_placement_with_pairing, is_stair};
+#[cfg(debug_assertions)]
+pub use delete::{
+    DeleteEntry, DeleteOutcome, DeleteRefusal, DeleteRegistry, DeleteRequest, RemoveRecordFile,
+    RestoreRecord, TakeRecord, TakenRecord,
+};
 pub use editor_map::{EditorMap, PaintedPiece};
 pub use egui_shell::prefab::size_fields::SizeFieldSpans;
 pub use field_form::{FieldDraft, draft_to_field, field_file_name, field_save_path_in};

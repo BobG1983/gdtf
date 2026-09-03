@@ -2,8 +2,8 @@
 
 use bevy::prelude::{Res, ResMut};
 use gdtf_assets::{
-    ContentFinding, ContentIntegrityReport, FindingFamily, FindingReferrer, FindingTarget,
-    ReferenceKeyScheme,
+    ContentFinding, ContentIntegrityReport, ContentMemberKey, FindingFamily, FindingReferrer,
+    FindingTarget, ReferenceField, ReferenceKeyScheme, ReferringRecord,
 };
 use gdtf_battle_sim::terrain::def::TerrainDefRegistry;
 
@@ -21,13 +21,18 @@ pub fn check_terrain_view_sprite_refs(
                 continue;
             }
             report.record(ContentFinding::DanglingRef {
-                referrer: FindingReferrer::new(format!(
+                referrer:         FindingReferrer::new(format!(
                     "terrain def `{}` ({}) view {:?}",
                     *def.display_name, **key, row.view,
                 )),
-                target:   FindingTarget::new((*row.sprite).clone()),
-                family:   FindingFamily::new("SpriteDefRegistry".to_owned()),
-                scheme:   ReferenceKeyScheme::FileStem,
+                referring_record: ReferringRecord::new(
+                    FindingFamily::new("TerrainDefRegistry".to_owned()),
+                    ContentMemberKey::new((**key).to_string()),
+                    ReferenceField::new("views[].sprite".to_owned()),
+                ),
+                target:           FindingTarget::new((*row.sprite).clone()),
+                family:           FindingFamily::new("SpriteDefRegistry".to_owned()),
+                scheme:           ReferenceKeyScheme::FileStem,
             });
         }
     }

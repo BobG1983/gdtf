@@ -9,7 +9,7 @@ use gdtf_battle_sim::{
     equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::InjuryRegistry,
-    level::UuidThemeRegistry,
+    level::{PrefabRegistry, UuidThemeRegistry},
     terrain::def::TerrainDefRegistry,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
@@ -27,6 +27,7 @@ pub(super) struct WatchedRegistries<'w> {
     injuries:      Option<Res<'w, InjuryRegistry>>,
     sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
     attachments:   Option<Res<'w, AttachmentRegistry>>,
+    prefabs:       Option<Res<'w, PrefabRegistry>>,
 }
 
 impl WatchedRegistries<'_> {
@@ -52,6 +53,7 @@ impl WatchedRegistries<'_> {
                 .attachments
                 .as_ref()
                 .is_some_and(DetectChanges::is_changed)
+            || self.prefabs.as_ref().is_some_and(DetectChanges::is_changed)
     }
 }
 
