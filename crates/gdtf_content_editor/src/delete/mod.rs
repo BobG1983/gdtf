@@ -12,7 +12,7 @@ mod test;
 pub(crate) use offered::entries_offered_on;
 pub use registry::{
     DeleteEntry, DeleteRegistry, DeleteScreen, RecordFilePath, RestoreRecord, TakeRecord,
-    TakenRecord,
+    TakenRecord, take_matching_assets,
 };
 pub use request::{DeleteOutcome, DeleteRefusal, DeleteRequest};
 pub(crate) use systems::register_delete;

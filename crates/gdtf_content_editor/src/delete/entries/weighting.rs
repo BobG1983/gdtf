@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
 use gdtf_content_families::injuries::weighting_key_parts;
 
 use crate::{
-    delete::registry::{DeleteEntry, DeleteScreen},
+    delete::registry::{DeleteEntry, DeleteScreen, take_matching_assets},
     injury_form::weighting_save_path_in,
     mode::{EditorMode, InjurySubTab},
 };
@@ -98,18 +98,12 @@ fn take_authored(
     category: InjuryCategory,
     context: DamageContext,
 ) -> Vec<InjuryWeighting> {
-    let ids: Vec<_> = assets
-        .iter()
-        .filter(|(_id, weighting)| weighting.category == category && weighting.context == context)
-        .map(|(id, _weighting)| id)
-        .collect();
-    let mut taken = Vec::new();
-    for id in ids {
-        if let Some(asset) = assets.remove(id) {
-            taken.push((*asset).clone());
-        }
-    }
-    taken
+    take_matching_assets(assets, |weighting| {
+        weighting.category == category && weighting.context == context
+    })
+    .iter()
+    .map(|asset| (**asset).clone())
+    .collect()
 }
 
 // Put both halves back, so a refused delete leaves the world as it found it.

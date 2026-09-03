@@ -1,9 +1,10 @@
 //! The weighting delete resolves its own file, and taking the table out re-arms validation.
 
-use gdtf_assets::{ContentValidationDone, FindingFamily};
+use bevy::asset::Assets;
+use gdtf_assets::{ContentValidationDone, FindingFamily, RonAsset};
 use gdtf_battle_sim::{
     armor::InjuryCategory,
-    injuries::{DamageContext, InjuryTables},
+    injuries::{DamageContext, InjuryTables, InjuryWeighting},
     severity::Severity,
 };
 use gdtf_content_editor::{
@@ -113,6 +114,14 @@ fn deleting_a_weighting_table_takes_its_buckets_out_and_re_arms_validation() {
             .table_for_category(CATEGORY, CONTEXT, Severity::Minor)
             .is_none(),
         "the deleted table's buckets must stay out of InjuryTables",
+    );
+    assert!(
+        app.world()
+            .resource::<Assets<RonAsset<InjuryWeighting>>>()
+            .iter()
+            .all(|(_id, weighting)| weighting.category != CATEGORY || weighting.context != CONTEXT),
+        "the authored asset must go with the buckets — a stale handle leaves the reference \
+         check reading a table whose file and record are already gone",
     );
     assert!(
         !file.exists(),

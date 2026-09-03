@@ -2,7 +2,10 @@
 
 use std::any::Any;
 
-use bevy::prelude::{Resource, World};
+use bevy::{
+    asset::{Asset, Assets},
+    prelude::{Resource, World},
+};
 use gdtf_assets::{ContentMemberKey, ContentSourcePath, FindingFamily};
 
 use crate::mode::{EditorMode, InjurySubTab};
@@ -21,6 +24,26 @@ pub type RestoreRecord =
 /// Answers the asset-root-relative file the record under a key was read from.
 pub type RecordFilePath =
     Box<dyn Fn(&World, &ContentMemberKey) -> Option<ContentSourcePath> + Send + Sync + 'static>;
+
+/// Take every asset the predicate matches out of the store, returning them in registration order.
+#[must_use]
+pub fn take_matching_assets<T: Asset>(
+    assets: &mut Assets<T>,
+    matches: impl Fn(&T) -> bool,
+) -> Vec<T> {
+    let ids: Vec<_> = assets
+        .iter()
+        .filter(|(_id, asset)| matches(asset))
+        .map(|(id, _asset)| id)
+        .collect();
+    let mut taken = Vec::new();
+    for id in ids {
+        if let Some(asset) = assets.remove(id) {
+            taken.push(asset);
+        }
+    }
+    taken
+}
 
 /// Where the editor offers one delete: a mode tab, and a sub-tab inside it.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

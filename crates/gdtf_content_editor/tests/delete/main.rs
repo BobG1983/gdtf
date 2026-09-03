@@ -6,4 +6,5 @@ mod labels;
 mod no_entry;
 mod prefab;
 mod removed;
+mod take_matching;
 mod weighting;
