@@ -117,6 +117,9 @@ pub(crate) const EDITOR_WEIGHTING: &str = "editor.weighting";
 /// The weighting-table save the editor host publishes.
 pub(crate) const EDITOR_SAVE_WEIGHTING: &str = "editor.save_weighting";
 
+/// The record delete the editor host publishes.
+pub(crate) const EDITOR_DELETE_RECORD: &str = "editor.delete_record";
+
 /// The screen capture the editor host publishes, under the game host's own spelling.
 pub(crate) const CAPTURE_SCREENSHOT: &str = "capture.screenshot";
 
@@ -124,7 +127,7 @@ pub(crate) const CAPTURE_SCREENSHOT: &str = "capture.screenshot";
 pub(crate) const WAIT: &str = "wait";
 
 /// Every command name the editor host publishes today.
-pub(crate) const EDITOR_COMMAND_NAMES: [&str; 37] = [
+pub(crate) const EDITOR_COMMAND_NAMES: [&str; 38] = [
     EDITOR_PHASE,
     EDITOR_LAST_SAVE,
     EDITOR_VALIDATION,
@@ -162,13 +165,14 @@ pub(crate) const EDITOR_COMMAND_NAMES: [&str; 37] = [
     EDITOR_SAVE_WEIGHTING,
     CAPTURE_SCREENSHOT,
     WAIT,
+    EDITOR_DELETE_RECORD,
 ];
 
 /// Command names whose reply is parked and answered on a later frame.
-pub(crate) const EDITOR_DEFERRED: [&str; 2] = [CAPTURE_SCREENSHOT, WAIT];
+pub(crate) const EDITOR_DEFERRED: [&str; 3] = [CAPTURE_SCREENSHOT, WAIT, EDITOR_DELETE_RECORD];
 
 /// Command names that need the authoring scene, so they refuse the editor's Load pass.
-pub(crate) const EDITOR_EDITING_ONLY: [&str; 15] = [
+pub(crate) const EDITOR_EDITING_ONLY: [&str; 16] = [
     EDITOR_FAMILIES,
     EDITOR_SESSION,
     EDITOR_SET_MODE,
@@ -184,6 +188,7 @@ pub(crate) const EDITOR_EDITING_ONLY: [&str; 15] = [
     EDITOR_SET_LEVEL,
     EDITOR_PAINT,
     EDITOR_LOAD_PREFAB,
+    EDITOR_DELETE_RECORD,
 ];
 
 /// Command names that also need the Theme tab, so they refuse every other tab.

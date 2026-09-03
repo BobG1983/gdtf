@@ -232,7 +232,8 @@ does not know. That list is `EDITOR_COMMANDS` in
 `editor.map`, `editor.set_grid_size`, `editor.select_tile`,
 `editor.select_facing`, `editor.set_level`, `editor.paint`,
 `editor.select_injury_tab`, `editor.select_weighting_table`,
-`editor.weighting`, `editor.save_weighting`, `capture.screenshot` and `wait`.
+`editor.weighting`, `editor.save_weighting`, `editor.delete_record`,
+`capture.screenshot` and `wait`.
 Capture is wired here. `crates/gdtf_content_editor/Cargo.toml` depends on
 `gdtf_screenshot`, and `register_editor_capture` in
 `crates/gdtf_content_editor/src/net_qa/plugin.rs` adds `CapturePresentPlugin`,
@@ -414,7 +415,7 @@ Notes an agent relies on:
   level keys and the action bar's level buttons take. `battle.set_fire_mode`
   picks a fire mode on the weapon the selected shooter fires, the same weapon the
   action bar's mode panel sets it on, through the same lookup.
-  The EDITOR host publishes thirty-seven commands. `editor.phase` reports the
+  The EDITOR host publishes thirty-eight commands. `editor.phase` reports the
   phase the editor is in, the mode tab open right now — absent while it is still
   loading — and every mode tab in tab-bar order, `editor.last_save` reports what
   the newest save per mode did, and `editor.validation` reports the content
@@ -439,9 +440,10 @@ Notes an agent relies on:
   `editor.select_injury_tab` opens one of the Injury tab's two sub-tabs.
   `editor.select_weighting_table`, `editor.weighting` and
   `editor.save_weighting` pick, read and write the Injury tab's weighting
-  table. All thirty-two need the authoring scene, so during the editor's Load
-  pass they answer `Unavailable { code: WrongState }`. `editor.draft` needs a
-  form tab open on top of that, because the default Prefab tab carries no draft,
+  table, and `editor.delete_record` deletes one authored record after its
+  in-use check clears. All thirty-three need the authoring scene, so during the
+  editor's Load pass they answer `Unavailable { code: WrongState }`.
+  `editor.draft` needs a form tab open on top of that, because the default Prefab tab carries no draft,
   `editor.set_field` and `editor.list_op` need a form tab whose draft is in the
   world, because both write the open form's own draft,
   `editor.toggle_terrain` and `editor.set_default_floor` need the Theme tab,

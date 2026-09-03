@@ -3,7 +3,9 @@
 use std::any::Any;
 
 use bevy::prelude::{Resource, World};
-use gdtf_assets::{ContentMemberKey, FindingFamily};
+use gdtf_assets::{ContentMemberKey, ContentSourcePath, FindingFamily};
+
+use crate::mode::{EditorMode, InjurySubTab};
 
 /// A record taken out of its registry, held while the delete waits.
 pub type TakenRecord = Box<dyn Any + Send + Sync>;
@@ -16,33 +18,57 @@ pub type TakeRecord =
 pub type RestoreRecord =
     Box<dyn Fn(&mut World, &ContentMemberKey, TakenRecord) + Send + Sync + 'static>;
 
-/// Removes the file the record under a key was read from.
-pub type RemoveRecordFile =
-    Box<dyn Fn(&mut World, &ContentMemberKey) -> std::io::Result<()> + Send + Sync + 'static>;
+/// Answers the asset-root-relative file the record under a key was read from.
+pub type RecordFilePath =
+    Box<dyn Fn(&World, &ContentMemberKey) -> Option<ContentSourcePath> + Send + Sync + 'static>;
 
-/// One deletable content family: the label its findings carry, and the three
-/// operations a delete needs.
+/// Where the editor offers one delete: a mode tab, and a sub-tab inside it.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct DeleteScreen {
+    mode:    EditorMode,
+    sub_tab: Option<InjurySubTab>,
+}
+
+impl DeleteScreen {
+    /// Name the mode tab, and the sub-tab inside it when the mode has one.
+    #[must_use]
+    pub const fn new(mode: EditorMode, sub_tab: Option<InjurySubTab>) -> Self {
+        Self { mode, sub_tab }
+    }
+
+    /// Whether this screen is the one the editor has open.
+    #[must_use]
+    pub fn is_open(&self, mode: EditorMode, sub_tab: Option<InjurySubTab>) -> bool {
+        self.mode == mode && self.sub_tab.is_none_or(|wanted| Some(wanted) == sub_tab)
+    }
+}
+
+/// One deletable content family: the label its findings carry, the screen that
+/// offers it, and the operations a delete needs.
 pub struct DeleteEntry {
-    family:      FindingFamily,
-    take:        TakeRecord,
-    restore:     RestoreRecord,
-    remove_file: RemoveRecordFile,
+    family:   FindingFamily,
+    screen:   DeleteScreen,
+    take:     TakeRecord,
+    restore:  RestoreRecord,
+    relative: RecordFilePath,
 }
 
 impl DeleteEntry {
-    /// Name a deletable family and the operations that delete one of its records.
+    /// Name a deletable family, where the editor offers it, and how one record goes.
     #[must_use]
     pub const fn new(
         family: FindingFamily,
+        screen: DeleteScreen,
         take: TakeRecord,
         restore: RestoreRecord,
-        remove_file: RemoveRecordFile,
+        relative: RecordFilePath,
     ) -> Self {
         Self {
             family,
+            screen,
             take,
             restore,
-            remove_file,
+            relative,
         }
     }
 
@@ -50,6 +76,12 @@ impl DeleteEntry {
     #[must_use]
     pub const fn family(&self) -> &FindingFamily {
         &self.family
+    }
+
+    /// The screen the editor offers this delete on.
+    #[must_use]
+    pub const fn screen(&self) -> &DeleteScreen {
+        &self.screen
     }
 
     /// Take the record under `key` out of its registry.
@@ -62,13 +94,14 @@ impl DeleteEntry {
         (self.restore)(world, key, record);
     }
 
-    /// Remove the file the record under `key` was read from.
-    ///
-    /// # Errors
-    ///
-    /// Returns the filesystem error if the path cannot be removed.
-    pub fn remove_file(&self, world: &mut World, key: &ContentMemberKey) -> std::io::Result<()> {
-        (self.remove_file)(world, key)
+    /// The asset-root-relative file the record under `key` was read from.
+    #[must_use]
+    pub fn relative_path(
+        &self,
+        world: &World,
+        key: &ContentMemberKey,
+    ) -> Option<ContentSourcePath> {
+        (self.relative)(world, key)
     }
 }
 
@@ -92,5 +125,15 @@ impl DeleteRegistry {
     #[must_use]
     pub fn entry(&self, family: &FindingFamily) -> Option<&DeleteEntry> {
         self.0.iter().find(|entry| **entry.family() == **family)
+    }
+
+    /// The finding family label of every entry this registry holds.
+    pub fn labels(&self) -> impl Iterator<Item = &FindingFamily> {
+        self.0.iter().map(DeleteEntry::family)
+    }
+
+    /// Every entry this registry holds, in registration order.
+    pub(crate) fn entries(&self) -> impl Iterator<Item = &DeleteEntry> {
+        self.0.iter()
     }
 }

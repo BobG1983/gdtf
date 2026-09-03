@@ -50,8 +50,8 @@ pub use canvas::{CanvasZoom, CurrentEditLevel, LevelStep};
 pub use connector_pairing::{PairingOutcome, apply_placement_with_pairing, is_stair};
 #[cfg(debug_assertions)]
 pub use delete::{
-    DeleteEntry, DeleteOutcome, DeleteRefusal, DeleteRegistry, DeleteRequest, RemoveRecordFile,
-    RestoreRecord, TakeRecord, TakenRecord,
+    DeleteEntry, DeleteOutcome, DeleteRefusal, DeleteRegistry, DeleteRequest, DeleteScreen,
+    RecordFilePath, RestoreRecord, TakeRecord, TakenRecord,
 };
 pub use editor_map::{EditorMap, PaintedPiece};
 pub use egui_shell::prefab::size_fields::SizeFieldSpans;

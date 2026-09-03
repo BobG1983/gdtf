@@ -117,3 +117,26 @@ pub(crate) struct WaitReplyRow {
     pub(crate) condition: WaitConditionRow,
     pub(crate) phase:     PhaseRow,
 }
+
+/// A client's own reading of why a delete was refused.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub(crate) enum DeleteRefusalRow {
+    NoEntry,
+    NoRecord,
+    InUse(Vec<ReferringRecordRow>),
+}
+
+/// One record the in-use check named as still referencing the deleted one.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub(crate) struct ReferringRecordRow {
+    pub(crate) family: String,
+    pub(crate) key:    String,
+    pub(crate) field:  String,
+}
+
+/// `editor.delete_record`'s reply body.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub(crate) enum DeleteOutcomeRow {
+    Refused(DeleteRefusalRow),
+    Removed,
+}

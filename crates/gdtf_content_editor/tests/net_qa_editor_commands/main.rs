@@ -4,7 +4,9 @@
 #![cfg(debug_assertions)]
 
 mod capture_screenshot_command;
+mod delete_record_command;
 mod drafts;
+mod fixture_root;
 #[path = "../net_qa_shared/harness.rs"]
 mod harness;
 #[path = "../net_qa_shared/hello.rs"]

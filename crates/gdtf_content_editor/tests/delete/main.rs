@@ -2,5 +2,8 @@
 mod fixture;
 mod harness;
 mod in_use;
+mod labels;
 mod no_entry;
+mod prefab;
 mod removed;
+mod weighting;

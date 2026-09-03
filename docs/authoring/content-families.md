@@ -18,8 +18,7 @@ A new folder-loaded family costs exactly this:
    `crates/gdtf_content_families/src/` — naming the payload `Spec`, the
    registry `Resource`, the `FOLDER`, the dedicated compound `EXTENSION`, and
    how a member keys into the registry (`insert_member`, which answers the
-   `ContentMemberKey` it inserted under, or `None` when it inserts nothing or
-   keys on something no single string names).
+   `ContentMemberKey` it inserted under, or `None` when it inserts nothing).
 2. **One registration line** per host:
    `app.register_content_family::<MyFamily>()` (the `ContentFamilyAppExt`
    extension, `crates/gdtf_assets/src/family/ext.rs`). The game's lines live
@@ -62,7 +61,7 @@ shape varies on a second axis as well: one key holds many members rather than on
 |--------|----------|-----|
 | Stem-keyed | `WeaponsFamily`, `MeleeWeaponsFamily`, `ArmorFamily`, `FieldsFamily`, `GangsFamily`, `AttachmentsFamily`, `SpriteDefsFamily` | File stem, infix stripped (`stub_pistol.weapon.ron` → `stub_pistol`) |
 | Payload-keyed | `TerrainDefsFamily`, `ThemeDefsFamily` | The UUID inside the def; the filename is a courtesy |
-| Payload-keyed into a bucketed multimap | `PrefabsFamily` | The `PrefabKey` (theme, size, role) `PrefabRegistry::insert` derives from the spec. The file stem becomes the `PrefabName` inside each `Prefab` rather than the key, so one key holds every prefab authored under it. It is also the one family that records no source path, because that key is not one string |
+| Payload-keyed into a bucketed multimap | `PrefabsFamily` | The `PrefabKey` (theme, size, role) `PrefabRegistry::insert` derives from the spec. The file stem becomes the `PrefabName` inside each `Prefab` rather than the key, so one key holds every prefab authored under it. Its member key is built in one place, `prefabs::member_key`, which spells the theme, size and role alongside the stem, so `ContentSourcePaths` records the file each prefab was read from |
 
 One placement exception: `SpriteDefsFamily` is the one family whose
 `Spec`/`Registry` live IN the glue crate

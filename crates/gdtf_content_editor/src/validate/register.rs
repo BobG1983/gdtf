@@ -7,6 +7,7 @@ use bevy::{
 use gdtf_assets::{ContentChecksComplete, ContentValidationAppExt, ContentValidationSet};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
+    effects::fields::FieldDefRegistry,
     equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::InjuryRegistry,
@@ -15,11 +16,14 @@ use gdtf_battle_sim::{
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 use gdtf_content_families::{
+    situation::LoadedSituation,
     sprites::SpriteDefRegistry,
     validate::{
         check_emplacement_weapon_refs, check_gang_equipment_refs, check_injury_weighting_refs,
-        check_prefab_refs, check_terrain_leaves_behind_refs, check_terrain_view_coverage,
-        check_terrain_view_sprite_refs, check_theme_terrain_refs, check_weapon_attachment_refs,
+        check_prefab_refs, check_situation_field_refs, check_situation_gang_refs,
+        check_situation_terrain_refs, check_situation_theme_ref, check_terrain_leaves_behind_refs,
+        check_terrain_view_coverage, check_terrain_view_sprite_refs, check_theme_terrain_refs,
+        check_weapon_attachment_refs,
     },
 };
 
@@ -37,6 +41,8 @@ pub(super) struct ValidationGraphResources<'w> {
     sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
     attachments:   Option<Res<'w, AttachmentRegistry>>,
     prefabs:       Option<Res<'w, PrefabRegistry>>,
+    situation:     Option<Res<'w, LoadedSituation>>,
+    fields:        Option<Res<'w, FieldDefRegistry>>,
 }
 
 pub(super) const fn validation_graph_ready(graph: ValidationGraphResources) -> bool {
@@ -50,6 +56,8 @@ pub(super) const fn validation_graph_ready(graph: ValidationGraphResources) -> b
         && graph.sprite_defs.is_some()
         && graph.attachments.is_some()
         && graph.prefabs.is_some()
+        && graph.situation.is_some()
+        && graph.fields.is_some()
 }
 
 pub(crate) fn register_validation(app: &mut App) {
@@ -67,6 +75,10 @@ pub(crate) fn register_validation(app: &mut App) {
         .register_reference_check(check_terrain_view_sprite_refs)
         .register_reference_check(check_terrain_leaves_behind_refs)
         .register_reference_check(check_weapon_attachment_refs)
-        .register_reference_check(check_prefab_refs);
+        .register_reference_check(check_prefab_refs)
+        .register_reference_check(check_situation_gang_refs)
+        .register_reference_check(check_situation_theme_ref)
+        .register_reference_check(check_situation_terrain_refs)
+        .register_reference_check(check_situation_field_refs);
     app.add_systems(Update, rearm_validation_on_content_change);
 }

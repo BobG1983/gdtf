@@ -62,6 +62,13 @@ impl PrefabRegistry {
         self.0.entry(key).or_default().push(prefab);
     }
 
+    /// Take the prefab named `name` out from under `key`, if that key holds one.
+    pub fn remove(&mut self, key: &PrefabKey, name: &PrefabName) -> Option<Prefab> {
+        let prefabs = self.0.get_mut(key)?;
+        let at = prefabs.iter().position(|prefab| prefab.name() == name)?;
+        Some(prefabs.remove(at))
+    }
+
     /// Prefabs for a key, or an empty slice.
     #[must_use]
     pub fn prefabs_for(&self, key: &PrefabKey) -> &[Prefab] {

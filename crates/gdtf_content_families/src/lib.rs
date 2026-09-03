@@ -8,6 +8,8 @@ mod gangs;
 pub mod injuries;
 mod melee_weapons;
 pub mod prefabs;
+/// The authored situation both hosts load.
+pub mod situation;
 /// Sprite def load path and registry.
 pub mod sprites;
 mod terrain_defs;

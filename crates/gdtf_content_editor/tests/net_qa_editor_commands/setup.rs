@@ -1,9 +1,17 @@
+use std::path::Path;
+
 use bevy::app::App;
-use gdtf_content_editor::EditorMode;
+use gdtf_content_editor::{EditorMode, MapEditorPlugin, NetQaEditorPlugin};
+use gdtf_qa_protocol::{
+    message::{ProtocolVersion, QaRequest},
+    ports::NetQaPort,
+};
+use gdtf_test_utils::GdtfUiTestAppBuilder;
 
 use crate::{
     drafts::theme_draft,
-    harness::editing_app_and_client,
+    harness::{advance_to_editing, editing_app_and_client},
+    hello::assert_hello_ok,
     mirror::ModeRow,
     names::{EDITOR_LOAD_THEME, EDITOR_SET_MODE},
     outcome::ran_body,
@@ -48,5 +56,29 @@ pub(crate) fn theme_tab_app_and_client() -> Result<(App, Client), TestError> {
         )
         .into());
     }
+    Ok((app, client))
+}
+
+/// An editor app on a real listener whose asset server reads `root`.
+///
+/// The shared harness reads the workspace assets, so a delete driven against a temp
+/// QA assets root would remove nothing and assert nothing.
+pub(crate) fn editor_app_listening_on(root: &Path) -> Result<(App, NetQaPort), TestError> {
+    let (plugin, port) = NetQaEditorPlugin::listening(NetQaPort::new(0))?;
+    let mut app = GdtfUiTestAppBuilder::on_asset_root(root)
+        .with_ui_camera()
+        .build();
+    app.add_plugins(MapEditorPlugin);
+    app.add_plugins(plugin);
+    Ok((app, port))
+}
+
+/// An editing app on `root` with a negotiated client on its real listener.
+pub(crate) fn editing_app_and_client_on(root: &Path) -> Result<(App, Client), TestError> {
+    let (mut app, port) = editor_app_listening_on(root)?;
+    advance_to_editing(&mut app);
+    let mut client = Client::connect(port)?;
+    let hello = client.exchange(&mut app, &QaRequest::Hello(ProtocolVersion::CURRENT))?;
+    assert_hello_ok(&hello);
     Ok((app, client))
 }

@@ -1,15 +1,18 @@
 //! Situation outbound reference edges — gang, theme, terrain, and field keys.
+
 use bevy::prelude::{Res, ResMut};
 use gdtf_assets::{
     ContentFinding, ContentIntegrityReport, ContentMemberKey, FindingFamily, FindingReferrer,
     FindingTarget, ReferenceField, ReferenceKeyScheme, ReferringRecord,
 };
 use gdtf_battle_sim::{
-    effects::fields::FieldDefRegistry, ganger::GangRegistry, level::UuidThemeRegistry,
-    terrain::def::TerrainDefRegistry,
+    effects::fields::FieldDefRegistry,
+    ganger::GangRegistry,
+    level::UuidThemeRegistry,
+    terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
 
-use crate::states::load::{plugin::SITUATION_RON_PATH, resources::LoadedSituation};
+use crate::situation::{LoadedSituation, SITUATION_RON_PATH};
 
 // The situation loads by hardcoded path, so its referring record is that path.
 fn situation_record(field: &str) -> ReferringRecord {
@@ -20,7 +23,8 @@ fn situation_record(field: &str) -> ReferringRecord {
     )
 }
 
-pub(super) fn check_situation_gang_refs(
+/// Record dangling situation → gang name and situation → roster member references.
+pub fn check_situation_gang_refs(
     situation: Res<LoadedSituation>,
     gangs: Res<GangRegistry>,
     mut report: ResMut<ContentIntegrityReport>,
@@ -64,8 +68,10 @@ pub(super) fn check_situation_gang_refs(
     }
 }
 
+/// Record a dangling situation → theme UUID reference.
+///
 /// Nil theme is allowed (serde default); skip when unset.
-pub(super) fn check_situation_theme_ref(
+pub fn check_situation_theme_ref(
     situation: Res<LoadedSituation>,
     themes: Res<UuidThemeRegistry>,
     mut report: ResMut<ContentIntegrityReport>,
@@ -84,12 +90,13 @@ pub(super) fn check_situation_theme_ref(
     }
 }
 
-pub(super) fn check_situation_terrain_refs(
+/// Record dangling situation → placed terrain UUID and default-floor references.
+pub fn check_situation_terrain_refs(
     situation: Res<LoadedSituation>,
     terrain: Res<TerrainDefRegistry>,
     mut report: ResMut<ContentIntegrityReport>,
 ) {
-    let mut seen: Vec<gdtf_battle_sim::terrain::def::TerrainUuid> = Vec::new();
+    let mut seen: Vec<TerrainUuid> = Vec::new();
     let pieces = situation
         .walls
         .iter()
@@ -128,7 +135,8 @@ pub(super) fn check_situation_terrain_refs(
     }
 }
 
-pub(super) fn check_situation_field_refs(
+/// Record dangling situation → field def key references.
+pub fn check_situation_field_refs(
     situation: Res<LoadedSituation>,
     fields: Res<FieldDefRegistry>,
     mut report: ResMut<ContentIntegrityReport>,

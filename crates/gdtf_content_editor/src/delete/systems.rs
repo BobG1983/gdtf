@@ -11,9 +11,11 @@ use gdtf_assets::{
 };
 
 use super::{
+    entries::{prefab_delete_entry, weighting_delete_entry},
     registry::{DeleteEntry, DeleteRegistry, TakenRecord},
     request::{DeleteOutcome, DeleteRefusal, DeleteRequest},
 };
+use crate::net_qa::EditorQaAssetsRoot;
 
 // Where a delete has got to. The record waits here while validation republishes.
 #[derive(Default)]
@@ -34,6 +36,9 @@ struct InFlight {
 /// Register the delete driver.
 pub(crate) fn register_delete(app: &mut App) {
     app.init_resource::<DeleteRegistry>();
+    let mut registry = app.world_mut().resource_mut::<DeleteRegistry>();
+    registry.add(prefab_delete_entry());
+    registry.add(weighting_delete_entry());
     app.add_systems(Update, run_pending_delete);
 }
 
@@ -131,8 +136,24 @@ fn referring_records(
 }
 
 // A file that will not delete leaves the registry entry gone and says so loudly.
-fn remove_record_file(world: &mut World, entry: &DeleteEntry, key: &ContentMemberKey) {
-    if let Err(error) = entry.remove_file(world, key) {
+fn remove_record_file(world: &World, entry: &DeleteEntry, key: &ContentMemberKey) {
+    let Some(root) = world.get_resource::<EditorQaAssetsRoot>().cloned() else {
+        warn!(
+            "delete removed `{}` from {} but no assets root says where its file lives",
+            **key,
+            **entry.family(),
+        );
+        return;
+    };
+    let Some(relative) = entry.relative_path(world, key) else {
+        warn!(
+            "delete removed `{}` from {} but its entry knows no file for that key",
+            **key,
+            **entry.family(),
+        );
+        return;
+    };
+    if let Err(error) = std::fs::remove_file(root.join(&*relative)) {
         warn!(
             "delete removed `{}` from {} but could not remove its file: {error}",
             **key,

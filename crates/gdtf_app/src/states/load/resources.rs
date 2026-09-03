@@ -1,6 +1,5 @@
 use bevy::{asset::LoadedFolder, prelude::*};
 use gdtf_assets::HotRonHandle;
-use gdtf_battle_sim::situation::Situation;
 use gdtf_ui::theme::GdtfThemeSpec;
 
 #[derive(Deref, Clone, Debug)]
@@ -36,21 +35,6 @@ pub(in crate::states::load) struct LoadHandles {
     pub fonts:    FontFolderHandle,
     pub injuries: InjuriesFolderHandle,
     pub prefabs:  PrefabsFolderHandle,
-}
-
-crate::support_item! {
-    /// The situation the load step resolved for the coming battle.
-    #[derive(Resource, Deref, Clone, Debug)]
-    struct LoadedSituation(Situation);
-}
-
-impl LoadedSituation {
-    crate::support_item! {
-        /// Wrap the situation the load step resolved.
-        const fn new(situation: Situation) -> Self {
-            Self(situation)
-        }
-    }
 }
 
 #[derive(Resource, Deref, Clone, Debug)]

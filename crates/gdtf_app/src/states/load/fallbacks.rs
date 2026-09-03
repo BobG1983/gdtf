@@ -10,10 +10,9 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
 };
 #[cfg(feature = "headless_test")]
-use gdtf_ui::theme::default_theme;
-
+use gdtf_content_families::situation::LoadedSituation;
 #[cfg(feature = "headless_test")]
-use crate::states::load::resources::LoadedSituation;
+use gdtf_ui::theme::default_theme;
 
 /// Insert default load resources for headless tests when assets are absent.
 #[cfg(feature = "headless_test")]

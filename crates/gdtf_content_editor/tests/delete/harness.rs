@@ -1,6 +1,6 @@
 //! The editor app this suite drives, and the weapon delete entry its cases register.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use bevy::{
     DefaultPlugins,
@@ -12,9 +12,11 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_assets::{ContentMemberKey, ContentSourcePaths, ContentValidationDone, FindingFamily};
+use gdtf_assets::{
+    ContentMemberKey, ContentSourcePath, ContentSourcePaths, ContentValidationDone, FindingFamily,
+};
 use gdtf_battle_sim::weapon::{WeaponName, WeaponRegistry, WeaponSpec};
-use gdtf_content_editor::{DeleteEntry, DeleteOutcome, EditorQaAssetsRoot, MapEditorPlugin};
+use gdtf_content_editor::{DeleteEntry, DeleteOutcome, DeleteScreen, EditorMode, MapEditorPlugin};
 use gdtf_content_families::WeaponsFamily;
 use gdtf_test_utils::advance_until;
 
@@ -88,6 +90,7 @@ pub(crate) fn is_published(app: &App) -> bool {
 pub(crate) fn weapon_delete_entry() -> DeleteEntry {
     DeleteEntry::new(
         FindingFamily::new(WEAPON_FAMILY.to_owned()),
+        DeleteScreen::new(EditorMode::Weapon, None),
         Box::new(|world, key| {
             let mut registry = world.get_resource_mut::<WeaponRegistry>()?;
             let spec = registry.remove(&WeaponName::new((**key).clone()))?;
@@ -101,14 +104,12 @@ pub(crate) fn weapon_delete_entry() -> DeleteEntry {
                 registry.insert(WeaponName::new((**key).clone()), *spec);
             }
         }),
-        Box::new(|world, key| weapon_file_path(world, key).map_or(Ok(()), std::fs::remove_file)),
+        Box::new(weapon_file_path),
     )
 }
 
-// The weapon's file under the save root, as its source path names it.
-fn weapon_file_path(world: &World, key: &ContentMemberKey) -> Option<PathBuf> {
-    let root = world.get_resource::<EditorQaAssetsRoot>()?;
+// The weapon's asset-root-relative file, as its source path names it.
+fn weapon_file_path(world: &World, key: &ContentMemberKey) -> Option<ContentSourcePath> {
     let sources = world.get_resource::<ContentSourcePaths<WeaponsFamily>>()?;
-    let relative = sources.path(key)?;
-    Some(root.join(&**relative))
+    sources.path(key).cloned()
 }

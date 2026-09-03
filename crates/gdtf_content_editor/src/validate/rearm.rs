@@ -8,7 +8,7 @@ use gdtf_battle_sim::{
     armor::ArmorRegistry,
     equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
-    injuries::InjuryRegistry,
+    injuries::{InjuryRegistry, InjuryTables},
     level::{PrefabRegistry, UuidThemeRegistry},
     terrain::def::TerrainDefRegistry,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
@@ -28,6 +28,7 @@ pub(super) struct WatchedRegistries<'w> {
     sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
     attachments:   Option<Res<'w, AttachmentRegistry>>,
     prefabs:       Option<Res<'w, PrefabRegistry>>,
+    injury_tables: Option<Res<'w, InjuryTables>>,
 }
 
 impl WatchedRegistries<'_> {
@@ -54,6 +55,10 @@ impl WatchedRegistries<'_> {
                 .as_ref()
                 .is_some_and(DetectChanges::is_changed)
             || self.prefabs.as_ref().is_some_and(DetectChanges::is_changed)
+            || self
+                .injury_tables
+                .as_ref()
+                .is_some_and(DetectChanges::is_changed)
     }
 }
 

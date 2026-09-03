@@ -34,6 +34,16 @@ impl InjuryTables {
         self.0.insert((category, context, severity), table)
     }
 
+    /// Take one table out, answering it if this map held one.
+    pub fn remove(
+        &mut self,
+        category: InjuryCategory,
+        context: DamageContext,
+        severity: Severity,
+    ) -> Option<WeightedInjuryTable> {
+        self.0.remove(&(category, context, severity))
+    }
+
     /// Look up the table for a body part (via its injury category).
     #[must_use]
     pub fn table(

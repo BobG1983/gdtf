@@ -32,8 +32,8 @@ fn a_delete_for_a_family_with_no_entry_is_refused_and_takes_nothing_out() {
         !app.world()
             .resource::<DeleteRegistry>()
             .handles(&FindingFamily::new(WEAPON_FAMILY.to_owned())),
-        "the editor app must build a DeleteRegistry holding NO entry — no content family is \
-         deletable yet",
+        "the editor app must build a DeleteRegistry holding no entry for WeaponRegistry — the \
+         ranged weapon delete lands with the replace-delete child",
     );
 
     app.insert_resource(DeleteRequest::new(

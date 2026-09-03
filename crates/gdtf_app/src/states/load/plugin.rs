@@ -18,34 +18,24 @@ use gdtf_content_families::{
     SpriteDefsFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily,
     injuries::{INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION},
     prefabs::PREFAB_EXTENSION,
+    situation::{
+        LoadedSituation, SITUATION_RON_PATH, fallback_loaded_situation, map_loaded_situation,
+    },
     sprites::SpriteDefRegistry,
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
 use crate::states::{
     AppState,
-    load::{
-        resources::{LoadHandles, LoadedSituation},
-        systems::*,
-    },
+    load::{resources::LoadHandles, systems::*},
     scaffold::{SceneLabel, log_scene_enter, log_scene_exit},
 };
-
-pub(in crate::states::load) const SITUATION_RON_PATH: &str = "content/situations/skirmish.ron";
 
 const TUNING_RON_PATH: &str = "core_tuning/combat.tuning.ron";
 
 const STAT_TUNING_RON_PATH: &str = "core_tuning/stat.tuning.ron";
 
 const PROCGEN_TUNING_RON_PATH: &str = "core_tuning/procgen.tuning.ron";
-
-fn map_loaded_situation(situation: &Situation, _asset_server: &AssetServer) -> LoadedSituation {
-    LoadedSituation::new(situation.clone())
-}
-
-fn fallback_loaded_situation() -> LoadedSituation {
-    LoadedSituation::new(Situation::default())
-}
 
 pub(in crate::states) struct LoadScenePlugin;
 

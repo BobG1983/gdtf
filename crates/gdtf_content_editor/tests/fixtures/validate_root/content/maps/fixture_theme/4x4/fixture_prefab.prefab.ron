@@ -1,0 +1,8 @@
+// test fixture — the SAME file stem as the 3x3 prefab, under a different size folder.
+// Its theme resolves and it places nothing, so it raises no finding; it exists to pin
+// that a prefab's recorded key names its whole registry key, not its stem alone.
+(
+    theme: "00000000-0000-0000-0000-0630000000a1",  // the fixture theme's key — RESOLVES
+    size: (width: 4, height: 4, levels: 1),
+    placements: [],
+)

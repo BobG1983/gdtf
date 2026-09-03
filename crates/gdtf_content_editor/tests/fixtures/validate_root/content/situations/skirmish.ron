@@ -1,0 +1,7 @@
+// A fixture situation naming one gang this root does not hold, and nothing else.
+// Every other field defaults, so the only finding it raises is the dangling gang key.
+(
+    rosters: [
+        (gang: "ghost_gang", member: "Nobody", faction: 0),
+    ],
+)

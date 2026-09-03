@@ -1,6 +1,7 @@
 //! Editor writes that change a draft, a mode tab, or a file on disk.
 
 mod blank;
+mod delete_record;
 mod form_fault;
 mod list_op;
 mod load;
@@ -21,6 +22,7 @@ mod toggle_terrain;
 mod weighting_rows;
 
 pub(in crate::net_qa) use blank::EditorNew;
+pub(in crate::net_qa) use delete_record::EditorDeleteRecord;
 pub(in crate::net_qa) use list_op::EditorListOp;
 pub(in crate::net_qa) use load::{
     EditorLoadArmor, EditorLoadAttachment, EditorLoadField, EditorLoadGang, EditorLoadInjury,

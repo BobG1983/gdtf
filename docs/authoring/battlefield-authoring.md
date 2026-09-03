@@ -83,11 +83,13 @@ edit storey clamped into the loaded extent (`open_prefab` in
 
 ### 3a. The one authored situation
 
-The game loads exactly ONE situation file:
+Each host loads exactly ONE situation file:
 `assets/content/situations/skirmish.ron` — a single-file hot-RON load (NOT a
 folder family; a new `.ron` dropped beside it loads nothing), with a fallback
-so a bad file never strands `Load`
-(`crates/gdtf_app/src/states/load/plugin.rs`).
+so a bad file never strands `Load`. The path, the mapping and the fallback live
+in `crates/gdtf_content_families/src/situation.rs`; the game's `LoadScenePlugin`
+and the editor's `register_load` both call them, so the editor checks the
+situation's references too.
 
 ### 3b. The schema — by example (abridged from the shipped file)
 

@@ -27,3 +27,6 @@ pub(crate) const EDITOR_PHASE: &str = "editor.phase";
 
 /// The condition hold this suite drives.
 pub(crate) const WAIT: &str = "wait";
+
+/// The record delete this suite drives.
+pub(crate) const EDITOR_DELETE_RECORD: &str = "editor.delete_record";

@@ -5,6 +5,7 @@ mod attachment;
 mod camera;
 mod cell;
 mod content_family;
+mod delete;
 mod draft;
 mod facing;
 mod family;
@@ -53,6 +54,7 @@ pub(in crate::net_qa) use attachment::{
 pub(in crate::net_qa) use camera::{EditorPanNet, EditorZoomNet};
 pub(in crate::net_qa) use cell::{EditorCellXNet, EditorCellYNet, EditorLevelNet};
 pub(in crate::net_qa) use content_family::ContentFamilyNet;
+pub(in crate::net_qa) use delete::{DeleteFamilyNet, DeleteKeyNet, DeleteOutcomeNet};
 pub(in crate::net_qa) use draft::{EditorDraftOutcomeNet, EditorDraftRonNet};
 #[cfg(test)]
 pub(in crate::net_qa) use facing::TerrainCornerNet;

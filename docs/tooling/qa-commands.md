@@ -309,7 +309,7 @@ run(host="editor", command="wait", arguments="(condition: ChecksComplete)")
 run(host="editor", command="wait", arguments="(condition: RegistryRearmed(family: Terrain))")
 ```
 
-The editor offers thirty-seven commands today. They are listed in
+The editor offers thirty-eight commands today. They are listed in
 [The editor host](#the-editor-host) below.
 
 The game offers these commands today: `app.phase`, `capture.screenshot`,
@@ -760,11 +760,12 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 
 ## The editor host
 
-The editor publishes thirty-seven commands, all in `EDITOR_COMMANDS`
+The editor publishes thirty-eight commands, all in `EDITOR_COMMANDS`
 ([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
-Thirty-five are `Immediate`. The two the editor publishes under the game host's own
-spellings, `capture.screenshot` and `wait`, are `Deferred`, so a client reads the timing to
-know the reply can land on a later frame than the one that claimed the call. A capture always
+Thirty-five are `Immediate`. Three are `Deferred`, so a client reads the timing to
+know the reply can land on a later frame than the one that claimed the call: the two the
+editor publishes under the game host's own spellings, `capture.screenshot` and `wait`, plus
+`editor.delete_record`, whose in-use check settles across frames. A capture always
 does, because the pipeline settles before it reads the pixels back. A `wait` whose condition
 already holds is answered on the frame it was claimed in.
 
@@ -773,7 +774,7 @@ Five commands answer at every point in the lifecycle: the three reads `editor.ph
 neither the authoring scene nor a tab. Five more reads need the authoring scene:
 `editor.families`, `editor.session`, `editor.draft`, `editor.map` and `editor.weighting`.
 `editor.draft` also needs a form tab open, `editor.map` needs the Prefab tab, and
-`editor.weighting` needs the Injury tab. All twenty-seven writes need the authoring scene too.
+`editor.weighting` needs the Injury tab. All twenty-eight writes need the authoring scene too.
 During the editor's Load pass every scene-scoped command answers `Unavailable { code: WrongState }`. `EditorMode`,
 `MapEditorSession` and every draft are state-scoped to `EditorState::Editing` by the
 `init_state_scoped_resource` calls in `MapEditorPlugin::build`
@@ -821,6 +822,7 @@ which is why `editor.families` waits for Editing instead of answering a half-loa
 | `editor.select_weighting_table` | Editing + the Injury tab | Loads the weighting table for one injury category and damage context, the way the Injury tab's two selectors load it. All three buckets are replaced from the tables, so unsaved row edits are discarded. Tables absent answers `Unavailable { code: MissingModel }`. [`commands/write/select_weighting_table.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_weighting_table.rs) |
 | `editor.weighting` | Editing + the Injury tab | The weighting table the Injury tab holds: its category and damage context, and each of its Minor, Major and Critical buckets in the order the draft holds them. [`commands/read/weighting.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/weighting.rs) |
 | `editor.save_weighting` | Editing + the Injury tab | Writes the weighting draft through the same `write_weighting_in` its Save weighting button calls, under the QA assets root, and records the outcome the way the button does. [`commands/write/save_weighting.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save_weighting.rs) |
+| `editor.delete_record` | Editing + the screen that offers the entry | Deletes one authored record, naming its finding family label and its registry key. The in-use check runs first, so a record another record still references comes back `Refused(InUse)` with every referring record. A family this build cannot delete comes back `Refused(NoEntry)`, and a family the open mode and sub-tab does not offer answers `Unavailable { code: WrongState }`. `Deferred`. [`commands/write/delete_record.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/delete_record.rs) |
 | `capture.screenshot` | always | Writes a PNG of what the editor is showing and attaches it to the reply. `Deferred`. [`commands/capture/screenshot.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/capture/screenshot.rs) |
 | `wait` | always | Holds the reply until `ChecksComplete` or `RegistryRearmed` comes true. `Deferred`. [`commands/wait/`](../../crates/gdtf_content_editor/src/net_qa/commands/wait) |
 

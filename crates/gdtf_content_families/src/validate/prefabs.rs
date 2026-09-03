@@ -2,13 +2,15 @@
 
 use bevy::prelude::{Res, ResMut};
 use gdtf_assets::{
-    ContentFinding, ContentIntegrityReport, ContentMemberKey, FindingFamily, FindingReferrer,
+    ContentFileStem, ContentFinding, ContentIntegrityReport, FindingFamily, FindingReferrer,
     FindingTarget, ReferenceField, ReferenceKeyScheme, ReferringRecord,
 };
 use gdtf_battle_sim::{
     level::{PrefabRegistry, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
+
+use crate::prefabs::member_key;
 
 /// Record dangling prefab → theme UUID and prefab → placed terrain UUID references.
 pub fn check_prefab_refs(
@@ -19,10 +21,11 @@ pub fn check_prefab_refs(
 ) {
     for prefab in prefabs.iter() {
         let spec = prefab.spec();
+        let key = member_key(&ContentFileStem::new((**prefab.name()).clone()), spec);
         let record = |field: &str| {
             ReferringRecord::new(
                 FindingFamily::new("PrefabRegistry".to_owned()),
-                ContentMemberKey::new((**prefab.name()).clone()),
+                key.clone(),
                 ReferenceField::new(field.to_owned()),
             )
         };

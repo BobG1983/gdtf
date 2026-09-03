@@ -3,6 +3,7 @@ mod attachment;
 mod camera;
 mod cell;
 mod content_family;
+mod delete;
 mod draft;
 mod facing;
 mod family;
