@@ -24,7 +24,7 @@ export const meta = {
 // sonnet. Between tiers -> the higher one.
 //
 //   fetch:*         sonnet  verbatim Linear snapshot, judges nothing
-//   clause-audit:*  fable   audit judgment against tree and canon
+//   clause-audit:*  opus    audit judgment against tree and canon
 //   open:*          sonnet  status move plus templated comment
 //   build:*         opus    the implementation
 //   refetch:*       sonnet  read-only re-fetch
@@ -491,7 +491,7 @@ empty. Reasoning that belongs to no single clause goes in \`report\`.
 <live-ticket id="${TICKET}">
 ${renderTicket(live)}
 </live-ticket>`,
-  { model: 'fable', label: `clause-audit:${TICKET}`, phase: 'Clause-audit', agentType: 'clause-audit', schema: AUDIT_RESULT })
+  { model: 'opus', label: `clause-audit:${TICKET}`, phase: 'Clause-audit', agentType: 'clause-audit', schema: AUDIT_RESULT })
 
 if (!audit) throw new Error(`${TICKET}: clause audit died — abort`)
 
