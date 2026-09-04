@@ -3,6 +3,8 @@
 //! editor net-QA listener.
 #![cfg(debug_assertions)]
 
+#[path = "../net_qa_shared/bad_arguments.rs"]
+mod bad_arguments;
 mod capture_screenshot_command;
 mod delete_record_command;
 mod drafts;

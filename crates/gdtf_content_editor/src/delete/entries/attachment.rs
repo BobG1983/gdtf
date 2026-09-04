@@ -25,6 +25,12 @@ use crate::{
 /// The finding family label every attachment reference finding carries.
 pub(crate) const ATTACHMENT_FAMILY: &str = "AttachmentRegistry";
 
+// The family label a ranged weapon's own fitted-attachment reference is recorded under.
+const RANGED_REFERRER: &str = "WeaponRegistry";
+
+// The family label a melee weapon's own fitted-attachment reference is recorded under.
+const MELEE_REFERRER: &str = "MeleeWeaponRegistry";
+
 /// The delete for one attachment record, offered on the Attachment tab.
 pub(crate) fn attachment_delete_entry() -> DeleteEntry {
     DeleteEntry::new(
@@ -48,35 +54,29 @@ pub(crate) fn attachment_delete_entry() -> DeleteEntry {
             sources.path(key).cloned()
         }),
     )
-    .with_drop(Box::new(|world, key| {
-        let fitted = attachment_name(key);
-        let Some(root) = delete_assets_root(world) else {
-            return DroppedReferences::Failed;
-        };
-        let ranged = drop_from_ranged_weapons(world, &root, &fitted);
-        if ranged == DroppedReferences::Failed {
-            return DroppedReferences::Failed;
-        }
-        combined(ranged, drop_from_melee_weapons(world, &root, &fitted))
-    }))
+    .dropping_from(
+        FindingFamily::new(RANGED_REFERRER.to_owned()),
+        Box::new(|world, key| {
+            let fitted = attachment_name(key);
+            delete_assets_root(world).map_or(DroppedReferences::Failed, |root| {
+                drop_from_ranged_weapons(world, &root, &fitted)
+            })
+        }),
+    )
+    .dropping_from(
+        FindingFamily::new(MELEE_REFERRER.to_owned()),
+        Box::new(|world, key| {
+            let fitted = attachment_name(key);
+            delete_assets_root(world).map_or(DroppedReferences::Failed, |root| {
+                drop_from_melee_weapons(world, &root, &fitted)
+            })
+        }),
+    )
 }
 
 // The registry key the member key names.
 fn attachment_name(key: &ContentMemberKey) -> AttachmentName {
     AttachmentName::new((**key).clone())
-}
-
-// A failed half loses to nothing else, and one rewrite is enough to re-check.
-const fn combined(left: DroppedReferences, right: DroppedReferences) -> DroppedReferences {
-    match (left, right) {
-        (DroppedReferences::Failed, _) | (_, DroppedReferences::Failed) => {
-            DroppedReferences::Failed
-        }
-        (DroppedReferences::Rewritten, _) | (_, DroppedReferences::Rewritten) => {
-            DroppedReferences::Rewritten
-        }
-        _ => DroppedReferences::Nothing,
-    }
 }
 
 // The fitted list without `name`, or nothing when the list never held it.

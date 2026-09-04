@@ -7,12 +7,14 @@ use gdtf_content_editor::{
 };
 
 use crate::{
+    advance::advance_to_published,
+    app::editor_app_with_asset_root,
     fixture::{FIXTURE_GUN, weapon_name, write_fixture_weapon},
-    harness::{
-        OUTCOME_UPDATES, WEAPON_FAMILY, advance_to_outcome, advance_to_published,
-        editor_app_with_asset_root, is_published,
-    },
+    harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
 };
+
+// The label every sprite def reference finding carries; no entry deletes one.
+const SPRITE_FAMILY: &str = "SpriteDefRegistry";
 
 #[test]
 fn a_delete_for_a_family_with_no_entry_is_refused_and_takes_nothing_out() {
@@ -31,13 +33,13 @@ fn a_delete_for_a_family_with_no_entry_is_refused_and_takes_nothing_out() {
     assert!(
         !app.world()
             .resource::<DeleteRegistry>()
-            .handles(&FindingFamily::new(WEAPON_FAMILY.to_owned())),
-        "the editor app must build a DeleteRegistry holding no entry for WeaponRegistry — the \
-         ranged weapon delete lands with the replace-delete child",
+            .handles(&FindingFamily::new(SPRITE_FAMILY.to_owned())),
+        "the editor app must build a DeleteRegistry holding no entry for SpriteDefRegistry. \
+         Sprite deletion is out of scope for this build",
     );
 
     app.insert_resource(DeleteRequest::new(
-        FindingFamily::new(WEAPON_FAMILY.to_owned()),
+        FindingFamily::new(SPRITE_FAMILY.to_owned()),
         ContentMemberKey::new(FIXTURE_GUN.to_owned()),
     ));
     let outcome = advance_to_outcome(&mut app);

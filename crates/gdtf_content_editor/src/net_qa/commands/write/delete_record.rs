@@ -8,18 +8,22 @@ use gdtf_qa_command::{
     dispatch::{CommandCall, DeferredReplies, QaCommandSystems, take_calls},
 };
 use gdtf_qa_protocol::command::{
-    CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
+    ArgumentFault, CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote,
+    UnavailableCode,
 };
 use serde::Deserialize;
 
 use crate::{
-    delete::{DeleteOutcome, DeleteRegistry, DeleteRequest, entries_offered_on},
+    delete::{
+        DeleteOutcome, DeleteRegistry, DeleteRequest, OfferResolution, ReplacementOffer,
+        entries_offered_on,
+    },
     mode::{EditorMode, InjurySubTab},
     net_qa::{
         commands::availability::only_while_editing,
         facts::EditorFacts,
         schedule::EditorNetQaSystems,
-        wire::{DeleteFamilyNet, DeleteKeyNet, DeleteOutcomeNet},
+        wire::{DeleteCancelNet, DeleteFamilyNet, DeleteKeyNet, DeleteOutcomeNet},
     },
 };
 
@@ -33,12 +37,26 @@ const NOT_ON_THIS_SCREEN: RefusalNote = RefusalNote::from_static(
      and sub-tab open",
 );
 
+const BOTH_MEANINGS: &str = "editor.delete_record takes either a replacement key, which confirms \
+                             the delete, or cancel, which calls it off. One call carries one \
+                             meaning, so naming both is refused.";
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(in crate::net_qa) struct EditorDeleteRecordArgs {
-    family: DeleteFamilyNet,
-    key:    DeleteKeyNet,
+    family:      DeleteFamilyNet,
+    key:         DeleteKeyNet,
+    /// The record every kept reference is pointed at. Naming one confirms the delete.
+    #[serde(default)]
+    replacement: Option<DeleteKeyNet>,
+    /// Call the delete off, writing nothing and removing nothing.
+    #[serde(default)]
+    cancel:      DeleteCancelNet,
 }
+
+/// The replacement a parked call chose, written into the offer when one opens.
+#[derive(Resource)]
+pub(in crate::net_qa) struct EditorDeleteChoice(Option<ContentMemberKey>);
 
 /// What one parked delete asked for, so its reply matches its own outcome.
 pub(in crate::net_qa) struct EditorDeleteTicket {
@@ -57,10 +75,13 @@ impl QaCommand for EditorDeleteRecord {
     const NAME: CommandName = CommandName::from_static("editor.delete_record");
     const SUMMARY: CommandSummary = CommandSummary::from_static(
         "Delete one authored record, naming its finding family label and its registry key. The \
-         in-use check runs first, so a record another record still references comes back \
-         Refused(InUse) with every referring record. A family this build cannot delete comes \
-         back Refused(NoEntry), and a family the open mode and sub-tab does not offer answers \
-         Unavailable { code: WrongState }.",
+         in-use check runs first. Naming a replacement key confirms the delete and points every \
+         kept reference at that record; omitting one on a record with a required referrer comes \
+         back Refused(InUse) with every referring record. `cancel` calls the delete off, writing \
+         nothing and removing nothing, and `cancel` together with a replacement key is refused as \
+         BadArguments. A family this build cannot delete comes back Refused(NoEntry), and a \
+         family the open mode and sub-tab does not offer answers Unavailable { code: WrongState \
+         }.",
     );
     const TIMING: CommandTiming = CommandTiming::Deferred;
 
@@ -71,7 +92,8 @@ impl QaCommand for EditorDeleteRecord {
     fn register_handler(app: &mut App) {
         app.add_systems(
             Update,
-            handle_editor_delete_record
+            (handle_editor_delete_record, answer_replacement_offer)
+                .chain()
                 .after(QaCommandSystems::Claim)
                 .in_set(EditorNetQaSystems::Gather),
         );
@@ -106,11 +128,24 @@ fn handle_editor_delete_record(
     for (args, responder) in take_calls::<EditorDeleteRecord>(&mut queue) {
         let family = FindingFamily::new((*args.family).clone());
         let key = ContentMemberKey::new((*args.key).clone());
+        if *args.cancel && args.replacement.is_some() {
+            responder.bad_arguments(ArgumentFault::new(BOTH_MEANINGS.to_owned()));
+            continue;
+        }
         if registry.handles(&family) && !offers(&registry, open_mode, open_sub_tab, &family) {
             responder.unavailable(UnavailableCode::WrongState, NOT_ON_THIS_SCREEN);
             continue;
         }
-        commands.insert_resource(DeleteRequest::new(family.clone(), key.clone()));
+        if *args.cancel {
+            commands.insert_resource(DeleteOutcome::Cancelled);
+        } else {
+            let choice = args
+                .replacement
+                .as_ref()
+                .map(|replacement| ContentMemberKey::new((**replacement).clone()));
+            commands.insert_resource(EditorDeleteChoice(choice));
+            commands.insert_resource(DeleteRequest::new(family.clone(), key.clone()));
+        }
         deferred.park(responder, EditorDeleteTicket { family, key });
     }
     if deferred.is_empty() {
@@ -130,5 +165,23 @@ fn handle_editor_delete_record(
     });
     if *delivered > 0 {
         commands.remove_resource::<DeleteOutcome>();
+        commands.remove_resource::<EditorDeleteChoice>();
     }
+}
+
+// A call answers the offer the delete opens, so no author has to be at the shell.
+fn answer_replacement_offer(
+    offer: Option<ResMut<ReplacementOffer>>,
+    choice: Option<Res<EditorDeleteChoice>>,
+    mut commands: Commands,
+) {
+    let (Some(mut offer), Some(choice)) = (offer, choice) else {
+        return;
+    };
+    if offer.resolve.is_some() {
+        return;
+    }
+    offer.choose.clone_from(&choice.0);
+    offer.resolve = Some(OfferResolution::Confirm);
+    commands.remove_resource::<EditorDeleteChoice>();
 }

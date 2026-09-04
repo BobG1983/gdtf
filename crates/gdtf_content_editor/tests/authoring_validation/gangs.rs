@@ -14,9 +14,11 @@ use gdtf_content_editor::{GangDraft, draft_to_roster, gang_file_name, write_gang
 use gdtf_content_families::GangsFamily;
 use gdtf_test_utils::advance_until;
 
-use crate::harness::{
-    DANGLING_DEFAULT_FLOOR, advance_to_published, dangling_ref_referrer,
-    editor_app_on_fixture_root, editor_app_with_asset_root, has_dangling_ref,
+use crate::{
+    advance::advance_to_published,
+    app::editor_app_with_asset_root,
+    findings::{dangling_ref_referrer, has_dangling_ref},
+    harness::{DANGLING_DEFAULT_FLOOR, editor_app_on_fixture_root},
 };
 
 const FIXTURE_GANG_STEM: &str = "fixture_gang";

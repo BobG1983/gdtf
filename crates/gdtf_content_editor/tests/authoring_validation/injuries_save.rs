@@ -11,7 +11,9 @@ use gdtf_content_editor::{
 use gdtf_content_families::injuries::{INJURIES_FOLDER, WEIGHTING_SUBFOLDER};
 use gdtf_test_utils::advance_until;
 
-use crate::harness::{advance_to_published, editor_app_with_asset_root, has_dangling_ref};
+use crate::{
+    advance::advance_to_published, app::editor_app_with_asset_root, findings::has_dangling_ref,
+};
 
 const SAVED_DANGLING_INJURY: &str = "saved_missing_injury";
 

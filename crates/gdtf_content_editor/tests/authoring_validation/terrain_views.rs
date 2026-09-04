@@ -3,9 +3,10 @@
 
 use gdtf_assets::{ContentIntegrityReport, ReferenceKeyScheme};
 
-use crate::harness::{
-    advance_to_published, dangling_ref_referrer, editor_app_on_fixture_root, has_dangling_ref,
-    missing_views,
+use crate::{
+    advance::advance_to_published,
+    findings::{dangling_ref_referrer, has_dangling_ref},
+    harness::{editor_app_on_fixture_root, missing_views},
 };
 
 const DANGLING_SUCCESSOR: &str = "00000000-0000-0000-0000-130700000bea";

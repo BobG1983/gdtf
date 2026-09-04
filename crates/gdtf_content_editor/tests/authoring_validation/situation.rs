@@ -2,8 +2,10 @@
 
 use gdtf_assets::{ContentIntegrityReport, ReferenceKeyScheme};
 
-use crate::harness::{
-    advance_to_published, dangling_ref_record, editor_app_on_fixture_root, has_dangling_ref,
+use crate::{
+    advance::advance_to_published,
+    findings::has_dangling_ref,
+    harness::{dangling_ref_record, editor_app_on_fixture_root},
 };
 
 // The gang the fixture situation names, which the fixture root holds no file for.

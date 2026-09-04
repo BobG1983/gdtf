@@ -16,9 +16,10 @@ use gdtf_content_editor::{
     injury_save_path_in, weighting_save_path_in, write_injury_in, write_weighting_in,
 };
 
-use crate::harness::{
-    OUTCOME_UPDATES, advance_to_outcome, advance_to_published, editor_app_with_asset_root,
-    is_published,
+use crate::{
+    advance::advance_to_published,
+    app::editor_app_with_asset_root,
+    harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
 };
 
 /// The injury the weighting table names in two of its three buckets.

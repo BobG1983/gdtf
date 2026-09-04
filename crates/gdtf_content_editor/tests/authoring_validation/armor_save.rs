@@ -12,8 +12,9 @@ use gdtf_content_editor::{
 use gdtf_content_families::ArmorFamily;
 use gdtf_test_utils::advance_until;
 
-use crate::harness::{
-    advance_to_published, editor_app_with_asset_root, has_dangling_ref, has_malformed,
+use crate::{
+    advance::advance_to_published, app::editor_app_with_asset_root, findings::has_dangling_ref,
+    harness::has_malformed,
 };
 
 const REARM_ARMOR: &str = "rearm_plate";

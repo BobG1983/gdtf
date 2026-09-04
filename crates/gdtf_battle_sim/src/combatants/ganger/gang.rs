@@ -114,6 +114,11 @@ impl GangRegistry {
         self.0.insert(name, roster)
     }
 
+    /// Take the roster under `name` out; answers it if it was there.
+    pub fn remove(&mut self, name: &GangName) -> Option<GangRoster> {
+        self.0.remove(name)
+    }
+
     /// Lookup a roster by name.
     #[must_use]
     pub fn roster(&self, name: &GangName) -> Option<&GangRoster> {

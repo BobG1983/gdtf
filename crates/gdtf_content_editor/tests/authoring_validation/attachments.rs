@@ -12,9 +12,11 @@ use gdtf_content_editor::{
 use gdtf_content_families::{AttachmentsFamily, WeaponsFamily};
 use gdtf_test_utils::advance_until;
 
-use crate::harness::{
-    advance_to_published, dangling_ref_referrer, editor_app_with_asset_root, has_dangling_ref,
-    has_malformed,
+use crate::{
+    advance::advance_to_published,
+    app::editor_app_with_asset_root,
+    findings::{dangling_ref_referrer, has_dangling_ref},
+    harness::has_malformed,
 };
 
 const REARM_SCOPE: &str = "rearm_scope";

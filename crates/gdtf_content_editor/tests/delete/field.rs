@@ -25,11 +25,10 @@ use gdtf_content_editor::{
 use gdtf_content_families::{TerrainDefsFamily, situation::LoadedSituation};
 
 use crate::{
+    advance::advance_to_published,
+    app::editor_app_with_asset_root,
     fixture::weapon_name,
-    harness::{
-        OUTCOME_UPDATES, advance_to_outcome, advance_to_published, editor_app_with_asset_root,
-        is_published,
-    },
+    harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
 };
 
 /// The field every referrer names.

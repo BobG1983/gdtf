@@ -8,7 +8,9 @@ use gdtf_assets::{
 use gdtf_battle_sim::level::PrefabRegistry;
 use gdtf_content_families::{PrefabsFamily, prefabs::member_key};
 
-use crate::harness::{advance_to_published, editor_app_on_fixture_root, has_dangling_ref};
+use crate::{
+    advance::advance_to_published, findings::has_dangling_ref, harness::editor_app_on_fixture_root,
+};
 
 const DANGLING_PLACEMENT: &str = "00000000-0000-0000-0000-063000000f01";
 

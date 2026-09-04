@@ -19,6 +19,75 @@ use gdtf_content_families::prefabs::{PREFAB_EXTENSION, PREFABS_FOLDER, member_ke
 /// The prefab this suite deletes over the wire.
 pub(crate) const FIXTURE_PREFAB: &str = "fixture_prefab";
 
+/// The terrain piece the delete cases remove.
+pub(crate) const DELETED_PIECE: &str = "00000000-0000-0000-0000-133100000001";
+
+/// The terrain piece the delete cases point the theme at.
+pub(crate) const REPLACEMENT_PIECE: &str = "00000000-0000-0000-0000-133100000002";
+
+/// The theme whose `default_floor` names [`DELETED_PIECE`].
+pub(crate) const FLOOR_THEME: &str = "00000000-0000-0000-0000-1331000000a1";
+
+// The folder terrain defs and theme defs are read from.
+const TERRAIN_FOLDER: &str = "content/terrain";
+
+/// Write a cover terrain def under `root`, answering the file it wrote.
+pub(crate) fn write_terrain_def(root: &Path, stem: &str, uuid: &str) -> Option<PathBuf> {
+    let body = format!(
+        "(
+    key: \"{uuid}\",
+    display_name: \"Piece Named Unlike {stem}\",
+    sim_kind: Cover(hp: 10, armor_protection: 0, armor_hardness: 0, height_band: Low),
+    presenter_kind: Cover,
+    views: [
+        (view: Facing(North), sprite: \"cover\"),
+        (view: Facing(East), sprite: \"cover\"),
+        (view: Facing(South), sprite: \"cover\"),
+        (view: Facing(West), sprite: \"cover\"),
+    ],
+    tags: [],
+)
+"
+    );
+    write_under(
+        root,
+        &format!("{TERRAIN_FOLDER}/{stem}.terrain_def.ron"),
+        &body,
+    )
+}
+
+/// Write a theme def under `root` whose default floor is `default_floor`.
+pub(crate) fn write_theme_def(
+    root: &Path,
+    stem: &str,
+    uuid: &str,
+    default_floor: &str,
+    palette: &str,
+) -> Option<PathBuf> {
+    let body = format!(
+        "(
+    key: \"{uuid}\",
+    display_name: \"Theme Named Unlike {stem}\",
+    default_floor: \"{default_floor}\",
+    terrain: [\"{palette}\"],
+)
+"
+    );
+    write_under(
+        root,
+        &format!("{TERRAIN_FOLDER}/{stem}.terrain_theme.ron"),
+        &body,
+    )
+}
+
+// Write one file under `root`, making its folder first.
+fn write_under(root: &Path, relative: &str, body: &str) -> Option<PathBuf> {
+    let path = root.join(relative);
+    std::fs::create_dir_all(path.parent()?).ok()?;
+    std::fs::write(&path, body).ok()?;
+    Some(path)
+}
+
 /// The one injury the fixture weighting's Minor row resolves to.
 pub(crate) const WEIGHTED_INJURY: &str = "fixture_bruise";
 

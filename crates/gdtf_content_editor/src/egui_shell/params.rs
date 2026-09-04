@@ -18,8 +18,6 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::{TerrainDefsFamily, ThemeDefsFamily, sprites::SpriteDefRegistry};
 
-#[cfg(debug_assertions)]
-use crate::net_qa::EditorQaAssetsRoot;
 use crate::{
     armor_form::ArmorDraft,
     attachment_form::AttachmentDraft,
@@ -40,13 +38,19 @@ use crate::{
     theme_form::ThemeDraft,
     weapon_form::WeaponDraft,
 };
+#[cfg(debug_assertions)]
+use crate::{delete::DeleteRegistry, net_qa::EditorQaAssetsRoot};
 
 /// The workbench-wide state every mode panel reads: the open tab, the session, the last save.
 #[derive(bevy::ecs::system::SystemParam)]
-pub(crate) struct Workbench<'w> {
+pub(crate) struct Workbench<'w, 's> {
     pub(super) mode:      Option<ResMut<'w, EditorMode>>,
     pub(super) session:   Option<ResMut<'w, MapEditorSession>>,
     pub(super) last_save: ResMut<'w, LastSaveRecord>,
+    /// The families a delete is offered for, so each panel draws its own delete button.
+    #[cfg(debug_assertions)]
+    pub(super) deletes:   Option<Res<'w, DeleteRegistry>>,
+    pub(super) commands:  Commands<'w, 's>,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]

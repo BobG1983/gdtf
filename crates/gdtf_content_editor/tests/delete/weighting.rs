@@ -13,11 +13,10 @@ use gdtf_content_editor::{
 use gdtf_content_families::injuries::weighting_member_key;
 
 use crate::{
+    advance::advance_to_published,
+    app::editor_app_with_asset_root,
     fixture::{WEIGHTED_INJURY, write_fixture_injury, write_fixture_weighting},
-    harness::{
-        OUTCOME_UPDATES, advance_to_outcome, advance_to_published, editor_app_with_asset_root,
-        is_published,
-    },
+    harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
 };
 
 /// The finding family label every injury weighting finding carries.

@@ -15,11 +15,10 @@ use gdtf_content_editor::{
 };
 
 use crate::{
+    advance::advance_to_published,
+    app::editor_app_with_asset_root,
     fixture::weapon_name,
-    harness::{
-        OUTCOME_UPDATES, advance_to_outcome, advance_to_published, editor_app_with_asset_root,
-        is_published,
-    },
+    harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
 };
 
 /// The attachment both weapons are fitted with.

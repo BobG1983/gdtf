@@ -8,6 +8,9 @@ use crate::{
     gang_form::write_gang_in,
 };
 
+/// The finding family label a gang roster's own references are recorded under.
+pub(crate) const GANG_FAMILY: &str = "GangRegistry";
+
 // Rewrite every member `edit` changes, each gang's file written before its registry entry.
 pub(super) fn drop_from_gang_members(
     world: &mut World,

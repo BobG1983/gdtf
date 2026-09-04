@@ -21,6 +21,11 @@ impl UuidThemeRegistry {
         self.0.insert(key, def)
     }
 
+    /// Take the definition under `key` out; answers it if it was there.
+    pub fn remove(&mut self, key: &ThemeUuid) -> Option<UuidThemeDef> {
+        self.0.remove(key)
+    }
+
     /// Look up a definition by key.
     #[must_use]
     pub fn def(&self, key: &ThemeUuid) -> Option<&UuidThemeDef> {

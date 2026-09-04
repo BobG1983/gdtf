@@ -6,11 +6,10 @@ use gdtf_content_editor::{DeleteOutcome, DeleteRequest, EditorQaAssetsRoot};
 use gdtf_content_families::prefabs::member_key;
 
 use crate::{
+    advance::advance_to_published,
+    app::editor_app_with_asset_root,
     fixture::{FIXTURE_PREFAB, prefab_spec, write_fixture_prefab},
-    harness::{
-        OUTCOME_UPDATES, advance_to_outcome, advance_to_published, editor_app_with_asset_root,
-        is_published,
-    },
+    harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
 };
 
 /// The finding family label every prefab finding carries.

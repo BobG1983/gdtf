@@ -124,6 +124,7 @@ pub(crate) enum DeleteRefusalRow {
     NoEntry,
     NoRecord,
     InUse(Vec<ReferringRecordRow>),
+    ReplacementLacks(String),
 }
 
 /// One record the in-use check named as still referencing the deleted one.
@@ -139,4 +140,5 @@ pub(crate) struct ReferringRecordRow {
 pub(crate) enum DeleteOutcomeRow {
     Refused(DeleteRefusalRow),
     Removed,
+    Cancelled,
 }

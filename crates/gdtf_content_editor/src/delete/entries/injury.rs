@@ -19,6 +19,9 @@ use crate::{
 /// The finding family label every injury reference finding carries.
 pub(crate) const INJURY_FAMILY: &str = "InjuryRegistry";
 
+// The family label a weighting table's own reference to an injury is recorded under.
+const WEIGHTING_REFERRER: &str = "InjuryWeighting";
+
 /// The delete for one injury def, offered on the Injury tab's Injury sub-tab.
 pub(crate) fn injury_delete_entry() -> DeleteEntry {
     DeleteEntry::new(
@@ -39,9 +42,10 @@ pub(crate) fn injury_delete_entry() -> DeleteEntry {
         }),
         Box::new(injury_file_path),
     )
-    .with_drop(Box::new(|world, key| {
-        drop_injury_refs(world, &injury_name(key))
-    }))
+    .dropping_from(
+        FindingFamily::new(WEIGHTING_REFERRER.to_owned()),
+        Box::new(|world, key| drop_injury_refs(world, &injury_name(key))),
+    )
 }
 
 // The registry key the member key names.

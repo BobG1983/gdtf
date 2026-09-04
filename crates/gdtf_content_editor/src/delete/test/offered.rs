@@ -3,10 +3,11 @@
 use crate::{
     delete::{
         entries::{
-            ARMOR_FAMILY, ATTACHMENT_FAMILY, FIELD_FAMILY, INJURY_FAMILY, MELEE_WEAPON_FAMILY,
-            PREFAB_FAMILY, WEIGHTING_FAMILY, armor_delete_entry, attachment_delete_entry,
-            field_delete_entry, injury_delete_entry, melee_weapon_delete_entry,
-            prefab_delete_entry, weighting_delete_entry,
+            ARMOR_FAMILY, ATTACHMENT_FAMILY, FIELD_FAMILY, GANG_FAMILY, INJURY_FAMILY,
+            MELEE_WEAPON_FAMILY, PREFAB_FAMILY, TERRAIN_FAMILY, THEME_FAMILY, WEAPON_FAMILY,
+            WEIGHTING_FAMILY, armor_delete_entry, attachment_delete_entry, field_delete_entry,
+            gang_delete_entry, injury_delete_entry, melee_weapon_delete_entry, prefab_delete_entry,
+            terrain_delete_entry, theme_delete_entry, weapon_delete_entry, weighting_delete_entry,
         },
         offered::entries_offered_on,
         registry::DeleteRegistry,
@@ -15,7 +16,7 @@ use crate::{
 };
 
 // The registry the editor builds, in registration order.
-fn registry() -> DeleteRegistry {
+pub(super) fn registry() -> DeleteRegistry {
     let mut registry = DeleteRegistry::default();
     registry.add(prefab_delete_entry());
     registry.add(weighting_delete_entry());
@@ -24,6 +25,10 @@ fn registry() -> DeleteRegistry {
     registry.add(attachment_delete_entry());
     registry.add(injury_delete_entry());
     registry.add(field_delete_entry());
+    registry.add(terrain_delete_entry());
+    registry.add(theme_delete_entry());
+    registry.add(gang_delete_entry());
+    registry.add(weapon_delete_entry());
     registry
 }
 
@@ -85,5 +90,26 @@ fn each_loadout_delete_is_offered_on_its_own_tab() {
         labels_on(EditorMode::Field, None),
         vec![FIELD_FAMILY.to_owned()],
         "a field def is deleted from the Field tab",
+    );
+}
+
+#[test]
+fn each_replace_delete_is_offered_on_its_own_tab_and_none_on_sprite() {
+    for (mode, family) in [
+        (EditorMode::Terrain, TERRAIN_FAMILY),
+        (EditorMode::Theme, THEME_FAMILY),
+        (EditorMode::Gang, GANG_FAMILY),
+        (EditorMode::Weapon, WEAPON_FAMILY),
+    ] {
+        assert_eq!(
+            labels_on(mode, None),
+            vec![family.to_owned()],
+            "the {mode:?} tab offers exactly its own record's delete",
+        );
+    }
+    assert!(
+        labels_on(EditorMode::Sprite, None).is_empty(),
+        "no entry names the Sprite screen, so it offers no delete: {:?}",
+        labels_on(EditorMode::Sprite, None),
     );
 }

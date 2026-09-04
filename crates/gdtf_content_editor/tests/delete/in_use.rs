@@ -8,16 +8,15 @@ use gdtf_assets::{
 };
 use gdtf_battle_sim::weapon::WeaponRegistry;
 use gdtf_content_editor::{
-    DeleteOutcome, DeleteRefusal, DeleteRegistry, DeleteRequest, EditorQaAssetsRoot,
-    weapon_save_path_in,
+    DeleteOutcome, DeleteRefusal, DeleteRequest, EditorQaAssetsRoot, weapon_save_path_in,
 };
 
 use crate::{
-    fixture::{FIXTURE_GANG, FIXTURE_GUN, weapon_name, write_fixture_gang, write_fixture_weapon},
-    harness::{
-        OUTCOME_UPDATES, WEAPON_FAMILY, advance_to_outcome, advance_to_published,
-        editor_app_with_asset_root, is_published, weapon_delete_entry,
-    },
+    advance::advance_to_published,
+    app::editor_app_with_asset_root,
+    fixture::{FIXTURE_GUN, weapon_name, write_fixture_gang, write_fixture_weapon},
+    harness::{OUTCOME_UPDATES, OfferAnswer, WEAPON_FAMILY, advance_answering, is_published},
+    records::write_emplacement_def,
 };
 
 // A second referrer for the fixture weapon, from a family the gang check never walks.
@@ -57,16 +56,13 @@ fn the_in_use_check_answers_with_every_referring_record_the_report_holds() {
     let mut app = editor_app_with_asset_root(dir.path());
     app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
     app.register_reference_check(record_extra_weapon_ref);
-    app.world_mut()
-        .resource_mut::<DeleteRegistry>()
-        .add(weapon_delete_entry());
     advance_to_published(&mut app);
 
     app.insert_resource(DeleteRequest::new(
         FindingFamily::new(WEAPON_FAMILY.to_owned()),
         ContentMemberKey::new(FIXTURE_GUN.to_owned()),
     ));
-    let outcome = advance_to_outcome(&mut app);
+    let outcome = advance_answering(&mut app, &OfferAnswer::Confirm(None)).outcome;
     assert!(
         outcome.is_some(),
         "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
@@ -85,8 +81,11 @@ fn the_in_use_check_answers_with_every_referring_record_the_report_holds() {
     );
 }
 
+// The emplacement terrain def whose `mounted_weapon` names the fixture weapon.
+const MOUNTING_DEF: &str = "00000000-0000-0000-0000-133000000e01";
+
 #[test]
-fn a_weapon_a_gang_member_still_names_is_not_deleted() {
+fn a_weapon_an_emplacement_still_mounts_is_not_deleted_without_a_replacement() {
     let dir = tempfile::tempdir();
     assert!(dir.is_ok(), "creating the TempDir assets root must succeed");
     let Ok(dir) = dir else { return };
@@ -95,22 +94,19 @@ fn a_weapon_a_gang_member_still_names_is_not_deleted() {
         "the fixture weapon write must succeed",
     );
     assert!(
-        write_fixture_gang(dir.path(), FIXTURE_GUN),
-        "the fixture gang write must succeed",
+        write_emplacement_def(dir.path(), "mounting_def", MOUNTING_DEF, FIXTURE_GUN).is_some(),
+        "the emplacement terrain def write must succeed",
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
     app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
-    app.world_mut()
-        .resource_mut::<DeleteRegistry>()
-        .add(weapon_delete_entry());
     advance_to_published(&mut app);
 
     app.insert_resource(DeleteRequest::new(
         FindingFamily::new(WEAPON_FAMILY.to_owned()),
         ContentMemberKey::new(FIXTURE_GUN.to_owned()),
     ));
-    let outcome = advance_to_outcome(&mut app);
+    let outcome = advance_answering(&mut app, &OfferAnswer::Confirm(None)).outcome;
     assert!(
         outcome.is_some(),
         "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
@@ -130,8 +126,8 @@ fn a_weapon_a_gang_member_still_names_is_not_deleted() {
     assert!(
         referring
             .first()
-            .is_some_and(|record| *record.key == *FIXTURE_GANG),
-        "the referring record must be keyed `{FIXTURE_GANG}`; found: {referring:?}",
+            .is_some_and(|record| *record.key == *MOUNTING_DEF),
+        "the referring record must be the emplacement def `{MOUNTING_DEF}`; found: {referring:?}",
     );
     assert!(
         app.world()

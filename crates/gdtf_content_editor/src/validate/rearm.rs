@@ -14,7 +14,7 @@ use gdtf_battle_sim::{
     terrain::def::TerrainDefRegistry,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
-use gdtf_content_families::sprites::SpriteDefRegistry;
+use gdtf_content_families::{situation::LoadedSituation, sprites::SpriteDefRegistry};
 
 /// Watched content registries for change detection.
 #[derive(SystemParam)]
@@ -31,6 +31,7 @@ pub(super) struct WatchedRegistries<'w> {
     prefabs:       Option<Res<'w, PrefabRegistry>>,
     injury_tables: Option<Res<'w, InjuryTables>>,
     fields:        Option<Res<'w, FieldDefRegistry>>,
+    situation:     Option<Res<'w, LoadedSituation>>,
 }
 
 impl WatchedRegistries<'_> {
@@ -62,6 +63,10 @@ impl WatchedRegistries<'_> {
                 .as_ref()
                 .is_some_and(DetectChanges::is_changed)
             || self.fields.as_ref().is_some_and(DetectChanges::is_changed)
+            || self
+                .situation
+                .as_ref()
+                .is_some_and(DetectChanges::is_changed)
     }
 }
 

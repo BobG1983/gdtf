@@ -54,4 +54,9 @@ pub(in crate::egui_shell) struct ModePanelsCtx<
     pub(in crate::egui_shell) weapon:           &'a mut WeaponParams<'weapon>,
     pub(in crate::egui_shell) melee_weapon:     &'a mut MeleeWeaponParams<'melee>,
     pub(in crate::egui_shell) field:            &'a mut FieldParams<'field>,
+    /// The families a delete is offered for, and what the drawn button asked for.
+    #[cfg(debug_assertions)]
+    pub(in crate::egui_shell) deletes:          Option<&'a crate::delete::DeleteRegistry>,
+    #[cfg(debug_assertions)]
+    pub(in crate::egui_shell) delete_request:   &'a mut Option<crate::delete::DeleteRequest>,
 }

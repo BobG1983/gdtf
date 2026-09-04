@@ -39,6 +39,8 @@ pub enum DeleteRefusal {
     NoRecord,
     /// Records still reference the requested record.
     InUse(Vec<ReferringRecord>),
+    /// The chosen replacement does not hold something the referring records name.
+    ReplacementLacks(ContentMemberKey),
 }
 
 /// How a delete settled.
@@ -48,4 +50,6 @@ pub enum DeleteOutcome {
     Refused(DeleteRefusal),
     /// The record is out of its registry and its file is gone.
     Removed,
+    /// The author called the delete off, so nothing was written and nothing removed.
+    Cancelled,
 }

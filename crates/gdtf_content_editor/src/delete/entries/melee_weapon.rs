@@ -4,7 +4,7 @@ use gdtf_assets::{ContentMemberKey, ContentSourcePaths, FindingFamily};
 use gdtf_battle_sim::weapon::{MeleeWeaponRegistry, MeleeWeaponSpec, WeaponName};
 use gdtf_content_families::MeleeWeaponsFamily;
 
-use super::gangs::drop_from_gang_members;
+use super::gangs::{GANG_FAMILY, drop_from_gang_members};
 use crate::{
     delete::{
         registry::{DeleteEntry, DeleteScreen},
@@ -39,23 +39,26 @@ pub(crate) fn melee_weapon_delete_entry() -> DeleteEntry {
             sources.path(key).cloned()
         }),
     )
-    .with_drop(Box::new(|world, key| {
-        // A member written back to no melee weapon resolves to the default, which has to be there.
-        let resolves = world
-            .get_resource::<MeleeWeaponRegistry>()
-            .is_some_and(|registry| registry.fists().is_some());
-        if !resolves {
-            return DroppedReferences::Nothing;
-        }
-        let held = weapon_name(key);
-        drop_from_gang_members(world, |member| {
-            let names_it = member.melee_weapon.as_ref() == Some(&held);
-            if names_it {
-                member.melee_weapon = None;
+    .dropping_from(
+        FindingFamily::new(GANG_FAMILY.to_owned()),
+        Box::new(|world, key| {
+            // A member written back to no melee weapon resolves to the default, which has to be there.
+            let resolves = world
+                .get_resource::<MeleeWeaponRegistry>()
+                .is_some_and(|registry| registry.fists().is_some());
+            if !resolves {
+                return DroppedReferences::Nothing;
             }
-            names_it
-        })
-    }))
+            let held = weapon_name(key);
+            drop_from_gang_members(world, |member| {
+                let names_it = member.melee_weapon.as_ref() == Some(&held);
+                if names_it {
+                    member.melee_weapon = None;
+                }
+                names_it
+            })
+        }),
+    )
 }
 
 // The registry key the member key names.

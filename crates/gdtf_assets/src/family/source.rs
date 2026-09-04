@@ -44,6 +44,13 @@ impl<F: ContentFamily> ContentSourcePaths<F> {
     pub fn path(&self, key: &ContentMemberKey) -> Option<&ContentSourcePath> {
         self.0.get(key)
     }
+
+    /// Move the recorded file from one key to another, for a rewrite that re-keys a member.
+    pub fn rekey(&mut self, from: &ContentMemberKey, to: ContentMemberKey) {
+        if let Some(path) = self.0.remove(from) {
+            self.0.insert(to, path);
+        }
+    }
 }
 
 impl<F: ContentFamily> Default for ContentSourcePaths<F> {

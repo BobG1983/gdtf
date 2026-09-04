@@ -61,7 +61,7 @@ shape varies on a second axis as well: one key holds many members rather than on
 |--------|----------|-----|
 | Stem-keyed | `WeaponsFamily`, `MeleeWeaponsFamily`, `ArmorFamily`, `FieldsFamily`, `GangsFamily`, `AttachmentsFamily`, `SpriteDefsFamily` | File stem, infix stripped (`stub_pistol.weapon.ron` → `stub_pistol`) |
 | Payload-keyed | `TerrainDefsFamily`, `ThemeDefsFamily` | The UUID inside the def; the filename is a courtesy |
-| Payload-keyed into a bucketed multimap | `PrefabsFamily` | The `PrefabKey` (theme, size, role) `PrefabRegistry::insert` derives from the spec. The file stem becomes the `PrefabName` inside each `Prefab` rather than the key, so one key holds every prefab authored under it. Its member key is built in one place, `prefabs::member_key`, which spells the theme, size and role alongside the stem, so `ContentSourcePaths` records the file each prefab was read from |
+| Payload-keyed into a bucketed multimap | `PrefabsFamily` | The `PrefabKey` (theme, size, role) `PrefabRegistry::insert` derives from the spec. The file stem becomes the `PrefabName` inside each `Prefab` rather than the key, so one key holds every prefab authored under it. Its member key is built in one place, `prefabs::member_key`, which spells the theme, size and role alongside the stem, so `ContentSourcePaths` records the file each prefab was read from. A rewrite that changes the spec's theme changes that member key, so the recorded file moves to the new key rather than being recorded twice |
 
 One placement exception: `SpriteDefsFamily` is the one family whose
 `Spec`/`Registry` live IN the glue crate

@@ -21,6 +21,11 @@ impl TerrainDefRegistry {
         self.0.insert(key, def)
     }
 
+    /// Take the def under `key` out; answers it if it was there.
+    pub fn remove(&mut self, key: &TerrainUuid) -> Option<TerrainDef> {
+        self.0.remove(key)
+    }
+
     /// Look up a def.
     #[must_use]
     pub fn def(&self, key: &TerrainUuid) -> Option<&TerrainDef> {

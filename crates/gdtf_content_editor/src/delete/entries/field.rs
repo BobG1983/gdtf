@@ -27,6 +27,15 @@ use crate::{
 /// The finding family label every field reference finding carries.
 pub(crate) const FIELD_FAMILY: &str = "FieldDefRegistry";
 
+// The family label the loaded situation's own references are recorded under.
+const SITUATION_REFERRER: &str = "LoadedSituation";
+
+// The family label a terrain def's own on-death reference is recorded under.
+const TERRAIN_REFERRER: &str = "TerrainDefRegistry";
+
+// The family label a ranged weapon's own on-death reference is recorded under.
+const WEAPON_REFERRER: &str = "WeaponRegistry";
+
 /// The delete for one field def, offered on the Field tab.
 pub(crate) fn field_delete_entry() -> DeleteEntry {
     DeleteEntry::new(
@@ -50,33 +59,33 @@ pub(crate) fn field_delete_entry() -> DeleteEntry {
             sources.path(key).cloned()
         }),
     )
-    .with_drop(Box::new(|world, key| {
-        let field = field_key(key);
-        let Some(root) = delete_assets_root(world) else {
-            return DroppedReferences::Failed;
-        };
-        let situation = drop_from_situation(world, &root, &field);
-        let terrain = combined(situation, drop_from_terrain_defs(world, &root, &field));
-        combined(terrain, drop_from_weapons(world, &root, &field))
-    }))
+    .dropping_from(
+        FindingFamily::new(SITUATION_REFERRER.to_owned()),
+        Box::new(|world, key| in_root(world, key, drop_from_situation)),
+    )
+    .dropping_from(
+        FindingFamily::new(TERRAIN_REFERRER.to_owned()),
+        Box::new(|world, key| in_root(world, key, drop_from_terrain_defs)),
+    )
+    .dropping_from(
+        FindingFamily::new(WEAPON_REFERRER.to_owned()),
+        Box::new(|world, key| in_root(world, key, drop_from_weapons)),
+    )
+}
+
+// Run one half of the field drop under the assets root the delete is writing to.
+fn in_root(
+    world: &mut World,
+    key: &ContentMemberKey,
+    drop: fn(&mut World, &Path, &FieldKey) -> DroppedReferences,
+) -> DroppedReferences {
+    let field = field_key(key);
+    delete_assets_root(world).map_or(DroppedReferences::Failed, |root| drop(world, &root, &field))
 }
 
 // The registry key the member key names.
 fn field_key(key: &ContentMemberKey) -> FieldKey {
     FieldKey::new((**key).clone())
-}
-
-// A failed part loses to nothing else, and one rewrite is enough to re-check.
-const fn combined(left: DroppedReferences, right: DroppedReferences) -> DroppedReferences {
-    match (left, right) {
-        (DroppedReferences::Failed, _) | (_, DroppedReferences::Failed) => {
-            DroppedReferences::Failed
-        }
-        (DroppedReferences::Rewritten, _) | (_, DroppedReferences::Rewritten) => {
-            DroppedReferences::Rewritten
-        }
-        _ => DroppedReferences::Nothing,
-    }
 }
 
 // Whether an on-death list leaves this field behind.

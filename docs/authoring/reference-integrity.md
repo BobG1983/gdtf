@@ -43,8 +43,8 @@ The watch set spans every registry the registered checks read, so an edit to
 EITHER side of an edge — the gang file OR the weapons/armor/melee folder it
 references — re-runs every check onto the one consolidated report. The field
 defs are watched, so dropping a field key re-runs every check that reads it.
-One registry the editor's checks read sits outside the watch set today, the
-loaded situation, so an edit to it re-runs nothing until the next launch. A
+The loaded situation is watched alongside the registries, so rewriting it
+re-runs every check the same way. A
 dangling terrain UUID or equipment key authored in the editor therefore
 surfaces at authoring time (at the save/edit), not on the next game launch.
 

@@ -4,7 +4,7 @@ use gdtf_assets::{ContentMemberKey, ContentSourcePaths, FindingFamily};
 use gdtf_battle_sim::armor::{ArmorName, ArmorRegistry, ArmorSpec};
 use gdtf_content_families::ArmorFamily;
 
-use super::gangs::drop_from_gang_members;
+use super::gangs::{GANG_FAMILY, drop_from_gang_members};
 use crate::{
     delete::registry::{DeleteEntry, DeleteScreen},
     mode::EditorMode,
@@ -36,16 +36,19 @@ pub(crate) fn armor_delete_entry() -> DeleteEntry {
             sources.path(key).cloned()
         }),
     )
-    .with_drop(Box::new(|world, key| {
-        let worn = armor_name(key);
-        drop_from_gang_members(world, |member| {
-            let names_it = member.armor.as_ref() == Some(&worn);
-            if names_it {
-                member.armor = None;
-            }
-            names_it
-        })
-    }))
+    .dropping_from(
+        FindingFamily::new(GANG_FAMILY.to_owned()),
+        Box::new(|world, key| {
+            let worn = armor_name(key);
+            drop_from_gang_members(world, |member| {
+                let names_it = member.armor.as_ref() == Some(&worn);
+                if names_it {
+                    member.armor = None;
+                }
+                names_it
+            })
+        }),
+    )
 }
 
 // The registry key the member key names.

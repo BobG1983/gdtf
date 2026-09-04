@@ -2,16 +2,13 @@
 
 use gdtf_assets::{ContentMemberKey, FindingFamily};
 use gdtf_battle_sim::weapon::WeaponRegistry;
-use gdtf_content_editor::{
-    DeleteOutcome, DeleteRegistry, DeleteRequest, EditorQaAssetsRoot, weapon_save_path_in,
-};
+use gdtf_content_editor::{DeleteOutcome, DeleteRequest, EditorQaAssetsRoot, weapon_save_path_in};
 
 use crate::{
+    advance::advance_to_published,
+    app::editor_app_with_asset_root,
     fixture::{FIXTURE_GUN, ORPHAN_GUN, weapon_name, write_fixture_gang, write_fixture_weapon},
-    harness::{
-        OUTCOME_UPDATES, WEAPON_FAMILY, advance_to_outcome, advance_to_published,
-        editor_app_with_asset_root, is_published, weapon_delete_entry,
-    },
+    harness::{OUTCOME_UPDATES, WEAPON_FAMILY, advance_to_outcome, is_published},
 };
 
 #[test]
@@ -34,9 +31,6 @@ fn a_weapon_no_record_names_is_removed_with_its_file() {
 
     let mut app = editor_app_with_asset_root(dir.path());
     app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
-    app.world_mut()
-        .resource_mut::<DeleteRegistry>()
-        .add(weapon_delete_entry());
     advance_to_published(&mut app);
 
     app.insert_resource(DeleteRequest::new(

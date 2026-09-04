@@ -36,6 +36,26 @@ pub(super) fn theme_combo_box(
         });
 }
 
+/// The top tab bar and the bottom status line, which every mode draws the same way.
+pub(super) fn chrome_bars(
+    viewport_ui: &mut egui::Ui,
+    mode: &mut EditorMode,
+    session: &mut MapEditorSession,
+    options: &[ThemeOption],
+    themes: Option<&UuidThemeRegistry>,
+) {
+    egui::Panel::top("editor_top_bar").show(viewport_ui, |ui| {
+        ui.horizontal(|ui| {
+            mode_tabs(ui, mode);
+            ui.separator();
+            theme_combo_box(ui, options, themes, session);
+        });
+    });
+    egui::Panel::bottom("editor_status_bar").show(viewport_ui, |ui| {
+        ui.label(status_line(*mode, session, themes));
+    });
+}
+
 pub(super) fn status_line(
     mode: EditorMode,
     session: &MapEditorSession,

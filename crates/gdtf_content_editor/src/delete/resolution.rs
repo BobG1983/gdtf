@@ -22,6 +22,34 @@ pub enum DroppedReferences {
 pub type DropReferences =
     Box<dyn Fn(&mut World, &ContentMemberKey) -> DroppedReferences + Send + Sync + 'static>;
 
+/// Rewrites every record referring to a key so that it refers to the replacement instead.
+///
+/// The first key is the record being deleted, the second the replacement the author chose.
+pub type ReplaceReferences = Box<
+    dyn Fn(&mut World, &ContentMemberKey, &ContentMemberKey) -> DroppedReferences
+        + Send
+        + Sync
+        + 'static,
+>;
+
+/// What the records of one referring family do when the record they name goes.
+pub enum ReferenceResolution {
+    /// The reference goes, and the referring record keeps everything else.
+    Drop(DropReferences),
+    /// The reference is pointed at the replacement the author chose.
+    Replace(ReplaceReferences),
+}
+
+/// The first thing a chosen replacement cannot stand in for, if there is one.
+///
+/// The first key is the record being deleted, the second the replacement.
+pub type ReplacementCheck = Box<
+    dyn Fn(&World, &ContentMemberKey, &ContentMemberKey) -> Option<ContentMemberKey>
+        + Send
+        + Sync
+        + 'static,
+>;
+
 // The assets root a delete writes its rewritten referrers under.
 pub(super) fn delete_assets_root(world: &World) -> Option<PathBuf> {
     world

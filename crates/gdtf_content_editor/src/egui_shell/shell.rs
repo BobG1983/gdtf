@@ -4,7 +4,7 @@ use bevy_egui::{EguiContexts, egui};
 use crate::{
     egui_shell::{
         autoload::{ModeSyncBundles, run_form_syncs},
-        chrome::{mode_tabs, status_line, theme_combo_box},
+        chrome::chrome_bars,
         mode_panels::{ModePanelsCtx, central_panel, right_panel},
         params::{ContentForms, PrefabParams, SharedRegistries, TerrainThemeDrafts, Workbench},
         prefab::palette_ui,
@@ -63,19 +63,13 @@ pub(crate) fn editor_egui_ui(
             .layer_id(egui::LayerId::background())
             .max_rect(ctx.viewport_rect()),
     );
-    let options = theme_options(shared.themes.as_deref());
-
-    egui::Panel::top("editor_top_bar").show(&mut viewport_ui, |ui| {
-        ui.horizontal(|ui| {
-            mode_tabs(ui, &mut mode);
-            ui.separator();
-            theme_combo_box(ui, &options, shared.themes.as_deref(), &mut session);
-        });
-    });
-
-    egui::Panel::bottom("editor_status_bar").show(&mut viewport_ui, |ui| {
-        ui.label(status_line(*mode, &session, shared.themes.as_deref()));
-    });
+    chrome_bars(
+        &mut viewport_ui,
+        &mut mode,
+        &mut session,
+        &theme_options(shared.themes.as_deref()),
+        shared.themes.as_deref(),
+    );
 
     egui::Panel::left("editor_palette").show(&mut viewport_ui, |ui| match *mode {
         EditorMode::Terrain => {
@@ -104,6 +98,8 @@ pub(crate) fn editor_egui_ui(
         | EditorMode::Field => {}
     });
 
+    #[cfg(debug_assertions)]
+    let mut delete_request = None;
     let mut panel_ctx = ModePanelsCtx {
         session: &mut session,
         last_save,
@@ -123,9 +119,24 @@ pub(crate) fn editor_egui_ui(
         weapon: &mut forms.weapon,
         melee_weapon: &mut forms.melee_weapon,
         field: &mut forms.field,
+        #[cfg(debug_assertions)]
+        deletes: workbench.deletes.as_deref(),
+        #[cfg(debug_assertions)]
+        delete_request: &mut delete_request,
     };
     right_panel(&mut viewport_ui, *mode, &mut panel_ctx);
     central_panel(&mut viewport_ui, *mode, &mut panel_ctx);
 
+    #[cfg(debug_assertions)]
+    insert_delete_request(&mut workbench.commands, delete_request);
+
     Ok(())
+}
+
+// Ask for the delete the drawn control answered with, if the author pressed it.
+#[cfg(debug_assertions)]
+fn insert_delete_request(commands: &mut Commands, request: Option<crate::delete::DeleteRequest>) {
+    if let Some(request) = request {
+        commands.insert_resource(request);
+    }
 }

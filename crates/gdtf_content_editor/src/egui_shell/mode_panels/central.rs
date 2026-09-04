@@ -19,7 +19,54 @@ pub(in crate::egui_shell) fn central_panel(
     mode: EditorMode,
     ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
-    egui::CentralPanel::default().show(viewport_ui, |ui| match mode {
+    egui::CentralPanel::default().show(viewport_ui, |ui| {
+        #[cfg(debug_assertions)]
+        draw_delete_control(ui, mode, ctx);
+        mode_panel(ui, mode, ctx);
+    });
+}
+
+// The delete this screen offers for the record its own form holds.
+#[cfg(debug_assertions)]
+fn draw_delete_control(
+    ui: &mut egui::Ui,
+    mode: EditorMode,
+    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
+) {
+    let Some(registry) = ctx.deletes else {
+        return;
+    };
+    let sub_tab = ctx.injury.sub_tab.as_deref().copied();
+    let key = open_record_key(mode, ctx);
+    if let Some(request) =
+        crate::delete::delete_control(ui, registry, (mode, sub_tab), key.as_ref())
+    {
+        *ctx.delete_request = Some(request);
+    }
+}
+
+// The key of the record the open mode's form is editing, when it holds one.
+#[cfg(debug_assertions)]
+fn open_record_key(
+    mode: EditorMode,
+    ctx: &ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
+) -> Option<gdtf_assets::ContentMemberKey> {
+    let text = match mode {
+        EditorMode::Terrain => (*ctx.terrain_draft.uuid()?).to_string(),
+        EditorMode::Theme => (*ctx.theme_draft.key()).to_string(),
+        EditorMode::Gang => ctx.gang.draft.as_deref()?.name().to_owned(),
+        EditorMode::Weapon => ctx.weapon.draft.as_deref()?.name().to_owned(),
+        _ => return None,
+    };
+    (!text.is_empty()).then(|| gdtf_assets::ContentMemberKey::new(text))
+}
+
+fn mode_panel(
+    ui: &mut egui::Ui,
+    mode: EditorMode,
+    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
+) {
+    match mode {
         EditorMode::Terrain => {
             terrain_form_ui::primary_panel(
                 ui,
@@ -116,7 +163,7 @@ pub(in crate::egui_shell) fn central_panel(
                     }
                 });
         }
-    });
+    }
 }
 
 fn injury_sub_tabs(

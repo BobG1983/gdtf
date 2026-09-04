@@ -32,6 +32,11 @@ impl DeleteKeyNet {
     }
 }
 
+/// Whether a delete call is calling the delete off instead of asking for it.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(transparent)]
+pub(in crate::net_qa) struct DeleteCancelNet(bool);
+
 /// The field one referring record holds the reference in.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -70,6 +75,8 @@ pub(in crate::net_qa) enum DeleteRefusalNet {
     NoRecord,
     /// Records still reference the requested record.
     InUse(Vec<ReferringRecordNet>),
+    /// The chosen replacement does not hold something the referring records name.
+    ReplacementLacks(DeleteKeyNet),
 }
 
 /// How a delete settled, mirroring the editor's own outcome.
@@ -79,6 +86,8 @@ pub(in crate::net_qa) enum DeleteOutcomeNet {
     Refused(DeleteRefusalNet),
     /// The record is out of its registry and its file is gone.
     Removed,
+    /// The author called the delete off, so nothing was written and nothing removed.
+    Cancelled,
 }
 
 impl DeleteOutcomeNet {
@@ -87,6 +96,10 @@ impl DeleteOutcomeNet {
     pub(in crate::net_qa) fn from_outcome(outcome: &DeleteOutcome) -> Self {
         match outcome {
             DeleteOutcome::Removed => Self::Removed,
+            DeleteOutcome::Cancelled => Self::Cancelled,
+            DeleteOutcome::Refused(DeleteRefusal::ReplacementLacks(key)) => Self::Refused(
+                DeleteRefusalNet::ReplacementLacks(DeleteKeyNet::new((**key).clone())),
+            ),
             DeleteOutcome::Refused(DeleteRefusal::NoEntry) => {
                 Self::Refused(DeleteRefusalNet::NoEntry)
             }

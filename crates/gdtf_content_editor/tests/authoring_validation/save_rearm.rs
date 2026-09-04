@@ -1,12 +1,16 @@
 //! the GANG mode's own SAVE path feeds the authoring-validation
 use bevy::asset::AssetServer;
-use gdtf_assets::{ContentFamily, ContentIntegrityReport, ReferenceKeyScheme};
+use gdtf_assets::{
+    ContentFamily, ContentIntegrityReport, ContentValidationDone, ReferenceKeyScheme,
+};
 use gdtf_battle_sim::weapon::WeaponName;
 use gdtf_content_editor::{GangDraft, draft_to_roster, gang_file_name, write_gang_in};
-use gdtf_content_families::GangsFamily;
+use gdtf_content_families::{GangsFamily, situation::LoadedSituation};
 use gdtf_test_utils::advance_until;
 
-use crate::harness::{advance_to_published, editor_app_with_asset_root, has_dangling_ref};
+use crate::{
+    advance::advance_to_published, app::editor_app_with_asset_root, findings::has_dangling_ref,
+};
 
 const REARM_GANG: &str = "rearm_gang";
 
@@ -87,5 +91,36 @@ fn gang_save_reload_rearms_validation_with_the_saved_keys() {
         "the report must be RESET and re-checked on re-arm — the first save's superseded weapon \
          finding must not persist; report: {:?}",
         report.findings(),
+    );
+}
+
+#[test]
+fn an_edit_to_the_loaded_situation_rearms_validation_the_way_a_registry_edit_does() {
+    let dir = tempfile::tempdir();
+    assert!(dir.is_ok(), "creating the TempDir assets root must succeed");
+    let Ok(dir) = dir else { return };
+
+    let mut app = editor_app_with_asset_root(dir.path());
+    advance_to_published(&mut app);
+    assert!(
+        app.world()
+            .get_resource::<ContentValidationDone>()
+            .is_some(),
+        "the report must have published before the situation is touched",
+    );
+
+    {
+        let Some(mut loaded) = app.world_mut().get_resource_mut::<LoadedSituation>() else {
+            return;
+        };
+        loaded.situation_mut().rosters.clear();
+    }
+    app.update();
+
+    assert!(
+        app.world()
+            .get_resource::<ContentValidationDone>()
+            .is_none(),
+        "the loaded situation is a watched record, so writing it re-arms validation",
     );
 }

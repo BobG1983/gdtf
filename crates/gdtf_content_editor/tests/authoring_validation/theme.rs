@@ -7,9 +7,10 @@ use gdtf_battle_sim::{level::UuidThemeDef, terrain::def::TerrainUuid};
 use gdtf_content_families::ThemeDefsFamily;
 use gdtf_test_utils::advance_until;
 
-use crate::harness::{
-    DANGLING_DEFAULT_FLOOR, DANGLING_PALETTE, advance_to_published, editor_app_on_fixture_root,
-    has_dangling_ref,
+use crate::{
+    advance::advance_to_published,
+    findings::has_dangling_ref,
+    harness::{DANGLING_DEFAULT_FLOOR, DANGLING_PALETTE, editor_app_on_fixture_root},
 };
 
 const EDITED_DEFAULT_FLOOR: u128 = 0x0000_0000_0000_0000_0000_0630_0000_0003;

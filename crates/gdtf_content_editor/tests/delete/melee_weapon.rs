@@ -10,11 +10,10 @@ use gdtf_content_editor::{
 };
 
 use crate::{
+    advance::advance_to_published,
+    app::editor_app_with_asset_root,
     fixture::{fixture_gang_member, fixture_gang_path, write_gang_equipped},
-    harness::{
-        OUTCOME_UPDATES, advance_to_outcome, advance_to_published, editor_app_with_asset_root,
-        is_published,
-    },
+    harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
 };
 
 /// The melee weapon the fixture gang's member holds.

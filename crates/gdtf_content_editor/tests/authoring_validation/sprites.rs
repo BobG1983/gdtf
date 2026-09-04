@@ -3,7 +3,9 @@
 
 use gdtf_assets::{ContentIntegrityReport, ReferenceKeyScheme};
 
-use crate::harness::{advance_to_published, editor_app_on_fixture_root, has_dangling_ref};
+use crate::{
+    advance::advance_to_published, findings::has_dangling_ref, harness::editor_app_on_fixture_root,
+};
 
 const DANGLING_GRAPHIC: &str = "ghost_graphic";
 

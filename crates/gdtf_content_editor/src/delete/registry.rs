@@ -8,7 +8,12 @@ use bevy::{
 };
 use gdtf_assets::{ContentMemberKey, ContentSourcePath, FindingFamily};
 
-use super::resolution::{DropReferences, DroppedReferences};
+use super::{
+    offer::ReplacementCandidate,
+    resolution::{
+        DropReferences, DroppedReferences, ReferenceResolution, ReplaceReferences, ReplacementCheck,
+    },
+};
 use crate::mode::{EditorMode, InjurySubTab};
 
 /// A record taken out of its registry, held while the delete waits.
@@ -25,6 +30,10 @@ pub type RestoreRecord =
 /// Answers the asset-root-relative file the record under a key was read from.
 pub type RecordFilePath =
     Box<dyn Fn(&World, &ContentMemberKey) -> Option<ContentSourcePath> + Send + Sync + 'static>;
+
+/// Answers every record of the family, as the registry holds it right now.
+pub type RecordCandidates =
+    Box<dyn Fn(&World) -> Vec<ReplacementCandidate> + Send + Sync + 'static>;
 
 /// Take every asset the predicate matches out of the store, returning them in registration order.
 #[must_use]
@@ -70,12 +79,14 @@ impl DeleteScreen {
 /// One deletable content family: the label its findings carry, the screen that
 /// offers it, and the operations a delete needs.
 pub struct DeleteEntry {
-    family:   FindingFamily,
-    screen:   DeleteScreen,
-    take:     TakeRecord,
-    restore:  RestoreRecord,
-    relative: RecordFilePath,
-    drop:     Option<DropReferences>,
+    family:      FindingFamily,
+    screen:      DeleteScreen,
+    take:        TakeRecord,
+    restore:     RestoreRecord,
+    relative:    RecordFilePath,
+    resolutions: Vec<(FindingFamily, ReferenceResolution)>,
+    candidates:  Option<RecordCandidates>,
+    check:       Option<ReplacementCheck>,
 }
 
 impl DeleteEntry {
@@ -94,24 +105,88 @@ impl DeleteEntry {
             take,
             restore,
             relative,
-            drop: None,
+            resolutions: Vec::new(),
+            candidates: None,
+            check: None,
         }
     }
 
-    /// Carry the drop resolution that rewrites every record referring to a deleted key.
+    /// Records of `referring` lose the reference and keep everything else.
     #[must_use]
-    pub fn with_drop(mut self, drop: DropReferences) -> Self {
-        self.drop = Some(drop);
+    pub fn dropping_from(mut self, referring: FindingFamily, drop: DropReferences) -> Self {
+        self.resolutions
+            .push((referring, ReferenceResolution::Drop(drop)));
         self
     }
 
-    /// Rewrite every record referring to `key`; `None` when this entry drops nothing.
-    pub fn drop_references(
+    /// Records of `referring` are pointed at the replacement the author chose.
+    #[must_use]
+    pub fn replacing_in(mut self, referring: FindingFamily, replace: ReplaceReferences) -> Self {
+        self.resolutions
+            .push((referring, ReferenceResolution::Replace(replace)));
+        self
+    }
+
+    /// Carry the rows the replacement offer draws for this family.
+    #[must_use]
+    pub fn with_candidates(mut self, candidates: RecordCandidates) -> Self {
+        self.candidates = Some(candidates);
+        self
+    }
+
+    /// Carry the check a chosen replacement has to pass before anything is written.
+    #[must_use]
+    pub fn with_replacement_check(mut self, check: ReplacementCheck) -> Self {
+        self.check = Some(check);
+        self
+    }
+
+    /// How the records of `referring` resolve their reference; `None` when this entry names
+    /// no resolution for that family.
+    #[must_use]
+    pub fn resolution(&self, referring: &FindingFamily) -> Option<&ReferenceResolution> {
+        self.resolutions
+            .iter()
+            .find(|(family, _resolution)| **family == **referring)
+            .map(|(_family, resolution)| resolution)
+    }
+
+    /// Rewrite the records of `referring`, pointing them at `replacement` where they keep it.
+    pub fn resolve_references(
         &self,
         world: &mut World,
+        referring: &FindingFamily,
         key: &ContentMemberKey,
+        replacement: Option<&ContentMemberKey>,
     ) -> Option<DroppedReferences> {
-        self.drop.as_ref().map(|drop| drop(world, key))
+        match self.resolution(referring)? {
+            ReferenceResolution::Drop(drop) => Some(drop(world, key)),
+            ReferenceResolution::Replace(replace) => Some(replace(world, key, replacement?)),
+        }
+    }
+
+    /// The records that could stand in for `key`, as the registry holds them now.
+    #[must_use]
+    pub fn candidates(&self, world: &World, key: &ContentMemberKey) -> Vec<ReplacementCandidate> {
+        self.candidates.as_ref().map_or_else(Vec::new, |rows| {
+            rows(world)
+                .into_iter()
+                .filter(|candidate| candidate.key() != key)
+                .collect()
+        })
+    }
+
+    /// The first thing `replacement` cannot stand in for, if this entry checks that.
+    #[must_use]
+    pub fn replacement_fault(
+        &self,
+        world: &World,
+        key: &ContentMemberKey,
+        replacement: &ContentMemberKey,
+    ) -> Option<ContentMemberKey> {
+        self.check
+            .as_ref()
+            .and_then(|check| check(world, key, replacement))
     }
 
     /// The finding family label this entry deletes.
