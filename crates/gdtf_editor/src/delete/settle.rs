@@ -13,7 +13,7 @@ use super::{
     resolution::{DroppedReferences, ReferenceResolution},
     systems::{InFlight, Pending},
 };
-use crate::mcp::EditorQaAssetsRoot;
+use crate::mcp::EditorMcpAssetsRoot;
 
 /// Read the republished report and either remove the record, ask, or rewrite.
 pub(super) fn settle_delete(world: &mut World, flight: InFlight) -> Pending {
@@ -219,7 +219,7 @@ fn referring_records(
 
 // A file that will not delete leaves the registry entry gone and says so loudly.
 fn remove_record_file(world: &World, entry: &DeleteEntry, key: &ContentMemberKey) {
-    let Some(root) = world.get_resource::<EditorQaAssetsRoot>().cloned() else {
+    let Some(root) = world.get_resource::<EditorMcpAssetsRoot>().cloned() else {
         warn!(
             "delete removed `{}` from {} but no assets root says where its file lives",
             **key,

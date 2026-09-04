@@ -5,10 +5,10 @@ use cobalt_mcp_transport::{PendingQueue, sweep_pending};
 use cobalt_screenshot::CapturePipelinePlugin;
 
 use super::{
-    CaptureHolds, CaptureTicket, CommandCall, CommandInbox, DeferredReplies, QaCommandSystems,
+    CaptureHolds, CaptureTicket, CommandCall, CommandInbox, DeferredReplies, McpCommandSystems,
     WaitingCalls, claim_calls, drive_rider_captures, poll_capture_holds, sweep_deferred,
 };
-use crate::command::{ErasedCommand, QaCommand};
+use crate::command::{ErasedCommand, McpCommand};
 
 /// Register the resources, the capture pipeline, and the systems the run riders need.
 ///
@@ -21,19 +21,19 @@ pub fn register_riders(app: &mut App) {
     if !app.is_plugin_added::<CapturePipelinePlugin<CaptureTicket>>() {
         app.add_plugins(CapturePipelinePlugin::<CaptureTicket>::new());
     }
-    app.add_systems(Update, drive_rider_captures.after(QaCommandSystems::Claim));
+    app.add_systems(Update, drive_rider_captures.after(McpCommandSystems::Claim));
 }
 
 /// Register inbox, queue, claim, sweep, and the command's own handler for `C`.
-pub fn register_command<C: QaCommand>(app: &mut App) {
+pub fn register_command<C: McpCommand>(app: &mut App) {
     app.configure_sets(
         Update,
-        (QaCommandSystems::Route, QaCommandSystems::Claim).chain(),
+        (McpCommandSystems::Route, McpCommandSystems::Claim).chain(),
     );
     app.init_resource::<CommandInbox>();
     app.init_resource::<PendingQueue<CommandCall<C>>>();
     app.insert_resource(DeferredReplies::<C>::with_budget(C::DEFERRED_BUDGET));
-    app.add_systems(Update, claim_calls::<C>.in_set(QaCommandSystems::Claim));
+    app.add_systems(Update, claim_calls::<C>.in_set(McpCommandSystems::Claim));
     app.add_systems(Last, (sweep_pending::<CommandCall<C>>, sweep_deferred::<C>));
     C::register_handler(app);
 }

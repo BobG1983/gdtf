@@ -1,7 +1,7 @@
 //! The await-ready rider, plus the control that a call carrying no rider still runs.
 
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     test_support::{
         FAKE_COMMANDS, FakePhase, FakePoint, fake_app, fake_facts_loaded, fake_facts_unloaded,
         run_fake_command,
@@ -19,7 +19,7 @@ const fn await_for(seconds: u64) -> RunOptions {
 
 // The refusal `fake.point` publishes for itself with nothing loaded.
 fn point_refuses_unloaded() -> (UnavailableCode, String) {
-    let availability = <FakePoint as QaCommand>::availability(&fake_facts_unloaded());
+    let availability = <FakePoint as McpCommand>::availability(&fake_facts_unloaded());
     let CommandAvailability::Unavailable { code, note } = availability else {
         unreachable!("fake.point refuses itself with nothing loaded, got {availability:?}");
     };

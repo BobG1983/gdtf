@@ -1,5 +1,5 @@
 use bevy::app::App;
-use cobalt_mcp_protocol::{command::RunOptions, message::QaResponse, ports::McpPort};
+use cobalt_mcp_protocol::{command::RunOptions, message::McpResponse, ports::McpPort};
 use gdtf_battle_input::InspectTarget;
 use gdtf_game::qa_wire::{
     cell::CellLevelNet,
@@ -49,7 +49,7 @@ fn pinned_app() -> Result<(App, McpPort), TestError> {
 
 fn decode<T: serde::de::DeserializeOwned>(
     name: &'static str,
-    reply: Option<QaResponse>,
+    reply: Option<McpResponse>,
 ) -> Result<T, TestError> {
     let Some(reply) = reply else {
         return Err(format!("`{name}` produced no reply").into());

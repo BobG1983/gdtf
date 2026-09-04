@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, CommandResponder, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, CommandResponder, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::{
     command::{
@@ -11,7 +11,7 @@ use cobalt_mcp_protocol::{
         CommandTiming, ReplyAttachment,
     },
     ids::ShotName,
-    message::{QaError, QaResponse},
+    message::{McpResponse, McpSessionError},
 };
 use cobalt_mcp_transport::PendingQueue;
 use cobalt_screenshot::{
@@ -38,7 +38,7 @@ pub(in crate::mcp) struct CaptureScreenshotReply {
 
 pub(in crate::mcp) struct EditorCaptureScreenshot;
 
-impl QaCommand for EditorCaptureScreenshot {
+impl McpCommand for EditorCaptureScreenshot {
     type Args = CaptureScreenshotArgs;
     type Facts = EditorFacts;
     type Parked = ();
@@ -61,7 +61,7 @@ impl QaCommand for EditorCaptureScreenshot {
         app.add_systems(
             Update,
             handle_editor_capture_screenshot
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .before(CaptureSystems),
         );
     }
@@ -94,7 +94,7 @@ fn answer(outcome: CaptureOutcome, responder: EditorShotResponder) {
             debug!(path = %path.display(), "editor mcp: screenshot capture timed out");
             responder
                 .into_inner()
-                .reply(QaResponse::Error(QaError::Timeout));
+                .reply(McpResponse::Error(McpSessionError::Timeout));
         }
     }
 }

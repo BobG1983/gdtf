@@ -5,7 +5,7 @@ use std::sync::mpsc::Receiver;
 use bevy::{ecs::system::SystemState, prelude::*};
 use cobalt_mcp_protocol::{
     command::{CommandArgsRon, CommandName, RunOptions},
-    message::QaResponse,
+    message::McpResponse,
 };
 use cobalt_mcp_transport::Responder;
 
@@ -13,7 +13,7 @@ use super::fake::FakeFacts;
 use crate::{
     command::ErasedCommand,
     dispatch::{
-        CallQueues, IncomingCall, QaCommandSystems, register_command_set, retest_waiting,
+        CallQueues, IncomingCall, McpCommandSystems, register_command_set, retest_waiting,
         route_call,
     },
 };
@@ -39,7 +39,7 @@ pub fn fake_app(
     app.insert_resource(facts);
     app.insert_resource(FakeCommandSet::new(commands));
     register_command_set(&mut app, commands);
-    app.add_systems(Update, retest_fake_waiting.in_set(QaCommandSystems::Route));
+    app.add_systems(Update, retest_fake_waiting.in_set(McpCommandSystems::Route));
     app
 }
 
@@ -59,7 +59,7 @@ pub fn run_fake_command(
     name: &CommandName,
     arguments: &CommandArgsRon,
     options: &RunOptions,
-) -> Receiver<QaResponse> {
+) -> Receiver<McpResponse> {
     let (responder, answer) = Responder::channel();
     let facts = *app.world().resource::<FakeFacts>();
     let call = IncomingCall::new(name.clone(), arguments.clone(), options.clone(), responder);

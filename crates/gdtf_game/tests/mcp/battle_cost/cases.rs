@@ -3,7 +3,7 @@
 use bevy::{app::App, ecs::entity::Entity};
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RefusalNote, UnavailableCode},
-    message::QaResponse,
+    message::McpResponse,
 };
 use gdtf_battle_sim::{
     battle::TeardownBattleRequested, ganger::Tu, prelude::CellLevel, weapon::ModeKind,
@@ -229,9 +229,9 @@ fn a_cost_call_in_a_running_battle_whose_sim_state_is_gone_names_the_missing_mod
 }
 
 /// The code and note of a refused call, or a failure naming what came back instead.
-fn refusal(reply: QaResponse) -> Result<(UnavailableCode, RefusalNote), TestError> {
+fn refusal(reply: McpResponse) -> Result<(UnavailableCode, RefusalNote), TestError> {
     match reply {
-        QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) => Ok((code, note)),
+        McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) => Ok((code, note)),
         other => Err(format!("battle.cost must refuse this call, got {other:?}").into()),
     }
 }

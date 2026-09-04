@@ -3,7 +3,7 @@ use bevy::{
     prelude::*,
 };
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{CommandCall, DeferredReplies, take_calls},
 };
 use cobalt_mcp_protocol::command::{
@@ -40,7 +40,7 @@ pub(crate) struct InputPressKeyReply {
 
 pub(crate) struct InputPressKey;
 
-impl QaCommand for InputPressKey {
+impl McpCommand for InputPressKey {
     type Args = InputPressKeyArgs;
     type Facts = GameFacts;
     type Parked = KeyNet;

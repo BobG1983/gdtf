@@ -4,12 +4,12 @@ use super::values::EnvVarName;
 
 /// Enable flag and port env var names for a host.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct QaChannel {
+pub struct McpChannel {
     enable: EnvVarName,
     port:   EnvVarName,
 }
 
-impl QaChannel {
+impl McpChannel {
     /// From explicit env names.
     #[must_use]
     pub const fn new(enable: EnvVarName, port: EnvVarName) -> Self {

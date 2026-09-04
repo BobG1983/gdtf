@@ -2,12 +2,13 @@
 
 use std::process::{Command, Stdio};
 
+use cobalt_mcp_protocol::ports::McpPort;
+
 use super::{
     config::LifecycleConfig,
     probe::probe_ready,
     values::{ChildPid, KillGrace, PollInterval, ProbeTimeout, Readiness},
 };
-use crate::link::QaPort;
 
 /// Whether a port is free or held by an unknown process.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -39,7 +40,7 @@ pub enum OrphanStop {
 /// Parameters for stopping a known orphan pid on a port.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OrphanTarget {
-    port:  QaPort,
+    port:  McpPort,
     pid:   ChildPid,
     grace: KillGrace,
     probe: ProbeTimeout,
@@ -50,7 +51,7 @@ impl OrphanTarget {
     /// Build from explicit fields.
     #[must_use]
     pub const fn new(
-        port: QaPort,
+        port: McpPort,
         pid: ChildPid,
         grace: KillGrace,
         probe: ProbeTimeout,
@@ -67,7 +68,7 @@ impl OrphanTarget {
 
     /// Build from a lifecycle config.
     #[must_use]
-    pub const fn from_config(port: QaPort, pid: ChildPid, config: LifecycleConfig) -> Self {
+    pub const fn from_config(port: McpPort, pid: ChildPid, config: LifecycleConfig) -> Self {
         Self::new(
             port,
             pid,
@@ -79,7 +80,7 @@ impl OrphanTarget {
 
     /// Port held by the orphan.
     #[must_use]
-    pub const fn port(&self) -> QaPort {
+    pub const fn port(&self) -> McpPort {
         self.port
     }
 
@@ -111,7 +112,7 @@ impl OrphanTarget {
 /// Inspect and stop orphans on a port.
 pub trait OrphanWatch {
     /// Check whether something is listening on `port`.
-    fn inspect(&self, port: QaPort, timeout: ProbeTimeout) -> PortHold;
+    fn inspect(&self, port: McpPort, timeout: ProbeTimeout) -> PortHold;
 
     /// Attempt to stop a known orphan.
     fn stop(&self, target: OrphanTarget) -> OrphanStop;
@@ -135,7 +136,7 @@ impl Default for SystemOrphanWatch {
 }
 
 impl OrphanWatch for SystemOrphanWatch {
-    fn inspect(&self, port: QaPort, timeout: ProbeTimeout) -> PortHold {
+    fn inspect(&self, port: McpPort, timeout: ProbeTimeout) -> PortHold {
         match probe_ready(port, timeout) {
             Readiness::NotYet => PortHold::Free,
             Readiness::Ready => PortHold::Orphan(pid_listening_on(port)),
@@ -202,7 +203,7 @@ fn signal(pid: ChildPid, stop: StopSignal) {
 fn signal(_pid: ChildPid, _stop: StopSignal) {}
 
 #[cfg(unix)]
-fn pid_listening_on(port: QaPort) -> OrphanPid {
+fn pid_listening_on(port: McpPort) -> OrphanPid {
     let selector = format!("-iTCP@127.0.0.1:{}", *port);
     let Ok(output) = Command::new("lsof")
         .args(["-nP", "-t", selector.as_str(), "-sTCP:LISTEN"])
@@ -223,6 +224,6 @@ fn pid_listening_on(port: QaPort) -> OrphanPid {
 }
 
 #[cfg(not(unix))]
-fn pid_listening_on(_port: QaPort) -> OrphanPid {
+fn pid_listening_on(_port: McpPort) -> OrphanPid {
     OrphanPid::Unknown
 }

@@ -2,7 +2,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RunOptions},
-    message::QaResponse,
+    message::McpResponse,
 };
 
 use super::support::SETTLE_FRAMES;
@@ -26,25 +26,25 @@ fn wait_on_caught_up_is_a_registered_name_with_a_shape_the_host_accepts() -> Tes
         run(WAIT, "(condition:CaughtUp)", RunOptions::default()),
     )?;
     assert!(
-        !matches!(reply, QaResponse::Outcome(CommandOutcome::Unknown { .. })),
+        !matches!(reply, McpResponse::Outcome(CommandOutcome::Unknown { .. })),
         "`wait` must be a REGISTERED name, not Unknown: {reply:?}",
     );
     assert!(
         !matches!(
             reply,
-            QaResponse::Outcome(CommandOutcome::BadArguments { .. })
+            McpResponse::Outcome(CommandOutcome::BadArguments { .. })
         ),
         "`(condition:CaughtUp)` is the published argument shape and must deserialize: {reply:?}",
     );
     assert!(
         !matches!(
             reply,
-            QaResponse::Outcome(CommandOutcome::Unavailable { .. })
+            McpResponse::Outcome(CommandOutcome::Unavailable { .. })
         ),
         "`wait` is available on every screen, so nothing may refuse it: {reply:?}",
     );
     assert!(
-        matches!(reply, QaResponse::Outcome(CommandOutcome::Ran { .. })),
+        matches!(reply, McpResponse::Outcome(CommandOutcome::Ran { .. })),
         "in the Menu there is no cursor and no act log, so CaughtUp already holds and the call \
          runs: {reply:?}",
     );
@@ -57,7 +57,7 @@ fn a_condition_this_host_does_not_offer_is_bad_arguments_with_the_wait_shape() -
         game_app_listening,
         run(WAIT, "(condition:Settled)", RunOptions::default()),
     )?;
-    let QaResponse::Outcome(CommandOutcome::BadArguments { detail, schema }) = reply else {
+    let McpResponse::Outcome(CommandOutcome::BadArguments { detail, schema }) = reply else {
         unreachable!("a condition name the host never published must be refused, got {reply:?}");
     };
     assert!(
@@ -77,7 +77,7 @@ fn a_condition_this_host_does_not_offer_is_bad_arguments_with_the_wait_shape() -
 #[test]
 fn every_published_condition_is_accepted_and_only_the_unmet_ones_park() {
     let (mut app, tx) = menu_app_with_mcp();
-    let asked: Vec<(&str, Settles, Receiver<QaResponse>)> = [
+    let asked: Vec<(&str, Settles, Receiver<McpResponse>)> = [
         ("(condition:CaughtUp)", Settles::AtOnce),
         ("(condition:Phase(()))", Settles::AtOnce),
         ("(condition:LogAtLeast(0))", Settles::AtOnce),
@@ -99,7 +99,7 @@ fn every_published_condition_is_accepted_and_only_the_unmet_ones_park() {
         let as_asked = match settles {
             Settles::AtOnce => matches!(
                 answered,
-                Ok(QaResponse::Outcome(CommandOutcome::Ran { .. }))
+                Ok(McpResponse::Outcome(CommandOutcome::Ran { .. }))
             ),
             Settles::NotYet => matches!(answered, Err(TryRecvError::Empty)),
         };

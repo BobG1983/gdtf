@@ -6,11 +6,11 @@ use cobalt_mcp_protocol::command::{
     shape_text,
 };
 
-use super::QaCommand;
+use super::McpCommand;
 use crate::dispatch::DeferredBudget;
 
 /// Object-safe view of a command for catalogues and host registration.
-/// Concrete types implement this automatically via [`QaCommand`]. Both the argument and the
+/// Concrete types implement this automatically via [`McpCommand`]. Both the argument and the
 /// reply type derive `serde::Deserialize`, which is what the published shape is read out of.
 pub trait ErasedCommand<F>: Send + Sync {
     /// Stable command name.
@@ -31,7 +31,7 @@ pub trait ErasedCommand<F>: Send + Sync {
     fn register(&self, app: &mut App);
 }
 
-impl<C: QaCommand> ErasedCommand<C::Facts> for C {
+impl<C: McpCommand> ErasedCommand<C::Facts> for C {
     fn name(&self) -> CommandName {
         C::NAME
     }

@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use super::facts::{FakeFacts, FakeLevel};
 use crate::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 
 /// First axis of a fake point.
@@ -76,7 +76,7 @@ pub struct FakePointReply {
 /// Read one point; requires the fake model to be loaded.
 pub struct FakePoint;
 
-impl QaCommand for FakePoint {
+impl McpCommand for FakePoint {
     type Args = FakePointArgs;
     type Facts = FakeFacts;
     type Parked = ();
@@ -99,7 +99,7 @@ impl QaCommand for FakePoint {
     }
 
     fn register_handler(app: &mut App) {
-        app.add_systems(Update, handle_fake_point.after(QaCommandSystems::Claim));
+        app.add_systems(Update, handle_fake_point.after(McpCommandSystems::Claim));
     }
 }
 

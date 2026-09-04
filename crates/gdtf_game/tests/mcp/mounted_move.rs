@@ -1,7 +1,7 @@
 //! A mounted ganger's walk over a real socket: what `battle.cost` quotes and what `act.move` spends.
 
 use bevy::app::App;
-use cobalt_mcp_protocol::{command::RunOptions, message::QaRequest};
+use cobalt_mcp_protocol::{command::RunOptions, message::McpRequest};
 use gdtf_battle_sim::{
     ganger::Tu,
     prelude::CellLevel,
@@ -66,7 +66,7 @@ fn two_steps_off(app: &App, seat: CellLevel) -> Result<CellLevelNet, TestError> 
 fn move_cost_call(
     actor: bevy::ecs::entity::Entity,
     dest: CellLevelNet,
-) -> Result<QaRequest, TestError> {
+) -> Result<McpRequest, TestError> {
     cost_call(token_of(actor), &CostActNet::Move { dest })
         .ok_or_else(|| "a Move cost act must serialize to compact RON".into())
 }

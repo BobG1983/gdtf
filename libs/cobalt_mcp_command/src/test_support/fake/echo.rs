@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use super::facts::FakeFacts;
 use crate::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 
 /// Text payload for the echo command.
@@ -50,7 +50,7 @@ pub struct FakeEchoReply {
 /// Echo text; requires level above zero.
 pub struct FakeEcho;
 
-impl QaCommand for FakeEcho {
+impl McpCommand for FakeEcho {
     type Args = FakeEchoArgs;
     type Facts = FakeFacts;
     type Parked = ();
@@ -73,7 +73,7 @@ impl QaCommand for FakeEcho {
     }
 
     fn register_handler(app: &mut App) {
-        app.add_systems(Update, handle_fake_echo.after(QaCommandSystems::Claim));
+        app.add_systems(Update, handle_fake_echo.after(McpCommandSystems::Claim));
     }
 }
 

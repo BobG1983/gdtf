@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
@@ -25,7 +25,7 @@ pub(crate) struct AppPhaseReply {
 
 pub(crate) struct AppPhase;
 
-impl QaCommand for AppPhase {
+impl McpCommand for AppPhase {
     type Args = AppPhaseArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -45,7 +45,7 @@ impl QaCommand for AppPhase {
     }
 
     fn register_handler(app: &mut App) {
-        app.add_systems(Update, handle_app_phase.after(QaCommandSystems::Claim));
+        app.add_systems(Update, handle_app_phase.after(McpCommandSystems::Claim));
     }
 }
 

@@ -1,5 +1,5 @@
 use bevy::prelude::App;
-use cobalt_mcp_command::command::QaCommand;
+use cobalt_mcp_command::command::McpCommand;
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
 };
@@ -18,7 +18,7 @@ use crate::dev::mcp::{
 
 pub(crate) struct ActOpenDoor;
 
-impl QaCommand for ActOpenDoor {
+impl McpCommand for ActOpenDoor {
     type Args = NoArgs;
     type Facts = GameFacts;
     type Parked = ContextualTicket;

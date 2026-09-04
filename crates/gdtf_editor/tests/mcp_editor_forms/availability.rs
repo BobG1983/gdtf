@@ -1,8 +1,8 @@
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::{CommandInbox, QaCommandSystems};
+use cobalt_mcp_command::dispatch::{CommandInbox, McpCommandSystems};
 use cobalt_mcp_protocol::{
     command::{CommandAvailability, CommandName, CommandOutcome, UnavailableCode},
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 use gdtf_editor::{EditorMode, FieldDraft, GangDraft, InjuryDraft, SpriteDraft, WeaponDraft};
 
@@ -17,10 +17,10 @@ use crate::{
 
 // What the catalogue publishes for one command right now.
 fn availability_of(
-    reply: &QaResponse,
+    reply: &McpResponse,
     command: &'static str,
 ) -> Result<CommandAvailability, TestError> {
-    let QaResponse::Catalogue(catalogue) = reply else {
+    let McpResponse::Catalogue(catalogue) = reply else {
         return Err(format!("expected a Catalogue reply, got {reply:?}").into());
     };
     let Some(entry) = catalogue
@@ -34,8 +34,8 @@ fn availability_of(
 }
 
 // The summary the catalogue publishes for one command right now.
-fn summary_of(reply: &QaResponse, command: &'static str) -> Result<String, TestError> {
-    let QaResponse::Catalogue(catalogue) = reply else {
+fn summary_of(reply: &McpResponse, command: &'static str) -> Result<String, TestError> {
+    let McpResponse::Catalogue(catalogue) = reply else {
         return Err(format!("expected a Catalogue reply, got {reply:?}").into());
     };
     let Some(entry) = catalogue
@@ -52,7 +52,7 @@ fn summary_of(reply: &QaResponse, command: &'static str) -> Result<String, TestE
 fn a_form_tab_whose_draft_is_gone_publishes_the_write_as_unavailable() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Sprite)?;
 
-    let open = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    let open = client.exchange(&mut app, &McpRequest::Catalogue)?;
     assert_eq!(
         availability_of(&open, EDITOR_SET_FIELD)?,
         CommandAvailability::Available,
@@ -60,7 +60,7 @@ fn a_form_tab_whose_draft_is_gone_publishes_the_write_as_unavailable() -> TestRe
     );
 
     app.world_mut().remove_resource::<SpriteDraft>();
-    let gone = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    let gone = client.exchange(&mut app, &McpRequest::Catalogue)?;
     let CommandAvailability::Unavailable { code, note } = availability_of(&gone, EDITOR_SET_FIELD)?
     else {
         return Err(
@@ -84,7 +84,7 @@ fn a_form_tab_whose_draft_is_gone_publishes_the_write_as_unavailable() -> TestRe
 #[test]
 fn neither_write_commands_summary_names_a_single_form() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Sprite)?;
-    let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    let catalogue = client.exchange(&mut app, &McpRequest::Catalogue)?;
 
     for command in [EDITOR_SET_FIELD, EDITOR_LIST_OP] {
         let summary = summary_of(&catalogue, command)?;
@@ -112,7 +112,7 @@ fn the_catalogue_offers_both_writes_on_every_form_tab_that_draws_a_draft() -> Te
         EditorMode::Field,
     ] {
         let (mut app, mut client) = form_tab_app_and_client(mode)?;
-        let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
+        let catalogue = client.exchange(&mut app, &McpRequest::Catalogue)?;
         for command in [EDITOR_SET_FIELD, EDITOR_LIST_OP] {
             assert_eq!(
                 availability_of(&catalogue, command)?,
@@ -130,7 +130,7 @@ fn the_gang_tab_with_no_draft_refuses_both_the_catalogue_row_and_the_write() -> 
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Gang)?;
     app.world_mut().remove_resource::<GangDraft>();
 
-    let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    let catalogue = client.exchange(&mut app, &McpRequest::Catalogue)?;
     let CommandAvailability::Unavailable { code, note } =
         availability_of(&catalogue, EDITOR_SET_FIELD)?
     else {
@@ -168,7 +168,7 @@ fn the_weapon_tab_with_no_draft_refuses_both_the_catalogue_row_and_the_write() -
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Weapon)?;
     app.world_mut().remove_resource::<WeaponDraft>();
 
-    let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    let catalogue = client.exchange(&mut app, &McpRequest::Catalogue)?;
     for command in [EDITOR_SET_FIELD, EDITOR_LIST_OP] {
         let CommandAvailability::Unavailable { code, note } = availability_of(&catalogue, command)?
         else {
@@ -207,7 +207,7 @@ fn the_field_tab_with_no_draft_refuses_both_the_catalogue_row_and_the_write() ->
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Field)?;
     app.world_mut().remove_resource::<FieldDraft>();
 
-    let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    let catalogue = client.exchange(&mut app, &McpRequest::Catalogue)?;
     for command in [EDITOR_SET_FIELD, EDITOR_LIST_OP] {
         let CommandAvailability::Unavailable { code, note } = availability_of(&catalogue, command)?
         else {
@@ -238,7 +238,7 @@ fn the_field_tab_with_no_draft_refuses_both_the_catalogue_row_and_the_write() ->
 #[test]
 fn the_catalogue_refuses_both_writes_on_the_prefab_tab() -> TestResult {
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Prefab)?;
-    let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    let catalogue = client.exchange(&mut app, &McpRequest::Catalogue)?;
 
     for command in [EDITOR_SET_FIELD, EDITOR_LIST_OP] {
         let CommandAvailability::Unavailable { code, note } = availability_of(&catalogue, command)?
@@ -260,7 +260,7 @@ fn a_write_with_no_draft_names_the_same_code_the_catalogue_does() -> TestResult 
     let (mut app, mut client) = form_tab_app_and_client(EditorMode::Injury)?;
     app.world_mut().remove_resource::<InjuryDraft>();
 
-    let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    let catalogue = client.exchange(&mut app, &McpRequest::Catalogue)?;
     for command in [EDITOR_SET_FIELD, EDITOR_LIST_OP] {
         let CommandAvailability::Unavailable { code, .. } = availability_of(&catalogue, command)?
         else {
@@ -281,8 +281,8 @@ fn a_write_with_no_draft_names_the_same_code_the_catalogue_does() -> TestResult 
 }
 
 // The code and the note one refusal carries, so a case can say which refusal answered it.
-fn unavailable_parts(reply: &QaResponse) -> Result<(String, String), TestError> {
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
+fn unavailable_parts(reply: &McpResponse) -> Result<(String, String), TestError> {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
         return Err(format!("expected an Unavailable outcome, got {reply:?}").into());
     };
     Ok((format!("{code:?}"), note.as_str().to_owned()))
@@ -305,15 +305,15 @@ fn injury_app_losing_its_draft_mid_frame() -> Result<(App, Client), TestError> {
     app.add_systems(
         Update,
         drop_the_injury_draft_after_admission
-            .after(QaCommandSystems::Route)
-            .before(QaCommandSystems::Claim),
+            .after(McpCommandSystems::Route)
+            .before(McpCommandSystems::Claim),
     );
     Ok((app, client))
 }
 
 // The handler's own refusal names the mode, which the catalogue's note does not, so a case can
 // tell the two apart.
-fn assert_the_handler_answered(reply: &QaResponse) -> TestResult {
+fn assert_the_handler_answered(reply: &McpResponse) -> TestResult {
     let (code, note) = unavailable_parts(reply)?;
     assert!(
         note.contains("Injury"),

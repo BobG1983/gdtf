@@ -19,7 +19,7 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::{TerrainDefsFamily, situation::LoadedSituation};
 use gdtf_editor::{
-    DeleteOutcome, DeleteRequest, EditorQaAssetsRoot, FieldDraft, TerrainDraft, draft_to_field,
+    DeleteOutcome, DeleteRequest, EditorMcpAssetsRoot, FieldDraft, TerrainDraft, draft_to_field,
     draft_to_terrain_def, field_save_path_in, weapon_save_path_in, write_field_in,
     write_situation_in, write_weapon_in,
 };
@@ -136,7 +136,7 @@ fn deleting_a_field_rewrites_the_situation_the_terrain_def_and_the_weapon_spec()
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
     assert!(
         app.world()

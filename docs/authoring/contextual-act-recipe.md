@@ -134,7 +134,7 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
 
 - **New module**
   `crates/gdtf_game/src/dev/mcp/commands/act/contextual/<act>.rs`: a unit struct
-  implementing `QaCommand` named `act.<act>`, with `type Args = NoArgs` unless the act names
+  implementing `McpCommand` named `act.<act>`, with `type Args = NoArgs` unless the act names
   its own target (see the target bullet below),
   `type Parked = ContextualTicket`, `type Reply = ContextualReply`,
   `CommandTiming::Immediate` and `availability = running_and_caught`. It also implements

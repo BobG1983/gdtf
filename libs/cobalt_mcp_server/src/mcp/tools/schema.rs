@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 
 use crate::{
-    hosts::{HostRegistry, QaHostSpec},
+    hosts::{HostRegistry, McpHostSpec},
     mcp::{
         courier::commands::CatalogueDetail,
         tools::name::{ALL, ToolName},
@@ -28,7 +28,7 @@ fn channel_table(hosts: &HostRegistry) -> String {
 }
 
 // "name: value" for every registered host, under a field each host supplies its own value for.
-fn per_host_table(hosts: &HostRegistry, field: impl Fn(&QaHostSpec) -> String) -> String {
+fn per_host_table(hosts: &HostRegistry, field: impl Fn(&McpHostSpec) -> String) -> String {
     let rows: Vec<String> = hosts
         .hosts()
         .iter()

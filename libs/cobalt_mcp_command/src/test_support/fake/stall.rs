@@ -7,7 +7,7 @@ use cobalt_mcp_protocol::command::{
 use serde::{Deserialize, Serialize};
 
 use super::facts::FakeFacts;
-use crate::command::QaCommand;
+use crate::command::McpCommand;
 
 /// Arguments for `fake.stall`.
 #[derive(Debug, Deserialize)]
@@ -40,7 +40,7 @@ pub struct FakeStallReply {
 /// Command whose queue is intentionally never drained.
 pub struct FakeStall;
 
-impl QaCommand for FakeStall {
+impl McpCommand for FakeStall {
     type Args = FakeStallArgs;
     type Facts = FakeFacts;
     type Parked = ();

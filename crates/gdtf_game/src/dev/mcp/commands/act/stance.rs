@@ -1,6 +1,6 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{CommandCall, DeferredReplies, take_calls},
 };
 use cobalt_mcp_protocol::command::{
@@ -34,7 +34,7 @@ pub(crate) struct ActSetStanceArgs {
 
 pub(crate) struct ActSetStance;
 
-impl QaCommand for ActSetStance {
+impl McpCommand for ActSetStance {
     type Args = ActSetStanceArgs;
     type Facts = GameFacts;
     type Parked = ActTicket;

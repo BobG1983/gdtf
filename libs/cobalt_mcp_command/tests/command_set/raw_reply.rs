@@ -1,11 +1,11 @@
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{CommandCall, take_calls},
     test_support::{
         FAKE_COMMANDS_STALLED, FakeStall, fake_app, fake_facts_loaded, run_fake_command,
     },
 };
-use cobalt_mcp_protocol::message::{QaError, QaResponse};
+use cobalt_mcp_protocol::message::{McpResponse, McpSessionError};
 use cobalt_mcp_transport::PendingQueue;
 
 use crate::support::{answer, args, plain};
@@ -33,11 +33,11 @@ fn a_command_can_answer_with_a_raw_protocol_response() {
 
     responder
         .into_inner()
-        .reply(QaResponse::Error(QaError::Busy));
+        .reply(McpResponse::Error(McpSessionError::Busy));
 
     assert_eq!(
         answer(&channel),
-        QaResponse::Error(QaError::Busy),
+        McpResponse::Error(McpSessionError::Busy),
         "a raw response built outside the crate reaches the call's channel"
     );
 }

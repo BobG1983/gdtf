@@ -1,7 +1,7 @@
 use bevy::{input_focus::InputFocus, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, DeferredReplies, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, DeferredReplies, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
@@ -22,7 +22,7 @@ pub(crate) struct InputFocusStepArgs {
 
 pub(crate) struct InputFocusStep;
 
-impl QaCommand for InputFocusStep {
+impl McpCommand for InputFocusStep {
     type Args = InputFocusStepArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -48,7 +48,7 @@ impl QaCommand for InputFocusStep {
             (
                 claim_input_focus_step
                     .in_set(FocusNavSystems::Bridge)
-                    .after(QaCommandSystems::Claim),
+                    .after(McpCommandSystems::Claim),
                 settle_input_focus_step.after(FocusNavSystems::Apply),
             ),
         );

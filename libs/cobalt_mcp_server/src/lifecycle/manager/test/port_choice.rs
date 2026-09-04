@@ -1,22 +1,21 @@
 use core::time::Duration;
 
-use crate::{
-    lifecycle::{
-        manager::port::pick_port,
-        orphan::{OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, PortHold},
-        values::ProbeTimeout,
-    },
-    link::QaPort,
+use cobalt_mcp_protocol::ports::McpPort;
+
+use crate::lifecycle::{
+    manager::port::pick_port,
+    orphan::{OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, PortHold},
+    values::ProbeTimeout,
 };
 
 const PROBE: ProbeTimeout = ProbeTimeout::new(Duration::from_millis(1));
 
-const REQUESTED: QaPort = QaPort::new(45000);
+const REQUESTED: McpPort = McpPort::new(45000);
 
 struct EveryPortFree;
 
 impl OrphanWatch for EveryPortFree {
-    fn inspect(&self, _port: QaPort, _timeout: ProbeTimeout) -> PortHold {
+    fn inspect(&self, _port: McpPort, _timeout: ProbeTimeout) -> PortHold {
         PortHold::Free
     }
 
@@ -25,10 +24,10 @@ impl OrphanWatch for EveryPortFree {
     }
 }
 
-struct OrphanOn(Vec<QaPort>);
+struct OrphanOn(Vec<McpPort>);
 
 impl OrphanWatch for OrphanOn {
-    fn inspect(&self, port: QaPort, _timeout: ProbeTimeout) -> PortHold {
+    fn inspect(&self, port: McpPort, _timeout: ProbeTimeout) -> PortHold {
         if self.0.contains(&port) {
             return PortHold::Orphan(OrphanPid::Unknown);
         }
@@ -40,10 +39,10 @@ impl OrphanWatch for OrphanOn {
     }
 }
 
-fn window_above(port: QaPort) -> Vec<QaPort> {
+fn window_above(port: McpPort) -> Vec<McpPort> {
     (1..=64u16)
         .filter_map(|step| port.checked_add(step))
-        .map(QaPort::new)
+        .map(McpPort::new)
         .collect()
 }
 
@@ -60,7 +59,7 @@ fn a_port_no_record_holds_is_the_port_a_launch_asked_for() {
 
 #[test]
 fn a_port_a_record_holds_sends_the_launch_somewhere_else() {
-    let taken = vec![REQUESTED, QaPort::new(*REQUESTED + 1)];
+    let taken = vec![REQUESTED, McpPort::new(*REQUESTED + 1)];
 
     let chosen = pick_port(REQUESTED, &taken, &EveryPortFree, PROBE);
 
@@ -79,7 +78,7 @@ fn a_port_a_record_holds_sends_the_launch_somewhere_else() {
 
 #[test]
 fn the_requested_port_is_never_probed_for_an_orphan() {
-    let orphan_port = QaPort::new(*REQUESTED + 1);
+    let orphan_port = McpPort::new(*REQUESTED + 1);
     let orphans = OrphanOn(vec![orphan_port]);
 
     let chosen = pick_port(orphan_port, &[], &orphans, PROBE);
@@ -94,7 +93,7 @@ fn the_requested_port_is_never_probed_for_an_orphan() {
 
 #[test]
 fn an_orphan_held_alternative_is_skipped() {
-    let orphan_port = QaPort::new(*REQUESTED + 1);
+    let orphan_port = McpPort::new(*REQUESTED + 1);
     let orphans = OrphanOn(vec![orphan_port]);
 
     let chosen = pick_port(REQUESTED, &[REQUESTED], &orphans, PROBE);

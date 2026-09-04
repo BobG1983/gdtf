@@ -3,7 +3,7 @@
 use bevy::app::App;
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RunOptions, UnavailableCode},
-    message::QaResponse,
+    message::McpResponse,
     ports::McpPort,
 };
 
@@ -26,9 +26,9 @@ fn battle_still_replaying() -> Result<(App, McpPort), TestError> {
 }
 
 /// The refusal code a reply carries, or a failure saying what came back instead.
-fn refusal(name: &str, reply: QaResponse) -> Result<UnavailableCode, TestError> {
+fn refusal(name: &str, reply: McpResponse) -> Result<UnavailableCode, TestError> {
     match reply {
-        QaResponse::Outcome(CommandOutcome::Unavailable { code, .. }) => Ok(code),
+        McpResponse::Outcome(CommandOutcome::Unavailable { code, .. }) => Ok(code),
         other => {
             Err(format!("`{name}` must refuse while the screen is behind, got {other:?}").into())
         }

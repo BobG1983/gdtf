@@ -1,7 +1,7 @@
 use core::time::Duration;
 
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{DEFERRED_BUDGET, DeferredBudget, DeferredReplies},
     test_support::{
         FAKE_COMMANDS, FAKE_COMMANDS_GROWN, FAKE_COMMANDS_STALLED, FakePhase, FakeSettle,
@@ -10,7 +10,7 @@ use cobalt_mcp_command::{
 };
 use cobalt_mcp_protocol::{
     command::CommandName,
-    message::{QaError, QaResponse},
+    message::{McpResponse, McpSessionError},
     timeouts::DEFAULT_REPLY_TIMEOUT,
 };
 
@@ -72,7 +72,10 @@ fn a_reply_that_never_settles_is_swept_with_a_deadline_answer() {
 
     app.update();
 
-    assert_eq!(answer(&channel), QaResponse::Error(QaError::Timeout));
+    assert_eq!(
+        answer(&channel),
+        McpResponse::Error(McpSessionError::Timeout)
+    );
     assert!(
         app.world()
             .resource::<DeferredReplies<FakeSettle>>()

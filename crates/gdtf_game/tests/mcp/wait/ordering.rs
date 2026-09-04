@@ -19,7 +19,7 @@ fn the_wait_handler_runs_after_the_turn_tally_has_counted_this_frame() -> TestRe
     assert!(
         ordered_before(graph, NodeId::System(counter), waiter),
         "handle_wait must be ordered after count_turn_changes; both sit in the same band after \
-         QaCommandSystems::Claim, so without that edge the order is the executor's pick and a \
+         McpCommandSystems::Claim, so without that edge the order is the executor's pick and a \
          wait parked this frame reads a tally from before or after the hand-over at random",
     );
     Ok(())

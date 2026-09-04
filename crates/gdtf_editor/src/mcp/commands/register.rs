@@ -1,7 +1,7 @@
 //! Put the QA command sets inside the editor's own gather set and register the commands.
 
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::{QaCommandSystems, register_command_set};
+use cobalt_mcp_command::dispatch::{McpCommandSystems, register_command_set};
 
 use super::set::EDITOR_COMMANDS;
 use crate::mcp::schedule::EditorMcpSystems;
@@ -9,7 +9,7 @@ use crate::mcp::schedule::EditorMcpSystems;
 pub(in crate::mcp) fn register_editor_commands(app: &mut App) {
     app.configure_sets(
         Update,
-        (QaCommandSystems::Route, QaCommandSystems::Claim).in_set(EditorMcpSystems::Gather),
+        (McpCommandSystems::Route, McpCommandSystems::Claim).in_set(EditorMcpSystems::Gather),
     );
     register_command_set(app, EDITOR_COMMANDS);
 }

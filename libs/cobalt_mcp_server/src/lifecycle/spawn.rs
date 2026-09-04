@@ -5,11 +5,12 @@ use std::{
     process::{Command, Stdio},
 };
 
+use cobalt_mcp_protocol::ports::McpPort;
+
 use super::{
     child::{ManagedChild, ProcessChild},
     launch::LaunchSpec,
 };
-use crate::link::QaPort;
 
 /// How to spawn a managed child for a launch recipe.
 pub trait ChildSpawner {
@@ -18,7 +19,7 @@ pub trait ChildSpawner {
     /// # Errors
     ///
     /// Returns I/O errors from the underlying process spawn.
-    fn spawn(&self, port: QaPort, spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>>;
+    fn spawn(&self, port: McpPort, spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>>;
 }
 
 /// Spawner that runs `cargo run -p …`.
@@ -35,7 +36,7 @@ impl CargoSpawner {
 
 /// Build the `cargo run` command for a recipe and port.
 #[must_use]
-pub fn build_command(port: QaPort, spec: &LaunchSpec) -> Command {
+pub fn build_command(port: McpPort, spec: &LaunchSpec) -> Command {
     let mut command = Command::new("cargo");
     command.args(["run", "-p", spec.package().as_str()]);
     if let Some(profile) = spec.profile() {
@@ -57,7 +58,7 @@ pub fn build_command(port: QaPort, spec: &LaunchSpec) -> Command {
 }
 
 impl ChildSpawner for CargoSpawner {
-    fn spawn(&self, port: QaPort, spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
+    fn spawn(&self, port: McpPort, spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
         ProcessChild::spawn(build_command(port, spec))
     }
 }
@@ -66,7 +67,7 @@ impl ChildSpawner for CargoSpawner {
 mod tests {
     use std::{ffi::OsStr, path::PathBuf};
 
-    use super::{QaPort, build_command};
+    use super::{McpPort, build_command};
     use crate::{
         hosts::test_support::registered,
         lifecycle::launch::{
@@ -76,7 +77,7 @@ mod tests {
     };
 
     // The recipe a host registered under `name` launches with, and the port it listens on.
-    fn recipe_of(name: &str, port: u16, many_instances: bool) -> (LaunchSpec, QaPort) {
+    fn recipe_of(name: &str, port: u16, many_instances: bool) -> (LaunchSpec, McpPort) {
         let host = registered(name, port, many_instances);
         (host.default_spec(), host.default_port())
     }
@@ -139,7 +140,7 @@ mod tests {
     #[test]
     fn the_child_is_handed_the_launch_port() {
         let (spec, _) = recipe_of("beta", 4200, true);
-        let command = build_command(QaPort::new(4220), &spec);
+        let command = build_command(McpPort::new(4220), &spec);
         assert_eq!(
             env_of(&command, spec.channel().port().as_str()),
             Some("4220".to_owned())
@@ -160,7 +161,7 @@ mod tests {
             )]),
             default.channel().clone(),
         );
-        let command = build_command(QaPort::new(4220), &spec);
+        let command = build_command(McpPort::new(4220), &spec);
         assert_eq!(env_of(&command, &port_var), Some("4220".to_owned()));
     }
 
@@ -180,7 +181,7 @@ mod tests {
             )]),
             default.channel().clone(),
         );
-        let command = build_command(QaPort::new(4321), &spec);
+        let command = build_command(McpPort::new(4321), &spec);
         assert_eq!(
             args_of(&command),
             vec![

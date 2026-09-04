@@ -7,7 +7,7 @@ use bevy::{
 };
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RunOptions},
-    message::QaResponse,
+    message::McpResponse,
     ports::McpPort,
 };
 use gdtf_game::{
@@ -63,8 +63,8 @@ fn sound_switched_off_app() -> Result<(App, McpPort), TestError> {
     Ok((app, port))
 }
 
-fn ran_body(reply: QaResponse) -> String {
-    let QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
+fn ran_body(reply: McpResponse) -> String {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
         unreachable!("a plain settings.read call must RUN, got {reply:?}");
     };
     reply.as_str().to_owned()

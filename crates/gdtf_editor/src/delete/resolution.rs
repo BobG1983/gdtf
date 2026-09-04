@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use bevy::prelude::World;
 use gdtf_assets::ContentMemberKey;
 
-use crate::mcp::EditorQaAssetsRoot;
+use crate::mcp::EditorMcpAssetsRoot;
 
 /// What a drop resolution did to the records that referred to the deleted key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,6 +53,6 @@ pub type ReplacementCheck = Box<
 // The assets root a delete writes its rewritten referrers under.
 pub(super) fn delete_assets_root(world: &World) -> Option<PathBuf> {
     world
-        .get_resource::<EditorQaAssetsRoot>()
+        .get_resource::<EditorMcpAssetsRoot>()
         .map(|root| (**root).clone())
 }

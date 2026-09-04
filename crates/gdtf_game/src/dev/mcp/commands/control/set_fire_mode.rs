@@ -1,7 +1,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -67,7 +67,7 @@ pub(crate) struct BattleSetFireModeReply {
 
 pub(crate) struct BattleSetFireMode;
 
-impl QaCommand for BattleSetFireMode {
+impl McpCommand for BattleSetFireMode {
     type Args = BattleSetFireModeArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -92,7 +92,7 @@ impl QaCommand for BattleSetFireMode {
             Update,
             handle_battle_set_fire_mode
                 .in_set(FireModeSystems::Command)
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .before(reset_move_target_on_fire_mode_change),
         );
     }

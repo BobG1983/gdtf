@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use gdtf_battle_sim::injuries::InjuryWeighting;
-use gdtf_editor::EditorQaAssetsRoot;
+use gdtf_editor::EditorMcpAssetsRoot;
 use tempfile::TempDir;
 
 use crate::{
@@ -23,7 +23,7 @@ fn a_qa_save_writes_the_weighting_under_the_qa_assets_root_and_the_file_parses_b
     let (mut app, mut client) = injury_tab_app_and_client()?;
     let root = TempDir::new()?;
     app.world_mut()
-        .insert_resource(EditorQaAssetsRoot::new(root.path().to_path_buf()));
+        .insert_resource(EditorMcpAssetsRoot::new(root.path().to_path_buf()));
     select_table(&mut app, &mut client, "(category: Leg, context: Melee)")?;
 
     let outcome = save_weighting(&mut app, &mut client)?;
@@ -52,7 +52,7 @@ fn a_row_edited_over_the_wire_is_in_the_file_the_save_writes() -> TestResult {
     let (mut app, mut client) = injury_tab_app_and_client()?;
     let root = TempDir::new()?;
     app.world_mut()
-        .insert_resource(EditorQaAssetsRoot::new(root.path().to_path_buf()));
+        .insert_resource(EditorMcpAssetsRoot::new(root.path().to_path_buf()));
     let loaded = select_table(&mut app, &mut client, "(category: Leg, context: Melee)")?;
     let Some(first) = loaded.minor.first() else {
         unreachable!("the live Leg/Melee table carries Minor rows, got {loaded:?}");
@@ -87,7 +87,7 @@ fn a_qa_weighting_save_is_recorded_under_the_injury_tab_the_way_the_buttons_save
     let (mut app, mut client) = injury_tab_app_and_client()?;
     let root = TempDir::new()?;
     app.world_mut()
-        .insert_resource(EditorQaAssetsRoot::new(root.path().to_path_buf()));
+        .insert_resource(EditorMcpAssetsRoot::new(root.path().to_path_buf()));
 
     let before = last_save_rows(&mut app, &mut client, ONLY_INJURY)?;
     assert!(
@@ -122,7 +122,7 @@ fn a_writer_that_cannot_make_its_folder_answers_a_failed_outcome_inside_a_ran_re
     let blocked = root.path().join("assets");
     fs::write(&blocked, "this is a file, not the assets root")?;
     app.world_mut()
-        .insert_resource(EditorQaAssetsRoot::new(blocked));
+        .insert_resource(EditorMcpAssetsRoot::new(blocked));
 
     let outcome = save_weighting(&mut app, &mut client)?;
 
@@ -149,7 +149,7 @@ fn a_failed_qa_weighting_save_is_recorded_under_the_injury_tab() -> TestResult {
     let blocked = root.path().join("assets");
     fs::write(&blocked, "this is a file, not the assets root")?;
     app.world_mut()
-        .insert_resource(EditorQaAssetsRoot::new(blocked));
+        .insert_resource(EditorMcpAssetsRoot::new(blocked));
 
     let outcome = save_weighting(&mut app, &mut client)?;
 

@@ -8,11 +8,11 @@ use std::{
 
 use cobalt_mcp_protocol::{
     command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyRon, ReplyAttachment},
-    message::{QaError, QaRequest, QaResponse},
+    message::{McpRequest, McpResponse, McpSessionError},
 };
 use cobalt_mcp_server::{
-    ChildPid, HostLifecycle, InstanceId, LaunchOutcome, LaunchSpec, McpError, OutputTail, QaLink,
-    QaPort, RecordedInstance, StopOutcome, TailLines, WorkingDir, base64::encode_standard,
+    ChildPid, HostLifecycle, InstanceId, LaunchOutcome, LaunchSpec, McpError, McpLink, McpPort,
+    OutputTail, RecordedInstance, StopOutcome, TailLines, WorkingDir, base64::encode_standard,
     dispatch,
 };
 use serde_json::{Value, json};
@@ -31,14 +31,14 @@ const ATTACHING_REPLY: &str = "(phase:(app:Running))";
 
 struct AttachingLink(Vec<ReplyAttachment>);
 
-impl QaLink for AttachingLink {
-    fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
+impl McpLink for AttachingLink {
+    fn request(&mut self, request: McpRequest) -> Result<McpResponse, McpError> {
         match request {
-            QaRequest::Run(_) => Ok(QaResponse::Outcome(CommandOutcome::Ran {
+            McpRequest::Run(_) => Ok(McpResponse::Outcome(CommandOutcome::Ran {
                 reply:       CommandReplyRon::new(ATTACHING_REPLY.to_owned()),
                 attachments: self.0.clone(),
             })),
-            _ => Ok(QaResponse::Error(QaError::Malformed)),
+            _ => Ok(McpResponse::Error(McpSessionError::Malformed)),
         }
     }
 }
@@ -46,7 +46,7 @@ impl QaLink for AttachingLink {
 struct ChildInDirLifecycle(Option<PathBuf>);
 
 impl HostLifecycle for ChildInDirLifecycle {
-    fn launch(&mut self, port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
+    fn launch(&mut self, port: McpPort, _spec: &LaunchSpec) -> LaunchOutcome {
         LaunchOutcome::Launched {
             port,
             pid: ChildPid::new(process::id()),
@@ -54,7 +54,7 @@ impl HostLifecycle for ChildInDirLifecycle {
         }
     }
 
-    fn stop(&mut self, _port: QaPort) -> StopOutcome {
+    fn stop(&mut self, _port: McpPort) -> StopOutcome {
         StopOutcome::NotRunning
     }
 

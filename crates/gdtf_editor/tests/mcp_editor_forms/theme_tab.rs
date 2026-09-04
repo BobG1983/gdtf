@@ -2,8 +2,8 @@
 //! display name, a foreign field or list, and a draft that leaves the world.
 
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::{CommandInbox, QaCommandSystems};
-use cobalt_mcp_protocol::message::QaResponse;
+use cobalt_mcp_command::dispatch::{CommandInbox, McpCommandSystems};
+use cobalt_mcp_protocol::message::McpResponse;
 use gdtf_editor::{EditorMode, ThemeDraft};
 
 use crate::{
@@ -27,7 +27,7 @@ const A_GANG_FIELD: &str = "(field: Gang(Name(\"Ash Ferals\")))";
 const A_GANG_LIST: &str = "(list: GangMembers, op: Add)";
 
 // The route's foreign-arm refusal.
-fn assert_the_foreign_arm_answered(reply: &QaResponse) -> TestResult {
+fn assert_the_foreign_arm_answered(reply: &McpResponse) -> TestResult {
     assert_eq!(
         unavailable_code(reply)?,
         "WrongState",
@@ -48,7 +48,7 @@ fn assert_the_foreign_arm_answered(reply: &QaResponse) -> TestResult {
 }
 
 // The route's own missing-draft refusal.
-fn assert_the_draft_gone_arm_answered(reply: &QaResponse) -> TestResult {
+fn assert_the_draft_gone_arm_answered(reply: &McpResponse) -> TestResult {
     assert_eq!(
         unavailable_code(reply)?,
         "WrongState",
@@ -85,8 +85,8 @@ fn theme_app_losing_its_draft_mid_frame() -> Result<(App, Client), TestError> {
     app.add_systems(
         Update,
         drop_the_theme_draft_after_admission
-            .after(QaCommandSystems::Route)
-            .before(QaCommandSystems::Claim),
+            .after(McpCommandSystems::Route)
+            .before(McpCommandSystems::Claim),
     );
     Ok((app, client))
 }

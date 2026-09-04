@@ -5,7 +5,7 @@ use std::path::Path;
 use gdtf_assets::{ContentFinding, ContentIntegrityReport, ContentMemberKey, FindingFamily};
 use gdtf_battle_sim::weapon::{FISTS_KEY, MeleeWeaponRegistry, WeaponName};
 use gdtf_editor::{
-    DeleteOutcome, DeleteRefusal, DeleteRequest, EditorQaAssetsRoot, MeleeWeaponDraft,
+    DeleteOutcome, DeleteRefusal, DeleteRequest, EditorMcpAssetsRoot, MeleeWeaponDraft,
     draft_to_melee_weapon_spec, melee_weapon_save_path_in, write_melee_weapon_in,
 };
 
@@ -80,7 +80,7 @@ fn deleting_a_melee_weapon_writes_every_holder_back_with_none() {
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     app.insert_resource(request_melee_delete(FIXTURE_BLADE));
@@ -132,7 +132,7 @@ fn deleting_the_default_melee_weapon_is_refused_while_a_member_resolves_to_it() 
     assert!(before.is_ok(), "the planted gang file must be readable");
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     app.insert_resource(request_melee_delete(FISTS_KEY));
@@ -176,7 +176,7 @@ fn the_default_melee_weapon_is_removed_when_no_gang_resolves_to_it() {
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     app.insert_resource(request_melee_delete(FISTS_KEY));
@@ -218,7 +218,7 @@ fn deleting_a_melee_weapon_is_refused_when_the_root_holds_no_default_to_fall_bac
     assert!(before.is_ok(), "the planted gang file must be readable");
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     app.insert_resource(request_melee_delete(FIXTURE_BLADE));

@@ -10,10 +10,7 @@ use super::{
     register_consumers::register_consumers, register_present::register_present,
     register_transport::register_transport,
 };
-use crate::dev::mcp::{
-    config::hello_facts,
-    env::{mcp_enabled, port_from_env},
-};
+use crate::dev::mcp::{config::hello_facts, env::port_from_env};
 
 enum Wiring {
     Disabled,
@@ -32,7 +29,7 @@ enum Wiring {
 }
 
 crate::support_item! {
-    /// Serves the QA command channel from inside the running game.
+    /// Serves the MCP command channel from inside the running game.
     struct McpPlugin {
         wiring: Wiring,
     }
@@ -40,18 +37,25 @@ crate::support_item! {
 
 impl McpPlugin {
     crate::support_item! {
-        /// Build the default wiring: debug builds listen on the shared QA port.
+        /// Listen on `port`, or open no listener at all when there is none.
         #[must_use]
-        const fn from_env() -> Self {
-            let wiring = if mcp_enabled() {
-                Wiring::Listener {
-                    port:     port_from_env(),
+        const fn from_port(port: Option<McpPort>) -> Self {
+            let wiring = match port {
+                Some(port) => Wiring::Listener {
+                    port,
                     timeouts: NetTimeouts::DEFAULT,
-                }
-            } else {
-                Wiring::Disabled
+                },
+                None => Wiring::Disabled,
             };
             Self { wiring }
+        }
+    }
+
+    crate::support_item! {
+        /// Build the wiring `GDTF_MCP_PORT` asks for; no variable means no listener.
+        #[must_use]
+        fn from_env() -> Self {
+            Self::from_port(port_from_env())
         }
     }
 
@@ -106,13 +110,13 @@ impl Plugin for McpPlugin {
                 let Ok((listener, bound)) = bind_listener(*port) else {
                     error!(
                         port = **port,
-                        "mcp: failed to bind the loopback listener — QA channel OFF"
+                        "mcp: failed to bind the loopback listener — MCP channel OFF"
                     );
                     return;
                 };
                 info!(
                     port = *bound,
-                    "mcp: ON (dev) — loopback QA control channel listening"
+                    "mcp: ON (dev) — loopback MCP control channel listening"
                 );
                 serve(app, listener, *timeouts);
             }

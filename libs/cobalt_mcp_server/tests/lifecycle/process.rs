@@ -1,6 +1,6 @@
 use cobalt_mcp_server::{
     CargoPackage, EnvOverrides, HostLifecycle, HostManager, LaunchFailure, LaunchOutcome,
-    LaunchSpec, QaPort, StopOutcome, WorkingDir,
+    LaunchSpec, McpPort, StopOutcome, WorkingDir,
 };
 
 use crate::support::{
@@ -14,7 +14,7 @@ fn launch_becomes_ready_then_stops() {
     let mut manager =
         HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
 
-    let outcome = manager.launch(QaPort::new(port), &sample_spec());
+    let outcome = manager.launch(McpPort::new(port), &sample_spec());
     let LaunchOutcome::Launched {
         port: ready_port,
         pid,
@@ -25,13 +25,13 @@ fn launch_becomes_ready_then_stops() {
     };
     assert_eq!(*ready_port, port);
 
-    let stopped = manager.stop(QaPort::new(port));
+    let stopped = manager.stop(McpPort::new(port));
     let StopOutcome::Stopped { pid: stopped_pid } = stopped else {
         unreachable!("stop reaps the running child: {stopped:?}");
     };
     assert_eq!(pid, stopped_pid, "stop reaps the child that launched");
     assert_eq!(
-        manager.stop(QaPort::new(free_port())),
+        manager.stop(McpPort::new(free_port())),
         StopOutcome::NotRunning
     );
 }
@@ -43,11 +43,11 @@ fn second_launch_is_already_running() {
         HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
     let spec = recipe_with_features(&["dynamic_linking", "file_watcher"]);
 
-    let LaunchOutcome::Launched { pid: first_pid, .. } = manager.launch(QaPort::new(port), &spec)
+    let LaunchOutcome::Launched { pid: first_pid, .. } = manager.launch(McpPort::new(port), &spec)
     else {
         unreachable!("the first launch becomes ready");
     };
-    let second = manager.launch(QaPort::new(port), &spec);
+    let second = manager.launch(McpPort::new(port), &spec);
     let LaunchOutcome::AlreadyRunning {
         port: existing_port,
         pid,
@@ -69,7 +69,7 @@ fn second_launch_is_already_running() {
         "the reported recipe is the running child's, not the default"
     );
 
-    let _ = manager.stop(QaPort::new(port));
+    let _ = manager.stop(McpPort::new(port));
 }
 
 #[test]
@@ -80,12 +80,12 @@ fn a_second_launch_of_a_different_recipe_is_rejected() {
     let running_recipe = recipe_with_features(&["dynamic_linking", "dev_tools"]);
 
     let LaunchOutcome::Launched { pid: first_pid, .. } =
-        manager.launch(QaPort::new(port), &running_recipe)
+        manager.launch(McpPort::new(port), &running_recipe)
     else {
         unreachable!("the first launch becomes ready");
     };
     let second = manager.launch(
-        QaPort::new(port),
+        McpPort::new(port),
         &recipe_with_features(&["dynamic_linking", "file_watcher"]),
     );
     let LaunchOutcome::Failed(LaunchFailure::RecipeMismatch(running)) = second else {
@@ -93,7 +93,7 @@ fn a_second_launch_of_a_different_recipe_is_rejected() {
     };
     assert_eq!(*running, running_recipe, "the rejection names what is up");
 
-    let StopOutcome::Stopped { pid } = manager.stop(QaPort::new(port)) else {
+    let StopOutcome::Stopped { pid } = manager.stop(McpPort::new(port)) else {
         unreachable!("the first child is still running after the rejection");
     };
     assert_eq!(pid, first_pid);
@@ -115,16 +115,16 @@ fn an_unnamed_directory_matches_the_hosts_own_directory() {
         sample_channel(),
     );
 
-    let LaunchOutcome::Launched { .. } = manager.launch(QaPort::new(port), &named) else {
+    let LaunchOutcome::Launched { .. } = manager.launch(McpPort::new(port), &named) else {
         unreachable!("the first launch becomes ready");
     };
-    let second = manager.launch(QaPort::new(port), &sample_spec());
+    let second = manager.launch(McpPort::new(port), &sample_spec());
     assert!(
         matches!(second, LaunchOutcome::AlreadyRunning { .. }),
         "the same checkout under two spellings is one recipe: {second:?}"
     );
 
-    let _ = manager.stop(QaPort::new(port));
+    let _ = manager.stop(McpPort::new(port));
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn launch_times_out_and_captures_stderr() {
     let config = fast_config(800);
     let mut manager = HostManager::with_config(Box::new(StubSpawner), config);
 
-    let outcome = manager.launch(QaPort::new(port), &sample_spec());
+    let outcome = manager.launch(McpPort::new(port), &sample_spec());
     let LaunchOutcome::Failed(LaunchFailure::Timeout { tail, waited }) = outcome else {
         unreachable!("no listener means the launch times out: {outcome:?}");
     };
@@ -147,14 +147,14 @@ fn launch_times_out_and_captures_stderr() {
         config.boot_timeout(),
         "the failure reports the boot timeout the manager was configured with"
     );
-    assert_eq!(manager.stop(QaPort::new(port)), StopOutcome::NotRunning);
+    assert_eq!(manager.stop(McpPort::new(port)), StopOutcome::NotRunning);
 }
 
 #[test]
 fn stop_with_nothing_running_is_not_running() {
     let mut manager = HostManager::with_config(Box::new(StubSpawner), fast_config(2000));
     assert_eq!(
-        manager.stop(QaPort::new(free_port())),
+        manager.stop(McpPort::new(free_port())),
         StopOutcome::NotRunning
     );
 }

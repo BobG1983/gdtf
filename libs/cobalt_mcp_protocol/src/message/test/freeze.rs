@@ -3,7 +3,8 @@
 use crate::{
     command::{CommandArgsRon, CommandCatalogue, CommandName, CommandOutcome},
     message::{
-        HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, RunCommand, ServerNameNet,
+        HelloFacts, McpRequest, McpResponse, McpSessionError, ProtocolVersion, RunCommand,
+        ServerNameNet,
     },
 };
 
@@ -19,9 +20,9 @@ fn the_wire_stands_at_protocol_version_15() {
 #[test]
 fn the_request_enum_has_exactly_three_variants() {
     let every = [
-        QaRequest::Hello(ProtocolVersion::CURRENT),
-        QaRequest::Catalogue,
-        QaRequest::Run(RunCommand::new(
+        McpRequest::Hello(ProtocolVersion::CURRENT),
+        McpRequest::Catalogue,
+        McpRequest::Run(RunCommand::new(
             CommandName::from_static("app.phase"),
             CommandArgsRon::new("()".to_owned()),
         )),
@@ -29,7 +30,7 @@ fn the_request_enum_has_exactly_three_variants() {
     let mut seen = 0_usize;
     for request in &every {
         match request {
-            QaRequest::Hello(_) | QaRequest::Catalogue | QaRequest::Run(_) => seen += 1,
+            McpRequest::Hello(_) | McpRequest::Catalogue | McpRequest::Run(_) => seen += 1,
         }
     }
     assert_eq!(seen, 3, "the request wire is Hello, Catalogue and Run");
@@ -38,24 +39,24 @@ fn the_request_enum_has_exactly_three_variants() {
 #[test]
 fn the_response_enum_has_exactly_four_variants() {
     let every = [
-        QaResponse::HelloOk(HelloFacts::new(
+        McpResponse::HelloOk(HelloFacts::new(
             ProtocolVersion::CURRENT,
             ServerNameNet::new("host-under-test".to_owned()),
         )),
-        QaResponse::Catalogue(CommandCatalogue::new(
+        McpResponse::Catalogue(CommandCatalogue::new(
             ServerNameNet::new("host-under-test".to_owned()),
             Vec::new(),
         )),
-        QaResponse::Outcome(CommandOutcome::Unknown { known: Vec::new() }),
-        QaResponse::Error(QaError::Malformed),
+        McpResponse::Outcome(CommandOutcome::Unknown { known: Vec::new() }),
+        McpResponse::Error(McpSessionError::Malformed),
     ];
     let mut seen = 0_usize;
     for response in &every {
         match response {
-            QaResponse::HelloOk(_)
-            | QaResponse::Catalogue(_)
-            | QaResponse::Outcome(_)
-            | QaResponse::Error(_) => seen += 1,
+            McpResponse::HelloOk(_)
+            | McpResponse::Catalogue(_)
+            | McpResponse::Outcome(_)
+            | McpResponse::Error(_) => seen += 1,
         }
     }
     assert_eq!(
@@ -67,19 +68,19 @@ fn the_response_enum_has_exactly_four_variants() {
 #[test]
 fn the_error_enum_has_exactly_five_variants() {
     let every = [
-        QaError::Malformed,
-        QaError::NotNegotiated,
-        QaError::VersionMismatch,
-        QaError::Busy,
-        QaError::Timeout,
+        McpSessionError::Malformed,
+        McpSessionError::NotNegotiated,
+        McpSessionError::VersionMismatch,
+        McpSessionError::Busy,
+        McpSessionError::Timeout,
     ];
     for error in every {
         match error {
-            QaError::Malformed
-            | QaError::NotNegotiated
-            | QaError::VersionMismatch
-            | QaError::Busy
-            | QaError::Timeout => {}
+            McpSessionError::Malformed
+            | McpSessionError::NotNegotiated
+            | McpSessionError::VersionMismatch
+            | McpSessionError::Busy
+            | McpSessionError::Timeout => {}
         }
         crate::test_support::assert_ron_round_trip(&error);
     }

@@ -1,7 +1,7 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
@@ -40,7 +40,7 @@ pub(crate) struct BattleOffersReply {
 
 pub(crate) struct BattleOffers;
 
-impl QaCommand for BattleOffers {
+impl McpCommand for BattleOffers {
     type Args = BattleOffersArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -65,7 +65,7 @@ impl QaCommand for BattleOffers {
         app.add_systems(
             Update,
             handle_battle_offers
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .after(ContextualPanelSystems::Toggle),
         );
     }

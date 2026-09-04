@@ -1,4 +1,4 @@
-use cobalt_mcp_protocol::message::QaRequest;
+use cobalt_mcp_protocol::message::McpRequest;
 use gdtf_editor::EditorMode;
 
 use crate::{
@@ -24,7 +24,7 @@ fn every_prefab_command_refuses_another_tab_with_a_note_the_load_pass_does_not_u
          the tab it is scoped to",
     );
 
-    let loading = reply_answered_during_load(QaRequest::Catalogue, "the catalogue request")?;
+    let loading = reply_answered_during_load(McpRequest::Catalogue, "the catalogue request")?;
     for (command, arguments) in PREFAB_TAB_COMMANDS.into_iter().zip(PREFAB_TAB_ARGUMENTS) {
         let reply = client.exchange(&mut app, &run_editor(command, arguments))?;
         let (code, tab_note) = refusal_of(&reply)?;

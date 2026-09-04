@@ -7,7 +7,7 @@ use std::{
     time::Instant,
 };
 
-use cobalt_mcp_server::{ChildPid, OrphanStop, OrphanWatch, PortHold, QaPort, SystemOrphanWatch};
+use cobalt_mcp_server::{ChildPid, McpPort, OrphanStop, OrphanWatch, PortHold, SystemOrphanWatch};
 
 use super::{
     super::support::answer_one,
@@ -38,7 +38,7 @@ fn a_process_that_ignores_the_graceful_signal_is_escalated_to_a_kill() {
 }
 
 struct HeldPort {
-    port:   QaPort,
+    port:   McpPort,
     pid:    ChildPid,
     status: Arc<Mutex<Option<ExitStatus>>>,
 }
@@ -78,7 +78,7 @@ fn spawn_a_listener_held_until_its_process_dies() -> HeldPort {
         }
     });
     let held = HeldPort {
-        port: QaPort::new(addr.port()),
+        port: McpPort::new(addr.port()),
         pid,
         status,
     };

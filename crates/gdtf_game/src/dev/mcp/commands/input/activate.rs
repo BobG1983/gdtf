@@ -1,7 +1,7 @@
 use bevy::{input_focus::InputFocus, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, DeferredReplies, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, DeferredReplies, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -20,7 +20,7 @@ const NOTHING_FOCUSED: RefusalNote = RefusalNote::from_static(
 
 pub(crate) struct InputActivate;
 
-impl QaCommand for InputActivate {
+impl McpCommand for InputActivate {
     type Args = NoArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -45,7 +45,7 @@ impl QaCommand for InputActivate {
             (
                 claim_input_activate
                     .in_set(FocusNavSystems::Bridge)
-                    .after(QaCommandSystems::Claim),
+                    .after(McpCommandSystems::Claim),
                 settle_input_activate.after(FocusNavSystems::Apply),
             ),
         );

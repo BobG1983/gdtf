@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, DeferredReplies, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, DeferredReplies, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, UnavailableCode,
@@ -35,7 +35,7 @@ pub(crate) struct ViewPanReply {
 
 pub(crate) struct ViewPan;
 
-impl QaCommand for ViewPan {
+impl McpCommand for ViewPan {
     type Args = ViewPanArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -60,7 +60,7 @@ impl QaCommand for ViewPan {
             Update,
             (
                 claim_view_pan
-                    .after(QaCommandSystems::Claim)
+                    .after(McpCommandSystems::Claim)
                     .before(clamp_camera_to_bounds),
                 settle_view_pan.after(clamp_camera_to_bounds),
             ),

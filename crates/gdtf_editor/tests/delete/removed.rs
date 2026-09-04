@@ -2,7 +2,7 @@
 
 use gdtf_assets::{ContentMemberKey, FindingFamily};
 use gdtf_battle_sim::weapon::WeaponRegistry;
-use gdtf_editor::{DeleteOutcome, DeleteRequest, EditorQaAssetsRoot, weapon_save_path_in};
+use gdtf_editor::{DeleteOutcome, DeleteRequest, EditorMcpAssetsRoot, weapon_save_path_in};
 
 use crate::{
     advance::advance_to_published,
@@ -30,7 +30,7 @@ fn a_weapon_no_record_names_is_removed_with_its_file() {
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     app.insert_resource(DeleteRequest::new(

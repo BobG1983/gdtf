@@ -3,7 +3,7 @@
 use std::sync::mpsc;
 
 use bevy::app::App;
-use cobalt_mcp_protocol::message::{QaRequest, QaResponse};
+use cobalt_mcp_protocol::message::{McpRequest, McpResponse};
 use cobalt_mcp_transport::IncomingRequest;
 use gdtf_battle_input::{InspectTarget, SelectedShooter};
 use gdtf_battle_presenter::FireTargetHighlight;
@@ -37,8 +37,8 @@ fn ask_while_setting(
     app: &mut App,
     tx: &mpsc::Sender<IncomingRequest>,
     mode: ModeKindNet,
-    read: QaRequest,
-) -> QaResponse {
+    read: McpRequest,
+) -> McpResponse {
     let _set = send(tx, run_request(BATTLE_SET_FIRE_MODE, &mode_argument(mode)));
     let reply = send(tx, read);
     app.update();

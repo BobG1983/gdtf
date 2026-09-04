@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
@@ -23,7 +23,7 @@ pub(crate) struct PlaybackStateReply {
 
 pub(crate) struct PlaybackState;
 
-impl QaCommand for PlaybackState {
+impl McpCommand for PlaybackState {
     type Args = PlaybackStateArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -42,7 +42,10 @@ impl QaCommand for PlaybackState {
     }
 
     fn register_handler(app: &mut App) {
-        app.add_systems(Update, handle_playback_state.after(QaCommandSystems::Claim));
+        app.add_systems(
+            Update,
+            handle_playback_state.after(McpCommandSystems::Claim),
+        );
     }
 }
 

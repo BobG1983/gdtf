@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use cobalt_mcp_protocol::command::{CommandArgsRon, RunOptions};
 
 use crate::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{CommandInbox, DeferredReplies},
     test_support::{
         FAKE_COMMANDS, FakePhase, FakeSettle, fake_app, fake_facts_loaded, run_fake_command,

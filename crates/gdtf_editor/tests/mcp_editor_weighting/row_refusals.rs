@@ -1,4 +1,4 @@
-use cobalt_mcp_protocol::{command::CommandOutcome, message::QaResponse};
+use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
 use gdtf_battle_sim::injuries::InjuryRegistry;
 
 use crate::{
@@ -11,8 +11,8 @@ use crate::{
 };
 
 // The note a run answered an Unavailable with.
-fn refusal_note(reply: &QaResponse) -> Result<String, TestError> {
-    let QaResponse::Outcome(CommandOutcome::Unavailable { note, .. }) = reply else {
+fn refusal_note(reply: &McpResponse) -> Result<String, TestError> {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { note, .. }) = reply else {
         return Err(format!("expected an Unavailable outcome, got {reply:?}").into());
     };
     Ok(note.as_str().to_owned())

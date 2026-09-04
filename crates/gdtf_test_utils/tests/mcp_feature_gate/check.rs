@@ -1,6 +1,6 @@
 //! Fail if the QA host is gated on `debug_assertions` instead of the `mcp` feature.
 
-use crate::tree::{GATE_FILES, QA_PATHS, read, repo_root, tracked_qa_sources};
+use crate::tree::{GATE_FILES, MCP_PATHS, read, repo_root, tracked_qa_sources};
 
 const PROFILE_GATE: &str = "debug_assertions";
 
@@ -14,7 +14,7 @@ fn no_qa_source_is_gated_on_the_build_profile() {
     let sources = tracked_qa_sources(&root);
     assert!(
         !sources.is_empty(),
-        "no `.rs` file found under {QA_PATHS:?} in {} — enumeration is broken, and a guard \
+        "no `.rs` file found under {MCP_PATHS:?} in {} — enumeration is broken, and a guard \
          that reads nothing is not a pass",
         root.display()
     );
@@ -25,7 +25,7 @@ fn no_qa_source_is_gated_on_the_build_profile() {
     assert!(
         offenders.is_empty(),
         "the QA host is compiled in by each host package's `mcp` feature, so nothing under \
-         {QA_PATHS:?} may name `{PROFILE_GATE}`:\n{offenders:#?}\n\nA `{PROFILE_GATE}` gate \
+         {MCP_PATHS:?} may name `{PROFILE_GATE}`:\n{offenders:#?}\n\nA `{PROFILE_GATE}` gate \
          drops the host from every release build, which is the regime the `mcp` feature \
          replaced. The rule is {RULE}."
     );

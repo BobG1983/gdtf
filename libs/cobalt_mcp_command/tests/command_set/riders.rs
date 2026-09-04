@@ -4,7 +4,7 @@ use std::{cell::Cell, path::PathBuf, sync::mpsc::Receiver};
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{CaptureHolds, CaptureTicket},
     test_support::{
         FAKE_COMMANDS, FakeFacts, FakePhase, FakePoint, fake_app, fake_facts_loaded,
@@ -16,7 +16,7 @@ use cobalt_mcp_protocol::{
         ArtifactPath, AttachmentKind, AwaitBudget, CaptureRider, CommandOutcome, RunOptions,
     },
     ids::ShotName,
-    message::{QaError, QaResponse},
+    message::{McpResponse, McpSessionError},
 };
 use cobalt_screenshot::{
     CaptureQueue, CaptureSystems, PollCap, SettleFrames, ShotDir, ShotDirName,
@@ -95,7 +95,7 @@ fn stand_in_for_the_renderer(dir: Res<ShotDir>, stem: Res<LandingStem>) {
 
 // The host's answer to one call, taken off the channel the frame it arrives on. The wait has no
 // budget, so a busy machine is never red.
-fn wait_for_answer(app: &mut App, channel: &Receiver<QaResponse>) -> QaResponse {
+fn wait_for_answer(app: &mut App, channel: &Receiver<McpResponse>) -> McpResponse {
     let landed = Cell::new(None);
     loop {
         advance_until(app, |_| {
@@ -110,7 +110,7 @@ fn wait_for_answer(app: &mut App, channel: &Receiver<QaResponse>) -> QaResponse 
     }
 }
 
-fn ran_body(channel: &Receiver<QaResponse>) -> String {
+fn ran_body(channel: &Receiver<McpResponse>) -> String {
     let answered = outcome(channel);
     let CommandOutcome::Ran { reply, attachments } = answered else {
         unreachable!("a plain call must run, got {answered:?}");
@@ -122,8 +122,8 @@ fn ran_body(channel: &Receiver<QaResponse>) -> String {
     reply.as_str().to_owned()
 }
 
-fn ran_with_one_png(answered: &QaResponse) -> (String, ArtifactPath) {
-    let QaResponse::Outcome(CommandOutcome::Ran { reply, attachments }) = answered else {
+fn ran_with_one_png(answered: &McpResponse) -> (String, ArtifactPath) {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply, attachments }) = answered else {
         unreachable!("a landed capture rider must run, got {answered:?}");
     };
     let Some(attachment) = attachments.first() else {
@@ -208,7 +208,7 @@ fn a_capture_rider_whose_shot_never_lands_answers_timeout() {
 
     let answered = wait_for_answer(&mut app, &channel);
     assert!(
-        matches!(answered, QaResponse::Error(QaError::Timeout)),
+        matches!(answered, McpResponse::Error(McpSessionError::Timeout)),
         "nothing writes a PNG here, so the shot times out in the pump and the rider answers \
          Timeout rather than the reply without it, got {answered:?}"
     );

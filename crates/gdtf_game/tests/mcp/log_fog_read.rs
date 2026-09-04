@@ -2,7 +2,7 @@
 
 use cobalt_mcp_protocol::{
     command::RunOptions,
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 use gdtf_game::qa_wire::{deed::ActDeedKindNet, log::LogEntryNet, token::GangerToken};
 use serde::Deserialize;
@@ -24,7 +24,7 @@ struct LogBody {
     entries: Vec<LogEntryNet>,
 }
 
-fn wide_read(command: &'static str) -> QaRequest {
+fn wide_read(command: &'static str) -> McpRequest {
     run(
         command,
         &format!("(cap:Some({WIDE_CAP}))"),
@@ -32,7 +32,7 @@ fn wide_read(command: &'static str) -> QaRequest {
     )
 }
 
-fn decode_as(command: &'static str, reply: Option<QaResponse>) -> Result<LogBody, TestError> {
+fn decode_as(command: &'static str, reply: Option<McpResponse>) -> Result<LogBody, TestError> {
     let Some(reply) = reply else {
         return Err(format!("{command} produced no reply").into());
     };

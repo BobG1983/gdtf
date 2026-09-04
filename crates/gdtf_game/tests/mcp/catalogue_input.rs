@@ -2,7 +2,7 @@
 
 use cobalt_mcp_protocol::{
     command::{CommandAvailability, CommandName, CommandTiming, UnavailableCode},
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 
 use super::{
@@ -34,8 +34,8 @@ const OFF_THE_BATTLE_SCREEN: [&str; 5] = [
 
 #[test]
 fn the_catalogue_publishes_every_raw_input_command_with_its_timing_and_a_summary() -> TestResult {
-    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
-    let QaResponse::Catalogue(catalogue) = reply else {
+    let reply = exchange(game_app_listening, McpRequest::Catalogue)?;
+    let McpResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
     };
     for (name, timing) in INPUT_TIMINGS {
@@ -61,8 +61,8 @@ fn the_catalogue_publishes_every_raw_input_command_with_its_timing_and_a_summary
 
 #[test]
 fn the_menu_catalogue_offers_the_shell_input_and_refuses_the_click() -> TestResult {
-    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
-    let QaResponse::Catalogue(catalogue) = reply else {
+    let reply = exchange(game_app_listening, McpRequest::Catalogue)?;
+    let McpResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
     };
     for name in OFF_THE_BATTLE_SCREEN {

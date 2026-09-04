@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -56,7 +56,7 @@ pub(crate) struct LogReadReply {
 
 pub(crate) struct LogRead;
 
-impl QaCommand for LogRead {
+impl McpCommand for LogRead {
     type Args = LogReadArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -79,7 +79,7 @@ impl QaCommand for LogRead {
     }
 
     fn register_handler(app: &mut App) {
-        app.add_systems(Update, handle_log_read.after(QaCommandSystems::Claim));
+        app.add_systems(Update, handle_log_read.after(McpCommandSystems::Claim));
     }
 }
 

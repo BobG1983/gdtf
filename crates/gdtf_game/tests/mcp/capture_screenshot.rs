@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use cobalt_mcp_protocol::{
     command::{AttachmentKind, CaptureRider, CommandOutcome, ReplyAttachment, RunOptions},
     ids::ShotName,
-    message::{QaError, QaResponse},
+    message::{McpResponse, McpSessionError},
 };
 use cobalt_screenshot::ShotDir;
 use gdtf_test_utils::gpu_probe::gpu_adapter_probe;
@@ -24,8 +24,8 @@ fn named(stem: &str) -> String {
     format!("(name: Some(\"{stem}\"))")
 }
 
-fn attachment_of(reply: &QaResponse) -> Result<&ReplyAttachment, TestError> {
-    let QaResponse::Outcome(CommandOutcome::Ran { attachments, .. }) = reply else {
+fn attachment_of(reply: &McpResponse) -> Result<&ReplyAttachment, TestError> {
+    let McpResponse::Outcome(CommandOutcome::Ran { attachments, .. }) = reply else {
         return Err(format!("a landed capture must RUN, got {reply:?}").into());
     };
     attachments
@@ -111,7 +111,7 @@ fn a_capture_rider_attaches_a_png_to_the_reply_its_command_produced() -> TestRes
     };
     let plain_body = ran_body(APP_PHASE, plain)?;
 
-    let QaResponse::Outcome(CommandOutcome::Ran { reply, attachments }) = &with_rider else {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply, attachments }) = &with_rider else {
         return Err(format!("a capture rider runs its command first, got {with_rider:?}").into());
     };
     assert_eq!(
@@ -138,25 +138,25 @@ fn a_capture_that_never_lands_answers_timeout_not_a_refusal() -> TestResult {
     )?;
 
     assert!(
-        matches!(reply, QaResponse::Error(QaError::Timeout)),
+        matches!(reply, McpResponse::Error(McpSessionError::Timeout)),
         "with nothing writing a PNG the capture must give up and answer Timeout, not refuse; got \
          {reply:?}",
     );
     assert!(
-        !matches!(reply, QaResponse::Outcome(CommandOutcome::Unknown { .. })),
+        !matches!(reply, McpResponse::Outcome(CommandOutcome::Unknown { .. })),
         "capture.screenshot must be a REGISTERED name, not Unknown: {reply:?}",
     );
     assert!(
         !matches!(
             reply,
-            QaResponse::Outcome(CommandOutcome::BadArguments { .. })
+            McpResponse::Outcome(CommandOutcome::BadArguments { .. })
         ),
         "`()` must deserialize into the command's args: {reply:?}",
     );
     assert!(
         !matches!(
             reply,
-            QaResponse::Outcome(CommandOutcome::Unavailable { .. })
+            McpResponse::Outcome(CommandOutcome::Unavailable { .. })
         ),
         "the command is unconditionally available, so nothing may refuse it: {reply:?}",
     );
@@ -223,7 +223,7 @@ fn a_named_capture_that_never_lands_still_answers_timeout() -> TestResult {
         ),
     )?;
     assert!(
-        matches!(reply, QaResponse::Error(QaError::Timeout)),
+        matches!(reply, McpResponse::Error(McpSessionError::Timeout)),
         "a named capture must take the same path as an unnamed one — its argument shape must \
          deserialize rather than come back BadArguments; got {reply:?}",
     );

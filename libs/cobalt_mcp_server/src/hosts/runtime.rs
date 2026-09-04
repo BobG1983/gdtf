@@ -1,25 +1,25 @@
 //! The link and lifecycle this server owns for each registered host.
 
-use super::{name::HostName, registry::HostRegistry, set::HostPair, spec::QaHostSpec};
+use super::{name::HostName, registry::HostRegistry, set::HostPair, spec::McpHostSpec};
 use crate::{
     lifecycle::{CargoSpawner, HostLifecycle, HostManager, StopOutcome},
-    link::QaClient,
+    link::McpClient,
 };
 
 /// One registered host's own link and lifecycle manager.
 pub struct HostRuntime {
     name:      HostName,
-    link:      QaClient,
+    link:      McpClient,
     lifecycle: HostManager,
 }
 
 impl HostRuntime {
     /// Build the link and lifecycle this host's own value calls for.
     #[must_use]
-    pub fn for_host(host: &QaHostSpec) -> Self {
+    pub fn for_host(host: &McpHostSpec) -> Self {
         Self {
             name:      host.name().clone(),
-            link:      QaClient::for_host(host),
+            link:      McpClient::for_host(host),
             lifecycle: HostManager::with_config(
                 Box::new(CargoSpawner::new()),
                 host.lifecycle_config(),
@@ -35,7 +35,7 @@ impl HostRuntime {
 
     /// The link this runtime reaches its host over.
     #[must_use]
-    pub const fn link(&self) -> &QaClient {
+    pub const fn link(&self) -> &McpClient {
         &self.link
     }
 

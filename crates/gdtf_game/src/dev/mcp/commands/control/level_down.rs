@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, UnavailableCode,
@@ -31,7 +31,7 @@ pub(crate) struct ViewLevelDownReply {
 
 pub(crate) struct ViewLevelDown;
 
-impl QaCommand for ViewLevelDown {
+impl McpCommand for ViewLevelDown {
     type Args = ViewLevelDownArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -56,7 +56,7 @@ impl QaCommand for ViewLevelDown {
             Update,
             handle_view_level_down
                 .in_set(InputSystems::Gather)
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .before(dispatch_act_intents),
         );
     }

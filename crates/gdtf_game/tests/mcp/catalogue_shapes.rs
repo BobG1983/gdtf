@@ -1,6 +1,6 @@
 use cobalt_mcp_protocol::{
     command::{CommandName, RonShape, ShapeBody, ShapeDoc, ShapeName},
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 
 use super::{
@@ -17,8 +17,8 @@ fn parsed(document: &str, side: &str) -> ShapeDoc {
 
 #[test]
 fn the_catalogue_row_carries_the_traced_shapes() -> TestResult {
-    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
-    let QaResponse::Catalogue(catalogue) = reply else {
+    let reply = exchange(game_app_listening, McpRequest::Catalogue)?;
+    let McpResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
     };
     let Some(entry) = catalogue

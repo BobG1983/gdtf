@@ -3,7 +3,7 @@ use cobalt_mcp_command::{
     catalogue::catalogue,
     dispatch::{CallQueues, IncomingCall, retest_waiting, route_call},
 };
-use cobalt_mcp_protocol::message::{QaError, QaRequest, QaResponse};
+use cobalt_mcp_protocol::message::{McpRequest, McpResponse, McpSessionError};
 use cobalt_mcp_transport::NetInbox;
 
 use crate::dev::mcp::{
@@ -21,19 +21,19 @@ pub(in crate::dev::mcp) fn route_requests(
     for incoming in inbox.drain() {
         let (request, responder) = incoming.into_parts();
         match request {
-            QaRequest::Catalogue => {
-                responder.reply(QaResponse::Catalogue(catalogue(
+            McpRequest::Catalogue => {
+                responder.reply(McpResponse::Catalogue(catalogue(
                     game_host_name(),
                     GAME_COMMANDS,
                     &command_facts,
                 )));
             }
-            QaRequest::Run(run) => {
+            McpRequest::Run(run) => {
                 let call = IncomingCall::new(run.command, run.arguments, run.options, responder);
                 route_call(GAME_COMMANDS, call, &command_facts, &mut queues);
             }
-            QaRequest::Hello(_) => {
-                responder.reply(QaResponse::Error(QaError::Malformed));
+            McpRequest::Hello(_) => {
+                responder.reply(McpResponse::Error(McpSessionError::Malformed));
             }
         }
     }

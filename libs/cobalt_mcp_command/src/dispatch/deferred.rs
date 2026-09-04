@@ -4,10 +4,10 @@ use core::time::Duration;
 use std::{collections::VecDeque, time::Instant};
 
 use bevy::prelude::*;
-use cobalt_mcp_protocol::message::{QaError, QaResponse};
+use cobalt_mcp_protocol::message::{McpResponse, McpSessionError};
 
 use super::CommandResponder;
-use crate::command::QaCommand;
+use crate::command::McpCommand;
 
 /// How long a deferred reply may wait before timing out.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -67,7 +67,7 @@ impl ParkedAt {
     }
 }
 
-struct ParkedReply<C: QaCommand> {
+struct ParkedReply<C: McpCommand> {
     responder: CommandResponder<C>,
     parked_at: ParkedAt,
     ticket:    C::Parked,
@@ -75,12 +75,12 @@ struct ParkedReply<C: QaCommand> {
 
 /// Bevy resource holding deferred responders for command `C`.
 #[derive(Resource)]
-pub struct DeferredReplies<C: QaCommand> {
+pub struct DeferredReplies<C: McpCommand> {
     parked: VecDeque<ParkedReply<C>>,
     budget: DeferredBudget,
 }
 
-impl<C: QaCommand> Default for DeferredReplies<C> {
+impl<C: McpCommand> Default for DeferredReplies<C> {
     fn default() -> Self {
         Self {
             parked: VecDeque::new(),
@@ -89,7 +89,7 @@ impl<C: QaCommand> Default for DeferredReplies<C> {
     }
 }
 
-impl<C: QaCommand> DeferredReplies<C> {
+impl<C: McpCommand> DeferredReplies<C> {
     /// Empty parking with an explicit timeout budget.
     #[must_use]
     pub const fn with_budget(budget: DeferredBudget) -> Self {
@@ -188,7 +188,7 @@ impl<C: QaCommand> DeferredReplies<C> {
                     entry
                         .responder
                         .into_inner()
-                        .reply(QaResponse::Error(QaError::Timeout));
+                        .reply(McpResponse::Error(McpSessionError::Timeout));
                 }
                 ParkedAge::Live => kept.push_back(entry),
             }
@@ -198,7 +198,7 @@ impl<C: QaCommand> DeferredReplies<C> {
 }
 
 /// Time out deferred replies that exceeded their budget.
-pub fn sweep_deferred<C: QaCommand>(mut deferred: ResMut<DeferredReplies<C>>) {
+pub fn sweep_deferred<C: McpCommand>(mut deferred: ResMut<DeferredReplies<C>>) {
     if deferred.is_empty() {
         return;
     }

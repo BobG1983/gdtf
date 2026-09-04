@@ -1,7 +1,7 @@
 use bevy::{app::App, state::state::State};
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RunOptions, UnavailableCode},
-    message::QaResponse,
+    message::McpResponse,
 };
 use gdtf_game::test_support::{BattleRunningComplete, BattleScapeState};
 
@@ -40,7 +40,7 @@ fn battle_flee_ends_the_running_battle_the_way_the_flee_button_does() {
         }
     };
 
-    let Some(QaResponse::Outcome(CommandOutcome::Ran { reply, .. })) = answered else {
+    let Some(McpResponse::Outcome(CommandOutcome::Ran { reply, .. })) = answered else {
         unreachable!(
             "battle.flee must answer once the battle has left its running phase, got {answered:?}"
         );
@@ -63,7 +63,7 @@ fn battle_flee_from_the_menu_is_refused_rather_than_parked() -> TestResult {
         game_app_listening,
         run(BATTLE_FLEE, "()", RunOptions::default()),
     )?;
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
         unreachable!("with no battle running there is nothing to flee, got {reply:?}");
     };
     assert_eq!(code, UnavailableCode::WrongState);

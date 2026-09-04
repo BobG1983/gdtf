@@ -7,7 +7,7 @@ use std::{
 };
 
 // The QA host's own modules, and the files that declare and re-export them.
-pub(crate) const QA_PATHS: [&str; 4] = [
+pub(crate) const MCP_PATHS: [&str; 4] = [
     "crates/gdtf_game/src/dev",
     "crates/gdtf_game/src/lib.rs",
     "crates/gdtf_editor/src/lib.rs",
@@ -29,7 +29,7 @@ pub(crate) fn repo_root() -> PathBuf {
     root.canonicalize().unwrap_or(root)
 }
 
-/// Every tracked `.rs` file under [`QA_PATHS`], as repo-relative paths, sorted.
+/// Every tracked `.rs` file under [`MCP_PATHS`], as repo-relative paths, sorted.
 pub(crate) fn tracked_qa_sources(root: &Path) -> Vec<String> {
     let mut found = git_tracked(root).unwrap_or_else(|| walk(root));
     found.retain(|path| {
@@ -58,7 +58,7 @@ fn git_tracked(root: &Path) -> Option<Vec<String>> {
         .arg("-C")
         .arg(root)
         .args(["ls-files", "--"])
-        .args(QA_PATHS)
+        .args(MCP_PATHS)
         .output()
         .ok()?;
     if !out.status.success() {
@@ -70,7 +70,7 @@ fn git_tracked(root: &Path) -> Option<Vec<String>> {
 
 fn walk(root: &Path) -> Vec<String> {
     let mut found = Vec::new();
-    for path in QA_PATHS {
+    for path in MCP_PATHS {
         collect(root, Path::new(path), &mut found);
     }
     found

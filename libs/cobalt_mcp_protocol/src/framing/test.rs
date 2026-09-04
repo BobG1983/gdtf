@@ -1,10 +1,10 @@
 use crate::{
     framing::{Frame, FrameDecoder, MAX_FRAME_LEN, WireError, encode, encode_frame},
-    message::{ProtocolVersion, QaRequest},
+    message::{McpRequest, ProtocolVersion},
 };
 
-fn a_message() -> QaRequest {
-    QaRequest::Hello(ProtocolVersion::new(1))
+fn a_message() -> McpRequest {
+    McpRequest::Hello(ProtocolVersion::new(1))
 }
 
 fn drain(decoder: &mut FrameDecoder) -> Vec<Frame> {
@@ -28,8 +28,8 @@ fn round_trips_a_message_through_the_codec() {
     decoder.push(&framed);
     let out = drain(&mut decoder);
     assert_eq!(out.len(), 1, "exactly one frame comes out");
-    let Ok(parsed) = out[0].decode::<QaRequest>() else {
-        unreachable!("the frame decodes back to a QaRequest");
+    let Ok(parsed) = out[0].decode::<McpRequest>() else {
+        unreachable!("the frame decodes back to a McpRequest");
     };
     assert_eq!(parsed, message, "the message is unchanged");
 }
@@ -47,7 +47,7 @@ fn tolerates_reads_split_at_every_boundary() {
         decoder.push(&framed[split..]);
         out.extend(drain(&mut decoder));
         assert_eq!(out.len(), 1, "one frame reassembles at split {split}");
-        let Ok(parsed) = out[0].decode::<QaRequest>() else {
+        let Ok(parsed) = out[0].decode::<McpRequest>() else {
             unreachable!("the reassembled frame decodes at split {split}");
         };
         assert_eq!(parsed, message, "the message is unchanged at split {split}");
@@ -82,7 +82,7 @@ fn junk_payload_is_rejected_with_the_typed_error() {
         decoder.push(&framed);
         let out = drain(&mut decoder);
         assert_eq!(out.len(), 1, "the junk framed cleanly");
-        let result = out[0].decode::<QaRequest>();
+        let result = out[0].decode::<McpRequest>();
         assert!(
             matches!(result, Err(WireError::Malformed)),
             "junk decodes to Malformed: {result:?}"

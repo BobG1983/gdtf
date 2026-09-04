@@ -1,10 +1,10 @@
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     test_support::{
         FAKE_COMMANDS_STALLED, FakeStall, fake_app, fake_facts_loaded, run_fake_command,
     },
 };
-use cobalt_mcp_protocol::message::{QaError, QaResponse};
+use cobalt_mcp_protocol::message::{McpResponse, McpSessionError};
 
 use crate::support::{answer, args, no_answer_yet, plain};
 
@@ -32,7 +32,7 @@ fn a_call_no_handler_drains_is_answered_by_the_pending_deadline() {
     app.update();
     assert_eq!(
         answer(&channel),
-        QaResponse::Error(QaError::Timeout),
+        McpResponse::Error(McpSessionError::Timeout),
         "an unclaimed call is answered by the pending queue's deadline sweep"
     );
 }

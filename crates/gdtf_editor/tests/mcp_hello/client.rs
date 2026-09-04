@@ -1,6 +1,6 @@
 use cobalt_mcp_protocol::{
     command::{CommandArgsRon, CommandName},
-    message::{ProtocolVersion, QaRequest, QaResponse, RunCommand},
+    message::{McpRequest, McpResponse, ProtocolVersion, RunCommand},
     ports::McpPort,
 };
 
@@ -223,12 +223,12 @@ pub(crate) const EDITOR_ONE_FORM_TAB_ONLY: [&str; 8] = [
     EDITOR_LOAD_TERRAIN,
 ];
 
-pub(crate) fn run_editor_phase(arguments: &str) -> QaRequest {
+pub(crate) fn run_editor_phase(arguments: &str) -> McpRequest {
     run_editor(EDITOR_PHASE, arguments)
 }
 
-pub(crate) fn run_a_misspelled_command_name() -> QaRequest {
-    QaRequest::Run(RunCommand::new(
+pub(crate) fn run_a_misspelled_command_name() -> McpRequest {
+    McpRequest::Run(RunCommand::new(
         CommandName::from_static("editor.phasee"),
         CommandArgsRon::new("()".to_owned()),
     ))
@@ -241,11 +241,11 @@ pub(crate) fn wrong_version() -> ProtocolVersion {
 pub(crate) fn exchange_while_editing(
     app: &mut bevy::app::App,
     port: McpPort,
-) -> Result<[QaResponse; EDITING_EXCHANGES], TestError> {
+) -> Result<[McpResponse; EDITING_EXCHANGES], TestError> {
     let mut client = Client::connect(port)?;
     Ok([
-        client.exchange(app, &QaRequest::Hello(ProtocolVersion::CURRENT))?,
-        client.exchange(app, &QaRequest::Hello(wrong_version()))?,
+        client.exchange(app, &McpRequest::Hello(ProtocolVersion::CURRENT))?,
+        client.exchange(app, &McpRequest::Hello(wrong_version()))?,
         client.exchange(app, &run_a_misspelled_command_name())?,
     ])
 }

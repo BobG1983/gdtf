@@ -1,6 +1,6 @@
 use std::os::unix::process::ExitStatusExt;
 
-use cobalt_mcp_server::{OrphanStop, OrphanWatch, QaPort, SystemOrphanWatch};
+use cobalt_mcp_server::{McpPort, OrphanStop, OrphanWatch, SystemOrphanWatch};
 
 use super::{
     super::support::free_port,
@@ -19,7 +19,7 @@ fn the_real_stop_reaches_a_process_that_is_not_a_group_leader() {
         "the placeholder is not a process-group leader, so only the bare pid reaches it"
     );
 
-    let outcome = SystemOrphanWatch::new().stop(target_on(QaPort::new(free_port()), pid));
+    let outcome = SystemOrphanWatch::new().stop(target_on(McpPort::new(free_port()), pid));
 
     assert_eq!(outcome, OrphanStop::Stopped);
     let status = exit_status(&mut child);
@@ -35,7 +35,7 @@ fn the_real_stop_reaches_a_process_group_leader() {
     let pid = child.id();
     assert_eq!(group_of(pid), pid, "the placeholder leads its own group");
 
-    let outcome = SystemOrphanWatch::new().stop(target_on(QaPort::new(free_port()), pid));
+    let outcome = SystemOrphanWatch::new().stop(target_on(McpPort::new(free_port()), pid));
 
     assert_eq!(outcome, OrphanStop::Stopped);
     let status = exit_status(&mut child);

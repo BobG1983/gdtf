@@ -1,5 +1,5 @@
 use bevy::app::App;
-use cobalt_mcp_protocol::{command::CommandOutcome, message::QaResponse};
+use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
 use gdtf_battle_sim::{
     armor::ArmorSpec,
     injuries::InjuryDef,
@@ -24,8 +24,8 @@ use crate::{
 };
 
 // The refusal note a client reads to learn what to do instead.
-fn unavailable_note(reply: &QaResponse) -> Result<String, TestError> {
-    let QaResponse::Outcome(CommandOutcome::Unavailable { note, .. }) = reply else {
+fn unavailable_note(reply: &McpResponse) -> Result<String, TestError> {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { note, .. }) = reply else {
         return Err(format!("expected an Unavailable outcome, got {reply:?}").into());
     };
     Ok(note.as_str().to_owned())

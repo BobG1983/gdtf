@@ -4,8 +4,8 @@ use core::time::Duration;
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, DeferredBudget, DeferredReplies, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, DeferredBudget, DeferredReplies, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
@@ -40,7 +40,7 @@ pub(in crate::mcp) struct EditorWaitTicket {
 
 pub(in crate::mcp) struct EditorWait;
 
-impl QaCommand for EditorWait {
+impl McpCommand for EditorWait {
     type Args = EditorWaitArgs;
     type Facts = EditorFacts;
     type Parked = EditorWaitTicket;
@@ -66,7 +66,7 @@ impl QaCommand for EditorWait {
             Update,
             (count_registry_changes, handle_editor_wait)
                 .chain()
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .in_set(EditorMcpSystems::Gather),
         );
     }

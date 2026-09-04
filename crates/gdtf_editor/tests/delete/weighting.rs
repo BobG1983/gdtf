@@ -10,7 +10,7 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::injuries::weighting_member_key;
 use gdtf_editor::{
-    DeleteOutcome, DeleteRegistry, DeleteRequest, EditorQaAssetsRoot, weighting_save_path_in,
+    DeleteOutcome, DeleteRegistry, DeleteRequest, EditorMcpAssetsRoot, weighting_save_path_in,
 };
 
 use crate::{
@@ -36,7 +36,7 @@ fn the_weighting_entry_resolves_the_file_its_own_save_path_names() {
     let Ok(dir) = dir else { return };
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     let key = weighting_member_key(CATEGORY, CONTEXT);
@@ -80,7 +80,7 @@ fn deleting_a_weighting_table_takes_its_buckets_out_and_re_arms_validation() {
     let file = weighting_save_path_in(dir.path(), CATEGORY, CONTEXT);
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     assert!(

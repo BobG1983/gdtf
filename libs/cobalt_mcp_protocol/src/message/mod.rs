@@ -5,10 +5,10 @@ pub mod hello;
 pub mod request;
 pub mod response;
 
-pub use error::QaError;
+pub use error::McpSessionError;
 pub use hello::{HelloFacts, ProtocolVersion, ServerNameNet};
-pub use request::{QaRequest, RunCommand};
-pub use response::QaResponse;
+pub use request::{McpRequest, RunCommand};
+pub use response::McpResponse;
 
 #[cfg(test)]
 mod test;

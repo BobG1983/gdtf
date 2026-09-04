@@ -1,10 +1,10 @@
-use cobalt_mcp_server::{ChildPid, OrphanPid, OrphanWatch, PortHold, QaPort, SystemOrphanWatch};
+use cobalt_mcp_server::{ChildPid, McpPort, OrphanPid, OrphanWatch, PortHold, SystemOrphanWatch};
 
 use super::{super::support::spawn_fake_game, placeholder::PROBE};
 
 #[test]
 fn the_real_lookup_names_the_process_holding_the_port() {
-    let port = QaPort::new(spawn_fake_game());
+    let port = McpPort::new(spawn_fake_game());
     let hold = SystemOrphanWatch::new().inspect(port, PROBE);
     let PortHold::Orphan(pid) = hold else {
         unreachable!("a live QA listener is an orphan to a manager that owns nothing");

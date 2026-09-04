@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use cobalt_mcp_server::{
-    HostLifecycle, HostManager, LaunchFailure, LaunchOutcome, QaPort, StopOutcome,
+    HostLifecycle, HostManager, LaunchFailure, LaunchOutcome, McpPort, StopOutcome,
     lifecycle::ChildStatus,
 };
 
@@ -25,7 +25,7 @@ fn manager_over_gated_child(status: ChildStatus, boot_ms: u64) -> (HostManager, 
 fn timeout_reads_the_output_tail_after_reaping_the_orphan() {
     let (mut manager, calls) = manager_over_gated_child(ChildStatus::Running, NO_WAIT_BOOT_MS);
 
-    let outcome = manager.launch(QaPort::new(free_port()), &sample_spec());
+    let outcome = manager.launch(McpPort::new(free_port()), &sample_spec());
     let LaunchOutcome::Failed(LaunchFailure::Timeout { tail, .. }) = outcome else {
         unreachable!("no readiness endpoint means the launch times out: {outcome:?}");
     };
@@ -47,7 +47,7 @@ fn timeout_reads_the_output_tail_after_reaping_the_orphan() {
         "the orphan is stopped and reaped, and only then is its output tail read",
     );
     assert_eq!(
-        manager.stop(QaPort::new(free_port())),
+        manager.stop(McpPort::new(free_port())),
         StopOutcome::NotRunning
     );
 }
@@ -56,7 +56,7 @@ fn timeout_reads_the_output_tail_after_reaping_the_orphan() {
 fn early_exit_reads_the_output_tail_after_reaping_the_child() {
     let (mut manager, calls) = manager_over_gated_child(ChildStatus::Exited, UNREACHED_BOOT_MS);
 
-    let outcome = manager.launch(QaPort::new(free_port()), &sample_spec());
+    let outcome = manager.launch(McpPort::new(free_port()), &sample_spec());
     let LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail)) = outcome else {
         unreachable!("a child that has exited fails the launch as an early exit: {outcome:?}");
     };
@@ -71,7 +71,7 @@ fn early_exit_reads_the_output_tail_after_reaping_the_child() {
         "the exited child is reaped, and only then is its output tail read",
     );
     assert_eq!(
-        manager.stop(QaPort::new(free_port())),
+        manager.stop(McpPort::new(free_port())),
         StopOutcome::NotRunning
     );
 }

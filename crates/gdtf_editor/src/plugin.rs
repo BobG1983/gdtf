@@ -44,7 +44,7 @@ impl Plugin for MapEditorPlugin {
         app.init_resource::<LastSaveRecord>();
         // The one root a save writes under, whether or not the QA channel bound a listener.
         #[cfg(feature = "mcp")]
-        app.init_resource::<crate::mcp::EditorQaAssetsRoot>();
+        app.init_resource::<crate::mcp::EditorMcpAssetsRoot>();
 
         app.add_systems(Startup, disable_egui_auto_context);
 

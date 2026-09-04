@@ -2,7 +2,7 @@
 
 use bevy::{ecs::system::SystemParam, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{CommandCall, DeferredReplies, take_calls},
 };
 use cobalt_mcp_transport::PendingQueue;
@@ -60,7 +60,7 @@ pub(crate) type OfferName<A> = fn(&ContextualOffer<A>) -> Option<OfferTargetNet>
 
 /// A command that fires one act family at whatever the contextual panel is offering it.
 pub(crate) trait ContextualCommand:
-    QaCommand<Parked = ContextualTicket, Reply = ContextualReply>
+    McpCommand<Parked = ContextualTicket, Reply = ContextualReply>
 {
     /// The act family this command fires, which is the only one it reads or pushes onto.
     type Act: ContextualAct;

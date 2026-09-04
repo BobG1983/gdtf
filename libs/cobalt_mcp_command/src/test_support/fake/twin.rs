@@ -9,12 +9,12 @@ use super::{
     facts::FakeFacts,
     phase::{FakePhase, FakePhaseArgs, FakePhaseReply},
 };
-use crate::command::QaCommand;
+use crate::command::McpCommand;
 
 /// Same name as `FakePhase`; used only in collision tests.
 pub struct FakePhaseTwin;
 
-impl QaCommand for FakePhaseTwin {
+impl McpCommand for FakePhaseTwin {
     type Args = FakePhaseArgs;
     type Facts = FakeFacts;
     type Parked = ();

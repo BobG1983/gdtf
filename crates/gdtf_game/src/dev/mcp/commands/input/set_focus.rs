@@ -3,8 +3,8 @@ use bevy::{
     prelude::*,
 };
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, DeferredReplies, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, DeferredReplies, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -31,7 +31,7 @@ pub(crate) struct InputSetFocusArgs {
 
 pub(crate) struct InputSetFocus;
 
-impl QaCommand for InputSetFocus {
+impl McpCommand for InputSetFocus {
     type Args = InputSetFocusArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -56,7 +56,7 @@ impl QaCommand for InputSetFocus {
             (
                 claim_input_set_focus
                     .in_set(FocusNavSystems::Bridge)
-                    .after(QaCommandSystems::Claim),
+                    .after(McpCommandSystems::Claim),
                 settle_input_set_focus.after(FocusNavSystems::Apply),
             ),
         );

@@ -1,5 +1,5 @@
 use crate::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::CommandCall,
     test_support::{
         FakePhase, FakePhaseArgs, FakePoint, FakePointArgs, FakePointPair, FakePointX, FakePointY,

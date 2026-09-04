@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -50,7 +50,7 @@ pub(in crate::mcp) struct EditorSelectWeightingTableArgs {
 
 pub(in crate::mcp) struct EditorSelectWeightingTable;
 
-impl QaCommand for EditorSelectWeightingTable {
+impl McpCommand for EditorSelectWeightingTable {
     type Args = EditorSelectWeightingTableArgs;
     type Facts = EditorFacts;
     type Parked = ();
@@ -72,7 +72,7 @@ impl QaCommand for EditorSelectWeightingTable {
         app.add_systems(
             Update,
             handle_editor_select_weighting_table
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .in_set(EditorMcpSystems::Gather),
         );
     }

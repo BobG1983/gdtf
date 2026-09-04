@@ -2,8 +2,8 @@ use core::time::Duration;
 
 use bevy::{ecs::message::Messages, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, DeferredBudget, DeferredReplies, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, DeferredBudget, DeferredReplies, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
@@ -38,7 +38,7 @@ pub(crate) struct WaitTicket {
 
 pub(crate) struct Wait;
 
-impl QaCommand for Wait {
+impl McpCommand for Wait {
     type Args = WaitArgs;
     type Facts = GameFacts;
     type Parked = WaitTicket;
@@ -67,7 +67,7 @@ impl QaCommand for Wait {
                 handle_wait,
             )
                 .chain()
-                .after(QaCommandSystems::Claim),
+                .after(McpCommandSystems::Claim),
         );
     }
 }

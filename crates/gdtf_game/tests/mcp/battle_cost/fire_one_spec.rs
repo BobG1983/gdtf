@@ -9,7 +9,7 @@ use bevy::{
 };
 use cobalt_mcp_protocol::{
     command::RunOptions,
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 use gdtf_battle_sim::{
     ganger::{Direction, Facing, Tu},
@@ -64,7 +64,7 @@ struct Asked {
 }
 
 /// The two requests one case sends, in the order the answers come back.
-fn both_calls(asked: &Asked) -> Option<Vec<QaRequest>> {
+fn both_calls(asked: &Asked) -> Option<Vec<McpRequest>> {
     let act = CostActNet::Fire {
         target: asked.at,
         mode:   ModeKindNet::from_sim(ModeKind::Single),
@@ -126,7 +126,7 @@ fn pose_a_gun_with_no_modes(app: &mut App) -> Option<Asked> {
 /// Pose the world, ask both commands about one shot, and hand back what they answered.
 fn ask_both(
     pose: impl FnOnce(&mut App) -> Option<Asked>,
-) -> Result<(App, Vec<QaResponse>), TestError> {
+) -> Result<(App, Vec<McpResponse>), TestError> {
     let mut posed = false;
     let (app, replies) = exchange_in_battle(|app: &mut App| {
         let Some(asked) = pose(app) else {
@@ -143,7 +143,7 @@ fn ask_both(
 }
 
 /// The two answers one case gets back, in the order they were asked for.
-fn two_answers(replies: Vec<QaResponse>) -> Result<(QaResponse, QaResponse), TestError> {
+fn two_answers(replies: Vec<McpResponse>) -> Result<(McpResponse, McpResponse), TestError> {
     let mut answers = replies.into_iter();
     match (answers.next(), answers.next()) {
         (Some(quote), Some(sight)) => Ok((quote, sight)),

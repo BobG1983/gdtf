@@ -39,7 +39,7 @@ use crate::{
     weapon_form::WeaponDraft,
 };
 #[cfg(feature = "mcp")]
-use crate::{delete::DeleteRegistry, mcp::EditorQaAssetsRoot};
+use crate::{delete::DeleteRegistry, mcp::EditorMcpAssetsRoot};
 
 /// The workbench-wide state every mode panel reads: the open tab, the session, the last save.
 #[derive(bevy::ecs::system::SystemParam)]
@@ -122,7 +122,7 @@ pub(crate) struct InjuryParams<'w> {
     pub(super) registry:  Option<Res<'w, InjuryRegistry>>,
     pub(super) tables:    Option<Res<'w, InjuryTables>>,
     #[cfg(feature = "mcp")]
-    pub(super) qa_root:   Res<'w, EditorQaAssetsRoot>,
+    pub(super) qa_root:   Res<'w, EditorMcpAssetsRoot>,
 }
 
 #[cfg(feature = "mcp")]

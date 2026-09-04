@@ -6,7 +6,8 @@ use crate::{
         ReplySchemaRon, RunOptions, UnavailableCode,
     },
     message::{
-        HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, RunCommand, ServerNameNet,
+        HelloFacts, McpRequest, McpResponse, McpSessionError, ProtocolVersion, RunCommand,
+        ServerNameNet,
     },
     test_support::assert_ron_round_trip,
 };
@@ -51,13 +52,13 @@ fn catalogue() -> CommandCatalogue {
 
 #[test]
 fn the_requests_round_trip() {
-    assert_ron_round_trip(&QaRequest::Hello(ProtocolVersion::CURRENT));
-    assert_ron_round_trip(&QaRequest::Catalogue);
-    assert_ron_round_trip(&QaRequest::Run(RunCommand::new(
+    assert_ron_round_trip(&McpRequest::Hello(ProtocolVersion::CURRENT));
+    assert_ron_round_trip(&McpRequest::Catalogue);
+    assert_ron_round_trip(&McpRequest::Run(RunCommand::new(
         CommandName::from_static("probe.trace"),
         CommandArgsRon::new("(at:(first:7,second:3),mode:1)".to_owned()),
     )));
-    assert_ron_round_trip(&QaRequest::Run(RunCommand::new(
+    assert_ron_round_trip(&McpRequest::Run(RunCommand::new(
         CommandName::from_owned("app.phase".to_owned()),
         CommandArgsRon::new("()".to_owned()),
     )));
@@ -73,7 +74,7 @@ fn a_run_carries_its_riders_over_the_wire() {
         plain.options.is_plain(),
         "the two-argument constructor asks for no machinery",
     );
-    assert_ron_round_trip(&QaRequest::Run(plain));
+    assert_ron_round_trip(&McpRequest::Run(plain));
 
     let with_budget = RunCommand::with_options(
         CommandName::from_static("app.phase"),
@@ -85,17 +86,17 @@ fn a_run_carries_its_riders_over_the_wire() {
         Some(AwaitBudget::new(5)),
         "the await budget a caller sent must survive to the host",
     );
-    assert_ron_round_trip(&QaRequest::Run(with_budget));
+    assert_ron_round_trip(&McpRequest::Run(with_budget));
 }
 
 /// The compatibility claim the `#[serde(default)]` on that field makes: this is the exact
 #[test]
 fn a_run_encoded_without_options_decodes_as_a_plain_call() {
     let legacy = r#"Run((command:"app.phase",arguments:"()"))"#;
-    let Ok(decoded) = ron::de::from_str::<QaRequest>(legacy) else {
+    let Ok(decoded) = ron::de::from_str::<McpRequest>(legacy) else {
         unreachable!("a Run without `options` must still decode: {legacy}");
     };
-    let QaRequest::Run(run) = decoded else {
+    let McpRequest::Run(run) = decoded else {
         unreachable!("the decoded request is a Run");
     };
     assert!(
@@ -106,11 +107,11 @@ fn a_run_encoded_without_options_decodes_as_a_plain_call() {
 
 #[test]
 fn the_responses_round_trip() {
-    assert_ron_round_trip(&QaResponse::HelloOk(HelloFacts::new(
+    assert_ron_round_trip(&McpResponse::HelloOk(HelloFacts::new(
         ProtocolVersion::CURRENT,
         ServerNameNet::new("host-under-test".to_owned()),
     )));
-    assert_ron_round_trip(&QaResponse::Catalogue(catalogue()));
+    assert_ron_round_trip(&McpResponse::Catalogue(catalogue()));
     for outcome in [
         CommandOutcome::Ran {
             reply:       CommandReplyRon::new("Accepted((seq:412))".to_owned()),
@@ -134,7 +135,7 @@ fn the_responses_round_trip() {
             known: vec![CommandName::from_static("app.phase")],
         },
     ] {
-        assert_ron_round_trip(&QaResponse::Outcome(outcome));
+        assert_ron_round_trip(&McpResponse::Outcome(outcome));
     }
-    assert_ron_round_trip(&QaResponse::Error(QaError::Timeout));
+    assert_ron_round_trip(&McpResponse::Error(McpSessionError::Timeout));
 }

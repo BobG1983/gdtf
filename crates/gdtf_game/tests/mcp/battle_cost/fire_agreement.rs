@@ -2,7 +2,7 @@
 //! every combination of firing arc, time units and rounds in the magazine.
 
 use bevy::{app::App, ecs::entity::Entity};
-use cobalt_mcp_protocol::{command::RunOptions, message::QaResponse};
+use cobalt_mcp_protocol::{command::RunOptions, message::McpResponse};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     ganger::{Direction, Facing, Tu},
@@ -117,7 +117,7 @@ fn pose(app: &mut App, case: Case) -> Option<Asked> {
 }
 
 /// The two requests one cell of the table sends, in the order the answers come back.
-fn both_calls(asked: &Asked) -> Option<Vec<cobalt_mcp_protocol::message::QaRequest>> {
+fn both_calls(asked: &Asked) -> Option<Vec<cobalt_mcp_protocol::message::McpRequest>> {
     let act = CostActNet::Fire {
         target: asked.at,
         mode:   ModeKindNet::from_sim(asked.mode),
@@ -133,7 +133,7 @@ fn both_calls(asked: &Asked) -> Option<Vec<cobalt_mcp_protocol::message::QaReque
 }
 
 /// Ask both commands about the same shot, in one exchange, and hand back what they answered.
-fn ask_both(case: Case) -> Result<(App, Asked, Vec<QaResponse>), TestError> {
+fn ask_both(case: Case) -> Result<(App, Asked, Vec<McpResponse>), TestError> {
     let mut planned: Option<Asked> = None;
     let (app, replies) = exchange_in_battle(|app: &mut App| {
         let Some(asked) = pose(app, case) else {

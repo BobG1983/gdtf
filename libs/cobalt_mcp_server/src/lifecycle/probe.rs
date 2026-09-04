@@ -6,18 +6,18 @@ use std::{
 
 use cobalt_mcp_protocol::{
     framing::{FrameDecoder, encode},
-    message::{ProtocolVersion, QaRequest, QaResponse},
+    message::{McpRequest, McpResponse, ProtocolVersion},
+    ports::McpPort,
 };
 
 use super::values::{ProbeTimeout, Readiness};
-use crate::link::QaPort;
 
 const PROBE_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1);
 
 const READ_CHUNK: usize = 1024;
 
 #[must_use]
-pub(super) fn probe_ready(port: QaPort, timeout: ProbeTimeout) -> Readiness {
+pub(super) fn probe_ready(port: McpPort, timeout: ProbeTimeout) -> Readiness {
     let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, *port));
     let Ok(mut stream) = TcpStream::connect_timeout(&addr, *timeout) else {
         return Readiness::NotYet;
@@ -27,7 +27,7 @@ pub(super) fn probe_ready(port: QaPort, timeout: ProbeTimeout) -> Readiness {
     {
         return Readiness::NotYet;
     }
-    let Ok(frame) = encode(&QaRequest::Hello(PROBE_PROTOCOL_VERSION)) else {
+    let Ok(frame) = encode(&McpRequest::Hello(PROBE_PROTOCOL_VERSION)) else {
         return Readiness::NotYet;
     };
     if stream.write_all(&frame).is_err() {
@@ -42,7 +42,7 @@ fn read_reply(stream: &mut TcpStream) -> Readiness {
     loop {
         match decoder.next_frame() {
             Ok(Some(frame)) => {
-                return match frame.decode::<QaResponse>() {
+                return match frame.decode::<McpResponse>() {
                     Ok(_) => Readiness::Ready,
                     Err(_) => Readiness::NotYet,
                 };

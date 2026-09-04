@@ -1,6 +1,6 @@
 //! The reply shapes these cases decode, and the battles they read them from.
 
-use cobalt_mcp_protocol::{command::RunOptions, message::QaResponse};
+use cobalt_mcp_protocol::{command::RunOptions, message::McpResponse};
 use gdtf_battle_sim::openable::OpenState;
 use gdtf_game::qa_wire::{
     inspect::InspectShownNet,
@@ -51,7 +51,7 @@ pub(super) struct LitArea {
 
 pub(super) fn decode<T: serde::de::DeserializeOwned>(
     name: &'static str,
-    reply: Option<QaResponse>,
+    reply: Option<McpResponse>,
 ) -> Result<T, TestError> {
     let Some(reply) = reply else {
         return Err(format!("`{name}` produced no reply").into());

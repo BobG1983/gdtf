@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use cobalt_mcp_command::dispatch::{CommandCall, CommandResponder};
 use cobalt_mcp_protocol::{
     command::{AttachmentKind, CommandOutcome},
-    message::{QaError, QaResponse},
+    message::{McpResponse, McpSessionError},
 };
 use cobalt_mcp_transport::{PendingQueue, Responder};
 use cobalt_screenshot::{CaptureCompletions, CaptureOutcome, CaptureQueue};
@@ -23,7 +23,7 @@ fn handler_app() -> App {
     app
 }
 
-fn complete_with(app: &mut App, outcome: CaptureOutcome) -> Receiver<QaResponse> {
+fn complete_with(app: &mut App, outcome: CaptureOutcome) -> Receiver<McpResponse> {
     let (responder, reply_rx) = Responder::channel();
     app.world_mut()
         .resource_mut::<CaptureCompletions<ShotResponder>>()
@@ -41,7 +41,7 @@ fn a_timed_out_capture_answers_timeout() {
 
     let reply = reply_rx.try_recv().ok();
     assert!(
-        matches!(reply, Some(QaResponse::Error(QaError::Timeout))),
+        matches!(reply, Some(McpResponse::Error(McpSessionError::Timeout))),
         "a capture whose PNG never lands must answer Timeout, never an attachment; got {reply:?}",
     );
 }
@@ -55,7 +55,7 @@ fn a_landed_capture_attaches_the_png_it_wrote() {
     app.update();
 
     let reply = reply_rx.try_recv().ok();
-    let Some(QaResponse::Outcome(CommandOutcome::Ran { attachments, .. })) = &reply else {
+    let Some(McpResponse::Outcome(CommandOutcome::Ran { attachments, .. })) = &reply else {
         unreachable!("a landed capture must answer Ran, got {reply:?}");
     };
 

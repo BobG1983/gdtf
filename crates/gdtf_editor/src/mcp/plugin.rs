@@ -8,7 +8,7 @@ use std::{
 };
 
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::QaCommandSystems;
+use cobalt_mcp_command::dispatch::McpCommandSystems;
 use cobalt_mcp_protocol::{ports::McpPort, timeouts::NetTimeouts};
 use cobalt_mcp_transport::{IncomingRequest, NetInbox, bind_listener, run_listener};
 use cobalt_screenshot::{
@@ -24,9 +24,10 @@ use super::{
 use crate::EditorState;
 
 /// Directory under the workspace `target/` the editor's own shots land in.
-const EDITOR_QA_SHOT_DIR: &str = "qa_screenshots_editor";
+const EDITOR_MCP_SHOT_DIR: &str = "qa_screenshots_editor";
 
 enum Wiring {
+    Disabled,
     Listener {
         port:     McpPort,
         timeouts: NetTimeouts,
@@ -42,16 +43,23 @@ pub struct McpEditorPlugin {
 }
 
 impl McpEditorPlugin {
-    /// Build the default wiring: the listen port comes from `EDITOR_MCP_PORT`,
-    /// falling back to `DEFAULT_EDITOR_PORT`.
+    /// Listen on `port`, or open no listener at all when there is none.
     #[must_use]
-    pub fn from_env() -> Self {
-        Self {
-            wiring: Wiring::Listener {
-                port:     editor_port_from_env(),
+    pub const fn from_port(port: Option<McpPort>) -> Self {
+        let wiring = match port {
+            Some(port) => Wiring::Listener {
+                port,
                 timeouts: NetTimeouts::DEFAULT,
             },
-        }
+            None => Wiring::Disabled,
+        };
+        Self { wiring }
+    }
+
+    /// Build the wiring `EDITOR_MCP_PORT` asks for; no variable means no listener.
+    #[must_use]
+    pub fn from_env() -> Self {
+        Self::from_port(editor_port_from_env())
     }
 
     /// Bind a loopback listener on `port` for tests, running with [`NetTimeouts::NO_IDLE_REAP`].
@@ -79,17 +87,18 @@ impl Default for McpEditorPlugin {
 impl Plugin for McpEditorPlugin {
     fn build(&self, app: &mut App) {
         match &self.wiring {
+            Wiring::Disabled => {}
             Wiring::Listener { port, timeouts } => {
                 let Ok((listener, bound)) = bind_listener(*port) else {
                     error!(
                         port = **port,
-                        "editor mcp: failed to bind the loopback listener — QA channel OFF"
+                        "editor mcp: failed to bind the loopback listener — MCP channel OFF"
                     );
                     return;
                 };
                 info!(
                     port = *bound,
-                    "editor mcp: ON (dev) — loopback QA control channel listening"
+                    "editor mcp: ON (dev) — loopback MCP control channel listening"
                 );
                 serve(app, listener, *timeouts);
             }
@@ -113,7 +122,7 @@ fn serve(app: &mut App, listener: TcpListener, timeouts: NetTimeouts) {
     );
     app.add_systems(
         Update,
-        route_editor_requests.in_set(QaCommandSystems::Route),
+        route_editor_requests.in_set(McpCommandSystems::Route),
     );
     register_editor_capture(app);
     register_editor_commands(app);
@@ -122,7 +131,7 @@ fn serve(app: &mut App, listener: TcpListener, timeouts: NetTimeouts) {
 // The editor's own shot directory, then the three plugins one editor capture runs through.
 fn register_editor_capture(app: &mut App) {
     app.insert_resource(ShotDir::under_workspace_target(&ShotDirName::new(
-        EDITOR_QA_SHOT_DIR,
+        EDITOR_MCP_SHOT_DIR,
     )));
     if !app.is_plugin_added::<CapturePresentPlugin>() {
         app.add_plugins(CapturePresentPlugin);
@@ -132,5 +141,25 @@ fn register_editor_capture(app: &mut App) {
     }
     if !app.is_plugin_added::<CapturePipelinePlugin<EditorShotResponder>>() {
         app.add_plugins(CapturePipelinePlugin::<EditorShotResponder>::new());
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use bevy::app::App;
+    use cobalt_mcp_transport::NetInbox;
+
+    use super::McpEditorPlugin;
+
+    #[test]
+    fn no_port_opens_no_listener() {
+        let mut app = App::new();
+        app.add_plugins(McpEditorPlugin::from_port(None));
+
+        assert!(
+            app.world().get_resource::<NetInbox>().is_none(),
+            "the inbox only reaches the world from the serve path, so its presence means a \
+             listener thread started for a host that was given no port"
+        );
     }
 }

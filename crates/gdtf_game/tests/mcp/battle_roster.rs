@@ -1,4 +1,4 @@
-use cobalt_mcp_protocol::{command::RunOptions, message::QaResponse};
+use cobalt_mcp_protocol::{command::RunOptions, message::McpResponse};
 use gdtf_game::qa_wire::{
     roster::{FactionNet, GangerCardNet},
     token::GangerToken,
@@ -46,7 +46,7 @@ fn roster_turn_and_lit_area() -> Result<(RosterBody, TurnBody, VisibleBody), Tes
     Ok((roster, turn, visible))
 }
 
-fn decode_visible(reply: Option<QaResponse>) -> Result<VisibleBody, TestError> {
+fn decode_visible(reply: Option<McpResponse>) -> Result<VisibleBody, TestError> {
     let Some(reply) = reply else {
         return Err("battle.visible produced no reply".into());
     };
@@ -56,7 +56,7 @@ fn decode_visible(reply: Option<QaResponse>) -> Result<VisibleBody, TestError> {
     })
 }
 
-fn decode_roster(reply: Option<QaResponse>) -> Result<RosterBody, TestError> {
+fn decode_roster(reply: Option<McpResponse>) -> Result<RosterBody, TestError> {
     let Some(reply) = reply else {
         return Err("battle.roster produced no reply".into());
     };
@@ -66,7 +66,7 @@ fn decode_roster(reply: Option<QaResponse>) -> Result<RosterBody, TestError> {
     })
 }
 
-fn decode_turn(reply: Option<QaResponse>) -> Result<TurnBody, TestError> {
+fn decode_turn(reply: Option<McpResponse>) -> Result<TurnBody, TestError> {
     let Some(reply) = reply else {
         return Err("battle.turn produced no reply".into());
     };

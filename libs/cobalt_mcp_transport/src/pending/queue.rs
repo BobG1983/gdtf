@@ -3,7 +3,7 @@
 use std::collections::VecDeque;
 
 use bevy::prelude::*;
-use cobalt_mcp_protocol::message::{QaError, QaResponse};
+use cobalt_mcp_protocol::message::{McpResponse, McpSessionError};
 
 use super::deadline::{DEADLINE_BUDGET, DeadlineTick, FrameDeadline};
 use crate::channel::Responder;
@@ -64,7 +64,9 @@ impl<P: Send + Sync + 'static> PendingQueue<P> {
             match entry.deadline.tick() {
                 DeadlineTick::Expired => {
                     debug!(request = ?entry.payload, "mcp: pending request timed out unclaimed");
-                    entry.responder.reply(QaResponse::Error(QaError::Timeout));
+                    entry
+                        .responder
+                        .reply(McpResponse::Error(McpSessionError::Timeout));
                 }
                 DeadlineTick::Live => kept.push_back(entry),
             }

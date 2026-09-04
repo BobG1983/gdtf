@@ -2,7 +2,7 @@
 
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, UnavailableCode},
-    message::QaResponse,
+    message::McpResponse,
 };
 use gdtf_game::qa_wire::{
     cell::CellLevelNet,
@@ -55,10 +55,10 @@ pub(crate) fn key_argument(press: KeyPressNet) -> String {
 /// The code and note a refusal carries, or a failure naming what came back instead.
 pub(crate) fn refusal(
     name: &str,
-    reply: QaResponse,
+    reply: McpResponse,
 ) -> Result<(UnavailableCode, String), TestError> {
     match reply {
-        QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) => {
+        McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) => {
             Ok((code, note.as_str().to_owned()))
         }
         other => Err(format!("`{name}` must refuse here, got {other:?}").into()),

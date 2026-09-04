@@ -2,8 +2,8 @@
 
 use bevy::{ecs::system::SystemParam, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -56,7 +56,7 @@ pub(in crate::mcp) struct EditorMapReply {
 
 pub(in crate::mcp) struct EditorPaintedMap;
 
-impl QaCommand for EditorPaintedMap {
+impl McpCommand for EditorPaintedMap {
     type Args = EditorMapArgs;
     type Facts = EditorFacts;
     type Parked = ();
@@ -79,7 +79,7 @@ impl QaCommand for EditorPaintedMap {
         app.add_systems(
             Update,
             handle_editor_map
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .in_set(EditorMcpSystems::Gather),
         );
     }

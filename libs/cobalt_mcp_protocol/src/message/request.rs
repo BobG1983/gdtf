@@ -7,7 +7,7 @@ use crate::command::{CommandArgsRon, CommandName, RunOptions};
 
 /// Top-level request from a QA client.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum QaRequest {
+pub enum McpRequest {
     /// Negotiate protocol version.
     Hello(ProtocolVersion),
     /// Ask for the command catalogue.
@@ -16,7 +16,7 @@ pub enum QaRequest {
     Run(RunCommand),
 }
 
-/// Payload for [`QaRequest::Run`].
+/// Payload for [`McpRequest::Run`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RunCommand {
     /// Command to run.

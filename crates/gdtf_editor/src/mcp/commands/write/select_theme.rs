@@ -2,8 +2,8 @@
 
 use bevy::{asset::uuid::Uuid, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -53,7 +53,7 @@ pub(in crate::mcp) struct EditorSelectThemeReply {
 
 pub(in crate::mcp) struct EditorSelectTheme;
 
-impl QaCommand for EditorSelectTheme {
+impl McpCommand for EditorSelectTheme {
     type Args = EditorSelectThemeArgs;
     type Facts = EditorFacts;
     type Parked = ();
@@ -75,7 +75,7 @@ impl QaCommand for EditorSelectTheme {
         app.add_systems(
             Update,
             handle_editor_select_theme
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .in_set(EditorMcpSystems::Gather),
         );
     }

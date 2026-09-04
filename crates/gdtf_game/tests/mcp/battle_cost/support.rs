@@ -3,7 +3,7 @@
 use bevy::{app::App, ecs::entity::Entity, prelude::World};
 use cobalt_mcp_protocol::{
     command::RunOptions,
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
@@ -64,7 +64,7 @@ pub(crate) fn settle(app: &mut App) {
 }
 
 /// One `battle.cost` request, addressed to `actor` and asking about `act`.
-pub(crate) fn cost_call(actor: GangerToken, act: &CostActNet) -> Option<QaRequest> {
+pub(crate) fn cost_call(actor: GangerToken, act: &CostActNet) -> Option<McpRequest> {
     let encoded = ron::ser::to_string(act).ok()?;
     Some(run(
         BATTLE_COST,
@@ -74,7 +74,7 @@ pub(crate) fn cost_call(actor: GangerToken, act: &CostActNet) -> Option<QaReques
 }
 
 /// One `battle.cost` request per act, in the order given.
-pub(crate) fn cost_calls(actor: Entity, acts: &[CostActNet]) -> Vec<QaRequest> {
+pub(crate) fn cost_calls(actor: Entity, acts: &[CostActNet]) -> Vec<McpRequest> {
     let token = GangerToken::new(actor.to_bits());
     acts.iter()
         .filter_map(|act| cost_call(token, act))
@@ -82,7 +82,7 @@ pub(crate) fn cost_calls(actor: Entity, acts: &[CostActNet]) -> Vec<QaRequest> {
 }
 
 /// The body of the first reply, or a failure naming what came back instead.
-pub(crate) fn first_body(replies: Vec<QaResponse>) -> Result<CostBody, TestError> {
+pub(crate) fn first_body(replies: Vec<McpResponse>) -> Result<CostBody, TestError> {
     let Some(reply) = replies.into_iter().next() else {
         return Err("`battle.cost` produced no reply at all".into());
     };
@@ -90,7 +90,7 @@ pub(crate) fn first_body(replies: Vec<QaResponse>) -> Result<CostBody, TestError
 }
 
 /// The body of one reply, decoded into the shape the command publishes.
-pub(crate) fn cost_body(reply: QaResponse) -> Result<CostBody, TestError> {
+pub(crate) fn cost_body(reply: McpResponse) -> Result<CostBody, TestError> {
     let body = ran_body(BATTLE_COST, reply)?;
     ron::de::from_str::<CostBody>(&body).map_err(|fault| {
         format!("a cost body must decode into its published shape: {fault} — {body}").into()

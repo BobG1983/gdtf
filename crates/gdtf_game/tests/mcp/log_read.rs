@@ -1,4 +1,4 @@
-use cobalt_mcp_protocol::{command::RunOptions, message::QaResponse};
+use cobalt_mcp_protocol::{command::RunOptions, message::McpResponse};
 use gdtf_game::qa_wire::{
     act::ActSeqNet,
     deed::ActDeedKindNet,
@@ -33,7 +33,7 @@ struct LogBody {
     dropped: LogDroppedCount,
 }
 
-fn decode(reply: Option<QaResponse>) -> Result<LogBody, TestError> {
+fn decode(reply: Option<McpResponse>) -> Result<LogBody, TestError> {
     let Some(reply) = reply else {
         return Err("log.read produced no reply".into());
     };

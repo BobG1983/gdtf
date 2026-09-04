@@ -3,7 +3,7 @@
 use bevy::app::App;
 use cobalt_mcp_protocol::{
     command::{CommandArgsRon, CommandName, CommandOutcome, RunOptions, UnavailableCode},
-    message::{QaError, QaRequest, QaResponse, RunCommand},
+    message::{McpRequest, McpResponse, McpSessionError, RunCommand},
     ports::McpPort,
 };
 use gdtf_game::test_support::MCP_PROTOCOL_VERSION;
@@ -13,8 +13,8 @@ use crate::socket_support::{Client, SocketFixture, TestError, battle_app_listeni
 /// Build the fixture, let `plan` read the live world to shape the requests, then exchange.
 pub(crate) fn exchange_planned(
     fixture: SocketFixture,
-    plan: impl FnOnce(&App) -> Vec<QaRequest>,
-) -> Result<Vec<QaResponse>, TestError> {
+    plan: impl FnOnce(&App) -> Vec<McpRequest>,
+) -> Result<Vec<McpResponse>, TestError> {
     let (mut app, port) = fixture()?;
     let requests = plan(&app);
     exchange_over(&mut app, port, requests)
@@ -24,8 +24,8 @@ pub(crate) fn exchange_planned(
 ///
 /// The app comes back so a case can read what the sim actually holds after the replies landed.
 pub(crate) fn exchange_in_battle(
-    prepare: impl FnOnce(&mut App) -> Vec<QaRequest>,
-) -> Result<(App, Vec<QaResponse>), TestError> {
+    prepare: impl FnOnce(&mut App) -> Vec<McpRequest>,
+) -> Result<(App, Vec<McpResponse>), TestError> {
     let (mut app, port) = battle_app_listening()?;
     let requests = prepare(&mut app);
     let replies = exchange_over(&mut app, port, requests)?;
@@ -35,8 +35,8 @@ pub(crate) fn exchange_in_battle(
 /// Build a fixture that reports what it set up, shape the requests from it, then exchange.
 pub(crate) fn exchange_expected<T>(
     fixture: impl FnOnce() -> Result<(App, McpPort, T), TestError>,
-    plan: impl FnOnce(&T) -> Vec<QaRequest>,
-) -> Result<(Vec<QaResponse>, T), TestError> {
+    plan: impl FnOnce(&T) -> Vec<McpRequest>,
+) -> Result<(Vec<McpResponse>, T), TestError> {
     let (_app, replies, expected) = exchange_inspecting(fixture, plan)?;
     Ok((replies, expected))
 }
@@ -47,8 +47,8 @@ pub(crate) fn exchange_expected<T>(
 /// that has to tell one value from another reads the app.
 pub(crate) fn exchange_inspecting<T>(
     fixture: impl FnOnce() -> Result<(App, McpPort, T), TestError>,
-    plan: impl FnOnce(&T) -> Vec<QaRequest>,
-) -> Result<(App, Vec<QaResponse>, T), TestError> {
+    plan: impl FnOnce(&T) -> Vec<McpRequest>,
+) -> Result<(App, Vec<McpResponse>, T), TestError> {
     let (mut app, port, expected) = fixture()?;
     let requests = plan(&expected);
     let replies = exchange_over(&mut app, port, requests)?;
@@ -60,10 +60,10 @@ pub(crate) fn exchange_inspecting<T>(
 /// The world changes with no request in flight, so what each call sees is fixed by the case.
 pub(crate) fn exchange_around(
     fixture: SocketFixture,
-    first: QaRequest,
+    first: McpRequest,
     between: impl FnOnce(&mut App),
-    second: QaRequest,
-) -> Result<(QaResponse, QaResponse), TestError> {
+    second: McpRequest,
+) -> Result<(McpResponse, McpResponse), TestError> {
     let (mut app, port) = fixture()?;
     let mut client = greet(&mut app, port)?;
     let before = client.exchange(&mut app, &first)?;
@@ -75,8 +75,8 @@ pub(crate) fn exchange_around(
 /// Connect and shake hands, so a case can drive its own exchanges one at a time.
 pub(crate) fn greet(app: &mut App, port: McpPort) -> Result<Client, TestError> {
     let mut client = Client::connect(port)?;
-    let hello = client.exchange(app, &QaRequest::Hello(MCP_PROTOCOL_VERSION))?;
-    if !matches!(hello, QaResponse::HelloOk(_)) {
+    let hello = client.exchange(app, &McpRequest::Hello(MCP_PROTOCOL_VERSION))?;
+    if !matches!(hello, McpResponse::HelloOk(_)) {
         return Err(format!("the handshake must succeed first, got {hello:?}").into());
     }
     Ok(client)
@@ -85,8 +85,8 @@ pub(crate) fn greet(app: &mut App, port: McpPort) -> Result<Client, TestError> {
 fn exchange_over(
     app: &mut App,
     port: McpPort,
-    requests: Vec<QaRequest>,
-) -> Result<Vec<QaResponse>, TestError> {
+    requests: Vec<McpRequest>,
+) -> Result<Vec<McpResponse>, TestError> {
     let mut client = greet(app, port)?;
     let mut replies = Vec::with_capacity(requests.len());
     for request in &requests {
@@ -97,15 +97,15 @@ fn exchange_over(
 
 pub(crate) fn exchange_all(
     fixture: SocketFixture,
-    requests: Vec<QaRequest>,
-) -> Result<Vec<QaResponse>, TestError> {
+    requests: Vec<McpRequest>,
+) -> Result<Vec<McpResponse>, TestError> {
     exchange_planned(fixture, move |_app| requests)
 }
 
 pub(crate) fn exchange(
     fixture: SocketFixture,
-    request: QaRequest,
-) -> Result<QaResponse, TestError> {
+    request: McpRequest,
+) -> Result<McpResponse, TestError> {
     let mut replies = exchange_all(fixture, vec![request])?;
     replies.pop().ok_or_else(|| "no reply arrived".into())
 }
@@ -116,20 +116,20 @@ pub(crate) fn exchange(
 /// makes that happen more often, never differently.
 pub(crate) fn exchange_until_not_timeout(
     fixture: SocketFixture,
-    request: QaRequest,
-) -> Result<QaResponse, TestError> {
+    request: McpRequest,
+) -> Result<McpResponse, TestError> {
     let (mut app, port) = fixture()?;
     let mut client = greet(&mut app, port)?;
     loop {
         let reply = client.exchange(&mut app, &request)?;
-        if !matches!(reply, QaResponse::Error(QaError::Timeout)) {
+        if !matches!(reply, McpResponse::Error(McpSessionError::Timeout)) {
             return Ok(reply);
         }
     }
 }
 
-pub(crate) fn run(name: &'static str, arguments: &str, options: RunOptions) -> QaRequest {
-    QaRequest::Run(RunCommand::with_options(
+pub(crate) fn run(name: &'static str, arguments: &str, options: RunOptions) -> McpRequest {
+    McpRequest::Run(RunCommand::with_options(
         CommandName::from_static(name),
         CommandArgsRon::new(arguments.to_owned()),
         options,
@@ -137,9 +137,9 @@ pub(crate) fn run(name: &'static str, arguments: &str, options: RunOptions) -> Q
 }
 
 /// The RON body of a reply that ran, or a failure naming what came back instead.
-pub(crate) fn ran_body(name: &str, reply: QaResponse) -> Result<String, TestError> {
+pub(crate) fn ran_body(name: &str, reply: McpResponse) -> Result<String, TestError> {
     match reply {
-        QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) => Ok(reply.as_str().to_owned()),
+        McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) => Ok(reply.as_str().to_owned()),
         other => Err(format!("`{name}` must RUN in this fixture, got {other:?}").into()),
     }
 }
@@ -151,7 +151,7 @@ pub(crate) fn assert_refused_off_the_battle_screen(
     arguments: &str,
 ) -> Result<(), TestError> {
     let reply = exchange(fixture, run(name, arguments, RunOptions::default()))?;
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
         return Err(format!("`{name}` must refuse outside a battle, got {reply:?}").into());
     };
     if code != UnavailableCode::WrongState {

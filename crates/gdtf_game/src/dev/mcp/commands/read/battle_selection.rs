@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
@@ -31,7 +31,7 @@ pub(crate) struct BattleSelectionReply {
 
 pub(crate) struct BattleSelection;
 
-impl QaCommand for BattleSelection {
+impl McpCommand for BattleSelection {
     type Args = BattleSelectionArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -53,7 +53,7 @@ impl QaCommand for BattleSelection {
         app.add_systems(
             Update,
             handle_battle_selection
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .after(FireModeSystems::Write),
         );
     }

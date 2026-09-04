@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::{QaCommandSystems, register_command_set};
+use cobalt_mcp_command::dispatch::{McpCommandSystems, register_command_set};
 use gdtf_battle_input::{
     InputSystems, auto_select_first_player_ganger, contextual::ContextualActSystems,
     dispatch_act_intents,
@@ -12,18 +12,18 @@ use crate::states::running::game::battlescape::contextual_panel::registrar::Cont
 pub(in crate::dev::mcp) fn register_game_commands(app: &mut App) {
     app.configure_sets(
         Update,
-        (QaCommandSystems::Route, QaCommandSystems::Claim).in_set(InputSystems::Gather),
+        (McpCommandSystems::Route, McpCommandSystems::Claim).in_set(InputSystems::Gather),
     );
     // Every command reads the selection the game has settled for the frame, never the gap
     // before auto-select fills it.
     app.configure_sets(
         Update,
-        QaCommandSystems::Claim.after(auto_select_first_player_ganger),
+        McpCommandSystems::Claim.after(auto_select_first_player_ganger),
     );
     app.configure_sets(
         Update,
         ActCommandSystems::Claim
-            .after(QaCommandSystems::Claim)
+            .after(McpCommandSystems::Claim)
             .after(count_turn_changes)
             .before(dispatch_act_intents),
     );

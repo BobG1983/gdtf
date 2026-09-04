@@ -7,7 +7,7 @@ use std::{
 
 use cobalt_mcp_protocol::{
     framing::{FrameDecoder, encode},
-    message::{HelloFacts, QaError, QaRequest, QaResponse},
+    message::{HelloFacts, McpRequest, McpResponse, McpSessionError},
     timeouts::{NetReplyTimeout, NetTimeouts},
 };
 
@@ -61,8 +61,11 @@ fn handle_frame(
     facts: &HelloFacts,
     session: &mut SessionState,
 ) -> ControlFlow<()> {
-    let Ok(request) = frame.decode::<QaRequest>() else {
-        drop(write_frame(stream, &QaResponse::Error(QaError::Malformed)));
+    let Ok(request) = frame.decode::<McpRequest>() else {
+        drop(write_frame(
+            stream,
+            &McpResponse::Error(McpSessionError::Malformed),
+        ));
         return ControlFlow::Continue(());
     };
     match session.admit(&request, facts) {
@@ -76,7 +79,7 @@ fn handle_frame(
 
 fn forward_to_host(
     stream: &mut TcpStream,
-    request: QaRequest,
+    request: McpRequest,
     request_tx: &Sender<IncomingRequest>,
     reply_timeout: NetReplyTimeout,
 ) -> ControlFlow<()> {
@@ -89,14 +92,14 @@ fn forward_to_host(
     }
     let response = reply_rx
         .recv_timeout(*reply_timeout)
-        .unwrap_or(QaResponse::Error(QaError::Timeout));
+        .unwrap_or(McpResponse::Error(McpSessionError::Timeout));
     match write_frame(stream, &response) {
         Ok(()) => ControlFlow::Continue(()),
         Err(_) => ControlFlow::Break(()),
     }
 }
 
-fn write_frame(stream: &mut TcpStream, response: &QaResponse) -> io::Result<()> {
+fn write_frame(stream: &mut TcpStream, response: &McpResponse) -> io::Result<()> {
     let frame = encode(response).map_err(io::Error::other)?;
     stream.write_all(&frame)
 }

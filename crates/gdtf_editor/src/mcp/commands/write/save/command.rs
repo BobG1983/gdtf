@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use super::dispatch::{SaveAttempt, name_refusal, save_for_mode};
 use crate::{
     mcp::{
-        assets_root::EditorQaAssetsRoot,
+        assets_root::EditorMcpAssetsRoot,
         commands::availability::only_while_editing,
         facts::EditorFacts,
         forms::{EditorForms, EditorRegistries},
@@ -47,7 +47,7 @@ pub(in crate::mcp) struct EditorSaveReply {
 
 pub(in crate::mcp) struct EditorSave;
 
-impl QaCommand for EditorSave {
+impl McpCommand for EditorSave {
     type Args = EditorSaveArgs;
     type Facts = EditorFacts;
     type Parked = ();
@@ -69,7 +69,7 @@ impl QaCommand for EditorSave {
         app.add_systems(
             Update,
             handle_editor_save
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .in_set(EditorMcpSystems::Gather),
         );
     }
@@ -78,7 +78,7 @@ impl QaCommand for EditorSave {
 fn handle_editor_save(
     mut forms: EditorForms,
     registries: EditorRegistries,
-    root: Res<EditorQaAssetsRoot>,
+    root: Res<EditorMcpAssetsRoot>,
     mut record: ResMut<LastSaveRecord>,
     mut queue: ResMut<PendingQueue<CommandCall<EditorSave>>>,
 ) {

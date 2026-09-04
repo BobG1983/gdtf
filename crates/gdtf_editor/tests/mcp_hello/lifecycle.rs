@@ -2,7 +2,7 @@ use bevy::app::App;
 use gdtf_battle_sim::{
     armor::ArmorRegistry, effects::fields::FieldDefRegistry, weapon::WeaponRegistry,
 };
-use gdtf_editor::{ArmorDraft, EditorQaAssetsRoot, FieldDraft, WeaponDraft};
+use gdtf_editor::{ArmorDraft, EditorMcpAssetsRoot, FieldDraft, WeaponDraft};
 use tempfile::TempDir;
 
 use crate::{
@@ -79,7 +79,7 @@ pub(crate) fn field_save_case() -> Result<DraftSaveCase, TestError> {
     };
     let root = TempDir::new()?;
     app.world_mut()
-        .insert_resource(EditorQaAssetsRoot::new(root.path().to_path_buf()));
+        .insert_resource(EditorMcpAssetsRoot::new(root.path().to_path_buf()));
     Ok(DraftSaveCase { app, client, root })
 }
 
@@ -150,7 +150,7 @@ pub(crate) fn armor_save_case() -> Result<DraftSaveCase, TestError> {
     };
     let root = TempDir::new()?;
     app.world_mut()
-        .insert_resource(EditorQaAssetsRoot::new(root.path().to_path_buf()));
+        .insert_resource(EditorMcpAssetsRoot::new(root.path().to_path_buf()));
     Ok(DraftSaveCase { app, client, root })
 }
 

@@ -3,7 +3,7 @@
 use gdtf_assets::{ContentFileStem, FindingFamily};
 use gdtf_battle_sim::level::PrefabRegistry;
 use gdtf_content_families::prefabs::member_key;
-use gdtf_editor::{DeleteOutcome, DeleteRequest, EditorQaAssetsRoot};
+use gdtf_editor::{DeleteOutcome, DeleteRequest, EditorMcpAssetsRoot};
 
 use crate::{
     advance::advance_to_published,
@@ -28,7 +28,7 @@ fn a_prefab_no_record_names_is_removed_with_its_file() {
     let Some(written) = written else { return };
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     let key = member_key(

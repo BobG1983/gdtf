@@ -1,6 +1,6 @@
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RunOptions},
-    message::QaResponse,
+    message::McpResponse,
 };
 
 use super::{
@@ -19,10 +19,10 @@ fn a_build_without_the_stepper_publishes_procgen_step_and_refuses_it_not_built()
         run(PROCGEN_STEP, "()", RunOptions::default()),
     )?;
     assert!(
-        !matches!(reply, QaResponse::Outcome(CommandOutcome::Unknown { .. })),
+        !matches!(reply, McpResponse::Outcome(CommandOutcome::Unknown { .. })),
         "the published list is the same in every build, so the name must be known: {reply:?}",
     );
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
         unreachable!("without the stepper compiled in there is nothing to step, got {reply:?}");
     };
     assert_eq!(
@@ -44,7 +44,7 @@ fn procgen_step_in_the_menu_is_refused_wrong_state_or_not_built() -> TestResult 
         game_app_listening,
         run(PROCGEN_STEP, "()", RunOptions::default()),
     )?;
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, .. }) = reply else {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, .. }) = reply else {
         unreachable!("nothing is generating in the Menu, so the step must be refused: {reply:?}");
     };
     assert_eq!(
@@ -60,7 +60,7 @@ mod stepping {
     use std::sync::mpsc::{self, Sender};
 
     use bevy::{app::App, prelude::NextState, state::state::State};
-    use cobalt_mcp_protocol::{command::CommandOutcome, message::QaResponse};
+    use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
     use cobalt_mcp_transport::IncomingRequest;
     use gdtf_battle_sim::procgen::{ProcgenStage, StagedProcgen};
     use gdtf_game::{
@@ -125,8 +125,8 @@ mod stepping {
             .map(StagedProcgen::stage)
     }
 
-    fn stepped(reply: &QaResponse) -> ProcgenStageNet {
-        let QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
+    fn stepped(reply: &McpResponse) -> ProcgenStageNet {
+        let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
             unreachable!("a step the stepper can take must RUN, got {reply:?}");
         };
         let body = reply.as_str();
@@ -162,7 +162,7 @@ mod stepping {
         while stage_of(&app).is_some() {
             let pending = send(&tx, run_request(PROCGEN_STEP, "()"));
             app.update();
-            if let Ok(QaResponse::Outcome(CommandOutcome::Ran { .. })) = pending.try_recv() {
+            if let Ok(McpResponse::Outcome(CommandOutcome::Ran { .. })) = pending.try_recv() {
                 ran = ran.saturating_add(1);
             }
         }

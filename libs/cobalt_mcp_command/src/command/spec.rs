@@ -11,7 +11,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use crate::dispatch::DeferredBudget;
 
 /// A host command with fixed name, shapes, and a Bevy handler.
-pub trait QaCommand: Sized + Send + Sync + 'static {
+pub trait McpCommand: Sized + Send + Sync + 'static {
     /// Host facts type used for availability checks.
     type Facts: Send + Sync + 'static;
 

@@ -4,7 +4,7 @@ pub mod channel;
 pub mod spec;
 pub mod values;
 
-pub use channel::QaChannel;
+pub use channel::McpChannel;
 pub use spec::LaunchSpec;
 pub use values::{
     CargoPackage, CargoProfile, EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList,

@@ -1,4 +1,4 @@
-use cobalt_mcp_protocol::{command::CommandOutcome, message::QaResponse};
+use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
 use cobalt_mcp_transport::Responder;
 
 use crate::{
@@ -28,7 +28,7 @@ fn answer_next_releases_the_oldest_waiter_only() {
     );
     assert_eq!(parked.len(), 1, "only the oldest was released");
 
-    let Ok(QaResponse::Outcome(CommandOutcome::Ran { reply, .. })) = first.try_recv() else {
+    let Ok(McpResponse::Outcome(CommandOutcome::Ran { reply, .. })) = first.try_recv() else {
         unreachable!("the oldest waiter must have been answered");
     };
     assert_eq!(

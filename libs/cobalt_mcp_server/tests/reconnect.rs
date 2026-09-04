@@ -13,9 +13,11 @@ use std::{
 use cobalt_mcp_protocol::{
     command::CommandCatalogue,
     framing::{FrameDecoder, encode},
-    message::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
+    message::{
+        HelloFacts, McpRequest, McpResponse, McpSessionError, ProtocolVersion, ServerNameNet,
+    },
 };
-use cobalt_mcp_server::{EnvVarName, QaClient, QaLink, QaPort};
+use cobalt_mcp_server::{EnvVarName, McpClient, McpLink, McpPort};
 
 fn bind_loopback() -> (TcpListener, u16) {
     let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, 0)) {
@@ -29,16 +31,16 @@ fn bind_loopback() -> (TcpListener, u16) {
     (listener, port)
 }
 
-fn catalogue_reply() -> QaResponse {
-    QaResponse::Catalogue(CommandCatalogue::new(
+fn catalogue_reply() -> McpResponse {
+    McpResponse::Catalogue(CommandCatalogue::new(
         ServerNameNet::new("fake-game".to_owned()),
         Vec::new(),
     ))
 }
 
-fn answer(request: &QaRequest) -> QaResponse {
+fn answer(request: &McpRequest) -> McpResponse {
     match request {
-        QaRequest::Hello(_) => QaResponse::HelloOk(HelloFacts::new(
+        McpRequest::Hello(_) => McpResponse::HelloOk(HelloFacts::new(
             ProtocolVersion::CURRENT,
             ServerNameNet::new("reconnect-stub".to_owned()),
         )),
@@ -57,7 +59,7 @@ impl StubConn<'_> {
         loop {
             match self.decoder.next_frame() {
                 Ok(Some(frame)) => {
-                    let Ok(request) = frame.decode::<QaRequest>() else {
+                    let Ok(request) = frame.decode::<McpRequest>() else {
                         return false;
                     };
                     let Ok(out) = encode(&answer(&request)) else {
@@ -97,8 +99,8 @@ fn answer_until_gone(stream: &mut TcpStream) {
     while conn.answer_one() {}
 }
 
-fn request_catalogue(client: &mut QaClient) -> Result<QaResponse, cobalt_mcp_server::McpError> {
-    client.request(QaRequest::Catalogue)
+fn request_catalogue(client: &mut McpClient) -> Result<McpResponse, cobalt_mcp_server::McpError> {
+    client.request(McpRequest::Catalogue)
 }
 
 #[test]
@@ -113,20 +115,20 @@ fn a_reused_connection_the_game_closed_reconnects_and_succeeds() {
         }
     });
 
-    let mut client = QaClient::new(
-        QaPort::new(port),
+    let mut client = McpClient::new(
+        McpPort::new(port),
         EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
     );
 
     let first = request_catalogue(&mut client);
     assert!(
-        matches!(first, Ok(QaResponse::Catalogue(_))),
+        matches!(first, Ok(McpResponse::Catalogue(_))),
         "the first request opens a fresh connection and succeeds: {first:?}"
     );
 
     let second = request_catalogue(&mut client);
     assert!(
-        matches!(second, Ok(QaResponse::Catalogue(_))),
+        matches!(second, Ok(McpResponse::Catalogue(_))),
         "a request on a connection the game already closed must reconnect and succeed, \
          not surface the dead socket: {second:?}"
     );
@@ -150,14 +152,14 @@ fn retarget_on_the_same_port_invalidates_the_connection() {
         }
     });
 
-    let mut client = QaClient::new(
-        QaPort::new(port),
+    let mut client = McpClient::new(
+        McpPort::new(port),
         EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
     );
 
     let first = request_catalogue(&mut client);
     assert!(
-        matches!(first, Ok(QaResponse::Catalogue(_))),
+        matches!(first, Ok(McpResponse::Catalogue(_))),
         "the first request succeeds on connection 1: {first:?}"
     );
     assert_eq!(
@@ -166,11 +168,11 @@ fn retarget_on_the_same_port_invalidates_the_connection() {
         "one connection so far"
     );
 
-    client.retarget(QaPort::new(port));
+    client.retarget(McpPort::new(port));
 
     let second = request_catalogue(&mut client);
     assert!(
-        matches!(second, Ok(QaResponse::Catalogue(_))),
+        matches!(second, Ok(McpResponse::Catalogue(_))),
         "the post-relaunch request succeeds: {second:?}"
     );
     assert_eq!(
@@ -190,8 +192,8 @@ fn an_unreachable_game_fails_promptly_without_retrying_forever() {
     drop(listener);
 
     // Returning at all is the proof: an unbounded reconnect loop would hang right here.
-    let mut client = QaClient::new(
-        QaPort::new(port),
+    let mut client = McpClient::new(
+        McpPort::new(port),
         EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
     );
     let result = request_catalogue(&mut client);
@@ -201,7 +203,7 @@ fn an_unreachable_game_fails_promptly_without_retrying_forever() {
         "a request to a port with no listener must error, got: {result:?}"
     );
     assert!(
-        !matches!(result, Ok(QaResponse::Error(QaError::Malformed))),
+        !matches!(result, Ok(McpResponse::Error(McpSessionError::Malformed))),
         "an unreachable game is a link error, not a protocol rejection"
     );
 }

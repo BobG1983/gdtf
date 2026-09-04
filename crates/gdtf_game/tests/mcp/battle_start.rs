@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use bevy::app::App;
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RunOptions, UnavailableCode},
-    message::QaResponse,
+    message::McpResponse,
 };
 use cobalt_mcp_transport::IncomingRequest;
 use gdtf_game::{
@@ -29,11 +29,11 @@ struct StartBody {
 struct StartedBattle {
     app:   App,
     tx:    Sender<IncomingRequest>,
-    reply: QaResponse,
+    reply: McpResponse,
 }
 
-fn started_seed(reply: &QaResponse) -> SeedNet {
-    let QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
+fn started_seed(reply: &McpResponse) -> SeedNet {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
         unreachable!("battle.start must RUN once generation finishes, got {reply:?}");
     };
     let body = reply.as_str();
@@ -119,7 +119,7 @@ fn a_second_start_from_inside_the_battle_is_refused() {
             break reply;
         }
     };
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, .. }) = answered else {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, .. }) = answered else {
         unreachable!("a start from inside a battle must be refused, not parked; got {answered:?}");
     };
     assert_eq!(
@@ -154,7 +154,7 @@ fn battle_start_over_the_socket_leaves_the_app_in_the_battlescape() -> TestResul
         "over the real socket too, a caller that pins the seed gets that exact seed back",
     );
 
-    let QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) = phase else {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = phase else {
         unreachable!("a plain app.phase call must RUN, got {phase:?}");
     };
     assert!(

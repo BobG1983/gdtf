@@ -2,8 +2,8 @@
 
 use bevy::{asset::uuid::Uuid, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -55,7 +55,7 @@ pub(in crate::mcp) struct EditorSetDefaultFloorReply {
 
 pub(in crate::mcp) struct EditorSetDefaultFloor;
 
-impl QaCommand for EditorSetDefaultFloor {
+impl McpCommand for EditorSetDefaultFloor {
     type Args = EditorSetDefaultFloorArgs;
     type Facts = EditorFacts;
     type Parked = ();
@@ -77,7 +77,7 @@ impl QaCommand for EditorSetDefaultFloor {
         app.add_systems(
             Update,
             handle_editor_set_default_floor
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .in_set(EditorMcpSystems::Gather),
         );
     }

@@ -2,7 +2,7 @@
 //! row — while `ProtocolVersion::CURRENT` is untouched, because a command is DATA inside
 use cobalt_mcp_command::{
     catalogue::catalogue,
-    command::QaCommand,
+    command::McpCommand,
     test_support::{
         FAKE_COMMANDS, FAKE_COMMANDS_GROWN, FakeEcho, FakeEchoReply, FakeEchoText, fake_app,
         fake_facts_loaded, fake_host_name, run_fake_command,

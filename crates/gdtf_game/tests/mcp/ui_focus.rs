@@ -1,7 +1,7 @@
 use bevy::{app::App, input_focus::InputFocus};
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RunOptions},
-    message::QaResponse,
+    message::McpResponse,
     ports::McpPort,
 };
 use gdtf_game::qa_wire::token::FocusTargetNet;
@@ -25,8 +25,8 @@ fn focus_cleared_app() -> Result<(App, McpPort), TestError> {
     Ok((app, port))
 }
 
-fn focus_body(reply: QaResponse) -> FocusBody {
-    let QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
+fn focus_body(reply: McpResponse) -> FocusBody {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
         unreachable!("a plain ui.focus call must RUN, got {reply:?}");
     };
     let body = reply.as_str();

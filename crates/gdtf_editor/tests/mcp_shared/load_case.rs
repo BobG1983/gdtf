@@ -1,4 +1,4 @@
-use cobalt_mcp_protocol::message::{ProtocolVersion, QaRequest, QaResponse};
+use cobalt_mcp_protocol::message::{McpRequest, McpResponse, ProtocolVersion};
 use gdtf_editor::EditorState;
 
 use crate::{
@@ -10,12 +10,12 @@ use crate::{
 
 /// Send `request` before the editor has run a single frame, and hand back what it answered.
 pub(crate) fn reply_answered_during_load(
-    request: QaRequest,
+    request: McpRequest,
     what: &str,
-) -> Result<QaResponse, TestError> {
+) -> Result<McpResponse, TestError> {
     let (mut app, port) = editor_app_listening()?;
     let mut client = Client::connect(port)?;
-    client.send(&QaRequest::Hello(ProtocolVersion::CURRENT))?;
+    client.send(&McpRequest::Hello(ProtocolVersion::CURRENT))?;
     client.send(&request)?;
     assert_eq!(
         editor_state(&app),

@@ -1,7 +1,7 @@
 //! Pieces the three focus commands are built from.
 
 use bevy::{input_focus::InputFocus, prelude::*};
-use cobalt_mcp_command::{command::QaCommand, dispatch::DeferredReplies};
+use cobalt_mcp_command::{command::McpCommand, dispatch::DeferredReplies};
 use serde::{Deserialize, Serialize};
 
 use crate::dev::mcp::wire::token::FocusTargetNet;
@@ -21,7 +21,7 @@ pub(super) const fn focus_token(entity: Entity) -> FocusTargetNet {
 /// Answer every focus call parked this frame with the focus the frame settled on.
 pub(super) fn settle_focus<C>(focus: &InputFocus, deferred: &mut DeferredReplies<C>)
 where
-    C: QaCommand<Parked = (), Reply = FocusReply>,
+    C: McpCommand<Parked = (), Reply = FocusReply>,
 {
     if deferred.is_empty() {
         return;

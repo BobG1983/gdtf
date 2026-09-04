@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -59,7 +59,7 @@ impl BattleCostReply {
 
 pub(crate) struct BattleCost;
 
-impl QaCommand for BattleCost {
+impl McpCommand for BattleCost {
     type Args = BattleCostArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -82,7 +82,7 @@ impl QaCommand for BattleCost {
     }
 
     fn register_handler(app: &mut App) {
-        app.add_systems(Update, handle_battle_cost.after(QaCommandSystems::Claim));
+        app.add_systems(Update, handle_battle_cost.after(McpCommandSystems::Claim));
     }
 }
 

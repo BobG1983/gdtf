@@ -3,7 +3,7 @@
 use std::sync::mpsc::Receiver;
 
 use bevy::app::App;
-use cobalt_mcp_protocol::{command::CommandOutcome, message::QaResponse};
+use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
 use gdtf_battle_input::SelectedShooter;
 
 use crate::{
@@ -21,11 +21,11 @@ const SETTLE_FRAMES: u32 = 8;
 const SOMEWHERE: &str = "(at:(cell:(x:1,y:1),level:0))";
 
 /// Step until the reply lands, then hand back its RON body.
-fn body_of(app: &mut App, reply: &Receiver<QaResponse>, named: &str) -> String {
+fn body_of(app: &mut App, reply: &Receiver<McpResponse>, named: &str) -> String {
     for _ in 0..SETTLE_FRAMES {
         app.update();
         if let Ok(answer) = reply.try_recv() {
-            let QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) = answer else {
+            let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = answer else {
                 unreachable!("`{named}` must answer rather than refuse admission: {answer:?}");
             };
             return reply.as_str().to_owned();

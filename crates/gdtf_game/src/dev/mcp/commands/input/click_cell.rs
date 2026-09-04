@@ -1,6 +1,6 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{CommandCall, DeferredReplies, take_calls},
 };
 use cobalt_mcp_protocol::command::{
@@ -42,7 +42,7 @@ pub(crate) struct InputClickCellArgs {
 
 pub(crate) struct InputClickCell;
 
-impl QaCommand for InputClickCell {
+impl McpCommand for InputClickCell {
     type Args = InputClickCellArgs;
     type Facts = GameFacts;
     type Parked = ClickTicket;

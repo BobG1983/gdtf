@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
     severity::Severity,
 };
 use gdtf_editor::{
-    DeleteOutcome, DeleteRequest, EditorQaAssetsRoot, InjuryDraft, draft_to_def,
+    DeleteOutcome, DeleteRequest, EditorMcpAssetsRoot, InjuryDraft, draft_to_def,
     injury_save_path_in, weighting_save_path_in, write_injury_in, write_weighting_in,
 };
 
@@ -94,7 +94,7 @@ fn deleting_an_injury_takes_its_row_out_of_every_bucket_that_held_one() {
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     app.insert_resource(DeleteRequest::new(

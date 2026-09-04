@@ -2,7 +2,7 @@ use core::time::Duration;
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{CommandCall, DeferredBudget, DeferredReplies, take_calls},
 };
 use cobalt_mcp_protocol::command::{
@@ -33,7 +33,7 @@ pub(crate) struct EndTurnTicket {
 
 pub(crate) struct ActEndTurn;
 
-impl QaCommand for ActEndTurn {
+impl McpCommand for ActEndTurn {
     type Args = NoArgs;
     type Facts = GameFacts;
     type Parked = EndTurnTicket;

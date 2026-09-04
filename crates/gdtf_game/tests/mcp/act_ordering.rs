@@ -2,7 +2,7 @@
 //! the sim records.
 
 use bevy::ecs::schedule::{IntoSystemSet, NodeId};
-use cobalt_mcp_command::dispatch::QaCommandSystems;
+use cobalt_mcp_command::dispatch::McpCommandSystems;
 use gdtf_battle_input::{
     InputSystems, auto_select_first_player_ganger, clear_downed_selection,
     contextual::ContextualActSystems,
@@ -223,7 +223,7 @@ fn every_command_claims_after_the_game_has_settled_its_selection() -> TestResult
         "the app must register auto_select_first_player_ganger, or ordering against it orders \
          against nothing",
     );
-    let claims = members(graph, QaCommandSystems::Claim)?;
+    let claims = members(graph, McpCommandSystems::Claim)?;
     assert!(
         !claims.is_empty(),
         "the command set must register its claim systems, or this ordering means nothing",
@@ -238,7 +238,7 @@ fn every_command_claims_after_the_game_has_settled_its_selection() -> TestResult
     }
     let act_claim = a_system_named(update, "claim_act_select_clear")?;
     assert!(
-        ordered_before(graph, set_node(graph, QaCommandSystems::Claim)?, act_claim),
+        ordered_before(graph, set_node(graph, McpCommandSystems::Claim)?, act_claim),
         "the act claim band must be ordered after the command claim band, which is what carries \
          the auto-select edge on to the acts",
     );

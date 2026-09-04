@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use cobalt_mcp_server::{
     ChildPid, HostLifecycle, HostManager, InstanceId, LaunchOutcome, LaunchPolicy, LaunchSpec,
-    LifecycleConfig, QaPort, RecordedInstance, StopOutcome,
+    LifecycleConfig, McpPort, RecordedInstance, StopOutcome,
 };
 
 use crate::{
@@ -18,7 +18,7 @@ const BOOT_MS: u64 = 2000;
 struct Fixture {
     manager: HostManager,
     calls:   CallLog,
-    ports:   Vec<QaPort>,
+    ports:   Vec<McpPort>,
 }
 
 fn manager_over_gated_listeners(count: usize) -> Fixture {
@@ -27,7 +27,7 @@ fn manager_over_gated_listeners(count: usize) -> Fixture {
 
 fn manager_configured_over_gated_listeners(count: usize, config: LifecycleConfig) -> Fixture {
     let gates = gated_listeners(count);
-    let ports: Vec<QaPort> = gates.iter().map(|(port, _)| *port).collect();
+    let ports: Vec<McpPort> = gates.iter().map(|(port, _)| *port).collect();
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
     let manager = HostManager::with_orphan_watch(
         Box::new(PortGatedSpawner::new(Arc::clone(&calls), gates)),
@@ -41,7 +41,7 @@ fn manager_configured_over_gated_listeners(count: usize, config: LifecycleConfig
     }
 }
 
-fn port_at(fixture: &Fixture, at: usize) -> QaPort {
+fn port_at(fixture: &Fixture, at: usize) -> McpPort {
     let Some(port) = fixture.ports.get(at) else {
         unreachable!(
             "the fixture opened a listener at {at}, ports: {:?}",
@@ -56,7 +56,7 @@ fn launch_at(fixture: &mut Fixture, at: usize, spec: &LaunchSpec) -> LaunchOutco
     fixture.manager.launch(port, spec)
 }
 
-fn launched(outcome: LaunchOutcome, which: &str) -> (InstanceId, QaPort) {
+fn launched(outcome: LaunchOutcome, which: &str) -> (InstanceId, McpPort) {
     let LaunchOutcome::Launched { instance, port, .. } = outcome else {
         unreachable!("the {which} launch becomes ready, got: {outcome:?}");
     };

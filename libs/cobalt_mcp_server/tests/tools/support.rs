@@ -5,25 +5,26 @@ use cobalt_mcp_protocol::{
         ArgSchemaRon, CommandAvailability, CommandCatalogue, CommandEntry, CommandName,
         CommandOutcome, CommandReplyRon, CommandSummary, CommandTiming, ReplySchemaRon,
     },
-    message::{QaError, QaRequest, QaResponse, ServerNameNet},
+    message::{McpRequest, McpResponse, McpSessionError, ServerNameNet},
 };
 use cobalt_mcp_server::{
     CargoPackage, ChildPid, EnvVarName, FeatureList, FeatureName, HostLifecycle, HostName,
     HostPair, HostRegistry, HostSet, InstanceId, LaunchOutcome, LaunchPolicy, LaunchSpec,
-    LifecycleConfig, McpError, OutputTail, QaChannel, QaHostSpec, QaLink, QaPort, RecordedInstance,
-    ServerIdentity, ServerName, ServerVersion, StopOutcome, TailLines, WorkingDir,
+    LifecycleConfig, McpChannel, McpError, McpHostSpec, McpLink, McpPort, OutputTail,
+    RecordedInstance, ServerIdentity, ServerName, ServerVersion, StopOutcome, TailLines,
+    WorkingDir,
 };
 
 /// A host registered under `name`, with every field derived from that name.
-pub(crate) fn registered(name: &str, port: u16, policy: LaunchPolicy) -> QaHostSpec {
+pub(crate) fn registered(name: &str, port: u16, policy: LaunchPolicy) -> McpHostSpec {
     let upper = name.to_uppercase();
-    QaHostSpec::new(
+    McpHostSpec::new(
         HostName::new(name.to_owned()),
         CargoPackage::new(format!("{name}_package")),
         FeatureList::new(vec![FeatureName::new(format!("{name}_feature"))]),
-        QaPort::new(port),
+        McpPort::new(port),
         None,
-        QaChannel::new(
+        McpChannel::new(
             EnvVarName::new(format!("{upper}_CHANNEL")),
             EnvVarName::new(format!("{upper}_CHANNEL_PORT")),
         ),
@@ -52,10 +53,10 @@ pub(crate) const CANNED_COMMAND: &str = "app.phase";
 /// Link that answers a catalogue and one command without touching a socket.
 pub(crate) struct CannedLink;
 
-impl QaLink for CannedLink {
-    fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
+impl McpLink for CannedLink {
+    fn request(&mut self, request: McpRequest) -> Result<McpResponse, McpError> {
         match request {
-            QaRequest::Catalogue => Ok(QaResponse::Catalogue(CommandCatalogue::new(
+            McpRequest::Catalogue => Ok(McpResponse::Catalogue(CommandCatalogue::new(
                 ServerNameNet::new("canned-host".to_owned()),
                 vec![CommandEntry::new(
                     CommandName::from_static(CANNED_COMMAND),
@@ -66,11 +67,11 @@ impl QaLink for CannedLink {
                     CommandAvailability::Available,
                 )],
             ))),
-            QaRequest::Run(_) => Ok(QaResponse::Outcome(CommandOutcome::Ran {
+            McpRequest::Run(_) => Ok(McpResponse::Outcome(CommandOutcome::Ran {
                 reply:       CommandReplyRon::new("(ran:true)".to_owned()),
                 attachments: Vec::new(),
             })),
-            QaRequest::Hello(_) => Ok(QaResponse::Error(QaError::Malformed)),
+            McpRequest::Hello(_) => Ok(McpResponse::Error(McpSessionError::Malformed)),
         }
     }
 }
@@ -91,7 +92,7 @@ impl CannedLifecycle {
 }
 
 impl HostLifecycle for CannedLifecycle {
-    fn launch(&mut self, port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
+    fn launch(&mut self, port: McpPort, _spec: &LaunchSpec) -> LaunchOutcome {
         self.launches += 1;
         LaunchOutcome::Launched {
             port,
@@ -100,7 +101,7 @@ impl HostLifecycle for CannedLifecycle {
         }
     }
 
-    fn stop(&mut self, _port: QaPort) -> StopOutcome {
+    fn stop(&mut self, _port: McpPort) -> StopOutcome {
         self.stop_owned()
     }
 
@@ -140,7 +141,7 @@ impl HostLifecycle for CannedLifecycle {
 /// A host set holding one registered host's stub link and lifecycle.
 pub(crate) fn one_host_set<'a>(
     name: &str,
-    link: &'a mut dyn QaLink,
+    link: &'a mut dyn McpLink,
     lifecycle: &'a mut dyn HostLifecycle,
 ) -> HostSet<'a> {
     HostSet::new(

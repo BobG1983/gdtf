@@ -1,42 +1,42 @@
 //! The hosts this server was started with, in registration order.
 
-use super::{name::HostName, spec::QaHostSpec};
+use super::{name::HostName, spec::McpHostSpec};
 
 /// Every host the caller registered, first one first.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct HostRegistry {
-    hosts: Vec<QaHostSpec>,
+    hosts: Vec<McpHostSpec>,
 }
 
 impl HostRegistry {
     /// Register these hosts, in this order.
     #[must_use]
-    pub const fn new(hosts: Vec<QaHostSpec>) -> Self {
+    pub const fn new(hosts: Vec<McpHostSpec>) -> Self {
         Self { hosts }
     }
 
     /// Every registered host.
     #[must_use]
-    pub fn hosts(&self) -> &[QaHostSpec] {
+    pub fn hosts(&self) -> &[McpHostSpec] {
         &self.hosts
     }
 
     /// Host a call that names none acts on: the first registered.
     #[must_use]
-    pub fn default_host(&self) -> Option<&QaHostSpec> {
+    pub fn default_host(&self) -> Option<&McpHostSpec> {
         self.hosts.first()
     }
 
     /// Host registered under `name`.
     #[must_use]
-    pub fn get(&self, name: &HostName) -> Option<&QaHostSpec> {
+    pub fn get(&self, name: &HostName) -> Option<&McpHostSpec> {
         self.hosts.iter().find(|host| host.name() == name)
     }
 
     /// Every registered name, in registration order.
     #[must_use]
     pub fn names(&self) -> Vec<&HostName> {
-        self.hosts.iter().map(QaHostSpec::name).collect()
+        self.hosts.iter().map(McpHostSpec::name).collect()
     }
 
     /// How a description or error message lists the registered names.
@@ -50,7 +50,7 @@ impl HostRegistry {
 
     /// Hosts that keep several children at once.
     #[must_use]
-    pub fn multi_instance_hosts(&self) -> Vec<&QaHostSpec> {
+    pub fn multi_instance_hosts(&self) -> Vec<&McpHostSpec> {
         self.hosts
             .iter()
             .filter(|host| host.runs_many_instances())
@@ -59,7 +59,7 @@ impl HostRegistry {
 
     /// Hosts that keep one child and report a second launch as already running.
     #[must_use]
-    pub fn single_instance_hosts(&self) -> Vec<&QaHostSpec> {
+    pub fn single_instance_hosts(&self) -> Vec<&McpHostSpec> {
         self.hosts
             .iter()
             .filter(|host| !host.runs_many_instances())
@@ -72,7 +72,7 @@ impl HostRegistry {
     ///
     /// Returns a message naming the registered hosts when the call named one that is not
     /// registered, or when nothing is registered at all.
-    pub fn resolve(&self, requested: Option<&HostName>) -> Result<&QaHostSpec, String> {
+    pub fn resolve(&self, requested: Option<&HostName>) -> Result<&McpHostSpec, String> {
         match requested {
             None => self
                 .default_host()

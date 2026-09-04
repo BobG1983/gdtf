@@ -12,4 +12,4 @@ pub use name::HostName;
 pub use registry::HostRegistry;
 pub use runtime::{HostRuntime, pairs, runtimes};
 pub use set::{HostPair, HostSet};
-pub use spec::QaHostSpec;
+pub use spec::McpHostSpec;

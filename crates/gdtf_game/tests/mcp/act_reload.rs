@@ -1,7 +1,7 @@
 //! Reloading over a real socket: the sim's own outcome reaches the caller.
 
 use bevy::ecs::entity::Entity;
-use cobalt_mcp_protocol::{command::RunOptions, message::QaRequest};
+use cobalt_mcp_protocol::{command::RunOptions, message::McpRequest};
 use gdtf_game::qa_wire::{
     act::ActReply,
     deed::{ActDeedKindNet, ReloadOutcomeNet},
@@ -25,7 +25,7 @@ use super::{
 const NO_GANGER: &str = "the fixture must hold a player ganger with a ranged magazine to reload";
 
 /// The three requests a reload case sends, in order.
-fn reload_plan(ganger: Entity) -> Vec<QaRequest> {
+fn reload_plan(ganger: Entity) -> Vec<McpRequest> {
     vec![
         run(ACT_SELECT, &ganger_argument(ganger), RunOptions::default()),
         run(ACT_RELOAD, "()", RunOptions::default()),

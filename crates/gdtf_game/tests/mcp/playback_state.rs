@@ -1,7 +1,7 @@
 use bevy::app::App;
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RunOptions},
-    message::QaResponse,
+    message::McpResponse,
     ports::McpPort,
 };
 use gdtf_battle_presenter::playback::{ActHold, PlaybackCursor};
@@ -34,8 +34,8 @@ fn playback_holding_app() -> Result<(App, McpPort), TestError> {
     Ok((app, port))
 }
 
-fn caught_up(reply: QaResponse) -> CaughtUpNet {
-    let QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
+fn caught_up(reply: McpResponse) -> CaughtUpNet {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
         unreachable!("a plain playback.state call must RUN, got {reply:?}");
     };
     let body = reply.as_str();

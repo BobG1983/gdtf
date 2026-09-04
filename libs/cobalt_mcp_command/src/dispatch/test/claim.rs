@@ -1,11 +1,11 @@
 use cobalt_mcp_protocol::{
     command::{CommandArgsRon, CommandName, CommandOutcome},
-    message::QaResponse,
+    message::McpResponse,
 };
 use cobalt_mcp_transport::Responder;
 
 use crate::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{CommandInbox, bad_arguments},
     test_support::{FakePhase, FakePoint},
 };
@@ -46,12 +46,12 @@ fn the_inbox_takes_nothing_for_an_unused_name() {
 
 #[test]
 fn bad_arguments_attaches_the_command_s_own_shape() {
-    let Err(fault) = ron::de::from_str::<<FakePoint as QaCommand>::Args>("(nope:1)") else {
+    let Err(fault) = ron::de::from_str::<<FakePoint as McpCommand>::Args>("(nope:1)") else {
         unreachable!("`(nope:1)` must not decode into FakePointArgs");
     };
     let response = bad_arguments::<FakePoint>(&fault);
 
-    let QaResponse::Outcome(CommandOutcome::BadArguments { detail, schema }) = response else {
+    let McpResponse::Outcome(CommandOutcome::BadArguments { detail, schema }) = response else {
         unreachable!("a decode failure must answer BadArguments, got {response:?}");
     };
     assert!(

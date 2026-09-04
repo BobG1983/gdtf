@@ -6,11 +6,11 @@ use std::{
 
 use cobalt_mcp_protocol::{
     command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyRon, ReplyAttachment},
-    message::{QaError, QaRequest, QaResponse},
+    message::{McpRequest, McpResponse, McpSessionError},
 };
 use cobalt_mcp_server::{
-    ChildPid, HostLifecycle, InstanceId, LaunchOutcome, LaunchSpec, McpError, OutputTail, QaLink,
-    QaPort, RecordedInstance, StopOutcome, TailLines, WorkingDir, base64::encode_standard,
+    ChildPid, HostLifecycle, InstanceId, LaunchOutcome, LaunchSpec, McpError, McpLink, McpPort,
+    OutputTail, RecordedInstance, StopOutcome, TailLines, WorkingDir, base64::encode_standard,
     dispatch,
 };
 use serde_json::{Value, json};
@@ -44,17 +44,17 @@ const SECOND_BRAMBLE_PORT: u16 = 4300;
 
 struct RelativeShotLink(&'static str);
 
-impl QaLink for RelativeShotLink {
-    fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
+impl McpLink for RelativeShotLink {
+    fn request(&mut self, request: McpRequest) -> Result<McpResponse, McpError> {
         match request {
-            QaRequest::Run(_) => Ok(QaResponse::Outcome(CommandOutcome::Ran {
+            McpRequest::Run(_) => Ok(McpResponse::Outcome(CommandOutcome::Ran {
                 reply:       CommandReplyRon::new(CAPTURE_REPLY.to_owned()),
                 attachments: vec![ReplyAttachment::new(
                     AttachmentKind::Png,
                     ArtifactPath::new(self.0.to_owned()),
                 )],
             })),
-            _ => Ok(QaResponse::Error(QaError::Malformed)),
+            _ => Ok(McpResponse::Error(McpSessionError::Malformed)),
         }
     }
 }
@@ -78,7 +78,7 @@ impl SeededRoot {
     fn recorded(&self) -> RecordedInstance {
         RecordedInstance::new(
             InstanceId::new(self.id.to_owned()),
-            QaPort::new(self.port),
+            McpPort::new(self.port),
             ChildPid::new(process::id()),
         )
     }
@@ -91,7 +91,7 @@ impl SeededRoot {
 struct ChildInDirLifecycle(Vec<SeededRoot>);
 
 impl HostLifecycle for ChildInDirLifecycle {
-    fn launch(&mut self, port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
+    fn launch(&mut self, port: McpPort, _spec: &LaunchSpec) -> LaunchOutcome {
         LaunchOutcome::Launched {
             port,
             pid: ChildPid::new(process::id()),
@@ -99,7 +99,7 @@ impl HostLifecycle for ChildInDirLifecycle {
         }
     }
 
-    fn stop(&mut self, _port: QaPort) -> StopOutcome {
+    fn stop(&mut self, _port: McpPort) -> StopOutcome {
         StopOutcome::NotRunning
     }
 

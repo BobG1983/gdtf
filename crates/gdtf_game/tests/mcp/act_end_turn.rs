@@ -5,7 +5,7 @@ use std::sync::mpsc::TryRecvError;
 use bevy::app::App;
 use cobalt_mcp_protocol::{
     command::{CommandAvailability, CommandName, CommandOutcome, CommandTiming, RunOptions},
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 use gdtf_battle_sim::{battle::PlayerFaction, turn::ActiveFaction};
 use gdtf_game::qa_wire::deed::ActDeedKindNet;
@@ -35,8 +35,8 @@ fn the_players_turn(app: &App) -> bool {
 
 #[test]
 fn ending_the_turn_is_admitted_by_a_running_battle_over_the_socket() -> TestResult {
-    let reply = exchange(battle_app_listening, QaRequest::Catalogue)?;
-    let QaResponse::Catalogue(catalogue) = reply else {
+    let reply = exchange(battle_app_listening, McpRequest::Catalogue)?;
+    let McpResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
     };
     let Some(entry) = catalogue
@@ -143,7 +143,7 @@ fn ending_the_turn_parks_until_the_turn_comes_back_to_the_player() {
     assert!(
         matches!(
             answered,
-            Some(QaResponse::Outcome(CommandOutcome::Ran { .. }))
+            Some(McpResponse::Outcome(CommandOutcome::Ran { .. }))
         ),
         "the enemy AI ends its own turn once it can neither shoot nor step, which hands the turn \
          back and releases the parked call; got {answered:?}",

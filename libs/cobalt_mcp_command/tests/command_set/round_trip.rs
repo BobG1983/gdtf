@@ -1,5 +1,5 @@
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     test_support::{
         FAKE_COMMANDS, FakeLevel, FakePhase, FakePhaseReply, FakePoint, FakePointPair,
         FakePointReply, FakePointX, FakePointY, FakeReady, fake_app, fake_facts_loaded,

@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, UnavailableCode,
@@ -61,7 +61,7 @@ impl BattleReachableReply {
 
 pub(crate) struct BattleReachable;
 
-impl QaCommand for BattleReachable {
+impl McpCommand for BattleReachable {
     type Args = BattleReachableArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -85,7 +85,7 @@ impl QaCommand for BattleReachable {
         app.add_systems(
             Update,
             handle_battle_reachable
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .after(PresenterSystems::Compose)
                 .after(promote_shown_occupancy)
                 .after(promote_shown_fog),

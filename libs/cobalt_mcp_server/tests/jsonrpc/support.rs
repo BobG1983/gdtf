@@ -4,11 +4,11 @@ use cobalt_mcp_protocol::{
         CommandName, CommandOutcome, CommandReplyRon, CommandSummary, CommandTiming, RefusalNote,
         ReplySchemaRon, RunOptions, UnavailableCode,
     },
-    message::{QaError, QaRequest, QaResponse, RunCommand, ServerNameNet},
+    message::{McpRequest, McpResponse, McpSessionError, RunCommand, ServerNameNet},
 };
 use cobalt_mcp_server::{
-    ChildPid, HostLifecycle, InstanceId, LaunchOutcome, LaunchSpec, McpError, OutputTail, QaLink,
-    QaPort, RecordedInstance, StopOutcome, TailLines, WorkingDir, dispatch,
+    ChildPid, HostLifecycle, InstanceId, LaunchOutcome, LaunchSpec, McpError, McpLink, McpPort,
+    OutputTail, RecordedInstance, StopOutcome, TailLines, WorkingDir, dispatch,
 };
 use serde_json::Value;
 
@@ -83,29 +83,29 @@ fn canned_run(run: &RunCommand) -> CommandOutcome {
 
 pub(crate) struct CannedThistle;
 
-impl QaLink for CannedThistle {
-    fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
+impl McpLink for CannedThistle {
+    fn request(&mut self, request: McpRequest) -> Result<McpResponse, McpError> {
         match request {
-            QaRequest::Catalogue => Ok(QaResponse::Catalogue(canned_catalogue())),
-            QaRequest::Run(run) => Ok(QaResponse::Outcome(canned_run(&run))),
-            QaRequest::Hello(_) => Ok(QaResponse::Error(QaError::Malformed)),
+            McpRequest::Catalogue => Ok(McpResponse::Catalogue(canned_catalogue())),
+            McpRequest::Run(run) => Ok(McpResponse::Outcome(canned_run(&run))),
+            McpRequest::Hello(_) => Ok(McpResponse::Error(McpSessionError::Malformed)),
         }
     }
 }
 
 struct CannedBramble;
 
-impl QaLink for CannedBramble {
-    fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
+impl McpLink for CannedBramble {
+    fn request(&mut self, request: McpRequest) -> Result<McpResponse, McpError> {
         match request {
-            QaRequest::Catalogue => Ok(QaResponse::Catalogue(CommandCatalogue::new(
+            McpRequest::Catalogue => Ok(McpResponse::Catalogue(CommandCatalogue::new(
                 ServerNameNet::new(BRAMBLE_HOST_NAME.to_owned()),
                 Vec::new(),
             ))),
-            QaRequest::Run(_) => Ok(QaResponse::Outcome(CommandOutcome::Unknown {
+            McpRequest::Run(_) => Ok(McpResponse::Outcome(CommandOutcome::Unknown {
                 known: Vec::new(),
             })),
-            QaRequest::Hello(_) => Ok(QaResponse::Error(QaError::Malformed)),
+            McpRequest::Hello(_) => Ok(McpResponse::Error(McpSessionError::Malformed)),
         }
     }
 }
@@ -113,11 +113,11 @@ impl QaLink for CannedBramble {
 struct NoLifecycle;
 
 impl HostLifecycle for NoLifecycle {
-    fn launch(&mut self, _port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
+    fn launch(&mut self, _port: McpPort, _spec: &LaunchSpec) -> LaunchOutcome {
         unreachable!("the forwarding-tool fixtures never launch");
     }
 
-    fn stop(&mut self, _port: QaPort) -> StopOutcome {
+    fn stop(&mut self, _port: McpPort) -> StopOutcome {
         StopOutcome::NotRunning
     }
 
@@ -183,8 +183,8 @@ impl SeededInstance {
         self.id
     }
 
-    pub(crate) const fn port(&self) -> QaPort {
-        QaPort::new(self.port)
+    pub(crate) const fn port(&self) -> McpPort {
+        McpPort::new(self.port)
     }
 
     pub(crate) const fn pid(&self) -> u32 {
@@ -198,7 +198,7 @@ impl SeededInstance {
     fn recorded(&self) -> RecordedInstance {
         RecordedInstance::new(
             InstanceId::new(self.id.to_owned()),
-            QaPort::new(self.port),
+            McpPort::new(self.port),
             ChildPid::new(self.pid),
         )
     }
@@ -240,16 +240,16 @@ impl CannedLifecycle {
 }
 
 impl HostLifecycle for CannedLifecycle {
-    fn launch(&mut self, _port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
+    fn launch(&mut self, _port: McpPort, _spec: &LaunchSpec) -> LaunchOutcome {
         self.minted += 1;
         LaunchOutcome::Launched {
-            port:     QaPort::new(self.port),
+            port:     McpPort::new(self.port),
             pid:      ChildPid::new(self.pid),
             instance: InstanceId::new(format!("canned-{}", self.minted)),
         }
     }
 
-    fn stop(&mut self, _port: QaPort) -> StopOutcome {
+    fn stop(&mut self, _port: McpPort) -> StopOutcome {
         self.stop_owned()
     }
 

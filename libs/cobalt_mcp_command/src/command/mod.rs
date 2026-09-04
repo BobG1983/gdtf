@@ -1,12 +1,12 @@
 //! Typed QA commands and their type-erased form.
 
-/// Object-safe wrapper around a concrete [`QaCommand`].
+/// Object-safe wrapper around a concrete [`McpCommand`].
 pub mod erased;
 /// The typed command trait hosts implement.
 pub mod spec;
 
 pub use erased::ErasedCommand;
-pub use spec::QaCommand;
+pub use spec::McpCommand;
 
 #[cfg(test)]
 mod test;

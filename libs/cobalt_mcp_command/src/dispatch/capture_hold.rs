@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use cobalt_mcp_protocol::{
     command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyRon, ReplyAttachment},
     ids::ShotName,
-    message::{QaError, QaResponse},
+    message::{McpResponse, McpSessionError},
 };
 use cobalt_mcp_transport::Responder;
 
@@ -81,7 +81,7 @@ struct HeldReply {
     ticket: CaptureTicket,
     name:   Option<ShotName>,
     caller: Responder,
-    answer: Mutex<Receiver<QaResponse>>,
+    answer: Mutex<Receiver<McpResponse>>,
     stage:  HoldStage,
 }
 
@@ -90,7 +90,7 @@ impl HeldReply {
         matches!(self.stage, HoldStage::Shooting(_))
     }
 
-    fn take_reply(&mut self) -> Option<QaResponse> {
+    fn take_reply(&mut self) -> Option<McpResponse> {
         let answer = match self.answer.get_mut() {
             Ok(answer) => answer,
             Err(poisoned) => poisoned.into_inner(),
@@ -98,7 +98,7 @@ impl HeldReply {
         match answer.try_recv() {
             Ok(response) => Some(response),
             Err(TryRecvError::Empty) => None,
-            Err(TryRecvError::Disconnected) => Some(QaResponse::Error(QaError::Timeout)),
+            Err(TryRecvError::Disconnected) => Some(McpResponse::Error(McpSessionError::Timeout)),
         }
     }
 
@@ -108,7 +108,7 @@ impl HeldReply {
         }
         match self.take_reply() {
             None => HoldStep::Keep(self),
-            Some(QaResponse::Outcome(CommandOutcome::Ran { reply, attachments })) => {
+            Some(McpResponse::Outcome(CommandOutcome::Ran { reply, attachments })) => {
                 let request = ShotRequest {
                     ticket: self.ticket,
                     name:   self.name.clone(),
@@ -132,12 +132,12 @@ impl HeldReply {
             RiderShot::Landed(path) => {
                 let mut attachments = ran.attachments;
                 attachments.push(ReplyAttachment::new(AttachmentKind::Png, path));
-                caller.reply(QaResponse::Outcome(CommandOutcome::Ran {
+                caller.reply(McpResponse::Outcome(CommandOutcome::Ran {
                     reply: ran.reply,
                     attachments,
                 }));
             }
-            RiderShot::Lost => caller.reply(QaResponse::Error(QaError::Timeout)),
+            RiderShot::Lost => caller.reply(McpResponse::Error(McpSessionError::Timeout)),
         }
     }
 }

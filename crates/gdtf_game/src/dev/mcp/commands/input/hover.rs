@@ -4,8 +4,8 @@ use bevy::{
     window::{CursorMoved, PrimaryWindow},
 };
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -37,7 +37,7 @@ pub(crate) struct InputHoverReply {
 
 pub(crate) struct InputHover;
 
-impl QaCommand for InputHover {
+impl McpCommand for InputHover {
     type Args = InputHoverArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -61,7 +61,7 @@ impl QaCommand for InputHover {
         app.add_systems(
             Update,
             handle_input_hover
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .before(pick_hovered_cell),
         );
     }

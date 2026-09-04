@@ -9,7 +9,7 @@ use std::{
 
 use cobalt_mcp_protocol::{
     framing::{FrameDecoder, encode},
-    message::{HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet},
+    message::{HelloFacts, McpRequest, McpResponse, ProtocolVersion, ServerNameNet},
     ports::McpPort,
     timeouts::{NetIoTimeout, NetReplyTimeout, NetTimeouts},
 };
@@ -46,7 +46,7 @@ pub(super) fn connected_client() -> Result<(TcpStream, Receiver<IncomingRequest>
     Ok((stream, rx))
 }
 
-pub(super) fn send(stream: &mut TcpStream, request: &QaRequest) -> TestResult {
+pub(super) fn send(stream: &mut TcpStream, request: &McpRequest) -> TestResult {
     stream.write_all(&encode(request)?)?;
     Ok(())
 }
@@ -56,12 +56,12 @@ pub(super) fn send_raw(stream: &mut TcpStream, frame: &[u8]) -> TestResult {
     Ok(())
 }
 
-pub(super) fn read_response(stream: &mut TcpStream) -> Result<QaResponse, Box<dyn Error>> {
+pub(super) fn read_response(stream: &mut TcpStream) -> Result<McpResponse, Box<dyn Error>> {
     let mut decoder = FrameDecoder::new();
     let mut buf = [0u8; 512];
     loop {
         if let Some(frame) = decoder.next_frame()? {
-            return Ok(frame.decode::<QaResponse>()?);
+            return Ok(frame.decode::<McpResponse>()?);
         }
         let read = stream.read(&mut buf)?;
         if read == 0 {

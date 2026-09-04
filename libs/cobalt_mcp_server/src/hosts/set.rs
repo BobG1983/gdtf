@@ -1,22 +1,22 @@
 //! Borrowed link + lifecycle pair for each registered host.
 
-use super::{name::HostName, registry::HostRegistry, spec::QaHostSpec};
-use crate::{lifecycle::HostLifecycle, link::QaLink};
+use super::{name::HostName, registry::HostRegistry, spec::McpHostSpec};
+use crate::{lifecycle::HostLifecycle, link::McpLink};
 
 /// Link and lifecycle for one host.
 pub struct HostPair<'a> {
-    link:      &'a mut dyn QaLink,
+    link:      &'a mut dyn McpLink,
     lifecycle: &'a mut dyn HostLifecycle,
 }
 
 impl<'a> HostPair<'a> {
     /// Pair a link with its lifecycle manager.
-    pub fn new(link: &'a mut dyn QaLink, lifecycle: &'a mut dyn HostLifecycle) -> Self {
+    pub fn new(link: &'a mut dyn McpLink, lifecycle: &'a mut dyn HostLifecycle) -> Self {
         Self { link, lifecycle }
     }
 
     /// Mutable link.
-    pub fn link(&mut self) -> &mut dyn QaLink {
+    pub fn link(&mut self) -> &mut dyn McpLink {
         self.link
     }
 
@@ -26,7 +26,7 @@ impl<'a> HostPair<'a> {
     }
 
     /// Both handles at once.
-    pub fn parts(&mut self) -> (&mut dyn QaLink, &mut dyn HostLifecycle) {
+    pub fn parts(&mut self) -> (&mut dyn McpLink, &mut dyn HostLifecycle) {
         (self.link, self.lifecycle)
     }
 }
@@ -67,7 +67,7 @@ impl<'a> HostSet<'a> {
     pub fn resolve(
         &mut self,
         requested: Option<&HostName>,
-    ) -> Result<(QaHostSpec, &mut HostPair<'a>), String> {
+    ) -> Result<(McpHostSpec, &mut HostPair<'a>), String> {
         let spec = self.registry.resolve(requested)?.clone();
         let pair = self
             .pairs
@@ -86,11 +86,12 @@ impl<'a> HostSet<'a> {
 
 #[cfg(test)]
 mod test {
-    use cobalt_mcp_protocol::message::{
-        HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet,
+    use cobalt_mcp_protocol::{
+        message::{HelloFacts, McpRequest, McpResponse, ProtocolVersion, ServerNameNet},
+        ports::McpPort,
     };
 
-    const STUB_PORT: QaPort = QaPort::new(4100);
+    const STUB_PORT: McpPort = McpPort::new(4100);
 
     const STUB_PROTOCOL: ProtocolVersion = ProtocolVersion::new(1);
 
@@ -102,14 +103,14 @@ mod test {
             ChildPid, HostLifecycle, InstanceId, LaunchOutcome, LaunchPolicy, LaunchSpec,
             OutputTail, RecordedInstance, StopOutcome, TailLines, WorkingDir,
         },
-        link::{QaLink, QaPort},
+        link::McpLink,
     };
 
     struct NamedLink(&'static str);
 
-    impl QaLink for NamedLink {
-        fn request(&mut self, _request: QaRequest) -> Result<QaResponse, McpError> {
-            Ok(QaResponse::HelloOk(HelloFacts::new(
+    impl McpLink for NamedLink {
+        fn request(&mut self, _request: McpRequest) -> Result<McpResponse, McpError> {
+            Ok(McpResponse::HelloOk(HelloFacts::new(
                 STUB_PROTOCOL,
                 ServerNameNet::new(self.0.to_owned()),
             )))
@@ -119,7 +120,7 @@ mod test {
     struct NamedLifecycle(u32);
 
     impl HostLifecycle for NamedLifecycle {
-        fn launch(&mut self, port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
+        fn launch(&mut self, port: McpPort, _spec: &LaunchSpec) -> LaunchOutcome {
             LaunchOutcome::Launched {
                 port,
                 pid: ChildPid::new(self.0),
@@ -127,7 +128,7 @@ mod test {
             }
         }
 
-        fn stop(&mut self, _port: QaPort) -> StopOutcome {
+        fn stop(&mut self, _port: McpPort) -> StopOutcome {
             self.stop_owned()
         }
 
@@ -165,7 +166,7 @@ mod test {
     }
 
     fn answered_by(pair: &mut HostPair<'_>) -> ServerNameNet {
-        let Ok(QaResponse::HelloOk(facts)) = pair.link().request(QaRequest::Hello(STUB_PROTOCOL))
+        let Ok(McpResponse::HelloOk(facts)) = pair.link().request(McpRequest::Hello(STUB_PROTOCOL))
         else {
             unreachable!("the named link always answers HelloOk");
         };

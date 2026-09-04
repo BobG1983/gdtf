@@ -4,7 +4,7 @@ use std::{
     process::{Child, Command, ExitStatus, Stdio},
 };
 
-use cobalt_mcp_server::{ChildPid, KillGrace, OrphanTarget, PollInterval, ProbeTimeout, QaPort};
+use cobalt_mcp_server::{ChildPid, KillGrace, McpPort, OrphanTarget, PollInterval, ProbeTimeout};
 
 pub(super) const STOP_GRACE: KillGrace = KillGrace::new(Duration::from_millis(150));
 
@@ -12,7 +12,7 @@ pub(super) const PROBE: ProbeTimeout = ProbeTimeout::new(Duration::from_millis(3
 
 pub(super) const RECHECK: PollInterval = PollInterval::new(Duration::from_millis(5));
 
-pub(super) const fn target_on(port: QaPort, pid: u32) -> OrphanTarget {
+pub(super) const fn target_on(port: McpPort, pid: u32) -> OrphanTarget {
     OrphanTarget::new(port, ChildPid::new(pid), STOP_GRACE, PROBE, RECHECK)
 }
 

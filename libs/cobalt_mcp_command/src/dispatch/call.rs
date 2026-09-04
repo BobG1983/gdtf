@@ -3,14 +3,14 @@
 use cobalt_mcp_transport::PendingQueue;
 
 use super::CommandResponder;
-use crate::command::QaCommand;
+use crate::command::McpCommand;
 
 /// One admitted call with deserialized args for command `C`.
-pub struct CommandCall<C: QaCommand> {
+pub struct CommandCall<C: McpCommand> {
     args: C::Args,
 }
 
-impl<C: QaCommand> CommandCall<C> {
+impl<C: McpCommand> CommandCall<C> {
     /// Build a call from args.
     #[must_use]
     pub const fn new(args: C::Args) -> Self {
@@ -30,7 +30,7 @@ impl<C: QaCommand> CommandCall<C> {
     }
 }
 
-impl<C: QaCommand> core::fmt::Debug for CommandCall<C> {
+impl<C: McpCommand> core::fmt::Debug for CommandCall<C> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}({:?})", C::NAME.as_str(), self.args)
     }
@@ -38,7 +38,7 @@ impl<C: QaCommand> core::fmt::Debug for CommandCall<C> {
 
 /// Drain ready calls and pair each with a typed responder.
 #[must_use]
-pub fn take_calls<C: QaCommand>(
+pub fn take_calls<C: McpCommand>(
     queue: &mut PendingQueue<CommandCall<C>>,
 ) -> Vec<(C::Args, CommandResponder<C>)> {
     queue

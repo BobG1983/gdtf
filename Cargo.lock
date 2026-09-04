@@ -2969,7 +2969,6 @@ dependencies = [
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
  "gdtf_content_families",
- "gdtf_mcp_ports",
  "gdtf_test_utils",
  "image",
  "ron",
@@ -2994,7 +2993,6 @@ dependencies = [
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
  "gdtf_content_families",
- "gdtf_mcp_ports",
  "gdtf_test_utils",
  "gdtf_ui",
  "image",
@@ -3013,10 +3011,6 @@ version = "0.1.0"
 
 [[package]]
 name = "gdtf_hivescape_sim"
-version = "0.1.0"
-
-[[package]]
-name = "gdtf_mcp_ports"
 version = "0.1.0"
 
 [[package]]

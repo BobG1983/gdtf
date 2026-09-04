@@ -1,4 +1,4 @@
-use cobalt_mcp_protocol::{command::RunOptions, message::QaResponse};
+use cobalt_mcp_protocol::{command::RunOptions, message::McpResponse};
 use gdtf_game::qa_wire::{
     cell::CellLevelNet,
     inspect::{InspectShownNet, TerrainKindNet},
@@ -31,7 +31,7 @@ struct RosterBody {
     gangers: Vec<GangerCardNet>,
 }
 
-fn inspect_body(reply: Option<QaResponse>) -> Result<InspectBody, TestError> {
+fn inspect_body(reply: Option<McpResponse>) -> Result<InspectBody, TestError> {
     let Some(reply) = reply else {
         return Err("battle.inspect produced no reply".into());
     };
@@ -40,7 +40,7 @@ fn inspect_body(reply: Option<QaResponse>) -> Result<InspectBody, TestError> {
         .map_err(|fault| format!("the inspect body must decode: {fault} — {body}").into())
 }
 
-fn roster_body(reply: Option<QaResponse>) -> Result<RosterBody, TestError> {
+fn roster_body(reply: Option<McpResponse>) -> Result<RosterBody, TestError> {
     let Some(reply) = reply else {
         return Err("battle.roster produced no reply".into());
     };

@@ -2,7 +2,7 @@
 
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, UnavailableCode},
-    message::QaResponse,
+    message::McpResponse,
 };
 use gdtf_game::{
     qa_wire::{cost::CostRefusalNet, token::GangerToken},
@@ -106,7 +106,7 @@ fn a_screen_with_no_drawn_grid_answers_unavailable_rather_than_an_empty_set() ->
     let Some(reply) = replies.into_iter().next() else {
         return Err("a settled battle must field a player ganger to ask about".into());
     };
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
         return Err(format!(
             "`battle.reachable` must refuse out of band when the screen has drawn no grid to \
              search over, got {reply:?}"

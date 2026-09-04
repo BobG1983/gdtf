@@ -3,7 +3,7 @@
 use bevy::app::App;
 use cobalt_mcp_protocol::{
     command::RunOptions,
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
     ports::McpPort,
 };
 use gdtf_game::qa_wire::{
@@ -23,7 +23,7 @@ use super::{
 };
 
 /// An act closes the playback gate until the screen has replayed it, which is what a client waits on.
-pub(crate) fn caught_up() -> QaRequest {
+pub(crate) fn caught_up() -> McpRequest {
     run(WAIT, "(condition:CaughtUp)", RunOptions::default())
 }
 
@@ -36,7 +36,7 @@ struct WaitedBody {
 /// Fail unless the wait ran and named the condition it was held for, rather than giving up.
 pub(crate) fn assert_waited_for(
     condition: WaitConditionNet,
-    reply: QaResponse,
+    reply: McpResponse,
 ) -> Result<(), TestError> {
     let answered = decode::<WaitedBody>(WAIT, reply)?;
     if answered.condition == condition {
@@ -50,7 +50,7 @@ pub(crate) fn assert_waited_for(
 }
 
 /// Fail unless the catch-up wait ran and named `CaughtUp`, rather than giving up.
-pub(crate) fn assert_caught_up(reply: QaResponse) -> Result<(), TestError> {
+pub(crate) fn assert_caught_up(reply: McpResponse) -> Result<(), TestError> {
     assert_waited_for(WaitConditionNet::CaughtUp, reply)
 }
 
@@ -97,7 +97,7 @@ pub(crate) fn card_of(roster: &RosterBody, token: GangerToken) -> Option<&Ganger
 }
 
 /// Wait until no ganger is part-way through a walk, which is what a client waits on after a move.
-pub(crate) fn walk_complete() -> QaRequest {
+pub(crate) fn walk_complete() -> McpRequest {
     run(WAIT, "(condition:WalkComplete)", RunOptions::default())
 }
 
@@ -133,7 +133,7 @@ impl LogBody {
 }
 
 /// The act window a reply carries, or a failure naming the refusal that came back instead.
-pub(crate) fn accepted(name: &'static str, reply: QaResponse) -> Result<ActReply, TestError> {
+pub(crate) fn accepted(name: &'static str, reply: McpResponse) -> Result<ActReply, TestError> {
     let decoded = decode::<ActReply>(name, reply)?;
     match decoded {
         ActReply::Accepted { .. } => Ok(decoded),
@@ -149,7 +149,7 @@ pub(crate) fn accepted(name: &'static str, reply: QaResponse) -> Result<ActReply
 }
 
 /// The reply an act answered, whichever shape it took.
-pub(crate) fn answered(name: &'static str, reply: QaResponse) -> Result<ActReply, TestError> {
+pub(crate) fn answered(name: &'static str, reply: McpResponse) -> Result<ActReply, TestError> {
     decode::<ActReply>(name, reply)
 }
 
@@ -184,7 +184,7 @@ pub(crate) const fn complete(reply: ActReply) -> Option<ActCompleteNet> {
 /// Who a selection command says is selected, or a failure naming the refusal.
 pub(crate) fn selected(
     name: &'static str,
-    reply: QaResponse,
+    reply: McpResponse,
 ) -> Result<Option<GangerToken>, TestError> {
     match decode::<SelectReply>(name, reply)? {
         SelectReply::Selected { shooter } => Ok(shooter),
@@ -197,7 +197,7 @@ pub(crate) fn selected(
 /// Decode a reply body into the shape the command publishes.
 pub(crate) fn decode<T: serde::de::DeserializeOwned>(
     name: &'static str,
-    reply: QaResponse,
+    reply: McpResponse,
 ) -> Result<T, TestError> {
     let body = ran_body(name, reply)?;
     ron::de::from_str::<T>(&body)
@@ -207,8 +207,8 @@ pub(crate) fn decode<T: serde::de::DeserializeOwned>(
 /// Take the next reply out of an exchange, naming the command that owed it.
 pub(crate) fn next(
     name: &'static str,
-    replies: &mut impl Iterator<Item = QaResponse>,
-) -> Result<QaResponse, TestError> {
+    replies: &mut impl Iterator<Item = McpResponse>,
+) -> Result<McpResponse, TestError> {
     replies
         .next()
         .ok_or_else(|| format!("`{name}` produced no reply").into())

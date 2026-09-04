@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use cobalt_mcp_protocol::{
-    message::{ProtocolVersion, QaRequest},
+    message::{McpRequest, ProtocolVersion},
     ports::McpPort,
 };
 use gdtf_editor::{EditorState, MapEditorPlugin, McpEditorPlugin};
@@ -36,7 +36,7 @@ pub(crate) fn editing_app_and_client() -> Result<(App, Client), TestError> {
     let (mut app, port) = editor_app_listening()?;
     advance_to_editing(&mut app);
     let mut client = Client::connect(port)?;
-    let hello = client.exchange(&mut app, &QaRequest::Hello(ProtocolVersion::CURRENT))?;
+    let hello = client.exchange(&mut app, &McpRequest::Hello(ProtocolVersion::CURRENT))?;
     assert_hello_ok(&hello);
     Ok((app, client))
 }

@@ -2,7 +2,7 @@
 
 use core::{ops::Deref, time::Duration};
 
-use crate::link::QaPort;
+use cobalt_mcp_protocol::ports::McpPort;
 
 /// OS process id of a managed child.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -48,14 +48,14 @@ impl Deref for InstanceId {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecordedInstance {
     id:   InstanceId,
-    port: QaPort,
+    port: McpPort,
     pid:  ChildPid,
 }
 
 impl RecordedInstance {
     /// Build from the three facts a host records.
     #[must_use]
-    pub const fn new(id: InstanceId, port: QaPort, pid: ChildPid) -> Self {
+    pub const fn new(id: InstanceId, port: McpPort, pid: ChildPid) -> Self {
         Self { id, port, pid }
     }
 
@@ -67,7 +67,7 @@ impl RecordedInstance {
 
     /// Port the child listens on.
     #[must_use]
-    pub const fn port(&self) -> QaPort {
+    pub const fn port(&self) -> McpPort {
         self.port
     }
 

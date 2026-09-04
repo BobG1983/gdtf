@@ -1,5 +1,5 @@
 use bevy::app::App;
-use cobalt_mcp_protocol::message::QaResponse;
+use cobalt_mcp_protocol::message::McpResponse;
 use gdtf_editor::{
     ArmorDraft, AttachmentDraft, EditorMode, FieldDraft, GangDraft, InjuryDraft, MeleeWeaponDraft,
     SpriteDraft, TerrainDraft, ThemeDraft, WeaponDraft,
@@ -147,7 +147,7 @@ pub(crate) fn try_set_field(
     app: &mut App,
     client: &mut Client,
     arguments: &str,
-) -> Result<QaResponse, TestError> {
+) -> Result<McpResponse, TestError> {
     client.exchange(app, &run_editor(EDITOR_SET_FIELD, arguments))
 }
 
@@ -166,6 +166,6 @@ pub(crate) fn try_list_op(
     app: &mut App,
     client: &mut Client,
     arguments: &str,
-) -> Result<QaResponse, TestError> {
+) -> Result<McpResponse, TestError> {
     client.exchange(app, &run_editor(EDITOR_LIST_OP, arguments))
 }

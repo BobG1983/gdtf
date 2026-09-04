@@ -2,13 +2,13 @@ use std::sync::{Arc, Mutex};
 
 use cobalt_mcp_server::{
     HostLifecycle, HostManager, LaunchFailure, LaunchOutcome, LaunchPolicy, LifecycleConfig,
-    OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, PortHold, ProbeTimeout, QaPort, StopOutcome,
+    McpPort, OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, PortHold, ProbeTimeout, StopOutcome,
     SystemOrphanWatch,
 };
 
 use super::support::{StubSpawner, fast_config, free_port, sample_spec, spawn_fake_game};
 
-type StopLog = Arc<Mutex<Vec<QaPort>>>;
+type StopLog = Arc<Mutex<Vec<McpPort>>>;
 
 struct WatchProbeRecordStop {
     answer:  OrphanStop,
@@ -16,7 +16,7 @@ struct WatchProbeRecordStop {
 }
 
 impl OrphanWatch for WatchProbeRecordStop {
-    fn inspect(&self, port: QaPort, timeout: ProbeTimeout) -> PortHold {
+    fn inspect(&self, port: McpPort, timeout: ProbeTimeout) -> PortHold {
         SystemOrphanWatch::new().inspect(port, timeout)
     }
 
@@ -34,7 +34,7 @@ struct WatchFixedHold {
 }
 
 impl OrphanWatch for WatchFixedHold {
-    fn inspect(&self, _port: QaPort, _timeout: ProbeTimeout) -> PortHold {
+    fn inspect(&self, _port: McpPort, _timeout: ProbeTimeout) -> PortHold {
         self.hold
     }
 
@@ -46,13 +46,13 @@ impl OrphanWatch for WatchFixedHold {
     }
 }
 
-fn recorded(log: &StopLog) -> Vec<QaPort> {
+fn recorded(log: &StopLog) -> Vec<McpPort> {
     log.lock().map(|ports| ports.clone()).unwrap_or_default()
 }
 
 #[test]
 fn a_stop_with_no_owned_child_over_a_live_listener_is_not_not_running() {
-    let port = QaPort::new(spawn_fake_game());
+    let port = McpPort::new(spawn_fake_game());
     let stopped: StopLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(StubSpawner),
@@ -79,7 +79,7 @@ fn a_stop_with_no_owned_child_over_a_live_listener_is_not_not_running() {
 
 #[test]
 fn an_orphan_that_survives_its_stop_is_reported_as_held() {
-    let port = QaPort::new(spawn_fake_game());
+    let port = McpPort::new(spawn_fake_game());
     let stopped: StopLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(StubSpawner),
@@ -109,7 +109,7 @@ fn an_orphan_that_survives_its_stop_is_reported_as_held() {
 
 #[test]
 fn a_launch_into_a_held_port_does_not_report_launched() {
-    let port = QaPort::new(spawn_fake_game());
+    let port = McpPort::new(spawn_fake_game());
     let stopped: StopLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(StubSpawner),
@@ -136,7 +136,7 @@ fn a_launch_into_a_held_port_does_not_report_launched() {
 #[test]
 fn a_held_port_answers_the_same_way_under_either_launch_policy() {
     for policy in [LaunchPolicy::Reuse, LaunchPolicy::AlwaysSpawn] {
-        let port = QaPort::new(spawn_fake_game());
+        let port = McpPort::new(spawn_fake_game());
         let stopped: StopLog = Arc::new(Mutex::new(Vec::new()));
         let mut manager = HostManager::with_orphan_watch(
             Box::new(StubSpawner),
@@ -166,7 +166,7 @@ fn a_held_port_answers_the_same_way_under_either_launch_policy() {
 
 #[test]
 fn an_orphan_with_no_named_process_is_reported_as_held() {
-    let port = QaPort::new(free_port());
+    let port = McpPort::new(free_port());
     let stopped: StopLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(StubSpawner),
@@ -195,7 +195,7 @@ fn an_orphan_with_no_named_process_is_reported_as_held() {
 
 #[test]
 fn a_free_port_still_answers_not_running() {
-    let port = QaPort::new(free_port());
+    let port = McpPort::new(free_port());
     let stopped: StopLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(StubSpawner),
@@ -212,7 +212,7 @@ fn a_free_port_still_answers_not_running() {
 
 #[test]
 fn the_shutdown_path_never_adopts_an_orphan() {
-    let port = QaPort::new(spawn_fake_game());
+    let port = McpPort::new(spawn_fake_game());
     let stopped: StopLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(StubSpawner),

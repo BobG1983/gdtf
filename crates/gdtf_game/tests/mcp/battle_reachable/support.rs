@@ -3,7 +3,7 @@
 use bevy::{app::App, ecs::entity::Entity, prelude::World};
 use cobalt_mcp_protocol::{
     command::RunOptions,
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 use gdtf_battle_presenter::{DrawnPosition, DrawnVitals, ShownSquadVisibility};
 use gdtf_battle_sim::{
@@ -40,7 +40,7 @@ pub(crate) struct ReachableBody {
 }
 
 /// One `battle.reachable` request, addressed to `actor`.
-pub(crate) fn reachable_call(actor: GangerToken) -> QaRequest {
+pub(crate) fn reachable_call(actor: GangerToken) -> McpRequest {
     run(
         BATTLE_REACHABLE,
         &format!("(actor:{})", *actor),
@@ -49,7 +49,7 @@ pub(crate) fn reachable_call(actor: GangerToken) -> QaRequest {
 }
 
 /// The body of the first reply, or a failure naming what came back instead.
-pub(crate) fn first_reachable_body(replies: Vec<QaResponse>) -> Result<ReachableBody, TestError> {
+pub(crate) fn first_reachable_body(replies: Vec<McpResponse>) -> Result<ReachableBody, TestError> {
     let Some(reply) = replies.into_iter().next() else {
         return Err("`battle.reachable` produced no reply at all".into());
     };

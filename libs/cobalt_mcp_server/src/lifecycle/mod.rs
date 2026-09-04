@@ -16,7 +16,7 @@ pub use child::{ManagedChild, OUTPUT_TAIL_LINES, ProcessChild};
 pub use config::{LaunchPolicy, LifecycleConfig};
 pub use launch::{
     CargoPackage, CargoProfile, EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList,
-    FeatureName, LaunchSpec, QaChannel, WorkingDir,
+    FeatureName, LaunchSpec, McpChannel, WorkingDir,
 };
 pub use liveness::{ChildLiveness, SystemLiveness};
 pub use manager::{HostLifecycle, HostManager};

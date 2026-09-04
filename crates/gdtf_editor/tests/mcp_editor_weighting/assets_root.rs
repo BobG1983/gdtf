@@ -1,4 +1,4 @@
-use gdtf_editor::{EditorQaAssetsRoot, MapEditorPlugin};
+use gdtf_editor::{EditorMcpAssetsRoot, MapEditorPlugin};
 use gdtf_test_utils::GdtfUiTestAppBuilder;
 
 use crate::harness::advance_to_editing;
@@ -9,7 +9,7 @@ fn the_editor_holds_the_one_save_root_with_no_qa_listener_bound() {
     app.add_plugins(MapEditorPlugin);
     advance_to_editing(&mut app);
 
-    let Some(root) = app.world().get_resource::<EditorQaAssetsRoot>() else {
+    let Some(root) = app.world().get_resource::<EditorMcpAssetsRoot>() else {
         unreachable!(
             "the Save weighting button writes through the root-taking writer, so the editor \
              holds a root even when the QA channel never bound a listener",

@@ -3,7 +3,7 @@
 use bevy::app::App;
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RunOptions},
-    message::QaResponse,
+    message::McpResponse,
     ports::McpPort,
 };
 use gdtf_game::qa_wire::token::GangerToken;
@@ -170,7 +170,7 @@ fn a_token_that_names_nothing_is_refused_rather_than_crashing() -> TestResult {
             battle_app_listening,
             run(ACT_SELECT, &select_argument(token), RunOptions::default()),
         )?;
-        let QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
+        let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
             return Err(format!("`{ACT_SELECT}` must answer, got {reply:?}").into());
         };
         let body = reply.as_str();

@@ -2,7 +2,7 @@
 
 use cobalt_mcp_server::{
     CargoPackage, EnvVarName, FeatureList, FeatureName, HostName, HostRegistry, LaunchPolicy,
-    LifecycleConfig, QaChannel, QaHostSpec, QaPort,
+    LifecycleConfig, McpChannel, McpHostSpec, McpPort,
 };
 
 // The umbrella feature that turns on each host's QA channel.
@@ -17,11 +17,11 @@ fn development() -> FeatureList {
 fn host(
     name: HostName,
     package: CargoPackage,
-    port: QaPort,
-    channel: QaChannel,
+    port: McpPort,
+    channel: McpChannel,
     policy: LaunchPolicy,
-) -> QaHostSpec {
-    QaHostSpec::new(
+) -> McpHostSpec {
+    McpHostSpec::new(
         name,
         package,
         development(),
@@ -39,8 +39,8 @@ pub fn registry() -> HostRegistry {
         host(
             HostName::new("game".to_owned()),
             CargoPackage::new("game".to_owned()),
-            QaPort::new(7616),
-            QaChannel::new(
+            McpPort::new(7616),
+            McpChannel::new(
                 EnvVarName::new("GDTF_MCP".to_owned()),
                 EnvVarName::new("GDTF_MCP_PORT".to_owned()),
             ),
@@ -49,8 +49,8 @@ pub fn registry() -> HostRegistry {
         host(
             HostName::new("editor".to_owned()),
             CargoPackage::new("editor".to_owned()),
-            QaPort::new(7617),
-            QaChannel::new(
+            McpPort::new(7617),
+            McpChannel::new(
                 EnvVarName::new("GDTF_EDITOR_MCP".to_owned()),
                 EnvVarName::new("EDITOR_MCP_PORT".to_owned()),
             ),

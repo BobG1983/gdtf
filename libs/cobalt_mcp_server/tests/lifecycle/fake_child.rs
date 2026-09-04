@@ -7,7 +7,7 @@ use std::{
 };
 
 use cobalt_mcp_server::{
-    ChildPid, ChildSpawner, FailureTail, KillGrace, LaunchSpec, ManagedChild, OutputTail, QaPort,
+    ChildPid, ChildSpawner, FailureTail, KillGrace, LaunchSpec, ManagedChild, McpPort, OutputTail,
     TailLines, lifecycle::ChildStatus,
 };
 
@@ -111,7 +111,7 @@ impl ReapGatedSpawner {
 }
 
 impl ChildSpawner for ReapGatedSpawner {
-    fn spawn(&self, _port: QaPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
+    fn spawn(&self, _port: McpPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
         Ok(Box::new(ReapGatedChild {
             pid:    ChildPid::new(self.next_pid.fetch_add(1, Ordering::SeqCst)),
             tail:   FailureTail::new(GATED_LINE.to_owned()),
@@ -123,19 +123,19 @@ impl ChildSpawner for ReapGatedSpawner {
 }
 
 /// Tail one child prints, naming the port that child was handed.
-pub(crate) fn tail_on(port: QaPort) -> String {
+pub(crate) fn tail_on(port: McpPort) -> String {
     format!("fake child listening on port {}", *port)
 }
 
 /// Spawner that opens the gate belonging to the port it is handed.
 pub(crate) struct PortGatedSpawner {
     calls:    CallLog,
-    gates:    Vec<(QaPort, FakeGameGate)>,
+    gates:    Vec<(McpPort, FakeGameGate)>,
     next_pid: AtomicU32,
 }
 
 impl PortGatedSpawner {
-    pub(crate) const fn new(calls: CallLog, gates: Vec<(QaPort, FakeGameGate)>) -> Self {
+    pub(crate) const fn new(calls: CallLog, gates: Vec<(McpPort, FakeGameGate)>) -> Self {
         Self {
             calls,
             gates,
@@ -145,7 +145,7 @@ impl PortGatedSpawner {
 }
 
 impl ChildSpawner for PortGatedSpawner {
-    fn spawn(&self, port: QaPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
+    fn spawn(&self, port: McpPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
         for (gated, gate) in &self.gates {
             if *gated == port {
                 gate.open();

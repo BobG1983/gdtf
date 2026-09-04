@@ -1,7 +1,7 @@
 //! Shaping a live battle so one contextual act family, and only that one, is on offer.
 
 use bevy::{app::App, ecs::entity::Entity};
-use cobalt_mcp_protocol::message::QaResponse;
+use cobalt_mcp_protocol::message::McpResponse;
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     acts::downed::is_8_adjacent,
@@ -41,7 +41,7 @@ pub(crate) struct Accepted {
 }
 
 /// The window and target an accepted reply carries, or a failure naming the refusal.
-pub(crate) fn accepted(name: &'static str, reply: QaResponse) -> Result<Accepted, TestError> {
+pub(crate) fn accepted(name: &'static str, reply: McpResponse) -> Result<Accepted, TestError> {
     match decode::<ContextualReply>(name, reply)? {
         ContextualReply::Accepted {
             from_seq,
@@ -60,7 +60,7 @@ pub(crate) fn accepted(name: &'static str, reply: QaResponse) -> Result<Accepted
 }
 
 /// Why a refused reply was turned away, or a failure naming the acceptance.
-pub(crate) fn refused(name: &'static str, reply: QaResponse) -> Result<ActRefusalNet, TestError> {
+pub(crate) fn refused(name: &'static str, reply: McpResponse) -> Result<ActRefusalNet, TestError> {
     match decode::<ContextualReply>(name, reply)? {
         ContextualReply::Refused { reason } => Ok(reason),
         ContextualReply::Accepted { target, .. } => {

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
-use cobalt_mcp_command::command::QaCommand;
+use cobalt_mcp_command::command::McpCommand;
 #[cfg(feature = "dev_tools")]
-use cobalt_mcp_command::dispatch::{CommandCall, QaCommandSystems, take_calls};
+use cobalt_mcp_command::dispatch::{CommandCall, McpCommandSystems, take_calls};
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
 };
@@ -29,7 +29,7 @@ pub(crate) struct ProcgenStepReply {
 
 pub(crate) struct ProcgenStep;
 
-impl QaCommand for ProcgenStep {
+impl McpCommand for ProcgenStep {
     type Args = ProcgenStepArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -80,7 +80,7 @@ const fn stepper_availability(_facts: GameFacts) -> CommandAvailability {
 
 #[cfg(feature = "dev_tools")]
 fn register_step_handler(app: &mut App) {
-    app.add_systems(Update, handle_procgen_step.after(QaCommandSystems::Claim));
+    app.add_systems(Update, handle_procgen_step.after(McpCommandSystems::Claim));
 }
 
 #[cfg(not(feature = "dev_tools"))]

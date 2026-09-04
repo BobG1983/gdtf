@@ -1,7 +1,7 @@
 //! Full launch recipe for a host process.
 
 use super::{
-    channel::QaChannel,
+    channel::McpChannel,
     values::{CargoPackage, CargoProfile, EnvOverrides, FeatureList, WorkingDir},
 };
 
@@ -13,7 +13,7 @@ pub struct LaunchSpec {
     profile:     Option<CargoProfile>,
     working_dir: Option<WorkingDir>,
     env:         EnvOverrides,
-    channel:     QaChannel,
+    channel:     McpChannel,
 }
 
 impl LaunchSpec {
@@ -24,7 +24,7 @@ impl LaunchSpec {
         features: FeatureList,
         working_dir: Option<WorkingDir>,
         env: EnvOverrides,
-        channel: QaChannel,
+        channel: McpChannel,
     ) -> Self {
         Self {
             package,
@@ -74,7 +74,7 @@ impl LaunchSpec {
 
     /// MCP channel env names.
     #[must_use]
-    pub const fn channel(&self) -> &QaChannel {
+    pub const fn channel(&self) -> &McpChannel {
         &self.channel
     }
 

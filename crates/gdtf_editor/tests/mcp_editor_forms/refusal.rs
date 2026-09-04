@@ -1,4 +1,4 @@
-use cobalt_mcp_protocol::{command::CommandOutcome, message::QaResponse};
+use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
 use gdtf_editor::EditorMode;
 
 use crate::{
@@ -12,8 +12,8 @@ use crate::{
 };
 
 /// The refusal note a run answered with, or why the reply was not a refusal.
-pub(crate) fn refusal_note(reply: &QaResponse) -> Result<String, TestError> {
-    let QaResponse::Outcome(CommandOutcome::Unavailable { note, .. }) = reply else {
+pub(crate) fn refusal_note(reply: &McpResponse) -> Result<String, TestError> {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { note, .. }) = reply else {
         return Err(format!("expected an Unavailable outcome, got {reply:?}").into());
     };
     Ok(note.as_str().to_owned())

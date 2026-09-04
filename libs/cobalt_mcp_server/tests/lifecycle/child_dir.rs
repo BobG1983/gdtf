@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use cobalt_mcp_server::{
     CargoPackage, EnvOverrides, FeatureList, HostLifecycle, HostManager, LaunchOutcome, LaunchSpec,
-    QaPort, StopOutcome, WorkingDir,
+    McpPort, StopOutcome, WorkingDir,
 };
 
 use crate::{
@@ -43,7 +43,7 @@ fn a_running_child_reports_the_directory_its_recipe_named() {
         "with no child running there is no child directory to report",
     );
 
-    let outcome = manager.launch(QaPort::new(port), &recipe_in(&elsewhere));
+    let outcome = manager.launch(McpPort::new(port), &recipe_in(&elsewhere));
     assert!(
         matches!(outcome, LaunchOutcome::Launched { .. }),
         "launch against the fake server becomes ready: {outcome:?}",
@@ -54,7 +54,7 @@ fn a_running_child_reports_the_directory_its_recipe_named() {
         "the running child's directory is the one its recipe named",
     );
 
-    let stopped = manager.stop(QaPort::new(port));
+    let stopped = manager.stop(McpPort::new(port));
     assert!(
         matches!(stopped, StopOutcome::Stopped { .. }),
         "the child stops cleanly: {stopped:?}",
@@ -75,13 +75,13 @@ fn a_child_from_a_recipe_with_no_directory_reports_the_hosts_own() {
         unreachable!("the test process has a current directory");
     };
 
-    let outcome = manager.launch(QaPort::new(port), &sample_spec());
+    let outcome = manager.launch(McpPort::new(port), &sample_spec());
     assert!(
         matches!(outcome, LaunchOutcome::Launched { .. }),
         "launch against the fake server becomes ready: {outcome:?}",
     );
     assert_eq!(manager.child_working_dir(), Some(WorkingDir::new(here)));
-    let stopped = manager.stop(QaPort::new(port));
+    let stopped = manager.stop(McpPort::new(port));
     assert!(
         matches!(stopped, StopOutcome::Stopped { .. }),
         "the child stops cleanly: {stopped:?}",
@@ -91,7 +91,7 @@ fn a_child_from_a_recipe_with_no_directory_reports_the_hosts_own() {
 #[test]
 fn with_two_children_recorded_the_directory_is_the_last_one_launched() {
     let gates = gated_listeners(2);
-    let ports: Vec<QaPort> = gates.iter().map(|(port, _)| *port).collect();
+    let ports: Vec<McpPort> = gates.iter().map(|(port, _)| *port).collect();
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(PortGatedSpawner::new(calls, gates)),
@@ -131,7 +131,7 @@ fn with_two_children_recorded_the_directory_is_the_last_one_launched() {
 #[test]
 fn each_recorded_instance_reports_the_directory_its_own_recipe_named() {
     let gates = gated_listeners(2);
-    let ports: Vec<QaPort> = gates.iter().map(|(port, _)| *port).collect();
+    let ports: Vec<McpPort> = gates.iter().map(|(port, _)| *port).collect();
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(PortGatedSpawner::new(calls, gates)),

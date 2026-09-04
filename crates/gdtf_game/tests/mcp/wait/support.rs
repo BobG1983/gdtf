@@ -1,7 +1,7 @@
 use std::sync::mpsc::{Receiver, Sender};
 
 use bevy::{app::App, ecs::entity::Entity};
-use cobalt_mcp_protocol::message::QaResponse;
+use cobalt_mcp_protocol::message::McpResponse;
 use cobalt_mcp_transport::IncomingRequest;
 use gdtf_battle_presenter::playback::{ActHold, PlaybackCursor};
 use gdtf_battle_sim::{
@@ -45,9 +45,9 @@ pub(crate) fn release_the_hold(app: &mut App) {
 /// Step up to `frames` frames, stopping at the first reply.
 pub(crate) fn answered_within(
     app: &mut App,
-    reply: &Receiver<QaResponse>,
+    reply: &Receiver<McpResponse>,
     frames: u32,
-) -> Option<QaResponse> {
+) -> Option<McpResponse> {
     for _ in 0..frames {
         app.update();
         if let Ok(answer) = reply.try_recv() {

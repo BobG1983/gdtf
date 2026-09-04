@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
@@ -25,7 +25,7 @@ pub(crate) struct SettingsReadReply {
 
 pub(crate) struct SettingsRead;
 
-impl QaCommand for SettingsRead {
+impl McpCommand for SettingsRead {
     type Args = SettingsReadArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -44,7 +44,7 @@ impl QaCommand for SettingsRead {
     }
 
     fn register_handler(app: &mut App) {
-        app.add_systems(Update, handle_settings_read.after(QaCommandSystems::Claim));
+        app.add_systems(Update, handle_settings_read.after(McpCommandSystems::Claim));
     }
 }
 

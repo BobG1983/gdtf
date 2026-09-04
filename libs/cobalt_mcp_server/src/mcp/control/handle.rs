@@ -1,21 +1,22 @@
 //! Control tool handlers (launch, stop, logs).
 
+use cobalt_mcp_protocol::ports::McpPort;
 use serde_json::Value;
 
 use super::render::{render_launch, render_logs, render_stop};
 use crate::{
-    hosts::QaHostSpec,
+    hosts::McpHostSpec,
     lifecycle::{HostLifecycle, LaunchOutcome, TailLines},
-    link::{QaLink, QaPort},
+    link::McpLink,
     mcp::{InstanceChoice, ToolCallOutcome, launch_args::parse_launch_spec, resolve_instance},
 };
 
 /// Launch (or attach to) a host with optional recipe overrides.
 #[must_use]
 pub fn handle_launch(
-    host: &QaHostSpec,
+    host: &McpHostSpec,
     args: &Value,
-    link: &mut dyn QaLink,
+    link: &mut dyn McpLink,
     lifecycle: &mut dyn HostLifecycle,
 ) -> ToolCallOutcome {
     let port = match parse_port(host, args) {
@@ -39,7 +40,7 @@ pub fn handle_launch(
 /// Stop a host's named instance, or its child (or an orphan on its port).
 #[must_use]
 pub fn handle_stop(
-    host: &QaHostSpec,
+    host: &McpHostSpec,
     args: &Value,
     lifecycle: &mut dyn HostLifecycle,
 ) -> ToolCallOutcome {
@@ -55,7 +56,7 @@ pub fn handle_stop(
 /// Return recent output for a host's named instance, or for its child.
 #[must_use]
 pub fn handle_logs(
-    host: &QaHostSpec,
+    host: &McpHostSpec,
     args: &Value,
     lifecycle: &mut dyn HostLifecycle,
 ) -> ToolCallOutcome {
@@ -87,7 +88,7 @@ fn parse_max_lines(args: &Value) -> Result<TailLines, String> {
     }
 }
 
-pub(super) fn parse_port(host: &QaHostSpec, args: &Value) -> Result<QaPort, String> {
+pub(super) fn parse_port(host: &McpHostSpec, args: &Value) -> Result<McpPort, String> {
     match args.get("port") {
         None | Some(Value::Null) => Ok(host.port_from_env()),
         Some(value) => {
@@ -97,7 +98,7 @@ pub(super) fn parse_port(host: &QaHostSpec, args: &Value) -> Result<QaPort, Stri
             let Ok(narrow) = u16::try_from(raw) else {
                 return Err("`port` must be in the range 0..=65535".to_owned());
             };
-            Ok(QaPort::new(narrow))
+            Ok(McpPort::new(narrow))
         }
     }
 }

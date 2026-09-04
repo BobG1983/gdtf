@@ -18,7 +18,6 @@ cobalt_screenshot = { path = "../../libs/cobalt_screenshot", optional = true }
 cobalt_mcp_protocol = { path = "../../libs/cobalt_mcp_protocol", optional = true }
 cobalt_mcp_transport = { path = "../../libs/cobalt_mcp_transport", optional = true }
 cobalt_mcp_command = { path = "../../libs/cobalt_mcp_command", optional = true }
-gdtf_mcp_ports = { path = "../gdtf_mcp_ports", optional = true }
 bevy_egui = { version = "0.41", optional = true }
 image = { version = "0.25", default-features = false, features = ["png"] }
 
@@ -39,9 +38,8 @@ dynamic_linking = ["bevy/dynamic_linking"]
 headless_test = []
 file_watcher = ["bevy/file_watcher"]
 dev_tools = ["dep:bevy_egui"]
-# The QA host: the MCP control channel and the screenshot pipeline it drives.
+# The MCP host: the MCP control channel and the screenshot pipeline it drives.
 mcp = [
-    "dep:gdtf_mcp_ports",
     "dep:cobalt_screenshot",
     "dep:cobalt_mcp_protocol",
     "dep:cobalt_mcp_transport",

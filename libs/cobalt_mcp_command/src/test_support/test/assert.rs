@@ -3,7 +3,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use cobalt_mcp_protocol::command::{ArgSchemaRon, CommandName, ReplySchemaRon};
 
 use crate::{
-    command::QaCommand,
+    command::McpCommand,
     test_support::{
         CommandRow, FAKE_COMMANDS, FAKE_COMMANDS_BROKEN_SCHEMA, FAKE_COMMANDS_DUPLICATED,
         FAKE_COMMANDS_GROWN, FakePhase, NameCheck, SchemaCheck, SchemaSide, ShapeNameCheck,

@@ -1,7 +1,7 @@
 use std::sync::mpsc::{Receiver, TryRecvError};
 
 use bevy::prelude::*;
-use cobalt_mcp_protocol::message::{QaError, QaResponse};
+use cobalt_mcp_protocol::message::{McpResponse, McpSessionError};
 
 use crate::{
     Responder,
@@ -31,7 +31,7 @@ fn sweeping_app() -> App {
     app
 }
 
-fn enqueue(app: &mut App) -> Receiver<QaResponse> {
+fn enqueue(app: &mut App) -> Receiver<McpResponse> {
     let (responder, reply_rx) = Responder::channel();
     if let Some(mut queue) = app
         .world_mut()
@@ -58,7 +58,10 @@ fn an_unclaimed_entry_times_out_when_its_budget_expires() {
 
     app.update();
     assert!(
-        matches!(reply_rx.try_recv(), Ok(QaResponse::Error(QaError::Timeout))),
+        matches!(
+            reply_rx.try_recv(),
+            Ok(McpResponse::Error(McpSessionError::Timeout))
+        ),
         "the sweep must answer Timeout on the frame the budget expires",
     );
 }
@@ -75,11 +78,14 @@ fn a_claimed_entry_is_answered_by_its_claimer_and_never_swept() {
         .unwrap_or_default();
     assert_eq!(claimed.len(), 1, "the push must be drainable");
     for (_payload, responder) in claimed {
-        responder.reply(QaResponse::Error(QaError::Busy));
+        responder.reply(McpResponse::Error(McpSessionError::Busy));
     }
 
     assert!(
-        matches!(reply_rx.try_recv(), Ok(QaResponse::Error(QaError::Busy))),
+        matches!(
+            reply_rx.try_recv(),
+            Ok(McpResponse::Error(McpSessionError::Busy))
+        ),
         "the claimer's reply must reach the client",
     );
 

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{CommandCall, DeferredReplies, take_calls},
 };
 use cobalt_mcp_protocol::command::{
@@ -19,7 +19,7 @@ use crate::dev::mcp::{
 
 pub(crate) struct ActSelectNext;
 
-impl QaCommand for ActSelectNext {
+impl McpCommand for ActSelectNext {
     type Args = NoArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -49,7 +49,7 @@ impl QaCommand for ActSelectNext {
 
 pub(crate) struct ActSelectPrev;
 
-impl QaCommand for ActSelectPrev {
+impl McpCommand for ActSelectPrev {
     type Args = NoArgs;
     type Facts = GameFacts;
     type Parked = ();

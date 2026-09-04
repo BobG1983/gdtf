@@ -5,7 +5,7 @@ use std::{
     thread,
 };
 
-use cobalt_mcp_server::{OrphanStop, OrphanWatch, QaPort, SystemOrphanWatch};
+use cobalt_mcp_server::{McpPort, OrphanStop, OrphanWatch, SystemOrphanWatch};
 
 use super::{
     super::support::free_port,
@@ -32,7 +32,7 @@ fn the_real_stop_reaches_a_process_the_group_leader_spawned() {
         "the spawned process sits in the launcher's group, the way a launched app does"
     );
 
-    let outcome = SystemOrphanWatch::new().stop(target_on(QaPort::new(free_port()), leader));
+    let outcome = SystemOrphanWatch::new().stop(target_on(McpPort::new(free_port()), leader));
 
     assert_eq!(outcome, OrphanStop::Stopped);
     await_gone(launcher.spawned);

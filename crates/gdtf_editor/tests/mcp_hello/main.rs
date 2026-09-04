@@ -35,7 +35,7 @@ mod socket;
 #[path = "../mcp_shared/support.rs"]
 mod support;
 
-use cobalt_mcp_protocol::message::{ProtocolVersion, QaRequest};
+use cobalt_mcp_protocol::message::{McpRequest, ProtocolVersion};
 
 use crate::{
     assertions::{
@@ -63,7 +63,7 @@ fn hello_negotiates_over_the_real_editor_listener() -> TestResult {
 #[test]
 fn hello_negotiates_while_the_editor_is_still_loading() -> TestResult {
     let reply = reply_answered_during_load(
-        QaRequest::Hello(ProtocolVersion::CURRENT),
+        McpRequest::Hello(ProtocolVersion::CURRENT),
         "the Hello(CURRENT) handshake",
     )?;
     assert_hello_ok(&reply);
@@ -73,7 +73,7 @@ fn hello_negotiates_while_the_editor_is_still_loading() -> TestResult {
 #[test]
 fn a_wrong_version_is_refused_while_the_editor_is_still_loading() -> TestResult {
     let reply = reply_answered_during_load(
-        QaRequest::Hello(wrong_version()),
+        McpRequest::Hello(wrong_version()),
         "the mismatched-version handshake",
     )?;
     assert_version_mismatch(&reply);
@@ -82,7 +82,7 @@ fn a_wrong_version_is_refused_while_the_editor_is_still_loading() -> TestResult 
 
 #[test]
 fn the_editors_own_drain_answers_while_it_is_still_loading() -> TestResult {
-    let reply = reply_answered_during_load(QaRequest::Catalogue, "the catalogue request")?;
+    let reply = reply_answered_during_load(McpRequest::Catalogue, "the catalogue request")?;
     assert_editor_catalogue(&reply, AnsweringPhase::Load);
     Ok(())
 }

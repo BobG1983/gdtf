@@ -2,29 +2,28 @@
 
 use std::time::Instant;
 
+use cobalt_mcp_protocol::ports::McpPort;
+
 use super::{lifecycle::HostLifecycle, port::pick_port};
-use crate::{
-    lifecycle::{
-        child::ManagedChild,
-        config::{LaunchPolicy, LifecycleConfig},
-        launch::{LaunchSpec, WorkingDir},
-        liveness::{ChildLiveness, SystemLiveness},
-        orphan::{OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, PortHold, SystemOrphanWatch},
-        outcome::{LaunchFailure, LaunchOutcome, StopOutcome},
-        probe::probe_ready,
-        spawn::ChildSpawner,
-        values::{
-            ChildStatus, InstanceId, KillGrace, OutputTail, Readiness, RecordedInstance,
-            SpawnError, TailLines,
-        },
+use crate::lifecycle::{
+    child::ManagedChild,
+    config::{LaunchPolicy, LifecycleConfig},
+    launch::{LaunchSpec, WorkingDir},
+    liveness::{ChildLiveness, SystemLiveness},
+    orphan::{OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, PortHold, SystemOrphanWatch},
+    outcome::{LaunchFailure, LaunchOutcome, StopOutcome},
+    probe::probe_ready,
+    spawn::ChildSpawner,
+    values::{
+        ChildStatus, InstanceId, KillGrace, OutputTail, Readiness, RecordedInstance, SpawnError,
+        TailLines,
     },
-    link::QaPort,
 };
 
 struct RunningChild {
     child:  Box<dyn ManagedChild>,
     id:     InstanceId,
-    port:   QaPort,
+    port:   McpPort,
     recipe: LaunchSpec,
 }
 
@@ -96,11 +95,11 @@ impl HostManager {
         self.config.launch_policy()
     }
 
-    fn hold_on(&self, port: QaPort) -> PortHold {
+    fn hold_on(&self, port: McpPort) -> PortHold {
         self.orphans.inspect(port, self.config.probe_timeout())
     }
 
-    fn stop_orphan(&self, port: QaPort, pid: OrphanPid) -> StopOutcome {
+    fn stop_orphan(&self, port: McpPort, pid: OrphanPid) -> StopOutcome {
         let OrphanPid::Known(known) = pid else {
             return StopOutcome::OrphanHeld { port, pid };
         };
@@ -132,7 +131,7 @@ impl HostManager {
     fn await_readiness(
         &mut self,
         mut child: Box<dyn ManagedChild>,
-        port: QaPort,
+        port: McpPort,
         recipe: &LaunchSpec,
     ) -> LaunchOutcome {
         let deadline = Instant::now() + *self.config.boot_timeout();
@@ -174,11 +173,11 @@ impl HostManager {
 }
 
 impl HostLifecycle for HostManager {
-    fn launch(&mut self, port: QaPort, spec: &LaunchSpec) -> LaunchOutcome {
+    fn launch(&mut self, port: McpPort, spec: &LaunchSpec) -> LaunchOutcome {
         if let Some(reused) = self.reuse(spec) {
             return reused;
         }
-        let taken: Vec<QaPort> = self.running.iter().map(|running| running.port).collect();
+        let taken: Vec<McpPort> = self.running.iter().map(|running| running.port).collect();
         let Some(chosen) = pick_port(
             port,
             &taken,
@@ -198,7 +197,7 @@ impl HostLifecycle for HostManager {
         }
     }
 
-    fn stop(&mut self, port: QaPort) -> StopOutcome {
+    fn stop(&mut self, port: McpPort) -> StopOutcome {
         let owned = self.stop_owned();
         if !matches!(owned, StopOutcome::NotRunning) {
             return owned;

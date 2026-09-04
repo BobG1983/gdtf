@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use super::facts::{FakeFacts, FakeLevel, FakeReady};
 use crate::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 
 /// Empty arguments for `fake.phase`.
@@ -30,7 +30,7 @@ pub struct FakePhaseReply {
 /// Always-available command that returns host facts.
 pub struct FakePhase;
 
-impl QaCommand for FakePhase {
+impl McpCommand for FakePhase {
     type Args = FakePhaseArgs;
     type Facts = FakeFacts;
     type Parked = ();
@@ -47,7 +47,7 @@ impl QaCommand for FakePhase {
     }
 
     fn register_handler(app: &mut App) {
-        app.add_systems(Update, handle_fake_phase.after(QaCommandSystems::Claim));
+        app.add_systems(Update, handle_fake_phase.after(McpCommandSystems::Claim));
     }
 }
 

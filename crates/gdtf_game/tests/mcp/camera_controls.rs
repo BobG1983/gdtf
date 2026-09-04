@@ -11,7 +11,7 @@ use bevy::{
 };
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, UnavailableCode},
-    message::QaResponse,
+    message::McpResponse,
 };
 use cobalt_mcp_transport::IncomingRequest;
 use gdtf_battle_input::world_to_cell;
@@ -189,8 +189,8 @@ fn battle_without_a_world_camera() -> (App, mpsc::Sender<IncomingRequest>) {
 }
 
 /// The refusal a camera command owes a claimed call it cannot serve.
-fn refused_for_want_of_a_camera(name: &str, answer: QaResponse) {
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = answer else {
+fn refused_for_want_of_a_camera(name: &str, answer: McpResponse) {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) = answer else {
         unreachable!("`{name}` must refuse when there is no camera to move, got {answer:?}");
     };
     assert_eq!(

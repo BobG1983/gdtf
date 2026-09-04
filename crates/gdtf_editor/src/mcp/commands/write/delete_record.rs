@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, DeferredReplies, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, DeferredReplies, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     ArgumentFault, CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote,
@@ -66,7 +66,7 @@ pub(in crate::mcp) struct EditorDeleteTicket {
 
 pub(in crate::mcp) struct EditorDeleteRecord;
 
-impl QaCommand for EditorDeleteRecord {
+impl McpCommand for EditorDeleteRecord {
     type Args = EditorDeleteRecordArgs;
     type Facts = EditorFacts;
     type Parked = EditorDeleteTicket;
@@ -94,7 +94,7 @@ impl QaCommand for EditorDeleteRecord {
             Update,
             (handle_editor_delete_record, answer_replacement_offer)
                 .chain()
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .in_set(EditorMcpSystems::Gather),
         );
     }

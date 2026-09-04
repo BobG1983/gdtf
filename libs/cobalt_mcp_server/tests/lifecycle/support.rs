@@ -9,12 +9,14 @@ use std::{
 
 use cobalt_mcp_protocol::{
     framing::{FrameDecoder, encode},
-    message::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
+    message::{
+        HelloFacts, McpRequest, McpResponse, McpSessionError, ProtocolVersion, ServerNameNet,
+    },
 };
 use cobalt_mcp_server::{
     BootTimeout, CargoPackage, ChildSpawner, EnvOverrides, EnvVarName, FeatureList, FeatureName,
-    KillGrace, LaunchPolicy, LaunchSpec, LifecycleConfig, ManagedChild, OrphanStop, OrphanTarget,
-    OrphanWatch, PollInterval, PortHold, ProbeTimeout, ProcessChild, QaChannel, QaPort,
+    KillGrace, LaunchPolicy, LaunchSpec, LifecycleConfig, ManagedChild, McpChannel, McpPort,
+    OrphanStop, OrphanTarget, OrphanWatch, PollInterval, PortHold, ProbeTimeout, ProcessChild,
     SweepInterval,
 };
 
@@ -31,7 +33,7 @@ impl GatedStubSpawner {
 }
 
 impl ChildSpawner for GatedStubSpawner {
-    fn spawn(&self, port: QaPort, spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
+    fn spawn(&self, port: McpPort, spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
         let child = StubSpawner.spawn(port, spec)?;
         self.0.open();
         Ok(child)
@@ -39,7 +41,7 @@ impl ChildSpawner for GatedStubSpawner {
 }
 
 impl ChildSpawner for StubSpawner {
-    fn spawn(&self, _port: QaPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
+    fn spawn(&self, _port: McpPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
         let mut command = Command::new("sh");
         command
             .args(["-c", "echo boot-oops 1>&2; exec sleep 10"])
@@ -90,11 +92,11 @@ pub(crate) fn spawn_gated_fake_game() -> (u16, FakeGameGate) {
     (port, gate)
 }
 
-pub(crate) fn gated_listeners(count: usize) -> Vec<(QaPort, FakeGameGate)> {
+pub(crate) fn gated_listeners(count: usize) -> Vec<(McpPort, FakeGameGate)> {
     (0..count)
         .map(|_| {
             let (port, gate) = spawn_gated_fake_game();
-            (QaPort::new(port), gate)
+            (McpPort::new(port), gate)
         })
         .collect()
 }
@@ -119,12 +121,12 @@ pub(crate) fn answer_one(stream: &mut TcpStream) {
             Ok(None) => continue,
             Err(_) => return,
         };
-        let response = match frame.decode::<QaRequest>() {
-            Ok(QaRequest::Hello(_)) => QaResponse::HelloOk(HelloFacts::new(
+        let response = match frame.decode::<McpRequest>() {
+            Ok(McpRequest::Hello(_)) => McpResponse::HelloOk(HelloFacts::new(
                 ProtocolVersion::new(1),
                 ServerNameNet::new("fake-mcp".to_owned()),
             )),
-            Ok(_) => QaResponse::Error(QaError::Malformed),
+            Ok(_) => McpResponse::Error(McpSessionError::Malformed),
             Err(_) => return,
         };
         if let Ok(out) = encode(&response) {
@@ -190,8 +192,8 @@ pub(crate) fn recipe_with_features(features: &[&str]) -> LaunchSpec {
 pub(crate) const SAMPLE_PACKAGE: &str = "sample_package";
 
 /// Channel env var names for a host these tests register.
-pub(crate) fn sample_channel() -> QaChannel {
-    QaChannel::new(
+pub(crate) fn sample_channel() -> McpChannel {
+    McpChannel::new(
         EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
         EnvVarName::new("SAMPLE_CHANNEL_PORT".to_owned()),
     )
@@ -205,7 +207,7 @@ pub(crate) fn sample_spec() -> LaunchSpec {
 pub(crate) struct WatchFreePort;
 
 impl OrphanWatch for WatchFreePort {
-    fn inspect(&self, _port: QaPort, _timeout: ProbeTimeout) -> PortHold {
+    fn inspect(&self, _port: McpPort, _timeout: ProbeTimeout) -> PortHold {
         PortHold::Free
     }
 

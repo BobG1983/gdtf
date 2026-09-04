@@ -11,7 +11,7 @@ use std::{
 
 use cobalt_mcp_protocol::{
     framing::encode,
-    message::{HelloFacts, QaError, QaResponse},
+    message::{HelloFacts, McpResponse, McpSessionError},
     timeouts::NetTimeouts,
 };
 
@@ -46,7 +46,7 @@ pub fn run_listener(
 }
 
 fn reject_busy(mut stream: TcpStream) {
-    if let Ok(frame) = encode(&QaResponse::Error(QaError::Busy)) {
+    if let Ok(frame) = encode(&McpResponse::Error(McpSessionError::Busy)) {
         drop(stream.write_all(&frame));
     }
 }

@@ -2,22 +2,22 @@
 
 use cobalt_mcp_server::{
     CargoPackage, EnvVarName, FeatureList, FeatureName, HostLifecycle, HostName, HostPair,
-    HostRegistry, HostSet, LaunchPolicy, LifecycleConfig, QaChannel, QaHostSpec, QaLink, QaPort,
-    ServerIdentity, ServerName, ServerVersion,
+    HostRegistry, HostSet, LaunchPolicy, LifecycleConfig, McpChannel, McpHostSpec, McpLink,
+    McpPort, ServerIdentity, ServerName, ServerVersion,
 };
 
 use crate::support::{BRAMBLE_PORT, THISTLE_PORT};
 
 // A host registered under `name`, on `port`, with the policy its instance rules follow.
-fn registered(name: &str, port: u16, policy: LaunchPolicy) -> QaHostSpec {
+fn registered(name: &str, port: u16, policy: LaunchPolicy) -> McpHostSpec {
     let upper = name.to_uppercase();
-    QaHostSpec::new(
+    McpHostSpec::new(
         HostName::new(name.to_owned()),
         CargoPackage::new(format!("{name}_package")),
         FeatureList::new(vec![FeatureName::new(format!("{name}_feature"))]),
-        QaPort::new(port),
+        McpPort::new(port),
         None,
-        QaChannel::new(
+        McpChannel::new(
             EnvVarName::new(format!("{upper}_CHANNEL")),
             EnvVarName::new(format!("{upper}_CHANNEL_PORT")),
         ),
@@ -43,9 +43,9 @@ pub(crate) fn test_identity() -> ServerIdentity {
 
 /// A host set holding the two registered hosts' links and lifecycles.
 pub(crate) fn two_host_set<'a>(
-    thistle_link: &'a mut dyn QaLink,
+    thistle_link: &'a mut dyn McpLink,
     thistle_life: &'a mut dyn HostLifecycle,
-    bramble_link: &'a mut dyn QaLink,
+    bramble_link: &'a mut dyn McpLink,
     bramble_life: &'a mut dyn HostLifecycle,
 ) -> HostSet<'a> {
     HostSet::new(

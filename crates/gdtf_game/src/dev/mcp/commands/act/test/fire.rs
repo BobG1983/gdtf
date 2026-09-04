@@ -2,12 +2,12 @@ use std::sync::mpsc::Receiver;
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
+    command::McpCommand,
     dispatch::{CommandCall, DeferredReplies},
 };
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, UnavailableCode},
-    message::QaResponse,
+    message::McpResponse,
 };
 use cobalt_mcp_transport::{PendingQueue, Responder};
 use gdtf_battle_input::{PendingActIntent, SelectedShooter};
@@ -60,7 +60,7 @@ fn fire_app(loaded: Loaded) -> App {
 }
 
 /// Queue one `act.fire` call and run the frame that claims and settles it.
-fn fire_once(app: &mut App) -> Receiver<QaResponse> {
+fn fire_once(app: &mut App) -> Receiver<McpResponse> {
     let Ok(args) = ron::de::from_str::<ActFireArgs>(AT) else {
         unreachable!("`act.fire`'s own argument shape must decode {AT}");
     };
@@ -73,8 +73,8 @@ fn fire_once(app: &mut App) -> Receiver<QaResponse> {
 }
 
 /// The code and note of an `Unavailable` outcome, or nothing when the reply is a different shape.
-fn refusal(reply: Option<&QaResponse>) -> Option<(UnavailableCode, String)> {
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply? else {
+fn refusal(reply: Option<&McpResponse>) -> Option<(UnavailableCode, String)> {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply? else {
         return None;
     };
     Some((*code, note.as_str().to_owned()))
@@ -105,7 +105,7 @@ fn a_shooter_with_no_weapon_answers_the_no_firing_weapon_reason() {
     let reply_rx = fire_once(&mut app);
 
     let reply = reply_rx.try_recv().ok();
-    let Some(QaResponse::Outcome(CommandOutcome::Ran { reply: body, .. })) = &reply else {
+    let Some(McpResponse::Outcome(CommandOutcome::Ran { reply: body, .. })) = &reply else {
         unreachable!("a loaded host answers the shot rather than refusing it, got {reply:?}");
     };
     let Ok(decoded) = ron::de::from_str::<ActReply>(body.as_str()) else {

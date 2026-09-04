@@ -2,7 +2,7 @@
 
 use cobalt_mcp_protocol::{
     command::RunOptions,
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 use gdtf_game::qa_wire::{
     inspect::InspectShownNet, roster::GangerCardNet, token::GangerToken, visible::VisibleGangerNet,
@@ -38,7 +38,7 @@ struct InspectBody {
 
 fn decode<T: serde::de::DeserializeOwned>(
     name: &'static str,
-    reply: Option<QaResponse>,
+    reply: Option<McpResponse>,
 ) -> Result<T, TestError> {
     let Some(reply) = reply else {
         return Err(format!("`{name}` produced no reply").into());
@@ -48,14 +48,14 @@ fn decode<T: serde::de::DeserializeOwned>(
         .map_err(|fault| format!("`{name}`'s body must decode: {fault} — {body}").into())
 }
 
-fn both_reads() -> Vec<QaRequest> {
+fn both_reads() -> Vec<McpRequest> {
     vec![
         run(BATTLE_VISIBLE, "()", RunOptions::default()),
         run(BATTLE_ROSTER, "()", RunOptions::default()),
     ]
 }
 
-fn split(replies: Vec<QaResponse>) -> Result<(VisibleBody, RosterBody), TestError> {
+fn split(replies: Vec<McpResponse>) -> Result<(VisibleBody, RosterBody), TestError> {
     let mut replies = replies.into_iter();
     let visible = decode::<VisibleBody>(BATTLE_VISIBLE, replies.next())?;
     let roster = decode::<RosterBody>(BATTLE_ROSTER, replies.next())?;

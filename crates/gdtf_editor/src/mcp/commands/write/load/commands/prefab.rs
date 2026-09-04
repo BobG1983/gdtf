@@ -2,8 +2,8 @@
 
 use bevy::{asset::uuid::Uuid, prelude::*};
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -75,7 +75,7 @@ pub(in crate::mcp) struct EditorLoadPrefabReply {
 
 pub(in crate::mcp) struct EditorLoadPrefab;
 
-impl QaCommand for EditorLoadPrefab {
+impl McpCommand for EditorLoadPrefab {
     type Args = EditorLoadPrefabArgs;
     type Facts = EditorFacts;
     type Parked = ();
@@ -100,7 +100,7 @@ impl QaCommand for EditorLoadPrefab {
         app.add_systems(
             Update,
             handle_editor_load_prefab
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .in_set(EditorMcpSystems::Gather),
         );
     }

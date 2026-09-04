@@ -3,24 +3,24 @@
 use bevy::prelude::*;
 use cobalt_mcp_protocol::{
     command::{ArgSchemaRon, ArgumentFault, CommandOutcome, shape_text},
-    message::QaResponse,
+    message::McpResponse,
 };
 use cobalt_mcp_transport::PendingQueue;
 
 use super::{CommandCall, CommandInbox};
-use crate::command::QaCommand;
+use crate::command::McpCommand;
 
 /// Build a bad-arguments outcome that includes the expected shape.
 #[must_use]
-pub fn bad_arguments<C: QaCommand>(fault: &ron::error::SpannedError) -> QaResponse {
-    QaResponse::Outcome(CommandOutcome::BadArguments {
+pub fn bad_arguments<C: McpCommand>(fault: &ron::error::SpannedError) -> McpResponse {
+    McpResponse::Outcome(CommandOutcome::BadArguments {
         detail: ArgumentFault::new(fault.to_string()),
         schema: ArgSchemaRon::new(shape_text::<C::Args>()),
     })
 }
 
 /// Claim inbox rows for `C`, deserialize args, or reply with a shape error.
-pub fn claim_calls<C: QaCommand>(
+pub fn claim_calls<C: McpCommand>(
     mut inbox: ResMut<CommandInbox>,
     mut queue: ResMut<PendingQueue<CommandCall<C>>>,
 ) {

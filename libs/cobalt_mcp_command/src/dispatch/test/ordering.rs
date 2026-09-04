@@ -4,7 +4,7 @@ use bevy::{
 };
 
 use crate::{
-    dispatch::{QaCommandSystems, register_command},
+    dispatch::{McpCommandSystems, register_command},
     test_support::FakePhase,
 };
 
@@ -14,8 +14,8 @@ fn route_runs_before_claim(app: &App) -> bool {
     };
     let sets = &schedule.graph().system_sets;
     let (Some(route), Some(claim)) = (
-        sets.get_key(QaCommandSystems::Route.intern()),
-        sets.get_key(QaCommandSystems::Claim.intern()),
+        sets.get_key(McpCommandSystems::Route.intern()),
+        sets.get_key(McpCommandSystems::Claim.intern()),
     ) else {
         return false;
     };

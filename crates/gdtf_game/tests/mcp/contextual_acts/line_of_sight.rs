@@ -8,7 +8,7 @@ use bevy::{
 };
 use cobalt_mcp_protocol::{
     command::RunOptions,
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
     ports::McpPort,
 };
 use gdtf_battle_sim::{
@@ -236,8 +236,8 @@ fn a_melee_call_naming_the_offered_structure_cell_is_accepted_and_struck() -> Te
     watch_struck_cells(&mut app);
 
     let mut client = Client::connect(port)?;
-    let hello = client.exchange(&mut app, &QaRequest::Hello(MCP_PROTOCOL_VERSION))?;
-    if !matches!(hello, QaResponse::HelloOk(_)) {
+    let hello = client.exchange(&mut app, &McpRequest::Hello(MCP_PROTOCOL_VERSION))?;
+    if !matches!(hello, McpResponse::HelloOk(_)) {
         return Err(format!("the handshake must succeed first, got {hello:?}").into());
     }
     assert_caught_up(client.exchange(&mut app, &caught_up())?)?;

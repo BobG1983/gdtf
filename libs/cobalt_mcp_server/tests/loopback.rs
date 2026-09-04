@@ -10,31 +10,33 @@ use std::{
 use cobalt_mcp_protocol::{
     command::CommandCatalogue,
     framing::{FrameDecoder, encode},
-    message::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
+    message::{
+        HelloFacts, McpRequest, McpResponse, McpSessionError, ProtocolVersion, ServerNameNet,
+    },
 };
 use cobalt_mcp_server::{
     CargoPackage, EnvVarName, FeatureList, HostLifecycle, HostName, HostPair, HostRegistry,
-    HostSet, InstanceId, LaunchOutcome, LaunchPolicy, LaunchSpec, LifecycleConfig, McpError,
-    OutputTail, QaChannel, QaClient, QaHostSpec, QaLink, QaPort, RecordedInstance, ServerIdentity,
-    ServerName, ServerVersion, StopOutcome, TailLines, WorkingDir, dispatch,
+    HostSet, InstanceId, LaunchOutcome, LaunchPolicy, LaunchSpec, LifecycleConfig, McpChannel,
+    McpClient, McpError, McpHostSpec, McpLink, McpPort, OutputTail, RecordedInstance,
+    ServerIdentity, ServerName, ServerVersion, StopOutcome, TailLines, WorkingDir, dispatch,
 };
 use serde_json::Value;
 
 // The channel env var the client names when it cannot connect.
-fn sample_channel() -> QaChannel {
-    QaChannel::new(
+fn sample_channel() -> McpChannel {
+    McpChannel::new(
         EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
         EnvVarName::new("SAMPLE_CHANNEL_PORT".to_owned()),
     )
 }
 
 // One host registered under `name`, listening on `port`.
-fn registered(name: &str, port: u16) -> QaHostSpec {
-    QaHostSpec::new(
+fn registered(name: &str, port: u16) -> McpHostSpec {
+    McpHostSpec::new(
         HostName::new(name.to_owned()),
         CargoPackage::new(format!("{name}_package")),
         FeatureList::default(),
-        QaPort::new(port),
+        McpPort::new(port),
         None,
         sample_channel(),
         LifecycleConfig::defaults_with_policy(LaunchPolicy::Reuse),
@@ -51,11 +53,11 @@ fn identity() -> ServerIdentity {
 struct NoLifecycle;
 
 impl HostLifecycle for NoLifecycle {
-    fn launch(&mut self, _port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
+    fn launch(&mut self, _port: McpPort, _spec: &LaunchSpec) -> LaunchOutcome {
         unreachable!("the loopback test never launches");
     }
 
-    fn stop(&mut self, _port: QaPort) -> StopOutcome {
+    fn stop(&mut self, _port: McpPort) -> StopOutcome {
         StopOutcome::NotRunning
     }
 
@@ -92,17 +94,17 @@ impl HostLifecycle for NoLifecycle {
 
 struct DeadLink;
 
-impl QaLink for DeadLink {
-    fn request(&mut self, _request: QaRequest) -> Result<QaResponse, McpError> {
+impl McpLink for DeadLink {
+    fn request(&mut self, _request: McpRequest) -> Result<McpResponse, McpError> {
         Err(McpError::Disconnected)
     }
 }
 
-fn spawn_fake_game() -> (u16, Receiver<QaRequest>) {
+fn spawn_fake_game() -> (u16, Receiver<McpRequest>) {
     spawn_fake_game_with(answer)
 }
 
-fn spawn_fake_game_with(answerer: fn(&QaRequest) -> QaResponse) -> (u16, Receiver<QaRequest>) {
+fn spawn_fake_game_with(answerer: fn(&McpRequest) -> McpResponse) -> (u16, Receiver<McpRequest>) {
     let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, 0)) {
         Ok(listener) => listener,
         Err(err) => unreachable!("the test can bind a loopback listener: {err}"),
@@ -118,8 +120,8 @@ fn spawn_fake_game_with(answerer: fn(&QaRequest) -> QaResponse) -> (u16, Receive
 
 fn serve_one(
     listener: &TcpListener,
-    seen: &Sender<QaRequest>,
-    answerer: fn(&QaRequest) -> QaResponse,
+    seen: &Sender<McpRequest>,
+    answerer: fn(&McpRequest) -> McpResponse,
 ) {
     let Ok((mut stream, _)) = listener.accept() else {
         return;
@@ -138,7 +140,7 @@ fn serve_one(
                 Ok(None) => break,
                 Err(_) => return,
             };
-            let Ok(request) = frame.decode::<QaRequest>() else {
+            let Ok(request) = frame.decode::<McpRequest>() else {
                 return;
             };
             drop(seen.send(request.clone()));
@@ -152,27 +154,27 @@ fn serve_one(
     }
 }
 
-fn answer(request: &QaRequest) -> QaResponse {
+fn answer(request: &McpRequest) -> McpResponse {
     match request {
-        QaRequest::Hello(version) if *version == ProtocolVersion::CURRENT => {
-            QaResponse::HelloOk(HelloFacts::new(
+        McpRequest::Hello(version) if *version == ProtocolVersion::CURRENT => {
+            McpResponse::HelloOk(HelloFacts::new(
                 ProtocolVersion::CURRENT,
                 ServerNameNet::new("fake-game".to_owned()),
             ))
         }
-        QaRequest::Hello(_) => QaResponse::Error(QaError::VersionMismatch),
-        QaRequest::Catalogue => QaResponse::Catalogue(CommandCatalogue::new(
+        McpRequest::Hello(_) => McpResponse::Error(McpSessionError::VersionMismatch),
+        McpRequest::Catalogue => McpResponse::Catalogue(CommandCatalogue::new(
             ServerNameNet::new("fake-game".to_owned()),
             Vec::new(),
         )),
-        QaRequest::Run(_) => QaResponse::Error(QaError::Malformed),
+        McpRequest::Run(_) => McpResponse::Error(McpSessionError::Malformed),
     }
 }
 
 #[test]
 fn a_catalogue_round_trips_through_the_real_client() {
     let (port, seen) = spawn_fake_game();
-    let mut client = QaClient::new(QaPort::new(port), sample_channel().enable().clone());
+    let mut client = McpClient::new(McpPort::new(port), sample_channel().enable().clone());
     let mut unused_second = DeadLink;
     let (mut first_life, mut second_life) = (NoLifecycle, NoLifecycle);
     let mut hosts = HostSet::new(
@@ -202,34 +204,37 @@ fn a_catalogue_round_trips_through_the_real_client() {
 
     let first = seen.recv().ok();
     assert!(
-        matches!(first, Some(QaRequest::Hello(version)) if version == ProtocolVersion::CURRENT),
+        matches!(first, Some(McpRequest::Hello(version)) if version == ProtocolVersion::CURRENT),
         "the client's FIRST frame on a fresh connection must be the handshake, got {first:?}"
     );
     let second = seen.recv().ok();
     assert!(
-        matches!(second, Some(QaRequest::Catalogue)),
+        matches!(second, Some(McpRequest::Catalogue)),
         "the tool's request must follow the handshake, got {second:?}"
     );
 }
 
-const fn refuse_everything(_request: &QaRequest) -> QaResponse {
-    QaResponse::Error(QaError::VersionMismatch)
+const fn refuse_everything(_request: &McpRequest) -> McpResponse {
+    McpResponse::Error(McpSessionError::VersionMismatch)
 }
 
 #[test]
 fn a_refused_handshake_fails_the_request_and_sends_nothing_else() {
     let (port, seen) = spawn_fake_game_with(refuse_everything);
-    let mut client = QaClient::new(QaPort::new(port), sample_channel().enable().clone());
+    let mut client = McpClient::new(McpPort::new(port), sample_channel().enable().clone());
 
-    let result = client.request(QaRequest::Catalogue);
+    let result = client.request(McpRequest::Catalogue);
     assert!(
-        matches!(result, Err(McpError::Handshake(QaError::VersionMismatch))),
+        matches!(
+            result,
+            Err(McpError::Handshake(McpSessionError::VersionMismatch))
+        ),
         "a version-mismatched child must surface as a handshake error, got {result:?}"
     );
 
     let first = seen.recv().ok();
     assert!(
-        matches!(first, Some(QaRequest::Hello(_))),
+        matches!(first, Some(McpRequest::Hello(_))),
         "the handshake is what the server saw, got {first:?}"
     );
     assert!(

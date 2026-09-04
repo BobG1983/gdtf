@@ -3,8 +3,8 @@ use bevy::{
     prelude::*,
 };
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
@@ -54,7 +54,7 @@ pub(crate) struct BattleSightlineReply {
 
 pub(crate) struct BattleSightline;
 
-impl QaCommand for BattleSightline {
+impl McpCommand for BattleSightline {
     type Args = BattleSightlineArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -80,7 +80,7 @@ impl QaCommand for BattleSightline {
         app.add_systems(
             Update,
             handle_battle_sightline
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .after(PresenterSystems::Compose)
                 .after(promote_shown_occupancy)
                 .after(promote_shown_cover),

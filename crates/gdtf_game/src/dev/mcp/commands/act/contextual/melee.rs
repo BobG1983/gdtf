@@ -1,5 +1,5 @@
 use bevy::prelude::App;
-use cobalt_mcp_command::command::QaCommand;
+use cobalt_mcp_command::command::McpCommand;
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
 };
@@ -33,7 +33,7 @@ const fn as_offered(target: MeleeTargetNet) -> OfferTargetNet {
 
 pub(crate) struct ActMelee;
 
-impl QaCommand for ActMelee {
+impl McpCommand for ActMelee {
     type Args = ActMeleeArgs;
     type Facts = GameFacts;
     type Parked = ContextualTicket;

@@ -7,9 +7,9 @@ use bevy::prelude::*;
 /// Root every editor save writes its family folder under, over the wire or from a button.
 /// `MapEditorPlugin` seeds it, so it is there whether or not the QA listener bound.
 #[derive(Resource, Clone, Debug, Deref)]
-pub struct EditorQaAssetsRoot(PathBuf);
+pub struct EditorMcpAssetsRoot(PathBuf);
 
-impl EditorQaAssetsRoot {
+impl EditorMcpAssetsRoot {
     /// Point QA-driven saves at this root.
     #[must_use]
     pub const fn new(root: PathBuf) -> Self {
@@ -17,7 +17,7 @@ impl EditorQaAssetsRoot {
     }
 }
 
-impl Default for EditorQaAssetsRoot {
+impl Default for EditorMcpAssetsRoot {
     fn default() -> Self {
         Self(workspace_target())
     }

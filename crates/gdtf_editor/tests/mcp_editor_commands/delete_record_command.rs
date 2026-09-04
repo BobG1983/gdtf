@@ -9,7 +9,7 @@ use gdtf_battle_sim::{
     terrain::def::TerrainDefRegistry,
 };
 use gdtf_content_families::injuries::weighting_member_key;
-use gdtf_editor::{EditorQaAssetsRoot, weighting_save_path_in};
+use gdtf_editor::{EditorMcpAssetsRoot, weighting_save_path_in};
 
 use crate::{
     bad_arguments::bad_arguments_detail,
@@ -74,7 +74,7 @@ fn injury_tables(app: &App) -> Result<&InjuryTables, TestError> {
 
 // Point every QA-driven write and delete at the temp root the app booted on.
 fn aim_saves_at(app: &mut App, root: &Path) {
-    app.insert_resource(EditorQaAssetsRoot::new(root.to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(root.to_path_buf()));
 }
 
 #[test]

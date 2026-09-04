@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -45,7 +45,7 @@ pub(in crate::mcp) struct EditorSelectInjuryTabReply {
 
 pub(in crate::mcp) struct EditorSelectInjuryTab;
 
-impl QaCommand for EditorSelectInjuryTab {
+impl McpCommand for EditorSelectInjuryTab {
     type Args = EditorSelectInjuryTabArgs;
     type Facts = EditorFacts;
     type Parked = ();
@@ -67,7 +67,7 @@ impl QaCommand for EditorSelectInjuryTab {
         app.add_systems(
             Update,
             handle_editor_select_injury_tab
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .in_set(EditorMcpSystems::Gather),
         );
     }

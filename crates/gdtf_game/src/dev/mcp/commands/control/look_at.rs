@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, DeferredReplies, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, DeferredReplies, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, UnavailableCode,
@@ -32,7 +32,7 @@ pub(crate) struct ViewLookAtReply {
 
 pub(crate) struct ViewLookAt;
 
-impl QaCommand for ViewLookAt {
+impl McpCommand for ViewLookAt {
     type Args = ViewLookAtArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -57,7 +57,7 @@ impl QaCommand for ViewLookAt {
             Update,
             (
                 claim_view_look_at
-                    .after(QaCommandSystems::Claim)
+                    .after(McpCommandSystems::Claim)
                     .before(clamp_camera_to_bounds),
                 settle_view_look_at.after(clamp_camera_to_bounds),
             ),

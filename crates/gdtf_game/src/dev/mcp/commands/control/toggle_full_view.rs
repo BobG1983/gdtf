@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, UnavailableCode,
@@ -31,7 +31,7 @@ pub(crate) struct ViewToggleFullViewReply {
 
 pub(crate) struct ViewToggleFullView;
 
-impl QaCommand for ViewToggleFullView {
+impl McpCommand for ViewToggleFullView {
     type Args = ViewToggleFullViewArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -55,7 +55,7 @@ impl QaCommand for ViewToggleFullView {
             Update,
             handle_view_toggle_full_view
                 .in_set(InputSystems::Gather)
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .before(dispatch_act_intents),
         );
     }

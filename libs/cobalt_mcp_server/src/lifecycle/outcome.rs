@@ -1,12 +1,11 @@
 //! Results of launch and stop operations.
 
-use crate::{
-    lifecycle::{
-        launch::LaunchSpec,
-        orphan::OrphanPid,
-        values::{BootTimeout, ChildPid, FailureTail, InstanceId, SpawnError},
-    },
-    link::QaPort,
+use cobalt_mcp_protocol::ports::McpPort;
+
+use crate::lifecycle::{
+    launch::LaunchSpec,
+    orphan::OrphanPid,
+    values::{BootTimeout, ChildPid, FailureTail, InstanceId, SpawnError},
 };
 
 /// Result of trying to launch a host.
@@ -15,7 +14,7 @@ pub enum LaunchOutcome {
     /// Child started and became ready.
     Launched {
         /// Port it is listening on.
-        port:     QaPort,
+        port:     McpPort,
         /// Process id.
         pid:      ChildPid,
         /// Id this host records the new child under.
@@ -24,7 +23,7 @@ pub enum LaunchOutcome {
     /// Already running with a matching recipe.
     AlreadyRunning {
         /// Port in use.
-        port:   QaPort,
+        port:   McpPort,
         /// Process id.
         pid:    ChildPid,
         /// Recipe that was already launched.
@@ -53,14 +52,14 @@ pub enum LaunchFailure {
     /// Port is held by a process we did not launch.
     PortHeldByOrphan {
         /// Port in use.
-        port: QaPort,
+        port: McpPort,
         /// Best-effort pid of the holder.
         pid:  OrphanPid,
     },
     /// This host's own records hold the port, and the search above it found none free.
     NoFreePort {
         /// Port the launch asked for.
-        requested: QaPort,
+        requested: McpPort,
     },
 }
 
@@ -75,14 +74,14 @@ pub enum StopOutcome {
     /// An orphan on the port was stopped.
     OrphanStopped {
         /// Port that was freed.
-        port: QaPort,
+        port: McpPort,
         /// Orphan pid.
         pid:  OrphanPid,
     },
     /// An orphan is still holding the port.
     OrphanHeld {
         /// Port still held.
-        port: QaPort,
+        port: McpPort,
         /// Orphan pid.
         pid:  OrphanPid,
     },

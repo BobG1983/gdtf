@@ -7,7 +7,7 @@ use bevy::{
         schedule::{Schedules, SystemSet},
     },
 };
-use cobalt_mcp_command::dispatch::QaCommandSystems;
+use cobalt_mcp_command::dispatch::McpCommandSystems;
 use cobalt_mcp_protocol::command::CommandName;
 use gdtf_battle_input::InputSystems;
 use gdtf_game::test_support::{assert_game_command_set_is_conformant, game_command_names};
@@ -122,10 +122,10 @@ fn exactly_one_system_drains_the_net_inbox() -> TestResult {
     let Some(update) = schedules.get(Update) else {
         unreachable!("the app carries an Update schedule");
     };
-    let route: Interned<dyn SystemSet> = QaCommandSystems::Route.intern();
+    let route: Interned<dyn SystemSet> = McpCommandSystems::Route.intern();
     let Ok(in_route) = update.graph().systems_in_set(route) else {
         unreachable!(
-            "the real plugin puts the router in QaCommandSystems::Route, so the set exists"
+            "the real plugin puts the router in McpCommandSystems::Route, so the set exists"
         );
     };
     assert_eq!(
@@ -152,7 +152,7 @@ fn the_command_sets_run_inside_the_input_gather_band() -> TestResult {
     let Ok(in_gather) = graph.systems_in_set(gather) else {
         unreachable!("the game registers InputSystems::Gather, so the set exists");
     };
-    for set in [QaCommandSystems::Route, QaCommandSystems::Claim] {
+    for set in [McpCommandSystems::Route, McpCommandSystems::Claim] {
         let Ok(members) = graph.systems_in_set(set.intern()) else {
             unreachable!("the real plugin registers {set:?}, so the set exists");
         };

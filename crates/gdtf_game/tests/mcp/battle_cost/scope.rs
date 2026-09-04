@@ -1,7 +1,7 @@
 //! Who `battle.cost` will price an act for, and who it turns down unpriced.
 
 use bevy::{app::App, ecs::entity::Entity};
-use cobalt_mcp_protocol::message::QaRequest;
+use cobalt_mcp_protocol::message::McpRequest;
 use gdtf_game::qa_wire::{
     act_payload::StanceNet,
     cost::{CostActNet, CostRefusalNet},
@@ -20,7 +20,7 @@ const NOT_A_GANGER: GangerToken = GangerToken::new(u64::MAX);
 ///
 /// `SetStance` is priced from tuning and the actor's own row alone, so it is the one act that
 /// would come back with a number if the scope check were gone.
-fn out_of_scope_calls(enemy: Entity) -> Vec<QaRequest> {
+fn out_of_scope_calls(enemy: Entity) -> Vec<McpRequest> {
     let mut calls = cost_calls(
         enemy,
         &[

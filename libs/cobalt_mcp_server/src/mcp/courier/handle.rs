@@ -1,6 +1,6 @@
 //! Route `tools/call` to the right handler.
 
-use cobalt_mcp_protocol::message::{QaRequest, QaResponse};
+use cobalt_mcp_protocol::message::{McpRequest, McpResponse};
 use serde_json::{Value, json};
 
 use super::{
@@ -8,7 +8,7 @@ use super::{
     run::{parse_run, render_outcome},
 };
 use crate::{
-    hosts::{HostName, HostPair, HostSet, QaHostSpec},
+    hosts::{HostName, HostPair, HostSet, McpHostSpec},
     lifecycle::{HostLifecycle, InstanceId, RecordedInstance},
     mcp::{content::tool_error, control, tools::ToolName},
 };
@@ -49,7 +49,7 @@ pub enum InstanceChoice {
 /// Resolve a call's `instance` argument against what its host records.
 #[must_use]
 pub fn resolve_instance(
-    host: &QaHostSpec,
+    host: &McpHostSpec,
     args: &Value,
     lifecycle: &dyn HostLifecycle,
 ) -> InstanceChoice {
@@ -74,7 +74,7 @@ pub fn resolve_instance(
     }
 }
 
-fn instance_refusal(host: &QaHostSpec, recorded: &[RecordedInstance]) -> ToolCallOutcome {
+fn instance_refusal(host: &McpHostSpec, recorded: &[RecordedInstance]) -> ToolCallOutcome {
     let named: Vec<&str> = recorded
         .iter()
         .map(|instance| instance.id().as_str())
@@ -142,7 +142,7 @@ pub fn handle_tool_call(params: Option<&Value>, hosts: &mut HostSet<'_>) -> Tool
 
 // Point a forwarded call at the instance it named; a multi-instance host naming none is refused.
 fn aim_at_instance(
-    host: &QaHostSpec,
+    host: &McpHostSpec,
     args: &Value,
     pair: &mut HostPair<'_>,
 ) -> Result<Option<InstanceId>, ToolCallOutcome> {
@@ -172,8 +172,8 @@ fn handle_commands(args: &Value, pair: &mut HostPair<'_>) -> ToolCallOutcome {
         Ok(filter) => filter,
         Err(message) => return ToolCallOutcome::Invalid(message),
     };
-    match pair.link().request(QaRequest::Catalogue) {
-        Ok(QaResponse::Catalogue(catalogue)) => {
+    match pair.link().request(McpRequest::Catalogue) {
+        Ok(McpResponse::Catalogue(catalogue)) => {
             ToolCallOutcome::Result(render_catalogue(&catalogue, detail, filter.as_ref()))
         }
         Ok(other) => ToolCallOutcome::Result(tool_error(&format!(
@@ -196,8 +196,8 @@ fn handle_run(
         Some(named) => pair.lifecycle().instance_working_dir(named),
         None => pair.lifecycle().child_working_dir(),
     };
-    match pair.link().request(QaRequest::Run(run)) {
-        Ok(QaResponse::Outcome(outcome)) => {
+    match pair.link().request(McpRequest::Run(run)) {
+        Ok(McpResponse::Outcome(outcome)) => {
             ToolCallOutcome::Result(render_outcome(&outcome, child_dir.as_ref()))
         }
         Ok(other) => ToolCallOutcome::Result(tool_error(&format!(

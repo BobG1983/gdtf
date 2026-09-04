@@ -10,7 +10,7 @@ use gdtf_assets::{
 };
 use gdtf_battle_sim::armor::{ArmorName, ArmorRegistry};
 use gdtf_editor::{
-    ArmorDraft, DeleteOutcome, DeleteRefusal, DeleteRequest, EditorQaAssetsRoot,
+    ArmorDraft, DeleteOutcome, DeleteRefusal, DeleteRequest, EditorMcpAssetsRoot,
     armor_save_path_in, draft_to_spec, write_armor_in,
 };
 
@@ -88,7 +88,7 @@ fn deleting_armor_writes_every_wearer_back_with_none_and_removes_the_record() {
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     app.insert_resource(request_armor_delete());
@@ -155,7 +155,7 @@ fn the_in_use_check_names_the_gang_member_the_report_could_not_have_named_before
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     app.register_reference_check(record_extra_armor_ref);
     advance_to_published(&mut app);
 
@@ -213,7 +213,7 @@ fn a_gang_rewrite_that_cannot_be_written_leaves_the_armor_and_its_file_in_place(
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     let gang_file = fixture_gang_path(dir.path());

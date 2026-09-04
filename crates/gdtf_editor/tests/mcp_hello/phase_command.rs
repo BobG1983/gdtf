@@ -1,6 +1,6 @@
 use cobalt_mcp_protocol::{
     command::{CommandName, CommandOutcome},
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 use gdtf_editor::EditorState;
 
@@ -17,7 +17,7 @@ use crate::{
 fn the_catalogue_names_every_command_the_editor_publishes() -> TestResult {
     let (mut app, mut client) = editing_app_and_client()?;
     let live = AnsweringPhase::of(editor_state(&app));
-    let reply = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    let reply = client.exchange(&mut app, &McpRequest::Catalogue)?;
     assert_editor_catalogue(&reply, live);
     assert_eq!(
         live,
@@ -63,10 +63,10 @@ fn a_run_during_load_reports_no_open_tab_and_still_every_tab() -> TestResult {
 #[test]
 fn an_unknown_argument_is_bad_arguments_carrying_the_published_schema() -> TestResult {
     let (mut app, mut client) = editing_app_and_client()?;
-    let catalogue = client.exchange(&mut app, &QaRequest::Catalogue)?;
+    let catalogue = client.exchange(&mut app, &McpRequest::Catalogue)?;
     let outcome = client.exchange(&mut app, &run_editor_phase("(nope:1)"))?;
 
-    let QaResponse::Catalogue(catalogue) = catalogue else {
+    let McpResponse::Catalogue(catalogue) = catalogue else {
         unreachable!("a Catalogue request is answered with a catalogue, got {catalogue:?}");
     };
     let Some(entry) = catalogue
@@ -76,7 +76,7 @@ fn an_unknown_argument_is_bad_arguments_carrying_the_published_schema() -> TestR
     else {
         unreachable!("the catalogue carries a row for {EDITOR_PHASE}: {catalogue:?}");
     };
-    let QaResponse::Outcome(CommandOutcome::BadArguments { schema, .. }) = &outcome else {
+    let McpResponse::Outcome(CommandOutcome::BadArguments { schema, .. }) = &outcome else {
         unreachable!("a field the argument type does not declare is refused, got {outcome:?}");
     };
     assert_eq!(

@@ -1,5 +1,5 @@
 use bevy::app::App;
-use cobalt_mcp_protocol::message::QaResponse;
+use cobalt_mcp_protocol::message::McpResponse;
 use gdtf_battle_sim::{
     armor::InjuryCategory,
     injuries::{DamageContext, InjuryRegistry, InjuryTables, InjuryWeighting, WeightedInjuryEntry},
@@ -193,6 +193,6 @@ pub(crate) fn try_run(
     client: &mut Client,
     command: &'static str,
     arguments: &str,
-) -> Result<QaResponse, TestError> {
+) -> Result<McpResponse, TestError> {
     client.exchange(app, &run_editor(command, arguments))
 }

@@ -8,7 +8,7 @@ use gdtf_assets::{
 };
 use gdtf_battle_sim::weapon::WeaponRegistry;
 use gdtf_editor::{
-    DeleteOutcome, DeleteRefusal, DeleteRequest, EditorQaAssetsRoot, weapon_save_path_in,
+    DeleteOutcome, DeleteRefusal, DeleteRequest, EditorMcpAssetsRoot, weapon_save_path_in,
 };
 
 use crate::{
@@ -54,7 +54,7 @@ fn the_in_use_check_answers_with_every_referring_record_the_report_holds() {
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     app.register_reference_check(record_extra_weapon_ref);
     advance_to_published(&mut app);
 
@@ -99,7 +99,7 @@ fn a_weapon_an_emplacement_still_mounts_is_not_deleted_without_a_replacement() {
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     app.insert_resource(DeleteRequest::new(

@@ -8,7 +8,7 @@ use std::{
 
 use cobalt_mcp_protocol::{
     framing::{FrameDecoder, encode},
-    message::{HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet},
+    message::{HelloFacts, McpRequest, McpResponse, ProtocolVersion, ServerNameNet},
     ports::McpPort,
     timeouts::NetTimeouts,
 };
@@ -42,23 +42,23 @@ pub(crate) fn host_reply_facts() -> HelloFacts {
 pub(crate) fn spawn_fake_host_side(inbox: Receiver<IncomingRequest>) {
     thread::spawn(move || {
         while let Ok(incoming) = inbox.recv() {
-            incoming.respond(QaResponse::HelloOk(host_reply_facts()));
+            incoming.respond(McpResponse::HelloOk(host_reply_facts()));
         }
     });
 }
 
-pub(crate) fn write_request(stream: &mut TcpStream, request: &QaRequest) -> TestResult {
+pub(crate) fn write_request(stream: &mut TcpStream, request: &McpRequest) -> TestResult {
     let frame = encode(request)?;
     stream.write_all(&frame)?;
     Ok(())
 }
 
-pub(crate) fn read_response(stream: &mut TcpStream) -> Result<QaResponse, Box<dyn Error>> {
+pub(crate) fn read_response(stream: &mut TcpStream) -> Result<McpResponse, Box<dyn Error>> {
     let mut decoder = FrameDecoder::new();
     let mut buf = [0u8; 512];
     loop {
         if let Some(frame) = decoder.next_frame()? {
-            return Ok(frame.decode::<QaResponse>()?);
+            return Ok(frame.decode::<McpResponse>()?);
         }
         let read = stream.read(&mut buf)?;
         assert!(read > 0, "server closed before a full response arrived");

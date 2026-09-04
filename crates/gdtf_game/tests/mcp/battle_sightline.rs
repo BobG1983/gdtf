@@ -1,4 +1,4 @@
-use cobalt_mcp_protocol::{command::RunOptions, message::QaResponse};
+use cobalt_mcp_protocol::{command::RunOptions, message::McpResponse};
 use gdtf_battle_sim::{ganger::Tu, weapon::ModeKind};
 use gdtf_game::qa_wire::{
     cell::CellLevelNet,
@@ -29,7 +29,7 @@ pub(crate) struct SightlineBody {
 }
 
 /// The body of one reply, or a failure naming what came back instead.
-pub(crate) fn sightline_body(reply: Option<QaResponse>) -> Result<SightlineBody, TestError> {
+pub(crate) fn sightline_body(reply: Option<McpResponse>) -> Result<SightlineBody, TestError> {
     let Some(reply) = reply else {
         return Err("battle.sightline produced no reply".into());
     };

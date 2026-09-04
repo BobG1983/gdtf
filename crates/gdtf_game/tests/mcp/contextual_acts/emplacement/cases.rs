@@ -3,7 +3,7 @@
 use bevy::{app::App, ecs::entity::Entity};
 use cobalt_mcp_protocol::{
     command::RunOptions,
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 use gdtf_battle_sim::{emplacement::EmplacementState, prelude::CellLevel};
 use gdtf_game::qa_wire::{
@@ -43,7 +43,7 @@ struct InspectBody {
 }
 
 /// The card the panel drew for one cell, or a failure naming what it showed instead.
-fn inspected_card(reply: QaResponse) -> Result<GangerCardNet, TestError> {
+fn inspected_card(reply: McpResponse) -> Result<GangerCardNet, TestError> {
     let shown = decode::<InspectBody>(BATTLE_INSPECT, reply)?.shown;
     match shown.ganger.clone() {
         Some(card) => Ok(card),
@@ -56,7 +56,7 @@ fn inspected_card(reply: QaResponse) -> Result<GangerCardNet, TestError> {
 }
 
 /// Ask `battle.inspect` about one cell.
-fn inspect(at: CellLevel) -> QaRequest {
+fn inspect(at: CellLevel) -> McpRequest {
     run(
         BATTLE_INSPECT,
         &cell_argument(CellLevelNet::from_sim(at)),

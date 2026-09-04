@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -15,7 +15,7 @@ use crate::{
     EditorMode, injury_form,
     injury_form::WeightingDraft,
     mcp::{
-        assets_root::EditorQaAssetsRoot, commands::availability::only_on_the_injury_tab,
+        assets_root::EditorMcpAssetsRoot, commands::availability::only_on_the_injury_tab,
         facts::EditorFacts, schedule::EditorMcpSystems, wire::EditorSaveOutcomeNet,
     },
     save_record::{LastSaveRecord, SaveOutcome},
@@ -46,7 +46,7 @@ pub(in crate::mcp) struct EditorSaveWeightingReply {
 
 pub(in crate::mcp) struct EditorSaveWeighting;
 
-impl QaCommand for EditorSaveWeighting {
+impl McpCommand for EditorSaveWeighting {
     type Args = EditorSaveWeightingArgs;
     type Facts = EditorFacts;
     type Parked = ();
@@ -68,7 +68,7 @@ impl QaCommand for EditorSaveWeighting {
         app.add_systems(
             Update,
             handle_editor_save_weighting
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .in_set(EditorMcpSystems::Gather),
         );
     }
@@ -76,7 +76,7 @@ impl QaCommand for EditorSaveWeighting {
 
 fn handle_editor_save_weighting(
     draft: Option<Res<WeightingDraft>>,
-    root: Res<EditorQaAssetsRoot>,
+    root: Res<EditorMcpAssetsRoot>,
     mut record: ResMut<LastSaveRecord>,
     mut queue: ResMut<PendingQueue<CommandCall<EditorSaveWeighting>>>,
 ) {

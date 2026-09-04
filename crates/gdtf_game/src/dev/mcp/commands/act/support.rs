@@ -1,7 +1,7 @@
 //! Pieces every classic act command is built from.
 
 use bevy::{ecs::system::SystemParam, prelude::*};
-use cobalt_mcp_command::{command::QaCommand, dispatch::DeferredReplies};
+use cobalt_mcp_command::{command::McpCommand, dispatch::DeferredReplies};
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedShooter};
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActEntry, ActLog, ActSeq},
@@ -142,7 +142,7 @@ pub(in crate::dev::mcp::commands) fn settle_acts<C>(
     settle: &ActSettle,
     deferred: &mut DeferredReplies<C>,
 ) where
-    C: QaCommand<Parked = ActTicket, Reply = ActReply>,
+    C: McpCommand<Parked = ActTicket, Reply = ActReply>,
 {
     settle_acts_with::<C>(deferred, |ticket| settle.window_of(ticket));
 }
@@ -152,7 +152,7 @@ pub(in crate::dev::mcp::commands) fn settle_acts_with<C>(
     deferred: &mut DeferredReplies<C>,
     mut reply: impl FnMut(&ActTicket) -> ActReply,
 ) where
-    C: QaCommand<Parked = ActTicket, Reply = ActReply>,
+    C: McpCommand<Parked = ActTicket, Reply = ActReply>,
 {
     if deferred.is_empty() {
         return;
@@ -170,7 +170,7 @@ pub(super) fn settle_selects<C>(
     selected: Option<&SelectedShooter>,
     deferred: &mut DeferredReplies<C>,
 ) where
-    C: QaCommand<Parked = (), Reply = SelectReply>,
+    C: McpCommand<Parked = (), Reply = SelectReply>,
 {
     if deferred.is_empty() {
         return;

@@ -1,6 +1,6 @@
 use bevy::app::App;
 use bevy_egui::{EguiGlobalSettings, EguiPlugin};
-use cobalt_mcp_protocol::message::{ProtocolVersion, QaRequest};
+use cobalt_mcp_protocol::message::{McpRequest, ProtocolVersion};
 use gdtf_battle_sim::{armor::InjuryCategory, injuries::DamageContext};
 use gdtf_editor::EditorMode;
 
@@ -25,7 +25,7 @@ fn drawing_app_and_client() -> Result<(App, Client), TestError> {
     });
     advance_to_editing(&mut app);
     let mut client = Client::connect(port)?;
-    let hello = client.exchange(&mut app, &QaRequest::Hello(ProtocolVersion::CURRENT))?;
+    let hello = client.exchange(&mut app, &McpRequest::Hello(ProtocolVersion::CURRENT))?;
     assert_hello_ok(&hello);
     Ok((app, client))
 }

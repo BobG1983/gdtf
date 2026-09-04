@@ -1,4 +1,4 @@
-use cobalt_mcp_protocol::{command::CommandOutcome, message::QaResponse};
+use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
 use gdtf_editor::{EditorMode, EditorState};
 use serde::Deserialize;
 
@@ -20,8 +20,8 @@ pub(crate) struct PhaseReplyRow {
 }
 
 /// Decode the RON body of a `Ran` outcome, or say which outcome came back instead.
-pub(crate) fn decoded_ran(reply: &QaResponse) -> Result<PhaseReplyRow, TestError> {
-    let QaResponse::Outcome(CommandOutcome::Ran { reply: body, .. }) = reply else {
+pub(crate) fn decoded_ran(reply: &McpResponse) -> Result<PhaseReplyRow, TestError> {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply: body, .. }) = reply else {
         return Err(format!("expected a Ran outcome for `editor.phase`, got {reply:?}").into());
     };
     Ok(ron::de::from_str::<PhaseReplyRow>(body.as_str())?)

@@ -3,7 +3,7 @@ use cobalt_mcp_protocol::{
         AwaitBudget, CommandAvailability, CommandName, CommandOutcome, CommandTiming, RunOptions,
         UnavailableCode,
     },
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 use gdtf_game::test_support::MCP_SERVER_NAME;
 
@@ -30,8 +30,8 @@ pub(crate) const PROCGEN_STEP_IN_THE_MENU: UnavailableCode = UnavailableCode::Wr
 #[test]
 fn the_catalogue_lists_the_reads_the_lifecycle_commands_and_the_classic_and_contextual_acts()
 -> TestResult {
-    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
-    let QaResponse::Catalogue(catalogue) = reply else {
+    let reply = exchange(game_app_listening, McpRequest::Catalogue)?;
+    let McpResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
     };
     assert_eq!(
@@ -78,8 +78,8 @@ fn the_catalogue_lists_the_reads_the_lifecycle_commands_and_the_classic_and_cont
 
 #[test]
 fn the_catalogue_refuses_every_battle_read_at_the_menu() -> TestResult {
-    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
-    let QaResponse::Catalogue(catalogue) = reply else {
+    let reply = exchange(game_app_listening, McpRequest::Catalogue)?;
+    let McpResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
     };
     for name in [
@@ -120,8 +120,8 @@ fn the_catalogue_refuses_every_battle_read_at_the_menu() -> TestResult {
 
 #[test]
 fn the_menu_catalogue_scopes_availability_to_what_the_menu_can_actually_do() -> TestResult {
-    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
-    let QaResponse::Catalogue(catalogue) = reply else {
+    let reply = exchange(game_app_listening, McpRequest::Catalogue)?;
+    let McpResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
     };
     let availability_of = |name: &'static str| {
@@ -173,7 +173,7 @@ fn running_app_phase_answers_ron_with_every_level_written() -> TestResult {
         game_app_listening,
         run(APP_PHASE, "()", RunOptions::default()),
     )?;
-    let QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = reply else {
         unreachable!("a plain app.phase call must RUN, got {reply:?}");
     };
     let body = reply.as_str();
@@ -204,7 +204,7 @@ fn a_misspelled_name_is_unknown_and_lists_what_exists() -> TestResult {
         game_app_listening,
         run("app.phasee", "()", RunOptions::default()),
     )?;
-    let QaResponse::Outcome(CommandOutcome::Unknown { known }) = reply else {
+    let McpResponse::Outcome(CommandOutcome::Unknown { known }) = reply else {
         unreachable!("a name this host does not offer must be Unknown, got {reply:?}");
     };
     assert_eq!(known, published_names());
@@ -216,14 +216,14 @@ fn an_unknown_argument_is_bad_arguments_with_the_schema() -> TestResult {
     let mut replies = exchange_all(
         game_app_listening,
         vec![
-            QaRequest::Catalogue,
+            McpRequest::Catalogue,
             run(APP_PHASE, "(nope:1)", RunOptions::default()),
         ],
     )?;
     let Some(outcome) = replies.pop() else {
         unreachable!("two requests yield two replies");
     };
-    let Some(QaResponse::Catalogue(catalogue)) = replies.pop() else {
+    let Some(McpResponse::Catalogue(catalogue)) = replies.pop() else {
         unreachable!("the first reply is the catalogue");
     };
     let Some(entry) = catalogue
@@ -234,7 +234,7 @@ fn an_unknown_argument_is_bad_arguments_with_the_schema() -> TestResult {
         unreachable!("the catalogue carries the row the call names: {catalogue:?}");
     };
 
-    let QaResponse::Outcome(CommandOutcome::BadArguments { detail, schema }) = outcome else {
+    let McpResponse::Outcome(CommandOutcome::BadArguments { detail, schema }) = outcome else {
         unreachable!("an argument the command does not declare must be refused, got {outcome:?}");
     };
     assert!(
@@ -265,7 +265,7 @@ fn an_await_ready_rider_holds_the_call_until_the_battle_screen_opens() -> TestRe
         ),
     )?;
 
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = before_it_opens else {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) = before_it_opens else {
         unreachable!(
             "the identical call WITHOUT the rider must refuse before the screen opens, or this \
              case proves nothing about the rider — got {before_it_opens:?}"
@@ -285,7 +285,7 @@ fn an_await_ready_rider_holds_the_call_until_the_battle_screen_opens() -> TestRe
     assert!(
         matches!(
             once_it_opens,
-            QaResponse::Outcome(CommandOutcome::Ran { .. })
+            McpResponse::Outcome(CommandOutcome::Ran { .. })
         ),
         "the same call carrying await_ready is held and re-tested until the battle screen \
          opens, then runs — got {once_it_opens:?}",

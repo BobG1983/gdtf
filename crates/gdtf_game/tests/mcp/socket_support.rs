@@ -11,7 +11,7 @@ use bevy::{
 };
 use cobalt_mcp_protocol::{
     framing::{FrameDecoder, encode},
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
     ports::McpPort,
 };
 use cobalt_screenshot::{PollCap, SettleFrames};
@@ -55,13 +55,13 @@ impl Client {
     pub(crate) fn exchange(
         &mut self,
         app: &mut App,
-        request: &QaRequest,
-    ) -> Result<QaResponse, TestError> {
+        request: &McpRequest,
+    ) -> Result<McpResponse, TestError> {
         self.stream.write_all(&encode(request)?)?;
         self.answer(app)
     }
 
-    fn answer(&mut self, app: &mut App) -> Result<QaResponse, TestError> {
+    fn answer(&mut self, app: &mut App) -> Result<McpResponse, TestError> {
         let mut buf = [0u8; 512];
         loop {
             app.update();
@@ -76,7 +76,7 @@ impl Client {
                 Err(failed) => return Err(failed.into()),
             }
             if let Some(frame) = self.decoder.next_frame()? {
-                return Ok(frame.decode::<QaResponse>()?);
+                return Ok(frame.decode::<McpResponse>()?);
             }
         }
     }

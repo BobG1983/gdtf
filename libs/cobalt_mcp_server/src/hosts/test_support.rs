@@ -1,12 +1,10 @@
 //! Registered host values the unit tests in this module tree share.
 
-use super::{name::HostName, registry::HostRegistry, spec::QaHostSpec};
-use crate::{
-    lifecycle::{
-        CargoPackage, EnvVarName, FeatureList, FeatureName, LaunchPolicy, LifecycleConfig,
-        QaChannel,
-    },
-    link::QaPort,
+use cobalt_mcp_protocol::ports::McpPort;
+
+use super::{name::HostName, registry::HostRegistry, spec::McpHostSpec};
+use crate::lifecycle::{
+    CargoPackage, EnvVarName, FeatureList, FeatureName, LaunchPolicy, LifecycleConfig, McpChannel,
 };
 
 // A registered name as a tool call spells it.
@@ -15,20 +13,20 @@ pub(crate) fn named(name: &str) -> HostName {
 }
 
 // A host whose every field is derived from its name, so a wrong lookup shows in any field.
-pub(crate) fn registered(name: &str, port: u16, many_instances: bool) -> QaHostSpec {
+pub(crate) fn registered(name: &str, port: u16, many_instances: bool) -> McpHostSpec {
     let upper = name.to_uppercase();
     let policy = if many_instances {
         LaunchPolicy::AlwaysSpawn
     } else {
         LaunchPolicy::Reuse
     };
-    QaHostSpec::new(
+    McpHostSpec::new(
         HostName::new(name.to_owned()),
         CargoPackage::new(format!("{name}_package")),
         FeatureList::new(vec![FeatureName::new(format!("{name}_feature"))]),
-        QaPort::new(port),
+        McpPort::new(port),
         None,
-        QaChannel::new(
+        McpChannel::new(
             EnvVarName::new(format!("{upper}_CHANNEL")),
             EnvVarName::new(format!("{upper}_CHANNEL_PORT")),
         ),

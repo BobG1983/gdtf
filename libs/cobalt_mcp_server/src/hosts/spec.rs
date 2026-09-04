@@ -1,35 +1,34 @@
 //! One registered host, as a value the whole bridge reads.
 
+use cobalt_mcp_protocol::ports::McpPort;
+
 use super::name::HostName;
-use crate::{
-    lifecycle::{
-        CargoPackage, FeatureList, LaunchPolicy, LaunchSpec, LifecycleConfig, QaChannel, WorkingDir,
-    },
-    link::QaPort,
+use crate::lifecycle::{
+    CargoPackage, FeatureList, LaunchPolicy, LaunchSpec, LifecycleConfig, McpChannel, WorkingDir,
 };
 
 /// Everything the bridge needs to launch and address one host.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct QaHostSpec {
+pub struct McpHostSpec {
     name:         HostName,
     package:      CargoPackage,
     features:     FeatureList,
-    default_port: QaPort,
+    default_port: McpPort,
     working_dir:  Option<WorkingDir>,
-    channel:      QaChannel,
+    channel:      McpChannel,
     lifecycle:    LifecycleConfig,
 }
 
-impl QaHostSpec {
+impl McpHostSpec {
     /// Register a host from its own parts.
     #[must_use]
     pub const fn new(
         name: HostName,
         package: CargoPackage,
         features: FeatureList,
-        default_port: QaPort,
+        default_port: McpPort,
         working_dir: Option<WorkingDir>,
-        channel: QaChannel,
+        channel: McpChannel,
         lifecycle: LifecycleConfig,
     ) -> Self {
         Self {
@@ -63,7 +62,7 @@ impl QaHostSpec {
 
     /// Port this host listens on when nothing overrides it.
     #[must_use]
-    pub const fn default_port(&self) -> QaPort {
+    pub const fn default_port(&self) -> McpPort {
         self.default_port
     }
 
@@ -75,7 +74,7 @@ impl QaHostSpec {
 
     /// Env var names that enable and address this host's channel.
     #[must_use]
-    pub const fn channel(&self) -> &QaChannel {
+    pub const fn channel(&self) -> &McpChannel {
         &self.channel
     }
 
@@ -99,11 +98,11 @@ impl QaHostSpec {
 
     /// Port from this host's own port env var, or its default.
     #[must_use]
-    pub fn port_from_env(&self) -> QaPort {
+    pub fn port_from_env(&self) -> McpPort {
         std::env::var(self.channel.port().as_str())
             .ok()
             .and_then(|value| value.trim().parse::<u16>().ok())
-            .map_or(self.default_port, QaPort::new)
+            .map_or(self.default_port, McpPort::new)
     }
 
     /// Launch recipe this host uses when a call overrides nothing.

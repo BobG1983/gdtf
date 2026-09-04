@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -39,7 +39,7 @@ pub(crate) struct LogOmniscientReadArgs {
 
 pub(crate) struct LogOmniscientRead;
 
-impl QaCommand for LogOmniscientRead {
+impl McpCommand for LogOmniscientRead {
     type Args = LogOmniscientReadArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -61,7 +61,7 @@ impl QaCommand for LogOmniscientRead {
     fn register_handler(app: &mut App) {
         app.add_systems(
             Update,
-            handle_log_omniscient_read.after(QaCommandSystems::Claim),
+            handle_log_omniscient_read.after(McpCommandSystems::Claim),
         );
     }
 }

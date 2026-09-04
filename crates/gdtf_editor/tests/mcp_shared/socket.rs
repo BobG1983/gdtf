@@ -7,7 +7,7 @@ use bevy::app::App;
 use cobalt_mcp_protocol::{
     command::{CommandArgsRon, CommandName, RunOptions},
     framing::{FrameDecoder, encode},
-    message::{QaRequest, QaResponse, RunCommand},
+    message::{McpRequest, McpResponse, RunCommand},
     ports::McpPort,
 };
 
@@ -32,14 +32,14 @@ impl Client {
     }
 
     /// Put a request on the wire without running a frame, so a case can read the state it left.
-    pub(crate) fn send(&mut self, request: &QaRequest) -> Result<(), TestError> {
+    pub(crate) fn send(&mut self, request: &McpRequest) -> Result<(), TestError> {
         self.stream.write_all(&encode(request)?)?;
         Ok(())
     }
 
     /// Read what is already answered before running another frame, so a case reads back the world
     /// the answering frame left. The wait has no budget, so a busy machine is never red.
-    pub(crate) fn read(&mut self, app: &mut App) -> Result<QaResponse, TestError> {
+    pub(crate) fn read(&mut self, app: &mut App) -> Result<McpResponse, TestError> {
         loop {
             if let Some(response) = self.read_within(app, READ_BATCH_FRAMES)? {
                 return Ok(response);
@@ -54,7 +54,7 @@ impl Client {
         &mut self,
         app: &mut App,
         frames: u32,
-    ) -> Result<Option<QaResponse>, TestError> {
+    ) -> Result<Option<McpResponse>, TestError> {
         for _ in 0..frames {
             if let Some(response) = self.poll_frame()? {
                 return Ok(Some(response));
@@ -65,7 +65,7 @@ impl Client {
     }
 
     // One non-blocking look at the socket, decoding a response once a whole frame has arrived.
-    fn poll_frame(&mut self) -> Result<Option<QaResponse>, TestError> {
+    fn poll_frame(&mut self) -> Result<Option<McpResponse>, TestError> {
         let mut buf = [0u8; 512];
         match self.stream.read(&mut buf) {
             Ok(0) => return Err("the editor closed before a full response arrived".into()),
@@ -74,7 +74,7 @@ impl Client {
             Err(failed) => return Err(failed.into()),
         }
         match self.decoder.next_frame()? {
-            Some(frame) => Ok(Some(frame.decode::<QaResponse>()?)),
+            Some(frame) => Ok(Some(frame.decode::<McpResponse>()?)),
             None => Ok(None),
         }
     }
@@ -82,8 +82,8 @@ impl Client {
     pub(crate) fn exchange(
         &mut self,
         app: &mut App,
-        request: &QaRequest,
-    ) -> Result<QaResponse, TestError> {
+        request: &McpRequest,
+    ) -> Result<McpResponse, TestError> {
         self.send(request)?;
         self.read(app)
     }
@@ -94,7 +94,7 @@ fn nothing_yet(fault: &io::Error) -> bool {
     matches!(fault.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut)
 }
 
-pub(crate) fn run_editor(command: &'static str, arguments: &str) -> QaRequest {
+pub(crate) fn run_editor(command: &'static str, arguments: &str) -> McpRequest {
     run_editor_with(command, arguments, RunOptions::default())
 }
 
@@ -103,8 +103,8 @@ pub(crate) fn run_editor_with(
     command: &'static str,
     arguments: &str,
     options: RunOptions,
-) -> QaRequest {
-    QaRequest::Run(RunCommand::with_options(
+) -> McpRequest {
+    McpRequest::Run(RunCommand::with_options(
         CommandName::from_static(command),
         CommandArgsRon::new(arguments.to_owned()),
         options,

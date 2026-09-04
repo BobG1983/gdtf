@@ -5,7 +5,7 @@ use std::{
 
 use cobalt_mcp_server::{
     ChildLiveness, ChildPid, HostLifecycle, HostManager, InstanceId, LaunchOutcome,
-    LifecycleConfig, OrphanWatch, QaPort, StopOutcome, SystemOrphanWatch, TailLines,
+    LifecycleConfig, McpPort, OrphanWatch, StopOutcome, SystemOrphanWatch, TailLines,
     lifecycle::ChildStatus,
 };
 
@@ -64,8 +64,8 @@ struct Fixture {
     manager: HostManager,
     calls:   CallLog,
     asked:   ProbeLog,
-    port:    QaPort,
-    ports:   Vec<QaPort>,
+    port:    McpPort,
+    ports:   Vec<McpPort>,
 }
 
 fn manager_over_a_gated_listener(
@@ -75,7 +75,7 @@ fn manager_over_a_gated_listener(
     config: LifecycleConfig,
 ) -> Fixture {
     let gates = gated_listeners(listeners);
-    let ports: Vec<QaPort> = gates.iter().map(|(port, _)| *port).collect();
+    let ports: Vec<McpPort> = gates.iter().map(|(port, _)| *port).collect();
     let Some(first) = ports.first().copied() else {
         unreachable!("the fixture opens at least one gated listener");
     };

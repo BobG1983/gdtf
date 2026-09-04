@@ -7,7 +7,7 @@ use bevy::{
 };
 use cobalt_mcp_protocol::{
     command::{CommandArgsRon, CommandName, CommandOutcome, RunOptions},
-    message::{QaRequest, QaResponse, RunCommand},
+    message::{McpRequest, McpResponse, RunCommand},
 };
 use cobalt_mcp_transport::{IncomingRequest, Responder};
 use gdtf_battle_input::SelectedShooter;
@@ -44,8 +44,8 @@ fn running_state(app: &App) -> Option<RunningState> {
 /// Hand one request to the router's inbox and keep the channel its reply will arrive on.
 pub(crate) fn send(
     tx: &mpsc::Sender<IncomingRequest>,
-    request: QaRequest,
-) -> mpsc::Receiver<QaResponse> {
+    request: McpRequest,
+) -> mpsc::Receiver<McpResponse> {
     let (responder, reply_rx) = Responder::channel();
     let sent = tx.send(IncomingRequest::new(request, responder));
     assert!(sent.is_ok(), "the router inbox must be open");
@@ -53,8 +53,8 @@ pub(crate) fn send(
 }
 
 /// A plain `Run` request for `name` with `arguments` and no riders.
-pub(crate) fn run_request(name: &'static str, arguments: &str) -> QaRequest {
-    QaRequest::Run(RunCommand::with_options(
+pub(crate) fn run_request(name: &'static str, arguments: &str) -> McpRequest {
+    McpRequest::Run(RunCommand::with_options(
         CommandName::from_static(name),
         CommandArgsRon::new(arguments.to_owned()),
         RunOptions::default(),
@@ -122,7 +122,7 @@ pub(crate) fn run_one_frame(
     tx: &mpsc::Sender<IncomingRequest>,
     name: &'static str,
     arguments: &str,
-) -> QaResponse {
+) -> McpResponse {
     let reply = send(tx, run_request(name, arguments));
     app.update();
     let Ok(answer) = reply.try_recv() else {
@@ -132,15 +132,15 @@ pub(crate) fn run_one_frame(
 }
 
 /// The RON body of a reply that ran.
-pub(crate) fn ran(name: &str, answer: QaResponse) -> String {
-    let QaResponse::Outcome(CommandOutcome::Ran { reply, .. }) = answer else {
+pub(crate) fn ran(name: &str, answer: McpResponse) -> String {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = answer else {
         unreachable!("`{name}` must RUN in this fixture, got {answer:?}");
     };
     reply.as_str().to_owned()
 }
 
 /// The RON body a command's reply decodes into.
-pub(crate) fn decoded<T: serde::de::DeserializeOwned>(name: &str, answer: QaResponse) -> T {
+pub(crate) fn decoded<T: serde::de::DeserializeOwned>(name: &str, answer: McpResponse) -> T {
     let body = ran(name, answer);
     let Ok(value) = ron::de::from_str::<T>(&body) else {
         unreachable!("`{name}`'s reply must decode into the case's own body type: {body}");

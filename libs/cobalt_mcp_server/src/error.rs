@@ -3,7 +3,7 @@
 use core::fmt::{self, Display};
 use std::io;
 
-use cobalt_mcp_protocol::{framing::WireError, message::QaError};
+use cobalt_mcp_protocol::{framing::WireError, message::McpSessionError};
 
 use crate::lifecycle::EnvVarName;
 
@@ -24,7 +24,7 @@ pub enum McpError {
     /// Peer closed the connection.
     Disconnected,
     /// Hello handshake was refused.
-    Handshake(QaError),
+    Handshake(McpSessionError),
     /// Response kind did not match the request.
     UnexpectedResponse,
 }

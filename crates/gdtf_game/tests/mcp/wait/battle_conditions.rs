@@ -1,7 +1,7 @@
 use std::sync::mpsc::TryRecvError;
 
 use bevy::{app::App, ecs::entity::Entity};
-use cobalt_mcp_protocol::{command::CommandOutcome, message::QaResponse};
+use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
 use gdtf_battle_sim::{
     acts::{EndTurnRequested, movement::WalkInProgress},
     ganger::Tu,
@@ -54,7 +54,7 @@ fn wait_on_generation_complete_parks_in_the_menu_and_settles_while_the_situation
     assert!(
         matches!(
             answered,
-            Ok(QaResponse::Outcome(CommandOutcome::Ran { .. }))
+            Ok(McpResponse::Outcome(CommandOutcome::Ran { .. }))
         ),
         "generating a situation is what this condition waits for, so the parked wait must have \
          been released while the marker was up; got {answered:?}",
@@ -83,7 +83,7 @@ fn wait_on_turn_changed_parks_until_a_turn_actually_hands_over() {
     assert!(
         matches!(
             answered,
-            Some(QaResponse::Outcome(CommandOutcome::Ran { .. }))
+            Some(McpResponse::Outcome(CommandOutcome::Ran { .. }))
         ),
         "ending the turn is what emits the TurnStarted this condition counts, so the parked wait \
          must be released; got {answered:?}",
@@ -121,7 +121,7 @@ fn wait_on_the_act_log_answers_only_once_the_log_holds_the_entries_asked_for() {
     assert!(
         matches!(
             answered,
-            Some(QaResponse::Outcome(CommandOutcome::Ran { .. }))
+            Some(McpResponse::Outcome(CommandOutcome::Ran { .. }))
         ),
         "a turn hand-off is recorded in the act log, which takes it to {wanted} entries; got \
          {answered:?}",
@@ -155,7 +155,7 @@ fn wait_on_the_act_log_answers_for_a_count_past_the_deleted_ring_buffer_cap() {
     assert!(
         matches!(
             answered,
-            Some(QaResponse::Outcome(CommandOutcome::Ran { .. }))
+            Some(McpResponse::Outcome(CommandOutcome::Ran { .. }))
         ),
         "the log already holds {wanted} entries, so a wait asking for that many must answer \
          rather than park: the log holds {held}; got {answered:?}",
@@ -192,7 +192,7 @@ fn wait_on_walk_complete_parks_while_someone_is_part_way_through_a_walk() {
     assert!(
         matches!(
             answered,
-            Some(QaResponse::Outcome(CommandOutcome::Ran { .. }))
+            Some(McpResponse::Outcome(CommandOutcome::Ran { .. }))
         ),
         "with the last WalkInProgress gone nobody is mid-walk, so the parked wait must be \
          released; got {answered:?}",
@@ -221,7 +221,7 @@ fn wait_on_battle_decided_settles_on_the_same_marker_the_flee_button_inserts() {
     assert!(
         matches!(
             answered,
-            Some(QaResponse::Outcome(CommandOutcome::Ran { .. }))
+            Some(McpResponse::Outcome(CommandOutcome::Ran { .. }))
         ),
         "the marker the Flee button and the outcome watcher both insert is what decides a \
          battle, so the parked wait must be released; got {answered:?}",

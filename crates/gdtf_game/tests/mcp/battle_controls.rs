@@ -2,7 +2,7 @@
 
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RefusalNote, UnavailableCode},
-    message::QaResponse,
+    message::McpResponse,
 };
 use gdtf_battle_input::PathPreviewTarget;
 use gdtf_battle_sim::{
@@ -29,8 +29,8 @@ fn full_only() -> FireMode {
 }
 
 /// The code and note a refused call carries.
-fn refusal(answer: QaResponse) -> (UnavailableCode, RefusalNote) {
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = answer else {
+fn refusal(answer: McpResponse) -> (UnavailableCode, RefusalNote) {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) = answer else {
         unreachable!("`{BATTLE_SET_FIRE_MODE}` must refuse this call, got {answer:?}");
     };
     (code, note)

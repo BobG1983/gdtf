@@ -74,7 +74,7 @@ pub use injury_form::{
 pub use injury_form::{write_injury, write_injury_in, write_weighting_in};
 #[cfg(feature = "mcp")]
 pub use mcp::{
-    EDITOR_QA_SERVER_NAME, EditorMcpSystems, EditorQaAssetsRoot, McpEditorPlugin,
+    EDITOR_MCP_SERVER_NAME, EditorMcpAssetsRoot, EditorMcpSystems, McpEditorPlugin,
     assert_editor_command_set_is_conformant, editor_command_names, shorten_editor_wait_budget,
 };
 pub use melee_weapon_form::{

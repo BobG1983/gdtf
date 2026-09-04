@@ -3,7 +3,7 @@
 use std::sync::mpsc;
 
 use bevy::app::App;
-use cobalt_mcp_protocol::message::QaResponse;
+use cobalt_mcp_protocol::message::McpResponse;
 use cobalt_mcp_transport::IncomingRequest;
 use gdtf_game::{qa_wire::misc::ModeKindNet, test_support::ModeBurstButton};
 use gdtf_test_utils::press_ui_button;
@@ -18,7 +18,7 @@ use super::{
 };
 
 /// Send the command and drive the one frame that answers it.
-fn run_frame(app: &mut App, tx: &mpsc::Sender<IncomingRequest>, arguments: &str) -> QaResponse {
+fn run_frame(app: &mut App, tx: &mpsc::Sender<IncomingRequest>, arguments: &str) -> McpResponse {
     let reply = send(tx, run_request(BATTLE_SET_FIRE_MODE, arguments));
     app.update();
     let Ok(answer) = reply.try_recv() else {
@@ -37,7 +37,7 @@ fn run_frame_with_both_writers(
     app: &mut App,
     tx: &mpsc::Sender<IncomingRequest>,
     arguments: &str,
-) -> QaResponse {
+) -> McpResponse {
     let burst_segment = mode_segment::<ModeBurstButton>(app);
     press_ui_button(app, burst_segment);
     run_frame(app, tx, arguments)

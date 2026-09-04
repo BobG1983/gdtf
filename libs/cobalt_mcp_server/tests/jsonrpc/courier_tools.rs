@@ -1,4 +1,4 @@
-use cobalt_mcp_server::QaPort;
+use cobalt_mcp_server::McpPort;
 use serde_json::{Value, json};
 
 use crate::{
@@ -145,7 +145,7 @@ fn run_without_a_command_is_invalid_params() {
     );
 }
 
-fn last_retarget(ports: &[QaPort], tool: &str) -> QaPort {
+fn last_retarget(ports: &[McpPort], tool: &str) -> McpPort {
     let Some(port) = ports.last() else {
         unreachable!("a bramble {tool} points the link at the instance it named, recorded: none");
     };

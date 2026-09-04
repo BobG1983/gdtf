@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
@@ -48,7 +48,7 @@ pub(in crate::mcp) struct EditorLoadWeaponReply {
 
 pub(in crate::mcp) struct EditorLoadWeapon;
 
-impl QaCommand for EditorLoadWeapon {
+impl McpCommand for EditorLoadWeapon {
     type Args = EditorLoadWeaponArgs;
     type Facts = EditorFacts;
     type Parked = ();
@@ -70,7 +70,7 @@ impl QaCommand for EditorLoadWeapon {
         app.add_systems(
             Update,
             handle_editor_load_weapon
-                .after(QaCommandSystems::Claim)
+                .after(McpCommandSystems::Claim)
                 .in_set(EditorMcpSystems::Gather),
         );
     }

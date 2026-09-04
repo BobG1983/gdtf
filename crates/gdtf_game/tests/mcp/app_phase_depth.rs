@@ -1,7 +1,7 @@
 use std::sync::mpsc;
 
 use bevy::{app::App, state::state::State};
-use cobalt_mcp_protocol::{command::CommandOutcome, message::QaResponse};
+use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
 use cobalt_mcp_transport::IncomingRequest;
 use gdtf_game::test_support::{AppState, BattleScapeState, GameState, RunningState};
 use gdtf_test_utils::advance_until;
@@ -15,7 +15,7 @@ fn read_phase(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) -> String {
     let reply = send(tx, run_request(APP_PHASE, "()"));
     app.update();
     app.update();
-    let Ok(QaResponse::Outcome(CommandOutcome::Ran { reply, .. })) = reply.try_recv() else {
+    let Ok(McpResponse::Outcome(CommandOutcome::Ran { reply, .. })) = reply.try_recv() else {
         unreachable!("a plain app.phase call must RUN");
     };
     reply.as_str().to_owned()

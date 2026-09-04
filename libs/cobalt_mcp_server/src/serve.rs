@@ -122,7 +122,10 @@ fn answer<W: Write>(
 mod tests {
     use std::io::Cursor;
 
-    use cobalt_mcp_protocol::message::{QaRequest, QaResponse};
+    use cobalt_mcp_protocol::{
+        message::{McpRequest, McpResponse},
+        ports::McpPort,
+    };
     use serde_json::Value;
 
     use super::run_loop;
@@ -133,14 +136,14 @@ mod tests {
             HostLifecycle, InstanceId, LaunchOutcome, LaunchSpec, OutputTail, RecordedInstance,
             StopOutcome, SweepClock, SweepSchedule, TailLines, WorkingDir,
         },
-        link::{QaLink, QaPort},
+        link::McpLink,
         mcp::{ServerIdentity, ServerName, ServerVersion},
     };
 
     struct DeadLink;
 
-    impl QaLink for DeadLink {
-        fn request(&mut self, _request: QaRequest) -> Result<QaResponse, McpError> {
+    impl McpLink for DeadLink {
+        fn request(&mut self, _request: McpRequest) -> Result<McpResponse, McpError> {
             Err(McpError::Disconnected)
         }
     }
@@ -148,11 +151,11 @@ mod tests {
     struct DeadLifecycle;
 
     impl HostLifecycle for DeadLifecycle {
-        fn launch(&mut self, _port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
+        fn launch(&mut self, _port: McpPort, _spec: &LaunchSpec) -> LaunchOutcome {
             unreachable!("the transport test never launches");
         }
 
-        fn stop(&mut self, _port: QaPort) -> StopOutcome {
+        fn stop(&mut self, _port: McpPort) -> StopOutcome {
             StopOutcome::NotRunning
         }
 

@@ -8,7 +8,7 @@ use bevy::{
     window::{CursorMoved, PrimaryWindow, Window},
 };
 use cobalt_mcp_command::dispatch::{CommandCall, register_command};
-use cobalt_mcp_protocol::message::QaResponse;
+use cobalt_mcp_protocol::message::McpResponse;
 use cobalt_mcp_transport::{PendingQueue, Responder};
 use gdtf_test_utils::GdtfWindowedTestAppBuilder;
 
@@ -28,7 +28,7 @@ fn hover_app() -> App {
 }
 
 /// Queue one `input.hover` call and run the frame that answers it.
-fn hover_once(app: &mut App) -> Receiver<QaResponse> {
+fn hover_once(app: &mut App) -> Receiver<McpResponse> {
     let Ok(args) = ron::de::from_str::<InputHoverArgs>(AT) else {
         unreachable!("`input.hover`'s own argument shape must decode {AT}");
     };

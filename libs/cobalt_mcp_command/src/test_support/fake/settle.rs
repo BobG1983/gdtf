@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 
 use super::facts::FakeFacts;
 use crate::{
-    command::QaCommand,
-    dispatch::{CommandCall, DeferredBudget, DeferredReplies, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, DeferredBudget, DeferredReplies, McpCommandSystems, take_calls},
 };
 
 /// Empty arguments for `fake.settle`.
@@ -79,7 +79,7 @@ impl FakeSettleSignal {
 /// Deferred command that parks until [`FakeSettleSignal`] is raised.
 pub struct FakeSettle;
 
-impl QaCommand for FakeSettle {
+impl McpCommand for FakeSettle {
     type Args = FakeSettleArgs;
     type Facts = FakeFacts;
     type Parked = ();
@@ -104,7 +104,7 @@ impl QaCommand for FakeSettle {
             Update,
             (park_fake_settle, settle_fake_settle)
                 .chain()
-                .after(QaCommandSystems::Claim),
+                .after(McpCommandSystems::Claim),
         );
     }
 }

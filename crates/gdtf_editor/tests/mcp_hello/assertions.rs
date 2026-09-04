@@ -1,8 +1,8 @@
 use cobalt_mcp_protocol::{
     command::{CommandAvailability, CommandName, CommandOutcome, CommandTiming, UnavailableCode},
-    message::{QaError, QaResponse},
+    message::{McpResponse, McpSessionError},
 };
-use gdtf_editor::{EDITOR_QA_SERVER_NAME, EditorState};
+use gdtf_editor::{EDITOR_MCP_SERVER_NAME, EditorState};
 
 use crate::client::{
     EDITOR_COMMAND_NAMES, EDITOR_DEFERRED, EDITOR_EDITING_ONLY, EDITOR_FORM_TAB_ONLY,
@@ -28,15 +28,15 @@ impl AnsweringPhase {
     }
 }
 
-pub(crate) fn assert_version_mismatch(reply: &QaResponse) {
+pub(crate) fn assert_version_mismatch(reply: &McpResponse) {
     assert!(
-        matches!(reply, QaResponse::Error(QaError::VersionMismatch)),
+        matches!(reply, McpResponse::Error(McpSessionError::VersionMismatch)),
         "expected VersionMismatch for a wrong client version, got {reply:?}",
     );
 }
 
-pub(crate) fn assert_unknown_command(reply: &QaResponse) {
-    let QaResponse::Outcome(CommandOutcome::Unknown { known }) = reply else {
+pub(crate) fn assert_unknown_command(reply: &McpResponse) {
+    let McpResponse::Outcome(CommandOutcome::Unknown { known }) = reply else {
         unreachable!(
             "expected an Unknown outcome for a command the editor has not built, got {reply:?}"
         );
@@ -51,12 +51,12 @@ pub(crate) fn assert_unknown_command(reply: &QaResponse) {
 }
 
 /// Assert every published row — name, timing, summary — and the availability `phase` requires.
-pub(crate) fn assert_editor_catalogue(reply: &QaResponse, phase: AnsweringPhase) {
-    let QaResponse::Catalogue(catalogue) = reply else {
+pub(crate) fn assert_editor_catalogue(reply: &McpResponse, phase: AnsweringPhase) {
+    let McpResponse::Catalogue(catalogue) = reply else {
         unreachable!("expected a Catalogue reply to close the window, got {reply:?}");
     };
     assert_eq!(
-        *catalogue.host, EDITOR_QA_SERVER_NAME,
+        *catalogue.host, EDITOR_MCP_SERVER_NAME,
         "the catalogue must answer under the EDITOR's own host name, never the game's",
     );
     for name in EDITOR_COMMAND_NAMES {

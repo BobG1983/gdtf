@@ -4,7 +4,7 @@ use std::sync::mpsc::TryRecvError;
 use cobalt_mcp_command::dispatch::DeferredBudget;
 use cobalt_mcp_protocol::{
     command::CommandOutcome,
-    message::{QaError, QaResponse},
+    message::{McpResponse, McpSessionError},
 };
 use gdtf_game::test_support::shorten_wait_budget;
 
@@ -34,7 +34,7 @@ fn wait_holds_its_reply_until_the_condition_it_named_comes_true() {
     release_the_hold(&mut app);
 
     let answered = answered_within(&mut app, &reply, SETTLE_FRAMES);
-    let Some(QaResponse::Outcome(CommandOutcome::Ran { reply, .. })) = answered else {
+    let Some(McpResponse::Outcome(CommandOutcome::Ran { reply, .. })) = answered else {
         unreachable!(
             "once the hold is gone and the cursor sits on the log head the gate is open, so the \
              parked `wait` must be released; got {answered:?}"
@@ -66,7 +66,7 @@ fn wait_on_a_phase_parks_in_the_menu_and_settles_once_the_battle_is_up() {
 
     drive_into_battle_running(&mut app);
 
-    let Some(QaResponse::Outcome(CommandOutcome::Ran { reply, .. })) =
+    let Some(McpResponse::Outcome(CommandOutcome::Ran { reply, .. })) =
         answered_within(&mut app, &reply, SETTLE_FRAMES)
     else {
         unreachable!("once the game layer is the battle map the parked wait must be released");
@@ -87,7 +87,7 @@ fn a_condition_that_never_comes_true_times_out_rather_than_being_refused() {
     let answered = answered_within(&mut app, &reply, SETTLE_FRAMES);
     assert_eq!(
         answered,
-        Some(QaResponse::Error(QaError::Timeout)),
+        Some(McpResponse::Error(McpSessionError::Timeout)),
         "a condition nothing will ever make true must expire against the parking budget, not \
          come back as a refusal",
     );

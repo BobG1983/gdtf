@@ -1,8 +1,8 @@
 use cobalt_mcp_protocol::{
     command::{CommandCatalogue, CommandOutcome},
-    message::{QaError, QaRequest, QaResponse, ServerNameNet},
+    message::{McpRequest, McpResponse, McpSessionError, ServerNameNet},
 };
-use cobalt_mcp_server::{McpError, QaLink, QaPort, dispatch};
+use cobalt_mcp_server::{McpError, McpLink, McpPort, dispatch};
 use serde_json::Value;
 
 use crate::{
@@ -15,7 +15,7 @@ use crate::{
 
 /// Bramble link that answers like the real one and records every port it is pointed at.
 struct RecordingLink {
-    ports: Vec<QaPort>,
+    ports: Vec<McpPort>,
 }
 
 impl RecordingLink {
@@ -24,21 +24,21 @@ impl RecordingLink {
     }
 }
 
-impl QaLink for RecordingLink {
-    fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
+impl McpLink for RecordingLink {
+    fn request(&mut self, request: McpRequest) -> Result<McpResponse, McpError> {
         match request {
-            QaRequest::Catalogue => Ok(QaResponse::Catalogue(CommandCatalogue::new(
+            McpRequest::Catalogue => Ok(McpResponse::Catalogue(CommandCatalogue::new(
                 ServerNameNet::new(BRAMBLE_HOST_NAME.to_owned()),
                 Vec::new(),
             ))),
-            QaRequest::Run(_) => Ok(QaResponse::Outcome(CommandOutcome::Unknown {
+            McpRequest::Run(_) => Ok(McpResponse::Outcome(CommandOutcome::Unknown {
                 known: Vec::new(),
             })),
-            QaRequest::Hello(_) => Ok(QaResponse::Error(QaError::Malformed)),
+            McpRequest::Hello(_) => Ok(McpResponse::Error(McpSessionError::Malformed)),
         }
     }
 
-    fn retarget(&mut self, port: QaPort) {
+    fn retarget(&mut self, port: McpPort) {
         self.ports.push(port);
     }
 }
@@ -49,7 +49,7 @@ impl QaLink for RecordingLink {
 pub(crate) fn dispatch_recording(
     line: &str,
     bramble_instances: &[SeededInstance],
-) -> (Value, Vec<QaPort>) {
+) -> (Value, Vec<McpPort>) {
     let mut thistle_link = CannedThistle;
     let mut bramble_link = RecordingLink::new();
     let mut thistle_life = CannedLifecycle::new(THISTLE_PORT, THISTLE_PID, THISTLE_LOG, &[]);

@@ -3,8 +3,8 @@ use bevy::{
     prelude::*,
 };
 use cobalt_mcp_command::{
-    command::QaCommand,
-    dispatch::{CommandCall, QaCommandSystems, take_calls},
+    command::McpCommand,
+    dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
@@ -26,7 +26,7 @@ pub(crate) struct UiFocusReply {
 
 pub(crate) struct UiFocus;
 
-impl QaCommand for UiFocus {
+impl McpCommand for UiFocus {
     type Args = UiFocusArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -45,7 +45,7 @@ impl QaCommand for UiFocus {
     }
 
     fn register_handler(app: &mut App) {
-        app.add_systems(Update, handle_ui_focus.after(QaCommandSystems::Claim));
+        app.add_systems(Update, handle_ui_focus.after(McpCommandSystems::Claim));
     }
 }
 

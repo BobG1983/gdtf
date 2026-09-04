@@ -3,7 +3,7 @@
 use gdtf_assets::{ContentMemberKey, FindingFamily};
 use gdtf_battle_sim::weapon::WeaponRegistry;
 use gdtf_editor::{
-    DeleteOutcome, DeleteRefusal, DeleteRegistry, DeleteRequest, EditorQaAssetsRoot,
+    DeleteOutcome, DeleteRefusal, DeleteRegistry, DeleteRequest, EditorMcpAssetsRoot,
 };
 
 use crate::{
@@ -27,7 +27,7 @@ fn a_delete_for_a_family_with_no_entry_is_refused_and_takes_nothing_out() {
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     assert!(

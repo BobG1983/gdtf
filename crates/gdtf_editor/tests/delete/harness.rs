@@ -5,7 +5,7 @@ use std::path::Path;
 use bevy::prelude::App;
 use gdtf_assets::{ContentMemberKey, ContentValidationDone, FindingFamily};
 use gdtf_editor::{
-    DeleteOutcome, DeleteRequest, EditorQaAssetsRoot, OfferResolution, ReplacementOffer,
+    DeleteOutcome, DeleteRequest, EditorMcpAssetsRoot, OfferResolution, ReplacementOffer,
 };
 
 use crate::{advance::advance_to_published, app::editor_app_with_asset_root};
@@ -25,7 +25,7 @@ pub(crate) const GANG_FAMILY: &str = "GangRegistry";
 /// An editor app on `root`, saving under it, advanced until its report is published.
 pub(crate) fn editor_on(root: &Path) -> App {
     let mut app = editor_app_with_asset_root(root);
-    app.insert_resource(EditorQaAssetsRoot::new(root.to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(root.to_path_buf()));
     advance_to_published(&mut app);
     app
 }

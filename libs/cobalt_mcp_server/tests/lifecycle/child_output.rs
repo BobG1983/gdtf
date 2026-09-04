@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use cobalt_mcp_server::{
-    HostLifecycle, HostManager, LaunchOutcome, QaPort, StopOutcome, TailLines,
+    HostLifecycle, HostManager, LaunchOutcome, McpPort, StopOutcome, TailLines,
 };
 
 use crate::{
@@ -24,7 +24,7 @@ fn a_running_child_reports_what_it_printed() {
         "with no child running there is no output to report",
     );
 
-    let outcome = manager.launch(QaPort::new(port), &sample_spec());
+    let outcome = manager.launch(McpPort::new(port), &sample_spec());
     assert!(
         matches!(outcome, LaunchOutcome::Launched { .. }),
         "launch against the fake server becomes ready: {outcome:?}",
@@ -38,7 +38,7 @@ fn a_running_child_reports_what_it_printed() {
         "the manager reports the RUNNING child's own output, got {tail:?}",
     );
 
-    let stopped = manager.stop(QaPort::new(port));
+    let stopped = manager.stop(McpPort::new(port));
     assert!(
         matches!(stopped, StopOutcome::Stopped { .. }),
         "the child stops cleanly: {stopped:?}",
@@ -55,7 +55,7 @@ fn the_line_cap_reaches_the_childs_ring() {
     let (port, gate) = spawn_gated_fake_game();
     let mut manager =
         HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
-    let outcome = manager.launch(QaPort::new(port), &sample_spec());
+    let outcome = manager.launch(McpPort::new(port), &sample_spec());
     assert!(
         matches!(outcome, LaunchOutcome::Launched { .. }),
         "launch against the fake server becomes ready: {outcome:?}",
@@ -69,7 +69,7 @@ fn the_line_cap_reaches_the_childs_ring() {
         "a cap of zero returns no lines from the running child, got {capped:?}",
     );
 
-    let stopped = manager.stop(QaPort::new(port));
+    let stopped = manager.stop(McpPort::new(port));
     assert!(
         matches!(stopped, StopOutcome::Stopped { .. }),
         "the child stops cleanly: {stopped:?}",
@@ -79,7 +79,7 @@ fn the_line_cap_reaches_the_childs_ring() {
 #[test]
 fn with_two_children_recorded_the_tail_is_the_last_one_launched() {
     let gates = gated_listeners(2);
-    let ports: Vec<QaPort> = gates.iter().map(|(port, _)| *port).collect();
+    let ports: Vec<McpPort> = gates.iter().map(|(port, _)| *port).collect();
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(PortGatedSpawner::new(calls, gates)),

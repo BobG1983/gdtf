@@ -1,17 +1,17 @@
+use cobalt_mcp_protocol::ports::McpPort;
 use serde_json::{Value, json};
 
 use crate::{
-    hosts::QaHostSpec,
+    hosts::McpHostSpec,
     lifecycle::{
         BootTimeout, FailureTail, LaunchFailure, LaunchOutcome, LaunchSpec, OrphanPid, OutputTail,
         StopOutcome, TailLines,
     },
-    link::QaPort,
     mcp::content::{text_content, tool_error},
 };
 
 pub(super) fn render_launch(
-    host: &QaHostSpec,
+    host: &McpHostSpec,
     outcome: &LaunchOutcome,
     requested: &LaunchSpec,
 ) -> Value {
@@ -47,7 +47,7 @@ fn resolved_working_dir(spec: &LaunchSpec) -> String {
 }
 
 fn launch_failure_message(
-    host: &QaHostSpec,
+    host: &McpHostSpec,
     failure: &LaunchFailure,
     requested: &LaunchSpec,
 ) -> String {
@@ -101,7 +101,7 @@ fn launch_failure_message(
 }
 
 fn timeout_message(
-    host: &QaHostSpec,
+    host: &McpHostSpec,
     waited: BootTimeout,
     requested: &LaunchSpec,
     tail: &FailureTail,
@@ -140,7 +140,7 @@ fn holder_field(pid: OrphanPid) -> Value {
     }
 }
 
-pub(super) fn render_stop(host: &QaHostSpec, outcome: &StopOutcome) -> Value {
+pub(super) fn render_stop(host: &McpHostSpec, outcome: &StopOutcome) -> Value {
     match outcome {
         StopOutcome::Stopped { pid } => text_content(&json!({ "status": "stopped", "pid": **pid })),
         StopOutcome::OrphanStopped { port, pid } => text_content(&json!({
@@ -153,7 +153,7 @@ pub(super) fn render_stop(host: &QaHostSpec, outcome: &StopOutcome) -> Value {
     }
 }
 
-fn orphan_held_message(host: &QaHostSpec, port: QaPort, pid: OrphanPid) -> String {
+fn orphan_held_message(host: &McpHostSpec, port: McpPort, pid: OrphanPid) -> String {
     let label = host.name();
     let holder = holder_clause(pid);
     match pid {
@@ -172,7 +172,7 @@ fn orphan_held_message(host: &QaHostSpec, port: QaPort, pid: OrphanPid) -> Strin
     }
 }
 
-pub(super) fn render_logs(host: &QaHostSpec, max: TailLines, tail: Option<&OutputTail>) -> Value {
+pub(super) fn render_logs(host: &McpHostSpec, max: TailLines, tail: Option<&OutputTail>) -> Value {
     let Some(tail) = tail else {
         return text_content(&json!({
             "status": "not_running",
@@ -194,14 +194,14 @@ pub(super) fn render_logs(host: &QaHostSpec, max: TailLines, tail: Option<&Outpu
 
 #[cfg(test)]
 mod test {
-    use super::{LaunchFailure, LaunchOutcome, QaPort, render_launch};
+    use super::{LaunchFailure, LaunchOutcome, McpPort, render_launch};
     use crate::hosts::test_support::registered;
 
     #[test]
     fn a_full_port_search_is_not_reported_as_an_orphan() {
         let host = registered("beta", 4200, true);
         let outcome = LaunchOutcome::Failed(LaunchFailure::NoFreePort {
-            requested: QaPort::new(4200),
+            requested: McpPort::new(4200),
         });
 
         let reply = render_launch(&host, &outcome, &host.default_spec());

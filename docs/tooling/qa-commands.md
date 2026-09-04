@@ -130,7 +130,7 @@ fails to compile until its mirror gains an arm.
 ### The command
 
 ```rust
-impl QaCommand for AppPhase {
+impl McpCommand for AppPhase {
     type Args = AppPhaseArgs;
     type Facts = GameFacts;
     type Parked = ();
@@ -145,7 +145,7 @@ impl QaCommand for AppPhase {
     }
 
     fn register_handler(app: &mut App) {
-        app.add_systems(Update, handle_app_phase.after(QaCommandSystems::Claim));
+        app.add_systems(Update, handle_app_phase.after(McpCommandSystems::Claim));
     }
 }
 ```
@@ -173,7 +173,7 @@ impl QaCommand for AppPhase {
   `CommandAvailability::Unavailable { code, note }`, naming the missing thing in words a
   caller can act on.
 - **`register_handler`** puts the handler wherever in the schedule its work belongs.
-  `.after(QaCommandSystems::Claim)` is the floor — that is where the decode step fills
+  `.after(McpCommandSystems::Claim)` is the floor — that is where the decode step fills
   the queue, so a handler that ran earlier would answer every call a frame late. A handler
   that WRITES something the game also writes needs an edge against each of those systems
   too. Without one the built schedule picks the winner, and the reply can name a value that
@@ -217,7 +217,7 @@ frame has nothing to drain.
 
 ## What you do NOT edit
 
-- **The protocol.** No `QaRequest` variant, no `QaResponse` variant, no version bump.
+- **The protocol.** No `McpRequest` variant, no `McpResponse` variant, no version bump.
 - **The router.** `Catalogue` and `Run` are already routed. In particular, do NOT add a
   second system that reads `Res<NetInbox>`: `drain()` takes everything in the channel, so
   two readers means whichever runs first swallows the other's requests. The property is
@@ -1003,7 +1003,7 @@ the connector pairing pass did. `PairPlaced` names the tile the pass placed one 
 the same tile that was painted, and the slot it landed in, so the next `editor.map` read
 holds no cell the caller cannot account for.
 
-`editor.save` writes under `EditorQaAssetsRoot`
+`editor.save` writes under `EditorMcpAssetsRoot`
 ([`mcp/assets_root.rs`](../../crates/gdtf_editor/src/mcp/assets_root.rs)),
 which defaults to the workspace `assets/` and falls back to a temp directory when the
 marker search finds no workspace. Only Prefab takes a `name`, because only the prefab form
@@ -1096,7 +1096,7 @@ comes true answers `Timeout` and leaves the connection open, never a refusal and
 **A host publishes ONE list of typed commands, and the wire carries any command in
 variants that never change.**
 
-- A command is a unit struct implementing `QaCommand` (`libs/cobalt_mcp_command`): two
+- A command is a unit struct implementing `McpCommand` (`libs/cobalt_mcp_command`): two
   associated types whose RON shapes are **traced out of their own `Deserialize` impls** —
   the same impls that decode the wire, so a published shape cannot disagree with the
   decoder — a name, a summary, a declared timing, a deferral budget, a pure availability

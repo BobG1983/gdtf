@@ -1,13 +1,13 @@
 use cobalt_mcp_protocol::{
     command::{CommandAvailability, CommandName, CommandOutcome},
-    message::QaResponse,
+    message::McpResponse,
 };
 
 use crate::support::TestError;
 
 /// The refusal code and note a run answered with, or why the reply was not a refusal.
-pub(crate) fn refusal_of(reply: &QaResponse) -> Result<(String, String), TestError> {
-    let QaResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
+pub(crate) fn refusal_of(reply: &McpResponse) -> Result<(String, String), TestError> {
+    let McpResponse::Outcome(CommandOutcome::Unavailable { code, note }) = reply else {
         return Err(format!("expected an Unavailable outcome, got {reply:?}").into());
     };
     Ok((format!("{code:?}"), note.as_str().to_owned()))
@@ -15,10 +15,10 @@ pub(crate) fn refusal_of(reply: &QaResponse) -> Result<(String, String), TestErr
 
 /// The refusal code and note the catalogue publishes for one command.
 pub(crate) fn catalogue_refusal_of(
-    reply: &QaResponse,
+    reply: &McpResponse,
     command: &'static str,
 ) -> Result<(String, String), TestError> {
-    let QaResponse::Catalogue(catalogue) = reply else {
+    let McpResponse::Catalogue(catalogue) = reply else {
         return Err(format!("expected a Catalogue reply, got {reply:?}").into());
     };
     let Some(entry) = catalogue

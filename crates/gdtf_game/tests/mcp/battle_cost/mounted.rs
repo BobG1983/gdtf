@@ -112,7 +112,7 @@ fn fire_at(at: CellLevelNet, kinds: &[ModeKind]) -> Vec<CostActNet> {
 
 /// The bodies of the replies, one per act asked.
 fn bodies(
-    replies: Vec<cobalt_mcp_protocol::message::QaResponse>,
+    replies: Vec<cobalt_mcp_protocol::message::McpResponse>,
 ) -> Result<Vec<CostBody>, TestError> {
     replies.into_iter().map(cost_body).collect()
 }

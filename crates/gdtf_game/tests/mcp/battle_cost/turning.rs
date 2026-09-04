@@ -1,7 +1,7 @@
 //! A shot that has to turn first: what `battle.cost` quotes against what `act.fire` charges.
 
 use bevy::{app::App, ecs::entity::Entity};
-use cobalt_mcp_protocol::{command::RunOptions, message::QaRequest};
+use cobalt_mcp_protocol::{command::RunOptions, message::McpRequest};
 use gdtf_battle_sim::{
     combatants::firing_arc::target_in_arc,
     ganger::{Direction, Facing, Tu},
@@ -193,7 +193,7 @@ fn facing_out_of_arc(app: &App, shooter: Entity, target: CellLevelNet) -> Option
 }
 
 /// Select the shooter, pin the mode the shot will use, quote it, then take it.
-fn asked_for(shot: &TurningShot) -> Vec<QaRequest> {
+fn asked_for(shot: &TurningShot) -> Vec<McpRequest> {
     let mode = ModeKindNet::from_sim(shot.spec.kind);
     let (Some(argument), Some(quote)) = (
         mode_argument(mode),

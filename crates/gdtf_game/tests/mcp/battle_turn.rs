@@ -1,4 +1,4 @@
-use cobalt_mcp_protocol::{command::RunOptions, message::QaResponse};
+use cobalt_mcp_protocol::{command::RunOptions, message::McpResponse};
 use gdtf_game::qa_wire::roster::FactionNet;
 use serde::Deserialize;
 
@@ -16,7 +16,7 @@ struct TurnBody {
     player: Option<FactionNet>,
 }
 
-fn turn_body(reply: Option<QaResponse>) -> Result<TurnBody, TestError> {
+fn turn_body(reply: Option<McpResponse>) -> Result<TurnBody, TestError> {
     let Some(reply) = reply else {
         return Err("battle.turn produced no reply".into());
     };

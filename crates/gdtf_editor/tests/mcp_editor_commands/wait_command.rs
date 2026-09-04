@@ -1,7 +1,7 @@
 use core::time::Duration;
 
 use cobalt_mcp_command::dispatch::DeferredBudget;
-use cobalt_mcp_protocol::message::{ProtocolVersion, QaError, QaRequest, QaResponse};
+use cobalt_mcp_protocol::message::{McpRequest, McpResponse, McpSessionError, ProtocolVersion};
 use gdtf_assets::ContentChecksComplete;
 use gdtf_battle_sim::terrain::def::TerrainDefRegistry;
 use gdtf_editor::{EditorState, shorten_editor_wait_budget};
@@ -30,7 +30,7 @@ const NEVER_REARMED: &str = "(condition: RegistryRearmed(family: Sprite))";
 fn a_wait_for_the_content_checks_is_held_through_the_load_pass() -> TestResult {
     let (mut app, port) = editor_app_listening()?;
     let mut client = Client::connect(port)?;
-    client.send(&QaRequest::Hello(ProtocolVersion::CURRENT))?;
+    client.send(&McpRequest::Hello(ProtocolVersion::CURRENT))?;
     client.send(&run_editor(WAIT, CHECKS_COMPLETE))?;
     assert_eq!(
         editor_state(&app),
@@ -81,7 +81,7 @@ fn a_wait_for_the_content_checks_is_held_through_the_load_pass() -> TestResult {
 fn a_wait_on_a_registry_is_released_by_the_frame_that_loads_it() -> TestResult {
     let (mut app, port) = editor_app_listening()?;
     let mut client = Client::connect(port)?;
-    client.send(&QaRequest::Hello(ProtocolVersion::CURRENT))?;
+    client.send(&McpRequest::Hello(ProtocolVersion::CURRENT))?;
     client.send(&run_editor(WAIT, TERRAIN_REARMED))?;
     assert!(
         app.world().get_resource::<TerrainDefRegistry>().is_none(),
@@ -119,7 +119,7 @@ fn a_wait_on_a_registry_that_never_changes_expires_and_leaves_the_socket_open() 
 
     assert_eq!(
         expired,
-        QaResponse::Error(QaError::Timeout),
+        McpResponse::Error(McpSessionError::Timeout),
         "a condition nothing will make true must expire against the parking budget rather than \
          be refused or answered unsatisfied — there is no third reply shape",
     );

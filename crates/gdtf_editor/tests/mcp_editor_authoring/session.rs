@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use gdtf_content_families::sprites::{SpriteDef, SpriteImagePath, SpriteSource};
-use gdtf_editor::EditorQaAssetsRoot;
+use gdtf_editor::EditorMcpAssetsRoot;
 use tempfile::TempDir;
 
 use crate::{
@@ -26,7 +26,7 @@ fn one_authoring_session_writes_a_sprite_saves_it_and_reads_every_write_back() -
     let (mut app, mut client) = editing_app_and_client()?;
     let root = TempDir::new()?;
     app.world_mut()
-        .insert_resource(EditorQaAssetsRoot::new(root.path().to_path_buf()));
+        .insert_resource(EditorMcpAssetsRoot::new(root.path().to_path_buf()));
 
     let too_early = draft_refusal(&mut app, &mut client)?;
     assert_eq!(

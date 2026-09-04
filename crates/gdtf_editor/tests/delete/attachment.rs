@@ -9,7 +9,7 @@ use gdtf_battle_sim::{
     weapon::{MeleeWeaponSpec, WeaponSpec},
 };
 use gdtf_editor::{
-    AttachmentDraft, DeleteOutcome, DeleteRequest, EditorQaAssetsRoot, attachment_save_path_in,
+    AttachmentDraft, DeleteOutcome, DeleteRequest, EditorMcpAssetsRoot, attachment_save_path_in,
     draft_to_attachment_spec, melee_weapon_save_path_in, weapon_save_path_in, write_attachment_in,
     write_melee_weapon_in, write_weapon_in,
 };
@@ -78,7 +78,7 @@ fn deleting_an_attachment_takes_its_key_out_of_the_ranged_and_the_melee_spec() {
     );
 
     let mut app = editor_app_with_asset_root(dir.path());
-    app.insert_resource(EditorQaAssetsRoot::new(dir.path().to_path_buf()));
+    app.insert_resource(EditorMcpAssetsRoot::new(dir.path().to_path_buf()));
     advance_to_published(&mut app);
 
     app.insert_resource(DeleteRequest::new(

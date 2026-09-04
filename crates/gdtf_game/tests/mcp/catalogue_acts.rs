@@ -2,7 +2,7 @@
 
 use cobalt_mcp_protocol::{
     command::{CommandAvailability, CommandName, CommandTiming, UnavailableCode},
-    message::{QaRequest, QaResponse},
+    message::{McpRequest, McpResponse},
 };
 
 use super::{
@@ -40,8 +40,8 @@ const ACT_TIMINGS: [(&str, CommandTiming); 19] = [
 
 #[test]
 fn the_catalogue_publishes_every_act_with_its_timing_and_a_summary() -> TestResult {
-    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
-    let QaResponse::Catalogue(catalogue) = reply else {
+    let reply = exchange(game_app_listening, McpRequest::Catalogue)?;
+    let McpResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
     };
     for (name, timing) in ACT_TIMINGS {
@@ -66,8 +66,8 @@ fn the_catalogue_publishes_every_act_with_its_timing_and_a_summary() -> TestResu
 
 #[test]
 fn the_menu_catalogue_reads_every_act_as_refused() -> TestResult {
-    let reply = exchange(game_app_listening, QaRequest::Catalogue)?;
-    let QaResponse::Catalogue(catalogue) = reply else {
+    let reply = exchange(game_app_listening, McpRequest::Catalogue)?;
+    let McpResponse::Catalogue(catalogue) = reply else {
         unreachable!("a Catalogue request is answered with a catalogue, got {reply:?}");
     };
     for (name, _timing) in ACT_TIMINGS {

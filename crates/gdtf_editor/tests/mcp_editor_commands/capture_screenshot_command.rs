@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use cobalt_mcp_protocol::{
     command::{AttachmentKind, CaptureRider, CommandOutcome, RunOptions},
     ids::ShotName,
-    message::{ProtocolVersion, QaError, QaRequest, QaResponse},
+    message::{McpRequest, McpResponse, McpSessionError, ProtocolVersion},
     ports::McpPort,
 };
 use cobalt_screenshot::{CaptureSystems, PollCap, SettleFrames, ShotDir, ShotDirName};
@@ -33,7 +33,7 @@ fn settled_client(mut app: App, port: McpPort) -> Result<(App, Client), TestErro
     app.insert_resource(PollCap::new(SHORT_POLL));
     advance_to_editing(&mut app);
     let mut client = Client::connect(port)?;
-    let hello = client.exchange(&mut app, &QaRequest::Hello(ProtocolVersion::CURRENT))?;
+    let hello = client.exchange(&mut app, &McpRequest::Hello(ProtocolVersion::CURRENT))?;
     assert_hello_ok(&hello);
     Ok((app, client))
 }
@@ -84,8 +84,8 @@ fn rider_named(stem: &str) -> RunOptions {
     )
 }
 
-fn ran_body_text(reply: &QaResponse) -> Result<String, TestError> {
-    let QaResponse::Outcome(CommandOutcome::Ran { reply: body, .. }) = reply else {
+fn ran_body_text(reply: &McpResponse) -> Result<String, TestError> {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply: body, .. }) = reply else {
         return Err(format!("expected a Ran outcome for `{EDITOR_PHASE}`, got {reply:?}").into());
     };
     Ok(body.as_str().to_owned())
@@ -98,25 +98,25 @@ fn a_capture_the_headless_editor_cannot_land_reaches_the_pump_and_times_out() ->
     let reply = client.exchange(&mut app, &run_editor(CAPTURE_SCREENSHOT, "()"))?;
 
     assert!(
-        matches!(reply, QaResponse::Error(QaError::Timeout)),
+        matches!(reply, McpResponse::Error(McpSessionError::Timeout)),
         "with nothing writing a PNG the editor's capture must reach the pump and give up there, \
          answering Timeout rather than refusing; got {reply:?}",
     );
     assert!(
-        !matches!(reply, QaResponse::Outcome(CommandOutcome::Unknown { .. })),
+        !matches!(reply, McpResponse::Outcome(CommandOutcome::Unknown { .. })),
         "capture.screenshot must be a REGISTERED name on the editor host, not Unknown: {reply:?}",
     );
     assert!(
         !matches!(
             reply,
-            QaResponse::Outcome(CommandOutcome::BadArguments { .. })
+            McpResponse::Outcome(CommandOutcome::BadArguments { .. })
         ),
         "`()` must deserialize into the command's args, whose only field is optional: {reply:?}",
     );
     assert!(
         !matches!(
             reply,
-            QaResponse::Outcome(CommandOutcome::Unavailable { .. })
+            McpResponse::Outcome(CommandOutcome::Unavailable { .. })
         ),
         "the command needs neither the authoring scene nor a tab, so nothing may refuse it: \
          {reply:?}",
@@ -141,11 +141,11 @@ fn a_capture_rider_on_an_editor_command_attaches_the_png_the_editor_took() -> Te
     let with_rider = client.read(&mut app)?;
 
     assert!(
-        !matches!(with_rider, QaResponse::Error(QaError::Timeout)),
+        !matches!(with_rider, McpResponse::Error(McpSessionError::Timeout)),
         "the editor drains the capture holds it registers, so a rider must answer rather than \
          wait out the caller's reply timeout; got {with_rider:?}",
     );
-    let QaResponse::Outcome(CommandOutcome::Ran { reply, attachments }) = &with_rider else {
+    let McpResponse::Outcome(CommandOutcome::Ran { reply, attachments }) = &with_rider else {
         return Err(format!("a capture rider runs its command first, got {with_rider:?}").into());
     };
     assert_eq!(
