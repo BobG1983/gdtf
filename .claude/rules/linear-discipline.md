@@ -89,6 +89,37 @@ that is about to become a clause.
 Cite one only when you can find that decision in the conversation. An agent's own note is not
 evidence that anything was agreed.
 
+## Ticket size: prefer the larger ticket
+
+Do not split a ticket because it looks big. Gating costs about the same whatever the ticket
+holds, so a small ticket pays a full gate bill for less delivered work.
+
+Measured on 2026-09-04. GTW-1071's gate spent 4.24M tokens across 75 agents checking a build
+that cost 3.35M across 31. Checking cost more than building. GTW-1069 was 1904 files in one
+commit and passed on its first gate round. GTW-1330 was 28 clauses and took four rounds. Both
+landed for one gate bill each.
+
+The build workflow's fix loop absorbs size. It reads the ticket, builds, verifies, runs three
+or four gate lenses, repairs what they find, and repeats. A long ticket goes round that loop
+more times. It does not need a second ticket.
+
+So `Needs Splitting` is for a ticket that cannot be built as one thing. A ticket that is merely
+long is built as it is. Two signs it cannot be built as one thing:
+
+- Its clauses cover work that cannot land together. A half-applied crate rename does not
+  compile, so it is one ticket. Four unrelated editor families each with their own delete rule
+  are four.
+- A clause is blocked on something the others are not, so the whole ticket waits on it.
+
+Owner ruling, given directly in conversation 2026-09-04: "our workflow is good enough to do
+slightly larger tasks that you might think because of the fix loop. It's actually better in
+terms of cost/ticket to have slightly larger tickets, because of the ratio of
+tokens_spent_implementing:tokens_spent_checking."
+
+This does not loosen [clause-writing.md](./clause-writing.md). One clause is still one
+requirement, and a clause needing "and also" is still two clauses. Many clauses on one ticket
+is the shape this rule asks for.
+
 ## Labels
 
 Labels state facts about a ticket. Inventing a label in chat is forbidden. Creating a new team
@@ -125,7 +156,7 @@ tell the orchestrator.
 
 | Label | Meaning | Who applies | What removes it |
 | --- | --- | --- | --- |
-| Needs Splitting | Too big to build as-is; children not yet filed | Author when size is wrong | Children exist and parent is only a rollup, **or** ticket superseded / canceled. Not only when Done. |
+| Needs Splitting | Cannot be built as one thing, because its clauses cannot land together or one of them is separately blocked. Not for a ticket that is merely long: see [Ticket size](#ticket-size-prefer-the-larger-ticket) | Author when the ticket cannot be built whole | Children exist and parent is only a rollup, **or** ticket superseded / canceled. Not only when Done. |
 | Needs User Input | Blocked on a decision only the user can make. Ticket stays Backlog; question is a comment on the ticket | Agent or author when stuck | User answers on the ticket, or the ticket moves on. Do not leave it on after the answer, or after the work is superseded or canceled. |
 | DO NOT CLOSE | A standing bucket Epic that collects children and never finishes. Never move it to Done, Canceled or Duplicate: closing a parent auto-completes and archives its open children, and every child being closed is not a reason. Not a Mythos marker; it sits on the bucket Epics, not on their parent | Author when creating a standing bucket | Only the user, retiring the bucket by hand. Never "Ticket Done / canceled" |
 | Needs Design | The design is not settled enough to split or build. The Epic stays Backlog until the design is written | Author when filing | The design recorded in docs/ or on the ticket; usually hands over to `Needs Splitting` |
