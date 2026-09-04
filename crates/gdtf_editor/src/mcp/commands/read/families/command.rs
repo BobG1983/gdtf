@@ -1,14 +1,14 @@
 //! The `editor.families` command itself: one row per family, each sorted by key.
 
 use bevy::prelude::*;
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote,
 };
-use cobalt_mcp_transport::PendingQueue;
 use serde::{Deserialize, Serialize};
 
 use super::{collect::entries_of, filter::families_to_answer, sort::sorted_by_key};

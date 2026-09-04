@@ -1,14 +1,14 @@
 //! Lay the selected tile in a cell, the way a click on the canvas does.
 
 use bevy::{ecs::system::SystemParam, prelude::*};
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
 };
-use cobalt_mcp_transport::PendingQueue;
 use gdtf_battle_sim::{
     metric::{Cell, CellLevel},
     terrain::def::TerrainDefRegistry,

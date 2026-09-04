@@ -1,7 +1,7 @@
 //! Put the QA command sets inside the editor's own gather set and register the commands.
 
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::{McpCommandSystems, register_command_set};
+use cobalt_mcp_host::dispatch::{McpCommandSystems, register_command_set};
 
 use super::set::EDITOR_COMMANDS;
 use crate::mcp::schedule::EditorMcpSystems;

@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, CommandResponder, McpCommandSystems, take_calls},
 };
@@ -11,7 +12,6 @@ use cobalt_mcp_protocol::{
     ids::ShotName,
     message::{McpResponse, McpSessionError},
 };
-use cobalt_mcp_transport::PendingQueue;
 use cobalt_screenshot::{CaptureCompletions, CaptureOutcome, CaptureQueue, ShotStem};
 use serde::{Deserialize, Serialize};
 

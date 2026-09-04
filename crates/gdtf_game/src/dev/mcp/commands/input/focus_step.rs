@@ -1,12 +1,12 @@
 use bevy::{input_focus::InputFocus, prelude::*};
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, DeferredReplies, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
 };
-use cobalt_mcp_transport::PendingQueue;
 use gdtf_ui::focus_nav::{FocusNavSystems, NavDirection, NavigateRequest};
 use serde::Deserialize;
 

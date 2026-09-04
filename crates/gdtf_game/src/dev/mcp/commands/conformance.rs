@@ -10,9 +10,9 @@ use super::set::GAME_COMMANDS;
 ///
 /// Panics when a command's deferral budget would outlive the socket's wait for its reply.
 pub fn assert_game_command_set_is_conformant() {
-    cobalt_mcp_command::test_support::assert_unique_names(GAME_COMMANDS);
-    cobalt_mcp_command::test_support::assert_schemas_parse(GAME_COMMANDS);
-    cobalt_mcp_command::test_support::assert_shape_names_agree(GAME_COMMANDS);
+    cobalt_mcp_host::test_support::assert_unique_names(GAME_COMMANDS);
+    cobalt_mcp_host::test_support::assert_schemas_parse(GAME_COMMANDS);
+    cobalt_mcp_host::test_support::assert_shape_names_agree(GAME_COMMANDS);
     for command in GAME_COMMANDS {
         let budget = command.deferred_budget();
         assert!(

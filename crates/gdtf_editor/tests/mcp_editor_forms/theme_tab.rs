@@ -2,7 +2,7 @@
 //! display name, a foreign field or list, and a draft that leaves the world.
 
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::{CommandInbox, McpCommandSystems};
+use cobalt_mcp_host::dispatch::{CommandInbox, McpCommandSystems};
 use cobalt_mcp_protocol::message::McpResponse;
 use gdtf_editor::{EditorMode, ThemeDraft};
 

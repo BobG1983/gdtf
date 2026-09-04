@@ -3,8 +3,8 @@
 use std::sync::mpsc;
 
 use bevy::app::App;
+use cobalt_mcp_host::IncomingRequest;
 use cobalt_mcp_protocol::message::McpResponse;
-use cobalt_mcp_transport::IncomingRequest;
 use gdtf_game::{qa_wire::misc::ModeKindNet, test_support::ModeBurstButton};
 use gdtf_test_utils::press_ui_button;
 

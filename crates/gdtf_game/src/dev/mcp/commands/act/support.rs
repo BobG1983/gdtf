@@ -1,7 +1,7 @@
 //! Pieces every classic act command is built from.
 
 use bevy::{ecs::system::SystemParam, prelude::*};
-use cobalt_mcp_command::{command::McpCommand, dispatch::DeferredReplies};
+use cobalt_mcp_host::{command::McpCommand, dispatch::DeferredReplies};
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedShooter};
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActEntry, ActLog, ActSeq},

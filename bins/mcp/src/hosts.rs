@@ -5,6 +5,11 @@ use cobalt_mcp_server::{
     LifecycleConfig, McpChannel, McpHostSpec, McpPort,
 };
 
+/// The loopback port the game host's listener binds by default.
+pub const DEFAULT_GAME_PORT: McpPort = McpPort::new(7616);
+/// The loopback port the editor host's listener binds by default.
+pub const DEFAULT_EDITOR_PORT: McpPort = McpPort::new(7617);
+
 // The umbrella feature that turns on each host's QA channel.
 const DEVELOPMENT_FEATURE: &str = "development";
 
@@ -39,7 +44,7 @@ pub fn registry() -> HostRegistry {
         host(
             HostName::new("game".to_owned()),
             CargoPackage::new("game".to_owned()),
-            McpPort::new(7616),
+            DEFAULT_GAME_PORT,
             McpChannel::new(
                 EnvVarName::new("GDTF_MCP".to_owned()),
                 EnvVarName::new("GDTF_MCP_PORT".to_owned()),
@@ -49,7 +54,7 @@ pub fn registry() -> HostRegistry {
         host(
             HostName::new("editor".to_owned()),
             CargoPackage::new("editor".to_owned()),
-            McpPort::new(7617),
+            DEFAULT_EDITOR_PORT,
             McpChannel::new(
                 EnvVarName::new("GDTF_EDITOR_MCP".to_owned()),
                 EnvVarName::new("EDITOR_MCP_PORT".to_owned()),

@@ -1,6 +1,6 @@
 use core::time::Duration;
 
-use cobalt_mcp_command::dispatch::DeferredBudget;
+use cobalt_mcp_host::dispatch::DeferredBudget;
 use cobalt_mcp_protocol::message::{McpRequest, McpResponse, McpSessionError, ProtocolVersion};
 use gdtf_assets::ContentChecksComplete;
 use gdtf_battle_sim::terrain::def::TerrainDefRegistry;

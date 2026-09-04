@@ -1,12 +1,12 @@
 use bevy::prelude::*;
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, DeferredReplies, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, UnavailableCode,
 };
-use cobalt_mcp_transport::PendingQueue;
 use gdtf_battle_presenter::{
     ActiveLevel, WorldCamera, cell_to_world, clamp_camera_to_bounds, set_camera_focus,
 };

@@ -1,7 +1,11 @@
 //! This game registers two hosts, each with its own package, channel, port and policy.
 
+use cobalt_mcp_protocol::ports::McpPort;
 use cobalt_mcp_server::{HostName, LaunchPolicy, initialize_result};
-use mcp::{identity, registry};
+use mcp::{
+    hosts::{DEFAULT_EDITOR_PORT, DEFAULT_GAME_PORT},
+    identity, registry,
+};
 
 // A registered name as a tool call spells it.
 fn named(name: &str) -> HostName {
@@ -22,6 +26,18 @@ fn the_game_and_the_editor_are_both_registered_with_their_own_package_and_channe
     assert_eq!(editor.package().as_str(), "editor");
     assert_eq!(game.channel().enable().as_str(), "GDTF_MCP");
     assert_eq!(editor.channel().enable().as_str(), "GDTF_EDITOR_MCP");
+    let expected_game: McpPort = DEFAULT_GAME_PORT;
+    let expected_editor: McpPort = DEFAULT_EDITOR_PORT;
+    assert_eq!(
+        game.default_port(),
+        expected_game,
+        "the game host binds the port the game constant names"
+    );
+    assert_eq!(
+        editor.default_port(),
+        expected_editor,
+        "the editor host binds the port the editor constant names"
+    );
     assert_ne!(
         game.default_port(),
         editor.default_port(),

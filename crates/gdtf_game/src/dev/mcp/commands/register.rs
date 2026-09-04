@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::{McpCommandSystems, register_command_set};
+use cobalt_mcp_host::dispatch::{McpCommandSystems, register_command_set};
 use gdtf_battle_input::{
     InputSystems, auto_select_first_player_ganger, contextual::ContextualActSystems,
     dispatch_act_intents,

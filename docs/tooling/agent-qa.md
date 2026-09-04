@@ -242,7 +242,7 @@ function inserts the editor's own shot directory, `target/qa_screenshots_editor`
 so an editor shot and a game shot cannot write over each other when both
 processes are up. `run`'s `capture` rider writes into that same directory
 through a second pipeline, `CapturePipelinePlugin<CaptureTicket>`, which
-`register_riders` in `libs/cobalt_mcp_command/src/dispatch/register.rs` adds
+`register_riders` in `libs/cobalt_mcp_host/src/dispatch/register.rs` adds
 next to the held reply it drains, so a rider answers with its PNG on either
 host.
 The wire shape, the framing, and the protocol version are the game's — see

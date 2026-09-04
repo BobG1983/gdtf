@@ -8,6 +8,8 @@ cobalt_mcp_server = { path = "../../libs/cobalt_mcp_server" }
 
 [dev-dependencies]
 serde_json = "1"
+# The registration test names the port type by the crate that declares it.
+cobalt_mcp_protocol = { path = "../../libs/cobalt_mcp_protocol" }
 
 [lints]
 workspace = true

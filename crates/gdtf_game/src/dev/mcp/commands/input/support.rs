@@ -1,7 +1,7 @@
 //! Pieces the three focus commands are built from.
 
 use bevy::{input_focus::InputFocus, prelude::*};
-use cobalt_mcp_command::{command::McpCommand, dispatch::DeferredReplies};
+use cobalt_mcp_host::{command::McpCommand, dispatch::DeferredReplies};
 use serde::{Deserialize, Serialize};
 
 use crate::dev::mcp::wire::token::FocusTargetNet;

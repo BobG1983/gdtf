@@ -1,11 +1,11 @@
 use std::sync::mpsc::Sender;
 
 use bevy::app::App;
+use cobalt_mcp_host::IncomingRequest;
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, RunOptions, UnavailableCode},
     message::McpResponse,
 };
-use cobalt_mcp_transport::IncomingRequest;
 use gdtf_game::{
     qa_wire::misc::SeedNet,
     test_support::{GenerationComplete, ResolvedBattleSeed},

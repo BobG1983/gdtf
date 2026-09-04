@@ -3,8 +3,8 @@
 use std::{net::TcpListener, sync::mpsc, thread};
 
 use bevy::prelude::*;
+use cobalt_mcp_host::{IncomingRequest, NetInbox, bind_listener, run_listener};
 use cobalt_mcp_protocol::{ports::McpPort, timeouts::NetTimeouts};
-use cobalt_mcp_transport::{IncomingRequest, NetInbox, bind_listener, run_listener};
 
 use super::{
     register_consumers::register_consumers, register_present::register_present,

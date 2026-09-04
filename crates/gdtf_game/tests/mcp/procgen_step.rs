@@ -60,8 +60,8 @@ mod stepping {
     use std::sync::mpsc::{self, Sender};
 
     use bevy::{app::App, prelude::NextState, state::state::State};
+    use cobalt_mcp_host::IncomingRequest;
     use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
-    use cobalt_mcp_transport::IncomingRequest;
     use gdtf_battle_sim::procgen::{ProcgenStage, StagedProcgen};
     use gdtf_game::{
         qa_wire::misc::ProcgenStageNet,

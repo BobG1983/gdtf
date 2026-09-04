@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use cobalt_mcp_transport::NetInbox;
+use cobalt_mcp_host::NetInbox;
 
 use crate::dev::mcp::plugin::mcp_plugin::McpPlugin;
 

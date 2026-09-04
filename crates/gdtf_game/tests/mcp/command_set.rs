@@ -7,7 +7,7 @@ use bevy::{
         schedule::{Schedules, SystemSet},
     },
 };
-use cobalt_mcp_command::dispatch::McpCommandSystems;
+use cobalt_mcp_host::dispatch::McpCommandSystems;
 use cobalt_mcp_protocol::command::CommandName;
 use gdtf_battle_input::InputSystems;
 use gdtf_game::test_support::{assert_game_command_set_is_conformant, game_command_names};

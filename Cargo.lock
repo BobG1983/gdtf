@@ -2041,12 +2041,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "cobalt_mcp_command"
+name = "cobalt_mcp_host"
 version = "0.1.0"
 dependencies = [
  "bevy",
  "cobalt_mcp_protocol",
- "cobalt_mcp_transport",
  "cobalt_screenshot",
  "cobalt_test_utils",
  "image",
@@ -2071,14 +2070,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
-]
-
-[[package]]
-name = "cobalt_mcp_transport"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "cobalt_mcp_protocol",
 ]
 
 [[package]]
@@ -2968,9 +2959,8 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_egui",
- "cobalt_mcp_command",
+ "cobalt_mcp_host",
  "cobalt_mcp_protocol",
- "cobalt_mcp_transport",
  "cobalt_ron_assets",
  "cobalt_screenshot",
  "cobalt_state_scoped",
@@ -2991,9 +2981,8 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_egui",
- "cobalt_mcp_command",
+ "cobalt_mcp_host",
  "cobalt_mcp_protocol",
- "cobalt_mcp_transport",
  "cobalt_ron_assets",
  "cobalt_screenshot",
  "cobalt_state_scoped",
@@ -3858,6 +3847,7 @@ dependencies = [
 name = "mcp"
 version = "0.1.0"
 dependencies = [
+ "cobalt_mcp_protocol",
  "cobalt_mcp_server",
  "serde_json",
 ]

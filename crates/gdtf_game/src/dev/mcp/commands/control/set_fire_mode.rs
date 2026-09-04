@@ -1,12 +1,12 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
 };
-use cobalt_mcp_transport::PendingQueue;
 use gdtf_battle_input::{
     ChosenFireMode, FireModeSystems, SelectedShooter, firing_weapon_of, mode_spec_for,
     reset_move_target_on_fire_mode_change, set_chosen_mode,

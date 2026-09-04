@@ -2,7 +2,7 @@
 //! the sim records.
 
 use bevy::ecs::schedule::{IntoSystemSet, NodeId};
-use cobalt_mcp_command::dispatch::McpCommandSystems;
+use cobalt_mcp_host::dispatch::McpCommandSystems;
 use gdtf_battle_input::{
     InputSystems, auto_select_first_player_ganger, clear_downed_selection,
     contextual::ContextualActSystems,

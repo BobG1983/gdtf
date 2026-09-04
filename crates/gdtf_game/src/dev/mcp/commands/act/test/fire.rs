@@ -1,7 +1,8 @@
 use std::sync::mpsc::Receiver;
 
 use bevy::prelude::*;
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue, Responder,
     command::McpCommand,
     dispatch::{CommandCall, DeferredReplies},
 };
@@ -9,7 +10,6 @@ use cobalt_mcp_protocol::{
     command::{CommandOutcome, UnavailableCode},
     message::McpResponse,
 };
-use cobalt_mcp_transport::{PendingQueue, Responder};
 use gdtf_battle_input::{PendingActIntent, SelectedShooter};
 use gdtf_battle_sim::{
     ganger::{Aiming, LifeState, Tu, TuMax},

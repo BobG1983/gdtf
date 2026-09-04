@@ -3,14 +3,14 @@ use bevy::{
     prelude::*,
     window::{CursorMoved, PrimaryWindow},
 };
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
 };
-use cobalt_mcp_transport::PendingQueue;
 use gdtf_battle_input::pick_hovered_cell;
 use serde::{Deserialize, Serialize};
 

@@ -1,14 +1,14 @@
 //! The `editor.set_field` command itself: one field of the open form's draft.
 
 use bevy::prelude::*;
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
 };
-use cobalt_mcp_transport::PendingQueue;
 use serde::{Deserialize, Serialize};
 
 use super::{route, terrain::TerrainWriteRegistries};

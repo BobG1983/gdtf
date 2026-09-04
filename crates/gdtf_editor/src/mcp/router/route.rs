@@ -1,11 +1,11 @@
 //! Route MCP requests. Version negotiation is handled by the listener thread.
 use bevy::prelude::*;
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    NetInbox,
     catalogue::catalogue,
     dispatch::{CallQueues, IncomingCall, retest_waiting, route_call},
 };
 use cobalt_mcp_protocol::message::{McpRequest, McpResponse, McpSessionError};
-use cobalt_mcp_transport::NetInbox;
 
 use crate::mcp::{commands::EDITOR_COMMANDS, config::editor_host_name, facts::EditorFactsParam};
 

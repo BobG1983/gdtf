@@ -1,10 +1,10 @@
 use bevy::prelude::*;
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    NetInbox,
     catalogue::catalogue,
     dispatch::{CallQueues, IncomingCall, retest_waiting, route_call},
 };
 use cobalt_mcp_protocol::message::{McpRequest, McpResponse, McpSessionError};
-use cobalt_mcp_transport::NetInbox;
 
 use crate::dev::mcp::{
     commands::{GAME_COMMANDS, game_host_name},

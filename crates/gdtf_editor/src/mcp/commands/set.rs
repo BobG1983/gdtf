@@ -1,6 +1,6 @@
 //! The one list of commands the editor host publishes.
 
-use cobalt_mcp_command::command::ErasedCommand;
+use cobalt_mcp_host::command::ErasedCommand;
 
 use super::{
     capture::EditorCaptureScreenshot,

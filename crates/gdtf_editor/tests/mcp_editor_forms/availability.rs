@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::{CommandInbox, McpCommandSystems};
+use cobalt_mcp_host::dispatch::{CommandInbox, McpCommandSystems};
 use cobalt_mcp_protocol::{
     command::{CommandAvailability, CommandName, CommandOutcome, UnavailableCode},
     message::{McpRequest, McpResponse},

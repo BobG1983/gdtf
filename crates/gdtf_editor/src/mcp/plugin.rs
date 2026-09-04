@@ -8,9 +8,10 @@ use std::{
 };
 
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::McpCommandSystems;
+use cobalt_mcp_host::{
+    IncomingRequest, NetInbox, bind_listener, dispatch::McpCommandSystems, run_listener,
+};
 use cobalt_mcp_protocol::{ports::McpPort, timeouts::NetTimeouts};
-use cobalt_mcp_transport::{IncomingRequest, NetInbox, bind_listener, run_listener};
 use cobalt_screenshot::{
     CapturePipelinePlugin, CapturePresentPlugin, ShotDir, ShotDirName, WindowCapturePlugin,
 };
@@ -147,7 +148,7 @@ fn register_editor_capture(app: &mut App) {
 #[cfg(test)]
 mod test {
     use bevy::app::App;
-    use cobalt_mcp_transport::NetInbox;
+    use cobalt_mcp_host::NetInbox;
 
     use super::McpEditorPlugin;
 

@@ -1,7 +1,8 @@
 //! `editor.delete_record` — delete one authored record, refusing while it is in use.
 
 use bevy::prelude::*;
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, DeferredReplies, McpCommandSystems, take_calls},
 };
@@ -9,7 +10,6 @@ use cobalt_mcp_protocol::command::{
     ArgumentFault, CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote,
     UnavailableCode,
 };
-use cobalt_mcp_transport::PendingQueue;
 use gdtf_assets::{ContentMemberKey, FindingFamily};
 use serde::Deserialize;
 

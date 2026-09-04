@@ -14,8 +14,7 @@ gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
 ron = { workspace = true }
 cobalt_state_scoped = { path = "../../libs/cobalt_state_scoped" }
 cobalt_mcp_protocol = { path = "../../libs/cobalt_mcp_protocol", optional = true }
-cobalt_mcp_command = { path = "../../libs/cobalt_mcp_command", optional = true }
-cobalt_mcp_transport = { path = "../../libs/cobalt_mcp_transport", optional = true }
+cobalt_mcp_host = { path = "../../libs/cobalt_mcp_host", optional = true }
 cobalt_screenshot = { path = "../../libs/cobalt_screenshot", optional = true }
 serde = { workspace = true }
 image = { version = "0.25", default-features = false, features = ["png"] }
@@ -34,8 +33,7 @@ file_watcher = ["bevy/file_watcher"]
 # The MCP host: the MCP control channel, the save helpers it drives, and the screenshot pipeline.
 mcp = [
     "dep:cobalt_mcp_protocol",
-    "dep:cobalt_mcp_command",
-    "dep:cobalt_mcp_transport",
+    "dep:cobalt_mcp_host",
     "dep:cobalt_screenshot",
 ]
 

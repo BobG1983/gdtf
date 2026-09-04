@@ -1,14 +1,14 @@
 //! `battle.reachable` lists every cell one ganger can walk to, and what each one charges.
 
 use bevy::prelude::*;
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, UnavailableCode,
 };
-use cobalt_mcp_transport::PendingQueue;
 use gdtf_battle_presenter::{PresenterSystems, promote_shown_fog};
 use serde::{Deserialize, Serialize};
 

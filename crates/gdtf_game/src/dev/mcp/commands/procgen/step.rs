@@ -1,12 +1,12 @@
 use bevy::prelude::*;
-use cobalt_mcp_command::command::McpCommand;
 #[cfg(feature = "dev_tools")]
-use cobalt_mcp_command::dispatch::{CommandCall, McpCommandSystems, take_calls};
+use cobalt_mcp_host::PendingQueue;
+use cobalt_mcp_host::command::McpCommand;
+#[cfg(feature = "dev_tools")]
+use cobalt_mcp_host::dispatch::{CommandCall, McpCommandSystems, take_calls};
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
 };
-#[cfg(feature = "dev_tools")]
-use cobalt_mcp_transport::PendingQueue;
 #[cfg(feature = "dev_tools")]
 use gdtf_battle_sim::procgen::StagedProcgen;
 use serde::{Deserialize, Serialize};

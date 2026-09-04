@@ -1,14 +1,14 @@
 //! `editor.load_theme` selects a theme in the session and fills the Theme draft.
 
 use bevy::prelude::*;
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, McpCommandSystems, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
 };
-use cobalt_mcp_transport::PendingQueue;
 use gdtf_assets::ContentSourcePaths;
 use gdtf_battle_sim::level::UuidThemeRegistry;
 use gdtf_content_families::ThemeDefsFamily;

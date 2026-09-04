@@ -1,12 +1,14 @@
 use std::sync::mpsc::Receiver;
 
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::{CommandCall, CommandResponder};
+use cobalt_mcp_host::{
+    PendingQueue, Responder,
+    dispatch::{CommandCall, CommandResponder},
+};
 use cobalt_mcp_protocol::{
     command::{AttachmentKind, CommandOutcome},
     message::{McpResponse, McpSessionError},
 };
-use cobalt_mcp_transport::{PendingQueue, Responder};
 use cobalt_screenshot::{CaptureCompletions, CaptureOutcome, CaptureQueue};
 
 use crate::dev::mcp::commands::capture::screenshot::{

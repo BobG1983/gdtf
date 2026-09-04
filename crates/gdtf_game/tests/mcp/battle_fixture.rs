@@ -5,11 +5,11 @@ use bevy::{
     ecs::{entity::Entity, relationship::RelationshipTarget},
     state::state::State,
 };
+use cobalt_mcp_host::{IncomingRequest, Responder};
 use cobalt_mcp_protocol::{
     command::{CommandArgsRon, CommandName, CommandOutcome, RunOptions},
     message::{McpRequest, McpResponse, RunCommand},
 };
-use cobalt_mcp_transport::{IncomingRequest, Responder};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_presenter::playback::PlaybackCursor;
 use gdtf_battle_sim::{

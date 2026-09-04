@@ -1,4 +1,4 @@
-use cobalt_mcp_command::command::ErasedCommand;
+use cobalt_mcp_host::command::ErasedCommand;
 use cobalt_mcp_protocol::message::ServerNameNet;
 
 use super::{

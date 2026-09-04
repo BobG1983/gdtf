@@ -1,8 +1,8 @@
 use std::sync::mpsc::{Receiver, Sender};
 
 use bevy::{app::App, ecs::entity::Entity};
+use cobalt_mcp_host::IncomingRequest;
 use cobalt_mcp_protocol::message::McpResponse;
-use cobalt_mcp_transport::IncomingRequest;
 use gdtf_battle_presenter::playback::{ActHold, PlaybackCursor};
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct},

@@ -1,11 +1,11 @@
 //! Pieces every contextual act command is built from.
 
 use bevy::{ecs::system::SystemParam, prelude::*};
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, DeferredReplies, take_calls},
 };
-use cobalt_mcp_transport::PendingQueue;
 use gdtf_battle_input::{
     SelectedShooter,
     contextual::{ContextualAct, PendingContextualIntents},

@@ -9,11 +9,11 @@ use bevy::{
     math::Vec2,
     transform::components::Transform,
 };
+use cobalt_mcp_host::IncomingRequest;
 use cobalt_mcp_protocol::{
     command::{CommandOutcome, UnavailableCode},
     message::McpResponse,
 };
-use cobalt_mcp_transport::IncomingRequest;
 use gdtf_battle_input::world_to_cell;
 use gdtf_battle_presenter::{ActiveLevel, WorldCamera, cell_to_world};
 use gdtf_game::qa_wire::cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet};

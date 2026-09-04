@@ -1074,7 +1074,7 @@ by the editor's own `serve`
 together. Editor shots land in `target/qa_screenshots_editor` rather than the game's
 `target/qa_screenshots`, so the two processes cannot write over each other when both are up.
 `run`'s `capture` rider writes there too: `register_riders`
-([`dispatch/register.rs`](../../libs/cobalt_mcp_command/src/dispatch/register.rs)) adds
+([`dispatch/register.rs`](../../libs/cobalt_mcp_host/src/dispatch/register.rs)) adds
 `CapturePipelinePlugin<CaptureTicket>` and the `drive_rider_captures` drain that empties it
 beside the holds themselves, so the host that parks a held reply is the host that takes its shot.
 
@@ -1096,7 +1096,7 @@ comes true answers `Timeout` and leaves the connection open, never a refusal and
 **A host publishes ONE list of typed commands, and the wire carries any command in
 variants that never change.**
 
-- A command is a unit struct implementing `McpCommand` (`libs/cobalt_mcp_command`): two
+- A command is a unit struct implementing `McpCommand` (`libs/cobalt_mcp_host`): two
   associated types whose RON shapes are **traced out of their own `Deserialize` impls** —
   the same impls that decode the wire, so a published shape cannot disagree with the
   decoder — a name, a summary, a declared timing, a deferral budget, a pure availability

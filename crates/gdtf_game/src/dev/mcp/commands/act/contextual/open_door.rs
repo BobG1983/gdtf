@@ -1,5 +1,5 @@
 use bevy::prelude::App;
-use cobalt_mcp_command::command::McpCommand;
+use cobalt_mcp_host::command::McpCommand;
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming,
 };

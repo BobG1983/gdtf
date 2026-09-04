@@ -3,8 +3,8 @@
 use std::sync::mpsc;
 
 use bevy::app::App;
+use cobalt_mcp_host::IncomingRequest;
 use cobalt_mcp_protocol::message::{McpRequest, McpResponse};
-use cobalt_mcp_transport::IncomingRequest;
 use gdtf_battle_input::{InspectTarget, SelectedShooter};
 use gdtf_battle_presenter::FireTargetHighlight;
 use gdtf_battle_sim::{

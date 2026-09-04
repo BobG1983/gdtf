@@ -7,9 +7,11 @@ use bevy::{
     prelude::*,
     window::{CursorMoved, PrimaryWindow, Window},
 };
-use cobalt_mcp_command::dispatch::{CommandCall, register_command};
+use cobalt_mcp_host::{
+    PendingQueue, Responder,
+    dispatch::{CommandCall, register_command},
+};
 use cobalt_mcp_protocol::message::McpResponse;
-use cobalt_mcp_transport::{PendingQueue, Responder};
 use gdtf_test_utils::WindowedTestAppBuilder;
 
 use super::super::hover::{InputHover, InputHoverArgs};

@@ -6,7 +6,7 @@
 use std::sync::mpsc::Sender;
 
 use bevy::app::App;
-use cobalt_mcp_transport::IncomingRequest;
+use cobalt_mcp_host::IncomingRequest;
 use gdtf_battle_sim::test_support::fixtures;
 use gdtf_game::qa_wire::token::GangerToken;
 

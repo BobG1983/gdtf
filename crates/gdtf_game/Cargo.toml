@@ -16,8 +16,7 @@ serde = { workspace = true }
 ron = { workspace = true }
 cobalt_screenshot = { path = "../../libs/cobalt_screenshot", optional = true }
 cobalt_mcp_protocol = { path = "../../libs/cobalt_mcp_protocol", optional = true }
-cobalt_mcp_transport = { path = "../../libs/cobalt_mcp_transport", optional = true }
-cobalt_mcp_command = { path = "../../libs/cobalt_mcp_command", optional = true }
+cobalt_mcp_host = { path = "../../libs/cobalt_mcp_host", optional = true }
 bevy_egui = { version = "0.41", optional = true }
 image = { version = "0.25", default-features = false, features = ["png"] }
 
@@ -42,8 +41,7 @@ dev_tools = ["dep:bevy_egui"]
 mcp = [
     "dep:cobalt_screenshot",
     "dep:cobalt_mcp_protocol",
-    "dep:cobalt_mcp_transport",
-    "dep:cobalt_mcp_command",
+    "dep:cobalt_mcp_host",
 ]
 
 [lints]

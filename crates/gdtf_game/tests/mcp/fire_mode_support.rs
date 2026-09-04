@@ -3,7 +3,7 @@
 use std::sync::mpsc;
 
 use bevy::{app::App, ecs::entity::Entity, prelude::*};
-use cobalt_mcp_transport::IncomingRequest;
+use cobalt_mcp_host::IncomingRequest;
 use gdtf_battle_input::{ChosenFireMode, SelectedShooter, chosen_spec};
 use gdtf_battle_sim::weapon::{
     FireMode, FireModeSpec, MeleeWeapon, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,

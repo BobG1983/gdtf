@@ -7,7 +7,7 @@ use bevy::{
         schedule::{Schedules, SystemSet},
     },
 };
-use cobalt_mcp_command::dispatch::McpCommandSystems;
+use cobalt_mcp_host::dispatch::McpCommandSystems;
 use cobalt_mcp_protocol::command::CommandName;
 use gdtf_editor::{
     EditorMcpSystems, assert_editor_command_set_is_conformant, editor_command_names,

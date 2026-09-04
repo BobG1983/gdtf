@@ -1,7 +1,7 @@
 use core::time::Duration;
 use std::sync::mpsc::TryRecvError;
 
-use cobalt_mcp_command::dispatch::DeferredBudget;
+use cobalt_mcp_host::dispatch::DeferredBudget;
 use cobalt_mcp_protocol::{
     command::CommandOutcome,
     message::{McpResponse, McpSessionError},

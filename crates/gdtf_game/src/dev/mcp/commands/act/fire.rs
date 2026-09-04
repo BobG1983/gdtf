@@ -1,12 +1,12 @@
 use bevy::prelude::*;
-use cobalt_mcp_command::{
+use cobalt_mcp_host::{
+    PendingQueue,
     command::McpCommand,
     dispatch::{CommandCall, DeferredReplies, take_calls},
 };
 use cobalt_mcp_protocol::command::{
     CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
 };
-use cobalt_mcp_transport::PendingQueue;
 use gdtf_battle_input::{ActIntent, FireModeSystems, ShooterArms, try_fire_request};
 use gdtf_battle_sim::tuning::CombatTuning;
 use serde::Deserialize;

@@ -1,0 +1,23 @@
+[package]
+name = "cobalt_mcp_host"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+serde = { workspace = true }
+ron = { workspace = true }
+cobalt_mcp_protocol = { path = "../cobalt_mcp_protocol" }
+cobalt_screenshot = { path = "../cobalt_screenshot" }
+
+[dev-dependencies]
+# The rider tests write the PNG a shot lands as, in place of the renderer.
+image = { version = "0.25", default-features = false, features = ["png"] }
+# `advance_until`, the budget-free wait the rider tests take their answer from.
+cobalt_test_utils = { path = "../cobalt_test_utils" }
+
+[features]
+dynamic_linking = ["bevy/dynamic_linking", "cobalt_screenshot/dynamic_linking"]
+
+[lints]
+workspace = true

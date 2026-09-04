@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use cobalt_mcp_command::dispatch::McpCommandSystems;
+use cobalt_mcp_host::dispatch::McpCommandSystems;
 
 use crate::dev::mcp::{commands::register_game_commands, router::route_requests};
 
