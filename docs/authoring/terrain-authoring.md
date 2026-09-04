@@ -240,8 +240,8 @@ Then add its UUID to the theme palette in
 
 That is the whole authoring loop — the folder load picks the file up at the
 next launch (or live, via hot-reload — Part 3). The content editor
-(`cargo run -p gdtf_content_editor_bin`) writes the same files to the same folder
-(`crates/gdtf_content_editor/src/terrain_form/save.rs` /
+(`cargo run -p editor`) writes the same files to the same folder
+(`crates/gdtf_editor/src/terrain_form/save.rs` /
 `theme_form/save.rs`).
 
 A def opened in the editor's Terrain tab is saved back over the file it was read
@@ -361,7 +361,7 @@ governs both directions.
 
 The content editor's Terrain tab carries a four-checkbox picker for the sides,
 drawn only while the kind is `Emplacement`
-(`crates/gdtf_content_editor/src/egui_shell/terrain_form_ui/entry_sides.rs`),
+(`crates/gdtf_editor/src/egui_shell/terrain_form_ui/entry_sides.rs`),
 committed through `TerrainDraft::set_entry_sides` — which likewise commits only
 at that kind, and is cleared when the kind changes away.
 
@@ -432,7 +432,7 @@ The def round-trip tests live beside the types
 (`crates/gdtf_battle_sim/src/terrain/def/test/`,
 `crates/gdtf_battle_sim/src/level/theme_def/test/`); the shipped-content
 integration test is
-`crates/gdtf_app/tests/migrated_content/migrated_terrain_content.rs`. A new
+`crates/gdtf_game/tests/migrated_content/migrated_terrain_content.rs`. A new
 required field breaks their inline RON — add the field or `#[serde(default)]`.
 
 ### Step 5 — Update authoring docs
@@ -470,7 +470,7 @@ loader:
   `insert_member` (keys by the def's own `key:` UUID; the file stem is unused).
 - Generic systems: `crates/gdtf_assets/src/family/systems.rs` (Startup
   kick-off → gated resolve → live redrive).
-- Registration site: `crates/gdtf_app/src/states/load/plugin.rs` — one
+- Registration site: `crates/gdtf_game/src/states/load/plugin.rs` — one
   `app.register_content_family::<TerrainDefsFamily>()` +
   `::<ThemeDefsFamily>()` call each (the
   `ContentFamilyAppExt` extension, `crates/gdtf_assets/src/family/ext.rs`).

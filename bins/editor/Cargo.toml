@@ -1,0 +1,22 @@
+[package]
+name = "editor"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "editor"
+path = "src/main.rs"
+doc = false
+
+[dependencies]
+gdtf_editor = { path = "../../crates/gdtf_editor" }
+
+[features]
+default = []
+development = ["gdtf_editor/development"]
+dynamic_linking = ["gdtf_editor/dynamic_linking"]
+file_watcher = ["gdtf_editor/file_watcher"]
+mcp = ["gdtf_editor/mcp"]
+
+[lints]
+workspace = true

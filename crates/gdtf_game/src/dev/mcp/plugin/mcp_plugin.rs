@@ -1,0 +1,137 @@
+//! MCP plugin wiring for the game binary.
+
+use std::{net::TcpListener, sync::mpsc, thread};
+
+use bevy::prelude::*;
+use cobalt_mcp_protocol::{ports::McpPort, timeouts::NetTimeouts};
+use cobalt_mcp_transport::{IncomingRequest, NetInbox, bind_listener, run_listener};
+
+use super::{
+    register_consumers::register_consumers, register_present::register_present,
+    register_transport::register_transport,
+};
+use crate::dev::mcp::{
+    config::hello_facts,
+    env::{mcp_enabled, port_from_env},
+};
+
+enum Wiring {
+    Disabled,
+    Listener {
+        port:     McpPort,
+        timeouts: NetTimeouts,
+    },
+    #[cfg(feature = "headless_test")]
+    Channels {
+        inbox: std::sync::Mutex<Option<mpsc::Receiver<IncomingRequest>>>,
+    },
+    #[cfg(feature = "headless_test")]
+    Bound {
+        listener: std::sync::Mutex<Option<TcpListener>>,
+    },
+}
+
+crate::support_item! {
+    /// Serves the QA command channel from inside the running game.
+    struct McpPlugin {
+        wiring: Wiring,
+    }
+}
+
+impl McpPlugin {
+    crate::support_item! {
+        /// Build the default wiring: debug builds listen on the shared QA port.
+        #[must_use]
+        const fn from_env() -> Self {
+            let wiring = if mcp_enabled() {
+                Wiring::Listener {
+                    port:     port_from_env(),
+                    timeouts: NetTimeouts::DEFAULT,
+                }
+            } else {
+                Wiring::Disabled
+            };
+            Self { wiring }
+        }
+    }
+
+    /// Build a plugin that reads from an in-process inbox (tests).
+    #[cfg(feature = "headless_test")]
+    #[must_use]
+    pub const fn with_channels(inbox: mpsc::Receiver<IncomingRequest>) -> Self {
+        Self {
+            wiring: Wiring::Channels {
+                inbox: std::sync::Mutex::new(Some(inbox)),
+            },
+        }
+    }
+
+    /// Bind a loopback listener on `port` for tests, running with [`NetTimeouts::NO_IDLE_REAP`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an IO error if the listener cannot bind.
+    #[cfg(feature = "headless_test")]
+    pub fn listening(port: McpPort) -> std::io::Result<(Self, McpPort)> {
+        let (listener, bound) = bind_listener(port)?;
+        let plugin = Self {
+            wiring: Wiring::Bound {
+                listener: std::sync::Mutex::new(Some(listener)),
+            },
+        };
+        Ok((plugin, bound))
+    }
+}
+
+fn serve(app: &mut App, listener: TcpListener, timeouts: NetTimeouts) {
+    let (tx, rx) = mpsc::channel::<IncomingRequest>();
+    thread::spawn(move || run_listener(listener, tx, timeouts, hello_facts()));
+    app.insert_resource(NetInbox::new(rx));
+    register_transport(app);
+    register_consumers(app);
+    register_present(app);
+}
+
+impl Default for McpPlugin {
+    fn default() -> Self {
+        Self::from_env()
+    }
+}
+
+impl Plugin for McpPlugin {
+    fn build(&self, app: &mut App) {
+        match &self.wiring {
+            Wiring::Disabled => {}
+            Wiring::Listener { port, timeouts } => {
+                let Ok((listener, bound)) = bind_listener(*port) else {
+                    error!(
+                        port = **port,
+                        "mcp: failed to bind the loopback listener — QA channel OFF"
+                    );
+                    return;
+                };
+                info!(
+                    port = *bound,
+                    "mcp: ON (dev) — loopback QA control channel listening"
+                );
+                serve(app, listener, *timeouts);
+            }
+            #[cfg(feature = "headless_test")]
+            Wiring::Bound { listener } => {
+                let Some(listener) = listener.lock().ok().and_then(|mut guard| guard.take()) else {
+                    return;
+                };
+                serve(app, listener, NetTimeouts::NO_IDLE_REAP);
+            }
+            #[cfg(feature = "headless_test")]
+            Wiring::Channels { inbox } => {
+                let Some(rx) = inbox.lock().ok().and_then(|mut guard| guard.take()) else {
+                    return;
+                };
+                app.insert_resource(NetInbox::new(rx));
+                register_transport(app);
+                register_consumers(app);
+            }
+        }
+    }
+}

@@ -1,0 +1,16 @@
+//! Injury authoring mode — draft, weighting, and save.
+mod draft;
+mod save;
+mod weighting;
+
+pub use draft::{DEFAULT_EFFECT, InjuryDraft};
+pub use save::{
+    draft_to_def, draft_to_weighting, injury_file_name, injury_save_path_in, weighting_file_name,
+    weighting_save_path_in,
+};
+#[cfg(feature = "mcp")]
+pub use save::{write_injury, write_injury_in, write_weighting_in};
+pub use weighting::WeightingDraft;
+
+#[cfg(test)]
+mod tests;

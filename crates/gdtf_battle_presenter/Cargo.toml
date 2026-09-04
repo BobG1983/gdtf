@@ -8,13 +8,14 @@ bevy = { workspace = true }
 # authoritative render-free sim (one-way: presenter reads the sim, never the
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 gdtf_assets = { path = "../gdtf_assets" }
+cobalt_ron_assets = { path = "../../libs/cobalt_ron_assets" }
 gdtf_content_families = { path = "../gdtf_content_families" }
 serde = { workspace = true }
 
 [dev-dependencies]
 gdtf_test_utils = { path = "../gdtf_test_utils" }
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
-gdtf_app = { path = "../gdtf_app", features = ["headless_test"] }
+gdtf_game = { path = "../gdtf_game", features = ["headless_test"] }
 bevy = { workspace = true }
 ron = { workspace = true }
 tempfile = "3"

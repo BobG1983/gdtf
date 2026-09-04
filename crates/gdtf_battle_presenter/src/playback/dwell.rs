@@ -1,7 +1,7 @@
 //! Hot-reloadable dwell durations for each act kind.
 
 use bevy::prelude::*;
-use gdtf_assets::HotRonAppExt;
+use cobalt_ron_assets::HotRonAppExt;
 use serde::Deserialize;
 
 macro_rules! dwell_seconds {

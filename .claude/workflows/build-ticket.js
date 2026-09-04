@@ -429,7 +429,7 @@ const suiteGreen = (rows) => Array.isArray(rows) && rows.length > 0 && rows.ever
 const HOUSE_RULES = `
 ## Standing rules — not negotiable
 
-1. Drive the app ONLY through the \`mcp__gdtf-qa__*\` tools. Never a script, never a socket.
+1. Drive the app ONLY through the \`mcp__gdtf-mcp__*\` tools. Never a script, never a socket.
    A missing tool is a STOP-and-report, not a reason to rebuild or kill anything by hand.
 2. Cheapest sufficient evidence: integration test ≈ unit test > reading the code >> building tooling.
 3. Prove behaviour against the REAL binary. MinimalPlugins with hand-inserted resources proves nothing.
@@ -577,7 +577,7 @@ ${audit.report}
 Build every clause. Do not narrow. If a clause is impossible, STOP and report.
 
 If a clause demands live evidence for a capability THIS ticket is adding — a change to the MCP
-server (\`gdtf_qa_mcp\`) or a protocol version bump — that clause cannot be met. STOP and report.
+server (\`mcp\`) or a protocol version bump — that clause cannot be met. STOP and report.
 
 ${HOUSE_RULES}
 ${GREEN}

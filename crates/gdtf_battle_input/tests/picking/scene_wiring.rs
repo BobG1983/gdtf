@@ -1,7 +1,7 @@
 use bevy::{app::App, prelude::*};
-use gdtf_app::test_support::{AppState, GameState, RunningState};
 use gdtf_battle_input::{GdtfBattleInputActive, InspectTarget};
 use gdtf_battle_sim::tuning::CombatTuning;
+use gdtf_game::test_support::{AppState, GameState, RunningState};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 

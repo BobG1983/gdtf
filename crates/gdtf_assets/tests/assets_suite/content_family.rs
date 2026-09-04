@@ -3,9 +3,10 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use bevy::{asset::Assets, prelude::*, reflect::TypePath};
+use cobalt_ron_assets::RonAsset;
 use gdtf_assets::{
     ContentFamily, ContentFamilyAppExt, ContentFileStem, ContentFolderHandle, ContentMemberKey,
-    ContentSourcePaths, RonAsset,
+    ContentSourcePaths,
 };
 use gdtf_test_utils::GdtfUiTestAppBuilder;
 use serde::Deserialize;

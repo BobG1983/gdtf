@@ -1,7 +1,7 @@
 //! Keybind vocabulary and hot-loaded keybind table.
 
 use bevy::prelude::*;
-use gdtf_assets::HotRonAppExt;
+use cobalt_ron_assets::HotRonAppExt;
 use serde::Deserialize;
 
 use crate::contextual::SlotRank;

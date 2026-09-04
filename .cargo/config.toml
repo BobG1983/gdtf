@@ -1,25 +1,26 @@
 [alias]
-# Dynamic linking for fast iteration. Never use in release builds.
-#
-# Game aliases enable `dev_tools` (procgen stepper). Stepper stays off until
-# the Options toggle is on. Net QA modules compile under debug_assertions only
-# (no feature flag, no env arming).
+# `development` is the umbrella dev feature on each binary package: dynamic linking, the
+# dev tools, the QA host and the asset file watcher. Release is the absence of it.
 
 # Game with dynamic linking.
-drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools"
-dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools"
+drun = "run -p game --features development"
+dbuild = "build -p game --features development"
 
 # Content editor.
-edrun = "run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher"
-edbuild = "build -p gdtf_content_editor_bin --features dynamic_linking,file_watcher"
+edrun = "run -p editor --features development"
+edbuild = "build -p editor --features development"
 
-# Workspace checks with the same feature set.
-dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
-dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
-dtest = "test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
+# Workspace checks. Both packages' `development` so the QA host compiles on both sides.
+dcheck = "check --workspace --all-targets --features game/development,editor/development"
+dclippy = "clippy --workspace --all-targets --features game/development,editor/development"
+dtest = "test --workspace --features game/development,editor/development"
+
+# Release builds carrying only the QA host, so a release-only bug can be driven.
+mcpbuild = "build --release -p game --features mcp"
+edmcpbuild = "build --release -p editor --features mcp"
 
 # Doc check with optional-feature modules enabled (run alongside plain cargo doc).
-doc-full = "doc --workspace --no-deps --features grimdark_turfwar/dev_tools"
+doc-full = "doc --workspace --no-deps --features game/development,editor/development"
 
 [unstable]
 checksum-freshness = true

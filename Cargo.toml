@@ -2,6 +2,7 @@
 members = [
     "crates/*",
     "bins/*",
+    "libs/*",
 ]
 resolver = "3"
 
@@ -26,7 +27,7 @@ rand_chacha = "0.10"
 # Top-down 2D project: drop Bevy's `3d` default profile.
 bevy = { version = "0.19.0", default-features = false, features = ["2d", "ui", "audio"] }
 # Bevy's derive-macro crate ALONE (the `Deref`/`DerefMut` derives) — no engine, no
-# ECS. `gdtf_qa_protocol` is the bevy-FREE wire-contract crate: it needs the
+# ECS. `cobalt_mcp_protocol` is the bevy-FREE wire-contract crate: it needs the
 # house-style derived `Deref` for its newtypes but must NOT pull the Bevy engine, so it
 # takes this proc-macro crate directly (already in `Cargo.lock` as a transitive of
 # `bevy`; this makes it a direct edge for that one crate). Pinned to the workspace Bevy

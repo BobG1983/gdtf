@@ -1,0 +1,19 @@
+[package]
+name = "cobalt_ron_assets"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+ron = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+gdtf_test_utils = { path = "../../crates/gdtf_test_utils" }
+tempfile = "3"
+
+[features]
+dynamic_linking = ["bevy/dynamic_linking"]
+
+[lints]
+workspace = true

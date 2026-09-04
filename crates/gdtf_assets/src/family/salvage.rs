@@ -12,12 +12,10 @@ use bevy::{
     reflect::TypePath,
     tasks::{block_on, futures_lite::StreamExt},
 };
+use cobalt_ron_assets::RonAsset;
 
-use crate::{
-    asset::RonAsset,
-    family::report::{
-        ContentFinding, ContentIntegrityReport, FindingDetail, FindingFamily, FindingReferrer,
-    },
+use crate::family::report::{
+    ContentFinding, ContentIntegrityReport, FindingDetail, FindingFamily, FindingReferrer,
 };
 
 /// Path of a salvage member file.

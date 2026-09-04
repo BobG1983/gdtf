@@ -1,7 +1,7 @@
 //! Hot-reloadable FX timing and projectile scale.
 
 use bevy::prelude::*;
-use gdtf_assets::HotRonAppExt;
+use cobalt_ron_assets::HotRonAppExt;
 use serde::Deserialize;
 
 /// Projectile sprite scale as a fraction of a cell.

@@ -31,17 +31,21 @@ cargo doc-full
 | Alias | Purpose |
 |-------|---------|
 | `fmt` | Formatting is part of done. |
-| `dclippy` | Workspace clippy + unwrap/expect/panic/todo + missing_docs. Features: dynamic_linking, dev_tools. |
+| `dclippy` | Workspace clippy + unwrap/expect/panic/todo + missing_docs. Features: `game/development,editor/development`. |
 | `dtest` | Same feature set. Zero tests in a target is still exit 0. |
-| `dbuild` | Links the real `grimdark_turfwar` binary (check/clippy never link it). |
+| `dbuild` | Links the real `game` binary (check/clippy never link it). |
 | `doc` | Default-feature rustdoc. Workspace rustdoc lints are deny. |
-| `doc-full` | Same + dev_tools so feature-gated modules are checked. |
+| `doc-full` | Same + `development` on both hosts so feature-gated modules are checked. |
 
 Running one test or one suite uses the same aliases.
 [cargo-commands.md](./cargo-commands.md) owns that, and a hook blocks a bare cargo command.
 
-QA modules compile under `debug_assertions`, with no `net_qa` feature. Protocol schema derives
-are always on, so there is no `schema` feature and no separate schema steps in the suite.
+The QA host is gated on each host package's `mcp` feature, which the `development` umbrella
+feature turns on. The workspace aliases `dcheck`, `dclippy`, `dtest` and `doc-full` pass
+`game/development,editor/development`, so the QA modules and their test suites compile in the
+suite. A suite target that needs the feature says so with `compile_error!`, so dropping it
+breaks the build instead of running zero tests. Protocol schema derives are always on, so
+there is no `schema` feature and no separate schema steps in the suite.
 
 `cargo nextest run` may replace `cargo dtest` when available.
 

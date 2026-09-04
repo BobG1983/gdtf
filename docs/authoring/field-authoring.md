@@ -111,7 +111,7 @@ Fields are one of the generic folder-loaded content families
 (`crates/gdtf_content_families/src/fields.rs`) declares folder
 `content/fields` + extension `field.ron`; one
 `register_content_family::<FieldsFamily>()` line in
-`crates/gdtf_app/src/states/load/plugin.rs` yields the loader, the
+`crates/gdtf_game/src/states/load/plugin.rs` yields the loader, the
 `FieldDefRegistry`, per-file salvage, and the live redrive. Run `cargo drun`,
 edit a `.field.ron`, and the registry rebuilds live (an `info!` line names the
 reload); the next placement resolves the edited def.
@@ -125,7 +125,7 @@ the end-of-`Load` reference-integrity report — see
 ## Part 4 — Verify
 
 - **Suite:** `cargo dtest`. Load coverage:
-  `crates/gdtf_app/tests/load_fields.rs` (registry presence + shipped stem,
+  `crates/gdtf_game/tests/load_fields.rs` (registry presence + shipped stem,
   value-agnostic). Tick/immunity/duration mechanics: the in-crate tests in
   `crates/gdtf_battle_sim/src/effects/fields/` (per-consequence unit tests +
   the family suite in `test.rs` / `tests.rs`).

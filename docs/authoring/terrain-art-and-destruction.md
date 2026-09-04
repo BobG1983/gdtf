@@ -146,7 +146,7 @@ slot can become a list without disturbing anything else.
   `crates/gdtf_battle_presenter/src/render/terrain/view_resolve.rs` and the
   restamp that drives it in `view_restamp.rs`; the floor seeding lives in
   `crates/gdtf_battle_sim/src/lifecycle/situation/setup/seed_floor.rs`; the
-  authoring forms live in `crates/gdtf_content_editor`. **TBD (Bevy):** the
+  authoring forms live in `crates/gdtf_editor`. **TBD (Bevy):** the
   mounted weapon's arc reading the mount's facing, and turning a mount as an
   act, are not built.
 - Source: owner rulings, given directly in conversation, 2026-08-14.

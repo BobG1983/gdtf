@@ -1,7 +1,7 @@
 //! Hot-reloadable pan tuning resource.
 
 use bevy::prelude::*;
-use gdtf_assets::HotRonAppExt;
+use cobalt_ron_assets::HotRonAppExt;
 use serde::Deserialize;
 
 use super::pan::{EdgeBandPx, PanSpeed};

@@ -1,7 +1,7 @@
 //! Atlas load: top-down sheets build layouts, including 32px portraits.
 use bevy::{app::App, asset::Assets, image::TextureAtlasLayout};
-use gdtf_app::test_support::AppState;
 use gdtf_battle_presenter::{SheetRole, TopDownAtlases};
+use gdtf_game::test_support::AppState;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
 fn layout_tile_count(app: &App, role: SheetRole) -> Option<usize> {

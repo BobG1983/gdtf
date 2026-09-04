@@ -1,0 +1,15 @@
+[package]
+name = "mcp"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cobalt_mcp_protocol = { path = "../../libs/cobalt_mcp_protocol" }
+serde = { workspace = true }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

@@ -1,0 +1,212 @@
+use bevy::{
+    ecs::{entity::Entity, query::With},
+    math::Vec2,
+    prelude::*,
+    ui::{ComputedNode, UiGlobalTransform},
+};
+use gdtf_battle_input::{InspectTarget, SelectedShooter};
+use gdtf_battle_sim::{
+    prelude::{Cell, CellLevel, Faction, Level},
+    weapon::{TrajectoryStyle, WieldedBy},
+};
+use gdtf_game::test_support::{BottomBarRoot, ContextualPanelRoot, ThrowGrenadeButton};
+
+use super::{
+    actors::{at, magazine_of},
+    harness::{battle_running_app, parent_of, single_with, the_only},
+    real_layout_harness::real_layout_battle_running_app,
+};
+
+const EPSILON_PX: f32 = 1.0;
+
+fn spawn_throw_actor(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
+    let actor = app.world_mut().spawn((at(x, y), Faction::new(gang))).id();
+    app.world_mut()
+        .spawn((WieldedBy::new(actor), TrajectoryStyle::Arc, magazine_of(1)));
+    app.world_mut().insert_resource(SelectedShooter::new(actor));
+    actor
+}
+
+fn hover_cell(app: &mut App, x: i32, y: i32) {
+    app.world_mut()
+        .insert_resource(InspectTarget::new(Some(CellLevel::new(
+            Cell::new(x, y),
+            Level::new(0),
+        ))));
+}
+
+fn empty_the_magazine(app: &mut App) {
+    let weapon = the_only::<TrajectoryStyle>(
+        app,
+        "exactly one weapon must carry a TrajectoryStyle so emptying it hides Throw",
+    );
+    if let Ok(mut entity) = app.world_mut().get_entity_mut(weapon) {
+        entity.insert(magazine_of(0));
+    }
+}
+
+fn load_the_magazine(app: &mut App) {
+    let weapon = the_only::<TrajectoryStyle>(
+        app,
+        "exactly one weapon must carry a TrajectoryStyle so loading it shows Throw",
+    );
+    if let Ok(mut entity) = app.world_mut().get_entity_mut(weapon) {
+        entity.insert(magazine_of(1));
+    }
+}
+
+struct PixelRect {
+    min: Vec2,
+    max: Vec2,
+}
+
+impl PixelRect {
+    fn from_node(node: &ComputedNode, transform: &UiGlobalTransform) -> Self {
+        let size = node.size();
+        let center = transform.translation;
+        Self {
+            min: center - size / 2.0,
+            max: center + size / 2.0,
+        }
+    }
+
+    fn contained_in(&self, other: &Self) -> bool {
+        self.min.x >= other.min.x - EPSILON_PX
+            && self.min.y >= other.min.y - EPSILON_PX
+            && self.max.x <= other.max.x + EPSILON_PX
+            && self.max.y <= other.max.y + EPSILON_PX
+    }
+}
+
+/// The one laid-out rect of `M`, failing on `claim` when the marker resolves to any other count.
+fn pixel_rect_of<M: Component>(app: &mut App, claim: &str) -> PixelRect {
+    let mut query = app
+        .world_mut()
+        .query_filtered::<(&ComputedNode, &UiGlobalTransform), With<M>>();
+    let mut results: Vec<PixelRect> = query
+        .iter(app.world())
+        .map(|(node, transform)| PixelRect::from_node(node, transform))
+        .collect();
+    assert_eq!(results.len(), 1, "{claim}; found {} instead", results.len());
+    let Some(rect) = results.pop() else {
+        unreachable!("the count assertion above leaves exactly one rect")
+    };
+    rect
+}
+
+#[test]
+fn contextual_panel_is_contained_inside_the_bottom_bar() {
+    let mut app = real_layout_battle_running_app();
+
+    spawn_throw_actor(&mut app, 5, 5, 0);
+    for _ in 0..8 {
+        hover_cell(&mut app, 15, 15);
+        app.update();
+    }
+
+    let root = the_only::<ContextualPanelRoot>(
+        &mut app,
+        "the contextual panel root must exist in the live battle",
+    );
+    let bar_entity =
+        the_only::<BottomBarRoot>(&mut app, "the bottom bar must exist in the live battle");
+    assert_eq!(
+        parent_of(&app, root),
+        Some(bar_entity),
+        "the contextual panel root must be a CHILD of the bottom bar",
+    );
+
+    assert_eq!(
+        app.world().get::<Visibility>(root).copied(),
+        Some(Visibility::Visible),
+        "an offered Throw must reveal the panel root so its geometry is meaningful",
+    );
+
+    let panel_rect = pixel_rect_of::<ContextualPanelRoot>(
+        &mut app,
+        "the panel root must have real computed geometry",
+    );
+    let bar_rect =
+        pixel_rect_of::<BottomBarRoot>(&mut app, "the bottom bar must have real computed geometry");
+    assert!(
+        panel_rect.contained_in(&bar_rect),
+        "the contextual panel root ({:?}..{:?}) must be CONTAINED inside the bottom bar \
+         ({:?}..{:?}) — the context window is part of the bottom HUD, never a \
+         free-floating box over the map. Its top edge (min.y={}) must not sit above the bar's top \
+         edge (min.y={}).",
+        panel_rect.min,
+        panel_rect.max,
+        bar_rect.min,
+        bar_rect.max,
+        panel_rect.min.y,
+        bar_rect.min.y,
+    );
+}
+
+#[test]
+fn contextual_panel_updates_mutate_in_place() {
+    let mut app = battle_running_app();
+    spawn_throw_actor(&mut app, 5, 5, 0);
+
+    hover_cell(&mut app, 15, 15);
+    app.update();
+    let root = the_only::<ContextualPanelRoot>(
+        &mut app,
+        "the panel root must exist once an act is offered",
+    );
+    let button = the_only::<ThrowGrenadeButton>(
+        &mut app,
+        "the Throw button must exist once an act is offered",
+    );
+    assert_eq!(
+        app.world().get::<Visibility>(button).copied(),
+        Some(Visibility::Visible),
+        "an offered Throw shows its button",
+    );
+    assert_eq!(
+        app.world().get::<Node>(button).map(|node| node.display),
+        Some(Display::Flex),
+        "a shown button reserves its layout row (Display::Flex)",
+    );
+
+    empty_the_magazine(&mut app);
+    app.update();
+    assert_eq!(
+        single_with::<ContextualPanelRoot>(&mut app),
+        Some(root),
+        "the panel root entity must persist while hidden (mutate-in-place, not despawn)",
+    );
+    assert_eq!(
+        single_with::<ThrowGrenadeButton>(&mut app),
+        Some(button),
+        "the Throw button entity must persist while hidden (mutate-in-place, not despawn)",
+    );
+    assert_eq!(
+        app.world().get::<Visibility>(button).copied(),
+        Some(Visibility::Hidden),
+        "an un-offered Throw hides its button",
+    );
+    assert_eq!(
+        app.world().get::<Node>(button).map(|node| node.display),
+        Some(Display::None),
+        "a hidden button COLLAPSES its layout row (Display::None) so the column stays in the bar",
+    );
+
+    load_the_magazine(&mut app);
+    app.update();
+    assert_eq!(
+        single_with::<ContextualPanelRoot>(&mut app),
+        Some(root),
+        "the panel root entity must be the SAME across the offer on->off->on cycle (no respawn)",
+    );
+    assert_eq!(
+        single_with::<ThrowGrenadeButton>(&mut app),
+        Some(button),
+        "the Throw button entity must be the SAME across the cycle (no respawn)",
+    );
+    assert_eq!(
+        app.world().get::<Node>(button).map(|node| node.display),
+        Some(Display::Flex),
+        "the reshown button reserves its layout row again (Display::Flex) — a mutate, not respawn",
+    );
+}

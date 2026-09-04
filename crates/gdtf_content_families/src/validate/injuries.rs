@@ -1,9 +1,10 @@
 //! Cross-check injury weighting keys against the injury registry.
 
 use bevy::prelude::{Assets, Res, ResMut};
+use cobalt_ron_assets::RonAsset;
 use gdtf_assets::{
     ContentFinding, ContentIntegrityReport, FindingFamily, FindingReferrer, FindingTarget,
-    ReferenceField, ReferenceKeyScheme, ReferringRecord, RonAsset,
+    ReferenceField, ReferenceKeyScheme, ReferringRecord,
 };
 use gdtf_battle_sim::{
     injuries::{InjuryRegistry, InjuryWeighting},

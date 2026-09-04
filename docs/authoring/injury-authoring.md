@@ -358,7 +358,7 @@ the part.
 The injury system supports **live hot-reload** (pattern): editing any
 `.injury.ron` or `.weighting.ron` file while the game is running triggers
 `redrive_injuries_on_asset_event` in
-`crates/gdtf_app/src/states/load/systems/resolve/injuries.rs`, which rebuilds BOTH
+`crates/gdtf_game/src/states/load/systems/resolve/injuries.rs`, which rebuilds BOTH
 the `InjuryRegistry` and the `InjuryTables` from the persistent
 `ActiveInjuriesFolderHandle`.
 

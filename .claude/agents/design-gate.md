@@ -5,7 +5,7 @@ description: >-
   against its clause-numbered ticket contract before landing. Re-reads the code,
   re-runs the green suite, trusts nothing the implementer reported. Returns
   COMPLIANT / NON-COMPLIANT with per-clause evidence.
-tools: mcp__gdtf-qa__*, Read, Grep, Glob, Bash, ToolSearch, LSP, Agent
+tools: mcp__gdtf-mcp__*, Read, Grep, Glob, Bash, ToolSearch, LSP, Agent
 model: sonnet
 ---
 
@@ -39,14 +39,14 @@ Give the reasoning behind a verdict. Do not narrate how you reviewed.
 3. Run the green suite yourself, from
    [`.claude/rules/verification.md`](../rules/verification.md). Every command it lists must exit 0.
    Use the aliases. Any failure means NON-COMPLIANT.
-4. Drive the running app when a clause is about behaviour you can see. You hold `mcp__gdtf-qa__*`:
+4. Drive the running app when a clause is about behaviour you can see. You hold `mcp__gdtf-mcp__*`:
    `launch`, `run`, `logs`, `commands`. "The gate cannot check this" is false for anything the
    command set reaches. Never reach past those tools to a socket.
 5. Check the MCP surface. If the ticket carries the label `Feature`, `Editor` or `Improvement` and
    adds a player or author verb, it must have the `## MCP surface` block
    (`linear-discipline.md`). A missing block is a VIOLATION, and so is code that adds an act, a tab,
    or an author path with no command behind it. `none because ...` is allowed, but you MUST check
-   the reason is honest. A dishonest reason is a VIOLATION. Live evidence is `mcp__gdtf-qa__*`
+   the reason is honest. A dishonest reason is a VIOLATION. Live evidence is `mcp__gdtf-mcp__*`
    only.
 
 When you are one lens of the gate fan-out, run zero cargo. The verify step already ran the suite,

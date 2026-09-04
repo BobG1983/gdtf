@@ -31,7 +31,7 @@ shown fog, owns no combat rule, and writes nothing back.
   one on this path), while a genuine clean miss ALWAYS logs
   (`"<name> missed"`).
 - **Appender (app)** —
-  `crates/gdtf_app/src/states/running/game/battlescape/combat_log/`: the one
+  `crates/gdtf_game/src/states/running/game/battlescape/combat_log/`: the one
   `bevy_ui` appender drains the event buffer (ordered `.after` the exported
   forward set), classifies, and renders each line as a text node that fades
   over a tuned lifetime and FIFO-despawns past the tuned cap. Lines MUTATE in
@@ -39,7 +39,7 @@ shown fog, owns no combat rule, and writes nothing back.
 
 **Feel tuning:** max lines / TTL / fade / panel width are the hot-reloadable
 `assets/core_tuning/combat_log.tuning.ron` (the `CombatLogTuning` table,
-`crates/gdtf_app/src/states/running/game/battlescape/combat_log/tuning/`).
+`crates/gdtf_game/src/states/running/game/battlescape/combat_log/tuning/`).
 Edit it under `cargo drun` and the panel re-tunes live.
 
 ---
@@ -116,9 +116,9 @@ the same event also pops floating text, see
 - **Suite:** `cargo dtest`. Presenter-side event coverage:
   `crates/gdtf_battle_presenter/src/actors/fx/fct/log_event/test/` (events /
   shot_outcomes / state_changes). App-side end-to-end (real battle app, real
-  lines): `crates/gdtf_app/tests/combat_log/` (lines_from_events, overflow,
+  lines): `crates/gdtf_game/tests/combat_log/` (lines_from_events, overflow,
   presentation, shot_outcomes, fog_gate) and
-  `crates/gdtf_app/tests/battle_shell/combat_log_state_changes.rs` (the
+  `crates/gdtf_game/tests/battle_shell/combat_log_state_changes.rs` (the
   coverage-contract pin — every covered state change gains its line).
 - **In game:** `cargo drun` — play a round: fire, move, reload, melee; watch
   the bottom-left strip gain one line per finished walk and per state change,

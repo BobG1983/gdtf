@@ -9,13 +9,13 @@ use std::{
 // The four trees a retired authoring field can hide in without failing a parse.
 pub(crate) const SCANNED_ROOTS: &[&str] = &[
     "assets/content",
-    "crates/gdtf_app/tests/fixtures",
-    "crates/gdtf_content_editor/tests/fixtures",
+    "crates/gdtf_game/tests/fixtures",
+    "crates/gdtf_editor/tests/fixtures",
     "docs",
 ];
 
 pub(crate) fn repo_root() -> PathBuf {
-    let Some(root) = gdtf_assets::workspace_root() else {
+    let Some(root) = cobalt_ron_assets::workspace_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
     };
     root.canonicalize().unwrap_or(root)

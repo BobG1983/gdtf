@@ -34,6 +34,7 @@ Short files under `.claude/rules/` — read and follow them:
 - [`clause-writing.md`](.claude/rules/clause-writing.md) — a clause says what changes, where, and what goes red if it is wrong.
 - [`no-bare-types.md`](.claude/rules/no-bare-types.md) — no bare Rust/std type for a domain value; named newtype that `Deref`s.
 - [`module-layout.md`](.claude/rules/module-layout.md) — module is a directory; mod.rs is wiring-only; one 400-line limit.
+- [`libs-layer.md`](.claude/rules/libs-layer.md) — what may live in `libs/`; `cobalt_*` crates carry nothing game-specific.
 - [`plain-language.md`](.claude/rules/plain-language.md) — the words. What is banned, what is required, every artifact. **CRITICAL**
 - [`reply-shape.md`](.claude/rules/reply-shape.md) — chat reply structure - **HOW TO SPEAK TO THE USER**: answer first, no process narration. **CRITICAL**
 - [`comment-hygiene.md`](.claude/rules/comment-hygiene.md) — short docs; no ticket ids in comments.
@@ -42,7 +43,7 @@ Short files under `.claude/rules/` — read and follow them:
 - [`cargo-commands.md`](.claude/rules/cargo-commands.md) — every cargo command is an alias from `.cargo/config.toml`, including a single test.
 - [`bevy-systems.md`](.claude/rules/bevy-systems.md) — SystemParam / QueryData / split; no too_many_arguments expects on systems.
 - [`background-work.md`](.claude/rules/background-work.md) — never poll; sub-agents always run backgrounded; relay every result.
-- [`qa-mcp-access.md`](.claude/rules/qa-mcp-access.md) — drive the running app only through the `mcp__gdtf-qa__*` tools; never a socket.
+- [`qa-mcp-access.md`](.claude/rules/qa-mcp-access.md) — drive the running app only through the `mcp__gdtf-mcp__*` tools; never a socket.
 
 Bevy ECS gotchas (system ordering, change detection, schedules, state transitions, query conflicts) live in the `bevy-expert` agent and supporting notes — treat them as binding when writing systems.
 
@@ -62,7 +63,7 @@ Bevy ECS gotchas (system ordering, change detection, schedules, state transition
 
 ## Run it
 
-Favor using the gdtf-qa MCP, but if you **MUST** run the app directly:
+Favor using the gdtf-mcp MCP, but if you **MUST** run the app directly:
 
 ```bash
 cargo dbuild  # Builds the game
@@ -73,7 +74,7 @@ cargo edrun   # Runs the editor
 
 ## Project structure
 
-Cargo workspace (`crates/*` + `bins/*` + `libs/*`). Core Bevy app wiring for the game is `crates/gdtf_app`. Sim (`gdtf_battle_sim`) is the source of combat truth — render-free, deterministic. Presenter reads the sim; the sim never reads the presenter.
+Cargo workspace (`crates/*` + `bins/*` + `libs/*`). Core Bevy app wiring for the game is `crates/gdtf_game`. Sim (`gdtf_battle_sim`) is the source of combat truth — render-free, deterministic. Presenter reads the sim; the sim never reads the presenter.
 
 ## Conventions
 

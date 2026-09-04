@@ -13,10 +13,10 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_app::test_support::{self, AppState};
+use gdtf_game::test_support::{self, AppState};
 
 fn workspace_assets_root() -> PathBuf {
-    let Some(root) = gdtf_assets::workspace_assets_root() else {
+    let Some(root) = cobalt_ron_assets::workspace_assets_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
     };
     root

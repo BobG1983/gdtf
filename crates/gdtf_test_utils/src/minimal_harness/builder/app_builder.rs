@@ -6,7 +6,7 @@ use bevy::{
     MinimalPlugins, app::App, asset::AssetPlugin, scene::ScenePlugin, state::state::NextState,
     time::TimeUpdateStrategy,
 };
-use gdtf_app::test_support::{self, AppState};
+use gdtf_game::test_support::{self, AppState};
 
 /// Builder phase: no starting state set yet.
 pub struct NoState;

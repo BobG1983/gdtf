@@ -1,7 +1,7 @@
 //! Hot-loaded base tile indices per faction on the characters sheet.
 
 use bevy::prelude::*;
-use gdtf_assets::HotRonAppExt;
+use cobalt_ron_assets::HotRonAppExt;
 use gdtf_battle_sim::prelude::Faction;
 use serde::Deserialize;
 

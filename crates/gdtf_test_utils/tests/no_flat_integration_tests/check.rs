@@ -6,13 +6,12 @@ use crate::tree::{flat_test_files, repo_root};
 // They may stay; nothing new joins without a reason. Packing one into a directory
 // suite or deleting it is fine — drop its line too.
 const ALLOWED_FLATS: &[&str] = &[
-    "bins/gdtf_qa_mcp/tests/link_timeout.rs",
-    "bins/gdtf_qa_mcp/tests/loopback.rs",
-    "bins/gdtf_qa_mcp/tests/reconnect.rs",
-    "crates/gdtf_app/tests/capstone.rs",
+    "bins/mcp/tests/link_timeout.rs",
+    "bins/mcp/tests/loopback.rs",
+    "bins/mcp/tests/reconnect.rs",
+    "crates/gdtf_game/tests/capstone.rs",
     "crates/gdtf_battle_presenter/tests/terrain_missing_sprite.rs",
-    "crates/gdtf_qa_protocol/tests/engine_free.rs",
-    "crates/gdtf_screenshot/tests/capture_pipeline.rs",
+    "libs/cobalt_mcp_protocol/tests/engine_free.rs",
 ];
 
 #[test]

@@ -1,5 +1,5 @@
 use bevy::state::state::State;
-use gdtf_app::test_support::{AppState, RunningState};
+use gdtf_game::test_support::{AppState, RunningState};
 
 use super::*;
 

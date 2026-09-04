@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
-gdtf_assets = { path = "../gdtf_assets" }
+cobalt_ron_assets = { path = "../../libs/cobalt_ron_assets" }
 serde = { workspace = true }
 gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
@@ -15,7 +15,7 @@ bevy = { workspace = true }
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 ron = { workspace = true }
 gdtf_test_utils = { path = "../gdtf_test_utils" }
-gdtf_app = { path = "../gdtf_app", features = ["headless_test"] }
+gdtf_game = { path = "../gdtf_game", features = ["headless_test"] }
 gdtf_ui = { path = "../gdtf_ui" }
 
 [lints]

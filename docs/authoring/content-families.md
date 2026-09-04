@@ -22,7 +22,7 @@ A new folder-loaded family costs exactly this:
 2. **One registration line** per host:
    `app.register_content_family::<MyFamily>()` (the `ContentFamilyAppExt`
    extension, `crates/gdtf_assets/src/family/ext.rs`). The game's lines live
-   in `crates/gdtf_app/src/states/load/plugin.rs`; the content editor
+   in `crates/gdtf_game/src/states/load/plugin.rs`; the content editor
    registers the families it edits.
 3. **A content folder** of `<key>.<infix>.ron` files under `assets/content/`.
 
@@ -47,8 +47,9 @@ its paths, in `crates/gdtf_assets/src/family/source.rs`.
 
 ## Part 2 — Why the glue crate, and the three keying shapes
 
-`gdtf_assets` is a deliberate leaf (bevy/ron/serde only) and cannot name sim
-registry types; `gdtf_app` cannot host the impls because the content editor
+`gdtf_assets` is a deliberate leaf (bevy/ron/serde plus `cobalt_ron_assets`,
+which holds the RON loading and hot-reload half) and cannot name sim
+registry types; `gdtf_game` cannot host the impls because the content editor
 needs the SAME families without depending on the game. So the marker impls
 live in the shared glue crate — the module rustdoc of
 `crates/gdtf_content_families/src/lib.rs` is the canonical statement of this
@@ -75,8 +76,8 @@ everywhere else — a writer's spelling can never drift from the loader's read
 (the bug class: a save-side extension drift made saved gangs silently
 invisible to the loader):
 
-- The workspace assets root: `gdtf_assets::workspace_assets_root()`
-  (`crates/gdtf_assets/src/workspace/root.rs`). It searches upward for a
+- The workspace assets root: `cobalt_ron_assets::workspace_assets_root()`
+  (`libs/cobalt_ron_assets/src/workspace/root.rs`). It searches upward for a
   `Cargo.lock`, then for a `[workspace]` manifest, and returns `None` when
   neither is above the crate. No caller re-spells the root on a miss: the
   editor's savers return a save error, and the game and editor apps log it and
@@ -100,11 +101,11 @@ One family stays BESPOKE by design (its shape does not fit
 folder→one-registry):
 
 - **Injuries** — ONE folder, TWO asset types (defs + weightings), TWO
-  resources (`crates/gdtf_app/src/states/load/systems/resolve/injuries.rs`).
+  resources (`crates/gdtf_game/src/states/load/systems/resolve/injuries.rs`).
 
 Prefabs are folder-loaded on one host and bespoke on the other. The editor reads
 them through `PrefabsFamily`; the game keeps its own chain over the same folder in
-`crates/gdtf_app/src/states/load/systems/resolve/prefab.rs`. Both hand each spec to
+`crates/gdtf_game/src/states/load/systems/resolve/prefab.rs`. Both hand each spec to
 `PrefabRegistry::insert`, so both derive the same key, and both strip the `.prefab`
 infix off the file stem, so `content/maps/<theme>/<size>/entry_room.prefab.ron` is
 `entry_room` on either path.
@@ -117,9 +118,9 @@ file per chain, with a fallback so a bad file never strands `Load`.
 ## Part 5 — Verify
 
 - **Suite:** `cargo dtest`. Every family the GAME registers binds the ONE generic
-  load suite (`crates/gdtf_app/tests/load_families/load_suite/`) through a thin
+  load suite (`crates/gdtf_game/tests/load_families/load_suite/`) through a thin
   `FamilyLoadContract` wrapper — one file per family under
-  `crates/gdtf_app/tests/load_families/` (`load_weapons.rs`,
+  `crates/gdtf_game/tests/load_families/` (`load_weapons.rs`,
   `load_melee_weapons.rs`, `load_armor.rs`, `load_fields.rs`, `load_gangs.rs`,
   `load_attachments.rs`, `load_terrain.rs`, `load_themes.rs`, `load_sprites.rs`)
   pinning: the headless
@@ -127,7 +128,7 @@ file per chain, with a fallback so a bad file never strands `Load`.
   and the real-asset folder resolve with the shipped member stems
   (value-agnostic — presence, never magnitudes). A NEW family the game registers
   adds its own thin wrapper. `PrefabsFamily` gets none while only the editor
-  registers it; `crates/gdtf_content_editor/tests/load_and_roundtrip/prefab_family_load.rs`
+  registers it; `crates/gdtf_editor/tests/load_and_roundtrip/prefab_family_load.rs`
   covers it instead.
 - **Hot-reload:** `cargo drun`, edit a member `.ron`, watch the
   "hot-reload: rebuilt … from …" info line name the registry and folder.

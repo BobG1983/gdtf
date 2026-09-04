@@ -6,7 +6,7 @@ use bevy::{
     text::Font,
     ui::{BackgroundColor, Interaction, Node, widget::Button},
 };
-use gdtf_assets::{HotRonHandle, RonAsset, RonAssetAppExt};
+use cobalt_ron_assets::{HotRonHandle, RonAsset, RonAssetAppExt};
 
 use crate::{
     UiPlugin,

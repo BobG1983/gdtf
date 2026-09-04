@@ -102,8 +102,8 @@ refuses, or is denied one it would have allowed. Nothing errors either way.
 **Code sites:** the predicates live beside the act they gate, under
 `crates/gdtf_battle_sim/src/acts/`, `.../combatants/`, `.../equipment/magazine/` and
 `.../perception/los/` (`can_see`). Consumers:
-`crates/gdtf_app/src/states/running/game/battlescape/contextual_panel/acts/`,
-`crates/gdtf_app/src/dev/net_qa/commands/`, and
+`crates/gdtf_game/src/states/running/game/battlescape/contextual_panel/acts/`,
+`crates/gdtf_game/src/dev/mcp/commands/`, and
 `crates/gdtf_battle_input/src/pointer/fire_surface.rs`.
 
 ## The UI boundary
@@ -112,7 +112,7 @@ refuses, or is denied one it would have allowed. Nothing errors either way.
 
 - Game UI — `bevy_ui` node/widget primitives, plus Bevy's own first-party
   `bevy_ui_widgets` where they fit. Themed from data, loaded from RON.
-- Editor UI — `bevy_egui`, in `crates/gdtf_content_editor`.
+- Editor UI — `bevy_egui`, in `crates/gdtf_editor`.
 
 **No third-party UI ecosystem crates.** Not `iyes_*`, not `bevy-ui-*`, no external widget,
 styling or layout framework. Bevy's own first-party widgets are preferred over
@@ -143,4 +143,4 @@ AppState        Init | Load | Intro | Running | Teardown        (Init is #[defau
 The `HiveScape` / `BattleScape` / `AfterMath` vocabulary is defined in
 [glossary.md](glossary.md).
 
-**Code site:** `crates/gdtf_app/src/states/`.
+**Code site:** `crates/gdtf_game/src/states/`.

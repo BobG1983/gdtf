@@ -160,7 +160,7 @@ Attachments are one of the generic folder-loaded content families
 (`crates/gdtf_content_families/src/attachments.rs`) declares folder
 `content/attachments` + extension `attachment.ron`, and the game registers it
 with one `register_content_family::<AttachmentsFamily>()` line in
-`crates/gdtf_app/src/states/load/plugin.rs`. The resolve builds the
+`crates/gdtf_game/src/states/load/plugin.rs`. The resolve builds the
 `AttachmentRegistry`
 (`crates/gdtf_battle_sim/src/equipment/attachments/registry.rs`), keyed by
 file stem.
@@ -179,9 +179,9 @@ reference-integrity report — see
 ## Part 4 — Verify
 
 - **Suite:** `cargo dtest`. The family's load coverage is
-  `crates/gdtf_app/tests/load_attachments.rs` (registry presence + shipped
+  `crates/gdtf_game/tests/load_attachments.rs` (registry presence + shipped
   stems, value-agnostic); the slot-gated fit path is
-  `crates/gdtf_app/tests/load_attachment_fit.rs`; the per-effect fold semantics
+  `crates/gdtf_game/tests/load_attachment_fit.rs`; the per-effect fold semantics
   are unit tests inside each palette file
   (`crates/gdtf_battle_sim/src/effects/attachments/`).
 - **In game:** `cargo drun` — shipped weapons author attachments (e.g.

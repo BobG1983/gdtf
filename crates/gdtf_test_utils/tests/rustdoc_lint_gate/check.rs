@@ -20,11 +20,11 @@ const WORKSPACE_MEMBERS: &str = "workspace.members";
 
 const LINTS_OPT_IN: &str = "lints.workspace";
 
-const EDITOR_BIN_MANIFEST: &str = "bins/gdtf_content_editor/Cargo.toml";
+const EDITOR_BIN_MANIFEST: &str = "bins/editor/Cargo.toml";
 
-const EDITOR_BIN_NAME: &str = "gdtf_content_editor";
+const EDITOR_BIN_NAME: &str = "editor";
 
-const EDITOR_LIB_CRATE: &str = "crates/gdtf_content_editor";
+const EDITOR_LIB_CRATE: &str = "crates/gdtf_editor";
 
 fn read_manifest(root: &Path, path: &str) -> DocumentMut {
     let full = root.join(path);

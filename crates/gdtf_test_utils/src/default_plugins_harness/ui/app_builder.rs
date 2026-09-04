@@ -28,7 +28,7 @@ pub struct GdtfUiTestAppBuilder<Phase> {
 }
 
 fn workspace_assets_root() -> PathBuf {
-    let Some(root) = gdtf_assets::workspace_assets_root() else {
+    let Some(root) = cobalt_ron_assets::workspace_assets_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
     };
     root

@@ -1,0 +1,13 @@
+//! Prefab save helpers. The whole module is `#[cfg(feature = "mcp")]`-gated at its `mod` site.
+mod project;
+mod types;
+
+#[cfg(test)]
+mod tests;
+
+pub use project::{
+    editor_map_to_prefab, prefab_save_path, prefab_save_path_in, sanitize_name, serialize_prefab,
+};
+#[cfg(feature = "mcp")]
+pub use project::{write_prefab, write_prefab_in};
+pub use types::SavePrefabError;

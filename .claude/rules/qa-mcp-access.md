@@ -10,7 +10,7 @@ it.
 
 ## Rules
 
-1. Drive the game and editor only through the `mcp__gdtf-qa__*` tools: `launch`, `run`,
+1. Drive the game and editor only through the `mcp__gdtf-mcp__*` tools: `launch`, `run`,
    `logs`, `stop`, `commands`. That is the whole interface.
 2. Never write a socket client. Not a Python script, not `nc`, not a Rust test binary
    that opens the port, not "just to check something". Nothing makes it right, not a
@@ -33,4 +33,4 @@ depends on the branch being checked out in the main tree.
 ## Enforcement
 
 Enforced by reading the report. A live-evidence clause is satisfied by a
-`mcp__gdtf-qa__*` transcript and nothing else.
+`mcp__gdtf-mcp__*` transcript and nothing else.

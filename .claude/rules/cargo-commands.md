@@ -15,13 +15,13 @@ owns how any cargo command is spelled, including a one-off during iteration.
 
 ### It rebuilds everything, twice
 
-The aliases carry `dynamic_linking` and `dev_tools`. A bare command has a
+The aliases carry `development`, the umbrella feature. A bare command has a
 different feature set, so cargo rebuilds the whole graph including bevy. The next
 aliased command rebuilds it back. The two feature sets never share artifacts.
 
 ### It hides tests
 
-A bare command drops `dev_tools`, so feature-gated modules do not compile in and
+A bare command drops `development`, so the `dev_tools` and `mcp` modules do not compile in and
 their tests do not run. A target with zero tests still exits 0, so the run looks
 green while asserting nothing.
 
@@ -44,5 +44,7 @@ target name, `--test` runs both.
 `cargo fmt`, `cargo doc --workspace --no-deps` and `cargo nextest run` have no
 `d`-prefixed alias and are correct as written. `doc-full` is an alias and is not.
 
-There is no release alias. Do not hand-type a run without dynamic linking to get
+`cargo mcpbuild` and `cargo edmcpbuild` are the release aliases: `--release` with
+only the `mcp` feature, so the QA host can be driven against a release build.
+They are not part of green. Do not hand-type a run without dynamic linking to get
 past the gate. Add the alias instead.

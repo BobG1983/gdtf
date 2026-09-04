@@ -1,0 +1,29 @@
+[package]
+name = "cobalt_mcp_command"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+serde = { workspace = true }
+ron = { workspace = true }
+cobalt_mcp_protocol = { path = "../cobalt_mcp_protocol" }
+cobalt_mcp_transport = { path = "../cobalt_mcp_transport" }
+cobalt_screenshot = { path = "../cobalt_screenshot" }
+
+[dev-dependencies]
+# The rider tests write the PNG a shot lands as, in place of the renderer.
+image = { version = "0.25", default-features = false, features = ["png"] }
+# `advance_until`, the budget-free wait the rider tests take their answer from. The cycle back
+# through gdtf_game is a dev-dependency, which cargo allows.
+gdtf_test_utils = { path = "../../crates/gdtf_test_utils" }
+
+[features]
+dynamic_linking = [
+    "bevy/dynamic_linking",
+    "cobalt_mcp_transport/dynamic_linking",
+    "cobalt_screenshot/dynamic_linking",
+]
+
+[lints]
+workspace = true

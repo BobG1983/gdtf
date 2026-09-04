@@ -1,0 +1,45 @@
+[package]
+name = "gdtf_editor"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+bevy_egui = "0.41"
+gdtf_assets = { path = "../gdtf_assets" }
+cobalt_ron_assets = { path = "../../libs/cobalt_ron_assets" }
+gdtf_content_families = { path = "../gdtf_content_families" }
+gdtf_battle_sim = { path = "../gdtf_battle_sim" }
+gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
+ron = { workspace = true }
+cobalt_state_scoped = { path = "../../libs/cobalt_state_scoped" }
+cobalt_mcp_protocol = { path = "../../libs/cobalt_mcp_protocol", optional = true }
+cobalt_mcp_command = { path = "../../libs/cobalt_mcp_command", optional = true }
+cobalt_mcp_transport = { path = "../../libs/cobalt_mcp_transport", optional = true }
+cobalt_screenshot = { path = "../../libs/cobalt_screenshot", optional = true }
+gdtf_mcp_ports = { path = "../gdtf_mcp_ports", optional = true }
+serde = { workspace = true }
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[dev-dependencies]
+gdtf_test_utils = { path = "../gdtf_test_utils" }
+tempfile = "3"
+
+[features]
+default = []
+# Everything a developer wants at once. The editor takes `bevy_egui` unconditionally, so it
+# declares no `dev_tools` feature to fold in here.
+development = ["dynamic_linking", "mcp", "file_watcher"]
+dynamic_linking = ["bevy/dynamic_linking"]
+file_watcher = ["bevy/file_watcher"]
+# The QA host: the MCP control channel, the save helpers it drives, and the screenshot pipeline.
+mcp = [
+    "dep:gdtf_mcp_ports",
+    "dep:cobalt_mcp_protocol",
+    "dep:cobalt_mcp_command",
+    "dep:cobalt_mcp_transport",
+    "dep:cobalt_screenshot",
+]
+
+[lints]
+workspace = true

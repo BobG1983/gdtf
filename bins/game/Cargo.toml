@@ -1,0 +1,18 @@
+[package]
+name = "game"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gdtf_game = { path = "../../crates/gdtf_game" }
+
+[features]
+default = []
+development = ["gdtf_game/development"]
+dynamic_linking = ["gdtf_game/dynamic_linking"]
+file_watcher = ["gdtf_game/file_watcher"]
+dev_tools = ["gdtf_game/dev_tools"]
+mcp = ["gdtf_game/mcp"]
+
+[lints]
+workspace = true

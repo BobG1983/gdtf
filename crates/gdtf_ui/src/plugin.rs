@@ -1,7 +1,7 @@
 //! Top-level UI plugin: widgets, theming, focus nav.
 
 use bevy::prelude::*;
-use gdtf_assets::{RonAsset, redrive_hot_ron_resource};
+use cobalt_ron_assets::{RonAsset, redrive_hot_ron_resource};
 
 use crate::{
     focus_nav::FocusNavPlugin,

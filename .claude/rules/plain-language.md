@@ -21,7 +21,7 @@ deleted.
 ### Coined vocabulary
 
 Do not invent a name for something. Use the name Rust, Bevy or this repo already uses.
-A `SystemSet` is a system set. `gdtf_qa_mcp` is the MCP server. A file many modules read
+A `SystemSet` is a system set. `mcp` is the MCP server. A file many modules read
 is a file many modules read.
 
 Real failures: "the trapped test's control leg", "load-bearing", "the seam", "a pool

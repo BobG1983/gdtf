@@ -17,14 +17,14 @@ facts type and its own wire mirrors, so a command is written into one host and c
 compile into the other.
 
 Everything below is written from the simplest command the game publishes,
-[`crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/read/app_phase.rs).
+[`crates/gdtf_game/src/dev/mcp/commands/read/app_phase.rs`](../../crates/gdtf_game/src/dev/mcp/commands/read/app_phase.rs).
 Read that file alongside this one: every shape shown here is in it, at that path. Nothing
 here describes a command nobody has written. The game's other reads — `settings.read`,
 `ui.focus` and `playback.state`, beside it under `commands/read/` — are the same items
 reading a different resource, and
-[`commands/capture/screenshot.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs)
+[`commands/capture/screenshot.rs`](../../crates/gdtf_game/src/dev/mcp/commands/capture/screenshot.rs)
 is the same items with a `Deferred` handler — see [Calling it](#calling-it). The editor's
-[`commands/read/editor_phase.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/editor_phase.rs)
+[`commands/read/editor_phase.rs`](../../crates/gdtf_editor/src/mcp/commands/read/editor_phase.rs)
 is the same items again on the other host.
 
 ## What the QA channel is for
@@ -58,28 +58,28 @@ what is in view.
 1. **A file** under the host's `commands/` directory — one command per file, grouped by
    what it does (`read/` for a command that answers from the world without changing it).
 2. **One line** in that host's list. The game's is `GAME_COMMANDS` in
-   [`commands/set.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/set.rs) and the
+   [`commands/set.rs`](../../crates/gdtf_game/src/dev/mcp/commands/set.rs) and the
    editor's is `EDITOR_COMMANDS` in
-   [its own `commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs);
+   [its own `commands/set.rs`](../../crates/gdtf_editor/src/mcp/commands/set.rs);
    the whole entry is `&YourCommand`.
 3. **A test.** The suite for the game's command layer is
-   [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs).
+   [`crates/gdtf_game/tests/mcp/commands.rs`](../../crates/gdtf_game/tests/mcp/commands.rs).
    The editor has seven. Hello and the lifecycle commands are in
-   [`crates/gdtf_content_editor/tests/net_qa_hello/`](../../crates/gdtf_content_editor/tests/net_qa_hello),
+   [`crates/gdtf_editor/tests/mcp_hello/`](../../crates/gdtf_editor/tests/mcp_hello),
    the shared reads are in
-   [`crates/gdtf_content_editor/tests/net_qa_editor_reads/`](../../crates/gdtf_content_editor/tests/net_qa_editor_reads),
+   [`crates/gdtf_editor/tests/mcp_editor_reads/`](../../crates/gdtf_editor/tests/mcp_editor_reads),
    the theme helpers and the Injury sub-tab write are in
-   [`crates/gdtf_content_editor/tests/net_qa_editor_commands/`](../../crates/gdtf_content_editor/tests/net_qa_editor_commands),
+   [`crates/gdtf_editor/tests/mcp_editor_commands/`](../../crates/gdtf_editor/tests/mcp_editor_commands),
    the draft writes over every form tab are in
-   [`crates/gdtf_content_editor/tests/net_qa_editor_forms/`](../../crates/gdtf_content_editor/tests/net_qa_editor_forms),
+   [`crates/gdtf_editor/tests/mcp_editor_forms/`](../../crates/gdtf_editor/tests/mcp_editor_forms),
    the prefab-canvas commands are in
-   [`crates/gdtf_content_editor/tests/net_qa_editor_prefab/`](../../crates/gdtf_content_editor/tests/net_qa_editor_prefab),
+   [`crates/gdtf_editor/tests/mcp_editor_prefab/`](../../crates/gdtf_editor/tests/mcp_editor_prefab),
    the Injury weighting table is in
-   [`crates/gdtf_content_editor/tests/net_qa_editor_weighting/`](../../crates/gdtf_content_editor/tests/net_qa_editor_weighting),
+   [`crates/gdtf_editor/tests/mcp_editor_weighting/`](../../crates/gdtf_editor/tests/mcp_editor_weighting),
    and one authoring session end to end is in
-   [`crates/gdtf_content_editor/tests/net_qa_editor_authoring/`](../../crates/gdtf_content_editor/tests/net_qa_editor_authoring).
+   [`crates/gdtf_editor/tests/mcp_editor_authoring/`](../../crates/gdtf_editor/tests/mcp_editor_authoring).
    All seven build their app and their client from
-   [`crates/gdtf_content_editor/tests/net_qa_shared/`](../../crates/gdtf_content_editor/tests/net_qa_shared),
+   [`crates/gdtf_editor/tests/mcp_shared/`](../../crates/gdtf_editor/tests/mcp_shared),
    which each target includes by `#[path]`, and the four that answer during the Load pass take
    that case from there too. All of them use a real socket, a real listener,
    and the real router.
@@ -122,8 +122,8 @@ publishes.
 
 Anything the reply embeds must derive `Deserialize` too — that is the impl the published
 shape is read out of. The game's state enums do not, and deliberately are not made to:
-`crates/gdtf_app/src/states/` stays free of wire derives, and
-[`commands/../wire/phase.rs`](../../crates/gdtf_app/src/dev/net_qa/wire/phase.rs) mints wire
+`crates/gdtf_game/src/states/` stays free of wire derives, and
+[`commands/../wire/phase.rs`](../../crates/gdtf_game/src/dev/mcp/wire/phase.rs) mints wire
 MIRRORS of them instead, with a wildcard-free `from_state` per level so a new state variant
 fails to compile until its mirror gains an arm.
 
@@ -151,7 +151,7 @@ impl QaCommand for AppPhase {
 ```
 
 - **`Facts`** is the host's, not the command's:
-  [`GameFacts`](../../crates/gdtf_app/src/dev/net_qa/facts/game_facts.rs) for the game. It is
+  [`GameFacts`](../../crates/gdtf_game/src/dev/mcp/facts/game_facts.rs) for the game. It is
   sampled ONCE a frame by the router, so every call in one drain sees the same world. Tying
   it to the host is also what makes a cross-host entry fail to compile at the slice literal.
 - **`NAME`** is `family.verb`, lowercase and dotted. It must be unique within the host's
@@ -222,7 +222,7 @@ frame has nothing to drain.
   second system that reads `Res<NetInbox>`: `drain()` takes everything in the channel, so
   two readers means whichever runs first swallows the other's requests. The property is
   pinned by
-  [`crates/gdtf_app/tests/net_qa/command_set.rs`](../../crates/gdtf_app/tests/net_qa/command_set.rs).
+  [`crates/gdtf_game/tests/mcp/command_set.rs`](../../crates/gdtf_game/tests/mcp/command_set.rs).
 - **The MCP courier.** `commands` and `run` carry any command by name. Neither names one,
   and neither should learn to.
 
@@ -234,17 +234,17 @@ Both layers are cheap:
   unique names, parseable shapes, one body per type name, and a deferral budget that expires
   before the socket stops waiting for the reply — over the real slice. It is already
   registered; a new command is covered by it the moment it joins the list.
-- **The command.** Add a case file per command under `crates/gdtf_app/tests/net_qa/` and declare
+- **The command.** Add a case file per command under `crates/gdtf_game/tests/mcp/` and declare
   it in that directory's `main.rs`. One file is the usual shape —
-  [`settings_read.rs`](../../crates/gdtf_app/tests/net_qa/settings_read.rs) and
-  [`battle_start.rs`](../../crates/gdtf_app/tests/net_qa/battle_start.rs) — and a command with
+  [`settings_read.rs`](../../crates/gdtf_game/tests/mcp/settings_read.rs) and
+  [`battle_start.rs`](../../crates/gdtf_game/tests/mcp/battle_start.rs) — and a command with
   several kinds of case gets a directory instead, as `wait` does in
-  [`tests/net_qa/wait`](../../crates/gdtf_app/tests/net_qa/wait).
+  [`tests/mcp/wait`](../../crates/gdtf_game/tests/mcp/wait).
   The shared `exchange` helper takes a fixture, negotiates, and
   sends over a real socket into the real router, so a case there exercises the whole path a
   live client drives. Assert on the reply rather than on published shape TEXT: the shape is
   traced from the type, so pinning it re-states the type instead of testing behaviour.
-  [`crates/gdtf_app/tests/net_qa/commands.rs`](../../crates/gdtf_app/tests/net_qa/commands.rs)
+  [`crates/gdtf_game/tests/mcp/commands.rs`](../../crates/gdtf_game/tests/mcp/commands.rs)
   is for the cases that span the whole host — the catalogue listing, an unknown name, the
   deferral budget — and grows by a name in those lists, not by a per-command case.
 
@@ -429,17 +429,17 @@ is loaded — without it the offer and inspect systems never run, so answering w
 faction or the authored terrain it searches over is not there, rather than reporting an empty
 set of cells. Those words are pinned command by
 command in
-[`commands/read/test/availability_words.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/read/test/availability_words.rs).
+[`commands/read/test/availability_words.rs`](../../crates/gdtf_game/src/dev/mcp/commands/read/test/availability_words.rs).
 
 `capture.screenshot` writes a PNG of what the game is showing and answers `Ran` with a
 `ReplyAttachment(Png, …)` naming it; `name` is optional and becomes the file stem inside
 the host's shot directory. It is `Deferred`, so the reply arrives once the PNG is on disk;
 a capture that never lands answers `Timeout`, and nothing refuses it. The capture pipeline
-itself — queue, settle, spawn the readback, verify — lives in `crates/gdtf_screenshot` and
+itself — queue, settle, spawn the readback, verify — lives in `libs/cobalt_screenshot` and
 is shared by both hosts. `WindowCapturePlugin` there points the window's output attachment
 at an image it owns for the capture frame, reads that image back and writes the PNG, so no
 camera is ever retargeted and a covered or minimized window still captures. The command in
-[`crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/capture/screenshot.rs)
+[`crates/gdtf_game/src/dev/mcp/commands/capture/screenshot.rs`](../../crates/gdtf_game/src/dev/mcp/commands/capture/screenshot.rs)
 only maps its `CaptureOutcome` onto the wire.
 
 `battle.start` and `battle.flee` start and end a battle, and each takes the same path
@@ -448,7 +448,7 @@ the button does — `battle.start` writes the message the Battlescape button wri
 `battle.start` needs the Menu; its only argument is the seed, which is optional. Omit it and
 the game resolves its own; either way the reply carries the seed the battle actually used,
 read back from the record generation keeps in
-[`crates/gdtf_app/src/states/running/game/battlescape/generation/battle_sim/resolved.rs`](../../crates/gdtf_app/src/states/running/game/battlescape/generation/battle_sim/resolved.rs).
+[`crates/gdtf_game/src/states/running/game/battlescape/generation/battle_sim/resolved.rs`](../../crates/gdtf_game/src/states/running/game/battlescape/generation/battle_sim/resolved.rs).
 The reply arrives once generation has finished, so the app is already in the battle.
 `battle.flee` needs a battle in its running phase and answers once the battle has left it.
 
@@ -475,7 +475,7 @@ live: a `BattleDecided` asked once the battle has moved on to the aftermath answ
 and so does a `GenerationComplete` asked once the battle map is up. A name that is not one of
 those fails to deserialize and comes back as `BadArguments` with `wait`'s own argument
 shape attached. The conditions and what each resolves against live in
-[`crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs`](../../crates/gdtf_app/src/dev/net_qa/commands/wait/probe.rs).
+[`crates/gdtf_game/src/dev/mcp/commands/wait/probe.rs`](../../crates/gdtf_game/src/dev/mcp/commands/wait/probe.rs).
 
 Some of the `act.*` commands are the classic acts a player takes with the keyboard
 and the
@@ -562,7 +562,7 @@ battle, not in front of it.
 The remaining `act.*` commands are the contextual acts — `act.melee`, `act.shove`,
 `act.stabilize`, `act.execute`, `act.throw_grenade`, `act.open_door`,
 `act.enter_emplacement` and `act.exit_emplacement`. They live in
-[`crates/gdtf_app/src/dev/net_qa/commands/act/contextual/`](../../crates/gdtf_app/src/dev/net_qa/commands/act/contextual)
+[`crates/gdtf_game/src/dev/mcp/commands/act/contextual/`](../../crates/gdtf_game/src/dev/mcp/commands/act/contextual)
 and all but `act.melee` take `()`. `act.melee` takes `(target: Ganger(...))` or
 `(target: Structure(...))` — the same `MeleeTargetNet` `battle.cost {Melee}` prices.
 
@@ -595,9 +595,9 @@ whether the actor wields a melee weapon to price a strike with at all.
 `act.throw_grenade` is the one that needs more than a selection: the panel offers
 the button while the shooter wields an arcing ranged weapon, and a press aims at
 the last cell the cursor hovered —
-[`crates/gdtf_app/tests/contextual_panel/throw.rs`](../../crates/gdtf_app/tests/contextual_panel/throw.rs)
+[`crates/gdtf_game/tests/contextual_panel/throw.rs`](../../crates/gdtf_game/tests/contextual_panel/throw.rs)
 and
-[`crates/gdtf_app/tests/contextual_panel/throw_hover.rs`](../../crates/gdtf_app/tests/contextual_panel/throw_hover.rs)
+[`crates/gdtf_game/tests/contextual_panel/throw_hover.rs`](../../crates/gdtf_game/tests/contextual_panel/throw_hover.rs)
 pin both halves, and pin that a press after the hover leaves the map still aims
 at that last cell. On a host with a primary
 window the drive is `input.hover`, then `battle.offers` to see which cell came out, then
@@ -678,10 +678,10 @@ frame, so only the cell it pins survives.
 `input.hover` and then read `battle.selection`: a pixel over the grid comes back as a cell, and
 a pixel over the UI or off the grid comes back `None`, because the pick fails closed rather
 than holding the cell it last resolved. The battle cases under
-[`crates/gdtf_app/tests/net_qa/`](../../crates/gdtf_app/tests/net_qa) run on one of two headless
+[`crates/gdtf_game/tests/mcp/`](../../crates/gdtf_game/tests/mcp) run on one of two headless
 harnesses and neither has a primary window: `battle_app_listening` builds on
 `GdtfLoadTestAppBuilder`, which sets `primary_window: None`, and
-`battle_fixture::menu_app_with_net_qa` builds on `GdtfTestAppBuilder`, which is `MinimalPlugins`
+`battle_fixture::menu_app_with_mcp` builds on `GdtfTestAppBuilder`, which is `MinimalPlugins`
 and never adds `WindowPlugin` at all. So on those hosts `input.hover` refuses `WrongState` and
 `battle.selection` reports `hovered: None` on every read, and they assert the pinned cell instead.
 The screenshot cases in that same directory build their own windowed app, so the limit is the
@@ -752,7 +752,7 @@ right now and tests admission again every frame until the command admits; when t
 out the answer is the command's own `Unavailable` refusal, the one the last test produced, never a
 rider refusal and never `Timeout`. Nothing clamps the budget: a waiting call holds the
 channel exactly as a parked `wait` does, and a budget past the socket's three-minute wait
-for a reply (`DEFAULT_REPLY_TIMEOUT` in `crates/gdtf_qa_protocol/src/timeouts.rs`) answers
+for a reply (`DEFAULT_REPLY_TIMEOUT` in `libs/cobalt_mcp_protocol/src/timeouts.rs`) answers
 `Timeout` from the connection instead. A name the host does not know still answers `Unknown`
 at once. `capture` runs the command first and appends one PNG attachment to the reply it
 produced; an outcome that is not `Ran` comes straight back with no shot taken, and a shot
@@ -761,7 +761,7 @@ that never lands answers `Timeout` rather than the reply without its PNG.
 ## The editor host
 
 The editor publishes thirty-eight commands, all in `EDITOR_COMMANDS`
-([`crates/gdtf_content_editor/src/net_qa/commands/set.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/set.rs)).
+([`crates/gdtf_editor/src/mcp/commands/set.rs`](../../crates/gdtf_editor/src/mcp/commands/set.rs)).
 Thirty-five are `Immediate`. Three are `Deferred`, so a client reads the timing to
 know the reply can land on a later frame than the one that claimed the call: the two the
 editor publishes under the game host's own spellings, `capture.screenshot` and `wait`, plus
@@ -778,60 +778,60 @@ neither the authoring scene nor a tab. Five more reads need the authoring scene:
 During the editor's Load pass every scene-scoped command answers `Unavailable { code: WrongState }`. `EditorMode`,
 `MapEditorSession` and every draft are state-scoped to `EditorState::Editing` by the
 `init_state_scoped_resource` calls in `MapEditorPlugin::build`
-([`crates/gdtf_content_editor/src/plugin.rs`](../../crates/gdtf_content_editor/src/plugin.rs)),
+([`crates/gdtf_editor/src/plugin.rs`](../../crates/gdtf_editor/src/plugin.rs)),
 so during Load none of them is in the world. The content registries are not state-scoped.
 They arrive one at a time as the editor loads them, and Editing starts only once every one
 of them is present (`transition_to_editing` and `GateResources::all_present` in
-[`crates/gdtf_content_editor/src/load/transition.rs`](../../crates/gdtf_content_editor/src/load/transition.rs)),
+[`crates/gdtf_editor/src/load/transition.rs`](../../crates/gdtf_editor/src/load/transition.rs)),
 which is why `editor.families` waits for Editing instead of answering a half-loaded set.
 
 | Command | Availability | What it does |
 | --- | --- | --- |
-| `editor.phase` | always | The lifecycle phase, the mode tab open now, and every tab in tab-bar order. [`commands/read/editor_phase.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/editor_phase.rs) |
-| `editor.last_save` | always | What the newest save per mode did: the file it wrote, or the fault it reported. [`commands/read/last_save.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/last_save.rs) |
-| `editor.validation` | always | The content integrity report: every finding, plus whether the reference checks have run and whether the report has been published. [`commands/read/validation.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/validation.rs) |
-| `editor.families` | Editing | The registry keys an author can pick, family by family, each with the label the editor's own picker shows. Its `family` argument names a form with the same names `editor.set_mode`'s `mode` takes, and `Prefab` answers `BadArguments`, because that tab is the map canvas and carries no content family. [`commands/read/families/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/families) |
-| `editor.session` | Editing | The theme and its default floor, the grid extent, the selected paint tile, the facing a paint turns it to, the storey being edited, and the view: draw mode, isolation, zoom and pan. [`commands/read/session.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/session.rs) |
-| `editor.draft` | Editing + any form tab | The open form's draft as the RON text its save would write. [`commands/read/draft/`](../../crates/gdtf_content_editor/src/net_qa/commands/read/draft) |
-| `editor.set_mode` | Editing | Opens a mode tab, writing the same `EditorMode` resource the tab bar and the number hotkeys write. [`commands/write/set_mode.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_mode.rs) |
-| `editor.new` | Editing | Replaces a mode's draft with that form's own blank-draft constructor. [`commands/write/blank/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/blank) |
-| `editor.load_theme` | Editing + the Theme tab | Selects a theme in the authoring session and loads its def into the Theme draft, the same pair the Theme tab's own sync runs when the top bar picks a theme. The Theme form draws no load picker of its own. The load also takes the file the def was read from, so a later `editor.save` rewrites that file. [`commands/write/load/commands/theme.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/theme.rs) |
-| `editor.load_gang` | Editing + the Gang tab | Loads a gang roster by key into the Gang draft, through that draft's own `load_gang` method. [`commands/write/load/commands/gang.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/gang.rs) |
-| `editor.load_armor` | Editing + the Armor tab | Loads an armor by key into the Armor draft, through that draft's own `load_armor` method. [`commands/write/load/commands/armor.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/armor.rs) |
-| `editor.load_injury` | Editing + the Injury tab | Loads an injury by key into the Injury draft, through that draft's own `load_injury` method. [`commands/write/load/commands/injury.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/injury.rs) |
-| `editor.load_sprite` | Editing + the Sprite tab | Loads a sprite def by key into the Sprite draft, through that draft's own `load_sprite` method. [`commands/write/load/commands/sprite.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/sprite.rs) |
-| `editor.load_attachment` | Editing + the Attachment tab | Loads an attachment by key into the Attachment draft, through that draft's own `load_attachment` method. [`commands/write/load/commands/attachment.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/attachment.rs) |
-| `editor.load_weapon` | Editing + the Weapon tab | Loads a ranged weapon by key into the Weapon draft, through that draft's own `load_weapon` method. [`commands/write/load/commands/weapon.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/weapon.rs) |
-| `editor.load_melee_weapon` | Editing + the MeleeWeapon tab | Loads a melee weapon by key into the MeleeWeapon draft, through that draft's own `load_melee_weapon` method. [`commands/write/load/commands/melee_weapon.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/melee_weapon.rs) |
-| `editor.load_field` | Editing + the Field tab | Loads a field def by key into the Field draft, through that draft's own `load_field` method. [`commands/write/load/commands/field.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/field.rs) |
-| `editor.load_terrain` | Editing + the Terrain tab | Loads a terrain def into the Terrain draft, through that draft's own `load_from_def` method. The key is the hyphenated UUID text `editor.families` answers. A key that is not UUID text, and a key the registry does not hold, come back as `NoSuchKey` carrying that registry's own keys, sorted, with the draft left alone. The load also takes the file the def was read from, so a later `editor.save` rewrites that file. [`commands/write/load/commands/terrain.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/terrain.rs) |
-| `editor.load_prefab` | Editing + the Prefab tab | Opens an authored prefab onto the canvas the way the Prefab tab's own picker does: its grid size and theme onto the session, its painted cells onto the map, and the edit storey clamped into the loaded extent. The arguments are the prefab name and its key, which is the theme's UUID text, the grid size and the spawn role. A name and key no prefab sits under answers `NoSuchPrefab` and writes nothing. [`commands/write/load/commands/prefab.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/load/commands/prefab.rs) |
-| `editor.save` | Editing | Writes a mode's draft through the same `write_*_in` its save button calls. [`commands/write/save/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save) |
-| `editor.set_field` | Editing + any form tab | Writes one single-value field of the open form's draft, the way that form's own widget writes it. [`commands/write/set_field/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_field) |
-| `editor.list_op` | Editing + any form tab | Edits one list-valued field of the open form's draft through that form's own setter. [`commands/write/list_op/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/list_op) |
-| `editor.select_theme` | Editing | Selects a theme in the authoring session, taking that theme's own default floor with it, the way the top bar's picker does. [`commands/write/select_theme.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_theme.rs) |
-| `editor.toggle_terrain` | Editing + the Theme tab | Adds or removes one terrain in the Theme draft's list, the way ticking its row in the terrain library does. [`commands/write/toggle_terrain.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/toggle_terrain.rs) |
-| `editor.set_default_floor` | Editing + the Theme tab | Sets the Theme draft's default floor from the slabs the draft already holds. [`commands/write/set_default_floor.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_default_floor.rs) |
-| `editor.map` | Editing + the Prefab tab | Every painted cell on one storey with its tile and facing, plus the grid extent. Nothing is filtered out, so a slot a shrink left outside the grid is still listed. [`commands/read/painted_map.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/painted_map.rs) |
-| `editor.set_grid_size` | Editing + the Prefab tab | Sets the grid's width, height and storey count through the same commit the size fields call, clamping each span and re-clamping the edit storey. [`commands/write/set_grid_size.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_grid_size.rs) |
-| `editor.select_tile` | Editing + the Prefab tab | Selects the tile the canvas paints, from the same rows the palette draws. [`commands/write/select_tile.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_tile.rs) |
-| `editor.select_facing` | Editing + the Prefab tab | Selects the side the canvas turns the tile it paints to, the same choice the palette's facing row writes. Both paint entry points read it off the session. [`commands/write/select_facing.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_facing.rs) |
-| `editor.set_level` | Editing + the Prefab tab | Jumps the storey the canvas paints on, the way clicking a row of the level rail does, clamping to the grid's extent. [`commands/write/set_level.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/set_level.rs) |
-| `editor.paint` | Editing + the Prefab tab | Paints the selected tile in one cell of the storey being edited, through the same placement and connector pairing a canvas click runs. [`commands/write/paint/`](../../crates/gdtf_content_editor/src/net_qa/commands/write/paint) |
-| `editor.select_injury_tab` | Editing + the Injury tab | Opens the Injury def form or the Injury weighting table, writing the same `InjurySubTab` resource the sub-tab row writes. [`commands/write/select_injury_tab.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_injury_tab.rs) |
-| `editor.select_weighting_table` | Editing + the Injury tab | Loads the weighting table for one injury category and damage context, the way the Injury tab's two selectors load it. All three buckets are replaced from the tables, so unsaved row edits are discarded. Tables absent answers `Unavailable { code: MissingModel }`. [`commands/write/select_weighting_table.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/select_weighting_table.rs) |
-| `editor.weighting` | Editing + the Injury tab | The weighting table the Injury tab holds: its category and damage context, and each of its Minor, Major and Critical buckets in the order the draft holds them. [`commands/read/weighting.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/read/weighting.rs) |
-| `editor.save_weighting` | Editing + the Injury tab | Writes the weighting draft through the same `write_weighting_in` its Save weighting button calls, under the QA assets root, and records the outcome the way the button does. [`commands/write/save_weighting.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/save_weighting.rs) |
-| `editor.delete_record` | Editing + the screen that offers the entry | Deletes one authored record, naming the delete entry's `FindingFamily` label, the record's `ContentMemberKey`, an optional replacement `ContentMemberKey`, and a `cancel` argument. Eleven families are deletable: prefab, injury weighting table, armor, melee weapon, attachment, injury, field, terrain def, theme, gang and ranged weapon. The in-use check runs first. Each referring family then resolves its own reference, either by dropping it or by taking the replacement: a gang member goes back to no armor, no melee weapon and no ranged weapon, a ranged or melee weapon back without the attachment, a weighting table without the injury's rows, and the situation, the terrain defs and the ranged weapons without the field, while a theme's floor and palette, a prefab's theme and placements, the situation's piece, theme and gang keys, another def's `leaves_behind` and an emplacement's `mounted_weapon` take the replacement. Naming a replacement confirms the delete. Omitting one on a record with a required referrer answers `Refused(InUse)` with the unresolved referring records, and the record goes back into its registry. A gang replacement whose roster does not hold a member name the situation gives the deleted gang answers `Refused(ReplacementLacks)` naming that member, with nothing written. `cancel` answers `Cancelled` with nothing written and nothing removed, and `cancel` together with a replacement key answers `BadArguments` naming both. The check runs a second time over the rewritten content. Nothing is rewritten for a prefab or a weighting table, and the melee weapon delete rewrites nothing while the `fists` default is absent, because a member left holding no melee weapon resolves to it. A family this build cannot delete comes back `Refused(NoEntry)`, and a family the open mode and sub-tab does not offer answers `Unavailable { code: WrongState }`. `Deferred`. [`commands/write/delete_record.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/write/delete_record.rs) |
-| `capture.screenshot` | always | Writes a PNG of what the editor is showing and attaches it to the reply. `Deferred`. [`commands/capture/screenshot.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/capture/screenshot.rs) |
-| `wait` | always | Holds the reply until `ChecksComplete` or `RegistryRearmed` comes true. `Deferred`. [`commands/wait/`](../../crates/gdtf_content_editor/src/net_qa/commands/wait) |
+| `editor.phase` | always | The lifecycle phase, the mode tab open now, and every tab in tab-bar order. [`commands/read/editor_phase.rs`](../../crates/gdtf_editor/src/mcp/commands/read/editor_phase.rs) |
+| `editor.last_save` | always | What the newest save per mode did: the file it wrote, or the fault it reported. [`commands/read/last_save.rs`](../../crates/gdtf_editor/src/mcp/commands/read/last_save.rs) |
+| `editor.validation` | always | The content integrity report: every finding, plus whether the reference checks have run and whether the report has been published. [`commands/read/validation.rs`](../../crates/gdtf_editor/src/mcp/commands/read/validation.rs) |
+| `editor.families` | Editing | The registry keys an author can pick, family by family, each with the label the editor's own picker shows. Its `family` argument names a form with the same names `editor.set_mode`'s `mode` takes, and `Prefab` answers `BadArguments`, because that tab is the map canvas and carries no content family. [`commands/read/families/`](../../crates/gdtf_editor/src/mcp/commands/read/families) |
+| `editor.session` | Editing | The theme and its default floor, the grid extent, the selected paint tile, the facing a paint turns it to, the storey being edited, and the view: draw mode, isolation, zoom and pan. [`commands/read/session.rs`](../../crates/gdtf_editor/src/mcp/commands/read/session.rs) |
+| `editor.draft` | Editing + any form tab | The open form's draft as the RON text its save would write. [`commands/read/draft/`](../../crates/gdtf_editor/src/mcp/commands/read/draft) |
+| `editor.set_mode` | Editing | Opens a mode tab, writing the same `EditorMode` resource the tab bar and the number hotkeys write. [`commands/write/set_mode.rs`](../../crates/gdtf_editor/src/mcp/commands/write/set_mode.rs) |
+| `editor.new` | Editing | Replaces a mode's draft with that form's own blank-draft constructor. [`commands/write/blank/`](../../crates/gdtf_editor/src/mcp/commands/write/blank) |
+| `editor.load_theme` | Editing + the Theme tab | Selects a theme in the authoring session and loads its def into the Theme draft, the same pair the Theme tab's own sync runs when the top bar picks a theme. The Theme form draws no load picker of its own. The load also takes the file the def was read from, so a later `editor.save` rewrites that file. [`commands/write/load/commands/theme.rs`](../../crates/gdtf_editor/src/mcp/commands/write/load/commands/theme.rs) |
+| `editor.load_gang` | Editing + the Gang tab | Loads a gang roster by key into the Gang draft, through that draft's own `load_gang` method. [`commands/write/load/commands/gang.rs`](../../crates/gdtf_editor/src/mcp/commands/write/load/commands/gang.rs) |
+| `editor.load_armor` | Editing + the Armor tab | Loads an armor by key into the Armor draft, through that draft's own `load_armor` method. [`commands/write/load/commands/armor.rs`](../../crates/gdtf_editor/src/mcp/commands/write/load/commands/armor.rs) |
+| `editor.load_injury` | Editing + the Injury tab | Loads an injury by key into the Injury draft, through that draft's own `load_injury` method. [`commands/write/load/commands/injury.rs`](../../crates/gdtf_editor/src/mcp/commands/write/load/commands/injury.rs) |
+| `editor.load_sprite` | Editing + the Sprite tab | Loads a sprite def by key into the Sprite draft, through that draft's own `load_sprite` method. [`commands/write/load/commands/sprite.rs`](../../crates/gdtf_editor/src/mcp/commands/write/load/commands/sprite.rs) |
+| `editor.load_attachment` | Editing + the Attachment tab | Loads an attachment by key into the Attachment draft, through that draft's own `load_attachment` method. [`commands/write/load/commands/attachment.rs`](../../crates/gdtf_editor/src/mcp/commands/write/load/commands/attachment.rs) |
+| `editor.load_weapon` | Editing + the Weapon tab | Loads a ranged weapon by key into the Weapon draft, through that draft's own `load_weapon` method. [`commands/write/load/commands/weapon.rs`](../../crates/gdtf_editor/src/mcp/commands/write/load/commands/weapon.rs) |
+| `editor.load_melee_weapon` | Editing + the MeleeWeapon tab | Loads a melee weapon by key into the MeleeWeapon draft, through that draft's own `load_melee_weapon` method. [`commands/write/load/commands/melee_weapon.rs`](../../crates/gdtf_editor/src/mcp/commands/write/load/commands/melee_weapon.rs) |
+| `editor.load_field` | Editing + the Field tab | Loads a field def by key into the Field draft, through that draft's own `load_field` method. [`commands/write/load/commands/field.rs`](../../crates/gdtf_editor/src/mcp/commands/write/load/commands/field.rs) |
+| `editor.load_terrain` | Editing + the Terrain tab | Loads a terrain def into the Terrain draft, through that draft's own `load_from_def` method. The key is the hyphenated UUID text `editor.families` answers. A key that is not UUID text, and a key the registry does not hold, come back as `NoSuchKey` carrying that registry's own keys, sorted, with the draft left alone. The load also takes the file the def was read from, so a later `editor.save` rewrites that file. [`commands/write/load/commands/terrain.rs`](../../crates/gdtf_editor/src/mcp/commands/write/load/commands/terrain.rs) |
+| `editor.load_prefab` | Editing + the Prefab tab | Opens an authored prefab onto the canvas the way the Prefab tab's own picker does: its grid size and theme onto the session, its painted cells onto the map, and the edit storey clamped into the loaded extent. The arguments are the prefab name and its key, which is the theme's UUID text, the grid size and the spawn role. A name and key no prefab sits under answers `NoSuchPrefab` and writes nothing. [`commands/write/load/commands/prefab.rs`](../../crates/gdtf_editor/src/mcp/commands/write/load/commands/prefab.rs) |
+| `editor.save` | Editing | Writes a mode's draft through the same `write_*_in` its save button calls. [`commands/write/save/`](../../crates/gdtf_editor/src/mcp/commands/write/save) |
+| `editor.set_field` | Editing + any form tab | Writes one single-value field of the open form's draft, the way that form's own widget writes it. [`commands/write/set_field/`](../../crates/gdtf_editor/src/mcp/commands/write/set_field) |
+| `editor.list_op` | Editing + any form tab | Edits one list-valued field of the open form's draft through that form's own setter. [`commands/write/list_op/`](../../crates/gdtf_editor/src/mcp/commands/write/list_op) |
+| `editor.select_theme` | Editing | Selects a theme in the authoring session, taking that theme's own default floor with it, the way the top bar's picker does. [`commands/write/select_theme.rs`](../../crates/gdtf_editor/src/mcp/commands/write/select_theme.rs) |
+| `editor.toggle_terrain` | Editing + the Theme tab | Adds or removes one terrain in the Theme draft's list, the way ticking its row in the terrain library does. [`commands/write/toggle_terrain.rs`](../../crates/gdtf_editor/src/mcp/commands/write/toggle_terrain.rs) |
+| `editor.set_default_floor` | Editing + the Theme tab | Sets the Theme draft's default floor from the slabs the draft already holds. [`commands/write/set_default_floor.rs`](../../crates/gdtf_editor/src/mcp/commands/write/set_default_floor.rs) |
+| `editor.map` | Editing + the Prefab tab | Every painted cell on one storey with its tile and facing, plus the grid extent. Nothing is filtered out, so a slot a shrink left outside the grid is still listed. [`commands/read/painted_map.rs`](../../crates/gdtf_editor/src/mcp/commands/read/painted_map.rs) |
+| `editor.set_grid_size` | Editing + the Prefab tab | Sets the grid's width, height and storey count through the same commit the size fields call, clamping each span and re-clamping the edit storey. [`commands/write/set_grid_size.rs`](../../crates/gdtf_editor/src/mcp/commands/write/set_grid_size.rs) |
+| `editor.select_tile` | Editing + the Prefab tab | Selects the tile the canvas paints, from the same rows the palette draws. [`commands/write/select_tile.rs`](../../crates/gdtf_editor/src/mcp/commands/write/select_tile.rs) |
+| `editor.select_facing` | Editing + the Prefab tab | Selects the side the canvas turns the tile it paints to, the same choice the palette's facing row writes. Both paint entry points read it off the session. [`commands/write/select_facing.rs`](../../crates/gdtf_editor/src/mcp/commands/write/select_facing.rs) |
+| `editor.set_level` | Editing + the Prefab tab | Jumps the storey the canvas paints on, the way clicking a row of the level rail does, clamping to the grid's extent. [`commands/write/set_level.rs`](../../crates/gdtf_editor/src/mcp/commands/write/set_level.rs) |
+| `editor.paint` | Editing + the Prefab tab | Paints the selected tile in one cell of the storey being edited, through the same placement and connector pairing a canvas click runs. [`commands/write/paint/`](../../crates/gdtf_editor/src/mcp/commands/write/paint) |
+| `editor.select_injury_tab` | Editing + the Injury tab | Opens the Injury def form or the Injury weighting table, writing the same `InjurySubTab` resource the sub-tab row writes. [`commands/write/select_injury_tab.rs`](../../crates/gdtf_editor/src/mcp/commands/write/select_injury_tab.rs) |
+| `editor.select_weighting_table` | Editing + the Injury tab | Loads the weighting table for one injury category and damage context, the way the Injury tab's two selectors load it. All three buckets are replaced from the tables, so unsaved row edits are discarded. Tables absent answers `Unavailable { code: MissingModel }`. [`commands/write/select_weighting_table.rs`](../../crates/gdtf_editor/src/mcp/commands/write/select_weighting_table.rs) |
+| `editor.weighting` | Editing + the Injury tab | The weighting table the Injury tab holds: its category and damage context, and each of its Minor, Major and Critical buckets in the order the draft holds them. [`commands/read/weighting.rs`](../../crates/gdtf_editor/src/mcp/commands/read/weighting.rs) |
+| `editor.save_weighting` | Editing + the Injury tab | Writes the weighting draft through the same `write_weighting_in` its Save weighting button calls, under the QA assets root, and records the outcome the way the button does. [`commands/write/save_weighting.rs`](../../crates/gdtf_editor/src/mcp/commands/write/save_weighting.rs) |
+| `editor.delete_record` | Editing + the screen that offers the entry | Deletes one authored record, naming the delete entry's `FindingFamily` label, the record's `ContentMemberKey`, an optional replacement `ContentMemberKey`, and a `cancel` argument. Eleven families are deletable: prefab, injury weighting table, armor, melee weapon, attachment, injury, field, terrain def, theme, gang and ranged weapon. The in-use check runs first. Each referring family then resolves its own reference, either by dropping it or by taking the replacement: a gang member goes back to no armor, no melee weapon and no ranged weapon, a ranged or melee weapon back without the attachment, a weighting table without the injury's rows, and the situation, the terrain defs and the ranged weapons without the field, while a theme's floor and palette, a prefab's theme and placements, the situation's piece, theme and gang keys, another def's `leaves_behind` and an emplacement's `mounted_weapon` take the replacement. Naming a replacement confirms the delete. Omitting one on a record with a required referrer answers `Refused(InUse)` with the unresolved referring records, and the record goes back into its registry. A gang replacement whose roster does not hold a member name the situation gives the deleted gang answers `Refused(ReplacementLacks)` naming that member, with nothing written. `cancel` answers `Cancelled` with nothing written and nothing removed, and `cancel` together with a replacement key answers `BadArguments` naming both. The check runs a second time over the rewritten content. Nothing is rewritten for a prefab or a weighting table, and the melee weapon delete rewrites nothing while the `fists` default is absent, because a member left holding no melee weapon resolves to it. A family this build cannot delete comes back `Refused(NoEntry)`, and a family the open mode and sub-tab does not offer answers `Unavailable { code: WrongState }`. `Deferred`. [`commands/write/delete_record.rs`](../../crates/gdtf_editor/src/mcp/commands/write/delete_record.rs) |
+| `capture.screenshot` | always | Writes a PNG of what the editor is showing and attaches it to the reply. `Deferred`. [`commands/capture/screenshot.rs`](../../crates/gdtf_editor/src/mcp/commands/capture/screenshot.rs) |
+| `wait` | always | Holds the reply until `ChecksComplete` or `RegistryRearmed` comes true. `Deferred`. [`commands/wait/`](../../crates/gdtf_editor/src/mcp/commands/wait) |
 
 `editor.set_field` and `editor.list_op` need more than the authoring scene. Both write the
 open form's own draft, so they need a form tab open and that tab's draft resource in the
 world. The Prefab tab is the map canvas and holds no draft, so it answers
 `Unavailable { code: WrongState }`, and so does a form tab whose draft has left the world
 (`only_in_a_form_mode_with_its_draft` in
-[`commands/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/availability.rs),
+[`commands/availability.rs`](../../crates/gdtf_editor/src/mcp/commands/availability.rs),
 reading the draft-presence fact `EditorFactsParam::sample` takes for the mode that is open).
 `editor.toggle_terrain` and
 `editor.set_default_floor` are scoped the same way to the Theme tab, because the terrain
@@ -855,7 +855,7 @@ run its first-frame seed yet, so every Field write answers
 be seeded over on the next egui frame. `editor.new` with `(mode: Field)` settles it.
 `editor.select_theme` needs no particular tab, because the top bar draws its picker on every
 one. The phase is checked first
-([`commands/availability.rs`](../../crates/gdtf_content_editor/src/net_qa/commands/availability.rs)),
+([`commands/availability.rs`](../../crates/gdtf_editor/src/mcp/commands/availability.rs)),
 so a call during Load carries the phase note and not the tab note.
 
 A field rides under the form that owns it, and its value rides on its own variant.
@@ -980,7 +980,7 @@ miss. All three answer `Unavailable { code: MissingModel }` for a key that is no
 registry does not hold, leaving the session or the draft as it was.
 `editor.set_default_floor` refuses on a narrower test, so it answers
 `Unavailable { code: WrongState }` for every key outside `slab_floor_candidates`
-([`theme_form/resolve.rs`](../../crates/gdtf_content_editor/src/theme_form/resolve.rs)), the
+([`theme_form/resolve.rs`](../../crates/gdtf_editor/src/theme_form/resolve.rs)), the
 list the form's own picker offers. That one code covers all three misses: a terrain the
 draft does not hold, a terrain the draft holds that is not a slab, and UUID text no registry
 holds. `ThemeDraft::set_default_floor` writes nothing when the draft does not hold the key,
@@ -1004,7 +1004,7 @@ the same tile that was painted, and the slot it landed in, so the next `editor.m
 holds no cell the caller cannot account for.
 
 `editor.save` writes under `EditorQaAssetsRoot`
-([`net_qa/assets_root.rs`](../../crates/gdtf_content_editor/src/net_qa/assets_root.rs)),
+([`mcp/assets_root.rs`](../../crates/gdtf_editor/src/mcp/assets_root.rs)),
 which defaults to the workspace `assets/` and falls back to a temp directory when the
 marker search finds no workspace. Only Prefab takes a `name`, because only the prefab form
 carries its own name field; a name on any other mode is refused rather than dropped.
@@ -1023,7 +1023,7 @@ the listener bound. `editor.save_weighting` and the Injury tab's own Save weight
 both write under it through `write_weighting_in`, the one writer either path has.
 
 `editor.last_save` reads the same `LastSaveRecord`
-([`crates/gdtf_content_editor/src/save_record/`](../../crates/gdtf_content_editor/src/save_record))
+([`crates/gdtf_editor/src/save_record/`](../../crates/gdtf_editor/src/save_record))
 that all twelve of the editor's own save buttons write, so a QA-driven save and a
 button-driven save are indistinguishable to it. The record is keyed by mode and is not
 state-scoped, so it survives a Load ↔ Editing round trip.
@@ -1050,7 +1050,7 @@ families the label is the key. The Terrain load picker appends the def's key to 
 or more defs share, so a duplicated display name is still one row per def.
 
 `editor.draft` reads the active tab and takes no mode argument. The RON is the mode's own
-`draft_to_*` conversion followed by `gdtf_assets::serialize_ron_pretty`, the two calls
+`draft_to_*` conversion followed by `cobalt_ron_assets::serialize_ron_pretty`, the two calls
 `write_ron_pretty` makes, so the text is what `editor.save` writes to the file. The Terrain
 tab has one difference. The read takes the key route the terrain form's own preview pane
 takes, `TerrainDraft::uuid` falling back to the nil UUID, while `editor.save` calls
@@ -1067,14 +1067,14 @@ an Emplacement terrain with no mounted weapon, answers a successful reply carryi
 never branches on which host answered. Its argument and reply are the same shapes: one
 optional `name` that becomes the file stem, and a `Ran` reply carrying the path plus a
 `ReplyAttachment(Png, …)` naming it. A capture that never lands answers `Timeout`, and
-nothing refuses it. The pipeline is the shared one in `crates/gdtf_screenshot`, registered
+nothing refuses it. The pipeline is the shared one in `libs/cobalt_screenshot`, registered
 by the editor's own `serve`
-([`net_qa/plugin.rs`](../../crates/gdtf_content_editor/src/net_qa/plugin.rs)) as
+([`mcp/plugin.rs`](../../crates/gdtf_editor/src/mcp/plugin.rs)) as
 `CapturePresentPlugin`, `WindowCapturePlugin` and `CapturePipelinePlugin<EditorShotResponder>`
 together. Editor shots land in `target/qa_screenshots_editor` rather than the game's
 `target/qa_screenshots`, so the two processes cannot write over each other when both are up.
 `run`'s `capture` rider writes there too: `register_riders`
-([`dispatch/register.rs`](../../crates/gdtf_qa_command/src/dispatch/register.rs)) adds
+([`dispatch/register.rs`](../../libs/cobalt_mcp_command/src/dispatch/register.rs)) adds
 `CapturePipelinePlugin<CaptureTicket>` and the `drive_rider_captures` drain that empties it
 beside the holds themselves, so the host that parks a held reply is the host that takes its shot.
 
@@ -1085,7 +1085,7 @@ in the world, which is the same marker `editor.validation` reports. `RegistryRea
 one of ten content families — Weapon, MeleeWeapon, Armor, Gang, Terrain, Theme, Injury,
 Sprite, Attachment and Field, spelled as the mode tabs are — and comes true when that
 family's registry changes after the call was parked. Validation watches all ten
-([`validate/rearm.rs`](../../crates/gdtf_content_editor/src/validate/rearm.rs)), so a rearm
+([`validate/rearm.rs`](../../crates/gdtf_editor/src/validate/rearm.rs)), so a rearm
 of the validation pass is what a wait on one of them sees. Validation also watches
 `PrefabRegistry` and the loaded situation, which no wait condition names. A condition that never
 comes true answers `Timeout` and leaves the connection open, never a refusal and never an
@@ -1096,13 +1096,13 @@ comes true answers `Timeout` and leaves the connection open, never a refusal and
 **A host publishes ONE list of typed commands, and the wire carries any command in
 variants that never change.**
 
-- A command is a unit struct implementing `QaCommand` (`crates/gdtf_qa_command`): two
+- A command is a unit struct implementing `QaCommand` (`libs/cobalt_mcp_command`): two
   associated types whose RON shapes are **traced out of their own `Deserialize` impls** —
   the same impls that decode the wire, so a published shape cannot disagree with the
   decoder — a name, a summary, a declared timing, a deferral budget, a pure availability
   predicate over that host's facts type, and the registration of an ordinary Bevy system.
 - A host owns one `&[&dyn ErasedCommand<F>]` — the game's is `GAME_COMMANDS` in
-  `crates/gdtf_app/src/dev/net_qa/commands/set.rs`. The catalogue walk, the admission scan
+  `crates/gdtf_game/src/dev/mcp/commands/set.rs`. The catalogue walk, the admission scan
   and the registration walk all read that same slice, so **a command cannot be advertised
   without being admissible and wired**.
 - The wire surface is exactly these request variants (`Catalogue`, `Run`) and these response

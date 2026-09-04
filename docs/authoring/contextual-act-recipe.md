@@ -92,7 +92,7 @@ the frame it was claimed in, exactly as a press is.
 ### 3. App — the panel button (one file + one line)
 
 - **New module**
-  `crates/gdtf_app/src/states/running/game/battlescape/contextual_panel/acts/<act>.rs`:
+  `crates/gdtf_game/src/states/running/game/battlescape/contextual_panel/acts/<act>.rs`:
   the button marker (via `crate::support_item!`), the `ContextualPanelAct` impl
   (`type Marker`, `fn label()`, `const SLOT` — pick an UNUSED `PanelSlot`; slots order
   the column top-to-bottom and must stay unique), and the act's bespoke
@@ -133,7 +133,7 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
 ### 5. QA command (one file + one line + one socket case)
 
 - **New module**
-  `crates/gdtf_app/src/dev/net_qa/commands/act/contextual/<act>.rs`: a unit struct
+  `crates/gdtf_game/src/dev/mcp/commands/act/contextual/<act>.rs`: a unit struct
   implementing `QaCommand` named `act.<act>`, with `type Args = NoArgs` unless the act names
   its own target (see the target bullet below),
   `type Parked = ContextualTicket`, `type Reply = ContextualReply`,
@@ -147,10 +147,10 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
   `ActCommandSystems::Settle`
   — the bands already carry the edges to the panel's offer scan, to the contextual drain and
   to `SimSystems::Record`. Wire the module + re-export in `contextual/mod.rs`.
-- **One line** in `crates/gdtf_app/src/dev/net_qa/commands/set.rs` (`GAME_COMMANDS`), plus
-  the matching name in `tests/net_qa/command_exchange/names.rs`, the expected lists in
-  `tests/net_qa/command_set.rs` and `tests/net_qa/commands.rs`, and the timing row in
-  `tests/net_qa/catalogue_acts.rs`.
+- **One line** in `crates/gdtf_game/src/dev/mcp/commands/set.rs` (`GAME_COMMANDS`), plus
+  the matching name in `tests/mcp/command_exchange/names.rs`, the expected lists in
+  `tests/mcp/command_set.rs` and `tests/mcp/commands.rs`, and the timing row in
+  `tests/mcp/catalogue_acts.rs`.
 - **The command may never act on a target the panel is not offering.** The panel offers
   exactly one target per family and no press carries a target of its own, so a command that
   acted on anything else would be a second code path doing something no player can do. Seven
@@ -164,7 +164,7 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
   `ContextualOffer<A>`, pushes `offer.target()` onto `PendingContextualIntents<A>`, and
   refuses `NoOffer` when the family is offering nothing. It evaluates no legality and no TU —
   the sim's `dispatch_<act>` is still the only gate.
-- **One socket case** in `crates/gdtf_app/tests/net_qa/contextual_acts/`, on the existing
+- **One socket case** in `crates/gdtf_game/tests/mcp/contextual_acts/`, on the existing
   `battle_app_listening()` fixture: spawn the scenario relative to the selected shooter,
   call the command, assert the reply names the offered target. Assert on the WORLD, not the
   log, for any act `ActDeed` has no variant for — doors and emplacements log nothing, and an
@@ -179,7 +179,7 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
 
 ### 6. Tests + test-surface (as the act warrants)
 
-- A headless end-to-end press test in the `crates/gdtf_app/tests/contextual_panel/`
+- A headless end-to-end press test in the `crates/gdtf_game/tests/contextual_panel/`
   suite — one file per act, sharing `harness.rs`'s `battle_running_app()`: offer →
   press → assert the
   `*Requested` in the sim buffer (probe `.after(ContextualActSystems::Drain)`), plus
@@ -198,5 +198,5 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
 `.add_contextual_act_button::<ShoveAct, _>(acts::shove::offer_shove)`, QA
 `commands/act/contextual/shove.rs` + its `GAME_COMMANDS` line, AI why-not
 recorded above, and the press/offer/same-frame tests in
-`crates/gdtf_app/tests/contextual_panel/shove.rs` plus the socket case in
-`crates/gdtf_app/tests/net_qa/contextual_acts/`.
+`crates/gdtf_game/tests/contextual_panel/shove.rs` plus the socket case in
+`crates/gdtf_game/tests/mcp/contextual_acts/`.

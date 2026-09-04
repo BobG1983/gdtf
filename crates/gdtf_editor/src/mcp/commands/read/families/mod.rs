@@ -1,0 +1,10 @@
+//! `editor.families`: the registry keys an author can pick, and the label beside each.
+
+mod collect;
+mod command;
+mod filter;
+mod sort;
+#[cfg(test)]
+mod test;
+
+pub(in crate::mcp) use command::EditorFamilies;

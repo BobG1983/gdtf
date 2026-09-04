@@ -1,7 +1,7 @@
 //! Hot-reload chain from theme RON assets.
 
 use bevy::{asset::AssetServer, prelude::*, text::Font};
-use gdtf_assets::HotRonChain;
+use cobalt_ron_assets::HotRonChain;
 
 use crate::theme::{GdtfTheme, GdtfThemeSpec};
 

@@ -81,7 +81,7 @@ something the build can fail on. Where a size limit matters, name the limit the 
 enforces, the block line in `module-layout.md`.
 
 Measured on GTW-1183. Clause 2 said moving two helpers "takes about 30 lines off"
-`crates/gdtf_app/tests/contextual_panel/emplacement.rs`, and a corrections row asserted a 290-line
+`crates/gdtf_game/tests/contextual_panel/emplacement.rs`, and a corrections row asserted a 290-line
 count. The file went to 323, because the same clause's mandated signature turned each of eight
 call sites from one line into nine. Verify read the gap as a deviation and reddened a run whose
 suite was green and whose every clause was met.

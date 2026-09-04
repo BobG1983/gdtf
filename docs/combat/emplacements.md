@@ -266,16 +266,16 @@ holds for it and the card for a ganger on it the squad can see.
   preview
   (`crates/gdtf_battle_input/src/pointer/selection/path_preview.rs`) and the
   `battle.cost` walk quote
-  (`crates/gdtf_app/src/dev/net_qa/commands/read/battle_cost/price/walk.rs`)
+  (`crates/gdtf_game/src/dev/mcp/commands/read/battle_cost/price/walk.rs`)
   call the same helpers. `reachable_within`'s three callers read the seat from
   the selected ganger in `populate_reachable_overlay`
   (`crates/gdtf_battle_input/src/pointer/selection/reachable.rs`), from the
   enemy turn's snapshot row in `plan_reposition` (`ai/advance.rs`), and from the
   named ganger's row in `ReachableRows::departure`
-  (`crates/gdtf_app/src/dev/net_qa/commands/read/battle_reachable/reads.rs`).
+  (`crates/gdtf_game/src/dev/mcp/commands/read/battle_reachable/reads.rs`).
   The two callers of the exit gate outside the sim are `offer_exit_emplacement`
-  (`crates/gdtf_app/src/states/running/game/battlescape/contextual_panel/acts/exit_emplacement.rs`)
+  (`crates/gdtf_game/src/states/running/game/battlescape/contextual_panel/acts/exit_emplacement.rs`)
   and `exit_quote`
-  (`crates/gdtf_app/src/dev/net_qa/commands/read/battle_cost/price/reach.rs`);
+  (`crates/gdtf_game/src/dev/mcp/commands/read/battle_cost/price/reach.rs`);
   both hand it the `OccupancyGrid`.
 - Source: owner rulings, given directly in conversation, 2026-08-14.

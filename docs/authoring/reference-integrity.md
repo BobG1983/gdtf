@@ -9,8 +9,8 @@ weighting, a terrain def's own view coverage, its `leaves_behind`, every
 every `on_death` `LeaveField.field` key, shared by game and editor) live at
 `crates/gdtf_content_families/src/validate/`, and so do the situation's own
 edges; the game's registration at
-`crates/gdtf_app/src/states/load/systems/validate/register.rs`; the editor's
-registration at `crates/gdtf_content_editor/src/validate/register.rs`; and the
+`crates/gdtf_game/src/states/load/systems/validate/register.rs`; the editor's
+registration at `crates/gdtf_editor/src/validate/register.rs`; and the
 shared report/salvage vocabulary at `crates/gdtf_assets/src/family/report/` /
 `crates/gdtf_assets/src/family/salvage.rs`.
 
@@ -115,7 +115,7 @@ the folder per-file: every well-formed sibling still loads,
 and the malformed file alone fails, loudly, as a `malformed file:` finding on
 the same report. A folder that cannot be enumerated at all (a missing
 directory) still fails closed to the empty registry. The content editor
-(`crates/gdtf_content_editor/`) loads through the same loader, so it inherits the
+(`crates/gdtf_editor/`) loads through the same loader, so it inherits the
 per-file behavior unchanged.
 
 ## Last-resort fallbacks are never silent
@@ -142,9 +142,9 @@ registries:
    `crates/gdtf_content_families/src/validate/` — a Bevy system over the sim
    registries that appends a `DanglingRef` finding per unresolved key.
 2. Hook it in the game's registrar
-   (`crates/gdtf_app/src/states/load/systems/validate/`) and, IF the editor
+   (`crates/gdtf_game/src/states/load/systems/validate/`) and, IF the editor
    loads every registry the check reads, in the editor's
-   (`crates/gdtf_content_editor/src/validate/`). Never register a check whose
+   (`crates/gdtf_editor/src/validate/`). Never register a check whose
    registries a host doesn't load — the host's `Check` window gates on the
    registries its registered checks read, so an unloaded one would hold the
    whole window shut (and an empty stand-in would false-fail every key).

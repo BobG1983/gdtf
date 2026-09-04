@@ -1,0 +1,14 @@
+[package]
+name = "cobalt_mcp_transport"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+cobalt_mcp_protocol = { path = "../cobalt_mcp_protocol" }
+
+[features]
+dynamic_linking = ["bevy/dynamic_linking"]
+
+[lints]
+workspace = true

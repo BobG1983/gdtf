@@ -8,7 +8,7 @@ pub(crate) fn workspace_root() -> PathBuf {
     if let Some(override_root) = std::env::var_os("GDTF_MODULE_LAYOUT_ROOT") {
         return PathBuf::from(override_root);
     }
-    let Some(root) = gdtf_assets::workspace_root() else {
+    let Some(root) = cobalt_ron_assets::workspace_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
     };
     root
@@ -18,7 +18,7 @@ fn git_tracked(root: &Path) -> Option<Vec<String>> {
     let out = Command::new("git")
         .arg("-C")
         .arg(root)
-        .args(["ls-files", "--", "crates", "bins"])
+        .args(["ls-files", "--", "crates", "bins", "libs"])
         .output()
         .ok()?;
     if !out.status.success() {
@@ -56,6 +56,7 @@ pub(crate) fn tracked_rs(root: &Path) -> Vec<String> {
         let mut acc = Vec::new();
         walk_files(&root.join("crates"), root, &mut acc);
         walk_files(&root.join("bins"), root, &mut acc);
+        walk_files(&root.join("libs"), root, &mut acc);
         acc
     });
     files.retain(|p| Path::new(p).extension().is_some_and(|e| e == "rs"));

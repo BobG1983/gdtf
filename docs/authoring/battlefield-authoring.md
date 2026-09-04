@@ -66,7 +66,7 @@ never a prefab placement.
 ### 2c. Loading, procgen, and the editor
 
 In the game, prefabs load through a bespoke resolve (a nested tree into a
-bucketed registry — `crates/gdtf_app/src/states/load/systems/resolve/prefab.rs`,
+bucketed registry — `crates/gdtf_game/src/states/load/systems/resolve/prefab.rs`,
 building the `PrefabRegistry` bucketed per `(theme, size, role)` key,
 `crates/gdtf_battle_sim/src/level/prefab/registry.rs`). At
 battle generation, procgen packs fragments for the requested theme/size into
@@ -77,7 +77,7 @@ a `PrefabRegistry` of its own, and authors and saves prefabs back to the tree wi
 the same one-owner path consts. Prefab mode's picker opens one onto the canvas:
 its extent and theme onto the session, its cells into the painted map, and the
 edit storey clamped into the loaded extent (`open_prefab` in
-`crates/gdtf_content_editor/src/open.rs`).
+`crates/gdtf_editor/src/open.rs`).
 
 ## Part 3 — Situations (the battle request)
 
@@ -182,7 +182,7 @@ hot-reloadable like every family ([content-families.md](content-families.md)).
 Gangs are authored in the CONTENT EDITOR binary (`cargo edrun`), in its GANG
 Workbench mode (the 2026-07-06 ruling — gangs are authored OUTSIDE
 the game binary, and the old in-game debug gang editor is GONE). The mode
-(`crates/gdtf_content_editor/src/gang_form/` — model; the egui form is its
+(`crates/gdtf_editor/src/gang_form/` — model; the egui form is its
 `egui_shell/gang_form_ui/` sibling) loads any gang from the registry (or
 starts a new one), edits members — add/remove/rename, the eight attributes,
 weapon/armor picks, each with a `(none)` row that clears it, plus the
@@ -195,12 +195,12 @@ same one-owner spellings the loader reads — /634).
 ## Part 5 — Verify
 
 - **Suite:** `cargo dtest`. Situations:
-  `crates/gdtf_app/tests/load_situation.rs` +
-  `crates/gdtf_app/tests/migrated_skirmish_theme.rs`. Prefabs:
-  `crates/gdtf_app/tests/load_prefab.rs`, `load_prefabs.rs`,
-  `migrated_prefab_content.rs`. Gangs: `crates/gdtf_app/tests/load_gangs.rs`
+  `crates/gdtf_game/tests/load_situation.rs` +
+  `crates/gdtf_game/tests/migrated_skirmish_theme.rs`. Prefabs:
+  `crates/gdtf_game/tests/load_prefab.rs`, `load_prefabs.rs`,
+  `migrated_prefab_content.rs`. Gangs: `crates/gdtf_game/tests/load_gangs.rs`
   (family suite), `load_gangs_spawn.rs` (setup resolution), and the GANG-mode
-  round-trip (`crates/gdtf_content_editor/tests/gang_mode.rs` — save into a
+  round-trip (`crates/gdtf_editor/tests/gang_mode.rs` — save into a
   TempDir root, reload through the real loader). The whole graph:
   `load_ref_integrity.rs` / `load_ref_salvage.rs`.
 - **In game:** `cargo drun` — the shipped skirmish loads, procgen assembles

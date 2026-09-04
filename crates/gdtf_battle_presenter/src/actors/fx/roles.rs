@@ -1,7 +1,7 @@
 //! Hot-loaded effect sheet tile indices and damage-type FX blocks.
 
 use bevy::{math::Vec3, prelude::*};
-use gdtf_assets::HotRonAppExt;
+use cobalt_ron_assets::HotRonAppExt;
 use gdtf_battle_sim::weapon::DamageType;
 use serde::Deserialize;
 

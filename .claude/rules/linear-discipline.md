@@ -108,7 +108,7 @@ tell the orchestrator.
 | Tech Debt | Known debt to pay down | Author | Ticket Done / canceled |
 | Documentation | Docs-only (canon, guides) | Author | Ticket Done / canceled |
 | AI Workflow | Agent loop, skills, memory, process. Not product MCP commands | Author | Ticket Done / canceled |
-| MCP | QA MCP host, net_qa channel, protocol/transport, evidence over the wire | Author | Ticket Done / canceled |
+| MCP | QA MCP host, mcp channel, protocol/transport, evidence over the wire | Author | Ticket Done / canceled |
 | Editor | Content editor (bevy_egui) work | Author | Ticket Done / canceled |
 | Art | Hand-authored art assets | Author | Ticket Done / canceled |
 | Content | Game content: authored data files, plus the sim or editor change a content batch directly needs. It may be applied alongside `Feature` or `Improvement` when the content needs code. Lives in the Content Authoring tree | Author | Ticket Done / canceled |
@@ -150,7 +150,7 @@ Improvement, Hygiene, or Feature instead.
 Host: game | editor | both | none
 What the player/author can newly do: …
 MCP: grow <existing command> | add <new command> | none because <one line>
-Drive: the mcp__gdtf-qa path that proves it
+Drive: the mcp__gdtf-mcp path that proves it
 ```
 
 ### Rules

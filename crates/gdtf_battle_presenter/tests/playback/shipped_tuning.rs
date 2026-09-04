@@ -1,6 +1,6 @@
 use std::{fs, time::Duration};
 
-use gdtf_assets::workspace_assets_root;
+use cobalt_ron_assets::workspace_assets_root;
 use gdtf_battle_presenter::PlaybackTuning;
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActProvenance},

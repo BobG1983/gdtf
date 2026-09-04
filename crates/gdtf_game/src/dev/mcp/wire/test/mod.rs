@@ -1,0 +1,24 @@
+mod act;
+mod act_payload;
+mod act_reply;
+mod cell;
+mod cost;
+mod deed;
+mod drive;
+mod inspect;
+mod keybind;
+mod log;
+mod offer;
+mod phase;
+mod reachable;
+mod roster;
+mod scalars;
+mod schema;
+mod sight;
+mod support;
+mod visible;
+mod vitals;
+mod wait;
+mod wound;
+
+pub(in crate::dev::mcp::wire) use support::assert_ron_round_trip;

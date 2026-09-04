@@ -7,14 +7,14 @@ use std::{
 };
 
 pub(crate) fn repo_root() -> PathBuf {
-    let Some(root) = gdtf_assets::workspace_root() else {
+    let Some(root) = cobalt_ron_assets::workspace_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
     };
     root.canonicalize().unwrap_or(root)
 }
 
-// Every `*.rs` file sitting directly in a `crates/<name>/tests/` or
-// `bins/<name>/tests/` directory, as repo-relative paths, sorted.
+// Every `*.rs` file sitting directly in a `crates/<name>/tests/`,
+// `bins/<name>/tests/` or `libs/<name>/tests/` directory, as repo-relative paths, sorted.
 pub(crate) fn flat_test_files(root: &Path) -> Vec<String> {
     let mut files = git_tracked(root).map_or_else(
         || read_test_dirs(root),
@@ -24,14 +24,14 @@ pub(crate) fn flat_test_files(root: &Path) -> Vec<String> {
     files
 }
 
-// Tracked files under crates/ and bins/, so untracked scratch files are
+// Tracked files under crates/, bins/ and libs/, so untracked scratch files are
 // ignored. None when git cannot answer, which sends the caller to the
 // filesystem instead.
 fn git_tracked(root: &Path) -> Option<Vec<String>> {
     let out = Command::new("git")
         .arg("-C")
         .arg(root)
-        .args(["ls-files", "--", "crates", "bins"])
+        .args(["ls-files", "--", "crates", "bins", "libs"])
         .output()
         .ok()?;
     if !out.status.success() {
@@ -46,14 +46,15 @@ fn is_flat_test(path: &str) -> bool {
     let [area, _crate_dir, "tests", file] = parts.as_slice() else {
         return false;
     };
-    matches!(*area, "crates" | "bins") && Path::new(file).extension().is_some_and(|e| e == "rs")
+    matches!(*area, "crates" | "bins" | "libs")
+        && Path::new(file).extension().is_some_and(|e| e == "rs")
 }
 
 // Fallback for when git is unavailable: read each `<area>/<name>/tests/`
 // directory directly.
 fn read_test_dirs(root: &Path) -> Vec<String> {
     let mut found = Vec::new();
-    for area in ["crates", "bins"] {
+    for area in ["crates", "bins", "libs"] {
         let Ok(crates) = fs::read_dir(root.join(area)) else {
             continue;
         };

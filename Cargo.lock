@@ -2041,6 +2041,66 @@ dependencies = [
 ]
 
 [[package]]
+name = "cobalt_mcp_command"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "cobalt_mcp_protocol",
+ "cobalt_mcp_transport",
+ "cobalt_screenshot",
+ "gdtf_test_utils",
+ "image",
+ "ron",
+ "serde",
+]
+
+[[package]]
+name = "cobalt_mcp_protocol"
+version = "0.1.0"
+dependencies = [
+ "bevy_derive",
+ "ron",
+ "serde",
+]
+
+[[package]]
+name = "cobalt_mcp_transport"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "cobalt_mcp_protocol",
+]
+
+[[package]]
+name = "cobalt_ron_assets"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "gdtf_test_utils",
+ "ron",
+ "serde",
+ "tempfile",
+]
+
+[[package]]
+name = "cobalt_screenshot"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "cobalt_ron_assets",
+ "gdtf_test_utils",
+ "image",
+ "tempfile",
+]
+
+[[package]]
+name = "cobalt_state_scoped"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2437,6 +2497,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "editor"
+version = "0.1.0"
+dependencies = [
+ "gdtf_editor",
+]
+
+[[package]]
 name = "egui"
 version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2804,27 +2871,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "gdtf_app"
+name = "game"
 version = "0.1.0"
 dependencies = [
- "bevy",
- "bevy_egui",
- "gdtf_assets",
- "gdtf_battle_input",
- "gdtf_battle_presenter",
- "gdtf_battle_sim",
- "gdtf_content_families",
- "gdtf_net_qa_transport",
- "gdtf_qa_command",
- "gdtf_qa_protocol",
- "gdtf_screenshot",
- "gdtf_state_scoped",
- "gdtf_test_utils",
- "gdtf_ui",
- "image",
- "ron",
- "serde",
- "tempfile",
+ "gdtf_game",
 ]
 
 [[package]]
@@ -2832,6 +2882,7 @@ name = "gdtf_assets"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "cobalt_ron_assets",
  "gdtf_test_utils",
  "ron",
  "serde",
@@ -2843,10 +2894,10 @@ name = "gdtf_battle_input"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "gdtf_app",
- "gdtf_assets",
+ "cobalt_ron_assets",
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
+ "gdtf_game",
  "gdtf_test_utils",
  "gdtf_ui",
  "ron",
@@ -2858,10 +2909,11 @@ name = "gdtf_battle_presenter"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "gdtf_app",
+ "cobalt_ron_assets",
  "gdtf_assets",
  "gdtf_battle_sim",
  "gdtf_content_families",
+ "gdtf_game",
  "gdtf_test_utils",
  "ron",
  "serde",
@@ -2880,20 +2932,34 @@ dependencies = [
 ]
 
 [[package]]
-name = "gdtf_content_editor"
+name = "gdtf_content_families"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "cobalt_ron_assets",
+ "gdtf_assets",
+ "gdtf_battle_sim",
+ "ron",
+ "serde",
+]
+
+[[package]]
+name = "gdtf_editor"
 version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_egui",
+ "cobalt_mcp_command",
+ "cobalt_mcp_protocol",
+ "cobalt_mcp_transport",
+ "cobalt_ron_assets",
+ "cobalt_screenshot",
+ "cobalt_state_scoped",
  "gdtf_assets",
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
  "gdtf_content_families",
- "gdtf_net_qa_transport",
- "gdtf_qa_command",
- "gdtf_qa_protocol",
- "gdtf_screenshot",
- "gdtf_state_scoped",
+ "gdtf_mcp_ports",
  "gdtf_test_utils",
  "image",
  "ron",
@@ -2902,21 +2968,29 @@ dependencies = [
 ]
 
 [[package]]
-name = "gdtf_content_editor_bin"
-version = "0.1.0"
-dependencies = [
- "gdtf_content_editor",
-]
-
-[[package]]
-name = "gdtf_content_families"
+name = "gdtf_game"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_egui",
+ "cobalt_mcp_command",
+ "cobalt_mcp_protocol",
+ "cobalt_mcp_transport",
+ "cobalt_ron_assets",
+ "cobalt_screenshot",
+ "cobalt_state_scoped",
  "gdtf_assets",
+ "gdtf_battle_input",
+ "gdtf_battle_presenter",
  "gdtf_battle_sim",
+ "gdtf_content_families",
+ "gdtf_mcp_ports",
+ "gdtf_test_utils",
+ "gdtf_ui",
+ "image",
  "ron",
  "serde",
+ "tempfile",
 ]
 
 [[package]]
@@ -2932,73 +3006,18 @@ name = "gdtf_hivescape_sim"
 version = "0.1.0"
 
 [[package]]
-name = "gdtf_net_qa_transport"
+name = "gdtf_mcp_ports"
 version = "0.1.0"
-dependencies = [
- "bevy",
- "gdtf_qa_protocol",
-]
-
-[[package]]
-name = "gdtf_qa_command"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "gdtf_net_qa_transport",
- "gdtf_qa_protocol",
- "gdtf_screenshot",
- "gdtf_test_utils",
- "image",
- "ron",
- "serde",
-]
-
-[[package]]
-name = "gdtf_qa_mcp"
-version = "0.1.0"
-dependencies = [
- "gdtf_qa_protocol",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "gdtf_qa_protocol"
-version = "0.1.0"
-dependencies = [
- "bevy_derive",
- "ron",
- "serde",
-]
-
-[[package]]
-name = "gdtf_screenshot"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "gdtf_assets",
- "gdtf_test_utils",
- "image",
- "tempfile",
-]
-
-[[package]]
-name = "gdtf_state_scoped"
-version = "0.1.0"
-dependencies = [
- "bevy",
-]
 
 [[package]]
 name = "gdtf_test_utils"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "gdtf_app",
- "gdtf_assets",
+ "cobalt_ron_assets",
  "gdtf_battle_sim",
  "gdtf_content_families",
+ "gdtf_game",
  "gdtf_ui",
  "toml_edit",
  "wgpu",
@@ -3009,7 +3028,7 @@ name = "gdtf_ui"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "gdtf_assets",
+ "cobalt_ron_assets",
  "ron",
  "serde",
 ]
@@ -3185,13 +3204,6 @@ name = "grid"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b40ca9252762c466af32d0b1002e91e4e1bc5398f77455e55474deb466355ff5"
-
-[[package]]
-name = "grimdark_turfwar"
-version = "0.1.0"
-dependencies = [
- "gdtf_app",
-]
 
 [[package]]
 name = "guillotiere"
@@ -3826,6 +3838,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1525a2a28c7f4fa0fc98bb91ae755d1e2d1505079e05539e35bc876b5d65ae9"
 dependencies = [
  "regex-automata",
+]
+
+[[package]]
+name = "mcp"
+version = "0.1.0"
+dependencies = [
+ "cobalt_mcp_protocol",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

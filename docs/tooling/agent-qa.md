@@ -7,50 +7,50 @@ is that published list, read at run time — not a fixed tool set. See
 [qa-commands.md](qa-commands.md) for how a command is added. This is the QA
 control channel. It has these processes and one shared wire contract:
 
-- **The game**, in debug builds, opens a loopback TCP listener
+- **The game**, built with the `mcp` feature, opens a loopback TCP listener
   that publishes its own command list and runs a named command against the live
   app.
-- **The content editor**, in debug builds, opens a SECOND
+- **The content editor**, built with the `mcp` feature, opens a SECOND
   loopback listener on its own port, publishing its own command list. It is a
   separate process from the game and can run at the same time.
-- **The MCP host** (`gdtf_qa_mcp`) speaks a hand-rolled JSON-RPC 2.0 subset on
+- **The MCP host** (`mcp`) speaks a hand-rolled JSON-RPC 2.0 subset on
   stdin/stdout to the model harness and forwards each tool call to the game or
   the editor over that loopback socket. ONE host binary manages the children of
   BOTH hosts: it holds a link and a lifecycle manager per host, so a game on
   `7616` and an editor on `7617` can be up and driven at the same time.
-- **`gdtf_qa_protocol`** is the bevy-free crate they all link — `crates/gdtf_app`
-  for the game, `crates/gdtf_content_editor` for the editor, and `bins/gdtf_qa_mcp`
+- **`cobalt_mcp_protocol`** is the bevy-free crate they all link — `crates/gdtf_game`
+  for the game, `crates/gdtf_editor` for the editor, and `bins/mcp`
   for the host. It carries the typed request/response message shapes, the command
   DTOs, the framing codec, and the values both ends have to agree on — the ports
   and the two timeouts.
 
-The channel is a **dev-only** affordance: QA modules compile under
-`debug_assertions` and always listen in debug builds. There is no `net_qa` cargo
-feature and no environment arming variable. Release builds never contain the
-listener (see [the debug-build gate](#the-debug-build-gate)). Matches
+The channel is a **dev-only** affordance: the QA modules compile only under each host
+package's `mcp` cargo feature, which the `development` umbrella feature turns on. There is
+no environment arming variable. A build without `mcp` never contains the listener (see
+[the feature gate](#the-feature-gate)). Matches
 [verification.md](../../.claude/rules/verification.md).
 
 ## The launch recipe — the game
 
 The MCP host launches the game as a child process when the harness calls the
 `launch` tool. The launch is owned by the `CargoSpawner` in
-`bins/gdtf_qa_mcp/src/lifecycle/spawn.rs` (behind the `ChildSpawner` trait, so
+`bins/mcp/src/lifecycle/spawn.rs` (behind the `ChildSpawner` trait, so
 tests can substitute a stub). WHAT it launches is the call's own recipe — a
-`LaunchSpec` (`bins/gdtf_qa_mcp/src/lifecycle/launch/`) of these typed values:
-package, features, working directory, environment overrides. Each one
+`LaunchSpec` (`bins/mcp/src/lifecycle/launch/`) of these typed values:
+package, features, cargo profile, working directory, environment overrides. Each one
 the call omits falls back to the default game recipe, so a bare `launch`
 still runs:
 
 ```bash
-cargo run -p grimdark_turfwar --features dynamic_linking,dev_tools
+cargo run -p game --features development
 ```
 
 in the MCP host's own directory. A call that names them runs what it names —
 this launches a `dev_tools` build of a git worktree, with a dev gate set:
 
 ```json
-{"package": "grimdark_turfwar",
- "features": ["dynamic_linking", "dev_tools"],
+{"package": "game",
+ "features": ["development"],
  "working_dir": "/Users/you/dev/gdtf-some-worktree",
  "env": {"GDTF_BATTLE_SEED": "42"}}
 ```
@@ -61,19 +61,19 @@ QA pass gets reported against code that is not the code under review. A
 `working_dir` that is not an existing directory is rejected, never silently
 dropped.
 
-The spawner does **not** inject either enable name, `GDTF_NET_QA` or
-`GDTF_EDITOR_NET_QA`, onto the child; both remain historical `QaChannel` labels
-read by nothing, and debug hosts open their channel without arming. It DOES set
+The spawner does **not** inject either enable name, `GDTF_MCP` or
+`GDTF_EDITOR_MCP`, onto the child; both remain historical `QaChannel` labels
+read by nothing, and an `mcp` build opens its channel without arming. It DOES set
 the port name from `spec.channel().port()` on both children, to the port the
 launch was given, and it sets it AFTER the recipe's `env` overrides, so an `env`
 entry of that name cannot displace it. The editor reads its one; the game child receives
-`GDTF_NET_QA_PORT` and ignores it, because `port_from_env`
-(`crates/gdtf_app/src/dev/net_qa/env.rs`) reads no environment and the game
+`GDTF_MCP_PORT` and ignores it, because `port_from_env`
+(`crates/gdtf_game/src/dev/mcp/env.rs`) reads no environment and the game
 always binds `7616`. BOTH of the child's output streams are piped and drained into one ring by
 `ProcessChild` — the host's own stdout is the JSON-RPC channel, so the child's
 cannot share it. The `logs` tool reads the tail of that ring, and a failed launch
 reports it as the diagnosis. The process is managed by the `HostManager`
-(`bins/gdtf_qa_mcp/src/lifecycle/manager/`): `launch` starts it and waits for it
+(`bins/mcp/src/lifecycle/manager/`): `launch` starts it and waits for it
 to answer before returning the instance id it recorded the child under, that
 child's port and pid, and the package, features and resolved directory it was
 built from. `stop` (plus stdin EOF) stops it so the game never outlives the host.
@@ -109,10 +109,10 @@ A dead editor instance also stays in the list a `run`, `commands`, `stop` or
 `logs` can name until the sweep drops it. `logs` for that host answers
 `not_running` once the record is gone, so read the child's tail before the sweep
 drops it. The interval is `sweep_interval` on each host's
-`LifecycleConfig` (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`); the sweep is the
-`SweepClock` in `bins/gdtf_qa_mcp/src/lifecycle/sweep.rs` calling
+`LifecycleConfig` (`bins/mcp/src/lifecycle/config.rs`); the sweep is the
+`SweepClock` in `bins/mcp/src/lifecycle/sweep.rs` calling
 `reap_dead_child` on the `HostManager`, and the liveness answer comes from the
-`ChildLiveness` trait (`bins/gdtf_qa_mcp/src/lifecycle/liveness.rs`), so a test
+`ChildLiveness` trait (`bins/mcp/src/lifecycle/liveness.rs`), so a test
 injects the answer instead of killing a real process.
 
 QA evidence goes through the MCP host. Hand-writing a socket client against this
@@ -128,16 +128,16 @@ is missing, that is a defect to file, not a reason to bypass the host.
 A bare `launch(host="editor")` runs:
 
 ```bash
-cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher
+cargo run -p editor --features development
 ```
 
-in the MCP host's own directory. No arming env vars are set on the child; a
-debug editor opens its QA channel on `7617` only when `GDTF_EDITOR_NET_QA_PORT`
+in the MCP host's own directory. No arming env vars are set on the child;
+an `mcp` editor build opens its QA channel on `7617` only when `EDITOR_MCP_PORT`
 is absent or does not parse. The spawner sets that name on both children from
 `spec.channel().port()`, to the port the launch picked: the editor reads its
-one, and the game child receives `GDTF_NET_QA_PORT` and ignores it, because
-`port_from_env` (`crates/gdtf_app/src/dev/net_qa/env.rs`) is unchanged and reads
-no environment. `GDTF_EDITOR_NET_QA` is read by nothing. Neither enable variable
+one, and the game child receives `GDTF_MCP_PORT` and ignores it, because
+`port_from_env` (`crates/gdtf_game/src/dev/mcp/env.rs`) is unchanged and reads
+no environment. `GDTF_EDITOR_MCP` is read by nothing. Neither enable variable
 is set, and neither is required for launch.
 
 **Warm the build first.** Nothing in the normal loop builds the editor binary.
@@ -146,7 +146,7 @@ editor binary. So the first `launch(host="editor")` against a given checkout is
 usually a COLD BUILD of the whole editor. Two things follow:
 
 - A cold build can outrun the wait: the editor's boot timeout is **180 seconds**,
-  the same as the game's (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`).
+  the same as the game's (`bins/mcp/src/lifecycle/config.rs`).
 - Run `cargo edbuild` in the checkout you are about to QA before calling
   `launch(host="editor")`, and the launch answers in seconds instead.
 
@@ -157,38 +157,38 @@ streams, interleaved — which shows how far the build got.
 
 The editor can also be brought UP by hand — driving it still goes through the
 MCP host, per the rule above. It is a separate binary package
-(`bins/gdtf_content_editor/Cargo.toml`, package `gdtf_content_editor_bin`) with
+(`bins/editor/Cargo.toml`, package `editor`) with
 its own default port, and running it by hand opens the same channel that launch
 opens.
 
 ```bash
-cargo run -p gdtf_content_editor_bin --features dynamic_linking,file_watcher
+cargo run -p editor --features development
 ```
 
 `cargo edrun` (`.cargo/config.toml`) is the same command as an alias, and
-`cargo edbuild` builds without running. Both include `file_watcher` (hot-reload
+`cargo edbuild` builds without running. `development` includes `file_watcher` (hot-reload
 RON).
 
 A debug editor build opens the channel on **`7617`** by default, the
-`DEFAULT_EDITOR_PORT` in `crates/gdtf_content_editor/src/net_qa/config.rs` —
+`DEFAULT_EDITOR_PORT` in `crates/gdtf_editor/src/mcp/config.rs` —
 deliberately one above the game's `7616`, so both hosts can be up at once without
-fighting for a socket. `GDTF_EDITOR_NET_QA_PORT` overrides that default, and the
+fighting for a socket. `EDITOR_MCP_PORT` overrides that default, and the
 editor listens on its value whenever the value trims and parses as a `u16`. The
 spawner sets the port name on both children, so a `launch(host="editor", port=…)`
 child binds the port it was given, or the first free port above it when this
 host's own records already hold that one. That is how a second editor comes up
 while the first is still listening, and the launch reply carries the port the
-child actually got. The game child receives `GDTF_NET_QA_PORT` and ignores it,
-because `port_from_env` (`crates/gdtf_app/src/dev/net_qa/env.rs`) reads no
-environment. `GDTF_EDITOR_NET_QA` is read by nothing, and the spawner
+child actually got. The game child receives `GDTF_MCP_PORT` and ignores it,
+because `port_from_env` (`crates/gdtf_game/src/dev/mcp/env.rs`) reads no
+environment. `GDTF_EDITOR_MCP` is read by nothing, and the spawner
 sets neither enable variable.
 
 When the channel comes up the editor writes this line to **stderr** at `info`
-level (`crates/gdtf_content_editor/src/net_qa/plugin.rs`), carrying the port it
+level (`crates/gdtf_editor/src/mcp/plugin.rs`), carrying the port it
 actually bound:
 
 ```text
-editor net_qa: ON (dev) — loopback QA control channel listening
+editor mcp: ON (dev) — loopback QA control channel listening
 ```
 
 To confirm the port is genuinely held by the editor process rather than by a
@@ -203,24 +203,24 @@ to 9 characters by default, so the same listener prints as `gdtf_cont` — a
 prefix that cannot be told apart from any other `gdtf_cont*` process. `+c 0`
 turns the limit off and prints the name in full.
 
-The `COMMAND` column must read `gdtf_content_editor`. If the bind fails the
-editor logs `editor net_qa: failed to bind the loopback listener — QA channel
+The `COMMAND` column must read `gdtf_editor`. If the bind fails the
+editor logs `editor mcp: failed to bind the loopback listener — QA channel
 OFF` at `error` level and carries on with no channel, so an absent listener is
 always visible in the log rather than silent.
 
 The `Hello` handshake never reaches the editor's drain at all: the shared
 transport's listener thread answers it from the `HelloFacts` the editor passed
 to `run_listener` (`editor_hello_facts()` in
-`crates/gdtf_content_editor/src/net_qa/config.rs`), which is where the server
-name `gdtf-editor-net-qa` — how a client tells the two hosts apart — now comes
+`crates/gdtf_editor/src/mcp/config.rs`), which is where the server
+name `gdtf-editor-mcp` — how a client tells the two hosts apart — now comes
 from.
 
 The editor itself answers the two command-layer requests (`route_editor_requests`
-in `crates/gdtf_content_editor/src/net_qa/router/route.rs`): a `Catalogue`, with
+in `crates/gdtf_editor/src/mcp/router/route.rs`): a `Catalogue`, with
 its own command list under its own host name, and a `Run`, by admitting the named
 command — or answering `Unknown`, which lists what it does offer, for a name it
 does not know. That list is `EDITOR_COMMANDS` in
-`crates/gdtf_content_editor/src/net_qa/commands/set.rs` and today it holds
+`crates/gdtf_editor/src/mcp/commands/set.rs` and today it holds
 `editor.phase`, `editor.last_save`, `editor.validation`, `editor.families`,
 `editor.session`, `editor.draft`, `editor.set_mode`, `editor.new`,
 `editor.load_theme`, `editor.load_gang`, `editor.load_armor`,
@@ -234,47 +234,49 @@ does not know. That list is `EDITOR_COMMANDS` in
 `editor.select_injury_tab`, `editor.select_weighting_table`,
 `editor.weighting`, `editor.save_weighting`, `editor.delete_record`,
 `capture.screenshot` and `wait`.
-Capture is wired here. `crates/gdtf_content_editor/Cargo.toml` depends on
-`gdtf_screenshot`, and `register_editor_capture` in
-`crates/gdtf_content_editor/src/net_qa/plugin.rs` adds `CapturePresentPlugin`,
+Capture is wired here. `crates/gdtf_editor/Cargo.toml` depends on
+`cobalt_screenshot`, and `register_editor_capture` in
+`crates/gdtf_editor/src/mcp/plugin.rs` adds `CapturePresentPlugin`,
 `WindowCapturePlugin` and `CapturePipelinePlugin<EditorShotResponder>`, which
-drive the shared pipeline in `crates/gdtf_screenshot/src/capture/`. The same
+drive the shared pipeline in `libs/cobalt_screenshot/src/capture/`. The same
 function inserts the editor's own shot directory, `target/qa_screenshots_editor`,
 so an editor shot and a game shot cannot write over each other when both
 processes are up. `run`'s `capture` rider writes into that same directory
 through a second pipeline, `CapturePipelinePlugin<CaptureTicket>`, which
-`register_riders` in `crates/gdtf_qa_command/src/dispatch/register.rs` adds
+`register_riders` in `libs/cobalt_mcp_command/src/dispatch/register.rs` adds
 next to the held reply it drains, so a rider answers with its PNG on either
 host.
 The wire shape, the framing, and the protocol version are the game's — see
 [the protocol sketch](#the-protocol-sketch) — so one client library speaks to
 both.
 
-## The debug-build gate
+## The feature gate
 
 One gate, at compile time, so the listener cannot reach a shipped binary: the
-plugin wiring site `crates/gdtf_app/src/dev/plugin.rs` is `cfg(debug_assertions)`,
-so a release build never contains the server code. The editor mirrors it at
-`crates/gdtf_content_editor/src/app.rs`.
+plugin wiring site `crates/gdtf_game/src/dev/plugin.rs` is `cfg(feature = "mcp")`,
+so a build without that feature never contains the server code. The editor mirrors it at
+`crates/gdtf_editor/src/app.rs`.
 
-There is no cargo feature and no runtime arming. `net_qa` used to be a feature on
-both hosts, and `GDTF_NET_QA` used to arm it at run time; both were removed. What
-is left keeps the old names, and both enable names are read by nothing:
-`net_qa_enabled()` (`crates/gdtf_app/src/dev/net_qa/env.rs`) returns a literal
-`true`, and the game's `NetQaPlugin::from_env` takes its port from a constant.
-The editor's `NetQaEditorPlugin::from_env` is the one exception: it reads
-`GDTF_EDITOR_NET_QA_PORT` and falls back to the constant when that name is absent
+`mcp` is a feature on each host package, and `development` turns it on alongside dynamic
+linking, the dev tools and the file watcher. A release build with `--features mcp` serves the
+QA host, which is what a release-only bug needs. `cargo mcpbuild` and `cargo edmcpbuild` build
+those, and a `launch` call carrying `"profile": "release"` starts one as the child under test. There is no runtime arming: `GDTF_MCP` used
+to arm the channel and was removed. What is left keeps the old names, and both enable names are read by nothing:
+`mcp_enabled()` (`crates/gdtf_game/src/dev/mcp/env.rs`) returns a literal
+`true`, and the game's `McpPlugin::from_env` takes its port from a constant.
+The editor's `McpEditorPlugin::from_env` is the one exception: it reads
+`EDITOR_MCP_PORT` and falls back to the constant when that name is absent
 or does not parse. The spawner sets the port name on both children, so the editor
 binds the port its launch picked, while the game child receives
-`GDTF_NET_QA_PORT` and ignores it.
+`GDTF_MCP_PORT` and ignores it.
 
 The listen **interface** is never configurable — hardcoded to
 `Ipv4Addr::LOCALHOST`. The game's **port** is a constant: `GAME_QA_PORT` (`7616`)
-in `crates/gdtf_qa_protocol/src/ports.rs`, wrapped as `DEFAULT_PORT` in
-`crates/gdtf_app/src/dev/net_qa/config.rs`, and the game child ignores the
-`GDTF_NET_QA_PORT` the spawner hands it. `EDITOR_QA_PORT` (`7617`), wrapped as
-`DEFAULT_EDITOR_PORT` in `crates/gdtf_content_editor/src/net_qa/config.rs`, is
-only the editor's DEFAULT: the spawner sets `GDTF_EDITOR_NET_QA_PORT` to the
+in `crates/gdtf_mcp_ports/src/ports.rs`, wrapped as `DEFAULT_PORT` in
+`crates/gdtf_game/src/dev/mcp/config.rs`, and the game child ignores the
+`GDTF_MCP_PORT` the spawner hands it. `EDITOR_QA_PORT` (`7617`), wrapped as
+`DEFAULT_EDITOR_PORT` in `crates/gdtf_editor/src/mcp/config.rs`, is
+only the editor's DEFAULT: the spawner sets `EDITOR_MCP_PORT` to the
 launch port and the editor reads it. The two never contend for a socket on their
 defaults. A `launch` whose port its own host already records is moved to the
 first free port above it, and gives up after sixteen; a port held by a process
@@ -283,11 +285,11 @@ this host did not start stops the launch and reports the orphan.
 ## The tool vocabulary
 
 The MCP host's tools are enumerated once by the `ToolName` enum in
-`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`. Some drive a child process — `launch`,
+`bins/mcp/src/mcp/tools/name.rs`. Some drive a child process — `launch`,
 `stop`, `logs` — and the rest carry that child's own command layer: `commands` and
 `run`. Every one takes the same optional `host` argument (`"game"`, the default,
 or `"editor"`), so which child a call reaches is the CALL's to say rather than
-the tool's. `resolve_host` in `bins/gdtf_qa_mcp/src/mcp/courier/handle.rs`
+the tool's. `resolve_host` in `bins/mcp/src/mcp/courier/handle.rs`
 resolves that argument, and a `host` value naming neither child is rejected as
 invalid params rather than quietly defaulting, so a typo cannot drive the wrong
 process. `stop`, `logs`, `commands` and `run` take an `instance` as well, naming
@@ -309,7 +311,7 @@ rebuild, and needs no MCP reconnect. That is the whole point of the design; see
 
 | Tool | Kind | Maps to | Arguments |
 | --- | --- | --- | --- |
-| `launch` | host-local | — (starts the child via that host's `HostManager`) | all optional: `host`, `port`, `package`, `features` (array or comma-separated string), `working_dir`, `env` |
+| `launch` | host-local | — (starts the child via that host's `HostManager`) | all optional: `host`, `port`, `package`, `features` (array or comma-separated string), `profile` (cargo profile, e.g. `"release"`), `working_dir`, `env` |
 | `stop` | host-local | — (stops a recorded child via that host's `HostManager`) | optional `host`, `instance` (which recorded child to stop, as the launch reply named it; an editor call naming none while the host records any is refused, listing the recorded ids) |
 | `logs` | host-local | — (reads a recorded child's captured output) | optional `host`, `instance` (which recorded child to read, refused the same way), `max_lines` (trailing lines to return) |
 | `commands` | forward | `QaRequest::Catalogue` | optional `host`, `instance` (which recorded child to ask, as the launch reply named it; required on the editor, refused without it), `command` (name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the published RON shapes) |
@@ -474,7 +476,7 @@ Notes an agent relies on:
   the editor and vice versa; each `HostManager` records the children of its own
   host and no others. Whether a second `launch` starts another child or reuses
   the recorded one is that host's launch policy on its `LifecycleConfig`
-  (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`), and the two ship with different
+  (`bins/mcp/src/lifecycle/config.rs`), and the two ship with different
   policies: the game reuses, so it holds one child, and the editor always
   spawns, so it holds as many as have been launched. Stdin EOF stops every child
   both hosts record.
@@ -494,34 +496,34 @@ Notes an agent relies on:
 Two wire shapes are in play, one per hop.
 
 **Host ↔ harness — JSON-RPC 2.0 over stdio.** The MCP host
-(`bins/gdtf_qa_mcp`) speaks a small hand-rolled JSON-RPC 2.0 subset on
+(`bins/mcp`) speaks a small hand-rolled JSON-RPC 2.0 subset on
 stdin/stdout, newline-delimited (one JSON message per line), blocking `std` I/O
 throughout — no rmcp, no tokio, no async runtime. The stdio loop is `run_stdio`
-in `bins/gdtf_qa_mcp/src/serve.rs`; method dispatch lives under
-`bins/gdtf_qa_mcp/src/rpc/`. A reader thread pushes each line onto a channel and
+in `bins/mcp/src/serve.rs`; method dispatch lives under
+`bins/mcp/src/rpc/`. A reader thread pushes each line onto a channel and
 the loop waits on that channel with a timeout, so it keeps its own clock and can
 sweep dead children between requests instead of sitting inside a blocking read.
 `initialize` and `tools/list` answer before the game is even up (the game
 connection is opened lazily on the first forwarding
 `tools/call`). The MCP-protocol version echoed at `initialize` defaults to
-`2024-11-05` (`bins/gdtf_qa_mcp/src/mcp/initialize.rs`) — this is the MCP
+`2024-11-05` (`bins/mcp/src/mcp/initialize.rs`) — this is the MCP
 handshake string, distinct from the game wire version below.
 
 **Host ↔ child — framed RON over a loopback TCP socket.** For each forwarding
 tool call the host connects to that tool's host over an `Ipv4Addr::LOCALHOST` TCP
-stream and exchanges typed messages using the shared `gdtf_qa_protocol` crate.
+stream and exchanges typed messages using the shared `cobalt_mcp_protocol` crate.
 The game is always on port `7616` (`GAME_QA_PORT`). The editor is on the recorded
 port of the instance the call named, which the courier points the link at before
 it sends, and which is `7617` (`EDITOR_QA_PORT`) for a first editor launch that
 named no `port`. The spawner sets the port name on both children, so
 the editor child binds the port its launch picked and the link reaches it there;
-the game child receives `GDTF_NET_QA_PORT`, ignores it, and always binds `7616`.
+the game child receives `GDTF_MCP_PORT`, ignores it, and always binds `7616`.
 That crate is bevy-free — it links only `serde`, `ron`,
 and `bevy_derive` (the `Deref` derive), so neither half pulls in the engine. Its
 shape:
 
 - **The message** — `QaRequest` and `QaResponse` in
-  `crates/gdtf_qa_protocol/src/message/` (`request.rs` / `response.rs`). The
+  `libs/cobalt_mcp_protocol/src/message/` (`request.rs` / `response.rs`). The
   requests, the responses and the errors are the whole wire. One
   request in, one response out. A session opens with a `Hello(ProtocolVersion)`
   handshake; the server replies `HelloOk(HelloFacts)` on a version match or a
@@ -531,20 +533,20 @@ shape:
   reaching the host — so a client that sends a request first gets that error, not
   a reply. A frame that does not decode as a `QaRequest` is answered `Malformed`,
   negotiated or not. Both are per CONNECTION: a reconnect must negotiate again,
-  which is why `QaClient::ensure_connected` in `bins/gdtf_qa_mcp/src/link.rs`
+  which is why `QaClient::ensure_connected` in `bins/mcp/src/link.rs`
   sends the `Hello` on every connection it opens.
 - **The wire protocol version** — `ProtocolVersion::CURRENT` in
-  `crates/gdtf_qa_protocol/src/message/hello.rs`. It is bumped on
+  `libs/cobalt_mcp_protocol/src/message/hello.rs`. It is bumped on
   any breaking change to a message shape; negotiation is exact equality with no capability
   handshake.
 - **The framing codec** — pure functions in
-  `crates/gdtf_qa_protocol/src/framing/`. Each message is a 4-byte big-endian
+  `libs/cobalt_mcp_protocol/src/framing/`. Each message is a 4-byte big-endian
   `u32` length prefix followed by that many bytes of compact-RON payload.
   `encode()` frames a message; `FrameDecoder` turns an incoming byte stream back
   into `Frame`s (split-read tolerant), capped at `MAX_FRAME_LEN`. The codec does
   no I/O — each side owns its own socket.
 - **The two timeouts** — `NetTimeouts` in
-  `crates/gdtf_qa_protocol/src/timeouts.rs`, which both shipped hosts run with
+  `libs/cobalt_mcp_protocol/src/timeouts.rs`, which both shipped hosts run with
   as `NetTimeouts::DEFAULT`. A socket read or write gives up after **5 seconds**,
   which is what stops an idle client holding the channel; the listener then
   waits up to **180 seconds** for the host to answer a forwarded request, and
@@ -552,15 +554,15 @@ shape:
   a `wait` parked for its two-minute budget has to be able to answer, and the
   command-set conformance check asserts every command's budget expires before
   that 180. The MCP host's own link timeout — `LINK_TIMEOUT`, **200 seconds**,
-  in `bins/gdtf_qa_mcp/src/link.rs` — sits outside both, so a slow command comes
+  in `bins/mcp/src/link.rs` — sits outside both, so a slow command comes
   back as a reply rather than a broken socket. A listener bound inside a test —
-  `NetQaPlugin::listening` and `NetQaEditorPlugin::listening` — runs with
+  `McpPlugin::listening` and `McpEditorPlugin::listening` — runs with
   `NetTimeouts::NO_IDLE_REAP` instead. Such a client drives the app's frames
   itself, so it reads a long reply over many frames and sends nothing meanwhile;
   the 5-second reap would close the connection under it and the next request
   would come back `ConnectionReset`.
 
-Every public type in `gdtf_qa_protocol` round-trips through compact RON
+Every public type in `cobalt_mcp_protocol` round-trips through compact RON
 identically, proven by the crate's per-module round-trip tests.
 
 ## The smoke sequence
@@ -603,6 +605,6 @@ the editor every step after the first names the instance step 1's reply gave it.
 
 The two hosts are independent: a game child on `7616` and an editor child on
 `7617` are tracked by separate `HostManager`s, one per host, constructed in
-`bins/gdtf_qa_mcp/src/serve.rs` and looked up by `HostSet::pair` in
-`bins/gdtf_qa_mcp/src/hosts/set.rs`. Each call reaches the child its `host`
+`bins/mcp/src/serve.rs` and looked up by `HostSet::pair` in
+`bins/mcp/src/hosts/set.rs`. Each call reaches the child its `host`
 argument names, and a `stop` aimed at the editor never touches the game.

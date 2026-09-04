@@ -1,0 +1,44 @@
+//! Load a theme: set the session theme the form syncs against, then fill the draft.
+
+use bevy::asset::uuid::Uuid;
+use gdtf_assets::ContentSourcePaths;
+use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
+use gdtf_content_families::ThemeDefsFamily;
+
+use super::families::KeyLookup;
+use crate::{
+    egui_shell::theme_form_ui,
+    mcp::wire::EditorKeyNet,
+    session::MapEditorSession,
+    theme_form::{ThemeDraft, theme_source},
+};
+
+// Sorted so a client reading a miss sees the same list every time.
+fn known_themes(registry: &UuidThemeRegistry) -> Vec<EditorKeyNet> {
+    let mut known: Vec<EditorKeyNet> = registry
+        .defs()
+        .map(|(key, _)| EditorKeyNet::new((**key).to_string()))
+        .collect();
+    known.sort();
+    known
+}
+
+/// Select the theme in the session and load its def into the draft.
+pub(in crate::mcp::commands::write::load) fn load_theme(
+    draft: &mut ThemeDraft,
+    session: &mut MapEditorSession,
+    registry: &UuidThemeRegistry,
+    sources: Option<&ContentSourcePaths<ThemeDefsFamily>>,
+    key: &EditorKeyNet,
+) -> KeyLookup {
+    let Ok(parsed) = Uuid::parse_str(key) else {
+        return KeyLookup::NoSuchKey(known_themes(registry));
+    };
+    let theme = ThemeUuid::new(parsed);
+    let Some(def) = registry.def(&theme) else {
+        return KeyLookup::NoSuchKey(known_themes(registry));
+    };
+    session.select_theme(theme, registry.default_floor(&theme));
+    theme_form_ui::load_theme_into_form(draft, def, theme_source(sources, theme));
+    KeyLookup::Loaded
+}

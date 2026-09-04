@@ -86,7 +86,7 @@ validation window), and the one-owner path-spelling rule.
 - **Test authoring** — [testing.md](../testing.md) plus the headless-harness
   rustdoc in `crates/gdtf_test_utils/src/lib.rs`.
 - **Scene scaffolds** — module rustdoc of
-  `crates/gdtf_app/src/states/scaffold/mod.rs` (the four stamped system
+  `crates/gdtf_game/src/states/scaffold/mod.rs` (the four stamped system
   shapes a new scene plugin calls).
 
 Render the rustdoc locally with `cargo doc --workspace --no-deps`.

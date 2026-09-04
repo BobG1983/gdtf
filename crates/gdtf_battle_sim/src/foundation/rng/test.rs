@@ -216,7 +216,7 @@ fn sim_src_has_no_global_or_implicit_entropy_source() {
                 assert!(
                     !code.contains(token),
                     "forbidden global/thread/time/env RNG token `{token}` in {}:{}\n\
-                     (sim must stay entropy-free — composition root gdtf_app owns env/time reads)",
+                     (sim must stay entropy-free — composition root gdtf_game owns env/time reads)",
                     file.display(),
                     line_no + 1,
                 );

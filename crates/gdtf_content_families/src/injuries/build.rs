@@ -4,7 +4,7 @@ use bevy::{
     asset::{AssetServer, Assets, LoadedFolder},
     prelude::warn,
 };
-use gdtf_assets::RonAsset;
+use cobalt_ron_assets::RonAsset;
 use gdtf_battle_sim::{
     injuries::{
         DamageContext, InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeighting,

@@ -98,7 +98,7 @@ re-applies texture/rect/anchor IN PLACE — the same tile entity, tick-quiet
 for defs that did not change (an unrelated-def edit or a no-op registry touch
 re-dirties nothing). In the editor, the painted preview's change-driven
 redraw keys on the same registry change
-(`crates/gdtf_content_editor/src/preview/tiles/redraw.rs`), and the palette /
+(`crates/gdtf_editor/src/preview/tiles/redraw.rs`), and the palette /
 SPRITE-mode previews re-derive from the live registry/draft every egui frame.
 A re-saved sheet `.png` (same defs, fresh pixels) re-prepares exactly the
 tile materials sampling it
@@ -160,19 +160,19 @@ blocking load.
 ## Part 5 — Verify
 
 - **Suite:** `cargo dtest` — the family binds the generic load suite
-  (`crates/gdtf_app/tests/load_families/load_sprites.rs`), the schema
+  (`crates/gdtf_game/tests/load_families/load_sprites.rs`), the schema
   pins live in-crate (`crates/gdtf_content_families/src/sprites/test/`), the
   def-driven draw / off-center-anchor / missing-marker behavior is pinned in
   `crates/gdtf_battle_presenter/tests/terrain_draw/` and
   `crates/gdtf_battle_presenter/tests/terrain_missing_sprite.rs`, and
   the dangling view-sprite finding is pinned in both hosts
-  (`crates/gdtf_app/tests/load_families/load_ref_integrity.rs`,
-  `crates/gdtf_content_editor/tests/authoring_validation/sprites.rs`).
+  (`crates/gdtf_game/tests/load_families/load_ref_integrity.rs`,
+  `crates/gdtf_editor/tests/authoring_validation/sprites.rs`).
 - **Hot-reload:** `cargo drun`, edit a `.spritedef.ron`, watch the
   "hot-reload: rebuilt … from content/sprites" info line — and the already-
   drawn tiles using that def swap rect/anchor in place (pinned in
   `crates/gdtf_battle_presenter/tests/terrain_draw/def_restamp.rs` and
-  `crates/gdtf_content_editor/tests/prefab_mode/registry_redraw.rs`).
+  `crates/gdtf_editor/tests/prefab_mode/registry_redraw.rs`).
 - **Dangling key:** author a view row whose `sprite:` has no matching def and
   watch the `DanglingRef … SpriteDefRegistry` finding on the end-of-`Load`
   report (game) or the live editor report (authoring time) — and the magenta

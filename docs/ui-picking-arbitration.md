@@ -39,7 +39,7 @@ The chain, read from the registry sources:
    (`bevy_internal-0.19.0/src/default_plugins.rs`, under `#[cfg(feature = "bevy_picking")]`),
    which is `PointerInputPlugin` + `PickingPlugin` + `InteractionPlugin`.
 
-`cargo tree -p gdtf_app -e features` confirms the resolved graph contains
+`cargo tree -p gdtf_game -e features` confirms the resolved graph contains
 `bevy feature "picking"` including `bevy feature "ui_picking"`, and
 `bevy_input_focus` features `gamepad`, `keyboard`, `mouse`, `bevy_picking`.
 
@@ -50,14 +50,14 @@ harness. It passes.
 
 **Three shipped doc comments are therefore wrong and should be corrected by the rollout:**
 
-- `crates/gdtf_app/src/states/running/options/systems/actions.rs` — "The project does not
+- `crates/gdtf_game/src/states/running/options/systems/actions.rs` — "The project does not
   enable Bevy's `ui_picking` backend (which would let the widgets read pointer events
   themselves), so this bridge is the honest adapter cost…"
-- `crates/gdtf_app/src/states/running/options/systems/settings_input.rs` — "no `ui_picking`
+- `crates/gdtf_game/src/states/running/options/systems/settings_input.rs` — "no `ui_picking`
   backend is involved". The backend *is* involved: the sound toggle is a real
   `bevy_ui_widgets::Checkbox` with no project-side pointer bridge, so its mouse activation
   today runs through `checkbox_on_pointer_click` and the live backend.
-- `crates/gdtf_app/tests/options_scene.rs` carries the same premise in its module doc.
+- `crates/gdtf_game/tests/options_scene.rs` carries the same premise in its module doc.
 
 ## 2. The two pointer pipelines, mapped
 
@@ -180,14 +180,14 @@ Everything below is additive to what already exists; nothing needs a manifest ch
    installs `UiPickingPlugin`; `DefaultPlugins` already installs `DefaultPickingPlugins`. Do
    **not** add `UiPickingPlugin` yourself — a second add panics.
 2. **Widget activation on meta screens.** The Continue button is *not* a first-party widget
-   today: `crates/gdtf_app/src/states/running/options/systems/spawn/screen.rs` builds it with
+   today: `crates/gdtf_game/src/states/running/options/systems/spawn/screen.rs` builds it with
    `gdtf_ui::spawn_button`, a plain `Node` carrying `Interaction`, so `ButtonPlugin`'s
    pointer observers do not apply to it and the mouse half of `bridge_continue_activation`
    is genuinely load-bearing **as long as that stays true**. The change is therefore a pair,
    in this order: (a) spawn Continue as a `bevy_ui_widgets::Button` (keeping the `gdtf_ui`
    theming), then (b) delete the
    `Query<(Entity, &Interaction), ContinuePressedFilter>` loop from
-   `crates/gdtf_app/src/states/running/options/systems/actions.rs`. Doing (b) without (a)
+   `crates/gdtf_game/src/states/running/options/systems/actions.rs`. Doing (b) without (a)
    makes the button unclickable; doing (a) without (b) triggers `Activate` twice per click.
    Keep the `MessageReader<FocusActivated>` half either way: that is the **gamepad** path
    (§6), which Bevy does not cover.
@@ -254,7 +254,7 @@ says which parts exist.
 | Item | State today | Achievable | Headless-assertable? |
 | --- | --- | --- | --- |
 | Tab order | **Absent on meta screens.** `gdtf_ui`'s `FocusNavPlugin` binds Arrow/W/S and D-pad up/down only (`crates/gdtf_ui/src/focus_nav.rs`), and Tab in battle means "cycle ganger" (`crates/gdtf_battle_input/src/act_bus/keyboard.rs`). | **Yes, small.** `bevy_input_focus::tab_navigation::TabNavigationPlugin` + `TabGroup` / `TabIndex` components. Not in `DefaultPlugins` — must be added. Its `handle_tab_navigation` observer is registered on the primary window at `Startup`, so it needs a window. | **Yes** — assert `InputFocus` moves, driving a synthesized `KeyboardInput` dispatched to the focused entity. |
-| Visible focus indicator | **Battle only.** `paint_focus_outline` draws an amber `Outline` on the focused panel button (`crates/gdtf_app/src/states/running/game/battlescape/focus_nav/outline.rs`). **No focus indicator exists on the menu or Options screens** — grep finds no `Outline` under those modules. | **Yes, small** — the same system generalized, driven by `InputFocus` (and optionally `InputFocusVisible`, which Bevy's tab nav sets). | **Partly.** The *component* is assertable headlessly (`Outline` present on exactly the focused entity). That it is *visible on screen* is a pinned-screen-coordinate screenshot claim. |
+| Visible focus indicator | **Battle only.** `paint_focus_outline` draws an amber `Outline` on the focused panel button (`crates/gdtf_game/src/states/running/game/battlescape/focus_nav/outline.rs`). **No focus indicator exists on the menu or Options screens** — grep finds no `Outline` under those modules. | **Yes, small** — the same system generalized, driven by `InputFocus` (and optionally `InputFocusVisible`, which Bevy's tab nav sets). | **Partly.** The *component* is assertable headlessly (`Outline` present on exactly the focused entity). That it is *visible on screen* is a pinned-screen-coordinate screenshot claim. |
 | Enter activates | **Yes.** `bridge_keyboard_navigation` raises `FocusActivated` on `Enter`; on Options the bridge turns it into `Activate`. Bevy's own `button_on_key_event` also fires on Enter/Space for a `bevy_ui_widgets::Button` that holds `InputFocus`, with no project code. | Already there. | **Yes.** Caveat: `FocusedInput` has a private `window` field, so a test cannot construct one — drive `ButtonInput<KeyCode>` plus `InputDispatchPlugin`, or trigger `Activate` directly. |
 | Escape cancels | **Battle only, and partial.** `gdtf_ui` registers a `FocusCancelled` message but binds **no key to it**; the battlescape wires Escape context-gated (`crates/gdtf_battle_input/src/act_bus/focus_bridge.rs`). Nothing on the menu/Options screens. | **Yes, small** — bind Escape to `FocusCancelled` per screen and give each screen a cancel consumer. | **Yes** — assert the state transition / focus clear. |
 | Gamepad D-pad | **Yes.** `bridge_gamepad_navigation` maps D-pad up/down to `NavigateRequest` (`crates/gdtf_ui/src/focus_nav.rs`). Left/right are unbound (`NavDirection::WEST` / `EAST` exist but no device input raises them). | Binding left/right is trivial. | **Yes** — spawn a `Gamepad` component and assert `InputFocus` moves. |

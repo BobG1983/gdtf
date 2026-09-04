@@ -4,8 +4,9 @@ use bevy::{
     asset::{AssetServer, Assets},
     prelude::{Commands, warn},
 };
+use cobalt_ron_assets::RonAsset;
 use gdtf_assets::{
-    ContentIntegrityReport, FindingFamily, RonAsset, RonFolderSalvage, RonSalvagePoll,
+    ContentIntegrityReport, FindingFamily, RonFolderSalvage, RonSalvagePoll,
     begin_ron_folder_salvage, poll_ron_folder_salvage, report_malformed_members,
 };
 use gdtf_battle_sim::injuries::{

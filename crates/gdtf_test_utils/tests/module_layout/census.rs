@@ -24,6 +24,7 @@ pub(crate) fn band(path: &str) -> Band {
     }
     let integration = path
         .strip_prefix("crates/")
+        .or_else(|| path.strip_prefix("libs/"))
         .and_then(|rest| rest.split_once('/'))
         .is_some_and(|(krate, tail)| !krate.is_empty() && tail.starts_with("tests/"));
     if integration {

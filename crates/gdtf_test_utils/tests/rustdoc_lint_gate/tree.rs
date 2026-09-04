@@ -4,13 +4,13 @@ use std::{
     process::Command,
 };
 
-pub(crate) const MEMBER_DIRS: [&str; 2] = ["crates", "bins"];
+pub(crate) const MEMBER_DIRS: [&str; 3] = ["crates", "bins", "libs"];
 
 pub(crate) fn repo_root() -> PathBuf {
     if let Some(override_root) = std::env::var_os("GDTF_RUSTDOC_GATE_ROOT") {
         return PathBuf::from(override_root);
     }
-    let Some(root) = gdtf_assets::workspace_root() else {
+    let Some(root) = cobalt_ron_assets::workspace_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
     };
     root

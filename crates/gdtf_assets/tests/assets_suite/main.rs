@@ -1,6 +1,3 @@
-//! Asset loading: RON loader, content families, hot-reload chains.
+//! Content families: folder load, salvage, and the integrity report.
 
 mod content_family;
-mod hot_ron_chain;
-mod hot_ron_redrive;
-mod ron_loader;

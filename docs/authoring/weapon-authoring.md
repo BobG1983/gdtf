@@ -420,6 +420,6 @@ Melee weapons are their own stem-keyed content family (`MeleeWeaponsFamily`,
 `MeleeWeaponRegistry`; everything in Parts 3–4 (hot-reload, salvage,
 fail-closed empty registry) applies unchanged
 ([content-families.md](content-families.md)). Load coverage:
-`crates/gdtf_app/tests/load_melee_weapons.rs`. In game (`cargo drun`), the
+`crates/gdtf_game/tests/load_melee_weapons.rs`. In game (`cargo drun`), the
 contextual MELEE button offers an adjacent-enemy strike; a ganger with no
 authored melee key punches with fists.

@@ -73,7 +73,7 @@ These are also not reasons to cut a clause:
 - "the gate cannot check this"
 - "no artifact survives for the gate to read"
 
-The last three are false for anything drivable through `mcp__gdtf-qa__*`.
+The last three are false for anything drivable through `mcp__gdtf-mcp__*`.
 [`design-gate.md`](./design-gate.md) grants that agent those tools, and it re-drives the live case
 itself rather than reading a transcript. Read that grant before claiming the gate cannot check
 something.

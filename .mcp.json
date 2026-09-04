@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "gdtf-qa": {
+    "gdtf-mcp": {
       "command": "sh",
-      "args": ["-c", "cargo build -p gdtf_qa_mcp && exec target/debug/gdtf_qa_mcp"]
+      "args": ["-c", "cargo build -p mcp && exec target/debug/mcp"]
     }
   }
 }

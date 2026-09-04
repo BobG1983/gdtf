@@ -1,16 +1,14 @@
 //! App extension to register a content family.
 
 use bevy::{app::App, asset::AssetServer, prelude::*};
+use cobalt_ron_assets::RonAssetAppExt;
 
-use crate::{
-    ext::RonAssetAppExt,
-    family::{
-        def::ContentFamily,
-        handle::ContentFolderHandle,
-        report::ContentIntegrityReport,
-        source::ContentSourcePaths,
-        systems::{kick_off_content_family, redrive_content_family, resolve_content_family},
-    },
+use crate::family::{
+    def::ContentFamily,
+    handle::ContentFolderHandle,
+    report::ContentIntegrityReport,
+    source::ContentSourcePaths,
+    systems::{kick_off_content_family, redrive_content_family, resolve_content_family},
 };
 
 /// Register folder load + resolve + hot-redrive for a [`ContentFamily`].

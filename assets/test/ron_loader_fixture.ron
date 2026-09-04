@@ -1,5 +1,5 @@
 // Test fixture for the generic RON AssetLoader.
 (
-    label: "grimdark",
+    label: "fixture-label",
     count: 7,
 )

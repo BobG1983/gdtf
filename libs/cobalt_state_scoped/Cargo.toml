@@ -1,0 +1,10 @@
+[package]
+name = "cobalt_state_scoped"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+
+[lints]
+workspace = true

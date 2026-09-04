@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "mcp__gdtf-qa__*",
+      "mcp__gdtf-mcp__*",
       "mcp__claude_ai_Linear__*",
       "mcp__linear-server__*"
     ],

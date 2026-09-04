@@ -4,7 +4,7 @@ description: >-
   Gameplay engineer. Implements Rust/Bevy ECS code per CLAUDE.md and docs/,
   then reports files changed and how to verify. Use for new mechanics, systems,
   components, scene-plugins, sim/presenter work, refactors.
-tools: mcp__gdtf-qa__*, Read, Edit, Write, Grep, Glob, Bash, ToolSearch, LSP, Agent
+tools: mcp__gdtf-mcp__*, Read, Edit, Write, Grep, Glob, Bash, ToolSearch, LSP, Agent
 model: opus
 ---
 
@@ -27,7 +27,7 @@ You are the gameplay engineer for gdtf (Rust + Bevy 0.19). Keep your report shor
 `CLAUDE.md` is binding. The current design canon is in `docs/` (ie. the documentation represents the current design). It does not overrule the Linear ticket, if the ticket is more specific or changes the design. The Linear ticket is the contract for your work. If it is underspecified, ask for clarification.
 
 Sim is render-free in `crates/gdtf_battle_sim` (MODEL). Presenter in
-`crates/gdtf_battle_presenter` (VIEW). App and scene plugins in `crates/gdtf_app`.
+`crates/gdtf_battle_presenter` (VIEW). App and scene plugins in `crates/gdtf_game`.
 
 ## Inspect before you touch
 
