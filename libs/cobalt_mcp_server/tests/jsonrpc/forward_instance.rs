@@ -12,7 +12,7 @@ const LAUNCH_CALL: &str = "launch(host=\"bramble\")";
 
 fn bramble_forward(tool: &str, seeded: &[SeededInstance]) -> Value {
     let line = format!(
-        r#"{{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{{"name":"{tool}","arguments":{{"host":"bramble","command":"app.phase"}}}}}}"#
+        r#"{{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{{"name":"{tool}","arguments":{{"host":"bramble","command":"sample.status"}}}}}}"#
     );
     let (reply, _) = dispatch_recording(&line, seeded);
     reply
@@ -80,7 +80,7 @@ fn a_bramble_run_naming_no_instance_is_refused_while_none_is_recorded() {
 #[test]
 fn a_thistle_run_needs_no_instance_named() {
     let reply = dispatch_lifecycle_json(
-        r#"{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"run","arguments":{"command":"app.phase","arguments":"()"}}}"#,
+        r#"{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"run","arguments":{"command":"sample.status","arguments":"()"}}}"#,
     );
 
     assert_eq!(

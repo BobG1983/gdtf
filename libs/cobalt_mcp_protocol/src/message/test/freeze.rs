@@ -23,7 +23,7 @@ fn the_request_enum_has_exactly_three_variants() {
         McpRequest::Hello(ProtocolVersion::CURRENT),
         McpRequest::Catalogue,
         McpRequest::Run(RunCommand::new(
-            CommandName::from_static("app.phase"),
+            CommandName::from_static("sample.status"),
             CommandArgsRon::new("()".to_owned()),
         )),
     ];

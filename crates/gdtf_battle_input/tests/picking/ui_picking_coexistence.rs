@@ -20,7 +20,7 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
 };
-use gdtf_test_utils::{GdtfUiTestAppBuilder, MessageProbePlugin, clear_mouse, press_left, probed};
+use gdtf_test_utils::{MessageProbePlugin, UiTestAppBuilder, clear_mouse, press_left, probed};
 
 use super::harness::{TARGET_SIZE, synthetic_camera};
 
@@ -31,7 +31,7 @@ const PANEL_SIZE: Vec2 = Vec2::new(240.0, 140.0);
 const PANEL_ORIGIN: Vec2 = Vec2::new(520.0, 290.0);
 
 fn coexistence_app(level: Level) -> (App, Entity) {
-    let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
+    let mut app = UiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(GdtfBattleInputPlugin);
 
     app.world_mut().insert_resource(ActiveLevel::new(level));
@@ -143,7 +143,7 @@ fn hovered_cell(app: &App) -> bool {
 
 #[test]
 fn ui_picking_backend_is_already_installed() {
-    let app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
+    let app = UiTestAppBuilder::new().with_ui_camera().build();
     assert!(
         app.is_plugin_added::<UiPickingPlugin>(),
         "bevy_ui::UiPlugin must already have added UiPickingPlugin — the `ui` feature \

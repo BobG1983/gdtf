@@ -17,14 +17,14 @@ fn catalogue() -> CommandCatalogue {
         ServerNameNet::new("host-under-test".to_owned()),
         vec![
             CommandEntry::new(
-                CommandName::from_static("app.phase"),
+                CommandName::from_static("sample.status"),
                 CommandSummary::from_static("Read the whole state tuple plus readiness."),
                 CommandTiming::Immediate,
                 ArgSchemaRon::new(
-                    r#"(root:Named("AppPhaseArgs"),defs:[("AppPhaseArgs",Record([]))])"#.to_owned(),
+                    r#"(root:Named("SampleStatusArgs"),defs:[("SampleStatusArgs",Record([]))])"#.to_owned(),
                 ),
                 ReplySchemaRon::new(
-                    r#"(root:Named("AppPhaseReply"),defs:[("AppPhaseReply",Record([("app",Text)]))])"#
+                    r#"(root:Named("SampleStatusReply"),defs:[("SampleStatusReply",Record([("app",Text)]))])"#
                         .to_owned(),
                 ),
                 CommandAvailability::Available,
@@ -59,7 +59,7 @@ fn the_requests_round_trip() {
         CommandArgsRon::new("(at:(first:7,second:3),mode:1)".to_owned()),
     )));
     assert_ron_round_trip(&McpRequest::Run(RunCommand::new(
-        CommandName::from_owned("app.phase".to_owned()),
+        CommandName::from_owned("sample.status".to_owned()),
         CommandArgsRon::new("()".to_owned()),
     )));
 }
@@ -67,7 +67,7 @@ fn the_requests_round_trip() {
 #[test]
 fn a_run_carries_its_riders_over_the_wire() {
     let plain = RunCommand::new(
-        CommandName::from_static("app.phase"),
+        CommandName::from_static("sample.status"),
         CommandArgsRon::new("()".to_owned()),
     );
     assert!(
@@ -77,7 +77,7 @@ fn a_run_carries_its_riders_over_the_wire() {
     assert_ron_round_trip(&McpRequest::Run(plain));
 
     let with_budget = RunCommand::with_options(
-        CommandName::from_static("app.phase"),
+        CommandName::from_static("sample.status"),
         CommandArgsRon::new("()".to_owned()),
         RunOptions::new(Some(AwaitBudget::new(5)), None),
     );
@@ -92,7 +92,7 @@ fn a_run_carries_its_riders_over_the_wire() {
 /// The compatibility claim the `#[serde(default)]` on that field makes: this is the exact
 #[test]
 fn a_run_encoded_without_options_decodes_as_a_plain_call() {
-    let legacy = r#"Run((command:"app.phase",arguments:"()"))"#;
+    let legacy = r#"Run((command:"sample.status",arguments:"()"))"#;
     let Ok(decoded) = ron::de::from_str::<McpRequest>(legacy) else {
         unreachable!("a Run without `options` must still decode: {legacy}");
     };
@@ -132,7 +132,7 @@ fn the_responses_round_trip() {
             ),
         },
         CommandOutcome::Unknown {
-            known: vec![CommandName::from_static("app.phase")],
+            known: vec![CommandName::from_static("sample.status")],
         },
     ] {
         assert_ron_round_trip(&McpResponse::Outcome(outcome));

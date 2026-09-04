@@ -228,7 +228,7 @@ fn assert_image_of(response: &Value, bytes: &[u8]) {
 fn a_thistle_capture_from_another_directory_relays_as_an_image() {
     let tree = a_child_tree_holding_both_captures(BRAMBLE_SHOT_BYTES);
     let response = dispatch_with_child_in(
-        r#"{"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"run","arguments":{"command":"capture.screenshot"}}}"#,
+        r#"{"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"run","arguments":{"command":"sample.snapshot"}}}"#,
         Vec::new(),
         tree.path(),
     );
@@ -240,7 +240,7 @@ fn a_bramble_capture_from_another_directory_relays_as_an_image() {
     let tree = a_child_tree_holding_both_captures(BRAMBLE_SHOT_BYTES);
     let response = dispatch_with_child_in(
         &format!(
-            r#"{{"jsonrpc":"2.0","id":41,"method":"tools/call","params":{{"name":"run","arguments":{{"command":"capture.screenshot","host":"bramble","instance":"{FIRST_BRAMBLE_ID}"}}}}}}"#
+            r#"{{"jsonrpc":"2.0","id":41,"method":"tools/call","params":{{"name":"run","arguments":{{"command":"sample.snapshot","host":"bramble","instance":"{FIRST_BRAMBLE_ID}"}}}}}}"#
         ),
         vec![SeededRoot::new(
             FIRST_BRAMBLE_ID,
@@ -260,7 +260,7 @@ fn a_bramble_capture_is_read_from_the_tree_of_the_instance_the_call_names() {
     // The call names the older record, so reading the newest one relays the other tree.
     let response = dispatch_with_child_in(
         &format!(
-            r#"{{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{{"name":"run","arguments":{{"command":"capture.screenshot","host":"bramble","instance":"{FIRST_BRAMBLE_ID}"}}}}}}"#
+            r#"{{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{{"name":"run","arguments":{{"command":"sample.snapshot","host":"bramble","instance":"{FIRST_BRAMBLE_ID}"}}}}}}"#
         ),
         vec![
             SeededRoot::new(FIRST_BRAMBLE_ID, FIRST_BRAMBLE_PORT, first.path()),
@@ -285,7 +285,7 @@ fn a_missing_capture_is_still_reported_naming_both_paths() {
     };
 
     let response = dispatch_with_child_in(
-        r#"{"jsonrpc":"2.0","id":43,"method":"tools/call","params":{"name":"run","arguments":{"command":"capture.screenshot"}}}"#,
+        r#"{"jsonrpc":"2.0","id":43,"method":"tools/call","params":{"name":"run","arguments":{"command":"sample.snapshot"}}}"#,
         Vec::new(),
         tree.path(),
     );

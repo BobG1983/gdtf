@@ -6,7 +6,7 @@ use cobalt_mcp_protocol::{
     ports::McpPort,
 };
 use gdtf_editor::{EditorMode, MapEditorPlugin, McpEditorPlugin};
-use gdtf_test_utils::GdtfUiTestAppBuilder;
+use gdtf_test_utils::UiTestAppBuilder;
 
 use crate::{
     drafts::theme_draft,
@@ -65,7 +65,7 @@ pub(crate) fn theme_tab_app_and_client() -> Result<(App, Client), TestError> {
 /// QA assets root would remove nothing and assert nothing.
 pub(crate) fn editor_app_listening_on(root: &Path) -> Result<(App, McpPort), TestError> {
     let (plugin, port) = McpEditorPlugin::listening(McpPort::new(0))?;
-    let mut app = GdtfUiTestAppBuilder::on_asset_root(root)
+    let mut app = UiTestAppBuilder::on_asset_root(root)
         .with_ui_camera()
         .build();
     app.add_plugins(MapEditorPlugin);

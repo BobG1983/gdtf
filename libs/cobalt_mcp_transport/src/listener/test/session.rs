@@ -12,7 +12,7 @@ use super::socket::{
 
 fn run_request() -> McpRequest {
     McpRequest::Run(RunCommand::new(
-        CommandName::from_static("app.phase"),
+        CommandName::from_static("sample.status"),
         CommandArgsRon::new("()".to_owned()),
     ))
 }

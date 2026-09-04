@@ -16,19 +16,19 @@ use crate::hosts::{test_identity, two_host_set};
 
 pub(crate) const BRAMBLE_HOST_NAME: &str = "sample-bramble-mcp";
 
-pub(crate) const CANNED_COMMAND: &str = "app.phase";
+pub(crate) const CANNED_COMMAND: &str = "sample.status";
 pub(crate) const CANNED_ARG_SCHEMA: &str =
-    r#"(root:Named("AppPhaseArgs"),defs:[("AppPhaseArgs",Record([]))])"#;
-pub(crate) const CANNED_REPLY_SCHEMA: &str = r#"(root:Named("AppPhaseReply"),defs:[("AppPhaseReply",Record([("phase",Named("AppPhaseNet"))]))])"#;
+    r#"(root:Named("SampleStatusArgs"),defs:[("SampleStatusArgs",Record([]))])"#;
+pub(crate) const CANNED_REPLY_SCHEMA: &str = r#"(root:Named("SampleStatusReply"),defs:[("SampleStatusReply",Record([("status",Named("SampleStatusNet"))]))])"#;
 pub(crate) const CANNED_REPLY: &str =
-    "(phase:(app:Running,running:Some(Menu),game:None,battlescape:None,aftermath:None))";
+    "(status:(link:Ready,stage:Some(Idle),detail:None,inner:None,outer:None))";
 
 fn canned_catalogue() -> CommandCatalogue {
     CommandCatalogue::new(
         ServerNameNet::new("sample-mcp".to_owned()),
         vec![CommandEntry::new(
             CommandName::from_static(CANNED_COMMAND),
-            CommandSummary::from_static("Read where the app is at every level."),
+            CommandSummary::from_static("Read the sample host's status at every level."),
             CommandTiming::Immediate,
             ArgSchemaRon::new(CANNED_ARG_SCHEMA.to_owned()),
             ReplySchemaRon::new(CANNED_REPLY_SCHEMA.to_owned()),

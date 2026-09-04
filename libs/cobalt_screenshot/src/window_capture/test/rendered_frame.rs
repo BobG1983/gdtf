@@ -4,7 +4,7 @@ use bevy::{
     camera::{ImageRenderTarget, RenderTarget},
     prelude::*,
 };
-use gdtf_test_utils::gpu_probe::gpu_adapter_probe;
+use cobalt_test_utils::gpu_probe::gpu_adapter_probe;
 
 use super::harness::{enqueue_capture, gpu_capture_app};
 use crate::{

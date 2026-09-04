@@ -8,7 +8,7 @@ use bevy::{
     },
     window::WindowRef,
 };
-use gdtf_test_utils::gpu_probe::gpu_adapter_probe;
+use cobalt_test_utils::gpu_probe::gpu_adapter_probe;
 
 use super::harness::{
     FRAME_BUDGET, a_capture_is_in_flight, drive_until, enqueue_capture, gpu_capture_app,

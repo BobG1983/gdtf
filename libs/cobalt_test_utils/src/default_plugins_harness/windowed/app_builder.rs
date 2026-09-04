@@ -13,11 +13,11 @@ use bevy::{
 /// Headless `DefaultPlugins` app with a primary window and no wgpu backend.
 ///
 /// Window-sized render targets and scale factors are real; nothing is drawn.
-pub struct GdtfWindowedTestAppBuilder {
+pub struct WindowedTestAppBuilder {
     window: Window,
 }
 
-impl GdtfWindowedTestAppBuilder {
+impl WindowedTestAppBuilder {
     /// Start with Bevy's default primary window.
     #[must_use]
     pub fn new() -> Self {
@@ -62,7 +62,7 @@ impl GdtfWindowedTestAppBuilder {
     }
 }
 
-impl Default for GdtfWindowedTestAppBuilder {
+impl Default for WindowedTestAppBuilder {
     fn default() -> Self {
         Self::new()
     }

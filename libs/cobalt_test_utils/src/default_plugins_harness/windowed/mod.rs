@@ -3,4 +3,4 @@
 /// Windowed test app builder.
 pub mod app_builder;
 
-pub use app_builder::GdtfWindowedTestAppBuilder;
+pub use app_builder::WindowedTestAppBuilder;

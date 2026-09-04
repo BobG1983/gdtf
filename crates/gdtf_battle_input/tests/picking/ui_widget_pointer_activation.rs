@@ -8,7 +8,7 @@ use bevy::{
     ui_widgets::{Activate, Button as WidgetButton},
     window::{PrimaryWindow, Window, WindowRef, WindowResolution},
 };
-use gdtf_test_utils::GdtfUiTestAppBuilder;
+use gdtf_test_utils::UiTestAppBuilder;
 
 use super::harness::TARGET_SIZE;
 
@@ -26,7 +26,7 @@ fn record_activation(_activate: On<Activate>, mut activations: ResMut<Activation
 }
 
 fn widget_app() -> (App, Entity) {
-    let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
+    let mut app = UiTestAppBuilder::new().with_ui_camera().build();
     app.init_resource::<Activations>();
     app.add_observer(record_activation);
 

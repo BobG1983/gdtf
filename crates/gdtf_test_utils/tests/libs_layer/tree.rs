@@ -24,18 +24,48 @@ pub(crate) fn repo_root() -> PathBuf {
 
 // Every `<dir>/<crate>/Cargo.toml` under `dir`, as repo-relative paths, sorted.
 pub(crate) fn member_manifests(root: &Path, dir: &str) -> Vec<String> {
-    let mut found = git_tracked(root, dir).unwrap_or_else(|| walk_manifests(root, dir));
+    let mut found = git_tracked(root, &format!("{dir}/*/Cargo.toml"))
+        .unwrap_or_else(|| walk_manifests(root, dir));
     found.retain(|path| path.matches('/').count() == 2);
     found.sort();
     found.dedup();
     found
 }
 
-fn git_tracked(root: &Path, dir: &str) -> Option<Vec<String>> {
+// Every tracked file under `dir`, as repo-relative paths, sorted. Falls back to a walk when
+// git cannot answer.
+pub(crate) fn tracked_files(root: &Path, dir: &str) -> Vec<String> {
+    let mut found = git_tracked(root, dir).unwrap_or_else(|| walk_files(root, dir));
+    found.retain(|path| !path.is_empty());
+    found.sort();
+    found.dedup();
+    found
+}
+
+fn walk_files(root: &Path, dir: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut pending = vec![root.join(dir)];
+    while let Some(next) = pending.pop() {
+        let Ok(entries) = fs::read_dir(&next) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                pending.push(path);
+            } else if let Ok(relative) = path.strip_prefix(root) {
+                found.push(relative.to_string_lossy().replace('\\', "/"));
+            }
+        }
+    }
+    found
+}
+
+fn git_tracked(root: &Path, pathspec: &str) -> Option<Vec<String>> {
     let out = Command::new("git")
         .arg("-C")
         .arg(root)
-        .args(["ls-files", "--", &format!("{dir}/*/Cargo.toml")])
+        .args(["ls-files", "--", pathspec])
         .output()
         .ok()?;
     if !out.status.success() {

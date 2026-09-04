@@ -12,12 +12,12 @@ use bevy_egui::{
 };
 use gdtf_battle_presenter::ViewMode;
 use gdtf_editor::{CurrentEditLevel, EditorMode, EditorState, MapEditorPlugin};
-use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
+use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 const PROBE_ID: &str = "egui-suppression-probe";
 
 fn editor_app_with_focus_machinery() -> App {
-    let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
+    let mut app = UiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(MapEditorPlugin);
     app.init_resource::<EguiWantsInput>();
     app.add_systems(Update, write_egui_wants_input_system);

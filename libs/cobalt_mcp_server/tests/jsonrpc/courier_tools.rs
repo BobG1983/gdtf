@@ -44,7 +44,7 @@ fn commands_returns_the_summary_catalogue() {
 #[test]
 fn commands_full_detail_carries_each_shape_as_an_unparsed_string() {
     let response = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"commands","arguments":{"host":"thistle","command":"app.phase","detail":"Full"}}}"#,
+        r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"commands","arguments":{"host":"thistle","command":"sample.status","detail":"Full"}}}"#,
     );
     assert_eq!(response["result"]["isError"], json!(false));
     let body = body(&response);
@@ -69,20 +69,20 @@ fn commands_full_detail_carries_each_shape_as_an_unparsed_string() {
 #[test]
 fn an_unknown_command_filter_is_an_error_naming_the_known_ones() {
     let response = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"commands","arguments":{"host":"thistle","command":"app.phasee"}}}"#,
+        r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"commands","arguments":{"host":"thistle","command":"sample.statuss"}}}"#,
     );
     assert_eq!(response["result"]["isError"], json!(true));
     let Some(text) = response["result"]["content"][0]["text"].as_str() else {
         unreachable!("the refusal carries text: {response}");
     };
-    assert!(text.contains("app.phasee"), "{text}");
+    assert!(text.contains("sample.statuss"), "{text}");
     assert!(text.contains(CANNED_COMMAND), "{text}");
 }
 
 #[test]
 fn run_returns_the_ron_reply_text_intact() {
     let response = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"run","arguments":{"host":"thistle","command":"app.phase","arguments":"()"}}}"#,
+        r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"run","arguments":{"host":"thistle","command":"sample.status","arguments":"()"}}}"#,
     );
     assert_eq!(response["result"]["isError"], json!(false));
     let body = body(&response);
@@ -92,7 +92,7 @@ fn run_returns_the_ron_reply_text_intact() {
         json!(CANNED_REPLY),
         "the RON reply travels as opaque text, so no enum field is blanked: {body}",
     );
-    for wanted in ["app:Running", "running:Some(Menu)", "battlescape:None"] {
+    for wanted in ["link:Ready", "stage:Some(Idle)", "detail:None"] {
         assert!(
             body["reply"].as_str().is_some_and(|r| r.contains(wanted)),
             "`{wanted}` must survive the render: {body}",
@@ -103,7 +103,7 @@ fn run_returns_the_ron_reply_text_intact() {
 #[test]
 fn an_unknown_command_run_lists_the_known_names() {
     let response = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"run","arguments":{"host":"thistle","command":"app.phasee","arguments":"()"}}}"#,
+        r#"{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"run","arguments":{"host":"thistle","command":"sample.statuss","arguments":"()"}}}"#,
     );
     assert_eq!(
         response["result"]["isError"],
@@ -118,7 +118,7 @@ fn an_unknown_command_run_lists_the_known_names() {
 #[test]
 fn bad_arguments_come_back_with_the_schema_attached() {
     let response = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"run","arguments":{"host":"thistle","command":"app.phase","arguments":"(nope:1)"}}}"#,
+        r#"{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"run","arguments":{"host":"thistle","command":"sample.status","arguments":"(nope:1)"}}}"#,
     );
     assert_eq!(response["result"]["isError"], json!(true));
     let body = body(&response);
@@ -156,7 +156,7 @@ fn last_retarget(ports: &[McpPort], tool: &str) -> McpPort {
 fn a_run_reaches_the_bramble_instance_it_names() {
     let (_, ports) = dispatch_recording(
         &format!(
-            r#"{{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{{"name":"run","arguments":{{"host":"bramble","instance":"{}","command":"app.phase"}}}}}}"#,
+            r#"{{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{{"name":"run","arguments":{{"host":"bramble","instance":"{}","command":"sample.status"}}}}}}"#,
             SECOND_BRAMBLE_INSTANCE.id()
         ),
         &[FIRST_BRAMBLE_INSTANCE, SECOND_BRAMBLE_INSTANCE],
@@ -219,7 +219,7 @@ fn the_courier_tools_are_aimed_by_their_host_argument() {
 
     let (outcome, _) = dispatch_recording(
         &format!(
-            r#"{{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{{"name":"run","arguments":{{"host":"bramble","instance":"{}","command":"app.phase"}}}}}}"#,
+            r#"{{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{{"name":"run","arguments":{{"host":"bramble","instance":"{}","command":"sample.status"}}}}}}"#,
             FIRST_BRAMBLE_INSTANCE.id()
         ),
         &[FIRST_BRAMBLE_INSTANCE],

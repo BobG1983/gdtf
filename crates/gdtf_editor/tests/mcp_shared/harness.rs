@@ -4,7 +4,7 @@ use cobalt_mcp_protocol::{
     ports::McpPort,
 };
 use gdtf_editor::{EditorState, MapEditorPlugin, McpEditorPlugin};
-use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
+use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 use crate::{hello::assert_hello_ok, socket::Client, support::TestError};
 
@@ -12,7 +12,7 @@ use crate::{hello::assert_hello_ok, socket::Client, support::TestError};
 /// draws, so the form syncs it owns never run and each draft stays at its own default.
 pub(crate) fn editor_app_listening() -> Result<(App, McpPort), TestError> {
     let (plugin, port) = McpEditorPlugin::listening(McpPort::new(0))?;
-    let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
+    let mut app = UiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(MapEditorPlugin);
     app.add_plugins(plugin);
     Ok((app, port))

@@ -48,7 +48,7 @@ pub(crate) fn test_identity() -> ServerIdentity {
     )
 }
 
-pub(crate) const CANNED_COMMAND: &str = "app.phase";
+pub(crate) const CANNED_COMMAND: &str = "sample.status";
 
 /// Link that answers a catalogue and one command without touching a socket.
 pub(crate) struct CannedLink;
@@ -60,7 +60,7 @@ impl McpLink for CannedLink {
                 ServerNameNet::new("canned-host".to_owned()),
                 vec![CommandEntry::new(
                     CommandName::from_static(CANNED_COMMAND),
-                    CommandSummary::from_static("Read where the app is at every level."),
+                    CommandSummary::from_static("Read the sample host's status at every level."),
                     CommandTiming::Immediate,
                     ArgSchemaRon::new("(root:Named(\"Args\"),defs:[])".to_owned()),
                     ReplySchemaRon::new("(root:Named(\"Reply\"),defs:[])".to_owned()),

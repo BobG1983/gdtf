@@ -27,7 +27,7 @@ const ATTACHED_BYTES: &[u8] = b"attach-attached-png-bytes";
 
 const SECOND_BYTES: &[u8] = b"attach-second-png-bytes";
 
-const ATTACHING_REPLY: &str = "(phase:(app:Running))";
+const ATTACHING_REPLY: &str = "(status:(link:Ready))";
 
 struct AttachingLink(Vec<ReplyAttachment>);
 
@@ -138,7 +138,7 @@ fn run_attaching(attachments: Vec<ReplyAttachment>, child_dir: Option<PathBuf>) 
         &mut bramble_link,
         &mut bramble_life,
     );
-    let line = r#"{"jsonrpc":"2.0","id":50,"method":"tools/call","params":{"name":"run","arguments":{"host":"thistle","command":"app.capture","arguments":"()"}}}"#;
+    let line = r#"{"jsonrpc":"2.0","id":50,"method":"tools/call","params":{"name":"run","arguments":{"host":"thistle","command":"sample.snapshot","arguments":"()"}}}"#;
     let Some(response) = dispatch(line, &test_identity(), &mut hosts) else {
         unreachable!("a request with an id yields a response line");
     };

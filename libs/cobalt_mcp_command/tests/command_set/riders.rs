@@ -21,7 +21,7 @@ use cobalt_mcp_protocol::{
 use cobalt_screenshot::{
     CaptureQueue, CaptureSystems, PollCap, SettleFrames, ShotDir, ShotDirName,
 };
-use gdtf_test_utils::advance_until;
+use cobalt_test_utils::advance_until;
 
 use crate::support::{POINT_ARGS, args, no_answer_yet, outcome, plain};
 

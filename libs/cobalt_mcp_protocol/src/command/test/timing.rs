@@ -23,7 +23,7 @@ fn every_command_timing_round_trips() {
 /// The compatibility claim the `#[serde(default)]` on that field makes, tested rather than
 #[test]
 fn a_row_encoded_without_a_timing_decodes_as_immediate() {
-    let legacy = r#"(command:"app.phase",summary:"Read it.",arguments:"{}",reply:"{}",availability:Available)"#;
+    let legacy = r#"(command:"sample.status",summary:"Read it.",arguments:"{}",reply:"{}",availability:Available)"#;
     let Ok(decoded) = ron::de::from_str::<CommandEntry>(legacy) else {
         unreachable!("a row without `timing` must still decode: {legacy}");
     };

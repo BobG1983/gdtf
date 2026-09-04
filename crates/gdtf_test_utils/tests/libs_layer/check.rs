@@ -6,13 +6,9 @@ use toml_edit::{DocumentMut, Item};
 
 use crate::tree::{COBALT_PREFIX, GAME_DIRS, LIBS_DIR, member_manifests, repo_root};
 
-// Dependency tables a consumer of a `libs/` crate links, so a gdtf crate in one of these
-// would drag the game into every consumer.
-const CONSUMER_TABLES: [&str; 2] = ["dependencies", "build-dependencies"];
-
-// The one gdtf crate a `libs/` crate may name, and only under `[dev-dependencies]`. The shared
-// harness links when the crate's own tests build and never reaches a consumer.
-const ALLOWED_DEV_DEPENDENCY: &str = "gdtf_test_utils";
+// Every dependency table a `libs/` crate declares. A gdtf crate in any of them means the
+// crate cannot be taken out of this repo.
+const CONSUMER_TABLES: [&str; 3] = ["dependencies", "build-dependencies", "dev-dependencies"];
 
 const GDTF_PREFIX: &str = "gdtf_";
 
@@ -64,19 +60,13 @@ fn no_libs_crate_names_a_gdtf_crate_a_consumer_would_link() {
                 }
             }
         }
-        for name in dependency_names(&manifest, "dev-dependencies") {
-            if name.starts_with(GDTF_PREFIX) && name != ALLOWED_DEV_DEPENDENCY {
-                violations.push(format!("{path} — [dev-dependencies] names `{name}`"));
-            }
-        }
     }
     assert!(
         violations.is_empty(),
         "crates under {LIBS_DIR}/ are game-free, so nothing there may name a `{GDTF_PREFIX}` \
-         crate under {CONSUMER_TABLES:?}, and only `{ALLOWED_DEV_DEPENDENCY}` under \
-         [dev-dependencies]:\n{}\n\nEither the dependency belongs in a gdtf crate under \
-         crates/, or the thing being reached for is generic and belongs in a `{COBALT_PREFIX}` \
-         crate of its own. The rule is {RULE}.",
+         crate under {CONSUMER_TABLES:?}:\n{}\n\nEither the dependency belongs in a gdtf crate \
+         under crates/, or the thing being reached for is generic and belongs in a \
+         `{COBALT_PREFIX}` crate of its own. The rule is {RULE}.",
         violations.join("\n")
     );
 }

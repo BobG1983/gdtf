@@ -2048,7 +2048,7 @@ dependencies = [
  "cobalt_mcp_protocol",
  "cobalt_mcp_transport",
  "cobalt_screenshot",
- "gdtf_test_utils",
+ "cobalt_test_utils",
  "image",
  "ron",
  "serde",
@@ -2086,7 +2086,7 @@ name = "cobalt_ron_assets"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "gdtf_test_utils",
+ "cobalt_test_utils",
  "ron",
  "serde",
  "tempfile",
@@ -2098,7 +2098,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "cobalt_ron_assets",
- "gdtf_test_utils",
+ "cobalt_test_utils",
  "image",
  "tempfile",
 ]
@@ -2108,6 +2108,15 @@ name = "cobalt_state_scoped"
 version = "0.1.0"
 dependencies = [
  "bevy",
+]
+
+[[package]]
+name = "cobalt_test_utils"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "cobalt_ron_assets",
+ "wgpu",
 ]
 
 [[package]]
@@ -3019,6 +3028,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "cobalt_ron_assets",
+ "cobalt_test_utils",
  "gdtf_battle_sim",
  "gdtf_content_families",
  "gdtf_game",

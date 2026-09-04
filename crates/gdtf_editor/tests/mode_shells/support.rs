@@ -5,11 +5,11 @@ compile_error!("the mcp test suites need the host package's `mcp` feature");
 use bevy::prelude::*;
 use gdtf_battle_sim::level::UuidThemeRegistry;
 use gdtf_editor::{EditorState, MapEditorPlugin, MapEditorSession};
-use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
+use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 /// A headless editor app with the real map-editor plugin on it.
 pub(crate) fn editor_app() -> App {
-    let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
+    let mut app = UiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(MapEditorPlugin);
     app
 }

@@ -1,16 +1,12 @@
 [package]
-name = "cobalt_screenshot"
+name = "cobalt_test_utils"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
 cobalt_ron_assets = { path = "../cobalt_ron_assets" }
-image = { version = "0.25", default-features = false, features = ["png"] }
-
-[dev-dependencies]
-cobalt_test_utils = { path = "../cobalt_test_utils" }
-tempfile = "3"
+wgpu = "=29.0.3"
 
 [features]
 dynamic_linking = ["bevy/dynamic_linking"]

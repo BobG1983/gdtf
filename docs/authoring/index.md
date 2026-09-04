@@ -84,7 +84,8 @@ validation window), and the one-owner path-spelling rule.
   `crates/gdtf_battle_sim/src/effects/fields/mod.rs` (one file per effect,
   thin delegation enum).
 - **Test authoring** — [testing.md](../testing.md) plus the headless-harness
-  rustdoc in `crates/gdtf_test_utils/src/lib.rs`.
+  rustdoc in `crates/gdtf_test_utils/src/lib.rs`, which re-exports the
+  engine-level half from `libs/cobalt_test_utils/src/lib.rs`.
 - **Scene scaffolds** — module rustdoc of
   `crates/gdtf_game/src/states/scaffold/mod.rs` (the four stamped system
   shapes a new scene plugin calls).

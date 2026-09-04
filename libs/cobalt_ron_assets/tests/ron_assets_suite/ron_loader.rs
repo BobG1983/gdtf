@@ -4,7 +4,7 @@ use bevy::{
     reflect::TypePath,
 };
 use cobalt_ron_assets::{RonAsset, RonAssetAppExt};
-use gdtf_test_utils::GdtfUiTestAppBuilder;
+use cobalt_test_utils::UiTestAppBuilder;
 use serde::Deserialize;
 
 #[derive(Deserialize, TypePath, Debug, PartialEq, Eq)]
@@ -19,7 +19,7 @@ const MALFORMED_FIXTURE_PATH: &str = "test/ron_loader_malformed.ron";
 
 #[test]
 fn well_formed_ron_resolves_to_typed_asset() {
-    let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
+    let mut app = UiTestAppBuilder::new().with_ui_camera().build();
     app.init_ron_asset::<LoaderFixture>();
 
     let handle: Handle<RonAsset<LoaderFixture>> = {
@@ -28,7 +28,7 @@ fn well_formed_ron_resolves_to_typed_asset() {
     };
 
     let id = handle.id();
-    gdtf_test_utils::advance_until_load_state(&mut app, id, |state| state.is_loaded());
+    cobalt_test_utils::advance_until_load_state(&mut app, id, |state| state.is_loaded());
 
     let assets = app.world().resource::<Assets<RonAsset<LoaderFixture>>>();
     let asset = assets.get(id);
@@ -51,7 +51,7 @@ fn well_formed_ron_resolves_to_typed_asset() {
 
 #[test]
 fn malformed_ron_fails_with_typed_load_state() {
-    let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
+    let mut app = UiTestAppBuilder::new().with_ui_camera().build();
     app.init_ron_asset::<LoaderFixture>();
 
     let handle: Handle<RonAsset<LoaderFixture>> = {
@@ -60,7 +60,7 @@ fn malformed_ron_fails_with_typed_load_state() {
     };
     let id = handle.id();
 
-    gdtf_test_utils::advance_until_load_state(&mut app, id, |state| state.is_failed());
+    cobalt_test_utils::advance_until_load_state(&mut app, id, |state| state.is_failed());
 
     assert!(
         app.world()

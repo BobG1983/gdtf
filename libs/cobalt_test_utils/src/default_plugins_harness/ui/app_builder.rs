@@ -22,7 +22,7 @@ pub struct NoCamera;
 pub struct WithCamera;
 
 /// Headless `DefaultPlugins` app for UI tests.
-pub struct GdtfUiTestAppBuilder<Phase> {
+pub struct UiTestAppBuilder<Phase> {
     app:    App,
     _phase: PhantomData<fn() -> Phase>,
 }
@@ -34,7 +34,7 @@ fn workspace_assets_root() -> PathBuf {
     root
 }
 
-impl GdtfUiTestAppBuilder<NoCamera> {
+impl UiTestAppBuilder<NoCamera> {
     /// Start a headless `DefaultPlugins` app reading the workspace assets (no camera).
     #[must_use]
     pub fn new() -> Self {
@@ -79,22 +79,22 @@ impl GdtfUiTestAppBuilder<NoCamera> {
 
     /// Spawn a `Camera2d` and move to the `WithCamera` phase.
     #[must_use]
-    pub fn with_ui_camera(mut self) -> GdtfUiTestAppBuilder<WithCamera> {
+    pub fn with_ui_camera(mut self) -> UiTestAppBuilder<WithCamera> {
         self.app.world_mut().spawn(Camera2d);
-        GdtfUiTestAppBuilder {
+        UiTestAppBuilder {
             app:    self.app,
             _phase: PhantomData,
         }
     }
 }
 
-impl Default for GdtfUiTestAppBuilder<NoCamera> {
+impl Default for UiTestAppBuilder<NoCamera> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl GdtfUiTestAppBuilder<WithCamera> {
+impl UiTestAppBuilder<WithCamera> {
     /// Finish building and return the app.
     pub fn build(self) -> App {
         self.app

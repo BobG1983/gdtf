@@ -1,11 +1,11 @@
 use gdtf_editor::{EditorMcpAssetsRoot, MapEditorPlugin};
-use gdtf_test_utils::GdtfUiTestAppBuilder;
+use gdtf_test_utils::UiTestAppBuilder;
 
 use crate::harness::advance_to_editing;
 
 #[test]
 fn the_editor_holds_the_one_save_root_with_no_qa_listener_bound() {
-    let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
+    let mut app = UiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(MapEditorPlugin);
     advance_to_editing(&mut app);
 

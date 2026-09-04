@@ -8,7 +8,7 @@ use gdtf_assets::{
     ContentFamily, ContentFamilyAppExt, ContentFileStem, ContentFolderHandle, ContentMemberKey,
     ContentSourcePaths,
 };
-use gdtf_test_utils::GdtfUiTestAppBuilder;
+use gdtf_test_utils::UiTestAppBuilder;
 use serde::Deserialize;
 
 #[derive(Deserialize, TypePath, Debug, Clone, PartialEq, Eq)]
@@ -96,7 +96,7 @@ impl ContentFamily for RelicFamily {
 }
 
 fn real_asset_app() -> App {
-    GdtfUiTestAppBuilder::new().with_ui_camera().build()
+    UiTestAppBuilder::new().with_ui_camera().build()
 }
 
 #[test]

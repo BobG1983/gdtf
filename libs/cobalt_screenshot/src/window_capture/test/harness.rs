@@ -9,7 +9,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin, WindowResolution},
     winit::WinitPlugin,
 };
-use gdtf_test_utils::GdtfWindowedTestAppBuilder;
+use cobalt_test_utils::WindowedTestAppBuilder;
 
 use crate::{
     capture::{CapturePipelinePlugin, CaptureQueue, ShotDir, ShotStem},
@@ -35,7 +35,7 @@ fn install_capture(app: &mut App, dir: &Path) {
 
 /// A windowed app with no wgpu backend, wired for captures writing under `dir`.
 pub(super) fn headless_capture_app(dir: &Path) -> App {
-    let mut app = GdtfWindowedTestAppBuilder::new().build();
+    let mut app = WindowedTestAppBuilder::new().build();
     install_capture(&mut app, dir);
     app
 }

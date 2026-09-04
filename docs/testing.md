@@ -61,6 +61,7 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 
 | Variable | Owner crate | Effect |
 | --- | --- | --- |
+| `COBALT_TEST_FORCE_NO_GPU` | `cobalt_test_utils` | Forces the GPU-adapter probe to report Absent, driving the exact no-GPU skip path on a GPU machine. |
 | `GDTF_ASSETS_CLEAN_ROOT` | `gdtf_test_utils` | Overrides the repo root the assets-tree-clean guard test scans (guard-test hook). |
 | `GDTF_BATTLE_SEED` | `gdtf_game` (consumed by `gdtf_battle_sim`; honored by the `gdtf_test_utils` battle harness) | Pins the root battle RNG seed for a reproducible replay; unset = wall-clock entropy, logged at `info!`. |
 | `GDTF_DEBUG_REACHABLE_OVERLAY` | `gdtf_battle_presenter` (mirrored by `gdtf_battle_input` docs) | Truthy renders the reachable-range debug overlay in a debug build (default off — visual noise). |
@@ -71,7 +72,6 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `GDTF_SEED_LOGGING_CASE` | `gdtf_game` | Names which seed-logging case a re-invoked child test process runs — `env-pinned` or `wall-clock`. Set for the child by the parent test. |
 | ~~`GDTF_MCP`~~ | — | Read by nothing. The game's channel is armed by `GDTF_MCP_PORT` alone; there is no separate arming variable. That channel is the ONE drive path (`launch` → `commands` → `run` → `stop`, driven via `mcp` or any `cobalt_mcp_protocol` client). |
 | `GDTF_MCP_PORT` | `gdtf_game`, `mcp` | Required. The game binds this value when it trims and parses as a `u16`, always on `Ipv4Addr::LOCALHOST`, and opens no listener at all otherwise. There is no fallback port. The spawner sets it on every child it starts, so `launch(host="game", port=N)` puts the game child on `N`. Read in the MCP host's own environment, it moves the port the game link opens on and the port a `launch` or `stop` that names none targets. |
-| `GDTF_TEST_FORCE_NO_GPU` | `gdtf_test_utils` | Forces the GPU-adapter probe to report Absent, driving the exact no-GPU skip path on a GPU machine. |
 
 ## What the suite pins (and what it doesn't)
 

@@ -9,7 +9,7 @@ ron = { workspace = true }
 serde = { workspace = true }
 
 [dev-dependencies]
-gdtf_test_utils = { path = "../../crates/gdtf_test_utils" }
+cobalt_test_utils = { path = "../cobalt_test_utils" }
 tempfile = "3"
 
 [features]

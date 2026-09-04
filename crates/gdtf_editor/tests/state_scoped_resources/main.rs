@@ -3,12 +3,12 @@ mod asserts;
 
 use bevy::prelude::*;
 use gdtf_editor::{EditorMode, EditorState, MapEditorPlugin};
-use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
+use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 use crate::asserts::{assert_all_scoped_resources_absent, assert_all_scoped_resources_seeded};
 
 fn editor_app() -> App {
-    let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
+    let mut app = UiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(bevy::render::sync_world::SyncWorldPlugin);
     app.add_plugins(MapEditorPlugin);
     app

@@ -8,7 +8,7 @@ use super::*;
 
 #[test]
 fn ui_layout_runs_and_asset_server_present_headless() {
-    let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
+    let mut app = UiTestAppBuilder::new().with_ui_camera().build();
 
     let node = app
         .world_mut()

@@ -4,7 +4,7 @@ use bevy::tasks::block_on;
 use wgpu::{Instance, RequestAdapterOptions};
 
 /// Env var that forces the probe to report absent (skip path).
-pub const FORCE_NO_GPU_ENV: &str = "GDTF_TEST_FORCE_NO_GPU";
+pub const FORCE_NO_GPU_ENV: &str = "COBALT_TEST_FORCE_NO_GPU";
 
 /// Result of a GPU adapter probe.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

@@ -10,7 +10,7 @@ use bevy::{
 use cobalt_mcp_command::dispatch::{CommandCall, register_command};
 use cobalt_mcp_protocol::message::McpResponse;
 use cobalt_mcp_transport::{PendingQueue, Responder};
-use gdtf_test_utils::GdtfWindowedTestAppBuilder;
+use gdtf_test_utils::WindowedTestAppBuilder;
 
 use super::super::hover::{InputHover, InputHoverArgs};
 
@@ -22,7 +22,7 @@ const AT_PIXEL: Vec2 = Vec2::new(120.0, 48.0);
 
 /// A headless app with a real primary window, carrying `input.hover` as the game registers it.
 fn hover_app() -> App {
-    let mut app = GdtfWindowedTestAppBuilder::new().build();
+    let mut app = WindowedTestAppBuilder::new().build();
     register_command::<InputHover>(&mut app);
     app
 }

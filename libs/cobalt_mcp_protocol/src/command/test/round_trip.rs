@@ -17,7 +17,7 @@ const TRACED_REPLY_SHAPE: &str =
 
 #[test]
 fn names_and_summaries_round_trip() {
-    assert_ron_round_trip(&CommandName::from_static("app.phase"));
+    assert_ron_round_trip(&CommandName::from_static("sample.status"));
     assert_ron_round_trip(&CommandName::from_owned("probe.trace".to_owned()));
     assert_ron_round_trip(&CommandSummary::from_static("Read the whole state tuple."));
     assert_ron_round_trip(&CommandSummary::from_owned(
@@ -27,8 +27,8 @@ fn names_and_summaries_round_trip() {
 
 #[test]
 fn a_static_and_an_owned_name_are_interchangeable() {
-    let from_const = CommandName::from_static("app.phase");
-    let decoded = CommandName::from_owned("app.phase".to_owned());
+    let from_const = CommandName::from_static("sample.status");
+    let decoded = CommandName::from_owned("sample.status".to_owned());
     assert_eq!(from_const, decoded);
     let (Ok(left), Ok(right)) = (
         ron::ser::to_string(&from_const),
@@ -37,7 +37,7 @@ fn a_static_and_an_owned_name_are_interchangeable() {
         unreachable!("a command name serializes to compact RON");
     };
     assert_eq!(left, right, "a name rides the wire as a plain string");
-    assert_eq!(left, "\"app.phase\"");
+    assert_eq!(left, "\"sample.status\"");
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn command_outcome_round_trips_every_variant() {
         },
         CommandOutcome::Unknown {
             known: vec![
-                CommandName::from_static("app.phase"),
+                CommandName::from_static("sample.status"),
                 CommandName::from_static("probe.trace"),
             ],
         },
@@ -216,7 +216,7 @@ fn populated_catalogue() -> CommandCatalogue {
         ServerNameNet::new("host-under-test".to_owned()),
         vec![
             CommandEntry::new(
-                CommandName::from_static("app.phase"),
+                CommandName::from_static("sample.status"),
                 CommandSummary::from_static("Read the whole state tuple plus readiness."),
                 CommandTiming::Immediate,
                 ArgSchemaRon::new(TRACED_ARG_SHAPE.to_owned()),
