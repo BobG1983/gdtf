@@ -2064,6 +2064,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cobalt_mcp_server"
+version = "0.1.0"
+dependencies = [
+ "cobalt_mcp_protocol",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "cobalt_mcp_transport"
 version = "0.1.0"
 dependencies = [
@@ -3844,10 +3854,8 @@ dependencies = [
 name = "mcp"
 version = "0.1.0"
 dependencies = [
- "cobalt_mcp_protocol",
- "serde",
+ "cobalt_mcp_server",
  "serde_json",
- "tempfile",
 ]
 
 [[package]]
