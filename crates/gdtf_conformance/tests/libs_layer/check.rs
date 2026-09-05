@@ -15,18 +15,15 @@ const CONSUMER_TABLES: [&str; 3] = ["dependencies", "build-dependencies", "dev-d
 
 const RULE: &str = ".claude/rules/libs-layer.md";
 
-fn read_manifest(root: &Path, path: &str) -> DocumentMut {
-    let full = root.join(path);
-    let Ok(text) = fs::read_to_string(&full) else {
-        unreachable!(
-            "cannot read {} — a manifest this guard cannot read is a broken guard, not a pass",
-            full.display()
-        );
+// The manifest at `root/path`, or a finding naming that path and why it could not be had. A
+// manifest this guard cannot read is a broken guard, so the caller reports it and walks on.
+pub(crate) fn read_manifest(root: &Path, path: &str) -> Result<DocumentMut, String> {
+    let text = match fs::read_to_string(root.join(path)) {
+        Ok(text) => text,
+        Err(error) => return Err(format!("{path} — cannot be read: {error}")),
     };
-    match text.parse::<DocumentMut>() {
-        Ok(manifest) => manifest,
-        Err(error) => unreachable!("{path} is not valid TOML: {error}"),
-    }
+    text.parse::<DocumentMut>()
+        .map_err(|error| format!("{path} — is not valid TOML: {error}"))
 }
 
 fn package_name(manifest: &DocumentMut) -> Option<&str> {
@@ -73,21 +70,36 @@ fn resolve(base: &Path, relative: &str) -> PathBuf {
 fn no_libs_crate_path_dependency_leaves_libs() {
     let root = repo_root();
     let libs = root.join(LIBS_DIR);
-    let workspace = read_manifest(&root, "Cargo.toml");
-    let inherited = workspace
-        .get("workspace")
-        .and_then(|table| table.get("dependencies"));
+    let mut violations: Vec<String> = Vec::new();
+    let workspace = match read_manifest(&root, "Cargo.toml") {
+        Ok(manifest) => Some(manifest),
+        Err(finding) => {
+            violations.push(finding);
+            None
+        }
+    };
+    let inherited = workspace.as_ref().and_then(|manifest| {
+        manifest
+            .get("workspace")
+            .and_then(|table| table.get("dependencies"))
+    });
     let manifests = member_manifests(&root, LIBS_DIR);
     assert!(
         !manifests.is_empty(),
         "no member Cargo.toml found under {}/ in {} — enumeration is broken, and a guard that \
-         checks nothing is not a pass",
+         checks nothing is not a pass. Findings so far:\n{}",
         LIBS_DIR,
-        root.display()
+        root.display(),
+        violations.join("\n")
     );
-    let mut violations: Vec<String> = Vec::new();
     for path in &manifests {
-        let manifest = read_manifest(&root, path);
+        let manifest = match read_manifest(&root, path) {
+            Ok(manifest) => manifest,
+            Err(finding) => {
+                violations.push(finding);
+                continue;
+            }
+        };
         let crate_dir = resolve(&root, path)
             .parent()
             .map_or_else(|| root.clone(), Path::to_path_buf);
@@ -122,9 +134,11 @@ fn no_libs_crate_path_dependency_leaves_libs() {
         violations.is_empty(),
         "a crate under {LIBS_DIR}/ must build in a project that holds nothing else, so no \
          dependency of it under {CONSUMER_TABLES:?} — declared inline or inherited from the root \
-         `[workspace.dependencies]` — may point at a path outside {LIBS_DIR}/:\n{}\n\nEither the \
-         dependency belongs in a gdtf crate under crates/, or the thing being reached for is \
-         generic and belongs in a `{COBALT_PREFIX}` crate of its own. The rule is {RULE}.",
+         `[workspace.dependencies]` — may point at a path outside {LIBS_DIR}/. A manifest this \
+         guard could not read or parse is a failure too, because a manifest it skipped is one it \
+         did not check:\n{}\n\nEither the dependency belongs in a gdtf crate under crates/, or \
+         the thing being reached for is generic and belongs in a `{COBALT_PREFIX}` crate of its \
+         own. The rule is {RULE}.",
         violations.join("\n")
     );
 }
@@ -134,7 +148,13 @@ fn the_libs_folder_and_the_cobalt_prefix_agree_in_both_directions() {
     let root = repo_root();
     let mut violations: Vec<String> = Vec::new();
     for path in member_manifests(&root, LIBS_DIR) {
-        let manifest = read_manifest(&root, &path);
+        let manifest = match read_manifest(&root, &path) {
+            Ok(manifest) => manifest,
+            Err(finding) => {
+                violations.push(finding);
+                continue;
+            }
+        };
         let name = package_name(&manifest).unwrap_or("");
         if !name.starts_with(COBALT_PREFIX) {
             violations.push(format!(
@@ -145,7 +165,13 @@ fn the_libs_folder_and_the_cobalt_prefix_agree_in_both_directions() {
     }
     for dir in GAME_DIRS {
         for path in member_manifests(&root, dir) {
-            let manifest = read_manifest(&root, &path);
+            let manifest = match read_manifest(&root, &path) {
+                Ok(manifest) => manifest,
+                Err(finding) => {
+                    violations.push(finding);
+                    continue;
+                }
+            };
             let name = package_name(&manifest).unwrap_or("");
             if name.starts_with(COBALT_PREFIX) {
                 violations.push(format!(
@@ -158,7 +184,8 @@ fn the_libs_folder_and_the_cobalt_prefix_agree_in_both_directions() {
     assert!(
         violations.is_empty(),
         "the `{COBALT_PREFIX}` prefix means the crate is game-free and lives under {LIBS_DIR}/, \
-         and nothing else carries it:\n{}\n\nThe rule is {RULE}.",
+         and nothing else carries it. A manifest this guard could not read or parse is a failure \
+         too, because a manifest it skipped is one it did not check:\n{}\n\nThe rule is {RULE}.",
         violations.join("\n")
     );
 }

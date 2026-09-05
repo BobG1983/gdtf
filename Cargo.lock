@@ -2946,6 +2946,7 @@ name = "gdtf_conformance"
 version = "0.1.0"
 dependencies = [
  "cobalt_ron_assets",
+ "tempfile",
  "toml_edit",
 ]
 

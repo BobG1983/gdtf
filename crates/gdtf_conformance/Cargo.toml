@@ -7,9 +7,11 @@ edition = "2024"
 
 # The guard suites read the repo tree and its manifests. `cobalt_ron_assets` locates the
 # workspace root; `toml_edit` reads a Cargo.toml as TOML, so an equivalent spelling of the
-# same key cannot fail a guard.
+# same key cannot fail a guard; `tempfile` holds the unreadable fixtures a guard must report
+# instead of aborting on.
 [dev-dependencies]
 cobalt_ron_assets = { path = "../../libs/cobalt_ron_assets" }
+tempfile = "3"
 toml_edit = { version = "0.25", default-features = false, features = ["parse"] }
 
 [lints]
