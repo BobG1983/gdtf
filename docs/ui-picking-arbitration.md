@@ -48,16 +48,17 @@ Runtime confirmation:
 `app.is_plugin_added::<UiPickingPlugin>()` on the standard `DefaultPlugins` headless
 harness. It passes.
 
-**Three shipped doc comments are therefore wrong and should be corrected by the rollout:**
+**No source comment contradicts this.** Three once said the backend was off:
+`crates/gdtf_game/src/states/running/options/systems/actions.rs`,
+`crates/gdtf_game/src/states/running/options/systems/settings_input.rs`, and the module doc
+of `crates/gdtf_game/tests/shell_scenes/options_scene.rs`. None of the three carries that
+claim now.
 
-- `crates/gdtf_game/src/states/running/options/systems/actions.rs` — "The project does not
-  enable Bevy's `ui_picking` backend (which would let the widgets read pointer events
-  themselves), so this bridge is the honest adapter cost…"
-- `crates/gdtf_game/src/states/running/options/systems/settings_input.rs` — "no `ui_picking`
-  backend is involved". The backend *is* involved: the sound toggle is a real
-  `bevy_ui_widgets::Checkbox` with no project-side pointer bridge, so its mouse activation
-  today runs through `checkbox_on_pointer_click` and the live backend.
-- `crates/gdtf_game/tests/options_scene.rs` carries the same premise in its module doc.
+The backend is involved on the Options screen. The sound toggle is a real
+`bevy_ui_widgets::Checkbox`
+(`crates/gdtf_game/src/states/running/options/systems/spawn/toggle.rs`) with no project-side
+pointer bridge, so its mouse activation runs through `checkbox_on_pointer_click` and the live
+backend.
 
 ## 2. The two pointer pipelines, mapped
 
@@ -260,7 +261,7 @@ says which parts exist.
 | Gamepad D-pad | **Yes.** `bridge_gamepad_navigation` maps D-pad up/down to `NavigateRequest` (`crates/gdtf_ui/src/focus_nav.rs`). Left/right are unbound (`NavDirection::WEST` / `EAST` exist but no device input raises them). | Binding left/right is trivial. | **Yes** — spawn a `Gamepad` component and assert `InputFocus` moves. |
 | Gamepad South | **Yes.** `bridge_gamepad_navigation` raises `FocusActivated` on `GamepadButton::South`. Bevy's own widgets do **not** cover this: `button_on_key_event` observes `FocusedInput<KeyboardInput>` only, so the project bridge is load-bearing — which is why §4 item 2 keeps the `FocusActivated` half. `InputDispatchPlugin` does dispatch `FocusedInput<GamepadButtonChangedEvent>` (the `gamepad` feature is on), so a project observer could consume it directly instead. | Already there. | **Yes.** |
 
-One note on evidence: the QA channel has no mouse-button press on the wire. `input.hover`
+One note on evidence: the MCP channel has no mouse-button press on the wire. `input.hover`
 moves the pointer and `input.click_cell` takes the game's own left-click decision on a board
 cell, but neither presses a button on a UI widget, so a demo build still cannot capture a real
 click on a non-menu button over the channel. Click evidence must be a headless test or a new

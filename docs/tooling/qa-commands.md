@@ -1,6 +1,6 @@
 ---
 name: Adding a QA command
-description: How to add a command to either QA host — a file, one line in that host's list, and a test — written from app.phase on the game and editor.phase on the editor.
+description: How to add a command to either MCP host — a file, one line in that host's list, and a test — written from app.phase on the game and editor.phase on the editor.
 ---
 
 # Adding a QA command
@@ -27,7 +27,7 @@ is the same items with a `Deferred` handler — see [Calling it](#calling-it). T
 [`commands/read/editor_phase.rs`](../../crates/gdtf_editor/src/mcp/commands/read/editor_phase.rs)
 is the same items again on the other host.
 
-## What the QA channel is for
+## What the MCP channel is for
 
 The MCP host exists so an agent can play the game the way a developer would: launch it,
 look at it, press the buttons, watch what happens, screenshot it. Same for the editor:
@@ -1018,7 +1018,7 @@ read under; a theme the tab minted lands in a folder under `content/terrain/` na
 display name, under a stem taken from the same name. `editor.last_save` reports whichever
 path the save wrote.
 
-`MapEditorPlugin` seeds that root, not the QA channel, so it is in the world whether or not
+`MapEditorPlugin` seeds that root, not the MCP channel, so it is in the world whether or not
 the listener bound. `editor.save_weighting` and the Injury tab's own Save weighting button
 both write under it through `write_weighting_in`, the one writer either path has.
 

@@ -258,7 +258,7 @@ so a build without that feature never contains the server code. The editor mirro
 
 `mcp` is a feature on each host package, and `development` turns it on alongside dynamic
 linking, the dev tools and the file watcher. A release build with `--features mcp` serves the
-QA host, which is what a release-only bug needs. `cargo mcpbuild` and `cargo edmcpbuild` build
+MCP host, which is what a release-only bug needs. `cargo mcpbuild` and `cargo edmcpbuild` build
 those, and a `launch` call carrying `"profile": "release"` starts one as the child under test. The enable names `GDTF_MCP` and
 `GDTF_EDITOR_MCP` are read by nothing; the port variable is what arms each host.
 `McpPlugin::from_env` (`crates/gdtf_game/src/dev/mcp/plugin/mcp_plugin.rs`) reads
@@ -567,7 +567,7 @@ identically, proven by the crate's per-module round-trip tests.
 The sequence an agent runs against either child. Every step is a real call
 against the shipped tool surface:
 
-1. `launch` — start the child and wait for its QA channel to answer. Add
+1. `launch` — start the child and wait for its MCP channel to answer. Add
    `host: "editor"` to start an editor, and keep the instance id its reply
    names: every later step of an editor sequence carries that id as `instance`,
    and a step that leaves it out is refused.
