@@ -430,8 +430,14 @@ Write to ${ROOT}/proposals/${o.key}/fit_check_r${round}.json. Do not overwrite a
 ${PLAIN}`,
         { label: `fit:${o.key} r${round}`, phase: 'Fit check', model: 'opus', effort: 'high', schema: FIT_SCHEMA },
       )
+      // A dead agent is not a verdict. agent() returns null when the subagent is skipped or dies on a
+      // terminal error such as a session limit, and reading that as ABANDON threw away all ten
+      // proposals of a 10.7M-token run on 2026-09-04. Keep the proposal and let the judges see it.
+      if (!fit) {
+        log(`fit:${o.key} r${round} returned nothing, keeping the proposal with its fit check incomplete`)
+        return { key: o.key, abandoned: false, rounds: round, fit: last, fitIncomplete: true }
+      }
       last = fit
-      if (!fit) return { key: o.key, abandoned: true, reason: 'fit check returned nothing', rounds: round }
       // The verdict is a function of the three defect fields, not the reviewer's mood. A GOOD carrying
       // an ungrounded pro, a missed con or a contradiction is overruled here rather than argued with.
       const defects = [
@@ -477,7 +483,11 @@ Rewrite ${ROOT}/proposals/${o.key}/proposal.md and proposal.json.
 ${PLAIN}`,
         { label: `revise:${o.key} r${round}`, phase: 'Fit check', model: 'opus', effort: 'high', schema: REVISE_SCHEMA },
       )
-      if (rev?.abandoned) return { key: o.key, abandoned: true, reason: rev.abandonReason, rounds: round }
+      if (!rev) {
+        log(`revise:${o.key} r${round} returned nothing, keeping the proposal as it stands`)
+        return { key: o.key, abandoned: false, rounds: round, fit: last, reviseIncomplete: true }
+      }
+      if (rev.abandoned) return { key: o.key, abandoned: true, reason: rev.abandonReason, rounds: round }
     }
   },
 )
@@ -803,7 +813,11 @@ Write to ${ROOT}/proposals/${k}/design_review_r${round}.json. Do not overwrite a
 ${PLAIN}`,
         { label: `dreview:${k} r${round}`, phase: 'Review design', model: 'opus', effort: 'high', schema: DESIGN_REVIEW_SCHEMA },
       )
-      if (!rev) return { key: k, ok: false, rounds: round, reason: 'review returned nothing' }
+      // A dead agent is not a verdict, same as the fit check above.
+      if (!rev) {
+        log(`dreview:${k} r${round} returned nothing, keeping the design with its review incomplete`)
+        return { key: k, ok: true, rounds: round, reviewIncomplete: true }
+      }
       // Same rule as the fit check: the verdict follows the defect fields, not the reviewer's mood.
       const dDefects = [...(rev.problems || []), ...(rev.ruleBreaches || [])]
       if (rev.verdict === 'AUDIT_OK' && dDefects.length) {
