@@ -19,7 +19,7 @@ use crate::{
         wire::{
             ArmorHardnessNet, ArmorProtectionNet, BlocksPathingNet, EditorDraftNameNet,
             FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet, MountedWeaponNet,
-            TerrainFieldNet, TerrainHpNet, TerrainKindNet, TerrainViewNet, TerrainViewSpriteNet,
+            SpriteKeyNet, TerrainFieldNet, TerrainHpNet, TerrainKindNet, TerrainViewNet,
         },
     },
     terrain_form::{TerrainDraft, TerrainKindChoice},
@@ -147,17 +147,14 @@ fn view_not_owed(view: TerrainViewNet) -> RefusalNote {
 fn write_view(
     draft: &mut TerrainDraft,
     view: TerrainViewNet,
-    sprite: TerrainViewSpriteNet,
+    sprite: SpriteKeyNet,
 ) -> Result<TerrainFieldNet, FormWriteFault> {
     let wanted = view.to_view();
     if !owed_views_for(draft.kind().piece_kind(), draft.tags()).contains(&wanted) {
         return Err(FormWriteFault::Gated(view_not_owed(view)));
     }
-    draft.set_view(wanted, sprite.to_key());
-    let stored = draft
-        .views()
-        .sprite(wanted)
-        .map_or(sprite, TerrainViewSpriteNet::from_key);
+    draft.set_view(wanted, graphic_key(&sprite));
+    let stored = draft.views().sprite(wanted).map_or(sprite, sprite_key);
     Ok(TerrainFieldNet::View {
         view:   TerrainViewNet::from_view(wanted),
         sprite: stored,
@@ -208,13 +205,23 @@ fn known_piece(
     }
 }
 
+// The sim's own graphic key, from the sprite key a client sent.
+fn graphic_key(named: &SpriteKeyNet) -> TerrainGraphicKey {
+    TerrainGraphicKey::new((**named).clone())
+}
+
+// The sprite key a client reads back, from the sim's own graphic key.
+fn sprite_key(key: &TerrainGraphicKey) -> SpriteKeyNet {
+    SpriteKeyNet::new((**key).clone())
+}
+
 // The sprite name the sprite pick holds, or the fault a name it does not hold answers.
 fn known_sprite(
     registry: &SpriteDefRegistry,
-    named: &crate::mcp::wire::SpriteKeyNet,
+    named: &SpriteKeyNet,
 ) -> Result<TerrainGraphicKey, FormWriteFault> {
     if registry.contains(&SpriteName::new((**named).clone())) {
-        Ok(TerrainGraphicKey::new((**named).clone()))
+        Ok(graphic_key(named))
     } else {
         Err(FormWriteFault::bad(format!(
             "`{}` is not a sprite the registry holds, so the leaves-behind pick offers no such \

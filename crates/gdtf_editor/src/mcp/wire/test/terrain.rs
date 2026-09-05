@@ -12,7 +12,7 @@ use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::{
     mcp::wire::{
         BlocksPathingNet, FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet,
-        MountedWeaponNet, TerrainHpNet, TerrainTagNet, TerrainViewNet, TerrainViewSpriteNet,
+        MountedWeaponNet, TerrainHpNet, TerrainTagNet, TerrainViewNet,
     },
     terrain_form::FootfallChoice,
 };
@@ -72,9 +72,6 @@ fn every_terrain_value_round_trips() {
     for view in every_view_arm() {
         assert_ron_round_trip(&view);
     }
-    assert_ron_round_trip(&TerrainViewSpriteNet::from_key(&TerrainGraphicKey::new(
-        "wall_ew".to_owned(),
-    )));
 }
 
 #[test]
@@ -116,5 +113,4 @@ fn the_terrain_values_trace_usable_shapes() {
     assert_schema_is_usable::<TerrainTagNet>("TerrainTagNet");
     assert_schema_is_usable::<LeavesBehindNet>("LeavesBehindNet");
     assert_schema_is_usable::<TerrainViewNet>("TerrainViewNet");
-    assert_schema_is_usable::<TerrainViewSpriteNet>("TerrainViewSpriteNet");
 }

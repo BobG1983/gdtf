@@ -110,7 +110,7 @@ pub(in crate::mcp) use sprite::{
 pub(in crate::mcp) use stat_target::StatTargetNet;
 pub(in crate::mcp) use terrain::{
     BlocksPathingNet, FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet,
-    MountedWeaponNet, TerrainHpNet, TerrainTagNet, TerrainViewNet, TerrainViewSpriteNet,
+    MountedWeaponNet, TerrainHpNet, TerrainTagNet, TerrainViewNet,
 };
 pub(in crate::mcp) use terrain_kind::TerrainKindNet;
 pub(in crate::mcp) use toggle::TerrainToggleNet;

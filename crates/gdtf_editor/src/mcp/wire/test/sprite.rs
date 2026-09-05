@@ -4,7 +4,7 @@ use gdtf_content_families::sprites::{
 
 use super::{assert_ron_round_trip, assert_schema_is_usable};
 use crate::mcp::wire::{
-    SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet, SpritePxNet, SpriteSourceNet,
+    SpriteAnimatedNet, SpriteFacingNet, SpriteFpsNet, SpriteKeyNet, SpritePxNet, SpriteSourceNet,
     sprite::{SpriteImagePathNet, SpriteRectNet},
 };
 
@@ -113,12 +113,18 @@ fn the_path_and_the_rect_round_trip_and_read_back_unchanged() {
 }
 
 #[test]
+fn the_sprite_key_round_trips() {
+    assert_ron_round_trip(&SpriteKeyNet::new("wall_ew".to_owned()));
+}
+
+#[test]
 fn the_sprite_mirrors_trace_usable_shapes() {
     assert_schema_is_usable::<SpriteFacingNet>("SpriteFacingNet");
     assert_schema_is_usable::<SpriteSourceNet>("SpriteSourceNet");
     assert_schema_is_usable::<SpritePxNet>("SpritePxNet");
     assert_schema_is_usable::<SpriteFpsNet>("SpriteFpsNet");
     assert_schema_is_usable::<SpriteAnimatedNet>("SpriteAnimatedNet");
+    assert_schema_is_usable::<SpriteKeyNet>("SpriteKeyNet");
     assert_schema_is_usable::<SpriteImagePathNet>("SpriteImagePathNet");
     assert_schema_is_usable::<SpriteRectNet>("SpriteRectNet");
 }

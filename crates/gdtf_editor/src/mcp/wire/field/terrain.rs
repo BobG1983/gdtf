@@ -9,9 +9,10 @@ use crate::mcp::wire::{
     fire_mode::HitTypeNet,
     list::EditorListIndexNet,
     on_death::OnDeathVariantNet,
+    sprite::SpriteKeyNet,
     terrain::{
         BlocksPathingNet, FootfallNet, HeightBandNet, LeavesBehindNet, LosBlockingNet,
-        MountedWeaponNet, TerrainHpNet, TerrainViewNet, TerrainViewSpriteNet,
+        MountedWeaponNet, TerrainHpNet, TerrainViewNet,
     },
     terrain_kind::TerrainKindNet,
     weapon::{ExplodeDamageNet, FieldKeyNet},
@@ -47,7 +48,7 @@ pub(in crate::mcp) enum TerrainFieldNet {
         /// Which view the row names.
         view:   TerrainViewNet,
         /// The sprite def key that draws it.
-        sprite: TerrainViewSpriteNet,
+        sprite: SpriteKeyNet,
     },
     /// Which variant the on-death effect at one index is on.
     OnDeathVariant {

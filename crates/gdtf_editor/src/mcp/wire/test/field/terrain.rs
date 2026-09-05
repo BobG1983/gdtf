@@ -5,7 +5,6 @@ use gdtf_battle_sim::{
     terrain::{
         def::TerrainView,
         facing::{TerrainCorner, TerrainFacing},
-        piece::TerrainGraphicKey,
     },
     weapon::{BlastRadius, DamageType, HitType, WeaponName},
 };
@@ -16,7 +15,7 @@ use crate::{
         ArmorHardnessNet, ArmorProtectionNet, BlocksPathingNet, DamageTypeNet, EditorDraftNameNet,
         EditorFieldNet, EditorListIndexNet, ExplodeDamageNet, FieldKeyNet, FootfallNet,
         HeightBandNet, HitTypeNet, LosBlockingNet, MountedWeaponNet, OnDeathVariantNet,
-        TerrainFieldNet, TerrainHpNet, TerrainKindNet, TerrainViewNet, TerrainViewSpriteNet,
+        SpriteKeyNet, TerrainFieldNet, TerrainHpNet, TerrainKindNet, TerrainViewNet,
     },
     terrain_form::TerrainKindChoice,
 };
@@ -71,7 +70,7 @@ fn every_terrain_field_arm_round_trips() {
     ] {
         assert_ron_round_trip(&terrain(TerrainFieldNet::View {
             view:   TerrainViewNet::from_view(view),
-            sprite: TerrainViewSpriteNet::from_key(&TerrainGraphicKey::new("wall".to_owned())),
+            sprite: SpriteKeyNet::new("wall".to_owned()),
         }));
     }
     let index = EditorListIndexNet::new(1);

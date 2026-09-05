@@ -4,10 +4,7 @@ use bevy::prelude::Deref;
 use gdtf_battle_sim::{
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
-    terrain::{
-        def::{LeavesBehind, LosBlocking, TerrainTag, TerrainView},
-        piece::TerrainGraphicKey,
-    },
+    terrain::def::{LeavesBehind, LosBlocking, TerrainTag, TerrainView},
     weapon::WeaponName,
 };
 use serde::{Deserialize, Serialize};
@@ -237,23 +234,6 @@ impl TerrainViewNet {
             Self::FromAbove(facing) => TerrainView::FromAbove(facing.to_facing()),
             Self::Single => TerrainView::Single,
         }
-    }
-}
-
-/// The sprite-def key one view names, by file stem.
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub(in crate::mcp) struct TerrainViewSpriteNet(String);
-
-impl TerrainViewSpriteNet {
-    /// Mirror the sim's own graphic key.
-    pub(in crate::mcp) fn from_key(key: &TerrainGraphicKey) -> Self {
-        Self((**key).clone())
-    }
-
-    /// Read a client's key back as the sim's own.
-    pub(in crate::mcp) fn to_key(&self) -> TerrainGraphicKey {
-        TerrainGraphicKey::new(self.0.clone())
     }
 }
 
