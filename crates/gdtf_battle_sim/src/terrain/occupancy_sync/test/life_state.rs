@@ -2,7 +2,51 @@ use super::support::*;
 use crate::{
     cover::HeightBand,
     ganger::{LifeState, Position, Stance, StanceKind},
+    occupancy_sync::OccupancyMaintenancePlugin,
+    test_support::SimAppBuilder,
 };
+
+#[test]
+fn a_corpse_the_grid_released_stays_released() {
+    let mut app = SimAppBuilder::new().with_acts().build();
+    app.add_plugins(OccupancyMaintenancePlugin);
+    let at = key(15, 15, 0);
+
+    let ganger = app
+        .world_mut()
+        .spawn((
+            Position::new(at),
+            Stance::new(StanceKind::Standing),
+            LifeState::Alive,
+        ))
+        .id();
+    app.update();
+
+    if let Some(mut life) = app.world_mut().get_mut::<LifeState>(ganger) {
+        *life = LifeState::Dead;
+    }
+    app.update();
+    assert_eq!(
+        grid_occupant(&app, at),
+        None,
+        "the tick that kills a ganger releases its occupant slot; found {:?}",
+        grid_occupant(&app, at),
+    );
+
+    // A stance write is the one thing that selects a corpse in `sync_moved_gangers` again.
+    if let Some(mut stance) = app.world_mut().get_mut::<Stance>(ganger) {
+        *stance = Stance::new(StanceKind::Prone);
+    }
+    app.update();
+    app.update();
+    assert_eq!(
+        grid_occupant(&app, at),
+        None,
+        "a stance write landing on the body after the death tick must not put the corpse back \
+         in the slot; found {:?}",
+        grid_occupant(&app, at),
+    );
+}
 
 #[test]
 fn dead_ganger_clears_its_slot() {

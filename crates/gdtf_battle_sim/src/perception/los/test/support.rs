@@ -2,12 +2,13 @@ pub(super) use bevy::{ecs::world::World, prelude::Entity};
 
 pub(super) use crate::{
     armor::{ArmorHardness, ArmorProtection},
+    central_axis::target_aim_point,
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Direction, Facing, LifeState, Position, Stance, StanceKind},
     los::{Observer, PeekOffset, Target, can_see, has_los, has_los_peeking},
     march::MarchGrids,
     metric::{Cell, CellLevel, Level},
-    occupancy::{OccupancyGrid, StairEyeOffset},
+    occupancy::{BodyOcclusion, OccupancyGrid, StairEyeOffset},
     surface::{SlabState, SurfaceGrid},
     terrain::entity::TerrainPieceKind,
     tuning::{CombatTuning, ViewRange},

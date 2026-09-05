@@ -4,7 +4,7 @@ use bevy::prelude::{Added, Query, Res};
 
 use crate::{
     cover::{CoverLedger, HeightBand},
-    ganger::{Direction, Position, Stance, StanceKind, Suppressed},
+    ganger::{Direction, LifeState, Position, Stance, StanceKind, Suppressed},
     metric::{Cell, CellLevel},
 };
 
@@ -26,11 +26,16 @@ fn cover_cell_toward(unit: &Position, suppressor: &CellLevel) -> Option<CellLeve
 }
 
 /// When [`Suppressed`] is added, set stance from cover between unit and suppressor.
+///
+/// A ganger that can no longer act is left lying where it is.
 pub fn suppression_auto_stance(
-    mut newly: Query<(&Position, &Suppressed, &mut Stance), Added<Suppressed>>,
+    mut newly: Query<(&Position, &Suppressed, &LifeState, &mut Stance), Added<Suppressed>>,
     cover: Res<CoverLedger>,
 ) {
-    for (position, suppressed, mut stance) in &mut newly {
+    for (position, suppressed, life, mut stance) in &mut newly {
+        if !*life.is_active() {
+            continue;
+        }
         let Some(cover_cell) = cover_cell_toward(position, &suppressed.from) else {
             continue;
         };

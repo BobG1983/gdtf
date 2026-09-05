@@ -135,6 +135,8 @@ pub(super) fn eye_anchor(observer: &Observer, tuning: &CombatTuning) -> SimPos {
 }
 
 /// World position of the aim point on the target.
+///
+/// Cover answers first, then the occupant, then a body lying on the floor.
 pub(super) fn aim_anchor(
     target: &Target,
     occupancy: &OccupancyGrid,
@@ -145,7 +147,8 @@ pub(super) fn aim_anchor(
     let aim_band = cover
         .peek(&at)
         .map(|entry| entry.height_band)
-        .or_else(|| occupancy.occupant_band(&at));
+        .or_else(|| occupancy.occupant_band(&at))
+        .or_else(|| occupancy.body(&at).map(|body| body.band()));
     target_aim_point(*target.position, *target.stance, aim_band, tuning)
 }
 

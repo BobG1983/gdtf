@@ -33,6 +33,9 @@ pub(in crate::shot_pipeline::fire) struct TargetGeometry {
 
 impl TargetGeometry {
     /// Build geometry from the ordered target cell and current cover/occupancy.
+    ///
+    /// Cover answers first, then the occupant, then a body lying on the floor. A cell with
+    /// nothing on it keeps the standing stance, so the ray aims at it standing.
     pub(in crate::shot_pipeline::fire) fn compose(
         target_cell: Cell,
         target_level: Level,
@@ -43,7 +46,8 @@ impl TargetGeometry {
         let aim_band = cover
             .peek(&at)
             .map(|entry| entry.height_band)
-            .or_else(|| occupancy.occupant_band(&at));
+            .or_else(|| occupancy.occupant_band(&at))
+            .or_else(|| occupancy.body(&at).map(|body| body.band()));
         Self {
             position:   Position::new(at),
             stance:     Stance::new(StanceKind::Standing),

@@ -2,6 +2,7 @@ mod support;
 
 mod accrual;
 mod banded_occupant;
+mod body_channel;
 mod candidate_bound;
 mod conscious_filter;
 mod dense_floor;

@@ -38,7 +38,7 @@ Moving away on its own is not enough, and neither route helps a walk that stays 
 
 **The mover is the observer** in the sight test, and the cell the fire came from is the target. The ray is flown from the destination, at the mover's own stance and facing, to that cell — the same line-of-sight probe the shot pipeline uses ([visibility.md](visibility.md)). Sight is directional, so a ganger can break away while whoever fired can still see it. That is intended.
 
-The shot cell records no stance, so the ray aims at it **standing**. That is the strictest choice: a lower aim point ducks behind cover the standing one clears, which would free walks this rule refuses.
+The shot cell records no stance, so the ray aims at it **standing** when the cell carries nothing. That is the strictest choice: a lower aim point ducks behind cover the standing one clears, which would free walks this rule refuses. Cover, an occupant or a body on that cell answers the aim band first, the same read every probe makes ([resolution.md](resolution.md) §2).
 
 The question asked is what the mover would see **from the destination**, at whatever stance it holds, so the mover's own body — still on the cell it is leaving until the walk runs — never counts as what hides it. Anyone else's does: a living ganger between the destination and the shot cell breaks the line like any other obstruction, and a body on the floor there — downed or dead — breaks it only at the LOW band ([resolution.md](resolution.md) §2), so a ray that stays above the floor crosses it, because this is the one geometry truth.
 
@@ -46,7 +46,7 @@ The question asked is what the mover would see **from the destination**, at what
 
 **Cover is read on the storey you end on**, never the shooter's. A shooter a storey above or below does not change which cell the check looks at: it stays the cell beside your destination, on your storey.
 
-The same choice governs the **auto-stance drop**. When a ganger is first suppressed, cover in that cell — toward the suppressor, on the ganger's own storey — drops it to Prone behind Low cover and Crouching behind Mid or High cover.
+The same choice governs the **auto-stance drop**. When a ganger is first suppressed, cover in that cell — toward the suppressor, on the ganger's own storey — drops it to Prone behind Low cover and Crouching behind Mid or High cover. A **downed or dead** ganger is skipped: suppression writes no stance on a body, so it stays lying where it fell.
 
 ---
 

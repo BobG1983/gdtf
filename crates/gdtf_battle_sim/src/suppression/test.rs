@@ -4,7 +4,7 @@ use super::stance::stance_for_cover_band;
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
-    ganger::{Position, Stance, StanceKind, Suppressed, SuppressorCell},
+    ganger::{LifeState, Position, Stance, StanceKind, Suppressed, SuppressorCell},
     metric::{Cell, CellLevel, Level},
     terrain::entity::TerrainPieceKind,
     test_support::SimAppBuilder,
@@ -51,6 +51,7 @@ fn auto_stance_reads_cover_on_the_units_storey_not_the_suppressors() {
         .spawn((
             Position::new(unit_at),
             Stance::new(StanceKind::Standing),
+            LifeState::Alive,
             Suppressed::new(SuppressorCell::new(suppressor)),
         ))
         .id();
@@ -61,5 +62,37 @@ fn auto_stance_reads_cover_on_the_units_storey_not_the_suppressors() {
         Some(Stance::new(StanceKind::Crouching)),
         "the auto-stance drop reads the cover cell toward the suppressor on the unit's own \
          storey, so a suppressor a storey below still drops the unit behind the cover beside it",
+    );
+}
+
+#[test]
+fn suppression_leaves_a_body_lying_where_it_fell() {
+    let mut app = SimAppBuilder::new().with_acts().build();
+    let unit_at = CellLevel::new(Cell::new(10, 10), Level::new(1));
+    let suppressor = CellLevel::new(Cell::new(20, 10), Level::new(1));
+    seed_cover(&mut app, CellLevel::new(Cell::new(11, 10), Level::new(1)));
+    app.update();
+
+    let unit = app
+        .world_mut()
+        .spawn((
+            Position::new(unit_at),
+            Stance::new(StanceKind::Prone),
+            LifeState::Downed,
+        ))
+        .id();
+    app.update();
+
+    // A tick after the life write, so the prone-laying system is not what holds the stance here.
+    if let Ok(mut entity) = app.world_mut().get_entity_mut(unit) {
+        entity.insert(Suppressed::new(SuppressorCell::new(suppressor)));
+    }
+    app.update();
+
+    assert_eq!(
+        app.world().get::<Stance>(unit).copied(),
+        Some(Stance::new(StanceKind::Prone)),
+        "suppression does not stand a body back up — found {:?}",
+        app.world().get::<Stance>(unit).copied(),
     );
 }

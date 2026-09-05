@@ -6,7 +6,7 @@ pub(super) use crate::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Direction, Facing, LifeState, Position, Stance, StanceKind},
     metric::{Cell, CellLevel, Level},
-    occupancy::{OccupancyGrid, StairEyeOffset},
+    occupancy::{BodyOcclusion, OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
     terrain::entity::TerrainPieceKind,
     tuning::{CombatTuning, ViewRange},
@@ -58,6 +58,15 @@ pub(super) fn place_occupant(
 ) {
     grid.set_occupant(at, Some(entity));
     grid.set_occupant_band(at, Some(band));
+}
+
+pub(super) fn place_body(
+    grid: &mut OccupancyGrid,
+    at: CellLevel,
+    entity: Entity,
+    band: HeightBand,
+) {
+    grid.set_body(at, Some(BodyOcclusion::new(entity, band)));
 }
 
 pub(super) fn alive_observer_at(x: i32, y: i32, level: u8) -> (Position, Stance, Facing) {

@@ -43,6 +43,40 @@ fn a_round_at_the_floor_hits_and_wounds_a_downed_ganger() {
 }
 
 #[test]
+fn a_round_ordered_at_a_bodys_cell_stops_on_the_body() {
+    let mut world = World::new();
+    let mode = burst_mode(1);
+    let shooter = spawn_shooter(&mut world, mode);
+    let corpse = line_ganger(&mut world, front_cell(), 0, LifeState::Dead);
+    let behind = line_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
+
+    let mut occupancy = OccupancyGrid::new();
+    place_body(&mut occupancy, front_cell(), corpse, HeightBand::Low);
+    place_occupant(&mut occupancy, behind_cell(), behind, HeightBand::High);
+
+    let volley = fire_volley(
+        &mut world,
+        shooter,
+        mode,
+        &occupancy,
+        front_cell(),
+        0xB0D1_ED17,
+    );
+
+    assert!(
+        report_struck(&volley, corpse),
+        "a round ordered at a body's cell is aimed at the body's floor band and stops there — \
+         got {:?}",
+        volley.reports,
+    );
+    assert!(
+        !report_struck(&volley, behind),
+        "that round never reaches the living ganger standing behind the body — got {:?}",
+        volley.reports,
+    );
+}
+
+#[test]
 fn a_round_stopping_on_a_corpse_leaves_it_untouched() {
     let mut world = World::new();
     let mode = burst_mode(1);

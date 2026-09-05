@@ -51,7 +51,7 @@ Every vertical datum the shot pipeline reads is a **band** or a **level-fraction
 - **Occupant silhouette top by stance** → a band (prone Low / kneel Mid / stand High), or its band-top level-fraction when a continuous height is needed.
 - **Cover height** → a band (Low / Mid / High) — cover is already band-based.
 - **Muzzle height by stance** → a tunable **level-fraction** (prone / kneel / stand each author their own).
-- **Aim point** → the target cell-center `(x, y)` plus the target's **silhouette-top level-fraction**; a cover-occupied cell is aimed at the object's **band midpoint**, so deliberately shooting a low crate works at range.
+- **Aim point** → the target cell-center `(x, y)` plus the target's **silhouette-top level-fraction**; a cell carrying cover, an occupant or a body is aimed at that **band's midpoint**, so deliberately shooting a low crate works at range.
 
 ## Sub-cell precision on the ground plane
 

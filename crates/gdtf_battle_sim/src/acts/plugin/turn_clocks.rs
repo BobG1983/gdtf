@@ -15,7 +15,8 @@ use crate::{
     },
     falls::apply_falls,
     occupancy::{project_path_blocking, project_vision_blocking},
-    occupancy_sync::SimSystems,
+    occupancy_sync::{SimSystems, sync_moved_gangers},
+    posture::lay_inactive_prone,
     turn::{ActiveFaction, dispatch_end_turn},
 };
 
@@ -61,6 +62,13 @@ pub(super) fn wire_turn_clocks(app: &mut App) {
             .after(apply_falls)
             .after(tick_bleed)
             .before(dispatch_stabilize_downed)
+            .in_set(SimSystems::Simulate),
+    );
+    // Ahead of the occupancy sync, so the life pass has the last word on the grid.
+    app.add_systems(
+        Update,
+        lay_inactive_prone
+            .before(sync_moved_gangers)
             .in_set(SimSystems::Simulate),
     );
     app.add_systems(
