@@ -5,7 +5,6 @@ export const meta = {
     { title: 'Options', detail: 'find the field, no candidates supplied' },
     { title: 'Validate options', detail: 'check each option is real, loop until clean' },
     { title: 'Propose', detail: 'one proposal per surviving option' },
-    { title: 'Fit check', detail: 'review and revise each proposal, loop until sound' },
     { title: 'Judge proposals', detail: 'five lenses, argue to convergence' },
     { title: 'Design', detail: 'software design for the top three' },
     { title: 'Review design', detail: 'review and revise each design, loop until clean' },
@@ -288,48 +287,12 @@ const PROPOSAL_SCHEMA = {
   required: ['key', 'name', 'style', 'fitToBattlescape', 'pros', 'cons', 'filesWritten'],
 }
 
-const FIT_SCHEMA = {
-  type: 'object',
-  properties: {
-    key: { type: 'string' },
-    verdict: { type: 'string', enum: ['GOOD', 'NEEDS_WORK', 'ABANDON'] },
-    groundedPros: { type: 'array', items: { type: 'string' } },
-    ungroundedPros: { type: 'array', items: { type: 'string' } },
-    missedCons: { type: 'array', items: { type: 'string' } },
-    contradictions: { type: 'array', items: { type: 'string' } },
-    // Non-blocking observations. A refinement, a nuance, a preference, something worth stating more
-    // precisely. This is the only field that does not force NEEDS_WORK, and the judges read it.
-    notes: { type: 'array', items: { type: 'string' } },
-    required: { type: 'array', items: { type: 'string' }, maxItems: 6 },
-    abandonReason: { type: 'string' },
-    filesWritten: { type: 'array', items: { type: 'string' } },
-  },
-  required: ['key', 'verdict', 'groundedPros', 'ungroundedPros', 'missedCons', 'contradictions', 'notes', 'filesWritten'],
-}
-
-const REVISE_SCHEMA = {
-  type: 'object',
-  properties: {
-    key: { type: 'string' },
-    abandoned: { type: 'boolean' },
-    abandonReason: { type: 'string' },
-    changesMade: { type: 'array', items: { type: 'string' } },
-    disagreements: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: { point: { type: 'string' }, why: { type: 'string' } },
-        required: ['point', 'why'],
-      },
-    },
-    filesWritten: { type: 'array', items: { type: 'string' } },
-  },
-  required: ['key', 'abandoned', 'changesMade', 'disagreements', 'filesWritten'],
-}
-
-const proposalResults = await pipeline(
-  optionList,
-  o => agent(
+// The fit-check stage is deliberately gone. Three attempts to stop it reviewing proposals as
+// software design failed, the last burning several hundred agents forcing concrete design into a
+// stage that forbids naming a type. The five judge lenses read the proposals directly and weigh
+// an ungrounded pro or a missed con themselves, which is what the loop was there to do.
+const proposalResults = await parallel(
+  optionList.map(o => () => agent(
     `Develop one option into a full proposal for gdtf.
 
 ${REPO}
@@ -367,141 +330,24 @@ ${ROOT}/proposals/${o.key}/proposal.json.
 
 ${PLAIN}`,
     { label: `propose:${o.key}`, phase: 'Propose', model: 'opus', effort: 'high', schema: PROPOSAL_SCHEMA },
-  ),
-  async (_proposal, o) => {
-    let round = 0
-    let last = null
-    for (;;) {
-      const fit = await agent(
-        `Review one proposal for fit. Read ${ROOT}/proposals/${o.key}/proposal.md and proposal.json.
-
-${REPO}
-
-You are not reviewing code, implementation, or software design. Your job is to determine the fit of this idea
-against a turn-based strategy game like gdtf, not to determine the feasibility of software development. A
-later stage designs the types, the modules and the files.
-
-That means, concretely:
-- Do not name a Rust symbol, a type, a function, a file path or a module in anything you write. Not in
-  required, not in missedCons, not in contradictions. If you cannot make a point without naming one, it is a
-  point for the design stage and you drop it.
-- Do not ask the proposal to price, cost, order or schedule anything in code terms.
-- Do not fault it for naming no types, files or modules. It was told not to name them.
-- Do not ask what a thing "actually computes" or how two parts agree at the level of calls. Ask whether the
-  idea makes sense on a board with units, turns and time units.
-
-Judge, and only this:
-- Is each pro grounded in how the game would play, or asserted? Sort them into groundedPros and
-  ungroundedPros.
-- What cons has it missed, judged as a player or a designer would judge them? What would the enemy visibly do
-  that is worse, or duller, or unfair? Put them in missedCons.
-- Does it contradict itself, or contradict how the game plays today? Put those in contradictions.
-- Is it a good fit for gdtf's battlescape at all?
-- If it is a composite, is the division of labour real in game terms, and does it say in principle which part
-  decides what? A composite that names three techniques and does not say which one owns which decision is one
-  technique and two hopes. In principle is enough here.
-
-Where a proposal says something about how gdtf plays today, you may check it, at the level of behaviour. "A
-downed unit can still be shot" is a behaviour claim and is fair game. "It calls the wrong cost function" is
-not yours.
-
-This is fit round ${round}. ${round === 0
-  ? 'It is the first round, so there is no earlier review to read.'
-  : `Read every earlier review, ${ROOT}/proposals/${o.key}/fit_check_r0.json through fit_check_r${round - 1}.json, before you write anything. You may only raise a point that is still unresolved from an earlier round, or one the latest revision introduced. Do not raise a new point about text that has not changed. A proposal carrying a recorded disagreement has already answered you: if the answer is sound, drop the point rather than repeating it.`}
-
-The verdict follows the fields, and you do not weigh it yourself. GOOD requires ungroundedPros, missedCons and
-contradictions to be empty, all three. An ungrounded pro is a claim the proposal has not earned, a missed con
-is a cost it is hiding, and a contradiction is an error. None of them is a matter of taste, so if you found
-one, the verdict is NEEDS_WORK and what must change goes in required.
-
-A point that is a refinement, a nuance, an alternative you would have picked, or something you want stated
-more precisely is none of those three things. It goes in notes, which does not block, and the judges read it.
-Deciding what is a defect and what is a note is the judgement you are here to make. Deciding whether a defect
-counts is not.
-
-So GOOD means you found nothing wrong, and you should say GOOD when that is true. It is not a reward for a
-proposal that argued well, and NEEDS_WORK is not a punishment. ABANDON stays for an approach that cannot work
-here at all.
-
-At most six items in required. Needing more than six means you are reviewing detail rather than fit.
-
-Write to ${ROOT}/proposals/${o.key}/fit_check_r${round}.json. Do not overwrite an earlier round's file.
-
-${PLAIN}`,
-        { label: `fit:${o.key} r${round}`, phase: 'Fit check', model: 'opus', effort: 'high', schema: FIT_SCHEMA },
-      )
-      // A dead agent is not a verdict. agent() returns null when the subagent is skipped or dies on a
-      // terminal error such as a session limit, and reading that as ABANDON threw away all ten
-      // proposals of a 10.7M-token run on 2026-09-04. Keep the proposal and let the judges see it.
-      if (!fit) {
-        log(`fit:${o.key} r${round} returned nothing, keeping the proposal with its fit check incomplete`)
-        return { key: o.key, abandoned: false, rounds: round, fit: last, fitIncomplete: true }
-      }
-      last = fit
-      // The verdict is a function of the three defect fields, not the reviewer's mood. A GOOD carrying
-      // an ungrounded pro, a missed con or a contradiction is overruled here rather than argued with.
-      const defects = [
-        ...(fit.ungroundedPros || []),
-        ...(fit.missedCons || []),
-        ...(fit.contradictions || []),
-      ]
-      if (fit.verdict === 'GOOD' && defects.length) {
-        log(`fit:${o.key} r${round} said GOOD carrying ${defects.length} defects, overruled to NEEDS_WORK`)
-        fit.verdict = 'NEEDS_WORK'
-        if (!fit.required?.length) fit.required = defects.slice(0, 6)
-      }
-      if (fit.verdict === 'GOOD') return { key: o.key, abandoned: false, rounds: round, fit }
-      if (fit.verdict === 'ABANDON') return { key: o.key, abandoned: true, reason: fit.abandonReason, rounds: round }
-      if (round >= MAX_ROUNDS) {
-        return { key: o.key, abandoned: true, reason: `deadlocked after ${MAX_ROUNDS} fit rounds`, rounds: round, fit: last }
-      }
-      round += 1
-
-      const rev = await agent(
-        `Revise one proposal against its fit check.
-
-Read ${ROOT}/proposals/${o.key}/proposal.md, proposal.json and the review just written,
-${ROOT}/proposals/${o.key}/fit_check_r${round - 1}.json.
-
-This is still a proposal, not a software design. Do not add types, signatures, file paths, module layouts or
-symbol names while answering the review. If a criticism can only be answered that way, it belongs to the
-design stage, and saying so in disagreements is the right answer.
-
-Act on the feedback. Move an ungrounded pro onto real evidence or delete it. Add the missed cons. Resolve the
-contradictions. Do everything listed in required.
-
-You may disagree. If a criticism is wrong, say so in disagreements with the reason and the evidence, and leave
-the proposal as it was on that point. A reviewer who is answered well is expected to drop the point. Do not
-capitulate to a criticism you believe is wrong just to end the loop, and do not accept every point by reflex:
-ten proposals that all agreed with their critics become ten of the same proposal.
-
-If you now think this approach cannot work for gdtf, set abandoned true with the reason, and say so in the file
-too. That is a legitimate outcome, not a failure.
-
-Rewrite ${ROOT}/proposals/${o.key}/proposal.md and proposal.json.
-
-${PLAIN}`,
-        { label: `revise:${o.key} r${round}`, phase: 'Fit check', model: 'opus', effort: 'high', schema: REVISE_SCHEMA },
-      )
-      if (!rev) {
-        log(`revise:${o.key} r${round} returned nothing, keeping the proposal as it stands`)
-        return { key: o.key, abandoned: false, rounds: round, fit: last, reviseIncomplete: true }
-      }
-      if (rev.abandoned) return { key: o.key, abandoned: true, reason: rev.abandonReason, rounds: round }
-    }
-  },
+  )),
 )
 
-survivors = proposalResults.filter(Boolean).filter(r => !r.abandoned).map(r => r.key)
-abandoned = proposalResults.filter(Boolean).filter(r => r.abandoned)
-log(`${survivors.length} proposals survived: ${survivors.join(', ')}`)
+// Nothing is abandoned at this stage any more. An option drops out only when its propose agent
+// returned nothing, which is a dead agent rather than a judgement on the approach.
+survivors = optionList.filter((_o, i) => proposalResults[i]).map(o => o.key)
+abandoned = optionList
+  .filter((_o, i) => !proposalResults[i])
+  .map(o => ({ key: o.key, reason: 'the propose agent returned nothing' }))
+log(`${survivors.length} proposals written: ${survivors.join(', ')}`)
+if (abandoned.length) log(`${abandoned.length} propose agents returned nothing: ${abandoned.map(a => a.key).join(', ')}`)
 
 if (!survivors.length) {
   return {
     ticket: A.ticket,
-    outcome: 'ALL_ABANDONED',
-    rejected: abandoned.map(r => ({ key: r.key, reason: r.reason })),
-    note: 'Start again from stage 1, telling the options agent these approaches were already rejected and why.',
+    outcome: 'NO_PROPOSALS',
+    rejected: abandoned,
+    note: 'Every propose agent returned nothing. Resume on the run id rather than starting again.',
     root: ROOT,
   }
 }
@@ -554,6 +400,13 @@ every round as a fight stops the whole panel from reaching an answer.
 
 Rank every candidate. Score each out of ten. For each, give your reasoning and, in whatWouldChangeMyMind, the
 specific thing that would move it up or down. Be concrete: name the fact, not a feeling.
+
+Nothing has reviewed these proposals before you, so a proposal may be arguing for itself with a pro it has not
+earned, may be quiet about a cost, or may contradict itself or how the game plays today. Weigh that as part of
+the score and say so in your reasoning. A proposal that oversells itself is worth less than one that is honest
+about what it costs, and marking it down is the right response. Do not ask for it to be rewritten, and do not
+ask for types, modules, file paths or any other software design: these are proposals about how the game would
+play, and a later stage designs the code.
 
 If your agreement depends on something being true, do not silently rank on the assumption. Record it in
 conditionalOn as the candidate plus the condition. A later stage acts on those.
