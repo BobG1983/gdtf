@@ -1,8 +1,12 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::{
+    cell::Cell,
+    sync::mpsc::{Receiver, Sender},
+};
 
 use bevy::{app::App, ecs::entity::Entity};
 use cobalt_mcp_host::IncomingRequest;
 use cobalt_mcp_protocol::message::McpResponse;
+use cobalt_test_utils::advance_until;
 use gdtf_battle_presenter::playback::{ActHold, PlaybackCursor};
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct},
@@ -16,9 +20,6 @@ const UNENDING_HOLD_SECONDS: f32 = 3600.0;
 
 /// Frames a parked call must survive before the case makes its condition true.
 pub(crate) const PARKED_FRAMES: u32 = 8;
-
-/// Frames a reply is allowed to take once its condition holds.
-pub(crate) const SETTLE_FRAMES: u32 = 8;
 
 /// A live battle whose playback cursor is holding, so the screen cannot be caught up.
 pub(crate) fn holding_battle_with_mcp() -> (App, Sender<IncomingRequest>) {
@@ -42,19 +43,20 @@ pub(crate) fn release_the_hold(app: &mut App) {
     cursor.jump_to(head);
 }
 
-/// Step up to `frames` frames, stopping at the first reply.
-pub(crate) fn answered_within(
-    app: &mut App,
-    reply: &Receiver<McpResponse>,
-    frames: u32,
-) -> Option<McpResponse> {
-    for _ in 0..frames {
-        app.update();
-        if let Ok(answer) = reply.try_recv() {
-            return Some(answer);
+/// Step frames until the reply channel answers, with no cap on how long that takes.
+pub(crate) fn answered_within(app: &mut App, reply: &Receiver<McpResponse>) -> McpResponse {
+    let landed = Cell::new(None);
+    loop {
+        advance_until(app, |_| {
+            let arrived = reply.try_recv().ok();
+            let answered = arrived.is_some();
+            landed.set(arrived);
+            answered
+        });
+        if let Some(answer) = landed.take() {
+            return answer;
         }
     }
-    None
 }
 
 /// Entries the live act log holds, or none at all before a battle.

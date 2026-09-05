@@ -5,7 +5,7 @@ use cobalt_mcp_protocol::{
     message::McpResponse,
 };
 
-use super::support::SETTLE_FRAMES;
+use super::support::{PARKED_FRAMES, answered_within};
 use crate::{
     battle_fixture::{menu_app_with_mcp, run_request, send},
     command_exchange::{WAIT, exchange, run},
@@ -90,23 +90,27 @@ fn every_published_condition_is_accepted_and_only_the_unmet_ones_park() {
     .map(|(arguments, settles)| (arguments, settles, send(&tx, run_request(WAIT, arguments))))
     .collect();
 
-    for _ in 0..SETTLE_FRAMES {
-        app.update();
-    }
-
     for (arguments, settles, reply) in asked {
-        let answered = reply.try_recv();
-        let as_asked = match settles {
-            Settles::AtOnce => matches!(
-                answered,
-                Ok(McpResponse::Outcome(CommandOutcome::Ran { .. }))
-            ),
-            Settles::NotYet => matches!(answered, Err(TryRecvError::Empty)),
-        };
-        assert!(
-            as_asked,
-            "`{arguments}` must be a condition this host understands, and in the Menu it must \
-             settle {settles:?}; got {answered:?}",
-        );
+        match settles {
+            Settles::AtOnce => {
+                let answered = answered_within(&mut app, &reply);
+                assert!(
+                    matches!(answered, McpResponse::Outcome(CommandOutcome::Ran { .. })),
+                    "`{arguments}` must be a condition this host understands, and in the Menu it \
+                     must settle {settles:?}; got {answered:?}",
+                );
+            }
+            Settles::NotYet => {
+                for frame in 0..PARKED_FRAMES {
+                    app.update();
+                    assert_eq!(
+                        reply.try_recv().err(),
+                        Some(TryRecvError::Empty),
+                        "`{arguments}` must be a condition this host understands, and in the \
+                         Menu it must settle {settles:?}; it answered on frame {frame}",
+                    );
+                }
+            }
+        }
     }
 }
