@@ -297,11 +297,14 @@ const FIT_SCHEMA = {
     ungroundedPros: { type: 'array', items: { type: 'string' } },
     missedCons: { type: 'array', items: { type: 'string' } },
     contradictions: { type: 'array', items: { type: 'string' } },
-    required: { type: 'array', items: { type: 'string' }, maxItems: 3 },
+    // Non-blocking observations. A refinement, a nuance, a preference, something worth stating more
+    // precisely. This is the only field that does not force NEEDS_WORK, and the judges read it.
+    notes: { type: 'array', items: { type: 'string' } },
+    required: { type: 'array', items: { type: 'string' }, maxItems: 6 },
     abandonReason: { type: 'string' },
     filesWritten: { type: 'array', items: { type: 'string' } },
   },
-  required: ['key', 'verdict', 'groundedPros', 'ungroundedPros', 'missedCons', 'contradictions', 'filesWritten'],
+  required: ['key', 'verdict', 'groundedPros', 'ungroundedPros', 'missedCons', 'contradictions', 'notes', 'filesWritten'],
 }
 
 const REVISE_SCHEMA = {
@@ -388,10 +391,11 @@ That means, concretely:
   idea makes sense on a board with units, turns and time units.
 
 Judge, and only this:
-- Is each pro grounded in how the game would play, or asserted? Sort them.
+- Is each pro grounded in how the game would play, or asserted? Sort them into groundedPros and
+  ungroundedPros.
 - What cons has it missed, judged as a player or a designer would judge them? What would the enemy visibly do
-  that is worse, or duller, or unfair?
-- Does it contradict itself, or contradict how the game plays today?
+  that is worse, or duller, or unfair? Put them in missedCons.
+- Does it contradict itself, or contradict how the game plays today? Put those in contradictions.
 - Is it a good fit for gdtf's battlescape at all?
 - If it is a composite, is the division of labour real in game terms, and does it say in principle which part
   decides what? A composite that names three techniques and does not say which one owns which decision is one
@@ -405,12 +409,21 @@ This is fit round ${round}. ${round === 0
   ? 'It is the first round, so there is no earlier review to read.'
   : `Read every earlier review, ${ROOT}/proposals/${o.key}/fit_check_r0.json through fit_check_r${round - 1}.json, before you write anything. You may only raise a point that is still unresolved from an earlier round, or one the latest revision introduced. Do not raise a new point about text that has not changed. A proposal carrying a recorded disagreement has already answered you: if the answer is sound, drop the point rather than repeating it.`}
 
-Verdict GOOD when the idea stands up and the pros and cons are honest. GOOD is the default. Reach for
-NEEDS_WORK only when a point is one the proposal cannot survive: it would not work on the board, or it claims
-something about the game that is false, or a pro is empty. A point you would describe as a refinement, a
-nuance, or something worth stating more precisely is not that, and it goes in missedCons for the judges to
-weigh rather than into required. You may list at most three required items, so if you have more than three,
-you are reviewing detail rather than fit.
+The verdict follows the fields, and you do not weigh it yourself. GOOD requires ungroundedPros, missedCons and
+contradictions to be empty, all three. An ungrounded pro is a claim the proposal has not earned, a missed con
+is a cost it is hiding, and a contradiction is an error. None of them is a matter of taste, so if you found
+one, the verdict is NEEDS_WORK and what must change goes in required.
+
+A point that is a refinement, a nuance, an alternative you would have picked, or something you want stated
+more precisely is none of those three things. It goes in notes, which does not block, and the judges read it.
+Deciding what is a defect and what is a note is the judgement you are here to make. Deciding whether a defect
+counts is not.
+
+So GOOD means you found nothing wrong, and you should say GOOD when that is true. It is not a reward for a
+proposal that argued well, and NEEDS_WORK is not a punishment. ABANDON stays for an approach that cannot work
+here at all.
+
+At most six items in required. Needing more than six means you are reviewing detail rather than fit.
 
 Write to ${ROOT}/proposals/${o.key}/fit_check_r${round}.json. Do not overwrite an earlier round's file.
 
@@ -419,6 +432,18 @@ ${PLAIN}`,
       )
       last = fit
       if (!fit) return { key: o.key, abandoned: true, reason: 'fit check returned nothing', rounds: round }
+      // The verdict is a function of the three defect fields, not the reviewer's mood. A GOOD carrying
+      // an ungrounded pro, a missed con or a contradiction is overruled here rather than argued with.
+      const defects = [
+        ...(fit.ungroundedPros || []),
+        ...(fit.missedCons || []),
+        ...(fit.contradictions || []),
+      ]
+      if (fit.verdict === 'GOOD' && defects.length) {
+        log(`fit:${o.key} r${round} said GOOD carrying ${defects.length} defects, overruled to NEEDS_WORK`)
+        fit.verdict = 'NEEDS_WORK'
+        if (!fit.required?.length) fit.required = defects.slice(0, 6)
+      }
       if (fit.verdict === 'GOOD') return { key: o.key, abandoned: false, rounds: round, fit }
       if (fit.verdict === 'ABANDON') return { key: o.key, abandoned: true, reason: fit.abandonReason, rounds: round }
       if (round >= MAX_ROUNDS) {
@@ -766,10 +791,12 @@ This is design review round ${round}. ${round === 0
   : `Read every earlier review, ${ROOT}/proposals/${k}/design_review_r0.json through design_review_r${round - 1}.json, before you write anything. You may only raise a point that is still unresolved from an earlier round, a rule breach, or something the latest revision introduced. Do not raise a new point about a part of the design that has not changed. Where the design records a disagreement with an earlier point, read it, and if the answer is sound, drop the point rather than repeating it.`}
 
 The design is directional, so judge the shape. A point that is a refinement, a nuance, an alternative you
-would have picked, or something you want stated more precisely is not a blocker: put it in problems, where the
-judges will weigh it, and leave it out of required. Verdict AUDIT_OK when the shape works and no rule is
-breached, even with problems outstanding. NEEDS_WORK only for a rule breach or a defect in the shape itself,
-with at most five items in required.
+would have picked, or something you want stated more precisely is not a blocker: put it in notes, where the
+judges will weigh it, and leave it out of problems and required.
+
+The verdict follows the fields, and you do not weigh it yourself. AUDIT_OK requires problems and ruleBreaches
+to be empty, both of them. Anything you put in either is a defect that must be fixed, so NEEDS_WORK, with at
+most five items in required. If a point does not deserve to hold the design up, it was a note.
 
 Write to ${ROOT}/proposals/${k}/design_review_r${round}.json. Do not overwrite an earlier round's file.
 
@@ -777,6 +804,13 @@ ${PLAIN}`,
         { label: `dreview:${k} r${round}`, phase: 'Review design', model: 'opus', effort: 'high', schema: DESIGN_REVIEW_SCHEMA },
       )
       if (!rev) return { key: k, ok: false, rounds: round, reason: 'review returned nothing' }
+      // Same rule as the fit check: the verdict follows the defect fields, not the reviewer's mood.
+      const dDefects = [...(rev.problems || []), ...(rev.ruleBreaches || [])]
+      if (rev.verdict === 'AUDIT_OK' && dDefects.length) {
+        log(`dreview:${k} r${round} said AUDIT_OK carrying ${dDefects.length} defects, overruled to NEEDS_WORK`)
+        rev.verdict = 'NEEDS_WORK'
+        if (!rev.required?.length) rev.required = dDefects.slice(0, 5)
+      }
       if (rev.verdict === 'AUDIT_OK') return { key: k, ok: true, rounds: round }
       if (round >= MAX_ROUNDS) return { key: k, ok: false, rounds: round, reason: `deadlocked after ${MAX_ROUNDS} review rounds`, review: rev }
       round += 1
