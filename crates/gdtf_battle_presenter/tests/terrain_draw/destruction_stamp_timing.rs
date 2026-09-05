@@ -96,6 +96,8 @@ fn the_stamp_waits_until_the_cursor_plays_the_smash() {
         .write(TerrainPieceDestroyed::new(slab_key, TerrainPieceKind::Slab));
     despawn_terrain_entity(&mut app, slab_key);
     absent_slab(&mut app, slab_key);
+    // The sim stands the successor here at resolve time, before the cursor reaches the smash.
+    spawn_successor(&mut app, slab_key);
 
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
     app.update();
@@ -119,7 +121,6 @@ fn the_stamp_waits_until_the_cursor_plays_the_smash() {
         sprite_rect_at(&mut app, slab_key),
     );
 
-    spawn_successor(&mut app, slab_key);
     play_past(&mut app, smash, |_| {});
 
     assert_eq!(

@@ -45,15 +45,23 @@ ahead.
 - **The mirror** — `DrawnLife`, `DrawnMagazine`, `DrawnPose`, `DrawnPosition` and
   `DrawnVitals`: sim state as played so far, and what the view draws from.
 
-**What this forbids:** a presenter system that reads a raw sim message buffer —
-`TerrainPieceDestroyed` and its kin — and draws the result on the spot.
-Destruction is in scope: cover, wall and slab, and whatever replaces a destroyed piece.
+**What this forbids:** a presenter system that reads raw sim state and draws the result on the
+spot. Raw sim state is a message buffer such as `TerrainPieceDestroyed`, or a component the sim
+writes as it resolves. Destruction is in scope: cover, wall and slab, and whatever replaces a
+destroyed piece.
 
 **Destruction reads the played fact.** `stamp_destroyed_cell` takes
 `MessageReader<Played<TerrainPieceDestroyed>>` and stamps the cell when the cursor plays the
 smash, so no presenter system reads the raw `TerrainPieceDestroyed` buffer. Three raw sim reads
 stand elsewhere in the presenter: `despawn_killed_ganger_on_impact`,
 `forward_live_log_source::<S>` and `draw_static_battlefield`.
+
+**The successor waits with the smash.** The sim stands the replacement piece in the cell as it
+resolves, so the per-def restamp would draw the successor's view while the cursor is still short
+of the smash. `restamp_terrain_views` skips a cell the log records as smashed at or after the
+entry the cursor shows next, read through `UnplayedSmashes` over `ActLog` and `PlaybackCursor`.
+The cell holds its intact art until the cursor arrives, and `stamp_destroyed_cell` stamps the
+successor then.
 
 **What breaks without it:** the sim resolves a whole act while playback is still animating
 the one before it. A system that reads the sim directly is not slightly early, it is an

@@ -99,9 +99,12 @@ render code still names, taken from the link kind rather than from a def.
 names for its facing and its open state, resolved through `view_key_for`, and
 `stamp_destroyed_cell` resolves a smashed cell's successor the same way. A def
 whose `leaves_behind` names a sprite stands that sprite in the cell instead, and
-both reads draw it ahead of any piece still standing there. The `on_death` list
-the claim names is built on terrain defs and weapon specs both, and
-`leaves_behind` is built on terrain defs.
+both reads draw it ahead of any piece still standing there. The sim stands the
+successor as it resolves, so `restamp_terrain_views` holds a smashed cell at its
+intact art until the playback cursor reaches the smash. The successor's view
+appears when the player watches the destruction. The `on_death` list the claim
+names is built on terrain defs and weapon specs both, and `leaves_behind` is
+built on terrain defs.
 
 ## Consequence for the editor
 

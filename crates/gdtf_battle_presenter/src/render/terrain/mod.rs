@@ -28,4 +28,4 @@ pub use static_map::{LeftoverArt, SpriteResolveCtx, StaticMap};
 pub use swaps::stamp_destroyed_cell;
 pub use treatment::{ContextDepth, IsolateView, StoreyTreatment, StoreyViewMode, storey_treatment};
 pub use view_resolve::{LinkEnd, view_key_for};
-pub use view_restamp::{StandingTerrain, restamp_terrain_views};
+pub use view_restamp::{StandingTerrain, UnplayedSmashes, restamp_terrain_views};
