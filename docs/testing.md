@@ -43,11 +43,12 @@ pre-commit hook.
 - **Presenter / scene / state tests** need Bevy. The standard way to step a minimal `App` is the headless harness `cobalt_test_utils::MinimalTestAppBuilder`: it takes the state registration as an argument, so passing `gdtf_game::test_support::register_headless` wires the real GDTF state stack onto a deterministic `MinimalPlugins` app. Build one with `MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless).starting_in(AppState::…).build()`. Drive it with `app.update()` (or `cobalt_test_utils::advance_until`, which spins updates until its condition holds, with no frame cap), and assert on `State<…>` / the `World`. **A test never waits on a frame budget or a wallclock deadline** (owner ruling 2026-08-14: both are flaky by definition — a loaded machine may make a test slower, never red). Wait for the observable condition and go red only on a definite failure signal; where a transition needs `FixedUpdate` steps, pin `TimeUpdateStrategy::FixedTimesteps(1)` instead of waiting out the real clock. A fixed frame count is fine only where it is itself the deterministic input — a hold proving a gate does NOT advance, a settle over per-frame draw systems — written as an explicit `for` loop. Scene / state / app **behavioral** logic — transitions, `OnEnter`/`OnExit` wiring, a system's effect on the `World` — is now a *required* headless integration test, not an optional one. Stub only true externals; never shadow the unit under test. Running the app (`cargo run -p game`) and observing behavior (screenshots come from the MCP channel's `capture.screenshot` command — there is no in-app trigger) is reserved for the genuinely unautomatable: actual rendering / visual correctness, real input, font / layout — and richer automation of *those* is **TBD (Bevy harness)**.
 - **Guard coverage is deliberate.** Null/empty tuning, malformed arrays, out-of-bounds cells, degenerate directions — each hardening rule carries an assert, so a refactor can't quietly drop a guard.
 
-## The `GDTF_*` dev flags
+## The `GDTF_*`, `COBALT_*` and `EDITOR_*` dev flags
 
-Every dev / QA / test affordance in the workspace is opted into by a `GDTF_*` environment
-variable. They are ALL non-shipping: each is additionally gated on a debug build and/or a
-dev-only cargo feature at its wiring site, so a release binary ignores the lot.
+Every dev / QA / test affordance the workspace opts into through an environment variable
+uses a `GDTF_*`, `COBALT_*` or `EDITOR_*` name. They are ALL non-shipping: each is
+additionally gated on a debug build and/or a dev-only cargo feature at its wiring site, so a
+release binary ignores the lot.
 
 The old env-var battle capture/drive rig (`GDTF_AUTOBATTLE`, capture paths, fire-at-frame flags)
 was deleted, not deprecated. The one drive path now is the `mcp` loopback QA network control
@@ -64,7 +65,7 @@ second copy here would only rot. That guide is also how a command is added, and 
 when adding a flag and keep this table in step):
 
 ```bash
-grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
+grep -rhoE '"(GDTF|COBALT|EDITOR)_[A-Z_0-9]+"' crates/ bins/ libs/ --include='*.rs' | tr -d '"' | sort -u
 ```
 
 | Variable | Owner crate | Effect |
@@ -72,7 +73,7 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `COBALT_TEST_FORCE_NO_GPU` | `cobalt_test_utils` | Forces the GPU-adapter probe to report Absent, driving the exact no-GPU skip path on a GPU machine. |
 | ~~`GDTF_ASSETS_CLEAN_ROOT`~~ | — | Read by nothing. The assets-tree-clean guard it hooked no longer exists. |
 | `GDTF_BATTLE_SEED` | `gdtf_game` (consumed by `gdtf_battle_sim`; honored by the `gdtf_game::test_support` battle harness) | Pins the root battle RNG seed for a reproducible replay; unset = wall-clock entropy, logged at `info!`. |
-| `GDTF_DEBUG_REACHABLE_OVERLAY` | `gdtf_battle_presenter` (mirrored by `gdtf_battle_input` docs) | Truthy renders the reachable-range debug overlay in a debug build (default off — visual noise). |
+| `GDTF_DEBUG_REACHABLE_OVERLAY` | `gdtf_battle_presenter` (read into `ReachableOverlayEnabled`, which `gdtf_battle_input` gates its overlay populate on) | Truthy renders the reachable-range debug overlay in a debug build (default off — visual noise). |
 | ~~`GDTF_EDITOR_MCP`~~ | — | Read by nothing. The editor's channel is armed by `EDITOR_MCP_PORT` alone; there is no separate arming variable. Launch recipe is in [tooling/agent-qa.md](tooling/agent-qa.md). |
 | `EDITOR_MCP_PORT` | `gdtf_editor`, `mcp` | Required. The editor binds this value when it trims and parses as a `u16`, always on `Ipv4Addr::LOCALHOST`, and opens no listener at all otherwise. There is no fallback port. The spawner sets the port name on every child it starts from the port the launch picked, so `launch(host="editor", port=…)` puts the editor child there unless a record of that host already holds the port, in which case it takes the first free port above. Read in the MCP host's own environment, it also moves the port the editor link opens on and the port a `launch` or `stop` that names none targets. |
 | `GDTF_MODULE_LAYOUT_ROOT` | `gdtf_conformance` | Overrides the repo root the module-layout conformance guard test scans (guard-test hook). |
