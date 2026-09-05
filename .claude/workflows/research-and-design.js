@@ -704,7 +704,7 @@ const DESIGN_REVIEW_SCHEMA = {
     verdict: { type: 'string', enum: ['AUDIT_OK', 'NEEDS_WORK'] },
     problems: { type: 'array', items: { type: 'string' } },
     ruleBreaches: { type: 'array', items: { type: 'string' } },
-    required: { type: 'array', items: { type: 'string' } },
+    required: { type: 'array', items: { type: 'string' }, maxItems: 5 },
     filesWritten: { type: 'array', items: { type: 'string' } },
   },
   required: ['key', 'verdict', 'problems', 'ruleBreaches', 'filesWritten'],
@@ -759,11 +759,19 @@ Judge it as an engineer who will have to maintain it: does the shape work, does 
 existing idiom, what breaks under save and load, what breaks when content changes underneath it, and what does
 it make hard.
 
-List every rule breach separately in ruleBreaches, quoting the rule.
+List every rule breach separately in ruleBreaches, quoting the rule. A rule breach is always a blocker.
 
-Verdict AUDIT_OK only when nothing remains. Otherwise NEEDS_WORK with exactly what must change in required.
+This is design review round ${round}. ${round === 0
+  ? 'It is the first round, so there is no earlier review to read.'
+  : `Read every earlier review, ${ROOT}/proposals/${k}/design_review_r0.json through design_review_r${round - 1}.json, before you write anything. You may only raise a point that is still unresolved from an earlier round, a rule breach, or something the latest revision introduced. Do not raise a new point about a part of the design that has not changed. Where the design records a disagreement with an earlier point, read it, and if the answer is sound, drop the point rather than repeating it.`}
 
-Write to ${ROOT}/proposals/${k}/design_review.json, overwriting any existing file.
+The design is directional, so judge the shape. A point that is a refinement, a nuance, an alternative you
+would have picked, or something you want stated more precisely is not a blocker: put it in problems, where the
+judges will weigh it, and leave it out of required. Verdict AUDIT_OK when the shape works and no rule is
+breached, even with problems outstanding. NEEDS_WORK only for a rule breach or a defect in the shape itself,
+with at most five items in required.
+
+Write to ${ROOT}/proposals/${k}/design_review_r${round}.json. Do not overwrite an earlier round's file.
 
 ${PLAIN}`,
         { label: `dreview:${k} r${round}`, phase: 'Review design', model: 'opus', effort: 'high', schema: DESIGN_REVIEW_SCHEMA },
@@ -776,9 +784,11 @@ ${PLAIN}`,
       await agent(
         `Revise one software design against its review.
 
-Read ${ROOT}/proposals/${k}/design.md, design.json and design_review.json.
+Read ${ROOT}/proposals/${k}/design.md, design.json and the review just written,
+${ROOT}/proposals/${k}/design_review_r${round - 1}.json.
 
-Do everything in required. Fix every rule breach.
+Do everything in required. Fix every rule breach. The entries in problems are for the judges to weigh, so act
+on one only where you agree it improves the design.
 
 You may disagree with a point, and if you do, say so in the design file itself as one short paragraph naming
 the reason and the evidence, and leave that part as it was. Do not accept a criticism you believe is wrong
