@@ -1,15 +1,23 @@
-//! the GANG mode's own SAVE path feeds the authoring-validation
+//! the GANG and FIELD modes' own SAVE paths feed the authoring-validation
 use bevy::asset::AssetServer;
 use cobalt_test_utils::advance_until;
 use gdtf_assets::{
     ContentFamily, ContentIntegrityReport, ContentValidationDone, ReferenceKeyScheme,
 };
-use gdtf_battle_sim::weapon::WeaponName;
-use gdtf_content_families::{GangsFamily, situation::LoadedSituation};
-use gdtf_editor::{GangDraft, draft_to_roster, gang_file_name, write_gang_in};
+use gdtf_battle_sim::{
+    effects::fields::{
+        FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, ImmuneArmorTypes,
+    },
+    weapon::{DamageType, WeaponName},
+};
+use gdtf_content_families::{FieldsFamily, GangsFamily, situation::LoadedSituation};
+use gdtf_editor::{
+    GangDraft, draft_to_roster, field_file_name, gang_file_name, write_field_in, write_gang_in,
+};
 
 use crate::{
     advance::advance_to_published, app::editor_app_with_asset_root, findings::has_dangling_ref,
+    harness::has_malformed,
 };
 
 const REARM_GANG: &str = "rearm_gang";
@@ -17,6 +25,23 @@ const REARM_GANG: &str = "rearm_gang";
 const SAVED_DANGLING_WEAPON: &str = "saved_missing_weapon";
 
 const RESAVED_DANGLING_WEAPON: &str = "resaved_missing_weapon";
+
+const REARM_FIELD: &str = "rearm_field";
+
+const MALFORMED_FIELD_STEM: &str = "broken_field";
+
+// Few enough that the re-arm fails rather than hangs: `advance_until` has no cap.
+const REARM_UPDATES: usize = 8;
+
+// Only `damage` differs between the field the test saves and the one it re-saves.
+fn field_def(damage: FieldDamage) -> FieldDef {
+    FieldDef::new(
+        damage,
+        DamageType::Chem,
+        ImmuneArmorTypes::default(),
+        FieldDuration::Permanent,
+    )
+}
 
 #[test]
 fn gang_save_reload_rearms_validation_with_the_saved_keys() {
@@ -122,5 +147,80 @@ fn an_edit_to_the_loaded_situation_rearms_validation_the_way_a_registry_edit_doe
             .get_resource::<ContentValidationDone>()
             .is_none(),
         "the loaded situation is a watched record, so writing it re-arms validation",
+    );
+}
+
+#[test]
+fn field_save_reload_rearms_validation_and_republishes_findings() {
+    let dir = tempfile::tempdir();
+    assert!(dir.is_ok(), "creating the TempDir assets root must succeed");
+    let Ok(dir) = dir else { return };
+
+    let key = FieldKey::new(REARM_FIELD.to_owned());
+    let written = write_field_in(dir.path(), &key, &field_def(FieldDamage::new(3)));
+    assert!(
+        written.is_ok(),
+        "the real field write must succeed: {:?}",
+        written.as_ref().err(),
+    );
+
+    let malformed_path = dir.path().join(FieldsFamily::FOLDER).join(format!(
+        "{MALFORMED_FIELD_STEM}.{}",
+        FieldsFamily::EXTENSION
+    ));
+    let planted = std::fs::write(&malformed_path, "(this is not a FieldDef");
+    assert!(
+        planted.is_ok(),
+        "planting the malformed sibling must succeed"
+    );
+
+    let mut app = editor_app_with_asset_root(dir.path());
+    advance_to_published(&mut app);
+    {
+        let report = app.world().resource::<ContentIntegrityReport>();
+        assert!(
+            has_malformed(report, MALFORMED_FIELD_STEM),
+            "the malformed field sibling must surface as a MalformedFile finding at launch; \
+             report: {:?}",
+            report.findings(),
+        );
+    }
+
+    let edited_def = field_def(FieldDamage::new(9));
+    let rewritten = write_field_in(dir.path(), &key, &edited_def);
+    assert!(
+        rewritten.is_ok(),
+        "the field re-save must succeed: {:?}",
+        rewritten.as_ref().err(),
+    );
+
+    let saved_path = format!("{}/{}", FieldsFamily::FOLDER, field_file_name(&key));
+    app.world().resource::<AssetServer>().reload(saved_path);
+
+    advance_until(&mut app, |app| {
+        app.world()
+            .get_resource::<FieldDefRegistry>()
+            .is_some_and(|registry| registry.def(&key) == Some(&edited_def))
+    });
+
+    let mut republished = false;
+    for _ in 0..REARM_UPDATES {
+        app.update();
+        if app
+            .world()
+            .get_resource::<ContentIntegrityReport>()
+            .is_some_and(|report| !has_malformed(report, MALFORMED_FIELD_STEM))
+        {
+            republished = true;
+            break;
+        }
+    }
+
+    assert!(
+        republished,
+        "the field re-save must re-arm validation: a re-armed pass replaces the \
+         ContentIntegrityReport with a fresh one and never re-raises the salvage-time malformed \
+         finding, so `{MALFORMED_FIELD_STEM}` still standing after {REARM_UPDATES} updates means \
+         the rebuilt FieldDefRegistry was not watched",
     );
 }
