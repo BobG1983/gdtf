@@ -1,11 +1,11 @@
 //! Ref integrity: each dangling edge class is reported; shipped graph is clean.
 use std::path::PathBuf;
 
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use gdtf_assets::{
     ContentFinding, ContentIntegrityReport, ContentValidationDone, ReferenceKeyScheme,
 };
 use gdtf_game::test_support::{AppState, app_state};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
 fn findings_snapshot(app: &bevy::app::App) -> Vec<ContentFinding> {
     app.world()
@@ -82,9 +82,12 @@ fn dangling_referrer(
 }
 
 fn validated_fixture_report() -> Vec<ContentFinding> {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(ref_integrity_root())
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        ref_integrity_root(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
     advance_until_resource_exists::<ContentValidationDone>(&mut app);
     findings_snapshot(&app)
 }
@@ -255,9 +258,12 @@ fn assert_theme_and_prefab_edges(report: &[ContentFinding]) {
 
 #[test]
 fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(ref_integrity_root())
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        ref_integrity_root(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
 
     advance_until_resource_exists::<ContentValidationDone>(&mut app);
 
@@ -363,9 +369,10 @@ fn a_view_naming_no_sprite_def_is_reported_against_that_view() {
 
 #[test]
 fn shipped_content_graph_validates_with_zero_findings() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<ContentValidationDone>(&mut app);
     let report = findings_snapshot(&app);

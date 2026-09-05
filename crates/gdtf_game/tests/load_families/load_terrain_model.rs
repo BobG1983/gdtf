@@ -1,12 +1,12 @@
 //! Terrain model load: real assets resolve `TerrainDefRegistry` and `UuidThemeRegistry` by UUID.
 use std::path::PathBuf;
 
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
 use gdtf_game::test_support::{AppState, load_released};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
 const fn known_terrain_uuid() -> TerrainUuid {
     TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_0801))
@@ -25,9 +25,12 @@ fn fixture_root() -> PathBuf {
 
 #[test]
 fn real_asset_resolves_new_terrain_and_theme_registries_by_uuid() {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(fixture_root())
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        fixture_root(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
 
     advance_until_resource_exists::<TerrainDefRegistry>(&mut app);
     advance_until_resource_exists::<UuidThemeRegistry>(&mut app);

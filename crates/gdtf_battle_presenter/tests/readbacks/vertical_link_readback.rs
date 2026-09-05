@@ -20,7 +20,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_test_utils::gpu_adapter_probe;
+use cobalt_test_utils::gpu_adapter_probe;
 
 const STAIR_UP_INDEX: usize = 29;
 

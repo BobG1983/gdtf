@@ -1,6 +1,6 @@
 use bevy::{input::ButtonInput, input_focus::InputFocus, prelude::*};
+use cobalt_test_utils::{clear_keys, press_key};
 use gdtf_battle_input::{BoundKey, Keybinds, PanelNavOrder};
-use gdtf_test_utils::{clear_keys, press_key};
 use gdtf_ui::{
     DisabledButton,
     focus_nav::{FocusNavPlugin, FocusNavSystems},

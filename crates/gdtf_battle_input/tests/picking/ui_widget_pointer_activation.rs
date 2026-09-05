@@ -8,7 +8,7 @@ use bevy::{
     ui_widgets::{Activate, Button as WidgetButton},
     window::{PrimaryWindow, Window, WindowRef, WindowResolution},
 };
-use gdtf_test_utils::UiTestAppBuilder;
+use cobalt_test_utils::UiTestAppBuilder;
 
 use super::harness::TARGET_SIZE;
 

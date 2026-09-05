@@ -1,6 +1,7 @@
 //! While a mount is wielded, the mode panel offers, prices and picks the MOUNT's modes.
 
 use bevy::{ecs::entity::Entity, prelude::*, ui::Display};
+use cobalt_test_utils::press_ui_button;
 use gdtf_battle_sim::{
     ganger::{Aiming, TuMax},
     magazine::mode_tu_cost,
@@ -9,7 +10,6 @@ use gdtf_battle_sim::{
     weapon::{FireMode, FireModeSpec, ModeKind, MountedWeapon, WieldedBy},
 };
 use gdtf_game::test_support::{ModeBurstButton, ModeFullButton, ModeSingleButton};
-use gdtf_test_utils::press_ui_button;
 
 use super::{harness::*, probes::*};
 

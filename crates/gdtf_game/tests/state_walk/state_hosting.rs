@@ -1,6 +1,6 @@
 use bevy::state::state::State;
+use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_game::test_support::{AppState, GameState, RunningState, app_state};
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 
 use super::harness::*;
 
@@ -12,9 +12,10 @@ fn game_state(app: &bevy::app::App) -> Option<GameState> {
 
 #[test]
 fn running_hosts_menu() {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
 
     app.update();
 
@@ -32,9 +33,10 @@ fn running_hosts_menu() {
 
 #[test]
 fn game_hosts_setup() {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
 
     drive_past_menu(&mut app);
 

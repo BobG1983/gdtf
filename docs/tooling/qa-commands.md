@@ -680,8 +680,8 @@ a pixel over the UI or off the grid comes back `None`, because the pick fails cl
 than holding the cell it last resolved. The battle cases under
 [`crates/gdtf_game/tests/mcp/`](../../crates/gdtf_game/tests/mcp) run on one of two headless
 harnesses and neither has a primary window: `battle_app_listening` builds on
-`GdtfLoadTestAppBuilder`, which sets `primary_window: None`, and
-`battle_fixture::menu_app_with_mcp` builds on `GdtfTestAppBuilder`, which is `MinimalPlugins`
+`LoadTestAppBuilder`, which sets `primary_window: None`, and
+`battle_fixture::menu_app_with_mcp` builds on `MinimalTestAppBuilder`, which is `MinimalPlugins`
 and never adds `WindowPlugin` at all. So on those hosts `input.hover` refuses `WrongState` and
 `battle.selection` reports `hovered: None` on every read, and they assert the pinned cell instead.
 The screenshot cases in that same directory build their own windowed app, so the limit is the

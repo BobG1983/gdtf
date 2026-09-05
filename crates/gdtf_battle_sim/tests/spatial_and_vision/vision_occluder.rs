@@ -1,4 +1,5 @@
-//! HARNESS NOTE: the sim is the LOW crate (a dev-dep on `gdtf_test_utils` would be a cycle),
+//! HARNESS NOTE: this file builds the `App` itself — `MinimalPlugins`, `AssetPlugin`,
+//! `ScenePlugin` and `BattleSimPlugin`.
 use bevy::{app::App, asset::AssetPlugin, prelude::MinimalPlugins, scene::ScenePlugin};
 use gdtf_battle_sim::{
     battle::{BattleSimPlugin, SetupBattleRequested},

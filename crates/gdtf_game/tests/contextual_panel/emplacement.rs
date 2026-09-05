@@ -4,6 +4,7 @@ use bevy::{
     ecs::{entity::Entity, relationship::Relationship},
     prelude::*,
 };
+use cobalt_test_utils::{advance_until, press_ui_button};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     acts::enter_emplacement_tu_cost,
@@ -13,7 +14,6 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
 };
 use gdtf_game::test_support::EnterEmplacementButton;
-use gdtf_test_utils::{advance_until, press_ui_button};
 
 use super::{actors::*, harness::*};
 

@@ -5,8 +5,8 @@ use cobalt_mcp_protocol::{
     message::{McpRequest, ProtocolVersion},
     ports::McpPort,
 };
+use cobalt_test_utils::UiTestAppBuilder;
 use gdtf_editor::{EditorMode, MapEditorPlugin, McpEditorPlugin};
-use gdtf_test_utils::UiTestAppBuilder;
 
 use crate::{
     drafts::theme_draft,

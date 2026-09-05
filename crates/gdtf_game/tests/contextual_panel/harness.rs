@@ -8,6 +8,7 @@ use bevy::{
     state::state::State,
     ui::BackgroundColor,
 };
+use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     emplacement::{EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedBy},
@@ -20,7 +21,6 @@ use gdtf_battle_sim::{
     weapon::WeaponRegistry,
 };
 use gdtf_game::test_support::{AppState, BattleScapeState, RunningState};
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{
     DisabledButton,
     theme::{GdtfTheme, default_theme},
@@ -44,9 +44,10 @@ pub(crate) fn running_state(app: &App) -> Option<RunningState> {
 }
 
 pub(crate) fn battle_running_app() -> App {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());

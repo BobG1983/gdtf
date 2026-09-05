@@ -11,6 +11,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     effects::attachments::{AimDelta, AttachmentEffect},
     equipment::attachments::{AttachmentName, AttachmentRegistry, AttachmentSlot},
@@ -22,7 +23,6 @@ use gdtf_battle_sim::{
 use gdtf_editor::{
     AttachmentDraft, EditorState, MapEditorPlugin, draft_to_attachment_spec, write_attachment_in,
 };
-use gdtf_test_utils::advance_until;
 
 fn editor_app_with_asset_root(root: &Path) -> App {
     let mut app = App::new();

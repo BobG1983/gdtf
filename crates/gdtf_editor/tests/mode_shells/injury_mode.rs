@@ -11,6 +11,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     armor::InjuryCategory,
     injuries::{
@@ -23,7 +24,6 @@ use gdtf_editor::{
     EditorState, InjuryDraft, MapEditorPlugin, WeightingDraft, draft_to_def, draft_to_weighting,
     write_injury_in, write_weighting_in,
 };
-use gdtf_test_utils::advance_until;
 
 const SAVED_KEY: &str = "tempdir_wound";
 

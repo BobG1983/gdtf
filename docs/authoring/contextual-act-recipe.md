@@ -186,7 +186,7 @@ surfaces pending the AI-acts expansion; none has a brain arm today.
   the negative offer cases.
 - To name the marker from the external test: 2 edits — add it to the panel's
   `test_support` submodule (`contextual_panel/mod.rs`) and to the crate-root ledger
-  (`src/test_support.rs`), per the one-hop pattern.
+  (`src/test_support/markers.rs`), per the one-hop pattern.
 - Input-layer drain coverage is generic and already pinned
   (`act_bus/contextual/test.rs`); sim dispatch gets its own bespoke tests.
 

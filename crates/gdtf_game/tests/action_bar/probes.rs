@@ -1,4 +1,5 @@
 use bevy::{ecs::entity::Entity, prelude::*};
+use cobalt_test_utils::{MessageProbe, MessageProbePlugin, drain_message_probe, probed};
 use gdtf_battle_input::{ChosenFireMode, SelectedShooter, chosen_spec};
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
@@ -7,7 +8,6 @@ use gdtf_battle_sim::{
     prelude::{Direction, Level, Stance, StanceKind},
     weapon::{FireMode, FireModeSpec, MeleeWeapon, MountedWeapon, WieldedBy, Wields},
 };
-use gdtf_test_utils::{MessageProbe, MessageProbePlugin, drain_message_probe, probed};
 use gdtf_ui::{DisabledButton, SegmentSubText};
 
 use super::harness::*;

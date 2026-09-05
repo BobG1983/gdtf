@@ -1,3 +1,4 @@
+use cobalt_test_utils::{press_key, press_left, probed};
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedShooter};
 use gdtf_battle_sim::{
     acts::{
@@ -6,7 +7,6 @@ use gdtf_battle_sim::{
     },
     prelude::{Direction, OccupancyGrid, StanceKind},
 };
-use gdtf_test_utils::{press_key, press_left, probed};
 
 use super::harness::*;
 

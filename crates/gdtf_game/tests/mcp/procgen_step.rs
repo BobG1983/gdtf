@@ -62,12 +62,12 @@ mod stepping {
     use bevy::{app::App, prelude::NextState, state::state::State};
     use cobalt_mcp_host::IncomingRequest;
     use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
+    use cobalt_test_utils::{LoadTestAppBuilder, advance_until};
     use gdtf_battle_sim::procgen::{ProcgenStage, StagedProcgen};
     use gdtf_game::{
         qa_wire::misc::ProcgenStageNet,
         test_support::{AppState, BattleScapeState, McpPlugin, ProcgenStepperPlugin, RunningState},
     };
-    use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
     use serde::Deserialize;
 
     use crate::{
@@ -97,9 +97,10 @@ mod stepping {
 
     /// The real load flow, the real stepper engaged, and the QA router on a test-owned channel.
     fn stepping_app_with_mcp() -> (App, Sender<IncomingRequest>) {
-        let mut app = GdtfLoadTestAppBuilder::new()
-            .starting_in(AppState::Load)
-            .build();
+        let mut app =
+            LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+                .starting_in(AppState::Load)
+                .build();
         let (tx, rx) = mpsc::channel();
         app.add_plugins(McpPlugin::with_channels(rx));
         app.add_plugins(ProcgenStepperPlugin::with_enabled(true));

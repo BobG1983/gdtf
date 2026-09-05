@@ -1,11 +1,11 @@
 //! Terrain load: shipped migrated terrain and theme content resolve by UUID.
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use gdtf_assets::{ContentFinding, ContentIntegrityReport, ContentValidationDone};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainSimKind, TerrainTag, TerrainUuid},
 };
 use gdtf_game::test_support::{AppState, load_released};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
 const MIGRATED_TERRAIN_DEF_COUNT: usize = 19;
 
@@ -46,9 +46,10 @@ const fn bulkhead_wall_uuid() -> TerrainUuid {
 
 #[test]
 fn shipped_migrated_terrain_and_theme_content_resolves_by_uuid() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<TerrainDefRegistry>(&mut app);
     advance_until_resource_exists::<UuidThemeRegistry>(&mut app);
@@ -124,9 +125,10 @@ fn shipped_migrated_terrain_and_theme_content_resolves_by_uuid() {
 
 #[test]
 fn every_shipped_terrain_def_parses_and_carries_the_views_it_owes() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<ContentValidationDone>(&mut app);
     let findings = app

@@ -1,4 +1,5 @@
 use bevy::{ecs::entity::Entity, prelude::*};
+use cobalt_test_utils::{advance_until, press_ui_button};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     acts::open_door_tu_cost,
@@ -10,7 +11,6 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
 };
 use gdtf_game::test_support::OpenDoorButton;
-use gdtf_test_utils::{advance_until, press_ui_button};
 
 use super::{actors::*, harness::*};
 

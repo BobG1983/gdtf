@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use cobalt_test_utils::press_left;
 use gdtf_battle_input::InspectTarget;
 use gdtf_battle_sim::{
     ganger::{Aiming, TuMax},
@@ -8,7 +9,6 @@ use gdtf_battle_sim::{
     visibility::SquadVisibility,
     weapon::{FireMode, MagazineSize, ModeKind},
 };
-use gdtf_test_utils::press_left;
 
 use super::harness::*;
 

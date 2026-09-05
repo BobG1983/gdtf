@@ -1,8 +1,8 @@
 use bevy::prelude::*;
+use cobalt_test_utils::press_left;
 use gdtf_battle_input::{ActIntent, GdtfBattleInputPlugin};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::prelude::{Cell, CellLevel, Level, OccupancyGrid};
-use gdtf_test_utils::press_left;
 
 use super::{harness::*, intent_seam::active_level};
 

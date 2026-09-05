@@ -11,6 +11,7 @@ pub(crate) use deploy::deploy_over_generated;
 #[cfg(feature = "dev_tools")]
 pub(crate) use procgen::outcome_from_packing_error;
 mod resolved;
+#[cfg(any(feature = "headless_test", feature = "dev_tools", feature = "mcp"))]
 crate::support_use!(resolved::ResolvedBattleSeed;);
 mod seed;
 #[cfg(feature = "dev_tools")]

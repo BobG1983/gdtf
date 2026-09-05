@@ -1,11 +1,11 @@
 use bevy::app::{App, Update};
+use cobalt_test_utils::advance_until;
 use gdtf_battle_presenter::GangerSprites;
 use gdtf_battle_sim::{
     battle::{TeardownBattleRequested, teardown_battle_on_request},
     prelude::{Cell, CellLevel, Direction, Level},
     test_support::SituationBuilder,
 };
-use gdtf_test_utils::advance_until;
 
 use super::{harness::*, probes::*};
 

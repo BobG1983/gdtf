@@ -1,3 +1,4 @@
+use cobalt_test_utils::probed;
 use gdtf_battle_input::{
     SelectedShooter,
     contextual::{EnterEmplacementAct, ExitEmplacementAct, PendingContextualIntents},
@@ -6,7 +7,6 @@ use gdtf_battle_sim::{
     acts::{EnterEmplacementRequested, ExitEmplacementRequested},
     prelude::{Direction, StanceKind},
 };
-use gdtf_test_utils::probed;
 
 use super::harness::*;
 

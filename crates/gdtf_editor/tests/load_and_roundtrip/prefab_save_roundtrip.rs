@@ -3,6 +3,7 @@
 #[cfg(not(feature = "mcp"))]
 compile_error!("the mcp test suites need the host package's `mcp` feature");
 
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until_resource_exists};
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
@@ -25,7 +26,6 @@ use gdtf_editor::{
     EditorMap, MapEditorSession, ProposedPlacement, apply_placement, editor_map_to_prefab,
     write_prefab_in,
 };
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
 const THEME: ThemeUuid = ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0662_0000_0011));
 
@@ -168,7 +168,11 @@ fn saved_prefab_round_trips_through_the_real_game_prefab_loader() {
         );
     }
 
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(dir.path().to_path_buf()).build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        dir.path().to_path_buf(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .build();
 
     advance_until_resource_exists::<PrefabRegistry>(&mut app);
 

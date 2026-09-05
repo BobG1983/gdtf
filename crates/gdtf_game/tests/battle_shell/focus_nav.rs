@@ -7,14 +7,15 @@ use bevy::{
     input_focus::{InputFocus, directional_navigation::DirectionalNavigationMap},
     math::CompassOctant,
 };
-use gdtf_test_utils::GdtfTestAppBuilder;
+use cobalt_test_utils::MinimalTestAppBuilder;
 use gdtf_ui::focus_nav::{FocusCancelled, NavDirection, NavigateRequest, set_initial_focus};
 
 #[test]
 fn set_initial_focus_sets_the_start() {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(gdtf_game::test_support::AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(gdtf_game::test_support::AppState::Running)
+            .build();
     app.update();
 
     let world = app.world_mut();
@@ -33,9 +34,10 @@ fn set_initial_focus_sets_the_start() {
 
 #[test]
 fn navigate_down_advances_focus() {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(gdtf_game::test_support::AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(gdtf_game::test_support::AppState::Running)
+            .build();
     app.update();
 
     let world = app.world_mut();
@@ -66,9 +68,10 @@ fn navigate_down_advances_focus() {
 
 #[test]
 fn navigate_east_then_west_walks_focus_horizontally() {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(gdtf_game::test_support::AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(gdtf_game::test_support::AppState::Running)
+            .build();
     app.update();
 
     let world = app.world_mut();
@@ -111,9 +114,10 @@ fn count_focus_cancelled(mut reader: MessageReader<FocusCancelled>) -> usize {
 
 #[test]
 fn focus_cancelled_message_is_registered_and_round_trips() {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(gdtf_game::test_support::AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(gdtf_game::test_support::AppState::Running)
+            .build();
     app.update();
 
     assert!(

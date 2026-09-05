@@ -15,9 +15,9 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{level::UuidThemeRegistry, terrain::def::TerrainUuid};
 use gdtf_editor::{EditorState, MapEditorPlugin, ThemeDraft, draft_to_theme_def, write_theme_in};
-use gdtf_test_utils::advance_until;
 
 const FLOOR: TerrainUuid = TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0662_0000_0001));
 

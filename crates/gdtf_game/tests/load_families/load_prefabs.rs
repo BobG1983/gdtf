@@ -1,4 +1,5 @@
 //! Prefab registry load from real assets; gate waits for it before leaving Load.
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use gdtf_assets::{ContentFinding, ContentIntegrityReport, ContentValidationDone};
 use gdtf_battle_sim::{
     level::{
@@ -8,7 +9,6 @@ use gdtf_battle_sim::{
     terrain::def::TerrainDefRegistry,
 };
 use gdtf_game::test_support::{AppState, load_released};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
 const PREFAB_FAMILY: &str = "PrefabRegistry";
 
@@ -21,9 +21,10 @@ const fn industrial_hive_theme() -> ThemeUuid {
 
 #[test]
 fn real_asset_resolves_prefab_registry() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<PrefabRegistry>(&mut app);
 
@@ -90,9 +91,10 @@ fn real_asset_resolves_prefab_registry() {
 
 #[test]
 fn every_shipped_placement_names_a_terrain_def_the_registry_holds() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
     advance_until_resource_exists::<PrefabRegistry>(&mut app);
     advance_until_resource_exists::<TerrainDefRegistry>(&mut app);
 

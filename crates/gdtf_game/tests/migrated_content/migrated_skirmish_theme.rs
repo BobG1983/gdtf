@@ -1,8 +1,8 @@
 //! Skirmish load: shipped situation names a migrated theme UUID that resolves.
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
 use gdtf_content_families::situation::LoadedSituation;
 use gdtf_game::test_support::{AppState, load_released};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
 const fn industrial_hive_theme() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001))
@@ -10,9 +10,10 @@ const fn industrial_hive_theme() -> ThemeUuid {
 
 #[test]
 fn shipped_skirmish_names_a_migrated_theme_uuid_that_resolves() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<LoadedSituation>(&mut app);
     advance_until_resource_exists::<UuidThemeRegistry>(&mut app);

@@ -17,6 +17,9 @@ ron = { workspace = true }
 cobalt_screenshot = { path = "../../libs/cobalt_screenshot", optional = true }
 cobalt_mcp_protocol = { path = "../../libs/cobalt_mcp_protocol", optional = true }
 cobalt_mcp_host = { path = "../../libs/cobalt_mcp_host", optional = true }
+# `test_support::BattleAppBuilder` is library code, so the harness it drives cannot be a
+# dev-dependency. `headless_test` turns both on together.
+cobalt_test_utils = { path = "../../libs/cobalt_test_utils", optional = true }
 bevy_egui = { version = "0.41", optional = true }
 image = { version = "0.25", default-features = false, features = ["png"] }
 
@@ -24,7 +27,10 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 # The mcp schedule tests look systems up by name, and without `bevy/debug`
 # `System::name()` returns a placeholder instead of the real name.
 bevy = { workspace = true, features = ["debug"] }
-gdtf_test_utils = { path = "../gdtf_test_utils" }
+cobalt_test_utils = { path = "../../libs/cobalt_test_utils" }
+# This crate's own test targets need `test_support`, which the `headless_test` feature
+# gates. A dev-dependency on self is how a test target turns a feature on for the lib.
+gdtf_game = { path = ".", features = ["headless_test"] }
 cobalt_state_scoped = { path = "../../libs/cobalt_state_scoped" }
 tempfile = "3"
 
@@ -34,7 +40,7 @@ default = []
 development = ["dynamic_linking", "dev_tools", "mcp", "file_watcher"]
 dynamic_linking = ["bevy/dynamic_linking"]
 # Headless integration tests: strips egui-only paths where needed.
-headless_test = []
+headless_test = ["dep:cobalt_test_utils"]
 file_watcher = ["bevy/file_watcher"]
 dev_tools = ["dep:bevy_egui"]
 # The MCP host: the MCP control channel and the screenshot pipeline it drives.

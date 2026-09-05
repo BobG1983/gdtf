@@ -8,6 +8,7 @@ use bevy::{
     transform::components::GlobalTransform,
     window::{CursorMoved, PrimaryWindow, Window, WindowResolution},
 };
+use cobalt_test_utils::{MessageProbe, MessageProbePlugin, probed};
 use gdtf_battle_input::{ActivePointer, GamepadCursor, GdtfBattleInputPlugin, InspectTarget};
 use gdtf_battle_presenter::{
     ActiveLevel, CellVisibility, HighlightRequest, ViewMode, WorldCamera, cell_to_world,
@@ -16,7 +17,6 @@ use gdtf_battle_sim::{
     occupancy::TerrainKind,
     prelude::{BattleInProgress, CellLevel, OccupancyGrid},
 };
-use gdtf_test_utils::{MessageProbe, MessageProbePlugin, probed};
 
 use super::harness::*;
 

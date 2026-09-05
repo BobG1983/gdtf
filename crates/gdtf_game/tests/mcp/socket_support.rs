@@ -15,9 +15,9 @@ use cobalt_mcp_protocol::{
     ports::McpPort,
 };
 use cobalt_screenshot::{PollCap, SettleFrames};
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until};
 use gdtf_battle_sim::rng::BattleSeed;
 use gdtf_game::test_support::{AppState, BattleScapeState, McpPlugin, RunningState};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
 pub(crate) type TestError = Box<dyn Error + Send + Sync>;
 
@@ -101,9 +101,10 @@ fn battlescape_state(app: &App) -> Option<BattleScapeState> {
 
 fn listening_menu_app() -> Result<(App, McpPort), TestError> {
     let (plugin, port) = McpPlugin::listening(McpPort::new(0))?;
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
     app.add_plugins(plugin);
     app.insert_resource(TimeUpdateStrategy::FixedTimesteps(ONE_STEP_A_FRAME));
     advance_until(&mut app, |app| {

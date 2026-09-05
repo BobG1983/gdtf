@@ -20,11 +20,11 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::gpu_adapter_probe;
 use gdtf_battle_presenter::{
     FireTargetHighlight, FireTargetTile, TopDownRendererPlugin, WORLD_RENDER_LAYER,
 };
 use gdtf_battle_sim::prelude::{BattleInProgress, Cell, CellLevel, Level, Tu};
-use gdtf_test_utils::gpu_adapter_probe;
 
 const DARK_CLEAR: Color = Color::srgb(0.02, 0.02, 0.03);
 

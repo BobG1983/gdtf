@@ -5,6 +5,7 @@ use cobalt_mcp_protocol::{
     command::RunOptions,
     message::{McpRequest, McpResponse},
 };
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{emplacement::EmplacementState, prelude::CellLevel};
 use gdtf_game::qa_wire::{
     act::ActRefusalNet,
@@ -14,7 +15,6 @@ use gdtf_game::qa_wire::{
     roster::{GangerCardNet, MountedNet},
     token::{EmplacementToken, GangerToken},
 };
-use gdtf_test_utils::advance_until;
 use serde::Deserialize;
 
 use super::fixture::{

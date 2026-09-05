@@ -8,10 +8,10 @@ use bevy::{
         ResMut, Resource, Transform, With,
     },
 };
+use cobalt_test_utils::{advance_until, advance_until_resource_exists};
 use gdtf_battle_presenter::{PresenterSystems, TerrainFogMaterial, TerrainSprite, TopDownAtlases};
 use gdtf_battle_sim::prelude::{Cell, CellLevel, Level};
 use gdtf_content_families::sprites::SpriteDefRegistry;
-use gdtf_test_utils::{advance_until, advance_until_resource_exists};
 
 use super::harness::*;
 

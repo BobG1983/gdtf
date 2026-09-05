@@ -11,11 +11,11 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::armor::{
     ArmorHardness, ArmorIntegrity, ArmorName, ArmorProtection, ArmorRegistry, ArmorType, BodyPart,
 };
 use gdtf_editor::{ArmorDraft, EditorState, MapEditorPlugin, draft_to_spec, write_armor_in};
-use gdtf_test_utils::advance_until;
 
 fn editor_app_with_asset_root(root: &Path) -> App {
     let mut app = App::new();

@@ -6,16 +6,17 @@ use bevy::{
     state::state::State,
     ui::{BackgroundColor, Interaction, Outline},
 };
+use cobalt_test_utils::MinimalTestAppBuilder;
 use gdtf_game::test_support::{
     AppState, BattlescapeButton, OptionsButton, QuitButton, RunningState,
 };
-use gdtf_test_utils::GdtfTestAppBuilder;
 use gdtf_ui::theme::default_theme;
 
 fn menu_app() -> bevy::app::App {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
     app.world_mut().insert_resource(default_theme());
     app.update();
     app

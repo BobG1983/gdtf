@@ -1,13 +1,13 @@
 //! Leaving a mount: the Exit button is the occupant's alone, and pressing it asks the sim.
 
 use bevy::prelude::*;
+use cobalt_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 use gdtf_battle_input::contextual::ContextualActSystems;
 use gdtf_battle_sim::{
     acts::ExitEmplacementRequested,
     emplacement::{EmplacementState, MountedBy},
 };
 use gdtf_game::test_support::ExitEmplacementButton;
-use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 
 use super::{actors::*, harness::*};
 

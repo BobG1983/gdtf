@@ -1,5 +1,6 @@
 //! Shared control fixture: the headless control app, fixture authoring, and
 use bevy::{input::ButtonInput, prelude::*};
+use cobalt_test_utils::{MessageProbePlugin, probed};
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
@@ -18,7 +19,6 @@ use gdtf_battle_sim::{
         ModeTuPercent, WieldedBy,
     },
 };
-use gdtf_test_utils::{MessageProbePlugin, probed};
 
 pub(crate) const PLAYER_FACTION: Faction = Faction::new(0);
 pub(crate) const ENEMY_FACTION: Faction = Faction::new(1);

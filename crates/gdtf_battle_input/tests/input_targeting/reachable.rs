@@ -3,6 +3,7 @@ use bevy::{
     asset::AssetPlugin, input::ButtonInput, platform::collections::HashSet, prelude::*,
     scene::ScenePlugin,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_battle_input::{GdtfBattleInputPlugin, PathPreviewTarget, SelectedShooter};
 use gdtf_battle_presenter::{
     ActiveLevel, PathPreview, ReachableCells, ReachableOverlayEnabled, ViewMode,
@@ -23,7 +24,6 @@ use gdtf_battle_sim::{
     vertical::{VerticalLink, VerticalLinkGraph, build_vertical_link_graph},
     visibility::{FactionRelation, SquadVisibility},
 };
-use gdtf_test_utils::advance_until;
 
 const PLAYER_FACTION: Faction = Faction::new(0);
 

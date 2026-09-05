@@ -1,10 +1,10 @@
 use bevy::prelude::*;
+use cobalt_test_utils::press_mouse;
 use gdtf_battle_input::{ActIntent, PendingActIntent};
 use gdtf_battle_sim::{
     acts::{MoveRequested, SetFacingRequested},
     prelude::{Cell, CellLevel, Direction, Position},
 };
-use gdtf_test_utils::press_mouse;
 
 use super::harness::*;
 

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use cobalt_test_utils::MinimalTestAppBuilder;
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     armor::{
@@ -14,7 +15,6 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::situation::LoadedSituation;
 use gdtf_game::test_support::{AppState, ModePanelRoot, ModeSingleButton};
-use gdtf_test_utils::GdtfTestAppBuilder;
 use gdtf_ui::theme::default_theme;
 
 use super::harness::*;
@@ -73,9 +73,10 @@ fn walk_app_with_situation(
     situation: Situation,
     gangs: gdtf_battle_sim::ganger::GangRegistry,
 ) -> App {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(armed_registry());

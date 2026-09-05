@@ -1,5 +1,5 @@
+use cobalt_test_utils::gpu_adapter_probe;
 use gdtf_battle_presenter::Brightness;
-use gdtf_test_utils::gpu_adapter_probe;
 
 use super::{
     color::{bt709_luma, srgb_decode, srgb_encode},

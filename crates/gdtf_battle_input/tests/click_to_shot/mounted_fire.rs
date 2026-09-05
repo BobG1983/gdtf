@@ -1,12 +1,12 @@
 //! Clicking while manning a mount: the pointer path acts with the MOUNT, not the carried gun.
 
 use bevy::prelude::*;
+use cobalt_test_utils::{clear_mouse, press_left};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     cover::HeightBand,
     prelude::{CellLevel, Direction, OccupancyGrid, Tu},
 };
-use gdtf_test_utils::{clear_mouse, press_left};
 
 use super::harness::*;
 

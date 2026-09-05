@@ -5,12 +5,12 @@ use bevy::{
     state::state::NextState,
     ui_widgets::ValueChange,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::procgen::StagedProcgen;
 use gdtf_game::test_support::{
     ProcgenStepperActive, ProcgenStepperPlugin, ProcgenStepperToggle, ProcgenStepperValueLabel,
     RunningState,
 };
-use gdtf_test_utils::advance_until;
 
 use super::harness::{
     FIXED_SEED, app_ready_for_battle, battlescape_state, drive_into_battle_running,

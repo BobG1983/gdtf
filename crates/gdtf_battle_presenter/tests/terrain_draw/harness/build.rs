@@ -12,6 +12,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until_resource_exists;
 use gdtf_assets::ContentFamilyAppExt;
 use gdtf_battle_presenter::{CharacterRoles, TopDownAtlases, TopDownRendererPlugin};
 use gdtf_battle_sim::{
@@ -23,7 +24,6 @@ use gdtf_battle_sim::{
     },
 };
 use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
-use gdtf_test_utils::advance_until_resource_exists;
 
 pub(crate) fn workspace_assets_root() -> PathBuf {
     let Some(root) = cobalt_ron_assets::workspace_assets_root() else {

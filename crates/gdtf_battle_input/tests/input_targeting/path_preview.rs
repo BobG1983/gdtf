@@ -4,6 +4,7 @@ use bevy::{
     asset::AssetPlugin, input::ButtonInput, platform::collections::HashSet, prelude::*,
     scene::ScenePlugin,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_battle_input::{
     ChosenFireMode, GdtfBattleInputPlugin, PathPreviewTarget, SelectedShooter,
 };
@@ -20,7 +21,6 @@ use gdtf_battle_sim::{
     visibility::{FactionRelation, SquadVisibility},
     weapon::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, WieldedBy},
 };
-use gdtf_test_utils::advance_until;
 
 const PLAYER_FACTION: Faction = Faction::new(0);
 

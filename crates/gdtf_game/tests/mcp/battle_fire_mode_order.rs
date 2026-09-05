@@ -5,8 +5,8 @@ use std::sync::mpsc;
 use bevy::app::App;
 use cobalt_mcp_host::IncomingRequest;
 use cobalt_mcp_protocol::message::McpResponse;
+use cobalt_test_utils::press_ui_button;
 use gdtf_game::{qa_wire::misc::ModeKindNet, test_support::ModeBurstButton};
-use gdtf_test_utils::press_ui_button;
 
 use super::{
     battle_fixture::{decoded, run_request, send},

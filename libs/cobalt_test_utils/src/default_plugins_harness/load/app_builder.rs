@@ -1,4 +1,4 @@
-//! Test app with `DefaultPlugins` and scene registration for load tests.
+//! Test app with `DefaultPlugins` and caller-supplied scene registration for load tests.
 
 use std::path::PathBuf;
 
@@ -9,11 +9,10 @@ use bevy::{
     ecs::error::warn,
     prelude::default,
     render::{RenderPlugin, settings::WgpuSettings},
-    state::state::NextState,
+    state::state::{FreelyMutableState, NextState, States},
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_game::test_support::{self, AppState};
 
 fn workspace_assets_root() -> PathBuf {
     let Some(root) = cobalt_ron_assets::workspace_assets_root() else {
@@ -22,21 +21,21 @@ fn workspace_assets_root() -> PathBuf {
     root
 }
 
-/// Builds a headless `DefaultPlugins` app with scenes registered.
-pub struct GdtfLoadTestAppBuilder {
+/// Builds a headless `DefaultPlugins` app with the caller's scenes registered.
+pub struct LoadTestAppBuilder {
     app: App,
 }
 
-impl GdtfLoadTestAppBuilder {
-    /// Use the workspace assets directory.
+impl LoadTestAppBuilder {
+    /// Use the workspace assets directory, then `register`.
     #[must_use]
-    pub fn new() -> Self {
-        Self::with_asset_root(workspace_assets_root())
+    pub fn new(register: impl FnOnce(&mut App)) -> Self {
+        Self::with_asset_root(workspace_assets_root(), register)
     }
 
-    /// Use an explicit asset root path.
+    /// Use an explicit asset root path, then `register`.
     #[must_use]
-    pub fn with_asset_root(root: PathBuf) -> Self {
+    pub fn with_asset_root(root: PathBuf, register: impl FnOnce(&mut App)) -> Self {
         let mut app = App::new();
         app.add_plugins(
             DefaultPlugins
@@ -64,16 +63,16 @@ impl GdtfLoadTestAppBuilder {
                 }),
         );
         app.set_error_handler(warn);
-        test_support::register_scenes_with_default_plugins(&mut app);
+        register(&mut app);
         Self { app }
     }
 
     /// Queue a transition into `state` before the first update.
     #[must_use]
-    pub fn starting_in(mut self, state: AppState) -> Self {
+    pub fn starting_in<S: States + FreelyMutableState>(mut self, state: S) -> Self {
         self.app
             .world_mut()
-            .resource_mut::<NextState<AppState>>()
+            .resource_mut::<NextState<S>>()
             .set(state);
         self
     }
@@ -81,11 +80,5 @@ impl GdtfLoadTestAppBuilder {
     /// Finish building and return the app.
     pub fn build(self) -> App {
         self.app
-    }
-}
-
-impl Default for GdtfLoadTestAppBuilder {
-    fn default() -> Self {
-        Self::new()
     }
 }

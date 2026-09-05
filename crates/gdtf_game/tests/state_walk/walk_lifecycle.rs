@@ -4,11 +4,11 @@ use bevy::{
     state::state::State,
     ui::Interaction,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_game::test_support::{
     AfterMathState, AppState, BattleRunningComplete, BattleScapeState, QuitButton, RunningState,
     app_state,
 };
-use gdtf_test_utils::advance_until;
 
 use super::harness::*;
 

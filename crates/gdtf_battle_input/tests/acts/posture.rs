@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use cobalt_test_utils::{press_key, probed};
 use gdtf_battle_input::{ActIntent, PendingActIntent, next_facing, next_stance};
 use gdtf_battle_sim::{
     acts::{
@@ -6,7 +7,6 @@ use gdtf_battle_sim::{
     },
     prelude::{Direction, StanceKind},
 };
-use gdtf_test_utils::{press_key, probed};
 
 use super::harness::*;
 

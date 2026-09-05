@@ -1,4 +1,4 @@
-//! HARNESS NOTE: the sim crate is the LOW crate, so it cannot depend on `gdtf_test_utils`
+//! HARNESS NOTE: `harness` builds the `App` here and adds `BattleSimPlugin`.
 mod affliction_drains;
 mod deed_coverage;
 mod determinism;

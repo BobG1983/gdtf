@@ -5,6 +5,7 @@ use bevy::{
     ecs::{entity::Entity, relationship::Relationship},
 };
 use cobalt_mcp_protocol::ports::McpPort;
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     acts::{downed::is_8_adjacent, exit_emplacement_tu_cost},
     emplacement::{
@@ -18,7 +19,6 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
 };
 use gdtf_game::qa_wire::cell::CellLevelNet;
-use gdtf_test_utils::advance_until;
 
 use crate::{
     battle_reads::{clear_cells_away_from, one_cardinal_step_from, player_gangers},

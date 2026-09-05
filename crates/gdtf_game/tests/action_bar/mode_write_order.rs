@@ -1,13 +1,13 @@
 //! A mode picked on the panel lives on the gun, so re-selecting the shooter cannot undo it.
 
 use bevy::prelude::*;
+use cobalt_test_utils::press_ui_button;
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     prelude::{Direction, StanceKind},
     weapon::ModeKind,
 };
 use gdtf_game::test_support::ModeBurstButton;
-use gdtf_test_utils::press_ui_button;
 
 use super::{harness::*, probes::*};
 

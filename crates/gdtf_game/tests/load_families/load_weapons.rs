@@ -1,10 +1,10 @@
 //! Load weapons into [`WeaponsFamily`] by authored member keys.
 //! Value-agnostic: registry presence and hit-type / ammo properties only.
 use bevy::app::Startup;
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use gdtf_battle_sim::weapon::{HitType, WeaponRegistry};
 use gdtf_content_families::WeaponsFamily;
 use gdtf_game::test_support::{AppState, app_state, load_released, seed_load_fallbacks};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
 
 use super::load_suite;
@@ -32,9 +32,10 @@ fn real_asset_resolves_weapon_registry_keyed_by_filename() {
 
 #[test]
 fn seeded_startup_does_not_shadow_real_weapon_resolution() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
     app.add_systems(Startup, seed_load_fallbacks);
 
     advance_until_resource_exists::<WeaponRegistry>(&mut app);
@@ -51,9 +52,10 @@ fn seeded_startup_does_not_shadow_real_weapon_resolution() {
 
 #[test]
 fn shipped_cone_and_line_weapons_resolve_their_aoe_hit_types() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<WeaponRegistry>(&mut app);
 
@@ -90,9 +92,10 @@ fn shipped_cone_and_line_weapons_resolve_their_aoe_hit_types() {
 
 #[test]
 fn some_shipped_weapon_authors_an_on_death_list() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<WeaponRegistry>(&mut app);
 
@@ -110,9 +113,10 @@ fn some_shipped_weapon_authors_an_on_death_list() {
 
 #[test]
 fn shipped_weapons_each_declare_an_accepted_ammo_type() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<WeaponRegistry>(&mut app);
 

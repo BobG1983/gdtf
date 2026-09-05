@@ -40,6 +40,6 @@ review and bisect get harder, and no one reads it in one sitting.
 
 ## Enforcement
 
-The conformance test `crates/gdtf_test_utils/tests/module_layout/` walks the tracked tree on
+The conformance test `crates/gdtf_conformance/tests/module_layout/` walks the tracked tree on
 every `cargo dtest` run. Any file over the block line, or any mod.rs carrying logic, fails the
 suite.

@@ -1,9 +1,9 @@
 //! Load themes into [`ThemeDefsFamily`].
 //! Value-agnostic: registry presence and structural properties only.
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until_resource_exists};
 use gdtf_battle_sim::level::UuidThemeRegistry;
 use gdtf_content_families::ThemeDefsFamily;
 use gdtf_game::test_support::AppState;
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
 
 use super::load_suite;
@@ -31,9 +31,10 @@ fn real_asset_resolves_uuid_theme_registry() {
 
 #[test]
 fn real_asset_themes_declare_terrain_and_default_floor() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<UuidThemeRegistry>(&mut app);
 

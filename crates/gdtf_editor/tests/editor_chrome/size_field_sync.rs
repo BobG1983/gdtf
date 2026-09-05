@@ -1,11 +1,11 @@
 //! Size field sync: grid changes update spans; commit reclamps the edit level.
 use bevy::prelude::*;
+use cobalt_test_utils::{UiTestAppBuilder, advance_until};
 use gdtf_battle_sim::level::{GridHeight, GridLevels, GridSize, GridWidth};
 use gdtf_editor::{
     CurrentEditLevel, EditorState, GridSpanInput, LevelStep, MapEditorPlugin, MapEditorSession,
     SizeFieldSpans,
 };
-use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 fn editor_app() -> App {
     let mut app = UiTestAppBuilder::new().with_ui_camera().build();

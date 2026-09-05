@@ -1,14 +1,15 @@
+//! The shared minimal builder's `starting_in` drives this app's own state machine.
 use bevy::state::state::State;
+use cobalt_test_utils::MinimalTestAppBuilder;
 use gdtf_game::test_support::{AppState, RunningState};
-
-use super::*;
 
 #[test]
 fn starting_in_running_enters_running_menu_after_one_update() {
     // — entering `Running` enters `Menu`, whose `spawn_menu` now authors its tree
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
 
     app.update();
 

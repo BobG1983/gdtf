@@ -3,8 +3,8 @@ use std::sync::mpsc;
 use bevy::{app::App, state::state::State};
 use cobalt_mcp_host::IncomingRequest;
 use cobalt_mcp_protocol::{command::CommandOutcome, message::McpResponse};
+use cobalt_test_utils::advance_until;
 use gdtf_game::test_support::{AppState, BattleScapeState, GameState, RunningState};
-use gdtf_test_utils::advance_until;
 
 use super::{
     battle_fixture::{menu_app_with_mcp, request_battle, run_request, send},

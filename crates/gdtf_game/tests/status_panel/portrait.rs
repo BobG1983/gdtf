@@ -1,16 +1,17 @@
 use bevy::{image::TextureAtlas, prelude::*, ui::widget::ImageNode};
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until};
 use gdtf_battle_sim::ganger::GangerName;
 use gdtf_game::test_support::{
     AppState, BattleScapeState, RunningState, StatPortrait, portrait_index_for_name,
 };
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
 use super::harness::*;
 
 fn load_battle_running_app() -> App {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(1));
     advance_until(&mut app, |app| {

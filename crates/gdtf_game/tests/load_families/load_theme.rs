@@ -2,10 +2,10 @@
 use std::path::PathBuf;
 
 use bevy::{asset::Handle, text::Font};
-use gdtf_game::test_support::{AppState, app_state, load_released};
-use gdtf_test_utils::{
-    GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
+use cobalt_test_utils::{
+    LoadTestAppBuilder, MinimalTestAppBuilder, advance_until, advance_until_resource_exists,
 };
+use gdtf_game::test_support::{AppState, app_state, load_released};
 use gdtf_ui::theme::{GdtfTheme, default_theme};
 
 use crate::load_suite::gate;
@@ -15,7 +15,7 @@ const HOLD_FRAMES: u32 = 32;
 
 #[test]
 fn entering_load_without_asset_server_does_not_panic() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -34,7 +34,7 @@ fn entering_load_without_asset_server_does_not_panic() {
 
 #[test]
 fn theme_present_transitions_to_intro_and_persists() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -57,7 +57,7 @@ fn theme_present_transitions_to_intro_and_persists() {
 
 #[test]
 fn load_does_not_leave_without_a_theme() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -83,9 +83,10 @@ fn bad_theme_root() -> PathBuf {
 
 #[test]
 fn real_asset_good_path_resolves_shipped_theme_and_transitions() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<GdtfTheme>(&mut app);
 
@@ -112,9 +113,10 @@ fn real_asset_good_path_resolves_shipped_theme_and_transitions() {
 
 #[test]
 fn real_asset_multi_font_load_resolves_distinct_title_font() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<GdtfTheme>(&mut app);
 
@@ -137,9 +139,12 @@ fn real_asset_multi_font_load_resolves_distinct_title_font() {
 
 #[test]
 fn real_asset_failure_path_does_not_hang_and_uses_default_theme() {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(bad_theme_root())
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        bad_theme_root(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
 
     advance_until_resource_exists::<GdtfTheme>(&mut app);
 

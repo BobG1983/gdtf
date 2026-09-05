@@ -2893,7 +2893,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "cobalt_ron_assets",
- "gdtf_test_utils",
+ "cobalt_test_utils",
  "ron",
  "serde",
  "tempfile",
@@ -2905,10 +2905,10 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "cobalt_ron_assets",
+ "cobalt_test_utils",
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
  "gdtf_game",
- "gdtf_test_utils",
  "gdtf_ui",
  "ron",
  "serde",
@@ -2920,11 +2920,11 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "cobalt_ron_assets",
+ "cobalt_test_utils",
  "gdtf_assets",
  "gdtf_battle_sim",
  "gdtf_content_families",
  "gdtf_game",
- "gdtf_test_utils",
  "ron",
  "serde",
  "tempfile",
@@ -2939,6 +2939,14 @@ dependencies = [
  "rand_chacha",
  "ron",
  "serde",
+]
+
+[[package]]
+name = "gdtf_conformance"
+version = "0.1.0"
+dependencies = [
+ "cobalt_ron_assets",
+ "toml_edit",
 ]
 
 [[package]]
@@ -2964,11 +2972,12 @@ dependencies = [
  "cobalt_ron_assets",
  "cobalt_screenshot",
  "cobalt_state_scoped",
+ "cobalt_test_utils",
  "gdtf_assets",
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
  "gdtf_content_families",
- "gdtf_test_utils",
+ "gdtf_game",
  "image",
  "ron",
  "serde",
@@ -2986,12 +2995,13 @@ dependencies = [
  "cobalt_ron_assets",
  "cobalt_screenshot",
  "cobalt_state_scoped",
+ "cobalt_test_utils",
  "gdtf_assets",
  "gdtf_battle_input",
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
  "gdtf_content_families",
- "gdtf_test_utils",
+ "gdtf_game",
  "gdtf_ui",
  "image",
  "ron",
@@ -3010,21 +3020,6 @@ version = "0.1.0"
 [[package]]
 name = "gdtf_hivescape_sim"
 version = "0.1.0"
-
-[[package]]
-name = "gdtf_test_utils"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "cobalt_ron_assets",
- "cobalt_test_utils",
- "gdtf_battle_sim",
- "gdtf_content_families",
- "gdtf_game",
- "gdtf_ui",
- "toml_edit",
- "wgpu",
-]
 
 [[package]]
 name = "gdtf_ui"

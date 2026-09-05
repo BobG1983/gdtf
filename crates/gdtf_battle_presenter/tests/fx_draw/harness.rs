@@ -11,6 +11,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until_resource_exists;
 use gdtf_battle_presenter::{
     CharacterRoles, EffectRoles, FxTuning, Played, ShotImpactResolved, TopDownAtlases,
     TopDownRendererPlugin,
@@ -23,7 +24,6 @@ use gdtf_battle_sim::{
     shot_fired::ShotFired,
     suppression::SuppressionApplied,
 };
-use gdtf_test_utils::advance_until_resource_exists;
 
 pub(crate) fn workspace_assets_root() -> PathBuf {
     let Some(root) = cobalt_ron_assets::workspace_assets_root() else {

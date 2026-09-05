@@ -1,5 +1,6 @@
 //! the ARMOR mode's own SAVE path feeds the authoring-validation
 use bevy::asset::AssetServer;
+use cobalt_test_utils::advance_until;
 use gdtf_assets::{ContentFamily, ContentIntegrityReport, ReferenceKeyScheme};
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorProtection, ArmorRegistry, BodyPart},
@@ -10,7 +11,6 @@ use gdtf_editor::{
     ArmorDraft, GangDraft, armor_file_name, draft_to_roster, draft_to_spec, write_armor_in,
     write_gang_in,
 };
-use gdtf_test_utils::advance_until;
 
 use crate::{
     advance::advance_to_published, app::editor_app_with_asset_root, findings::has_dangling_ref,

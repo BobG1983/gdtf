@@ -3,6 +3,7 @@ use bevy::{
     prelude::*,
     ui::{Interaction, Node, widget::Button},
 };
+use cobalt_test_utils::{advance_until, press_ui_button};
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedShooter};
 use gdtf_battle_presenter::WORLD_RENDER_LAYER;
 use gdtf_battle_sim::prelude::{Direction, StanceKind};
@@ -10,7 +11,6 @@ use gdtf_game::test_support::{
     AimToggleButton, BattleRunningComplete, BattleScapeState, LevelDownButton, LevelUpButton,
     StanceKneelingButton, StanceProneButton, StanceStandingButton,
 };
-use gdtf_test_utils::{advance_until, press_ui_button};
 
 use super::{harness::*, probes::*};
 

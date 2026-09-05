@@ -34,7 +34,7 @@ fn no_unexpected_flat_integration_tests() {
          binary and links Bevy again, which makes the suite slow. Move it into a directory suite \
          — tests/<suite>/main.rs with the test in a module beside it — or, if it really has to \
          run on its own, add it to ALLOWED_FLATS in \
-         crates/gdtf_test_utils/tests/no_flat_integration_tests/check.rs. The policy is in \
+         crates/gdtf_conformance/tests/no_flat_integration_tests/check.rs. The policy is in \
          docs/testing.md and .claude/rules/module-layout.md rule 5.",
         found.join("\n")
     );

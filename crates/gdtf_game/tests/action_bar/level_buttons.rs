@@ -1,7 +1,7 @@
+use cobalt_test_utils::press_ui_button;
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{metric::MAX_LEVELS, prelude::Level};
 use gdtf_game::test_support::{LevelDownButton, LevelUpButton};
-use gdtf_test_utils::press_ui_button;
 
 use super::{harness::*, probes::*};
 

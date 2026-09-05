@@ -3,8 +3,8 @@ use cobalt_mcp_protocol::{
     message::{McpRequest, ProtocolVersion},
     ports::McpPort,
 };
+use cobalt_test_utils::{UiTestAppBuilder, advance_until};
 use gdtf_editor::{EditorState, MapEditorPlugin, McpEditorPlugin};
-use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 use crate::{hello::assert_hello_ok, socket::Client, support::TestError};
 

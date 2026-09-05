@@ -4,11 +4,11 @@ use std::{collections::HashMap, path::PathBuf};
 
 use bevy::{asset::Assets, prelude::*, reflect::TypePath};
 use cobalt_ron_assets::RonAsset;
+use cobalt_test_utils::UiTestAppBuilder;
 use gdtf_assets::{
     ContentFamily, ContentFamilyAppExt, ContentFileStem, ContentFolderHandle, ContentMemberKey,
     ContentSourcePaths,
 };
-use gdtf_test_utils::UiTestAppBuilder;
 use serde::Deserialize;
 
 #[derive(Deserialize, TypePath, Debug, Clone, PartialEq, Eq)]
@@ -105,8 +105,8 @@ fn mixed_folder_resolves_both_keying_shapes_and_skips_wrong_typed_members() {
     app.register_content_family::<SwatchFamily>();
     app.register_content_family::<BadgeFamily>();
 
-    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
-    gdtf_test_utils::advance_until_resource_exists::<BadgeRegistry>(&mut app);
+    cobalt_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
+    cobalt_test_utils::advance_until_resource_exists::<BadgeRegistry>(&mut app);
 
     let mut expected_swatches = HashMap::new();
     expected_swatches.insert("alpha".to_owned(), 3);
@@ -144,7 +144,7 @@ fn failed_folder_inserts_the_empty_registry() {
     let mut app = real_asset_app();
     app.register_content_family::<RelicFamily>();
 
-    gdtf_test_utils::advance_until_resource_exists::<RelicRegistry>(&mut app);
+    cobalt_test_utils::advance_until_resource_exists::<RelicRegistry>(&mut app);
 
     assert_eq!(
         app.world().get_resource::<RelicRegistry>(),
@@ -164,7 +164,7 @@ fn missing_member_publishes_nothing_until_it_returns() {
     let mut app = real_asset_app();
     app.register_content_family::<SwatchFamily>();
     app.register_content_family::<BadgeFamily>();
-    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
+    cobalt_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
 
     app.world_mut().remove_resource::<SwatchRegistry>();
     let beta = app
@@ -193,7 +193,7 @@ fn missing_member_publishes_nothing_until_it_returns() {
         .resource_mut::<Assets<RonAsset<Swatch>>>()
         .insert(beta.id(), RonAsset::new(Swatch { tone: 7 }));
     assert!(reinserted.is_ok(), "re-inserting the member must succeed");
-    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
+    cobalt_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
     let betas = app
         .world()
         .get_resource::<SwatchRegistry>()
@@ -210,7 +210,7 @@ fn modified_member_rebuilds_the_registry_live() {
     let mut app = real_asset_app();
     app.register_content_family::<SwatchFamily>();
     app.register_content_family::<BadgeFamily>();
-    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
+    cobalt_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
 
     let alpha = app
         .world()
@@ -224,7 +224,7 @@ fn modified_member_rebuilds_the_registry_live() {
         **asset = Swatch { tone: 9 };
     }
 
-    gdtf_test_utils::advance_until(&mut app, |app| {
+    cobalt_test_utils::advance_until(&mut app, |app| {
         app.world()
             .get_resource::<SwatchRegistry>()
             .and_then(|registry| registry.0.get("alpha").copied())
@@ -252,7 +252,7 @@ fn swatch_source(app: &App, key: &str) -> Option<PathBuf> {
 fn every_registry_key_answers_the_file_it_was_read_from() {
     let mut app = real_asset_app();
     app.register_content_family::<SwatchFamily>();
-    gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
+    cobalt_test_utils::advance_until_resource_exists::<SwatchRegistry>(&mut app);
 
     let keys = swatch_keys(&app);
     assert!(
@@ -296,7 +296,7 @@ fn every_registry_key_answers_the_file_it_was_read_from() {
     {
         **asset = Swatch { tone: 9 };
     }
-    gdtf_test_utils::advance_until(&mut app, |app| {
+    cobalt_test_utils::advance_until(&mut app, |app| {
         app.world()
             .get_resource::<SwatchRegistry>()
             .and_then(|registry| registry.0.get("alpha").copied())

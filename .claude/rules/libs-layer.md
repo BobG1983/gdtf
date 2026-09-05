@@ -10,9 +10,11 @@ crate there is named `cobalt_*`, and the folder and the prefix mean the same thi
 
 A crate under `libs/` carries nothing game-specific.
 
-1. It names no `gdtf_*` crate under `[dependencies]`, `[build-dependencies]` or
-   `[dev-dependencies]`. The shared harness a `libs/` crate's own tests need is
-   `libs/cobalt_test_utils`.
+1. It names no dependency, under `[dependencies]`, `[dev-dependencies]` or
+   `[build-dependencies]` and none inherited from the root `[workspace.dependencies]`, whose
+   `path` resolves outside `libs/`. Owner ruling, 2026-09-04: "gdtf anything in libs/ is a
+   fail, deps, tests, src, dev deps, anything." The shared harness a `libs/` crate's own tests
+   need is `libs/cobalt_test_utils`.
 2. It defines no domain type. `Hp`, `Ganger`, `TerrainUuid` and everything else out of
    `docs/glossary.md` belong in `crates/`.
 3. It makes no genre assumption in a signature. A function that takes a grid cell, a turn, or a
@@ -25,8 +27,10 @@ A crate under `libs/` carries nothing game-specific.
 ## Enforcement
 
 The `libs_layer` guard suite backs two parts.
-`no_libs_crate_names_a_gdtf_crate_a_consumer_would_link` reads every `libs/*` manifest and fails
-on a `gdtf_*` name in any of the three dependency tables, and
+`no_libs_crate_path_dependency_leaves_libs` reads every `libs/*` manifest and resolves the
+`path` of every entry in the three dependency tables against the manifest's own directory, an
+inherited entry through the root `[workspace.dependencies]` table, and fails when the result
+lands outside `libs/`. A registry dependency with no `path` on either side is never examined.
 `the_libs_folder_and_the_cobalt_prefix_agree_in_both_directions` holds the folder and the
 `cobalt_` prefix to each other. `no_file_under_libs_names_the_game` reads every tracked file
 under `libs/`, tests included, and fails on the game's vocabulary: the game words plus the

@@ -1,5 +1,6 @@
 //! Selection cycle: next/prev by cell order, skip enemies and downed.
 use bevy::{input::ButtonInput, prelude::*};
+use cobalt_test_utils::{clear_keys, press_key};
 use gdtf_battle_input::{
     ActIntent, BoundKey, GdtfBattleInputPlugin, Keybinds, PendingActIntent, SelectedShooter,
 };
@@ -11,7 +12,6 @@ use gdtf_battle_sim::{
     test_support::GangerEntityBuilder,
     vertical::VerticalLinkGraph,
 };
-use gdtf_test_utils::{clear_keys, press_key};
 
 const PLAYER_FACTION: Faction = Faction::new(0);
 const ENEMY_FACTION: Faction = Faction::new(1);

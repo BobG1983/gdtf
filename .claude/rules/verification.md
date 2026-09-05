@@ -70,7 +70,8 @@ Pre-commit always runs its cargo subset. None of this changes the command list a
    `gdtf_battle_sim` is unit-testable with a seeded RNG injected.
 
 3. Scene, state and app behavior need a headless integration test
-   (`gdtf_test_utils::GdtfTestAppBuilder`) that asserts on `State` and `World`. Keep live app
+   (`cobalt_test_utils::MinimalTestAppBuilder`, passing
+   `gdtf_game::test_support::register_headless`) that asserts on `State` and `World`. Keep live app
    runs (`cargo drun`) for rendering, real input, and layout.
 
 4. Paste the assert, compiler, or clippy output verbatim.
@@ -92,7 +93,7 @@ Pre-commit always runs its cargo subset. None of this changes the command list a
    red (a new weapon file, a renamed stem, a magnitude tweak), the test is pinning a changeable
    literal. Assert the property instead: the registry is non-empty, a `Cone` deserializes
    somewhere, the gate waits on the resource. Exact filenames, counts, and magnitudes belong in
-   content data, not in `assert!`. Dedicated guard crates under `gdtf_test_utils/tests/` are the
+   content data, not in `assert!`. Dedicated guard suites under `crates/gdtf_conformance/tests/` are the
    exception: they pin repo structure on purpose.
 
 ### Gate-pass fingerprint

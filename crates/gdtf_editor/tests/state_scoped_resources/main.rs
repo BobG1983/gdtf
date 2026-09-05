@@ -2,8 +2,8 @@
 mod asserts;
 
 use bevy::prelude::*;
+use cobalt_test_utils::{UiTestAppBuilder, advance_until};
 use gdtf_editor::{EditorMode, EditorState, MapEditorPlugin};
-use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 use crate::asserts::{assert_all_scoped_resources_absent, assert_all_scoped_resources_seeded};
 

@@ -2,6 +2,7 @@
 
 use bevy::{app::App, ecs::entity::Entity};
 use cobalt_mcp_protocol::{command::RunOptions, ports::McpPort};
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     acts::downed::is_8_adjacent,
     effects::bleed::BleedingOut,
@@ -9,7 +10,6 @@ use gdtf_battle_sim::{
     prelude::CellLevel,
 };
 use gdtf_game::qa_wire::{act_payload::MeleeTargetNet, offer::OfferTargetNet, token::GangerToken};
-use gdtf_test_utils::advance_until;
 
 use super::{
     super::{

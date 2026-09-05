@@ -1,9 +1,9 @@
 //!    add three one-line `#[test]`s invoking [`loader_no_ops_without_asset_server`],
+use cobalt_test_utils::{
+    LoadTestAppBuilder, MinimalTestAppBuilder, advance_until, advance_until_resource_exists,
+};
 use gdtf_assets::ContentFamily;
 use gdtf_game::test_support::{AppState, app_state, load_released};
-use gdtf_test_utils::{
-    GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
-};
 use gdtf_ui::theme::GdtfTheme;
 
 use super::gate;
@@ -16,7 +16,7 @@ pub(crate) trait FamilyLoadContract: ContentFamily {
 }
 
 pub(crate) fn loader_no_ops_without_asset_server<F: FamilyLoadContract>() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -40,7 +40,7 @@ pub(crate) fn loader_no_ops_without_asset_server<F: FamilyLoadContract>() {
 }
 
 pub(crate) fn load_gates_on_registry<F: FamilyLoadContract>() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -64,9 +64,10 @@ pub(crate) fn load_gates_on_registry<F: FamilyLoadContract>() {
 }
 
 pub(crate) fn real_asset_resolves_registry<F: FamilyLoadContract>() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<F::Registry>(&mut app);
 

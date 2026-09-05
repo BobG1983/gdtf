@@ -4,6 +4,7 @@ use bevy::{
     prelude::*,
 };
 use cobalt_ron_assets::RonAsset;
+use cobalt_test_utils::{UiTestAppBuilder, advance_until};
 use gdtf_assets::{ContentFamily, ContentFolderHandle};
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry, ArmorSpec},
@@ -13,7 +14,6 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::{ArmorFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily};
 use gdtf_editor::{EditorState, MapEditorPlugin};
-use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 fn editor_app() -> App {
     let mut app = UiTestAppBuilder::new().with_ui_camera().build();

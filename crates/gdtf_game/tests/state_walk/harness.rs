@@ -2,6 +2,7 @@ use bevy::{
     app::App,
     state::state::{NextState, State},
 };
+use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
     situation::Situation,
@@ -10,16 +11,16 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::situation::LoadedSituation;
 use gdtf_game::test_support::{BattleScapeState, RunningState};
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
 const ONE_STEP_A_FRAME: u32 = 1;
 
 pub(crate) fn walk_app_with_theme() -> App {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .default_start()
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .default_start()
+            .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(GangerStatTuning::default());

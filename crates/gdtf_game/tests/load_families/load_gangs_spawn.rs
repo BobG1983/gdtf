@@ -10,9 +10,9 @@ use bevy::{
     prelude::{Entity, NextState, World},
     state::state::State,
 };
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until};
 use gdtf_battle_sim::ganger::{GangRegistry, GangerName};
 use gdtf_game::test_support::{AppState, BattleScapeState, RunningState};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
 fn running_state(app: &App) -> Option<RunningState> {
     app.world()
@@ -28,9 +28,10 @@ fn battlescape_state(app: &App) -> Option<BattleScapeState> {
 
 #[test]
 fn real_skirmish_with_real_gangs_spawns_the_expected_set() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until(&mut app, |app| {
         running_state(app) == Some(RunningState::Menu)

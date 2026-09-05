@@ -1,13 +1,13 @@
 //! Injury load: registry + tables resolve; gate holds without them.
+use cobalt_test_utils::{
+    LoadTestAppBuilder, MinimalTestAppBuilder, advance_until, advance_until_resource_exists,
+};
 use gdtf_battle_sim::{
     armor::BodyPart,
     injuries::{DamageContext, InjuryName, InjuryRegistry, InjuryTables},
     severity::Severity,
 };
 use gdtf_game::test_support::{AppState, app_state, load_released};
-use gdtf_test_utils::{
-    GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
-};
 
 use crate::load_suite::gate;
 
@@ -16,7 +16,7 @@ const HOLD_FRAMES: u32 = 32;
 
 #[test]
 fn injuries_loader_no_ops_cleanly_without_asset_server() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -34,7 +34,7 @@ fn injuries_loader_no_ops_cleanly_without_asset_server() {
 
 #[test]
 fn load_does_not_leave_without_an_injury_registry() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -54,9 +54,10 @@ fn load_does_not_leave_without_an_injury_registry() {
 
 #[test]
 fn real_asset_resolves_injury_registry_and_tables() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<InjuryRegistry>(&mut app);
 

@@ -1,4 +1,5 @@
 use bevy::{prelude::*, ui::widget::Button};
+use cobalt_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 use gdtf_battle_input::dispatch_act_intents;
 use gdtf_battle_sim::{
     acts::ReloadRequested,
@@ -6,7 +7,6 @@ use gdtf_battle_sim::{
     weapon::MagazineSize,
 };
 use gdtf_game::test_support::{ReloadButton, WeaponContent, WeaponPanelRoot};
-use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 
 use super::harness::*;
 

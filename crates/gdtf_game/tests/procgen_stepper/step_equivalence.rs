@@ -1,3 +1,4 @@
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     level::{PrefabRegistry, UuidThemeRegistry},
     procgen::{ProcgenTuning, StagedProcgen, StagedProcgenRegistries},
@@ -6,7 +7,6 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::situation::LoadedSituation;
 use gdtf_game::test_support::BattleScapeState;
-use gdtf_test_utils::advance_until;
 
 use super::harness::{
     FIXED_SEED, app_engaged_in_generation, app_ready_for_battle, battlescape_state,

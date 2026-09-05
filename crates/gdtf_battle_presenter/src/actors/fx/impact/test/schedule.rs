@@ -12,8 +12,8 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until_resource_exists;
 use gdtf_battle_sim::{prelude::BattleInProgress, weapon::DamageType};
-use gdtf_test_utils::advance_until_resource_exists;
 
 use super::super::animation::{ImpactAnimation, ImpactStep};
 use crate::{

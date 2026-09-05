@@ -1,7 +1,7 @@
 use bevy::app::App;
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::level::{PrefabRegistry, PrefabSpec};
 use gdtf_editor::prefab_candidates;
-use gdtf_test_utils::advance_until;
 
 use crate::{
     names::EDITOR_LOAD_PREFAB,

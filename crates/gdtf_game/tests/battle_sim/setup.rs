@@ -1,4 +1,5 @@
 use bevy::state::state::State;
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     armor::Wears,
     cover::CoverLedger,
@@ -11,7 +12,6 @@ use gdtf_battle_sim::{
     vertical::{LinkKind, VerticalLink, VerticalLinkGraph},
 };
 use gdtf_game::test_support::{BattleRunningComplete, BattleScapeState, GameState};
-use gdtf_test_utils::advance_until;
 
 use super::harness::*;
 

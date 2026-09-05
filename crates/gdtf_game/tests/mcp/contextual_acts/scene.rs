@@ -2,6 +2,7 @@
 
 use bevy::{app::App, ecs::entity::Entity};
 use cobalt_mcp_protocol::message::McpResponse;
+use cobalt_test_utils::advance_until;
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     acts::downed::is_8_adjacent,
@@ -20,7 +21,6 @@ use gdtf_game::{
     },
     test_support::ContextualReply,
 };
-use gdtf_test_utils::advance_until;
 
 use super::super::{
     act_support::decode,

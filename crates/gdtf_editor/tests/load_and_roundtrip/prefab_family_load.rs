@@ -3,6 +3,7 @@
 compile_error!("the mcp test suites need the host package's `mcp` feature");
 
 use bevy::{asset::uuid::Uuid, prelude::*};
+use cobalt_test_utils::advance_until;
 use gdtf_assets::ContentFolderHandle;
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
@@ -25,7 +26,6 @@ use gdtf_editor::{
     CurrentEditLevel, EditorMap, EditorState, MapEditorSession, editor_map_to_prefab, open_prefab,
     prefab_save_path_in, serialize_prefab,
 };
-use gdtf_test_utils::advance_until;
 
 use crate::support::editor_app_with_asset_root;
 

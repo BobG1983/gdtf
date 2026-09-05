@@ -11,6 +11,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_content_families::sprites::{
     SpriteDefRegistry, SpriteFacing, SpriteFps, SpriteImagePath, SpriteName, SpritePx, SpriteRect,
     SpriteSource,
@@ -18,7 +19,6 @@ use gdtf_content_families::sprites::{
 use gdtf_editor::{
     EditorState, MapEditorPlugin, SpriteDraft, draft_to_sprite_def, write_sprite_in,
 };
-use gdtf_test_utils::advance_until;
 
 fn editor_app_with_asset_root(root: &Path) -> App {
     let mut app = App::new();

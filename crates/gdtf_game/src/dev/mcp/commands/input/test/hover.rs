@@ -12,7 +12,7 @@ use cobalt_mcp_host::{
     dispatch::{CommandCall, register_command},
 };
 use cobalt_mcp_protocol::message::McpResponse;
-use gdtf_test_utils::WindowedTestAppBuilder;
+use cobalt_test_utils::WindowedTestAppBuilder;
 
 use super::super::hover::{InputHover, InputHoverArgs};
 

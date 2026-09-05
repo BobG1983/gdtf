@@ -1,6 +1,7 @@
 //! Tab/Escape respect panel focus: cycle and clear only when no panel holds focus.
 
 use bevy::{ecs::system::RunSystemOnce, input::ButtonInput, input_focus::InputFocus, prelude::*};
+use cobalt_test_utils::press_key;
 use gdtf_battle_input::{
     BoundKey, GdtfBattleInputPlugin, Keybinds, PanelNavOrder, SelectedShooter, focused_panel_button,
 };
@@ -11,7 +12,6 @@ use gdtf_battle_sim::{
     test_support::GangerEntityBuilder,
     vertical::VerticalLinkGraph,
 };
-use gdtf_test_utils::press_key;
 
 const PLAYER_FACTION: Faction = Faction::new(0);
 const LEVEL: Level = Level::new(0);

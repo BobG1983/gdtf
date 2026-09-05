@@ -1,4 +1,4 @@
-//! HARNESS NOTE (deviation from the ticket's "use `GdtfTestAppBuilder`"): the sim crate
+//! HARNESS NOTE (deviation from the ticket's "use `MinimalTestAppBuilder`"): the sim crate
 use bevy::{app::App, asset::AssetPlugin, prelude::MinimalPlugins, scene::ScenePlugin};
 use gdtf_battle_sim::{
     battle::{BattleInProgress, BattleSimPlugin, SetupBattleRequested, TeardownBattleRequested},

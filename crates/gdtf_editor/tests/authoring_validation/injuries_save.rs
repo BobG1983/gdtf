@@ -1,5 +1,6 @@
 //! the INJURY mode's weighting SAVE path feeds the authoring-validation
 use bevy::asset::AssetServer;
+use cobalt_test_utils::advance_until;
 use gdtf_assets::{ContentIntegrityReport, ReferenceKeyScheme};
 use gdtf_battle_sim::{
     armor::InjuryCategory,
@@ -7,7 +8,6 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::injuries::{INJURIES_FOLDER, WEIGHTING_SUBFOLDER};
 use gdtf_editor::{WeightingDraft, draft_to_weighting, weighting_file_name, write_weighting_in};
-use gdtf_test_utils::advance_until;
 
 use crate::{
     advance::advance_to_published, app::editor_app_with_asset_root, findings::has_dangling_ref,

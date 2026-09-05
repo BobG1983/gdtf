@@ -22,6 +22,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until_resource_exists;
 use gdtf_assets::ContentFamilyAppExt;
 use gdtf_battle_presenter::{
     Brightness, CELL_PX, MissingTileTexture, TerrainFogMaterial, TerrainSprite, TopDownAtlases,
@@ -40,7 +41,6 @@ use gdtf_battle_sim::{
     test_support::{UNRESOLVABLE_SPRITE, test_pieces, test_terrain_registry},
 };
 use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
-use gdtf_test_utils::advance_until_resource_exists;
 
 const MISSING_NAME: &str = UNRESOLVABLE_SPRITE;
 

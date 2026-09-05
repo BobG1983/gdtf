@@ -1,9 +1,9 @@
 //! Load gangs into [`GangsFamily`] by authored gang stems.
 //! Value-agnostic: presence and roster shape only; spawn cells come from deploy.
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until_resource_exists};
 use gdtf_battle_sim::ganger::GangRegistry;
 use gdtf_content_families::GangsFamily;
 use gdtf_game::test_support::AppState;
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
 
 use super::load_suite;
@@ -31,9 +31,10 @@ fn real_asset_resolves_gang_registry_keyed_by_filename() {
 
 #[test]
 fn real_asset_gang_rosters_hold_members() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<GangRegistry>(&mut app);
 

@@ -1,9 +1,9 @@
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     battle::BattleInProgress,
     rng::{BattleSeed, ShotRng},
 };
 use gdtf_game::test_support::BattleScapeState;
-use gdtf_test_utils::advance_until;
 
 use super::harness::*;
 

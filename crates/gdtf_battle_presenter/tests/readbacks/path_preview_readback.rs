@@ -15,7 +15,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_test_utils::gpu_adapter_probe;
+use cobalt_test_utils::gpu_adapter_probe;
 
 /// The translucent warm-amber tint the route preview draws (mirrors the private `PREVIEW_TINT`).
 const TINT: Color = Color::srgba(1.0, 0.75, 0.2, 0.55);

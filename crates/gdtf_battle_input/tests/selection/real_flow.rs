@@ -1,4 +1,5 @@
 use bevy::{asset::AssetPlugin, input::ButtonInput, prelude::*, scene::ScenePlugin};
+use cobalt_test_utils::press_left;
 use gdtf_battle_input::GdtfBattleInputPlugin;
 use gdtf_battle_presenter::{ActiveLevel, ViewMode, cell_to_world};
 // ---------------------------------------------------------------------------------
@@ -15,7 +16,6 @@ use gdtf_battle_sim::{
     battle::{BattleSimPlugin, PlayerFaction},
     prelude::{BattleInProgress, Cell, CellLevel, Faction, Level},
 };
-use gdtf_test_utils::press_left;
 
 use super::harness::*;
 

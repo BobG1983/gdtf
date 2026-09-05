@@ -11,13 +11,13 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     armor::ArmorName,
     ganger::{GangName, GangRegistry, GangerName, Toughness},
     weapon::{MeleeWeaponRegistry, WeaponName},
 };
 use gdtf_editor::{EditorState, GangDraft, MapEditorPlugin, draft_to_roster, write_gang_in};
-use gdtf_test_utils::advance_until;
 
 fn editor_app_with_asset_root(root: &Path) -> App {
     let mut app = App::new();

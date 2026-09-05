@@ -6,10 +6,10 @@ use bevy::{
     math::{URect, UVec2, Vec3},
     prelude::{MeshMaterial2d, Transform},
 };
+use cobalt_test_utils::{advance_until, advance_until_resource_exists};
 use gdtf_battle_presenter::{TerrainFogMaterial, TerrainSprite, TopDownAtlases, cell_to_world};
 use gdtf_battle_sim::prelude::{Cell, CellLevel, Level};
 use gdtf_content_families::sprites::SpriteDefRegistry;
-use gdtf_test_utils::{advance_until, advance_until_resource_exists};
 
 use super::harness::*;
 

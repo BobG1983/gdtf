@@ -1,11 +1,11 @@
 //! Combat tuning load: gate holds without it; real path resolves; failure uses default.
 use std::path::PathBuf;
 
+use cobalt_test_utils::{
+    LoadTestAppBuilder, MinimalTestAppBuilder, advance_until, advance_until_resource_exists,
+};
 use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_game::test_support::{AppState, app_state, load_released};
-use gdtf_test_utils::{
-    GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
-};
 use gdtf_ui::theme::default_theme;
 
 use crate::load_suite::gate;
@@ -22,7 +22,7 @@ fn bad_tuning_root() -> PathBuf {
 
 #[test]
 fn tuning_loader_no_ops_cleanly_without_asset_server() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -45,7 +45,7 @@ fn tuning_loader_no_ops_cleanly_without_asset_server() {
 
 #[test]
 fn load_does_not_leave_without_a_tuning() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -64,7 +64,7 @@ fn load_does_not_leave_without_a_tuning() {
 
 #[test]
 fn load_does_not_leave_on_theme_only() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -84,9 +84,10 @@ fn load_does_not_leave_on_theme_only() {
 
 #[test]
 fn real_asset_resolves_persistent_combat_tuning() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<CombatTuning>(&mut app);
 
@@ -110,9 +111,12 @@ fn real_asset_resolves_persistent_combat_tuning() {
 
 #[test]
 fn real_asset_failure_path_does_not_hang_and_uses_default_tuning() {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(bad_tuning_root())
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        bad_tuning_root(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
 
     advance_until_resource_exists::<CombatTuning>(&mut app);
 

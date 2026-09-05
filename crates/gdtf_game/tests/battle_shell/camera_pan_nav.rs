@@ -10,7 +10,7 @@ use gdtf_battle_sim::{
     battle::{BattleInProgress, PlayerFaction},
     metric::{Cell, Level},
 };
-use gdtf_test_utils::BattleAppBuilder;
+use gdtf_game::test_support::BattleAppBuilder;
 
 const PAN_UPDATES: u32 = 12;
 

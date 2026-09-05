@@ -3,10 +3,13 @@
 use core::marker::PhantomData;
 
 use bevy::{
-    MinimalPlugins, app::App, asset::AssetPlugin, scene::ScenePlugin, state::state::NextState,
+    MinimalPlugins,
+    app::App,
+    asset::AssetPlugin,
+    scene::ScenePlugin,
+    state::state::{FreelyMutableState, NextState, States},
     time::TimeUpdateStrategy,
 };
-use gdtf_game::test_support::{self, AppState};
 
 /// Builder phase: no starting state set yet.
 pub struct NoState;
@@ -15,32 +18,32 @@ pub struct NoState;
 pub struct WithState;
 
 /// `MinimalPlugins` headless app builder.
-pub struct GdtfTestAppBuilder<Phase> {
+pub struct MinimalTestAppBuilder<Phase> {
     app:    App,
     _phase: PhantomData<fn() -> Phase>,
 }
 
-impl GdtfTestAppBuilder<NoState> {
-    /// `MinimalPlugins` only (no scene support).
+impl MinimalTestAppBuilder<NoState> {
+    /// `MinimalPlugins` only (no scene support), then `register`.
     #[must_use]
-    pub fn new() -> Self {
-        Self::build_core(false)
+    pub fn new(register: impl FnOnce(&mut App)) -> Self {
+        Self::build_core(false, register)
     }
 
-    /// `MinimalPlugins` plus `AssetPlugin` and `ScenePlugin`.
+    /// `MinimalPlugins` plus `AssetPlugin` and `ScenePlugin`, then `register`.
     #[must_use]
-    pub fn new_with_scene_support() -> Self {
-        Self::build_core(true)
+    pub fn new_with_scene_support(register: impl FnOnce(&mut App)) -> Self {
+        Self::build_core(true, register)
     }
 
-    fn build_core(scene_support: bool) -> Self {
+    fn build_core(scene_support: bool, register: impl FnOnce(&mut App)) -> Self {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         if scene_support {
             app.add_plugins((AssetPlugin::default(), ScenePlugin));
         }
         app.insert_resource(TimeUpdateStrategy::FixedTimesteps(1));
-        test_support::register_headless(&mut app);
+        register(&mut app);
         Self {
             app,
             _phase: PhantomData,
@@ -49,34 +52,31 @@ impl GdtfTestAppBuilder<NoState> {
 
     /// Queue a transition into `state` before the first update.
     #[must_use]
-    pub fn starting_in(mut self, state: AppState) -> GdtfTestAppBuilder<WithState> {
+    pub fn starting_in<S: States + FreelyMutableState>(
+        mut self,
+        state: S,
+    ) -> MinimalTestAppBuilder<WithState> {
         self.app
             .world_mut()
-            .resource_mut::<NextState<AppState>>()
+            .resource_mut::<NextState<S>>()
             .set(state);
-        GdtfTestAppBuilder {
+        MinimalTestAppBuilder {
             app:    self.app,
             _phase: PhantomData,
         }
     }
 
-    /// Keep the default `AppState` and move to the `WithState` phase.
+    /// Keep the registered default state and move to the `WithState` phase.
     #[must_use]
-    pub fn default_start(self) -> GdtfTestAppBuilder<WithState> {
-        GdtfTestAppBuilder {
+    pub fn default_start(self) -> MinimalTestAppBuilder<WithState> {
+        MinimalTestAppBuilder {
             app:    self.app,
             _phase: PhantomData,
         }
     }
 }
 
-impl Default for GdtfTestAppBuilder<NoState> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl GdtfTestAppBuilder<WithState> {
+impl MinimalTestAppBuilder<WithState> {
     /// Finish building and return the app.
     pub fn build(self) -> App {
         self.app

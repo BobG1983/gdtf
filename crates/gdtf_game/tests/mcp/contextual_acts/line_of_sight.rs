@@ -11,6 +11,7 @@ use cobalt_mcp_protocol::{
     message::{McpRequest, McpResponse},
     ports::McpPort,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     acts::MeleeResolved,
     armor::{ArmorHardness, ArmorProtection},
@@ -28,7 +29,6 @@ use gdtf_game::{
     },
     test_support::MCP_PROTOCOL_VERSION,
 };
-use gdtf_test_utils::advance_until;
 use serde::Deserialize;
 
 use super::{

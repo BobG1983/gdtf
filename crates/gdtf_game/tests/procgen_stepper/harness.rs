@@ -1,11 +1,11 @@
 use bevy::{app::App, prelude::NextState, state::state::State};
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until};
 use gdtf_battle_sim::{
     ganger::GangerName, procgen::StagedProcgen, rng::BattleSeed, terrain::entity::TerrainIndex,
 };
 use gdtf_game::test_support::{
     AppState, BattleScapeState, PendingStepCommand, ProcgenStepperPlugin, RunningState, StepCommand,
 };
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
 const ONE_STEP_A_FRAME: u32 = 1;
@@ -37,9 +37,10 @@ pub(crate) fn deployed_ganger_count(app: &mut App) -> usize {
 }
 
 pub(crate) fn app_ready_for_battle(seed: u64) -> App {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
     app.world_mut().insert_resource(BattleSeed::new(seed));
     app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
         ONE_STEP_A_FRAME,

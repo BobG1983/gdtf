@@ -1,4 +1,5 @@
 use bevy::{ecs::entity::Entity, prelude::*};
+use cobalt_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 use gdtf_battle_input::{InspectTarget, SelectedShooter, contextual::ContextualActSystems};
 use gdtf_battle_sim::{
     acts::{ThrowGrenadeRequested, throw_grenade_tu_cost},
@@ -8,7 +9,6 @@ use gdtf_battle_sim::{
     weapon::{TrajectoryStyle, WieldedBy},
 };
 use gdtf_game::test_support::ThrowGrenadeButton;
-use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 
 use super::{actors::*, harness::*};
 

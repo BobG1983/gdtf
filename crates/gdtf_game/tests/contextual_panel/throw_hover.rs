@@ -1,10 +1,10 @@
 //! Throw stays offered without a live hover, and a press keeps the last cell.
 
+use cobalt_test_utils::press_ui_button;
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Level},
     weapon::TrajectoryStyle,
 };
-use gdtf_test_utils::press_ui_button;
 
 use super::{
     harness::battle_running_app,

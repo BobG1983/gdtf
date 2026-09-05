@@ -1,8 +1,8 @@
 //! Running the editor app until its integrity report has been published.
 
 use bevy::prelude::App;
+use cobalt_test_utils::advance_until;
 use gdtf_assets::ContentValidationDone;
-use gdtf_test_utils::advance_until;
 
 /// Run updates until the integrity report has been published.
 pub(crate) fn advance_to_published(app: &mut App) {

@@ -4,8 +4,8 @@ use bevy::{
     ecs::entity::Entity,
     state::state::{NextState, State},
 };
+use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_game::test_support::{AppState, RunningState};
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 
 fn camera2d_entities(app: &mut bevy::app::App) -> Vec<Entity> {
     app.world_mut()
@@ -22,9 +22,10 @@ fn running_state(app: &bevy::app::App) -> Option<RunningState> {
 
 #[test]
 fn entering_running_spawns_exactly_one_camera() {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
 
     app.update();
     app.update();
@@ -43,9 +44,10 @@ fn entering_running_spawns_exactly_one_camera() {
 
 #[test]
 fn ui_camera_survives_running_substate_exit() -> Result<(), &'static str> {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
 
     app.update();
     app.update();

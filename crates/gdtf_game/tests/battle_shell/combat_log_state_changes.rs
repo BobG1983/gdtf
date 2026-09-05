@@ -1,5 +1,6 @@
 //! Combat log: each Played fact appends the right line once.
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
+use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_battle_presenter::Played;
 use gdtf_battle_sim::{
     acts::MeleeStruck,
@@ -20,7 +21,6 @@ use gdtf_battle_sim::{
     weapon::DotDamage,
 };
 use gdtf_game::test_support::{AppState, BattleScapeState, CombatLogLine, RunningState};
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
@@ -39,9 +39,10 @@ fn running_state(app: &App) -> Option<RunningState> {
 }
 
 fn battle_running_app() -> App {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()

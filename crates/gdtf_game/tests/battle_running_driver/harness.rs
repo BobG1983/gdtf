@@ -5,8 +5,7 @@ use gdtf_battle_sim::{
     situation::{GangerSpawn, Situation},
     test_support::{GangerSpawnBuilder, SituationBuilder, key},
 };
-use gdtf_game::test_support::BattleScapeState;
-use gdtf_test_utils::BattleAppBuilder;
+use gdtf_game::test_support::{BattleAppBuilder, BattleScapeState};
 
 pub(crate) const SHOOTER_FACTION: u8 = 0;
 pub(crate) const TARGET_FACTION: u8 = 1;

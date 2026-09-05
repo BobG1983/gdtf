@@ -1,6 +1,6 @@
 use bevy::prelude::*;
+use cobalt_test_utils::{UiTestAppBuilder, advance_until};
 use gdtf_editor::{EditorState, MapEditorPlugin};
-use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 pub(crate) fn editor_app() -> App {
     let mut app = UiTestAppBuilder::new().with_ui_camera().build();

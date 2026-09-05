@@ -1,10 +1,10 @@
 //! `skirmish.ron` through `setup_battle` and then read the panel. A real ganger authored
 use bevy::{app::App, prelude::*, state::state::State, ui::Val};
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_game::test_support::{
     AppState, BattleScapeState, InspectPanelRoot, RunningState, StatName, StatStance, StatTuBar,
 };
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 use gdtf_ui::ProgressBarFill;
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
@@ -83,9 +83,10 @@ fn has_selection(app: &App) -> bool {
 
 #[test]
 fn real_skirmish_battle_shows_a_selectable_readable_player_ganger() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
         ONE_STEP_A_FRAME,

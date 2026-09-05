@@ -10,6 +10,7 @@ use cobalt_mcp_protocol::{
     command::{CommandArgsRon, CommandName, CommandOutcome, RunOptions},
     message::{McpRequest, McpResponse, RunCommand},
 };
+use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_presenter::playback::PlaybackCursor;
 use gdtf_battle_sim::{
@@ -29,7 +30,6 @@ use gdtf_content_families::situation::LoadedSituation;
 use gdtf_game::test_support::{
     AppState, BattleScapeState, McpPlugin, RunningState, StartBattleRequested,
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
@@ -69,9 +69,10 @@ pub(crate) fn menu_app_with_mcp() -> (App, mpsc::Sender<IncomingRequest>) {
 pub(crate) fn menu_app_with_situation(
     situation: Situation,
 ) -> (App, mpsc::Sender<IncomingRequest>) {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(GangerStatTuning::default());

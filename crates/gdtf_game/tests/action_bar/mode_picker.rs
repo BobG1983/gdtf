@@ -1,10 +1,10 @@
 use bevy::{prelude::*, ui::Display};
+use cobalt_test_utils::press_ui_button;
 use gdtf_battle_sim::{
     prelude::{Direction, StanceKind},
     weapon::{FireMode, ModeKind},
 };
 use gdtf_game::test_support::{ModeBurstButton, ModeFullButton, ModeSingleButton};
-use gdtf_test_utils::press_ui_button;
 
 use super::{harness::*, probes::*};
 

@@ -1,4 +1,4 @@
-//! HARNESS NOTE (deviation from the ticket's "use `GdtfTestAppBuilder`"): the sim crate is
+//! HARNESS NOTE (deviation from the ticket's "use `MinimalTestAppBuilder`"): the sim crate is
 use bevy::{
     app::App,
     asset::AssetPlugin,

@@ -6,9 +6,9 @@ use bevy::{
 };
 use cobalt_mcp_protocol::{command::RunOptions, ports::McpPort};
 use cobalt_ron_assets::HotRonResolved;
+use cobalt_test_utils::advance_until;
 use gdtf_battle_input::{BoundKey, Keybinds};
 use gdtf_game::qa_wire::key::{KeyNet, KeyPressNet, KeybindActionNet};
-use gdtf_test_utils::advance_until;
 
 use super::{
     act_support::{decode, next},

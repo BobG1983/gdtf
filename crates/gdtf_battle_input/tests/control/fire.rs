@@ -1,9 +1,9 @@
 use bevy::prelude::*;
+use cobalt_test_utils::{clear_mouse, press_mouse};
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, OccupancyGrid},
     visibility::SquadVisibility,
 };
-use gdtf_test_utils::{clear_mouse, press_mouse};
 
 use super::harness::*;
 

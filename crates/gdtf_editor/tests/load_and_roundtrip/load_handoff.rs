@@ -1,5 +1,6 @@
 //! Editor load path: all registries resolve through real families; empty root falls back.
 use bevy::prelude::*;
+use cobalt_test_utils::{UiTestAppBuilder, advance_until};
 use gdtf_assets::ContentFolderHandle;
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
@@ -15,7 +16,6 @@ use gdtf_content_families::{
     TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily, sprites::SpriteDefRegistry,
 };
 use gdtf_editor::{EditorState, MapEditorPlugin};
-use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 use crate::support::editor_app_with_asset_root;
 

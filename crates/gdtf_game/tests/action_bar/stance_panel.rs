@@ -1,8 +1,8 @@
 use bevy::{ecs::entity::Entity, prelude::*};
+use cobalt_test_utils::press_ui_button;
 use gdtf_battle_input::{ActIntent, PendingActIntent};
 use gdtf_battle_sim::prelude::{Direction, StanceKind};
 use gdtf_game::test_support::{StanceKneelingButton, StanceProneButton, StanceStandingButton};
-use gdtf_test_utils::press_ui_button;
 
 use super::{harness::*, probes::*};
 

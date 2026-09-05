@@ -5,6 +5,7 @@ compile_error!("the mcp test suites need the host package's `mcp` feature");
 use std::sync::mpsc;
 
 use bevy::{prelude::*, state::state::State};
+use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_battle_input::InspectTarget;
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::{
@@ -16,7 +17,6 @@ use gdtf_game::test_support::{
     RunningState, StanceKneelingButton, StanceProneButton, StanceStandingButton,
     StartBattleRequested,
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
@@ -59,9 +59,10 @@ fn seed_load(app: &mut App) {
 
 #[test]
 fn full_stack_composes_to_battle_running() {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .default_start()
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .default_start()
+            .build();
     seed_load(&mut app);
     let (_tx, rx) = mpsc::channel();
     app.add_plugins(McpPlugin::with_channels(rx));

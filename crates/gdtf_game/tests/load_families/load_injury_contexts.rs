@@ -1,11 +1,11 @@
 //! Load injury contexts and prove authored weighting resolves.
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until_resource_exists};
 use gdtf_battle_sim::{
     armor::{BodyPart, InjuryCategory},
     injuries::{DamageContext, InjuryTables},
     severity::Severity,
 };
 use gdtf_game::test_support::AppState;
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
 const PART_PER_CATEGORY: [(InjuryCategory, BodyPart); 4] = [
     (InjuryCategory::Head, BodyPart::Head),
@@ -16,9 +16,10 @@ const PART_PER_CATEGORY: [(InjuryCategory, BodyPart); 4] = [
 
 #[test]
 fn every_category_has_a_bucket_in_every_damage_context() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
     advance_until_resource_exists::<InjuryTables>(&mut app);
 
     let Some(tables) = app.world().get_resource::<InjuryTables>() else {
@@ -41,9 +42,10 @@ fn every_category_has_a_bucket_in_every_damage_context() {
 
 #[test]
 fn the_same_shared_pool_is_weighted_differently_per_source() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
     advance_until_resource_exists::<InjuryTables>(&mut app);
 
     let Some(tables) = app.world().get_resource::<InjuryTables>() else {

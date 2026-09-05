@@ -1,11 +1,11 @@
 use bevy::prelude::*;
+use cobalt_test_utils::{MessageProbePlugin, probed};
 use gdtf_battle_sim::{
     acts::{ShoveRequested, StabilizeDownedRequested},
     ganger::LifeState,
     prelude::{BattleInProgress, Cell, CellLevel, Faction, Level},
     test_support::GangerEntityBuilder,
 };
-use gdtf_test_utils::{MessageProbePlugin, probed};
 
 use super::{ContextualActAppExt, PendingContextualIntents, ShoveAct, StabilizeAct};
 use crate::SelectedShooter;

@@ -13,8 +13,8 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::{advance_until_load_state, gpu_adapter_probe};
 use gdtf_battle_presenter::SheetRole;
-use gdtf_test_utils::{advance_until_load_state, gpu_adapter_probe};
 
 static GPU_LOCK: Mutex<()> = Mutex::new(());
 

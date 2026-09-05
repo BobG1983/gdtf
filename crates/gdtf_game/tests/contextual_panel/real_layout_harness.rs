@@ -12,9 +12,9 @@ use bevy::{
     window::{ExitCondition, Window, WindowPlugin, WindowResolution},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_content_families::situation::LoadedSituation;
 use gdtf_game::test_support::{self, AppState, BattleScapeState, RunningState};
-use gdtf_test_utils::advance_until;
 use gdtf_ui::theme::default_theme;
 
 const REFERENCE_WIDTH: u32 = 1280;

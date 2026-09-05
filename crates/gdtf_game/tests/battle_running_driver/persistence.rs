@@ -1,5 +1,5 @@
+use cobalt_test_utils::advance_until;
 use gdtf_game::test_support::{BattleRunningComplete, BattleScapeState};
-use gdtf_test_utils::advance_until;
 
 use super::harness::*;
 

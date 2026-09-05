@@ -20,7 +20,10 @@ serde = { workspace = true }
 image = { version = "0.25", default-features = false, features = ["png"] }
 
 [dev-dependencies]
-gdtf_test_utils = { path = "../gdtf_test_utils" }
+cobalt_test_utils = { path = "../../libs/cobalt_test_utils" }
+# The load-path harness takes its scene registration as a parameter, so the one caller
+# under tests/ names `gdtf_game::test_support` directly.
+gdtf_game = { path = "../gdtf_game", features = ["headless_test"] }
 tempfile = "3"
 
 [features]

@@ -1,4 +1,5 @@
 use bevy::{app::App, math::Vec2, prelude::*};
+use cobalt_test_utils::{MessageProbe, MessageProbePlugin, probed};
 use gdtf_battle_presenter::{CellVisibility, HighlightRequest};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
@@ -6,7 +7,6 @@ use gdtf_battle_sim::{
     prelude::{CellLevel, Faction, Level, OccupancyGrid},
     visibility::SquadVisibility,
 };
-use gdtf_test_utils::{MessageProbe, MessageProbePlugin, probed};
 
 use super::harness::*;
 

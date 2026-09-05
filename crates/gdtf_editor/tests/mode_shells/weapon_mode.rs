@@ -11,6 +11,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     effects::{
         fields::FieldKey,
@@ -29,7 +30,6 @@ use gdtf_battle_sim::{
 use gdtf_editor::{
     EditorState, MapEditorPlugin, WeaponDraft, draft_to_weapon_spec, write_weapon_in,
 };
-use gdtf_test_utils::advance_until;
 
 fn editor_app_with_asset_root(root: &Path) -> App {
     let mut app = App::new();

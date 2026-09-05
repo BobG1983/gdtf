@@ -1,5 +1,6 @@
 //! the weapon→attachment edge's authoring-time pins — the editor
 use bevy::asset::AssetServer;
+use cobalt_test_utils::advance_until;
 use gdtf_assets::{ContentFamily, ContentIntegrityReport, ReferenceKeyScheme};
 use gdtf_battle_sim::{
     effects::attachments::{AimDelta, AttachmentEffect},
@@ -10,7 +11,6 @@ use gdtf_content_families::{AttachmentsFamily, WeaponsFamily};
 use gdtf_editor::{
     AttachmentDraft, attachment_file_name, draft_to_attachment_spec, write_attachment_in,
 };
-use gdtf_test_utils::advance_until;
 
 use crate::{
     advance::advance_to_published,

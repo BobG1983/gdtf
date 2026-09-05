@@ -1,5 +1,6 @@
 //! Pin: inspect/pin selection against fire mode and shooter state.
 use bevy::{input::ButtonInput, prelude::*};
+use cobalt_test_utils::{clear_mouse, press_left};
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectMode, InspectTarget, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
@@ -16,7 +17,6 @@ use gdtf_battle_sim::{
         FireMode, FireModeSpec, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
     },
 };
-use gdtf_test_utils::{clear_mouse, press_left};
 
 const PLAYER_FACTION: Faction = Faction::new(0);
 const ENEMY_FACTION: Faction = Faction::new(1);

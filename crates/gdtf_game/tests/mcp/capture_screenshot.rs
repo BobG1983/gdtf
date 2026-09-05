@@ -6,7 +6,7 @@ use cobalt_mcp_protocol::{
     message::{McpResponse, McpSessionError},
 };
 use cobalt_screenshot::ShotDir;
-use gdtf_test_utils::gpu_probe::gpu_adapter_probe;
+use cobalt_test_utils::gpu_probe::gpu_adapter_probe;
 
 use super::{
     capture_fixture::{

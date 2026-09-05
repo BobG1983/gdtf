@@ -6,11 +6,11 @@ use bevy::{
     ui::{Checked, Interaction},
     ui_widgets::ValueChange,
 };
+use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_game::test_support::{
     AppState, ContinueButton, OptionsScreenRoot, OptionsTitle, RunningState, SoundToggle,
     SoundValueLabel,
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{focus_nav::FocusActivated, theme::default_theme};
 
 fn running_state(app: &bevy::app::App) -> Option<RunningState> {
@@ -51,9 +51,10 @@ fn sound_value_text(app: &mut bevy::app::App) -> Option<String> {
 }
 
 fn options_app() -> bevy::app::App {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
     app.world_mut().insert_resource(default_theme());
     advance_until(&mut app, |app| {
         running_state(app) == Some(RunningState::Menu)

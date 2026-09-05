@@ -1,11 +1,11 @@
 //! On-death `LeaveField` keys are checked against the field catalog at load.
 use std::path::PathBuf;
 
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until_resource_exists};
 use gdtf_assets::{
     ContentFinding, ContentIntegrityReport, ContentValidationDone, ReferenceKeyScheme,
 };
 use gdtf_game::test_support::AppState;
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
 fn ref_integrity_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -15,9 +15,12 @@ fn ref_integrity_root() -> PathBuf {
 }
 
 fn validated_fixture_report() -> Vec<ContentFinding> {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(ref_integrity_root())
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        ref_integrity_root(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
     advance_until_resource_exists::<ContentValidationDone>(&mut app);
     app.world()
         .get_resource::<ContentIntegrityReport>()

@@ -1,13 +1,13 @@
 //! Per-file salvage: malformed siblings reported; good members still load; Load still exits.
 use std::path::PathBuf;
 
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use gdtf_assets::{ContentFinding, ContentIntegrityReport, ContentValidationDone};
 use gdtf_battle_sim::{
     effects::fields::{FieldDefRegistry, FieldKey},
     weapon::{WeaponName, WeaponRegistry},
 };
 use gdtf_game::test_support::{AppState, app_state};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
 fn salvage_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -18,9 +18,12 @@ fn salvage_root() -> PathBuf {
 
 #[test]
 fn malformed_sibling_is_salvaged_around_reported_and_load_still_exits() {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(salvage_root())
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        salvage_root(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
 
     advance_until_resource_exists::<WeaponRegistry>(&mut app);
 
@@ -80,9 +83,12 @@ fn malformed_sibling_is_salvaged_around_reported_and_load_still_exits() {
 
 #[test]
 fn an_authored_zero_turn_dot_is_salvage_rejected_and_never_reaches_the_sim() {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(salvage_root())
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        salvage_root(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
 
     advance_until_resource_exists::<WeaponRegistry>(&mut app);
 
@@ -135,9 +141,12 @@ fn an_authored_zero_turn_dot_is_salvage_rejected_and_never_reaches_the_sim() {
 
 #[test]
 fn an_authored_zero_turn_field_is_salvage_rejected_and_never_reaches_the_sim() {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(salvage_root())
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        salvage_root(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
 
     advance_until_resource_exists::<FieldDefRegistry>(&mut app);
 

@@ -90,7 +90,7 @@ Quick iteration: `cargo dcheck` / `cargo dclippy`. **Never expand the feature li
 
 Every behavioral ticket must add real-path tests that would fail before the change and pass
 after. Sim logic: in-crate unit tests with seeded RNG. Scene and state behavior: headless
-`GdtfTestAppBuilder` tests.
+`MinimalTestAppBuilder` tests.
 
 ## MCP
 

@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
         WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
-use gdtf_test_utils::BattleAppBuilder;
+use gdtf_game::test_support::BattleAppBuilder;
 
 pub(crate) const SHOOTER_FACTION: u8 = 0;
 pub(crate) const TARGET_FACTION: u8 = 1;

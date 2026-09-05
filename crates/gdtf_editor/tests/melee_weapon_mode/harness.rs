@@ -10,8 +10,8 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until;
 use gdtf_editor::{EditorState, MapEditorPlugin};
-use gdtf_test_utils::advance_until;
 
 pub(crate) fn editor_app_with_asset_root(root: &Path) -> App {
     let mut app = App::new();

@@ -8,6 +8,7 @@ use bevy::{
     transform::components::GlobalTransform,
     window::{PrimaryWindow, Window, WindowResolution},
 };
+use cobalt_test_utils::{MessageProbePlugin, clear_mouse, press_left, probed};
 use gdtf_battle_input::{
     BoundKey, ChosenFireMode, GdtfBattleInputPlugin, InspectTarget, Keybinds, chosen_spec,
 };
@@ -31,7 +32,6 @@ use gdtf_battle_sim::{
         ModeShots, ModeTuPercent, Wields,
     },
 };
-use gdtf_test_utils::{MessageProbePlugin, clear_mouse, press_left, probed};
 
 pub(crate) const PLAYER_FACTION: Faction = Faction::new(0);
 pub(crate) const ENEMY_FACTION: Faction = Faction::new(1);

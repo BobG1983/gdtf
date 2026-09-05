@@ -13,6 +13,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until_resource_exists;
 use gdtf_battle_presenter::{CharacterRoles, TopDownAtlases, TopDownRendererPlugin};
 use gdtf_battle_sim::{
     battle::{BattleReady, SetupBattleRequested, setup_battle_on_request},
@@ -26,7 +27,6 @@ use gdtf_battle_sim::{
     },
     visibility::SquadVisibility,
 };
-use gdtf_test_utils::advance_until_resource_exists;
 
 use super::probes::visibility_of_sim;
 

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
+use cobalt_test_utils::{clear_keys, press_key};
 use gdtf_battle_input::{ActIntent, PendingActIntent};
 use gdtf_battle_presenter::ViewMode;
-use gdtf_test_utils::{clear_keys, press_key};
 
 use super::harness::*;
 

@@ -1,11 +1,11 @@
 //! Prefab folder load: registry resolves by `ThemeUuid` + size + role.
 use std::path::PathBuf;
 
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use gdtf_battle_sim::level::{
     GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid,
 };
 use gdtf_game::test_support::{AppState, load_released};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
 const fn known_theme_uuid() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_0901))
@@ -24,9 +24,12 @@ fn fixture_size() -> Option<GridSize> {
 
 #[test]
 fn real_asset_resolves_prefab_registry_by_theme_uuid() {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(fixture_root())
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        fixture_root(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
 
     advance_until_resource_exists::<PrefabRegistry>(&mut app);
 

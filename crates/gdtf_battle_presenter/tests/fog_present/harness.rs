@@ -13,6 +13,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::advance_until_resource_exists;
 use gdtf_battle_presenter::{
     GangerSprites, TerrainFogMaterial, TerrainSprite, TopDownAtlases, TopDownRendererPlugin,
 };
@@ -29,7 +30,6 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     visibility::SquadVisibility,
 };
-use gdtf_test_utils::advance_until_resource_exists;
 
 pub(crate) const MAX_UPDATES: u32 = 128;
 

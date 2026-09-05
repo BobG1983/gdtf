@@ -5,6 +5,7 @@ use bevy::{
     state::state::{NextState, State},
     time::TimeUpdateStrategy,
 };
+use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_battle_sim::{
     effects::fields::FieldDefRegistry,
     rng::BattleSeed,
@@ -16,10 +17,10 @@ use gdtf_battle_sim::{
     tuning::{CombatTuning, GangerStatTuning},
 };
 use gdtf_content_families::situation::LoadedSituation;
-use gdtf_game::test_support::{AppState, BattleScapeState, RunningState};
 use gdtf_ui::theme::default_theme;
 
-use crate::{GdtfTestAppBuilder, advance_until};
+use super::register::register_headless;
+use crate::states::{AppState, BattleScapeState, RunningState};
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
 const ONE_STEP_A_FRAME: u32 = 1;
@@ -57,7 +58,7 @@ impl BattleAppBuilder {
 
     /// Drive into `BattleRunning`.
     pub fn build(self) -> App {
-        let mut app = GdtfTestAppBuilder::new_with_scene_support()
+        let mut app = MinimalTestAppBuilder::new_with_scene_support(register_headless)
             .starting_in(AppState::Running)
             .build();
 

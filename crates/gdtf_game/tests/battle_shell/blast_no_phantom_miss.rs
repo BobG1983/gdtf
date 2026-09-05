@@ -1,5 +1,6 @@
 //! Blast resolve: no phantom miss lines when a grenade impact resolves.
 use bevy::prelude::*;
+use cobalt_test_utils::{LoadTestAppBuilder, MessageProbe, MessageProbePlugin, advance_until};
 use gdtf_battle_presenter::ShotImpactResolved;
 use gdtf_battle_sim::{
     acts::ThrowGrenadeRequested,
@@ -14,7 +15,6 @@ use gdtf_battle_sim::{
     },
 };
 use gdtf_game::test_support::{AppState, BattleScapeState, CombatLogLine, RunningState};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, MessageProbe, MessageProbePlugin, advance_until};
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
 const ONE_STEP_A_FRAME: u32 = 1;
@@ -32,9 +32,10 @@ fn battlescape_state(app: &App) -> Option<BattleScapeState> {
 }
 
 fn battle_running_app() -> App {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
         ONE_STEP_A_FRAME,

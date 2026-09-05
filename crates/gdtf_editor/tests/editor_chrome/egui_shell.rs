@@ -1,10 +1,10 @@
 //! Editor shell: model resources exist in Editing; mode switches work.
 use bevy::prelude::*;
+use cobalt_test_utils::{UiTestAppBuilder, advance_until};
 use gdtf_editor::{
     CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, EditorState, HoveredCell, MapEditorPlugin,
     MapEditorSession,
 };
-use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 fn editor_app() -> App {
     let mut app = UiTestAppBuilder::new().with_ui_camera().build();

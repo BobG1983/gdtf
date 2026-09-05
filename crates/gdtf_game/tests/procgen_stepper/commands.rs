@@ -1,8 +1,8 @@
 use bevy::time::TimeUpdateStrategy;
+use cobalt_test_utils::advance_until;
 use gdtf_game::test_support::{
     AutoRunning, AutoStepDelay, BattleScapeState, PendingStepCommand, StepCommand,
 };
-use gdtf_test_utils::advance_until;
 
 use super::harness::{
     FIXED_SEED, app_engaged_in_generation, app_ready_for_battle, battlescape_state,

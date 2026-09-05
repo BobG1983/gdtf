@@ -10,9 +10,9 @@ use bevy_egui::{
     EguiContext, egui,
     input::{EguiWantsInput, write_egui_wants_input_system},
 };
+use cobalt_test_utils::{UiTestAppBuilder, advance_until};
 use gdtf_battle_presenter::ViewMode;
 use gdtf_editor::{CurrentEditLevel, EditorMode, EditorState, MapEditorPlugin};
-use gdtf_test_utils::{UiTestAppBuilder, advance_until};
 
 const PROBE_ID: &str = "egui-suppression-probe";
 

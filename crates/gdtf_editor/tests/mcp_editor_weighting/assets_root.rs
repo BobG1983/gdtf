@@ -1,5 +1,5 @@
+use cobalt_test_utils::UiTestAppBuilder;
 use gdtf_editor::{EditorMcpAssetsRoot, MapEditorPlugin};
-use gdtf_test_utils::UiTestAppBuilder;
 
 use crate::harness::advance_to_editing;
 

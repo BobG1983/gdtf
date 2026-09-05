@@ -1,16 +1,17 @@
 //! real folder-load path, that the KEYS authored on the shipped weapons
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until_resource_exists};
 use gdtf_battle_sim::{
     equipment::attachments::{AttachmentName, AttachmentRegistry, AttachmentSlot, attachment_fits},
     weapon::{MeleeWeaponRegistry, WeaponName, WeaponRegistry},
 };
 use gdtf_game::test_support::{AppState, app_state};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
 #[test]
 fn shipped_weapon_attachment_keys_resolve_and_fit() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<AttachmentRegistry>(&mut app);
     advance_until_resource_exists::<WeaponRegistry>(&mut app);

@@ -1,5 +1,6 @@
 //! Aim toggle: button active state tracks the selected shooter's aiming mode.
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
+use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     ganger::Aiming,
@@ -9,7 +10,6 @@ use gdtf_battle_sim::{
     weapon::WeaponRegistry,
 };
 use gdtf_game::test_support::{AimToggleButton, AppState, BattleScapeState, RunningState};
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{SwitchState, theme::default_theme};
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
@@ -28,9 +28,10 @@ fn running_state(app: &App) -> Option<RunningState> {
 }
 
 fn walk_app() -> App {
-    let mut app = GdtfTestAppBuilder::new_with_scene_support()
-        .starting_in(AppState::Running)
-        .build();
+    let mut app =
+        MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
+            .starting_in(AppState::Running)
+            .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut().insert_resource(WeaponRegistry::default());

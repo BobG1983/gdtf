@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use bevy::{app::App, ecs::message::Messages, math::Vec3, transform::components::Transform};
+use cobalt_test_utils::advance_until_resource_exists;
 use gdtf_battle_presenter::{TerrainSprite, TopDownAtlases, cell_to_world};
 use gdtf_battle_sim::{
     battle::BattleReady,
@@ -14,7 +15,6 @@ use gdtf_battle_sim::{
     test_support::test_pieces,
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
-use gdtf_test_utils::advance_until_resource_exists;
 
 use super::harness::*;
 

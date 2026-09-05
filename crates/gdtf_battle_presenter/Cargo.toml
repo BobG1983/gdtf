@@ -13,7 +13,7 @@ gdtf_content_families = { path = "../gdtf_content_families" }
 serde = { workspace = true }
 
 [dev-dependencies]
-gdtf_test_utils = { path = "../gdtf_test_utils" }
+cobalt_test_utils = { path = "../../libs/cobalt_test_utils" }
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 gdtf_game = { path = "../gdtf_game", features = ["headless_test"] }
 bevy = { workspace = true }

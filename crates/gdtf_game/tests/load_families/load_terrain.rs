@@ -1,8 +1,8 @@
 //! Load terrain defs: non-empty registry from the real folder; no pinned stems.
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until_resource_exists};
 use gdtf_battle_sim::terrain::def::{TerrainDefRegistry, TerrainSimKind};
 use gdtf_content_families::TerrainDefsFamily;
 use gdtf_game::test_support::AppState;
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
 
 use super::load_suite;
@@ -30,9 +30,10 @@ fn real_asset_resolves_terrain_def_registry_by_uuid() {
 
 #[test]
 fn some_shipped_terrain_def_authors_an_on_death_list() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
     advance_until_resource_exists::<TerrainDefRegistry>(&mut app);
 
     let Some(registry) = app.world().get_resource::<TerrainDefRegistry>() else {
@@ -66,9 +67,10 @@ const ABSORBED_A_TWIN: [&str; 6] = [
 
 #[test]
 fn the_orientation_twins_art_lives_on_the_survivors_view_rows() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
     advance_until_resource_exists::<TerrainDefRegistry>(&mut app);
 
     let Some(registry) = app.world().get_resource::<TerrainDefRegistry>() else {
@@ -101,9 +103,10 @@ fn the_orientation_twins_art_lives_on_the_survivors_view_rows() {
 
 #[test]
 fn a_shipped_emplacement_names_at_least_one_entry_side() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
     advance_until_resource_exists::<TerrainDefRegistry>(&mut app);
 
     let Some(registry) = app.world().get_resource::<TerrainDefRegistry>() else {

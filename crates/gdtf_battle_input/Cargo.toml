@@ -14,7 +14,7 @@ gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 bevy = { workspace = true }
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
 ron = { workspace = true }
-gdtf_test_utils = { path = "../gdtf_test_utils" }
+cobalt_test_utils = { path = "../../libs/cobalt_test_utils" }
 gdtf_game = { path = "../gdtf_game", features = ["headless_test"] }
 gdtf_ui = { path = "../gdtf_ui" }
 

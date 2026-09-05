@@ -1,10 +1,10 @@
 //! A2: the theme→terrain edge's authoring-time pins — a dangling
 use bevy::asset::{AssetEvent, AssetServer, Assets, uuid::Uuid};
 use cobalt_ron_assets::RonAsset;
+use cobalt_test_utils::advance_until;
 use gdtf_assets::{ContentFamily, ContentFolderHandle, ContentIntegrityReport, ReferenceKeyScheme};
 use gdtf_battle_sim::{level::UuidThemeDef, terrain::def::TerrainUuid};
 use gdtf_content_families::ThemeDefsFamily;
-use gdtf_test_utils::advance_until;
 
 use crate::{
     advance::advance_to_published,

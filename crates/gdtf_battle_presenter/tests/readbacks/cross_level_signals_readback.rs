@@ -21,6 +21,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use cobalt_test_utils::gpu_adapter_probe;
 use gdtf_battle_presenter::{
     ActiveLevel, CrossLevelBadgeTile, Layer, TopDownRendererPlugin, WORLD_RENDER_LAYER,
     cell_to_world_layered,
@@ -30,7 +31,6 @@ use gdtf_battle_sim::{
     prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, LifeState, Position},
     visibility::SquadVisibility,
 };
-use gdtf_test_utils::gpu_adapter_probe;
 
 const DARK_CLEAR: Color = Color::srgb(0.02, 0.02, 0.03);
 

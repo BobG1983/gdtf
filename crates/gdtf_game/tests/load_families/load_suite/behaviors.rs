@@ -3,9 +3,9 @@ use std::path::PathBuf;
 
 use bevy::asset::{AssetServer, Assets};
 use cobalt_ron_assets::RonAsset;
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use gdtf_assets::{ContentFamily, ContentFinding, ContentIntegrityReport, ContentValidationDone};
 use gdtf_game::test_support::{AppState, app_state, load_released};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
 const HOLDBACK_UPDATES: u32 = 4;
 
@@ -30,9 +30,12 @@ pub(crate) trait FamilyBehaviorContract: ContentFamily {
 }
 
 pub(crate) fn salvage_parity<F: FamilyBehaviorContract>() {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(fixture_root(F::SALVAGE_FIXTURE_ROOT))
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        fixture_root(F::SALVAGE_FIXTURE_ROOT),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
 
     advance_until_resource_exists::<F::Registry>(&mut app);
     let registry = app.world().get_resource::<F::Registry>();
@@ -97,10 +100,12 @@ pub(crate) fn salvage_parity<F: FamilyBehaviorContract>() {
 }
 
 pub(crate) fn missing_folder_fails_closed_empty<F: FamilyBehaviorContract>() {
-    let mut app =
-        GdtfLoadTestAppBuilder::with_asset_root(fixture_root(F::MISSING_FOLDER_FIXTURE_ROOT))
-            .starting_in(AppState::Load)
-            .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        fixture_root(F::MISSING_FOLDER_FIXTURE_ROOT),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
 
     advance_until_resource_exists::<F::Registry>(&mut app);
     let registry = app.world().get_resource::<F::Registry>();
@@ -125,9 +130,10 @@ pub(crate) fn missing_folder_fails_closed_empty<F: FamilyBehaviorContract>() {
 }
 
 pub(crate) fn never_publishes_partial<F: FamilyBehaviorContract>() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
     advance_until_resource_exists::<F::Registry>(&mut app);
     assert!(
         app.world().get_resource::<F::Registry>().is_some(),
@@ -183,9 +189,10 @@ pub(crate) fn never_publishes_partial<F: FamilyBehaviorContract>() {
 }
 
 pub(crate) fn redrive_rebuilds_live<F: FamilyBehaviorContract>() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
     advance_until_resource_exists::<F::Registry>(&mut app);
 
     let member = app

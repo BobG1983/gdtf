@@ -1,12 +1,12 @@
 //! 1. [`skirmish_ron_authors_no_terrain`] — the SHIPPED `assets/content/situations/skirmish.ron`
 use bevy::{app::App, prelude::NextState, state::state::State};
+use cobalt_test_utils::{LoadTestAppBuilder, advance_until};
 use gdtf_battle_sim::{
     level::{PrefabRegistry, ThemeUuid},
     situation::Situation,
     terrain::entity::TerrainIndex,
 };
 use gdtf_game::test_support::{AppState, BattleScapeState, RunningState};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
 const ONE_STEP_A_FRAME: u32 = 1;
@@ -88,9 +88,10 @@ fn prefab_len(app: &App) -> Option<usize> {
 
 #[test]
 fn procgen_battle_reaches_running_with_populated_terrain() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
         ONE_STEP_A_FRAME,

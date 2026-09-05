@@ -2,9 +2,9 @@
 
 use bevy::{app::App, ecs::entity::Entity};
 use cobalt_mcp_protocol::{command::RunOptions, ports::McpPort};
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{openable::OpenState, prelude::CellLevel};
 use gdtf_game::qa_wire::{act::ActRefusalNet, offer::OfferTargetNet, token::DoorToken};
-use gdtf_test_utils::advance_until;
 
 use super::{
     super::{

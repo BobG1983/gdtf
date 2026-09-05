@@ -1,0 +1,16 @@
+[package]
+name = "gdtf_conformance"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+# The guard suites read the repo tree and its manifests. `cobalt_ron_assets` locates the
+# workspace root; `toml_edit` reads a Cargo.toml as TOML, so an equivalent spelling of the
+# same key cannot fail a guard.
+[dev-dependencies]
+cobalt_ron_assets = { path = "../../libs/cobalt_ron_assets" }
+toml_edit = { version = "0.25", default-features = false, features = ["parse"] }
+
+[lints]
+workspace = true

@@ -1,11 +1,11 @@
 //! `AppState::Load` loads the authored `Situation` `.ron`.
 use std::path::PathBuf;
 
+use cobalt_test_utils::{
+    LoadTestAppBuilder, MinimalTestAppBuilder, advance_until, advance_until_resource_exists,
+};
 use gdtf_content_families::situation::LoadedSituation;
 use gdtf_game::test_support::{AppState, app_state, load_released};
-use gdtf_test_utils::{
-    GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
-};
 use gdtf_ui::theme::GdtfTheme;
 
 use crate::load_suite::gate;
@@ -15,7 +15,7 @@ const HOLD_FRAMES: u32 = 32;
 
 #[test]
 fn situation_loader_no_ops_cleanly_without_asset_server() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -38,9 +38,10 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
 
 #[test]
 fn real_asset_resolves_persistent_loaded_situation() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until_resource_exists::<LoadedSituation>(&mut app);
 
@@ -60,9 +61,10 @@ fn real_asset_resolves_persistent_loaded_situation() {
 
 #[test]
 fn real_asset_gate_waits_for_the_real_situation() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+    let mut app =
+        LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
+            .starting_in(AppState::Load)
+            .build();
 
     advance_until(&mut app, load_released);
     assert!(
@@ -85,7 +87,7 @@ fn real_asset_gate_waits_for_the_real_situation() {
 
 #[test]
 fn load_does_not_leave_without_a_situation() {
-    let mut app = GdtfTestAppBuilder::new()
+    let mut app = MinimalTestAppBuilder::new(gdtf_game::test_support::register_headless)
         .starting_in(AppState::Load)
         .build();
 
@@ -114,9 +116,12 @@ fn bad_situation_root() -> PathBuf {
 
 #[test]
 fn real_asset_failed_situation_falls_back_and_does_not_strand() {
-    let mut app = GdtfLoadTestAppBuilder::with_asset_root(bad_situation_root())
-        .starting_in(AppState::Load)
-        .build();
+    let mut app = LoadTestAppBuilder::with_asset_root(
+        bad_situation_root(),
+        gdtf_game::test_support::register_scenes_with_default_plugins,
+    )
+    .starting_in(AppState::Load)
+    .build();
 
     advance_until_resource_exists::<LoadedSituation>(&mut app);
 
