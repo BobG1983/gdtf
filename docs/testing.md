@@ -26,10 +26,14 @@ These repo-wide **guard suites** live in `crates/gdtf_conformance/tests/` and ri
 - **`module_layout`** — the module-layout conformance guard: wiring-only `mod.rs`, the 400-line block, and the exemption registry.
 - **`no_flat_integration_tests`** — every crate's, bin's and lib's `tests/` holds dir-form suites (`<suite>/main.rs`), never flat `tests/*.rs` binaries.
 - **`rustdoc_lint_gate`** — the workspace denies the whole rustdoc lint group and every member opts into the workspace lints.
-- **`doc_path_citations`** — every backticked `crates/`, `libs/` or `bins/` Rust path cited in `docs/` or `.claude/` names a file that is on disk.
 - **`libs_layer`** — every crate under `libs/` carries a `cobalt_` name, names the game in no tracked file, and depends on nothing whose path leaves `libs/`.
 - **`mcp_feature_gate`** — every file declaring the MCP host gates it on that host package's `mcp` feature, never on the build profile.
-- **`no_graphic_name`** — no shipped content file, test fixture or doc still names the retired terrain-def field `graphic_name`.
+
+A guard suite asserts something about the code. One that asserts the state of the checkout instead
+does not belong here: it goes red on ordinary editing, and it cannot tell a real defect from a file
+someone just moved or a word someone just wrote. `doc_path_citations` and `no_graphic_name` were
+both deleted for this. A check that needs the tree in a particular state belongs in `/gate` or the
+pre-commit hook.
 
 ## Conventions
 
