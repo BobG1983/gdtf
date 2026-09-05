@@ -60,17 +60,7 @@ the user gives a new ordering. When it does, rewrite the affected lines in the f
 Drop any ticket that has landed. Cap the list at 20. If it would run longer, keep the ones nearest
 to being worked and say in a line beneath that the rest are on the board.
 
-### Step 6. Gotchas This Run
-
-If anything this run behaved unexpectedly, in a way unlikely to be a one-off, check whether the
-list already holds that gotcha. If it does, increment its count and move it to the top. If it does
-not, add it at the top as one short sentence in this form:
-`While working on GTW-n, <what happened>. The solution was: <what to do>. This gotcha has been seen 1 time.`
-Then, if any entry now reads more than 5 times, take it out of the list, and either file it as a
-bug if it is a defect in the code, the rules or the workflow, or write it to memory if it is not.
-Finally, if the list is longer than 10, delete the oldest entry showing 1 time.
-
-### Step 7. Tick Log
+### Step 6. Tick Log
 
 Write this section only in a heartbeat tick. It records ticks, not every edit. Add one line at the
 top:
@@ -78,9 +68,9 @@ top:
 Name the cron id, the run id of anything in flight, where `develop` is, and whether you started a
 build. Then count the lines. If there are 6, delete the bottom one.
 
-### Step 8. User Directed Notes
+### Step 7. User Directed Notes
 
-Touch this section only if the user directed a note in this conversation, or a ticket has landed.
+Touch this section only if the user directed a note in this conversation, DO NOT ADD ANYTHING ELSE.
 
 If the user directed a note, add it under a heading in the form
 `### Short Description - Agreed YYYY-MM-DD - Delete after landing GTW-n`.
