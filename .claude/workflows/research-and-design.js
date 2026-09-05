@@ -297,7 +297,7 @@ const FIT_SCHEMA = {
     ungroundedPros: { type: 'array', items: { type: 'string' } },
     missedCons: { type: 'array', items: { type: 'string' } },
     contradictions: { type: 'array', items: { type: 'string' } },
-    required: { type: 'array', items: { type: 'string' } },
+    required: { type: 'array', items: { type: 'string' }, maxItems: 3 },
     abandonReason: { type: 'string' },
     filesWritten: { type: 'array', items: { type: 'string' } },
   },
@@ -374,31 +374,45 @@ ${PLAIN}`,
 
 ${REPO}
 
-The question: ${A.question}
+You are not reviewing code, implementation, or software design. Your job is to determine the fit of this idea
+against a turn-based strategy game like gdtf, not to determine the feasibility of software development. A
+later stage designs the types, the modules and the files.
 
-This is a proposal, not a software design. Judge the idea, not the implementation. Do not fault it for naming
-no types, files or modules: it was told not to. A later stage designs those. Equally, do not let it get away
-with an implementation claim it has not earned.
+That means, concretely:
+- Do not name a Rust symbol, a type, a function, a file path or a module in anything you write. Not in
+  required, not in missedCons, not in contradictions. If you cannot make a point without naming one, it is a
+  point for the design stage and you drop it.
+- Do not ask the proposal to price, cost, order or schedule anything in code terms.
+- Do not fault it for naming no types, files or modules. It was told not to name them.
+- Do not ask what a thing "actually computes" or how two parts agree at the level of calls. Ask whether the
+  idea makes sense on a board with units, turns and time units.
 
-Judge:
-- Is each pro grounded in something real, or asserted? Sort them.
-- What cons has it missed? Reason about how gdtf actually plays and what this would do to it.
-- Does it contradict itself, or contradict how the game works today?
+Judge, and only this:
+- Is each pro grounded in how the game would play, or asserted? Sort them.
+- What cons has it missed, judged as a player or a designer would judge them? What would the enemy visibly do
+  that is worse, or duller, or unfair?
+- Does it contradict itself, or contradict how the game plays today?
 - Is it a good fit for gdtf's battlescape at all?
-- If it is a composite, is the division of labour real, and is the handover between layers actually specified?
-  A composite that names three techniques and does not say how they agree is one technique and two hopes.
+- If it is a composite, is the division of labour real in game terms, and does it say in principle which part
+  decides what? A composite that names three techniques and does not say which one owns which decision is one
+  technique and two hopes. In principle is enough here.
 
-Check its claims about gdtf against the repo and docs/ where a claim is load-bearing. You are checking whether
-it is true, not whether it is detailed.
+Where a proposal says something about how gdtf plays today, you may check it, at the level of behaviour. "A
+downed unit can still be shot" is a behaviour claim and is fair game. "It calls the wrong cost function" is
+not yours.
 
-Verdict GOOD when the argument stands up and the pros and cons are honest. NEEDS_WORK when it is fixable, and
-then list exactly what must change in required. ABANDON only when the approach cannot work here, with the
-reason.
+This is fit round ${round}. ${round === 0
+  ? 'It is the first round, so there is no earlier review to read.'
+  : `Read every earlier review, ${ROOT}/proposals/${o.key}/fit_check_r0.json through fit_check_r${round - 1}.json, before you write anything. You may only raise a point that is still unresolved from an earlier round, or one the latest revision introduced. Do not raise a new point about text that has not changed. A proposal carrying a recorded disagreement has already answered you: if the answer is sound, drop the point rather than repeating it.`}
 
-A proposal carrying a recorded disagreement from a previous round has already answered you. Read it. If the
-answer is sound, drop that point rather than repeating it.
+Verdict GOOD when the idea stands up and the pros and cons are honest. GOOD is the default. Reach for
+NEEDS_WORK only when a point is one the proposal cannot survive: it would not work on the board, or it claims
+something about the game that is false, or a pro is empty. A point you would describe as a refinement, a
+nuance, or something worth stating more precisely is not that, and it goes in missedCons for the judges to
+weigh rather than into required. You may list at most three required items, so if you have more than three,
+you are reviewing detail rather than fit.
 
-Write to ${ROOT}/proposals/${o.key}/fit_check.json, overwriting any existing file.
+Write to ${ROOT}/proposals/${o.key}/fit_check_r${round}.json. Do not overwrite an earlier round's file.
 
 ${PLAIN}`,
         { label: `fit:${o.key} r${round}`, phase: 'Fit check', model: 'opus', effort: 'high', schema: FIT_SCHEMA },
@@ -415,7 +429,12 @@ ${PLAIN}`,
       const rev = await agent(
         `Revise one proposal against its fit check.
 
-Read ${ROOT}/proposals/${o.key}/proposal.md, proposal.json and fit_check.json.
+Read ${ROOT}/proposals/${o.key}/proposal.md, proposal.json and the review just written,
+${ROOT}/proposals/${o.key}/fit_check_r${round - 1}.json.
+
+This is still a proposal, not a software design. Do not add types, signatures, file paths, module layouts or
+symbol names while answering the review. If a criticism can only be answered that way, it belongs to the
+design stage, and saying so in disagreements is the right answer.
 
 Act on the feedback. Move an ungrounded pro onto real evidence or delete it. Add the missed cons. Resolve the
 contradictions. Do everything listed in required.
