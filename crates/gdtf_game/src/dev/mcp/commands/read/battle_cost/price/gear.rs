@@ -7,7 +7,7 @@ use gdtf_battle_sim::{
         MeleeAttacker, MeleeReach, can_melee, can_reload, can_throw_grenade, fire_arc_tu_cost,
         melee_tu_cost, reload_tu_cost, structure_stands, throw_grenade_tu_cost,
     },
-    ganger::{LifeState, Stance, StanceKind},
+    ganger::{Stance, StanceKind},
     injuries::{HandsAvailable, InflictedInjuries},
     los::{Observer, PeekOffset, Sighted, Target, has_los},
     magazine::{FireActor, can_fire, mode_tu_cost},
@@ -169,10 +169,10 @@ fn melee_sighted(
             cover:     world.cover,
         },
         world.tuning,
-        |dead| {
+        |floored| {
             rows.targets
-                .get(dead)
-                .is_ok_and(|(_, _, life)| *life == LifeState::Dead)
+                .get(floored)
+                .is_ok_and(|(_, _, life)| !*life.is_active())
         },
     )
 }

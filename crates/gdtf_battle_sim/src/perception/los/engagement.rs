@@ -30,7 +30,7 @@ pub fn can_see(
     view_range: ViewRange,
     grids: MarchGrids<'_>,
     tuning: &CombatTuning,
-    is_dead: impl Fn(Entity) -> bool,
+    is_floored: impl Fn(Entity) -> bool,
 ) -> CanSee {
     if !*observer_life.is_active() {
         return CanSee::new(false);
@@ -40,7 +40,7 @@ pub fn can_see(
         return CanSee::new(false);
     }
 
-    let sighted: Sighted = has_los(observer, target, grids, tuning, is_dead);
+    let sighted: Sighted = has_los(observer, target, grids, tuning, is_floored);
     CanSee::new(*sighted)
 }
 

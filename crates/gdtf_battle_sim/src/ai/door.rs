@@ -73,7 +73,7 @@ pub(super) fn plan_door(
     rows: &[GangerRow],
     omniscient: Option<&OmniscientFog>,
     grids: &AiPlanningGrids,
-    is_dead: &impl Fn(Entity) -> bool,
+    is_floored: &impl Fn(Entity) -> bool,
 ) -> Option<DoorAct> {
     let mut closed: Vec<&DoorRow> = doors.iter().filter(|door| !*door.state.is_open()).collect();
     closed.sort_by_key(|door| (door.cell.z, door.cell.y, door.cell.x));
@@ -122,7 +122,7 @@ pub(super) fn plan_door(
                 &dest,
                 &suppressor,
                 grids.cover(),
-                &grids.sight(is_dead),
+                &grids.sight(is_floored),
             ) {
                 continue;
             }

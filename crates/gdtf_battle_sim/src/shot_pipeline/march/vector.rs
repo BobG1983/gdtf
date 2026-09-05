@@ -23,7 +23,7 @@ pub fn march_vector(
     grids: MarchGrids<'_>,
     tuning: &CombatTuning,
     shooter_cell: CellLevel,
-    is_dead: impl Fn(Entity) -> bool,
+    is_floored: impl Fn(Entity) -> bool,
 ) -> MarchResult {
     march_vector_skipping(
         muzzle,
@@ -32,7 +32,7 @@ pub fn march_vector(
         tuning,
         shooter_cell,
         SkippedOccupant::none(),
-        is_dead,
+        is_floored,
     )
 }
 
@@ -45,7 +45,7 @@ pub fn march_vector_skipping(
     tuning: &CombatTuning,
     shooter_cell: CellLevel,
     skipped: SkippedOccupant,
-    is_dead: impl Fn(Entity) -> bool,
+    is_floored: impl Fn(Entity) -> bool,
 ) -> MarchResult {
     let (start_cell, start_level) = pos_to_cell(muzzle);
     let mut state = MarchState::new(
@@ -72,7 +72,8 @@ pub fn march_vector_skipping(
         let exit_band = round_band_for_cell(state.exit_point(muzzle, dir), tuning);
         let test_band = lower_band(entry_band, exit_band);
         if here != shooter_cell
-            && let Some(result) = impact_at(here, here_point, test_band, grids, skipped, &is_dead)
+            && let Some(result) =
+                impact_at(here, here_point, test_band, grids, skipped, &is_floored)
         {
             return result;
         }

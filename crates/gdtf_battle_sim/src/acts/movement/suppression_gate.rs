@@ -104,14 +104,14 @@ fn sees_shot_cell<F: Fn(Entity) -> bool>(
         position: &at,
         stance:   &SHOT_CELL_STANCE,
     };
-    // The mover's own cell is crossed as if empty; a dead body still occludes at the floor band.
+    // The mover's cell is crossed as if empty; a downed or dead body occludes at the floor band.
     has_los_skipping(
         &observer,
         &shot_cell,
         SkippedOccupant::new(mover.entity),
         sight.march(cover),
         sight.tuning(),
-        sight.is_dead(),
+        sight.is_floored(),
     )
 }
 

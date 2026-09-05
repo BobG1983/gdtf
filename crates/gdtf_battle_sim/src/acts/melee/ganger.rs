@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     armor::WornArmor,
-    ganger::{LifeState, effective_luck, effective_toughness},
+    ganger::{effective_luck, effective_toughness},
     injuries::{InjuryRegistry, InjuryTables},
     los::{Observer, PeekOffset, Target, has_los},
     march::MarchGrids,
@@ -66,11 +66,11 @@ pub(super) fn resolve_ganger_melee(
         stance:   &tgt_stance,
     };
     let sighted = {
-        let is_dead = |entity: Entity| {
+        let is_floored = |entity: Entity| {
             combatants
                 .targets
                 .get(entity)
-                .is_ok_and(|(_, _, life, ..)| *life == LifeState::Dead)
+                .is_ok_and(|(_, _, life, ..)| !*life.is_active())
         };
         has_los(
             &observer,
@@ -81,7 +81,7 @@ pub(super) fn resolve_ganger_melee(
                 cover:     &world.cover,
             },
             &world.tuning,
-            is_dead,
+            is_floored,
         )
     };
     if !*sighted {

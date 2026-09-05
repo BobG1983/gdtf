@@ -7,28 +7,28 @@ use crate::{
     tuning::CombatTuning,
 };
 
-/// The grids, tuning and death test the break-away sight probe reads.
+/// The grids, tuning and floor test the break-away sight probe reads.
 pub struct SightWorld<'a, F: Fn(Entity) -> bool> {
-    occupancy: &'a OccupancyGrid,
-    surface:   &'a SurfaceGrid,
-    tuning:    &'a CombatTuning,
-    is_dead:   F,
+    occupancy:  &'a OccupancyGrid,
+    surface:    &'a SurfaceGrid,
+    tuning:     &'a CombatTuning,
+    is_floored: F,
 }
 
 impl<'a, F: Fn(Entity) -> bool> SightWorld<'a, F> {
-    /// Build from the grids the ray crosses, the tuning it is measured against, and a death test.
+    /// Build from the grids the ray crosses, the tuning it is measured against, and a floor test.
     #[must_use]
     pub const fn new(
         occupancy: &'a OccupancyGrid,
         surface: &'a SurfaceGrid,
         tuning: &'a CombatTuning,
-        is_dead: F,
+        is_floored: F,
     ) -> Self {
         Self {
             occupancy,
             surface,
             tuning,
-            is_dead,
+            is_floored,
         }
     }
 
@@ -51,8 +51,8 @@ impl<'a, F: Fn(Entity) -> bool> SightWorld<'a, F> {
         self.tuning
     }
 
-    /// Whether an entity is a corpse, which a ray passes through.
-    pub(crate) const fn is_dead(&self) -> &F {
-        &self.is_dead
+    /// Whether a ray tests this entity at the floor band, whatever the grid last published.
+    pub(crate) const fn is_floored(&self) -> &F {
+        &self.is_floored
     }
 }

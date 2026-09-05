@@ -38,7 +38,7 @@ pub fn union_fov(
     surface: &SurfaceGrid,
     cover: &CoverLedger,
     tuning: &CombatTuning,
-    is_dead: impl Fn(bevy::prelude::Entity) -> bool,
+    is_floored: impl Fn(bevy::prelude::Entity) -> bool,
 ) -> HashSet<CellLevel> {
     let mut visible = HashSet::default();
     let authored = occupancy.authored_level_range();
@@ -72,7 +72,7 @@ pub fn union_fov(
                     cover,
                 },
                 tuning,
-                &is_dead,
+                &is_floored,
             ) {
                 visible.insert(candidate);
             }

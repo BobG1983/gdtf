@@ -17,7 +17,7 @@ use crate::{
         ReloadRequested, can_melee, can_reload, melee_tu_cost,
         movement::{BreakAwayMover, suppressed_move_legal},
     },
-    ganger::{Faction, LifeState},
+    ganger::Faction,
     los::{Observer, PeekOffset, Target, has_los},
     magazine::{Magazine, mode_tu_cost},
     terrain::{entity::TerrainCell, openable::OpenState},
@@ -32,7 +32,7 @@ fn plan_shot(
     targets: &[GangerRow],
     weapons: &WeaponLookup,
     grids: &AiPlanningGrids,
-    is_dead: &impl Fn(Entity) -> bool,
+    is_floored: &impl Fn(Entity) -> bool,
 ) -> Option<FireRequested> {
     let (magazine, fire_mode, handedness) = weapons.firing(enemy.entity)?;
     let mode = fire_mode.single();
@@ -46,7 +46,7 @@ fn plan_shot(
         fire_cost,
         grids.march(),
         grids.tuning(),
-        is_dead,
+        is_floored,
     );
     let target = pick_nearest(enemy.position.cell(), enemy.position.level(), &engageable)?;
     Some(FireRequested::new(
@@ -72,7 +72,7 @@ fn plan_melee(
     targets: &[GangerRow],
     weapons: &WeaponLookup,
     grids: &AiPlanningGrids,
-    is_dead: &impl Fn(Entity) -> bool,
+    is_floored: &impl Fn(Entity) -> bool,
 ) -> Option<MeleeRequested> {
     let fight_mode = weapons.melee_fight_mode(enemy.entity)?;
     let cost = melee_tu_cost(fight_mode);
@@ -102,7 +102,7 @@ fn plan_melee(
             &los_target,
             grids.march(),
             grids.tuning(),
-            is_dead,
+            is_floored,
         ) {
             continue;
         }
@@ -123,7 +123,7 @@ fn plan_step(
     all_targets: &[AiTarget],
     omniscient: Option<&OmniscientFog>,
     grids: &AiPlanningGrids,
-    is_dead: &impl Fn(Entity) -> bool,
+    is_floored: &impl Fn(Entity) -> bool,
 ) -> Option<MoveRequested> {
     let goal = pick_nearest(enemy.position.cell(), enemy.position.level(), all_targets)?;
     let departure = grids.departure(*enemy.position, enemy.seat);
@@ -144,7 +144,7 @@ fn plan_step(
             &dest,
             &suppressor,
             grids.cover(),
-            &grids.sight(is_dead),
+            &grids.sight(is_floored),
         ) {
             return None;
         }
@@ -191,24 +191,24 @@ pub fn enemy_ai_turn(
             .iter()
             .map(|(entity, state, cell)| (entity, *state, **cell)),
     );
-    let is_dead_fn = |entity: Entity| {
+    let is_floored_fn = |entity: Entity| {
         rows.iter()
             .find(|row| row.entity == entity)
-            .is_some_and(|row| row.life == LifeState::Dead)
+            .is_some_and(|row| !*row.life.is_active())
     };
-    let is_dead = &is_dead_fn;
+    let is_floored = &is_floored_fn;
     let fog = omniscient.as_deref();
     let mut acted = false;
     for enemy in &enemies {
         if !*enemy.life.is_active() || *enemy.walking {
             continue;
         }
-        if let Some(aim) = plan_aim(enemy, &targets, &weapon_lookup, &grids, is_dead) {
+        if let Some(aim) = plan_aim(enemy, &targets, &weapon_lookup, &grids, is_floored) {
             orders.aim.write(aim);
             acted = true;
             break;
         }
-        if let Some(shot) = plan_shot(enemy, &targets, &weapon_lookup, &grids, is_dead) {
+        if let Some(shot) = plan_shot(enemy, &targets, &weapon_lookup, &grids, is_floored) {
             orders.fire.write(shot);
             acted = true;
             break;
@@ -218,17 +218,17 @@ pub fn enemy_ai_turn(
             acted = true;
             break;
         }
-        if let Some(swing) = plan_melee(enemy, &targets, &weapon_lookup, &grids, is_dead) {
+        if let Some(swing) = plan_melee(enemy, &targets, &weapon_lookup, &grids, is_floored) {
             orders.melee.write(swing);
             acted = true;
             break;
         }
-        if let Some(step) = plan_step(enemy, &rows, &all_targets, fog, &grids, is_dead) {
+        if let Some(step) = plan_step(enemy, &rows, &all_targets, fog, &grids, is_floored) {
             orders.step.write(step);
             acted = true;
             break;
         }
-        if let Some(door) = plan_door(enemy, &scanned, &rows, fog, &grids, is_dead) {
+        if let Some(door) = plan_door(enemy, &scanned, &rows, fog, &grids, is_floored) {
             write_door_act(&mut orders, door);
             acted = true;
             break;

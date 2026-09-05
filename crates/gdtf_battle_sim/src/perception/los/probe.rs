@@ -70,9 +70,9 @@ pub fn has_los(
     to: &Target,
     grids: MarchGrids<'_>,
     tuning: &CombatTuning,
-    is_dead: impl Fn(Entity) -> bool,
+    is_floored: impl Fn(Entity) -> bool,
 ) -> Sighted {
-    has_los_skipping(from, to, SkippedOccupant::none(), grids, tuning, is_dead)
+    has_los_skipping(from, to, SkippedOccupant::none(), grids, tuning, is_floored)
 }
 
 /// Same as [`has_los`], with one body the ray crosses as if its cell were empty.
@@ -83,7 +83,7 @@ pub fn has_los_skipping(
     skipped: SkippedOccupant,
     grids: MarchGrids<'_>,
     tuning: &CombatTuning,
-    is_dead: impl Fn(Entity) -> bool,
+    is_floored: impl Fn(Entity) -> bool,
 ) -> Sighted {
     let observer_cell = cell_level_of(from.position);
     let target_cell = cell_level_of(to.position);
@@ -97,7 +97,7 @@ pub fn has_los_skipping(
 
     let dir = MarchDir::new((*aim - *eye).normalize_or_zero());
 
-    let result = march_vector_skipping(eye, dir, grids, tuning, observer_cell, skipped, is_dead);
+    let result = march_vector_skipping(eye, dir, grids, tuning, observer_cell, skipped, is_floored);
 
     is_clear(&result, target_cell, eye, aim)
 }
@@ -110,13 +110,13 @@ pub fn has_los_peeking(
     peek: PeekOffset,
     grids: MarchGrids<'_>,
     tuning: &CombatTuning,
-    is_dead: impl Fn(Entity) -> bool,
+    is_floored: impl Fn(Entity) -> bool,
 ) -> Sighted {
     let peeking = Observer {
         peek_offset: peek,
         ..*from
     };
-    has_los(&peeking, to, grids, tuning, is_dead)
+    has_los(&peeking, to, grids, tuning, is_floored)
 }
 
 /// World position of the observer's eye.

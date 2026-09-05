@@ -13,7 +13,7 @@ use crate::{
         FireArcDecision, FireRequested, decide_fire_arc, fire_arc_tu_cost,
         movement::ReactionShotFired,
     },
-    ganger::{Facing, LifeState, Tu},
+    ganger::{Facing, Tu},
     injuries::HandsAvailable,
     los::{Observer, PeekOffset, Target, can_see},
     magazine::{FireActor, can_fire, clamp_burst, mode_tu_cost},
@@ -80,7 +80,7 @@ pub(super) fn try_reaction(
         tuning.view_range,
         grids.march(),
         tuning,
-        |entity: Entity| pass.life_of(entity) == LifeState::Dead,
+        |entity: Entity| !*pass.life_of(entity).is_active(),
     ) {
         return None;
     }

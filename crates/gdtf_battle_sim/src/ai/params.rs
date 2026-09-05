@@ -95,8 +95,8 @@ impl AiPlanningGrids<'_, '_> {
     }
 
     /// The grids and tuning a break-away sight probe is flown through.
-    pub(super) fn sight<F: Fn(Entity) -> bool>(&self, is_dead: F) -> SightWorld<'_, F> {
-        SightWorld::new(&self.occupancy, &self.surface, &self.tuning, is_dead)
+    pub(super) fn sight<F: Fn(Entity) -> bool>(&self, is_floored: F) -> SightWorld<'_, F> {
+        SightWorld::new(&self.occupancy, &self.surface, &self.tuning, is_floored)
     }
 }
 

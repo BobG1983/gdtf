@@ -164,9 +164,7 @@ impl SuppressionGate<'_, '_> {
     /// The grids and tuning a break-away sight probe is flown through.
     pub(super) fn sight(&self) -> SightWorld<'_, impl Fn(Entity) -> bool> {
         SightWorld::new(&self.occupancy, &self.surface, &self.tuning, |entity| {
-            self.lives
-                .get(entity)
-                .is_ok_and(|life| *life == LifeState::Dead)
+            self.lives.get(entity).is_ok_and(|life| !*life.is_active())
         })
     }
 }

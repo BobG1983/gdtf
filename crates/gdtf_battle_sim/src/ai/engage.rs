@@ -59,7 +59,7 @@ pub(super) fn engageable_targets(
     fire_cost: Tu,
     grids: MarchGrids<'_>,
     tuning: &CombatTuning,
-    is_dead: &impl Fn(Entity) -> bool,
+    is_floored: &impl Fn(Entity) -> bool,
 ) -> Vec<AiTarget> {
     let (magazine, mode, handedness) = weapon;
     let enemy_cell = enemy.position.cell();
@@ -86,7 +86,7 @@ pub(super) fn engageable_targets(
             tuning.view_range,
             grids,
             tuning,
-            is_dead,
+            is_floored,
         ) {
             continue;
         }

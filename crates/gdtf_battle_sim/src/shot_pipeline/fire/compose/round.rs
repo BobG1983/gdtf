@@ -121,7 +121,7 @@ pub(in crate::shot_pipeline::fire) fn resolve_round(
     };
 
     let targets = &bodies.targets;
-    let is_dead = |e: Entity| {
+    let is_floored = |e: Entity| {
         targets
             .get(e)
             .is_ok_and(|(_, _, life, ..)| !*life.is_active())
@@ -133,7 +133,7 @@ pub(in crate::shot_pipeline::fire) fn resolve_round(
         grids.cover,
         tuning,
         shot_rng,
-        is_dead,
+        is_floored,
     );
 
     let report = resolve_primary_report(&outcome, snapshot, grids, bodies, roll);

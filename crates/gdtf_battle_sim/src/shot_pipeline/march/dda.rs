@@ -70,9 +70,9 @@ enum SteppedAxis {
 fn occluding_band(
     entity: Entity,
     published: HeightBand,
-    is_dead: &impl Fn(Entity) -> bool,
+    is_floored: &impl Fn(Entity) -> bool,
 ) -> HeightBand {
-    if is_dead(entity) {
+    if is_floored(entity) {
         silhouette_band(StanceKind::Prone)
     } else {
         published
@@ -86,13 +86,13 @@ pub(super) fn impact_at(
     test_band: HeightBand,
     grids: MarchGrids<'_>,
     skipped: SkippedOccupant,
-    is_dead: &impl Fn(Entity) -> bool,
+    is_floored: &impl Fn(Entity) -> bool,
 ) -> Option<MarchResult> {
     let (occupancy, surface, cover) = (grids.occupancy, grids.surface, grids.cover);
     if let (Some(entity), Some(occ_band)) =
         (occupancy.occupant(&here), occupancy.occupant_band(&here))
         && !skipped.skips(entity)
-        && round_clears_occupant(test_band, occluding_band(entity, occ_band, is_dead))
+        && round_clears_occupant(test_band, occluding_band(entity, occ_band, is_floored))
             == Clearance::Impacts
     {
         return Some(MarchResult {

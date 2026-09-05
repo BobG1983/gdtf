@@ -128,10 +128,10 @@ fn scan_melee_target(
         return None;
     };
 
-    let is_dead = |entity: Entity| {
+    let is_floored = |entity: Entity| {
         candidates
             .get(entity)
-            .is_ok_and(|(_, _, life, ..)| *life == LifeState::Dead)
+            .is_ok_and(|(_, _, life, ..)| !*life.is_active())
     };
 
     let standing = Stance::new(StanceKind::Standing);
@@ -160,7 +160,7 @@ fn scan_melee_target(
                 cover,
             },
             tuning,
-            is_dead,
+            is_floored,
         ) {
             return Some(entity);
         }

@@ -89,7 +89,7 @@ pub fn resolve_coarse(
     cover: &CoverLedger,
     tuning: &CombatTuning,
     rng: &mut ShotRng,
-    is_dead: impl Fn(Entity) -> bool,
+    is_floored: impl Fn(Entity) -> bool,
 ) -> ShotOutcome {
     let muzzle = muzzle_position(
         shot.shooter_position,
@@ -125,7 +125,7 @@ pub fn resolve_coarse(
         },
         tuning,
         shooter_cell,
-        is_dead,
+        is_floored,
     );
 
     outcome_from_march(march, muzzle, trajectory, tuning, rng)

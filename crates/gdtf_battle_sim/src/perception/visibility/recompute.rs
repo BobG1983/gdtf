@@ -55,10 +55,10 @@ pub fn recompute_visibility(
     player: Res<PlayerFaction>,
     mut squad: ResMut<SquadVisibility>,
 ) {
-    let is_dead = |entity: Entity| {
+    let is_floored = |entity: Entity| {
         observers
             .get(entity)
-            .is_ok_and(|(.., life, _)| *life == LifeState::Dead)
+            .is_ok_and(|(.., life, _)| !*life.is_active())
     };
 
     let fov_observers: Vec<FovObserver> = observers
@@ -79,7 +79,7 @@ pub fn recompute_visibility(
         &surface,
         &cover,
         &tuning,
-        is_dead,
+        is_floored,
     );
     *squad = accrue(&squad, visible_next);
 }

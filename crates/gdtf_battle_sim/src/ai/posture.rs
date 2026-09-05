@@ -21,7 +21,7 @@ pub(super) fn plan_aim(
     targets: &[GangerRow],
     weapons: &WeaponLookup,
     grids: &AiPlanningGrids,
-    is_dead: &impl Fn(Entity) -> bool,
+    is_floored: &impl Fn(Entity) -> bool,
 ) -> Option<SetAimingRequested> {
     if *enemy.aiming {
         return None;
@@ -40,7 +40,7 @@ pub(super) fn plan_aim(
         aimed_cost,
         grids.march(),
         grids.tuning(),
-        is_dead,
+        is_floored,
     );
     (!engageable.is_empty()).then(|| SetAimingRequested::new(enemy.entity, AimRequest::new(true)))
 }
