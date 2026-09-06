@@ -8,6 +8,7 @@ use crate::{
             Actor, DownedTarget, can_execute, can_stabilize, execute_downed, execute_tu_cost,
             stabilize_downed, stabilize_tu_cost,
         },
+        pending_state::PendingStates,
         request::{ExecuteDownedRequested, StabilizeDownedRequested},
     },
     effects::bleed::BleedingOut,
@@ -51,6 +52,7 @@ fn snapshot_pair(
 }
 
 /// Process stabilize requests.
+/// A repeat request in the same frame reads the bleed this run already stopped, so it pays nothing.
 pub fn dispatch_stabilize_downed(
     mut requests: MessageReader<StabilizeDownedRequested>,
     gangers: DownedReads,
@@ -58,10 +60,13 @@ pub fn dispatch_stabilize_downed(
     tuning: Res<CombatTuning>,
     mut commands: Commands,
 ) {
+    let mut pending: PendingStates<Option<BleedingOut>> = PendingStates::new();
     for request in requests.read() {
-        let Some((actor, target)) = snapshot_pair(&gangers, request.actor, request.target) else {
+        let Some((actor, mut target)) = snapshot_pair(&gangers, request.actor, request.target)
+        else {
             continue;
         };
+        target.bleeding_out = pending.state_of(request.target, target.bleeding_out);
         let Ok(&pool) = pools.get(request.actor) else {
             continue;
         };
@@ -74,6 +79,7 @@ pub fn dispatch_stabilize_downed(
         if spend_tu(&mut actor_pool, stabilize_tu_cost(&tuning)).is_err() {
             continue;
         }
+        pending.record(request.target, None);
         stabilize_downed(
             &actor,
             &target,

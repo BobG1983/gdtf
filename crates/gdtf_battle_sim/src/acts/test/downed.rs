@@ -186,6 +186,44 @@ fn stabilize_dispatch_debits_the_actor_pool_by_the_sims_own_quote() {
 }
 
 #[test]
+fn two_stabilize_requests_for_one_target_in_one_frame_charge_the_leaf_once() {
+    let mut app = headless_app();
+    let cost = quoted_cost(&app, stabilize_tu_cost);
+    assert!(
+        *cost > 0,
+        "a stabilize must be priced or the charge assertion holds whatever the dispatcher does"
+    );
+
+    let before = Tu::new((*cost).saturating_mul(2).saturating_add(10));
+    assert!(
+        *before > (*cost).saturating_mul(2),
+        "the funded pool must cover two leaves, or a TU shortfall refuses the second charge \
+         instead of the pending map"
+    );
+
+    let actor = spawn_downed_actor_with_pool(app.world_mut(), 10, 10, 1, before);
+    let target = spawn_downed_target(app.world_mut(), 11, 10, 1);
+
+    app.world_mut()
+        .write_message(StabilizeDownedRequested::new(actor, target));
+    app.world_mut()
+        .write_message(StabilizeDownedRequested::new(actor, target));
+    app.update();
+
+    let after = app.world().get::<Tu>(actor).copied();
+    assert_eq!(
+        after,
+        Some(Tu::new((*before).saturating_sub(*cost))),
+        "two stabilize requests for one target in one frame charge the leaf once: the actor holds \
+         {after:?} against a pool of {before:?} and a leaf of {cost:?}",
+    );
+    assert!(
+        app.world().get::<BleedingOut>(target).is_none(),
+        "the one charge of {cost:?} bought the one stabilize. The BleedingOut condition is gone",
+    );
+}
+
+#[test]
 fn a_stabilize_pool_one_short_of_the_quote_refuses_the_act() {
     let mut app = headless_app();
     let cost = quoted_cost(&app, stabilize_tu_cost);

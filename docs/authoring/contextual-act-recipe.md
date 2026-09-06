@@ -44,16 +44,17 @@ the frame it was claimed in, exactly as a press is.
   `set_facing`: a turn is divisible, so it charges the whole 45deg steps the pool affords
   and lands partway.
 - **Two requests for one target in the same frame charge once.** A dispatch reads its
-  targets through a read-only query, and the toggle it writes is applied by a later
-  system, so a second request in the same run sees the state the first one read and
-  pays for a change that never happens. Open Door, Enter Emplacement and Exit
-  Emplacement each keep a `PendingStates` map
+  targets through a read-only query, and its write lands later. That write is a toggle
+  applied by a later system, or a `Commands` removal that lands after the run. Either
+  way a second request in the same run sees the state the first one read, and pays for
+  a change that never happens. Open Door, Enter Emplacement, Exit Emplacement and
+  Stabilize each keep a `PendingStates` map
   (`crates/gdtf_battle_sim/src/acts/pending_state.rs`) of what the run has already
   driven each target to. They hand that state to the predicate instead of the queried
   one and record the new state after the charge, so the repeat is refused by the same
-  gate that refuses an open door or an occupied seat. Any act whose predicate reads the
-  target's state needs the same; the drain invariant above is what puts two presses in
-  one frame.
+  gate that refuses an open door, an occupied seat or a target that has stopped
+  bleeding. Any act whose predicate reads the target's state needs the same; the drain
+  invariant above is what puts two presses in one frame.
 - **Sim owns the TU number.** Whoever needs it — dispatch, HUD, cursor preview, AI, a QA
   command — calls `<act>_tu_cost`; never a second copy of the math. Re-export the pair from
   `acts/mod.rs` so callers outside the sim can reach it. Execute and Stabilize charge that
