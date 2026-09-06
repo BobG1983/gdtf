@@ -6,7 +6,7 @@ use gdtf_battle_sim::prelude::BattleInProgress;
 use crate::states::{
     BattleScapeState,
     running::game::battlescape::{
-        bottom_bar::spawn_bottom_bar,
+        bottom_bar::{BottomBarSlots, spawn_bottom_bar},
         select_cycle::systems::{
             despawn_select_cycle, select_cycle_button_intents, spawn_select_cycle,
         },
@@ -19,7 +19,9 @@ impl Plugin for GameBattleScapeSelectCycleScenePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             OnEnter(BattleScapeState::BattleRunning),
-            spawn_select_cycle.after(spawn_bottom_bar),
+            spawn_select_cycle
+                .in_set(BottomBarSlots::SelectCycle)
+                .after(spawn_bottom_bar),
         )
         .add_systems(
             OnExit(BattleScapeState::BattleRunning),

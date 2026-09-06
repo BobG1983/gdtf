@@ -14,9 +14,7 @@ use gdtf_ui::{
     themed::{ThemeRole, Themed},
 };
 
-use super::geometry::{
-    CONTENT_MIN_H_VH, GAP_VH, INFO_RELOAD_H_PCT, INFO_ROW_H_PCT, INFO_TEXT_H_PCT,
-};
+use super::geometry::{CONTENT_MIN_H_VH, GAP_VH};
 use crate::states::running::game::battlescape::{
     focus_nav::WEAPON_NAV_BASE,
     weapon_panel::components::{
@@ -25,10 +23,13 @@ use crate::states::running::game::battlescape::{
     },
 };
 
-fn spawn_image(commands: &mut Commands, theme: &GdtfTheme, height: Val) -> Entity {
+fn spawn_image(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     let slot_node = Node {
         width: Val::Percent(100.0),
-        height,
+        // The slot takes the height the name, magazine and Reload rows leave over.
+        flex_grow: 1.0,
+        flex_basis: Val::ZERO,
+        min_height: Val::ZERO,
         justify_content: JustifyContent::Center,
         align_items: AlignItems::Center,
         border: UiRect::all(Val::Vw(*theme.panel.border_width)),
@@ -97,7 +98,6 @@ fn spawn_info_block(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     let magazine = spawn_text(commands, theme, WeaponMagazineText, "0/0");
     let content_node = Node {
         width: Val::Percent(100.0),
-        height: Val::Percent(INFO_TEXT_H_PCT),
         min_height: Val::Vh(CONTENT_MIN_H_VH),
         flex_direction: FlexDirection::Column,
         justify_content: JustifyContent::Center,
@@ -126,7 +126,8 @@ fn spawn_info_block(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     );
     let reload_row_node = Node {
         width: Val::Percent(100.0),
-        height: Val::Percent(INFO_RELOAD_H_PCT),
+        // The row is as tall as the Reload button and never gives that height away.
+        flex_shrink: 0.0,
         flex_direction: FlexDirection::Row,
         justify_content: JustifyContent::FlexEnd,
         align_items: AlignItems::Center,
@@ -137,7 +138,8 @@ fn spawn_info_block(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
 
     let info_block_node = Node {
         width: Val::Percent(100.0),
-        height: Val::Percent(INFO_ROW_H_PCT),
+        // The block is as tall as its text and its Reload row, and never gives that height away.
+        flex_shrink: 0.0,
         flex_direction: FlexDirection::Column,
         row_gap: Val::Vh(GAP_VH),
         overflow: Overflow {
@@ -159,7 +161,7 @@ pub(super) fn spawn_combined_panel(
     width: Val,
     height: Val,
 ) -> Entity {
-    let image = spawn_image(commands, theme, Val::Percent(INFO_ROW_H_PCT));
+    let image = spawn_image(commands, theme);
     let info_block = spawn_info_block(commands, theme);
     let panel_node = Node {
         width,

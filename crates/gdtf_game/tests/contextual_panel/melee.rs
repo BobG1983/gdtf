@@ -242,6 +242,62 @@ fn raising_the_pool_to_the_cost_re_enables_and_repaints_the_melee_button() {
 }
 
 #[test]
+fn activating_the_focused_melee_button_emits_melee_requested_for_target() {
+    let mut app = battle_running_app();
+    add_melee_probe(&mut app);
+    let attacker = spawn_melee_actor(&mut app, 5, 5, 0);
+    let target = spawn_alive_enemy(&mut app, 6, 6, 1);
+
+    app.update();
+    assert!(
+        melee_visible(&mut app),
+        "sanity: the Melee button is offered before the activation",
+    );
+    let melee_btn = the_only::<MeleeButton>(
+        &mut app,
+        "the panel must offer exactly one Melee button to activate",
+    );
+
+    activate_focused_button(&mut app, melee_btn);
+    app.update();
+
+    let emitted = melees(&app);
+    assert_eq!(
+        emitted.len(),
+        1,
+        "activating the FOCUSED Melee button must emit exactly one MeleeRequested. The button is \
+         reachable from the keyboard, the gamepad and `input.activate`, all of which write \
+         FocusActivated, so the battlescape must read that message and not only Interaction",
+    );
+    assert_eq!(
+        emitted[0].attacker, attacker,
+        "the attacker is the SelectedShooter",
+    );
+    assert_eq!(
+        emitted[0].target,
+        MeleeTarget::Ganger(target),
+        "the target is the carried opposing neighbour (the ganger melee form)",
+    );
+}
+
+#[test]
+fn activating_a_greyed_melee_button_emits_nothing() {
+    let (mut app, _attacker) = an_attacker_one_tu_short();
+    let melee_btn = the_only::<MeleeButton>(
+        &mut app,
+        "the panel must still offer exactly one Melee button while it is greyed out",
+    );
+
+    activate_focused_button(&mut app, melee_btn);
+    app.update();
+
+    assert!(
+        melees(&app).is_empty(),
+        "a greyed button emits nothing when the focus it holds is activated",
+    );
+}
+
+#[test]
 fn pressing_melee_emits_melee_requested_for_target() {
     let mut app = battle_running_app();
     add_melee_probe(&mut app);

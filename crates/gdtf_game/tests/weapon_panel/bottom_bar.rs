@@ -91,18 +91,24 @@ fn weapon_panel_sits_inside_the_bottom_bar() {
     let Some(panel) = panel else { return };
 
     assert!(
-        matches!(panel.width, Val::Vw(_)),
-        "the weapon panel width is a fixed window fraction (Vw), not Px/auto — got {:?}",
+        matches!(panel.width, Val::Percent(_)),
+        "the weapon panel width is a share of the bar's content box (Percent), not Px/auto. Got \
+         {:?}",
         panel.width,
     );
-    let bottom_inset = match panel.bottom {
+    let bar_bottom_pad = match bar.padding.bottom {
         Val::Vh(v) => v,
         _ => 0.0,
     };
     assert!(
-        matches!(panel.bottom, Val::Vh(_)) && bottom_inset > 0.0,
-        "the weapon panel is anchored a bottom-padding ABOVE the window bottom — a non-zero \
-         relative Vh inset, not flush at bottom: 0 — got {:?}",
+        panel.position_type == PositionType::Relative
+            && panel.bottom == Val::Auto
+            && bar_bottom_pad > 0.0,
+        "the weapon panel is anchored a bottom-padding ABOVE the window bottom. It is a flex \
+         child that takes that inset from the bar's own bottom padding ({:?}), never an absolute \
+         inset of its own. Got position_type {:?}, bottom {:?}",
+        bar.padding.bottom,
+        panel.position_type,
         panel.bottom,
     );
     assert!(

@@ -2,15 +2,15 @@ use bevy::prelude::*;
 use gdtf_battle_input::{InputSystems, dispatch_act_intents};
 use gdtf_battle_presenter::playback_caught_up;
 use gdtf_battle_sim::prelude::BattleInProgress;
-use gdtf_ui::themed::UiSystems;
+use gdtf_ui::{focus_nav::FocusNavSystems, themed::UiSystems};
 
 use crate::states::{
     BattleScapeState,
     running::game::battlescape::{
-        bottom_bar::spawn_bottom_bar,
+        bottom_bar::{BottomBarSlots, spawn_bottom_bar},
         weapon_panel::systems::{
-            despawn_weapon_panel, fit_weapon_panel, reload_button_pressed, spawn_weapon_panel,
-            update_weapon_panel,
+            despawn_weapon_panel, fit_weapon_panel, reload_button_focus_activated,
+            reload_button_pressed, spawn_weapon_panel, update_weapon_panel,
         },
     },
 };
@@ -21,7 +21,9 @@ impl Plugin for GameBattleScapeWeaponPanelScenePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             OnEnter(BattleScapeState::BattleRunning),
-            spawn_weapon_panel.after(spawn_bottom_bar),
+            spawn_weapon_panel
+                .in_set(BottomBarSlots::WeaponPanel)
+                .after(spawn_bottom_bar),
         )
         .add_systems(
             OnExit(BattleScapeState::BattleRunning),
@@ -35,7 +37,10 @@ impl Plugin for GameBattleScapeWeaponPanelScenePlugin {
         )
         .add_systems(
             Update,
-            reload_button_pressed
+            (
+                reload_button_pressed,
+                reload_button_focus_activated.after(FocusNavSystems::Bridge),
+            )
                 .before(dispatch_act_intents)
                 .run_if(resource_exists::<BattleInProgress>.and_then(playback_caught_up)),
         )

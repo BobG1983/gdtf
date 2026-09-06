@@ -2,14 +2,17 @@ use bevy::{
     ecs::{entity::Entity, query::With},
     math::Vec2,
     prelude::*,
-    ui::{ComputedNode, UiGlobalTransform},
+    ui::{ComputedNode, ComputedStackIndex, GlobalZIndex, UiGlobalTransform},
 };
 use gdtf_battle_input::{InspectTarget, SelectedShooter};
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Faction, Level},
     weapon::{TrajectoryStyle, WieldedBy},
 };
-use gdtf_game::test_support::{BottomBarRoot, ContextualPanelRoot, ThrowGrenadeButton};
+use gdtf_game::test_support::{
+    BottomBarRoot, ContextualPanelRoot, SelectCycleRoot, StancePanelRoot, ThrowGrenadeButton,
+    WeaponPanelRoot,
+};
 
 use super::{
     actors::{at, magazine_of},
@@ -76,6 +79,39 @@ impl PixelRect {
             && self.max.x <= other.max.x + EPSILON_PX
             && self.max.y <= other.max.y + EPSILON_PX
     }
+
+    fn overlaps(&self, other: &Self) -> bool {
+        self.min.x < other.max.x
+            && other.min.x < self.max.x
+            && self.min.y < other.max.y
+            && other.min.y < self.max.y
+    }
+
+    fn size(&self) -> Vec2 {
+        self.max - self.min
+    }
+}
+
+/// One panel of the bottom bar, with the entity and the laid-out rect its checks need.
+struct BarPanel {
+    name:   &'static str,
+    entity: Entity,
+    rect:   PixelRect,
+}
+
+fn bar_panel<M: Component>(app: &mut App, name: &'static str) -> BarPanel {
+    let entity = the_only::<M>(
+        app,
+        &format!("exactly one {name} must exist in the live battle"),
+    );
+    let rect = pixel_rect_of::<M>(app, &format!("the {name} must have real computed geometry"));
+    BarPanel { name, entity, rect }
+}
+
+fn stack_index(app: &App, entity: Entity) -> Option<u32> {
+    app.world()
+        .get::<ComputedStackIndex>(entity)
+        .map(|index| **index)
 }
 
 /// The one laid-out rect of `M`, failing on `claim` when the marker resolves to any other count.
@@ -104,43 +140,86 @@ fn contextual_panel_is_contained_inside_the_bottom_bar() {
         app.update();
     }
 
-    let root = the_only::<ContextualPanelRoot>(
-        &mut app,
-        "the contextual panel root must exist in the live battle",
-    );
-    let bar_entity =
-        the_only::<BottomBarRoot>(&mut app, "the bottom bar must exist in the live battle");
+    let bar = bar_panel::<BottomBarRoot>(&mut app, "bottom bar");
+    let contextual = bar_panel::<ContextualPanelRoot>(&mut app, "contextual panel root");
     assert_eq!(
-        parent_of(&app, root),
-        Some(bar_entity),
-        "the contextual panel root must be a CHILD of the bottom bar",
-    );
-
-    assert_eq!(
-        app.world().get::<Visibility>(root).copied(),
+        app.world().get::<Visibility>(contextual.entity).copied(),
         Some(Visibility::Visible),
         "an offered Throw must reveal the panel root so its geometry is meaningful",
     );
 
-    let panel_rect = pixel_rect_of::<ContextualPanelRoot>(
-        &mut app,
-        "the panel root must have real computed geometry",
-    );
-    let bar_rect =
-        pixel_rect_of::<BottomBarRoot>(&mut app, "the bottom bar must have real computed geometry");
+    let panels = [
+        bar_panel::<WeaponPanelRoot>(&mut app, "weapon panel"),
+        bar_panel::<StancePanelRoot>(&mut app, "stance panel"),
+        contextual,
+        bar_panel::<SelectCycleRoot>(&mut app, "Next/Prev cluster"),
+    ];
+
+    for panel in &panels {
+        let size = panel.rect.size();
+        assert!(
+            size.x > 0.0 && size.y > 0.0,
+            "the {} must be laid out with a real size, or every check below passes for the wrong \
+             reason. Got {size:?}",
+            panel.name,
+        );
+        assert_eq!(
+            parent_of(&app, panel.entity),
+            Some(bar.entity),
+            "the {} must be a CHILD of the bottom bar, so the bar's row arranges it",
+            panel.name,
+        );
+        assert!(
+            panel.rect.contained_in(&bar.rect),
+            "the {} ({:?}..{:?}) must be CONTAINED inside the bottom bar ({:?}..{:?}). Every \
+             panel is part of the bottom HUD, never a free-floating box over the map. Its top \
+             edge (min.y={}) must not sit above the bar's top edge (min.y={}).",
+            panel.name,
+            panel.rect.min,
+            panel.rect.max,
+            bar.rect.min,
+            bar.rect.max,
+            panel.rect.min.y,
+            bar.rect.min.y,
+        );
+    }
+
+    for (index, one) in panels.iter().enumerate() {
+        for other in &panels[index + 1..] {
+            assert!(
+                !one.rect.overlaps(&other.rect),
+                "the {} ({:?}..{:?}) must NOT overlap the {} ({:?}..{:?}). The bar's row lays the \
+                 four out side by side, so no panel can draw over another",
+                one.name,
+                one.rect.min,
+                one.rect.max,
+                other.name,
+                other.rect.min,
+                other.rect.max,
+            );
+        }
+    }
+
+    let bar_stack = stack_index(&app, bar.entity);
     assert!(
-        panel_rect.contained_in(&bar_rect),
-        "the contextual panel root ({:?}..{:?}) must be CONTAINED inside the bottom bar \
-         ({:?}..{:?}) — the context window is part of the bottom HUD, never a \
-         free-floating box over the map. Its top edge (min.y={}) must not sit above the bar's top \
-         edge (min.y={}).",
-        panel_rect.min,
-        panel_rect.max,
-        bar_rect.min,
-        bar_rect.max,
-        panel_rect.min.y,
-        bar_rect.min.y,
+        bar_stack.is_some(),
+        "the bottom bar must carry a ComputedStackIndex for the draw-order checks to mean anything",
     );
+    for panel in &panels {
+        assert!(
+            app.world().get::<GlobalZIndex>(panel.entity).is_none(),
+            "the {} must carry NO GlobalZIndex. One re-roots it out of the bar's stacking \
+             context, which is how the Next/Prev cluster came to draw over the Melee button",
+            panel.name,
+        );
+        let panel_stack = stack_index(&app, panel.entity);
+        assert!(
+            panel_stack > bar_stack,
+            "the {} must draw ABOVE the bar's own background: its ComputedStackIndex \
+             ({panel_stack:?}) must be greater than the bar's ({bar_stack:?})",
+            panel.name,
+        );
+    }
 }
 
 #[test]

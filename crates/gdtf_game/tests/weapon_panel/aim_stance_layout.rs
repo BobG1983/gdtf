@@ -119,13 +119,14 @@ fn stance_panel_matches_overall_weapon_panel_height_relative_units() {
 
     let stance = node_of::<StancePanelRoot>(&mut app);
     let overall = node_of::<WeaponPanelRoot>(&mut app);
-    let (Some(stance), Some(overall)) = (stance, overall) else {
+    let bar = node_of::<BottomBarRoot>(&mut app);
+    let (Some(stance), Some(overall), Some(bar)) = (stance, overall, bar) else {
         return;
     };
 
     assert!(
-        matches!(stance.width, Val::Vw(_)),
-        "the Stance Panel width is a fixed window fraction (Vw), not Px — got {:?}",
+        matches!(stance.width, Val::Percent(_)),
+        "the Stance Panel width is a share of the bar's content box (Percent), not Px. Got {:?}",
         stance.width,
     );
     assert!(
@@ -144,14 +145,19 @@ fn stance_panel_matches_overall_weapon_panel_height_relative_units() {
          two bordered boxes are flush-bottomed and both inset off the window edge) — got {:?} vs {:?}",
         stance.bottom, overall.bottom,
     );
-    let stance_bottom = match stance.bottom {
+    let bar_bottom_pad = match bar.padding.bottom {
         Val::Vh(v) => v,
         _ => 0.0,
     };
     assert!(
-        matches!(stance.bottom, Val::Vh(_)) && stance_bottom > 0.0,
-        "the Stance Panel is anchored a bottom-padding ABOVE the window bottom — a non-zero \
-         relative Vh inset, not flush at bottom: 0 — got {:?}",
+        stance.position_type == PositionType::Relative
+            && stance.bottom == Val::Auto
+            && bar_bottom_pad > 0.0,
+        "the Stance Panel is anchored a bottom-padding ABOVE the window bottom. It is a flex \
+         child that takes that inset from the bar's own bottom padding ({:?}), never an absolute \
+         inset of its own. Got position_type {:?}, bottom {:?}",
+        bar.padding.bottom,
+        stance.position_type,
         stance.bottom,
     );
 }

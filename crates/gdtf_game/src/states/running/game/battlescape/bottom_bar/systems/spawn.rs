@@ -6,7 +6,7 @@ use bevy::{
 use gdtf_ui::{spawn_panel, theme::GdtfTheme};
 
 use crate::states::running::game::battlescape::bottom_bar::components::{
-    BOTTOM_BAR_H_VH, BottomBarRoot, bottom_bar_padding,
+    BOTTOM_BAR_GAP_X_VW, BOTTOM_BAR_H_VH, BottomBarRoot, bottom_bar_padding,
 };
 
 const BOTTOM_BAR_Z: i32 = 10;
@@ -32,6 +32,7 @@ pub(in crate::states::running::game::battlescape) fn spawn_bottom_bar(
             height: Val::Vh(BOTTOM_BAR_H_VH),
             border: UiRect::all(Val::Vw(*theme.panel.border_width)),
             padding: bottom_bar_padding(),
+            column_gap: Val::Vw(BOTTOM_BAR_GAP_X_VW),
             ..default()
         },
         BackgroundColor(opaque_fill),

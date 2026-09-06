@@ -1,4 +1,13 @@
-use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
+use bevy::{
+    ecs::entity::Entity,
+    input::{
+        ButtonState,
+        keyboard::{Key, KeyboardInput},
+    },
+    input_focus::InputFocus,
+    prelude::*,
+    state::state::State,
+};
 use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
@@ -167,6 +176,20 @@ pub(crate) fn spawn_unarmed_and_select(app: &mut App) -> Entity {
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
     ganger
+}
+
+/// Focus `button` and press Enter, the path `input.set_focus` then `input.activate` drives.
+pub(crate) fn activate_focused_button(app: &mut App, button: Entity) {
+    app.world_mut()
+        .insert_resource(InputFocus::from_entity(button));
+    app.world_mut().write_message(KeyboardInput {
+        key_code:    KeyCode::Enter,
+        logical_key: Key::Enter,
+        state:       ButtonState::Pressed,
+        text:        None,
+        repeat:      false,
+        window:      Entity::PLACEHOLDER,
+    });
 }
 
 pub(crate) fn content_node(app: &mut App) -> Option<Node> {

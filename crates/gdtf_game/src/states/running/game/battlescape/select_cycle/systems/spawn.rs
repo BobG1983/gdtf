@@ -1,17 +1,15 @@
 use bevy::{
     prelude::*,
-    ui::{FlexDirection, GlobalZIndex, Node, PositionType, Val},
+    ui::{FlexDirection, Node, Val},
 };
 use gdtf_ui::{ButtonLabel, spawn_button, theme::GdtfTheme};
 
 use crate::states::running::game::battlescape::{
-    bottom_bar::{BOTTOM_BAR_H_VH, BOTTOM_BAR_PAD_X_VW, BOTTOM_BAR_PAD_Y_VH, BottomBarRoot},
+    bottom_bar::{BOTTOM_BAR_H_VH, BOTTOM_BAR_PAD_Y_VH, BottomBarRoot},
     select_cycle::components::{SelectCycleRoot, SelectNextButton, SelectPrevButton},
 };
 
-const CLUSTER_W_VW: f32 = 10.0;
-
-const CLUSTER_Z: i32 = 11;
+const CLUSTER_W_PCT: f32 = 10.2;
 
 const BUTTON_H_PCT: f32 = 50.0;
 
@@ -44,6 +42,9 @@ pub(in crate::states::running::game::battlescape) fn spawn_select_cycle(
     let Some(theme) = theme else {
         return;
     };
+    let Some(bar) = bottom_bar.iter().next() else {
+        return;
+    };
 
     let next = spawn_cycle_button(&mut commands, &theme, "^ Next", SelectNextButton);
     let prev = spawn_cycle_button(&mut commands, &theme, "v Prev", SelectPrevButton);
@@ -52,24 +53,17 @@ pub(in crate::states::running::game::battlescape) fn spawn_select_cycle(
         .spawn((
             SelectCycleRoot,
             Node {
-                position_type: PositionType::Absolute,
-                bottom: Val::Vh(BOTTOM_BAR_PAD_Y_VH),
-                right: Val::Vw(BOTTOM_BAR_PAD_X_VW),
-                width: Val::Vw(CLUSTER_W_VW),
+                width: Val::Percent(CLUSTER_W_PCT),
                 height: Val::Vh(cluster_height_vh()),
                 flex_direction: FlexDirection::Column,
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::FlexEnd,
                 ..default()
             },
-            GlobalZIndex(CLUSTER_Z),
         ))
         .id();
     commands.entity(root).add_children(&[next, prev]);
-
-    if let Some(bar) = bottom_bar.iter().next() {
-        commands.entity(bar).add_children(&[root]);
-    }
+    commands.entity(bar).add_children(&[root]);
 }
 
 pub(in crate::states::running::game::battlescape) fn despawn_select_cycle(

@@ -4,6 +4,7 @@ use bevy::{
         ButtonState,
         keyboard::{Key, KeyboardInput},
     },
+    input_focus::InputFocus,
     prelude::*,
     state::state::State,
     ui::BackgroundColor,
@@ -167,6 +168,20 @@ pub(crate) fn press_digit(app: &mut App, key_code: KeyCode) {
         text: None,
         repeat: false,
         window: Entity::PLACEHOLDER,
+    });
+}
+
+/// Focus `button` and press Enter, the path `input.set_focus` then `input.activate` drives.
+pub(crate) fn activate_focused_button(app: &mut App, button: Entity) {
+    app.world_mut()
+        .insert_resource(InputFocus::from_entity(button));
+    app.world_mut().write_message(KeyboardInput {
+        key_code:    KeyCode::Enter,
+        logical_key: Key::Enter,
+        state:       ButtonState::Pressed,
+        text:        None,
+        repeat:      false,
+        window:      Entity::PLACEHOLDER,
     });
 }
 

@@ -8,7 +8,7 @@ use gdtf_battle_sim::prelude::BattleInProgress;
 use crate::states::{
     BattleScapeState,
     running::game::battlescape::{
-        bottom_bar::{despawn_bottom_bar, spawn_bottom_bar},
+        bottom_bar::{BottomBarSlots, despawn_bottom_bar, spawn_bottom_bar},
         contextual_panel::{
             acts,
             registrar::{
@@ -35,6 +35,7 @@ impl Plugin for ContextualPanelPlugin {
             (
                 spawn_contextual_panel
                     .in_set(ContextualPanelSpawnSystems::Root)
+                    .in_set(BottomBarSlots::ContextualPanel)
                     .after(spawn_bottom_bar),
                 order_contextual_buttons.in_set(ContextualPanelSpawnSystems::Order),
             ),

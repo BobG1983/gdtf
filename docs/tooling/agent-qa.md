@@ -404,7 +404,8 @@ Notes an agent relies on:
   message winit writes and resolves a named action through the live keybind
   table, `input.hover` moves the pointer to a pixel and leaves the pixel-to-cell
   projection to the picking system, `input.set_focus`, `input.focus_step` and
-  `input.activate` are the focus bridge the menu and the Options screen are
+  `input.activate` are the focus bridge the menu, the Options screen, the
+  contextual panel's act buttons and the weapon panel's Reload button are
   driven with, and `input.click_cell` takes the game's own left-click decision
   on a cell and names that decision in the reply. The `view.*` commands aim the
   battle view: `view.pan` and

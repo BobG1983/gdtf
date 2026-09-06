@@ -7,13 +7,15 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::playback_caught_up;
 use gdtf_battle_sim::prelude::BattleInProgress;
+use gdtf_ui::focus_nav::FocusNavSystems;
 
 use crate::states::{
     BattleScapeState,
     running::game::battlescape::contextual_panel::{
         seam::{ContextualOffer, ContextualPanelAct},
         systems::{
-            press_contextual_button, press_contextual_button_via_key, spawn_contextual_button,
+            press_contextual_button, press_contextual_button_via_focus,
+            press_contextual_button_via_key, spawn_contextual_button,
             sync_contextual_button_disabled, sync_contextual_button_visibility,
         },
     },
@@ -112,6 +114,7 @@ impl ContextualPanelActAppExt for App {
                 (
                     press_contextual_button::<A>,
                     press_contextual_button_via_key::<A>,
+                    press_contextual_button_via_focus::<A>.after(FocusNavSystems::Bridge),
                 )
                     .chain()
                     .in_set(ContextualPanelSystems::Press)

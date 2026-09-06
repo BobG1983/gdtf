@@ -1,6 +1,6 @@
 use bevy::{prelude::*, ui::Interaction};
 use gdtf_battle_input::{PanelNavOrder, contextual::PendingContextualIntents};
-use gdtf_ui::{DisabledButton, spawn_button, theme::GdtfTheme};
+use gdtf_ui::{DisabledButton, focus_nav::FocusActivated, spawn_button, theme::GdtfTheme};
 
 use crate::states::running::game::battlescape::{
     contextual_panel::{
@@ -11,6 +11,8 @@ use crate::states::running::game::battlescape::{
 };
 
 type PressedButton<M> = (Changed<Interaction>, With<M>, Without<DisabledButton>);
+
+type PressableButton<M> = (With<M>, Without<DisabledButton>);
 
 const fn is_press(interaction: Interaction) -> bool {
     matches!(interaction, Interaction::Pressed)
@@ -102,6 +104,24 @@ pub(in crate::states::running::game::battlescape) fn press_contextual_button<
         && let Some(target) = offer.target()
     {
         pending.push(target);
+    }
+}
+
+pub(in crate::states::running::game::battlescape) fn press_contextual_button_via_focus<
+    A: ContextualPanelAct,
+>(
+    mut activations: MessageReader<FocusActivated>,
+    offer: Res<ContextualOffer<A>>,
+    buttons: Query<&Visibility, PressableButton<A::Marker>>,
+    mut pending: ResMut<PendingContextualIntents<A>>,
+) {
+    for activated in activations.read() {
+        let shown = buttons
+            .get(**activated)
+            .is_ok_and(|visibility| *visibility != Visibility::Hidden);
+        if shown && let Some(target) = offer.target() {
+            pending.push(target);
+        }
     }
 }
 

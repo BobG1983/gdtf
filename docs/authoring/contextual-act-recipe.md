@@ -86,8 +86,9 @@ the frame it was claimed in, exactly as a press is.
   per-SLOT, not per-action,
   so it needs no descriptor field — the panel ranks the visible buttons and each per-act
   digit-press router resolves its key from that rank via `Keybinds::contextual_slot_key`).
-  This reverses the Q8 "button-only" ruling; the keyboard slot-bindings coexist
-  with mouse clicks, both feeding the one `PendingContextualIntents<A>` dispatch.
+  This reverses the Q8 "button-only" ruling. Three paths feed the one
+  `PendingContextualIntents<A>` dispatch: a mouse click, a digit slot key, and the
+  activation Enter or the gamepad's south button raises on the button holding focus.
 
 ### 3. App — the panel button (one file + one line)
 
@@ -109,12 +110,13 @@ the frame it was claimed in, exactly as a press is.
   target and `can_spend_tu` for the pool. Either way
   the answer goes to `ContextualOffer::with_pressable`, which greys the button through
   `gdtf_ui::DisabledButton` and reports itself on `battle.offers`. A greyed
-  button ignores a click and its digit slot key. Melee also greys out when the actor wields
+  button ignores a click, its digit slot key, and an activation while it holds focus.
+  Melee also greys out when the actor wields
   no melee weapon, because there is no strike to price.
 - **One line** in `contextual_panel/plugin.rs`:
   `.add_contextual_act_button::<<Act>Act, _>(acts::<act>::offer_<act>)`. That stamps
-  the generic button spawn, visibility toggle, disabled sync, and press router over the
-  descriptor.
+  the generic button spawn, visibility toggle, disabled sync, and all three press
+  routers over the descriptor.
 - Never add per-act `Without<>` disjointness filters, per-marker visibility bundles, or
   per-marker press queries — the generic systems hold ONE query each, so none are
   needed (the N-squared filter wall must not come back).

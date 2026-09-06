@@ -1,9 +1,9 @@
 use bevy::{
     ecs::{entity::Entity, query::With},
-    math::Vec2,
+    math::{Rect, Vec2},
     prelude::*,
     text::TextLayoutInfo,
-    ui::{ComputedNode, UiGlobalTransform},
+    ui::{CalculatedClip, ComputedNode, UiGlobalTransform},
 };
 use gdtf_battle_sim::{
     magazine::{Magazine, ReloadTu},
@@ -65,6 +65,28 @@ impl PixelRect {
             && self.min.y < other.max.y
             && other.min.y < self.max.y
     }
+
+    fn clipped_by(&self, clip: Rect) -> bool {
+        self.min.x < clip.min.x - EPSILON_PX
+            || self.min.y < clip.min.y - EPSILON_PX
+            || self.max.x > clip.max.x + EPSILON_PX
+            || self.max.y > clip.max.y + EPSILON_PX
+    }
+}
+
+fn clip_of<M: Component>(app: &mut App) -> Option<Rect> {
+    let entity = single_entity_with::<M>(app)?;
+    app.world().get::<CalculatedClip>(entity).map(|c| c.clip)
+}
+
+fn single_entity_with<M: Component>(app: &mut App) -> Option<Entity> {
+    let mut query = app.world_mut().query_filtered::<Entity, With<M>>();
+    let mut results: Vec<Entity> = query.iter(app.world()).collect();
+    if results.len() == 1 {
+        results.pop()
+    } else {
+        None
+    }
 }
 
 fn pixel_rect_of<M: Component>(app: &mut App) -> Option<PixelRect> {
@@ -83,15 +105,52 @@ fn pixel_rect_of<M: Component>(app: &mut App) -> Option<PixelRect> {
 }
 
 fn weapon_name_text_entity(app: &mut App) -> Option<Entity> {
-    let mut query = app
-        .world_mut()
-        .query_filtered::<Entity, With<WeaponNameText>>();
-    let mut results: Vec<Entity> = query.iter(app.world()).collect();
-    if results.len() == 1 {
-        results.pop()
-    } else {
-        None
+    single_entity_with::<WeaponNameText>(app)
+}
+
+#[test]
+fn the_whole_reload_button_is_drawn_inside_the_weapon_panel() {
+    let mut app = real_layout_battle_running_app();
+
+    spawn_armed_and_select(
+        &mut app,
+        weapon_kit(
+            "Autogun",
+            Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        ),
+    );
+    for _ in 0..8 {
+        app.update();
     }
+
+    let reload_rect = pixel_rect_of::<ReloadButton>(&mut app);
+    assert!(
+        reload_rect.is_some(),
+        "exactly one Reload button must exist with real computed geometry",
+    );
+    let Some(reload_rect) = reload_rect else {
+        return;
+    };
+    let size = reload_rect.max - reload_rect.min;
+    assert!(
+        size.x > 0.0 && size.y > 0.0,
+        "the Reload button must be laid out with a real size, or the clip check below passes for \
+         the wrong reason. Got {size:?}",
+    );
+
+    let Some(clip) = clip_of::<ReloadButton>(&mut app) else {
+        return;
+    };
+    assert!(
+        !reload_rect.clipped_by(clip),
+        "every pixel of the Reload button ({:?}..{:?}) must be drawn. Its ancestors clip it to \
+         ({:?}..{:?}), so the parts outside that box are cut off and the player sees a sliver. \
+         The weapon panel's info block must leave the reload row its full height",
+        reload_rect.min,
+        reload_rect.max,
+        clip.min,
+        clip.max,
+    );
 }
 
 #[test]

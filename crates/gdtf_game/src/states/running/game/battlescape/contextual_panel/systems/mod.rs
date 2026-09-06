@@ -7,8 +7,9 @@ pub(in crate::states::running::game::battlescape) use spawn::{
 mod buttons;
 
 pub(in crate::states::running::game::battlescape) use buttons::{
-    order_contextual_buttons, press_contextual_button, spawn_contextual_button,
-    sync_contextual_button_disabled, sync_contextual_button_visibility, sync_panel_root_visibility,
+    order_contextual_buttons, press_contextual_button, press_contextual_button_via_focus,
+    spawn_contextual_button, sync_contextual_button_disabled, sync_contextual_button_visibility,
+    sync_panel_root_visibility,
 };
 
 mod slot_keys;

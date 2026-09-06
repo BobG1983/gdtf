@@ -169,8 +169,9 @@ fn weapon_panel_bands_size_responsively_not_px() {
     let stance = node_of::<StancePanelRoot>(&mut app);
     let Some(stance) = stance else { return };
     assert!(
-        matches!(stance.width, Val::Vw(_)),
-        "the separate Stance Panel width is a fixed window fraction (Vw), not Px — got {:?}",
+        matches!(stance.width, Val::Percent(_)),
+        "the separate Stance Panel width is a share of the bar's content box (Percent), not Px. \
+         Got {:?}",
         stance.width,
     );
 }

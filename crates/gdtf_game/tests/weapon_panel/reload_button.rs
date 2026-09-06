@@ -97,6 +97,92 @@ fn pressing_reload_emits_a_reload_requested_for_the_selection() {
 }
 
 #[test]
+fn activating_the_focused_reload_button_emits_a_reload_requested() {
+    let mut app = battle_running_app();
+    app.init_resource::<MessageProbe<ReloadRequested>>();
+    app.add_systems(
+        Update,
+        drain_message_probe::<ReloadRequested>.after(dispatch_act_intents),
+    );
+
+    let ganger = spawn_armed_and_select(
+        &mut app,
+        weapon_kit(
+            "Autogun",
+            Magazine::new(
+                LoadedRounds::new(0),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
+        ),
+    );
+    app.update();
+
+    let reload_opt = single_with::<ReloadButton>(&mut app);
+    assert!(
+        reload_opt.is_some(),
+        "the weapon panel must carry exactly one LIVE Reload button",
+    );
+    let Some(reload) = reload_opt else {
+        return;
+    };
+    activate_focused_button(&mut app, reload);
+    app.update();
+
+    let reloads = probed::<ReloadRequested>(&app);
+    assert_eq!(
+        reloads.len(),
+        1,
+        "activating the FOCUSED Reload button must emit exactly one ReloadRequested. The button \
+         is reachable from the keyboard, the gamepad and `input.activate`, all of which write \
+         FocusActivated, so the weapon panel must read that message and not only Interaction",
+    );
+    assert_eq!(
+        reloads[0].actor, ganger,
+        "the ReloadRequested actor is the SelectedShooter",
+    );
+}
+
+#[test]
+fn activating_a_hidden_reload_button_emits_nothing() {
+    let mut app = battle_running_app();
+    app.init_resource::<MessageProbe<ReloadRequested>>();
+    app.add_systems(
+        Update,
+        drain_message_probe::<ReloadRequested>.after(dispatch_act_intents),
+    );
+
+    spawn_armed_and_select(
+        &mut app,
+        weapon_kit(
+            "Autogun",
+            Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
+        ),
+    );
+    app.update();
+    let reload_opt = single_with::<ReloadButton>(&mut app);
+    let Some(reload) = reload_opt else {
+        return;
+    };
+
+    spawn_unarmed_and_select(&mut app);
+    app.update();
+    assert_eq!(
+        visibility::<ReloadButton>(&mut app),
+        Some(Visibility::Hidden),
+        "sanity: an unarmed selection hides the Reload button before it is activated",
+    );
+
+    activate_focused_button(&mut app, reload);
+    app.update();
+
+    assert!(
+        probed::<ReloadRequested>(&app).is_empty(),
+        "a hidden Reload button emits nothing when the focus it holds is activated",
+    );
+}
+
+#[test]
 fn weapon_panel_exists_and_is_the_only_reload_button() {
     let mut app = battle_running_app();
 

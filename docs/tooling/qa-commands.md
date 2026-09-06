@@ -568,8 +568,9 @@ and all but `act.melee` take `()`. `act.melee` takes `(target: Ganger(...))` or
 
 **None of them can act on a target the panel is not offering, because no press can
 either.** The contextual panel offers exactly one target per act family, written by that
-family's offer scan, and a mouse click or a digit slot key pushes whatever the offer holds
-— unless the panel has greyed that button out, which makes it ignore both. So an agent
+family's offer scan, and a mouse click, a digit slot key or an activation on the button
+holding focus pushes whatever the offer holds
+— unless the panel has greyed that button out, which makes it ignore all three. So an agent
 chooses by moving and selecting and then reading `battle.offers` — exactly as a player
 chooses by moving and looking at the panel.
 
@@ -617,7 +618,8 @@ unaffordable or illegal refusal on these commands: every contextual dispatch in 
 rejects by doing nothing and emitting nothing, so a call the sim declined comes back with
 `from_seq` equal to `to_seq`. Read `battle.offers` first to tell them apart — an offer
 with `pressable: false` is a button on screen the panel has greyed out. The panel makes that
-button ignore a click and its digit key; the command does not copy the state, so `act.*`
+button ignore a click, its digit key and an activation while it holds focus; the command
+does not copy the state, so `act.*`
 pushes the target anyway and the sim declines in silence. Every family takes the flag
 from the sim — most from a predicate that folds the cost check in, Melee and Shove from
 `can_spend_tu` on their own sim cost helper. Melee has a second way to go false:
