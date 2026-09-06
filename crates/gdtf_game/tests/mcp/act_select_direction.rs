@@ -16,10 +16,8 @@ use super::{
     battle_reads::player_gangers,
     command_exchange::{ACT_SELECT_NEXT, ACT_SELECT_PREV},
     socket_support::{TestError, TestResult},
+    wait::support::answered_within,
 };
-
-/// Frames a selection command is given to reach the sim and answer.
-const SETTLE_FRAMES: u32 = 16;
 
 /// Step the cycle once and report who it landed on.
 fn step_the_cycle(
@@ -28,17 +26,7 @@ fn step_the_cycle(
     name: &'static str,
 ) -> Result<GangerToken, TestError> {
     let reply = send(tx, run_request(name, "()"));
-    let mut answered = None;
-    for _ in 0..SETTLE_FRAMES {
-        app.update();
-        if let Ok(answer) = reply.try_recv() {
-            answered = Some(answer);
-            break;
-        }
-    }
-    let Some(answer) = answered else {
-        return Err(format!("`{name}` never answered within {SETTLE_FRAMES} frames").into());
-    };
+    let answer = answered_within(app, &reply);
     selected(name, answer)?
         .ok_or_else(|| format!("`{name}` must land on a ganger in a running battle").into())
 }

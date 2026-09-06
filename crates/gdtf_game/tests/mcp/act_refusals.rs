@@ -12,26 +12,19 @@ use crate::{
     },
     battle_reads::ganger_argument,
     command_exchange::{ACT_MOVE, ACT_RELOAD, ACT_SELECT, ACT_SET_AIMING, ACT_SET_STANCE},
+    wait::support::answered_within,
 };
-
-/// Frames a claimed act is allowed to take to answer.
-const SETTLE_FRAMES: u32 = 8;
 
 /// Any cell will do: the act never reaches the sim, so the destination is never read.
 const SOMEWHERE: &str = "(at:(cell:(x:1,y:1),level:0))";
 
 /// Step until the reply lands, then hand back its RON body.
 fn body_of(app: &mut App, reply: &Receiver<McpResponse>, named: &str) -> String {
-    for _ in 0..SETTLE_FRAMES {
-        app.update();
-        if let Ok(answer) = reply.try_recv() {
-            let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = answer else {
-                unreachable!("`{named}` must answer rather than refuse admission: {answer:?}");
-            };
-            return reply.as_str().to_owned();
-        }
-    }
-    unreachable!("`{named}` must answer inside {SETTLE_FRAMES} frames")
+    let answer = answered_within(app, reply);
+    let McpResponse::Outcome(CommandOutcome::Ran { reply, .. }) = answer else {
+        unreachable!("`{named}` must answer rather than refuse admission: {answer:?}");
+    };
+    reply.as_str().to_owned()
 }
 
 /// Drive a battle whose gang is all down, then run one act against it.
