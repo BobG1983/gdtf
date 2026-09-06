@@ -15,11 +15,6 @@ fn start() -> CellLevel {
     ground(5, 5)
 }
 
-/// The cell the emplacement is seeded on.
-fn seat() -> CellLevel {
-    ground(6, 5)
-}
-
 /// A battle with one player actor on [`start`] and one vacant emplacement on [`seat`].
 fn a_seat_beside_the_actor() -> (App, Entity, Entity) {
     let (mut app, seed) = battle_app(0x5543_0A0A);

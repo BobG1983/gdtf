@@ -23,11 +23,26 @@ use gdtf_battle_sim::{
 };
 
 use super::{
-    PLAYER, SHOOTER_KEY,
+    PLAYER, SHOOTER_KEY, ground,
     reads::{occupant, state},
     step,
     weapons::OWN_KEY,
 };
+
+/// The cell the emplacement is seeded on.
+pub(crate) fn seat() -> CellLevel {
+    ground(6, 5)
+}
+
+/// The entry side west of the seat, which the first occupant starts on.
+pub(crate) fn west_entry() -> CellLevel {
+    ground(5, 5)
+}
+
+/// The entry side east of the seat, which a second ganger starts on.
+pub(crate) fn east_entry() -> CellLevel {
+    ground(7, 5)
+}
 
 /// A standing player ganger carrying the suite's own gun.
 pub(crate) fn player_at(at: CellLevel, facing: Direction) -> GangerSpawn {
@@ -118,13 +133,16 @@ pub(crate) fn mount(app: &mut App, actor: Entity, emplacement: Entity) {
     assert_eq!(
         state(app, emplacement),
         Some(EmplacementState::Occupied),
-        "PRECONDITION: the enter must man the seat, or nothing below is about a mounted ganger",
+        "PRECONDITION: the enter must man the seat, or nothing below is about a mounted ganger; \
+         it reads {:?}",
+        state(app, emplacement),
     );
     assert_eq!(
         occupant(app, emplacement),
         Some(actor),
         "PRECONDITION: the seat must name this actor as its occupant — a failed enter leaves \
-         MountedBy absent and every assertion below passes while proving nothing",
+         MountedBy absent and every assertion below passes while proving nothing; it names {:?}",
+        occupant(app, emplacement),
     );
 }
 

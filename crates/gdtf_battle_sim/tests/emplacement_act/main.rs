@@ -3,6 +3,8 @@
 mod blocking;
 mod cost;
 mod death;
+mod destroyed;
+mod dot;
 mod duplicate_requests;
 mod eject_landing;
 mod eject_on_destroy;

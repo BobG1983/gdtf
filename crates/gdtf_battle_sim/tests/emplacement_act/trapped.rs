@@ -18,11 +18,6 @@ const SEED: u64 = 0x5543_1239;
 /// Ticks a walk is given to settle. Three steps and a frame to drop the walk fits easily.
 const WALK_TICK_CAP: u32 = 16;
 
-/// The cell the one-sided emplacement is scattered on.
-fn seat() -> CellLevel {
-    ground(6, 5)
-}
-
 /// The seat's one rotated entry cell: North authored, turned East by the placed facing.
 fn entry() -> CellLevel {
     ground(7, 5)

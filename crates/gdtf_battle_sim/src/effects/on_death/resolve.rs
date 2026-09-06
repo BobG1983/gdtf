@@ -14,7 +14,10 @@ use crate::{
     },
     metric::CellLevel,
     occupancy::OccupancyGrid,
-    terrain::entity::TerrainIndexKey,
+    terrain::{
+        emplacement::MountedWeaponEntity,
+        entity::{TerrainCell, TerrainIndexKey},
+    },
     weapon::{MeleeWeapon, MountedWeapon, Wields},
 };
 
@@ -62,19 +65,23 @@ impl TerrainOnDeathRegistry {
     }
 }
 
-/// The weapon a victim carried, and the effect it fires when they die.
+/// The on-death effects a victim owns: its own, its carried gun's, or its mount's.
 #[derive(SystemParam)]
 pub struct DeathWeapons<'w, 's> {
     wields:    Query<'w, 's, &'static Wields>,
     on_deaths: Query<'w, 's, &'static OnDeath>,
     melee:     Query<'w, 's, (), With<MeleeWeapon>>,
     mounted:   Query<'w, 's, (), With<MountedWeapon>>,
+    mounts:    Query<'w, 's, (&'static TerrainCell, &'static MountedWeaponEntity)>,
 }
 
 impl DeathWeapons<'_, '_> {
-    // The on-death effects carried by the victim's firing weapon, in the authored order.
+    // The dying thing's own effects, else those on the gun it carried, in the authored order.
     fn effect_of(&self, victim: Entity) -> Option<Vec<OnDeathEffect>> {
-        let weapon = self.wields.get(victim).ok()?.firing_weapon(
+        if let Ok(own) = self.on_deaths.get(victim) {
+            return Some(own.effects().to_vec());
+        }
+        let weapon = self.wields.get(victim).ok()?.carried_ranged_weapon(
             |entity| self.mounted.get(entity).is_ok(),
             |entity| self.melee.get(entity).is_ok(),
         )?;
@@ -82,6 +89,18 @@ impl DeathWeapons<'_, '_> {
             .get(weapon)
             .ok()
             .map(|on_death| on_death.effects().to_vec())
+    }
+
+    // The effects on the gun the destroyed piece had mounted, empty unless it was manned.
+    fn mounted_effects(&self, key: TerrainIndexKey) -> Vec<OnDeathEffect> {
+        let TerrainIndexKey::Cover(at) = key else {
+            return Vec::new();
+        };
+        self.mounts
+            .iter()
+            .find(|(cell, _)| ***cell == at)
+            .and_then(|(_, mount)| self.on_deaths.get(**mount).ok())
+            .map_or_else(Vec::new, |on_death| on_death.effects().to_vec())
     }
 }
 
@@ -122,7 +141,11 @@ pub fn resolve_on_death(
         }
 
         let effects: Option<Vec<OnDeathEffect>> = match death.terrain {
-            Some(key) => terrain_on_death.effects(&key).map(<[_]>::to_vec),
+            Some(key) => {
+                let mut piece = terrain_on_death.effects(&key).unwrap_or_default().to_vec();
+                piece.extend(weapons.mounted_effects(key));
+                (!piece.is_empty()).then_some(piece)
+            }
             None => weapons.effect_of(death.entity),
         };
         let Some(effects) = effects else {

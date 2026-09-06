@@ -23,11 +23,6 @@ fn start() -> CellLevel {
     ground(5, 5)
 }
 
-/// The cell every emplacement here is seeded on.
-fn seat() -> CellLevel {
-    ground(6, 5)
-}
-
 /// Where the walk off the all-sided seat is sent: three steps east, well clear of the seat.
 fn destination() -> CellLevel {
     ground(9, 5)

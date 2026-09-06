@@ -48,8 +48,9 @@ until that ganger moves or dies.
 **Dying.** A ganger killed in the seat leaves its body there. The corpse stays
 on the mount cell and the emplacement goes vacant, so another ganger can climb
 in and take the gun: a body slumped over the gun is flavour, one death taking a
-heavy weapon out of the fight is not. What a *downed* occupant should do is not
-settled.
+heavy weapon out of the fight is not. A ganger *downed* in the seat keeps it,
+along with the occupant record and the mounted weapon. A down does not free the
+seat, so a squad wanting that gun has to finish the gunner off.
 
 **Destroyed.** An emplacement is destructible cover, and destroying it takes
 the seat with it. The occupant is put back on the cell it entered from when
@@ -133,11 +134,17 @@ and after `sync_inactive_gangers` — so the death fans every effect the spec
 authors, in the order it is written, while the mount is still there, and the
 grid has already released the corpse's slot by the time the seat frees. Writing
 the corpse's cell back would re-claim that slot with nothing left to release it,
-which is why the system touches no position. A mounted weapon carries the
-on-death list its spec authors, the way a carried one does, so a gunner killed
-at the mount fires the mounted gun's list rather than the list on the gun on
-their back. Only a death frees the seat here: a downed occupant keeps its seat
-and its grid slot both.
+which is why the system touches no position. A gunner killed at the mount fans
+the list on the gun on their back, not the mount's. The mounted gun's own list
+fans when the emplacement carrying it is destroyed while manned. A mounted
+weapon carries the DOT its spec authors the same way it carries the on-death
+list. The guard reads `Dead` alone, so a `Downed` write reaches the system
+and is skipped. The downed gunner keeps the seat, the occupant record, the
+mounted weapon and its slot on the occupancy grid. Nothing writes `Downed` back
+to `Alive`, so it holds them until it dies. It bleeds out unless an ally
+stabilizes it, and a stabilized gunner holds the seat for the rest of the battle.
+`can_enter_emplacement` reads the state, which still says occupied, so no other
+ganger takes that gun until this one dies.
 
 `eject_on_destroy` (`terrain/emplacement/eject.rs`) reads the
 `TerrainPieceDestroyed` messages, takes only the ones whose kind is

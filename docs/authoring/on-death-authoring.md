@@ -16,7 +16,8 @@ specs. Every effect in the list fires, in the order it is written in the file:
 
 | Home | File family | Fans when |
 |------|-------------|-----------|
-| `WeaponSpec.on_death` | `assets/content/weapons/ranged/*.weapon.ron` | The WIELDING ganger dies |
+| `WeaponSpec.on_death`, on a gun a ganger carries | `assets/content/weapons/ranged/*.weapon.ron` | The WIELDING ganger dies |
+| `WeaponSpec.on_death`, on a gun a terrain def mounts | `assets/content/weapons/ranged/*.weapon.ron` | The EMPLACEMENT holding it is destroyed while manned |
 | `TerrainDef.on_death` | `assets/content/terrain/<theme>/*.terrain_def.ron` | The piece is DESTROYED |
 
 There is no separate on-death file family — the effect rides the spec that
@@ -89,10 +90,10 @@ editor, so a dangling one is a finding rather than a silent no-op.
   piece died (cover and slab are separate keys); an entity death is deduped by
   its cell. So a cover and a slab destroyed on the same cell in the same frame
   each fan every effect their own def authors.
-- **A mounted gun's list is the one that fans.** An emplacement's mounted
-  weapon carries the `on_death:` its own spec authors, and the death read picks
-  the mounted gun over the carried one, so a gunner killed at the mount fans the
-  mount's list.
+- **A mounted gun's list fans when the emplacement dies.** An emplacement's
+  mounted weapon carries the `on_death:` its own spec authors, and that list
+  fans when the piece carrying it is destroyed while manned. A gunner killed at
+  the mount fans the list on the gun on their back, never the mount's.
 - A cone authored on a corpse degenerates to the full disc (a corpse has no
   meaningful fire direction).
 

@@ -87,7 +87,7 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
 | `slots` | `WeaponSlots` | pair list, optional | Offered attachment slots + capacities; omitted = none fit (see 1j) |
 | `attachments` | `FittedAttachments` | string list, optional | Fitted attachment ITEM keys; omitted = `[]` (see 1j) |
 | `dot` | `Option<DotProfile>` | `Some((…))`, optional | Damage-over-time profile; omitted = `None` (see 1k) |
-| `on_death` | `Vec<OnDeathEffect>` | list of variants, optional | Wielder-death effects; omitted = `[]` (see 1l) |
+| `on_death` | `Vec<OnDeathEffect>` | list of variants, optional | Death effects; omitted = `[]` (see 1l) |
 
 ### 1c. Magazine authoring
 
@@ -233,11 +233,14 @@ cannot reach zero at all: its drag is ranged `1..=u8::MAX`, and it commits throu
 writes `Weapon(DotTurns(n))` through that same function, so a 0 sent over the wire
 answers `Ran` and reads back as 1.
 
-### 1l. `on_death` — wielder-death effects
+### 1l. `on_death` — death effects
 
-`on_death:` names the list of effects the WIELDING ganger's death fans, every
-one of them, in the order it is written (a live satchel charge, an unstable
-power cell). Each entry is `Explode(hit_type: …, damage: …, damage_type: …)` or
+`on_death:` names the list of effects a death fans, every one of them, in the
+order it is written (a live satchel charge, an unstable power cell). A gun a
+ganger carries fans its list when that ganger dies. A gun a terrain def mounts
+fans its list when the emplacement holding it is destroyed while a ganger mans
+it, and a gunner killed at the mount fans the gun on their back instead. Each
+entry is `Explode(hit_type: …, damage: …, damage_type: …)` or
 `LeaveField(field: "<field key>")`. Example
 (`assets/content/weapons/ranged/volatile_charge.weapon.ron`):
 

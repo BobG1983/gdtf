@@ -2,10 +2,7 @@
 
 use bevy::{app::App, prelude::Entity};
 use gdtf_battle_sim::{
-    acts::{
-        EnterEmplacementRequested, ExitEmplacementRequested, MoveRequested,
-        movement::WalkInProgress,
-    },
+    acts::{ExitEmplacementRequested, MoveRequested},
     ganger::Direction,
     metric::CellLevel,
     terrain::emplacement::{EmplacementState, Mounted},
@@ -46,11 +43,6 @@ fn start() -> CellLevel {
     ground(5, 5)
 }
 
-/// The cell the emplacement is seeded on.
-fn seat() -> CellLevel {
-    ground(6, 5)
-}
-
 /// Where both runs send the walk: three steps east, well clear of the seat.
 fn destination() -> CellLevel {
     ground(9, 5)
@@ -70,31 +62,6 @@ fn a_seat_beside_the_actor() -> (App, Entity, Entity) {
         unreachable!("setup spawns one player ganger");
     };
     (app, actor, emplacement)
-}
-
-/// Enter the seat, and fail unless the enter actually manned it.
-fn mount(app: &mut App, actor: Entity, emplacement: Entity) {
-    app.world_mut()
-        .write_message(EnterEmplacementRequested::new(actor, emplacement));
-    step(app, 3);
-    assert_eq!(
-        state(app, emplacement),
-        Some(EmplacementState::Occupied),
-        "PRECONDITION: the enter must man the seat, it reads {:?}",
-        state(app, emplacement),
-    );
-    assert_eq!(
-        occupant(app, emplacement),
-        Some(actor),
-        "PRECONDITION: the seat must name this actor as its occupant — a failed enter leaves \
-         MountedBy absent and both runs spend the same TU while proving nothing; it names {:?}",
-        occupant(app, emplacement),
-    );
-}
-
-/// Whether this actor is still walking a committed route.
-fn is_walking(app: &App, actor: Entity) -> bool {
-    app.world().get::<WalkInProgress>(actor).is_some()
 }
 
 /// Step one tick at a time until the walk settles, or the cap runs out.

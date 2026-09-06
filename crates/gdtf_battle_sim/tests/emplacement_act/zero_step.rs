@@ -5,10 +5,7 @@ use bevy::{
     prelude::{Entity, Messages},
 };
 use gdtf_battle_sim::{
-    acts::{
-        EnterEmplacementRequested, MoveRejected, MoveRequested, MovementOccurred,
-        movement::ReactionShotFired,
-    },
+    acts::{MoveRejected, MoveRequested, MovementOccurred, movement::ReactionShotFired},
     ganger::Direction,
     metric::CellLevel,
     terrain::emplacement::{EmplacementState, Mounted},
@@ -29,11 +26,6 @@ const EXIT_TU: u8 = 5;
 /// The cell the actor starts on, beside the seat.
 fn start() -> CellLevel {
     ground(5, 5)
-}
-
-/// The cell the emplacement is seeded on.
-fn seat() -> CellLevel {
-    ground(6, 5)
 }
 
 /// Where the interrupted walk is sent: three steps east, well clear of the seat.
@@ -61,26 +53,6 @@ fn a_seat_beside_the_actor() -> (App, Entity, Entity) {
         unreachable!("setup spawns one player ganger");
     };
     (app, actor, emplacement)
-}
-
-/// Enter the seat, and fail unless the enter actually manned it.
-fn mount(app: &mut App, actor: Entity, emplacement: Entity) {
-    app.world_mut()
-        .write_message(EnterEmplacementRequested::new(actor, emplacement));
-    step(app, 3);
-    assert_eq!(
-        state(app, emplacement),
-        Some(EmplacementState::Occupied),
-        "PRECONDITION: the enter must man the seat, it reads {:?}",
-        state(app, emplacement),
-    );
-    assert_eq!(
-        occupant(app, emplacement),
-        Some(actor),
-        "PRECONDITION: the seat must name this actor as its occupant — a failed enter leaves \
-         MountedBy absent and every assertion below passes while proving nothing; it names {:?}",
-        occupant(app, emplacement),
-    );
 }
 
 /// Drain both buffers this tick, so nothing written early is lost before the run ends.

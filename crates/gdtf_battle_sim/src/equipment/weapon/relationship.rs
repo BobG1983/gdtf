@@ -54,6 +54,17 @@ impl Wields {
         self.iter().find(|&entity| is_mounted(entity))
     }
 
+    /// The gun on the wielder's own back: the first weapon that is neither melee nor mounted.
+    #[must_use]
+    pub fn carried_ranged_weapon(
+        &self,
+        is_mounted: impl Fn(Entity) -> bool,
+        is_melee: impl Fn(Entity) -> bool,
+    ) -> Option<Entity> {
+        self.iter()
+            .find(|&entity| !is_mounted(entity) && !is_melee(entity))
+    }
+
     /// The weapon that fires: the mounted one if there is one, else the ranged one.
     #[must_use]
     pub fn firing_weapon(

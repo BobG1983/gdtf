@@ -1,4 +1,5 @@
 //! A killed occupant: the body stays on the mount cell, the seat frees, the next ganger mounts.
+//! A downed occupant keeps the seat, its occupant record and the gun, and admits nobody else.
 
 use bevy::{app::App, prelude::Entity};
 use gdtf_battle_sim::{
@@ -10,10 +11,8 @@ use gdtf_battle_sim::{
         },
         on_death::{OnDeathEffect, OnDeathOccurred},
     },
-    ganger::{Direction, LifeState, Position},
+    ganger::{Direction, LifeState},
     metric::CellLevel,
-    occupancy::OccupancyGrid,
-    prelude::Faction,
     terrain::emplacement::EmplacementState,
     test_support::{SituationBuilder, TEST_MOUNTED_WEAPON_KEY, emplacement_at, field_turns},
     weapon::{DamageType, WeaponName, WeaponRegistry, WeaponSpec},
@@ -27,76 +26,12 @@ const SEED: u64 = 0x5543_1235;
 /// Ticks a request is given to reach the toggle and settle on the grid.
 const SETTLE_TICKS: u32 = 3;
 
-/// The cell the emplacement is seeded on.
-fn seat() -> CellLevel {
-    ground(6, 5)
-}
-
-/// The entry side the first occupant starts on.
-fn west_entry() -> CellLevel {
-    ground(5, 5)
-}
-
-/// The entry side the second ganger starts on.
-fn east_entry() -> CellLevel {
-    ground(7, 5)
-}
-
-/// The one player ganger standing on `at`, or a failure naming the cell and the count found.
-fn player_on(app: &mut App, at: CellLevel) -> Entity {
-    let world = app.world_mut();
-    let mut query = world.query::<(Entity, &Faction, &Position)>();
-    let found: Vec<Entity> = query
-        .iter(world)
-        .filter(|(_, faction, position)| ***faction == PLAYER && ***position == at)
-        .map(|(entity, ..)| entity)
-        .collect();
-    assert_eq!(
-        found.len(),
-        1,
-        "exactly one player ganger must stand on {at:?}, found {}",
-        found.len(),
-    );
-    let [entity] = found[..] else {
-        unreachable!("the count above is one");
-    };
-    entity
-}
-
-/// Kill a ganger the way a fatal hit does: write `LifeState::Dead` and nothing else.
-fn kill(app: &mut App, ganger: Entity) {
+/// Move a ganger's life state the way a hit does: write the state asked for and nothing else.
+fn set_life(app: &mut App, ganger: Entity, life_state: LifeState) {
     let Some(mut life) = app.world_mut().get_mut::<LifeState>(ganger) else {
         unreachable!("every seeded ganger carries a LifeState");
     };
-    *life = LifeState::Dead;
-}
-
-/// Who the OCCUPANCY GRID says stands on a cell, which `occupant` does not answer.
-fn grid_occupant(app: &App, at: CellLevel) -> Option<Entity> {
-    app.world()
-        .get_resource::<OccupancyGrid>()
-        .and_then(|grid| grid.occupant(&at))
-}
-
-/// Seat the first ganger and fail unless the enter actually manned the emplacement.
-fn mount(app: &mut App, actor: Entity, emplacement: Entity) {
-    app.world_mut()
-        .write_message(EnterEmplacementRequested::new(actor, emplacement));
-    step(app, SETTLE_TICKS);
-    assert_eq!(
-        state(app, emplacement),
-        Some(EmplacementState::Occupied),
-        "PRECONDITION: the enter must man the seat, or the clear below has nothing to clear and \
-         every assertion passes for nothing; it reads {:?}",
-        state(app, emplacement),
-    );
-    assert_eq!(
-        occupant(app, emplacement),
-        Some(actor),
-        "PRECONDITION: the seat must name this actor as its occupant — a failed enter leaves \
-         MountedBy absent and the clear has nothing to find; it names {:?}",
-        occupant(app, emplacement),
-    );
+    *life = life_state;
 }
 
 /// Two players flanking a seat: the first mans it, is killed, and the death is settled.
@@ -115,7 +50,28 @@ fn a_seat_with_a_dead_gunner() -> (App, Entity, Entity, Entity) {
     let first = player_on(&mut app, west_entry());
     let second = player_on(&mut app, east_entry());
     mount(&mut app, first, emplacement);
-    kill(&mut app, first);
+    set_life(&mut app, first, LifeState::Dead);
+    step(&mut app, SETTLE_TICKS);
+    (app, emplacement, first, second)
+}
+
+/// Two players flanking a seat: the first mans it, is downed, and the down is settled.
+/// Yields the emplacement, the downed gunner on it, and the ganger still standing on the far side.
+fn a_seat_with_a_downed_gunner() -> (App, Entity, Entity, Entity) {
+    let (mut app, seed) = battle_app(SEED);
+    let situation = SituationBuilder::new()
+        .with_gangers([
+            player_at(west_entry(), Direction::East),
+            player_at(east_entry(), Direction::West),
+        ])
+        .with_scatter(emplacement_at(seat()))
+        .build_with_gangs();
+    drive_setup(&mut app, seed, situation);
+    let emplacement = seated_emplacement(&mut app, seat());
+    let first = player_on(&mut app, west_entry());
+    let second = player_on(&mut app, east_entry());
+    mount(&mut app, first, emplacement);
+    set_life(&mut app, first, LifeState::Downed);
     step(&mut app, SETTLE_TICKS);
     (app, emplacement, first, second)
 }
@@ -211,17 +167,71 @@ fn the_freed_seat_admits_a_second_ganger_with_a_working_gun() {
     );
 }
 
-/// The catalog key the mounted weapon's authored death effect names.
+#[test]
+fn a_downed_gunner_keeps_the_seat_the_record_and_the_gun() {
+    let (app, emplacement, first, _second) = a_seat_with_a_downed_gunner();
+
+    assert_eq!(
+        state(&app, emplacement),
+        Some(EmplacementState::Occupied),
+        "a downed occupant holds the seat; the state reads {:?}",
+        state(&app, emplacement),
+    );
+    assert_eq!(
+        occupant(&app, emplacement),
+        Some(first),
+        "a downed occupant keeps its record on the seat; the seat names {:?}",
+        occupant(&app, emplacement),
+    );
+    assert!(
+        mount_entity(&app, emplacement).is_some(),
+        "a downed occupant keeps the mounted weapon; the seat holds {:?}",
+        mount_entity(&app, emplacement),
+    );
+}
+
+#[test]
+fn a_downed_gunner_shuts_the_seat_to_the_next_ganger() {
+    let (mut app, emplacement, first, second) = a_seat_with_a_downed_gunner();
+    let tu_before = tu_of(&app, second);
+
+    app.world_mut()
+        .write_message(EnterEmplacementRequested::new(second, emplacement));
+    step(&mut app, SETTLE_TICKS);
+
+    assert_eq!(
+        occupant(&app, emplacement),
+        Some(first),
+        "the seat a downed gunner holds takes no new occupant; it names {:?}",
+        occupant(&app, emplacement),
+    );
+    assert_eq!(
+        tu_of(&app, second),
+        tu_before,
+        "the refused enter spends nothing, so the pool stays at {tu_before:?}; it reads {:?}",
+        tu_of(&app, second),
+    );
+}
+
+/// The catalog key the MOUNTED weapon's authored death effect names.
 fn burning() -> FieldKey {
     FieldKey::new("burning".to_owned())
 }
 
-/// A registry whose MOUNTED spec alone authors an on-death effect; the carried gun authors none.
+/// The catalog key the CARRIED gun's authored death effect names.
+fn own_field() -> FieldKey {
+    FieldKey::new("scorched".to_owned())
+}
+
+/// A registry where both guns author a death field, keyed apart so the fan names which fired.
 fn mounted_on_death_registry() -> WeaponRegistry {
     WeaponRegistry::new([
         (
             WeaponName::new(OWN_KEY.to_owned()),
-            gun_spec(OWN_DAMAGE_TYPE),
+            WeaponSpec {
+                on_death: vec![OnDeathEffect::LeaveField { field: own_field() }],
+                ..gun_spec(OWN_DAMAGE_TYPE)
+            },
         ),
         (
             WeaponName::new(TEST_MOUNTED_WEAPON_KEY.to_owned()),
@@ -233,17 +243,23 @@ fn mounted_on_death_registry() -> WeaponRegistry {
     ])
 }
 
-/// The field catalog the effect resolves through; battle setup inserts none of its own.
+/// The field catalog both effects resolve through; battle setup inserts none of its own.
+/// The two defs differ in damage type, which is what a placed field remembers about its def.
 fn burning_catalog() -> FieldDefRegistry {
-    FieldDefRegistry::new([(
-        burning(),
-        FieldDef::new(
-            FieldDamage::new(3),
-            DamageType::Plasma,
-            ImmuneArmorTypes::default(),
-            FieldDuration::Turns(field_turns(2)),
-        ),
-    )])
+    FieldDefRegistry::new([
+        (burning(), field_def(MOUNT_DAMAGE_TYPE)),
+        (own_field(), field_def(OWN_DAMAGE_TYPE)),
+    ])
+}
+
+/// A field def told apart from its sibling by the channel it burns on.
+fn field_def(damage_type: DamageType) -> FieldDef {
+    FieldDef::new(
+        FieldDamage::new(3),
+        damage_type,
+        ImmuneArmorTypes::default(),
+        FieldDuration::Turns(field_turns(2)),
+    )
 }
 
 /// Whether a field stands on a cell.
@@ -253,8 +269,16 @@ fn field_present(app: &App, at: CellLevel) -> bool {
         .is_some_and(|fields| fields.field_at(&at).is_some())
 }
 
+/// The channel the field standing on a cell burns on, which names the def it was placed from.
+fn field_damage_type(app: &App, at: CellLevel) -> Option<DamageType> {
+    app.world()
+        .get_resource::<FieldRegistry>()
+        .and_then(|fields| fields.field_at(&at))
+        .map(|placed| placed.def().damage_type)
+}
+
 #[test]
-fn a_gunner_killed_at_the_mount_fires_the_mounts_on_death_effect() {
+fn a_gunner_killed_at_the_mount_fires_the_gun_on_their_back() {
     let (mut app, seed) = battle_app(SEED);
     app.insert_resource(mounted_on_death_registry());
     let situation = SituationBuilder::new()
@@ -268,8 +292,8 @@ fn a_gunner_killed_at_the_mount_fires_the_mounts_on_death_effect() {
     mount(&mut app, actor, emplacement);
     assert!(
         wields_mount(&mut app, actor),
-        "PRECONDITION: the actor must wield the mount, or the effect read below is the carried \
-         gun's; it wields {}",
+        "PRECONDITION: the actor must wield the mount, or a carried-gun field below proves \
+         nothing about which gun the death read; it wields {}",
         wields_mount(&mut app, actor),
     );
     assert!(
@@ -277,16 +301,17 @@ fn a_gunner_killed_at_the_mount_fires_the_mounts_on_death_effect() {
         "PRECONDITION: no field stands on the seat before the death; one already does",
     );
 
-    kill(&mut app, actor);
+    set_life(&mut app, actor, LifeState::Dead);
     app.world_mut()
         .write_message(OnDeathOccurred::new(actor, seat()));
     step(&mut app, SETTLE_TICKS);
 
-    assert!(
-        field_present(&app, seat()),
-        "the death resolves against the mount that was there when the gunner died, so the \
-         mount's LeaveField lands on {:?}; the registry holds {}",
+    assert_eq!(
+        field_damage_type(&app, seat()),
+        Some(OWN_DAMAGE_TYPE),
+        "a gunner's death fans the gun on their back, so the field on {:?} is the carried gun's \
+         {OWN_DAMAGE_TYPE:?} one and not the mount's {MOUNT_DAMAGE_TYPE:?}; it burns {:?}",
         seat(),
-        field_present(&app, seat()),
+        field_damage_type(&app, seat()),
     );
 }

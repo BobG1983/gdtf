@@ -26,11 +26,6 @@ fn start() -> CellLevel {
     ground(5, 5)
 }
 
-/// The cell the emplacement is seeded on.
-fn seat() -> CellLevel {
-    ground(6, 5)
-}
-
 /// A battle with one player actor on [`start`] and one vacant all-sided emplacement on [`seat`].
 fn a_seat_beside_the_actor() -> (App, Entity, Entity) {
     let (mut app, seed) = battle_app(SEED);
@@ -45,27 +40,6 @@ fn a_seat_beside_the_actor() -> (App, Entity, Entity) {
         unreachable!("setup spawns one player ganger");
     };
     (app, actor, emplacement)
-}
-
-/// Enter the seat once, and fail unless the enter actually manned it.
-fn mount(app: &mut App, actor: Entity, emplacement: Entity) {
-    app.world_mut()
-        .write_message(EnterEmplacementRequested::new(actor, emplacement));
-    step(app, SETTLE_TICKS);
-    assert_eq!(
-        state(app, emplacement),
-        Some(EmplacementState::Occupied),
-        "PRECONDITION: the enter must man the seat before anything can exit it, it reads {:?}",
-        state(app, emplacement),
-    );
-    assert_eq!(
-        occupant(app, emplacement),
-        Some(actor),
-        "PRECONDITION: the seat must name this actor as its occupant — a failed enter leaves \
-         MountedBy absent and every assertion below then passes or fails for the wrong reason; \
-         it names {:?}",
-        occupant(app, emplacement),
-    );
 }
 
 /// TU the actor has lost since `before`.

@@ -53,6 +53,19 @@ pub(super) fn dead_ganger_with_on_death(app: &mut App, effect: OnDeathEffect) ->
     ganger
 }
 
+/// A corpse carrying the effect on itself, wielding nothing for the resolver to read instead.
+pub(super) fn dead_body_with_own_on_death(app: &mut App, effect: OnDeathEffect) -> Entity {
+    let body = GangerEntityBuilder::new()
+        .hp(1)
+        .life_state(LifeState::Dead)
+        .at(ground(5, 5))
+        .spawn(app.world_mut());
+    app.world_mut()
+        .entity_mut(body)
+        .insert(OnDeath::new(vec![effect]));
+    body
+}
+
 pub(super) fn resolver_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);

@@ -158,6 +158,9 @@ fn spawn_mounted_weapon(
     let mount = commands
         .spawn((bundle, WieldedBy::new(occupant), MountedWeapon, pending))
         .id();
+    if let Some(dot) = siblings.dot() {
+        commands.entity(mount).insert(dot);
+    }
     if let Some(on_death) = siblings.on_death() {
         commands.entity(mount).insert(on_death.clone());
     }
