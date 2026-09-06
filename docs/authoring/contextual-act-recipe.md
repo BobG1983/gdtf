@@ -121,11 +121,12 @@ the frame it was claimed in, exactly as a press is.
 
 ### 4. AI arm, or documented why-not (named station — Q6, ruled)
 
-Until lands, the enemy-AI act contract is **move / fire / end-turn, plus
-reload-when-landed** — the brain (`crates/gdtf_battle_sim/src/ai/`) writes only `FireRequested` /
-`MoveRequested` / `EndTurnRequested` today, and records the reload gap. Every
-new act must EITHER add a brain arm that can emit its `*Requested`, OR record here (and
-on the ticket) why the AI does not use it yet.
+The enemy-AI act contract is what the brain (`crates/gdtf_battle_sim/src/ai/`)
+writes today: `SetAimingRequested`, `FireRequested`, `ReloadRequested`,
+`MeleeRequested`, `MoveRequested`, `OpenDoorRequested`, `SetStanceRequested` and
+`EndTurnRequested` (`AiActRequests`, `crates/gdtf_battle_sim/src/ai/params.rs`).
+Every new act must EITHER add a brain arm that can emit its `*Requested`, OR
+record here (and on the ticket) why the AI does not use it yet.
 
 Why-not record for the existing contextual acts: they are player-affordance
 surfaces pending the AI-acts expansion; none has a brain arm today.

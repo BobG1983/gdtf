@@ -51,7 +51,9 @@ impl WeaponLookup<'_, '_> {
     }
 }
 
-/// Targets the enemy can see, afford to fire at, and engage right now.
+/// Live targets the enemy can see, afford to fire at, and engage right now.
+///
+/// A downed or dead target is skipped, matching the melee gate in `can_melee`.
 pub(super) fn engageable_targets(
     enemy: &GangerRow,
     targets: &[GangerRow],
@@ -73,6 +75,9 @@ pub(super) fn engageable_targets(
     };
     let mut engageable: Vec<AiTarget> = Vec::new();
     for target_row in targets {
+        if !*target_row.life.is_active() {
+            continue;
+        }
         let target_cell = target_row.position.cell();
         let target_level = target_row.position.level();
         let target = Target {

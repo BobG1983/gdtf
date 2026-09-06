@@ -17,7 +17,7 @@ use crate::{
         ReloadRequested, can_melee, can_reload, melee_tu_cost,
         movement::{BreakAwayMover, suppressed_move_legal},
     },
-    ganger::Faction,
+    ganger::{Faction, LifeState},
     los::{Observer, PeekOffset, Target, has_los},
     magazine::{Magazine, mode_tu_cost},
     terrain::{entity::TerrainCell, openable::OpenState},
@@ -182,8 +182,10 @@ pub fn enemy_ai_turn(
     };
     let rows = ganger_rows(&gangers);
     let (enemies, targets) = split_sides(&rows, active);
+    // Dead only, not `is_active`: a downed enemy is still worth walking up to.
     let all_targets: Vec<AiTarget> = targets
         .iter()
+        .filter(|row| row.life != LifeState::Dead)
         .map(|row| AiTarget::new(row.entity, row.position.cell(), row.position.level()))
         .collect();
     let scanned = door_rows(

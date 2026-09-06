@@ -92,7 +92,8 @@ fn enemy_that_cannot_see_advances_toward_contact() {
 #[test]
 fn enemy_fires_the_opposing_player_and_never_a_friendly_enemy() {
     let mut app = brain_app();
-    let friend_at = ground(4, 3);
+    // Nearer the shooter than the player is, and later in act order, so the shooter fires first.
+    let friend_at = ground(4, 7);
     let player_at = ground(8, 5);
     let enemy = spawn_combatant(
         app.world_mut(),
@@ -123,8 +124,8 @@ fn enemy_fires_the_opposing_player_and_never_a_friendly_enemy() {
         "the enemy must fire the opposing player at its (8,5,0) cell: {fires:?}",
     );
     assert!(
-        !fires.iter().any(|f| f.target_cell == Cell::new(4, 3)),
-        "the brain must never target a friendly enemy (no shot at (4,3)): {fires:?}",
+        !fires.iter().any(|f| f.target_cell == Cell::new(4, 7)),
+        "the brain must never target a friendly enemy (no shot at (4,7)): {fires:?}",
     );
     assert_ne!(
         friend, player,

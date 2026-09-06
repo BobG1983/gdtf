@@ -1,7 +1,7 @@
 use bevy::prelude::{App, Entity, IntoScheduleConfigs, Update, World};
 
 use super::support::{
-    ENEMY, PLAYER, active_of, brain_app, drain_fires, drain_moves, drain_opens, ground,
+    ENEMY, LifeState, PLAYER, active_of, brain_app, drain_fires, drain_moves, drain_opens, ground,
     place_occupant, spawn_combatant, tu_of,
 };
 use crate::{
@@ -147,6 +147,7 @@ fn adjacent_closed_door_opens_then_the_enemy_walks_through() {
 fn reachable_door_is_walked_to_then_opened() {
     let mut app = door_brain_app();
     let door = seal_column(app.world_mut(), DOOR_Y);
+    // On the door's row so the walk stays on it, and downed so an opened door offers no shot.
     let player_at = ground(8, 5);
     let enemy = spawn_combatant(
         app.world_mut(),
@@ -158,6 +159,7 @@ fn reachable_door_is_walked_to_then_opened() {
     );
     let player = spawn_combatant(app.world_mut(), player_at, PLAYER, Direction::West, 100, 6);
     place_occupant(&mut app, player_at, player);
+    app.world_mut().entity_mut(player).insert(LifeState::Downed);
 
     let mut opens = Vec::new();
     let mut moves = Vec::new();
