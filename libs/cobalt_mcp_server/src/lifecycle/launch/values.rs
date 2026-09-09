@@ -123,23 +123,3 @@ impl Deref for WorkingDir {
         &self.0
     }
 }
-
-/// Environment variable name.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EnvVarName(String);
-
-impl EnvVarName {
-    /// Wrap a name.
-    #[must_use]
-    pub const fn new(name: String) -> Self {
-        Self(name)
-    }
-}
-
-impl Deref for EnvVarName {
-    type Target = String;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}

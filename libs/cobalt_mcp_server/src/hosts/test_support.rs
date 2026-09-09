@@ -3,9 +3,7 @@
 use cobalt_mcp_protocol::ports::McpPort;
 
 use super::{name::HostName, registry::HostRegistry, spec::McpHostSpec};
-use crate::lifecycle::{
-    CargoPackage, EnvVarName, FeatureList, FeatureName, LaunchPolicy, LifecycleConfig, McpChannel,
-};
+use crate::lifecycle::{CargoPackage, FeatureList, FeatureName, LaunchPolicy, LifecycleConfig};
 
 // A registered name as a tool call spells it.
 pub(crate) fn named(name: &str) -> HostName {
@@ -14,7 +12,6 @@ pub(crate) fn named(name: &str) -> HostName {
 
 // A host whose every field is derived from its name, so a wrong lookup shows in any field.
 pub(crate) fn registered(name: &str, port: u16, many_instances: bool) -> McpHostSpec {
-    let upper = name.to_uppercase();
     let policy = if many_instances {
         LaunchPolicy::AlwaysSpawn
     } else {
@@ -26,10 +23,6 @@ pub(crate) fn registered(name: &str, port: u16, many_instances: bool) -> McpHost
         FeatureList::new(vec![FeatureName::new(format!("{name}_feature"))]),
         McpPort::new(port),
         None,
-        McpChannel::new(
-            EnvVarName::new(format!("{upper}_CHANNEL")),
-            EnvVarName::new(format!("{upper}_CHANNEL_PORT")),
-        ),
         LifecycleConfig::defaults_with_policy(policy),
     )
 }

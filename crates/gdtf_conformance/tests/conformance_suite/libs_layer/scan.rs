@@ -21,11 +21,8 @@ const GAME_WORDS: [&str; 12] = [
     "appphase",
 ];
 
-// The two files that hold these strings in order to forbid them.
-const ALLOWED: [&str; 2] = [
-    "libs/cobalt_mcp_server/tests/mcp_server_suite/game_free/scan.rs",
-    "libs/cobalt_mcp_server/tests/mcp_server_suite/tools/generated_schema.rs",
-];
+// The one file that holds these strings in order to forbid them.
+const ALLOWED: [&str; 1] = ["libs/cobalt_mcp_server/tests/mcp_server_suite/game_free/scan.rs"];
 
 const RULE: &str = ".claude/rules/libs-layer.md";
 

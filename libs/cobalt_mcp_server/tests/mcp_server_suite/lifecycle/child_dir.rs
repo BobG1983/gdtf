@@ -9,8 +9,7 @@ use crate::lifecycle::{
     fake_child::{CallLog, PortGatedSpawner},
     support::{
         GatedStubSpawner, SAMPLE_PACKAGE, WatchFreePort, always_spawning_no_boot_deadline_config,
-        gated_listeners, no_boot_deadline_config, sample_channel, sample_spec,
-        spawn_gated_fake_game,
+        gated_listeners, no_boot_deadline_config, sample_spec, spawn_gated_fake_game,
     },
 };
 
@@ -19,7 +18,6 @@ fn recipe_in(dir: &WorkingDir) -> LaunchSpec {
         CargoPackage::new(SAMPLE_PACKAGE.to_owned()),
         FeatureList::default(),
         Some(dir.clone()),
-        sample_channel(),
     )
 }
 

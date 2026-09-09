@@ -31,7 +31,7 @@ impl MapEditorApp {
         app.add_plugins(EguiPlugin::default());
         app.add_plugins(MapEditorPlugin);
         #[cfg(feature = "mcp")]
-        app.add_plugins(crate::mcp::McpEditorPlugin::from_env());
+        app.add_plugins(crate::mcp::McpEditorPlugin::from_args());
         Self(app)
     }
 

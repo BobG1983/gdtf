@@ -21,8 +21,9 @@ control channel. It has these processes and one shared wire contract:
 - **`cobalt_mcp_protocol`** is the bevy-free crate they all link — `crates/gdtf_game`
   for the game, `crates/gdtf_editor` for the editor, and `bins/mcp`
   for the host. It carries the typed request/response message shapes, the command
-  DTOs, the framing codec, and the values both ends have to agree on — the ports
-  and the two timeouts.
+  DTOs, the framing codec, and the values both ends have to agree on: the ports,
+  the `--mcp-port` flag that names one on a host's command line, and the two
+  timeouts.
 
 The channel is a **dev-only** affordance: the QA modules compile only under each host
 package's `mcp` cargo feature, which the `development` umbrella feature turns on. There is
@@ -41,7 +42,7 @@ package, features, cargo profile, working directory. Each one the call omits
 falls back to the default game recipe, so a bare `launch` still runs:
 
 ```bash
-cargo run -p game --features development
+cargo run -p game --features development -- --mcp-port 7616
 ```
 
 in the MCP host's own directory. A call that names them runs what it names.
@@ -63,15 +64,12 @@ QA pass gets reported against code that is not the code under review. A
 `working_dir` that is not an existing directory is rejected, never silently
 dropped.
 
-The spawner does **not** inject either enable name, `GDTF_MCP` or
-`GDTF_EDITOR_MCP`, onto the child; both remain historical `McpChannel` labels
-read by nothing. It DOES set the port name from `spec.channel().port()` on both
-children, to the port the launch was given, and that is the only variable it
-sets. That port name is what arms each host:
-the game reads `GDTF_MCP_PORT` through `port_from_env`
-(`crates/gdtf_game/src/dev/mcp/env.rs`) and the editor reads `EDITOR_MCP_PORT`
-through `editor_port_from_env` (`crates/gdtf_editor/src/mcp/config.rs`), and a
-child started with neither set opens no listener at all.
+The spawner sets **no** environment variable on the child, of any name. It
+appends `-- --mcp-port <N>` to the `cargo run` instead, carrying the port the
+launch was given, and that argument is what arms each host: the game reads it
+through `port_from_args` (`crates/gdtf_game/src/dev/mcp/env.rs`) and the editor
+through `editor_port_from_args` (`crates/gdtf_editor/src/mcp/config.rs`). A
+child started without it opens no listener at all.
 BOTH of the child's output streams are piped and drained into one ring by
 `ProcessChild` — the host's own stdout is the JSON-RPC channel, so the child's
 cannot share it. The `logs` tool reads the tail of that ring, and a failed launch
@@ -131,15 +129,14 @@ is missing, that is a defect to file, not a reason to bypass the host.
 A bare `launch(host="editor")` runs:
 
 ```bash
-cargo run -p editor --features development
+cargo run -p editor --features development -- --mcp-port 7617
 ```
 
-in the MCP host's own directory. The editor binds the port `EDITOR_MCP_PORT`
-names and opens no listener without it. The spawner sets the port name on both
-children from `spec.channel().port()`, to the port the launch picked, so the
-editor child binds that port and the game child binds the `GDTF_MCP_PORT` it is
-handed. `GDTF_EDITOR_MCP` and `GDTF_MCP` are read by nothing. Neither is set,
-and neither is required for launch.
+in the MCP host's own directory. The editor binds the port `--mcp-port` names
+and opens no listener without it. The spawner appends that argument to both
+children, carrying the port the launch picked, so each child binds the port its
+own launch chose. No environment variable is set on either child, and none is
+required for launch.
 
 **Warm the build first.** Nothing in the normal loop builds the editor binary.
 `cargo dbuild` builds the GAME binary, and the workspace checks never link an
@@ -159,8 +156,8 @@ streams, interleaved — which shows how far the build got.
 The editor can also be brought UP by hand. Driving it still goes through the
 MCP host, per the rule above. It is a separate binary package
 (`bins/editor/Cargo.toml`, package `editor`). It binds only the port
-`EDITOR_MCP_PORT` names, so running it by hand with the variable absent opens no
-MCP channel at all.
+`--mcp-port` names, so running it by hand without that argument opens no MCP
+channel at all.
 
 ```bash
 cargo run -p editor --features development
@@ -170,18 +167,17 @@ cargo run -p editor --features development
 `cargo edbuild` builds without running. `development` includes `file_watcher` (hot-reload
 RON).
 
-An editor build opens the channel only when `EDITOR_MCP_PORT` trims and parses
-as a `u16`, and binds that value. There is no default port, so a hand-run
-`cargo edrun` opens no MCP channel. The bridge's registry
+An editor build opens the channel only when the argument after `--mcp-port`
+trims and parses as a `u16`, and binds that value. There is no default port, so
+a hand-run `cargo edrun` opens no MCP channel. The bridge's registry
 (`bins/mcp/src/hosts.rs`) holds the editor's `7617`. That is deliberately one
 above the game's `7616`, so both hosts can be up at once without fighting for a
-socket. The spawner sets the port name on both children, so a
+socket. The spawner appends `-- --mcp-port <N>` to both children, so a
 `launch(host="editor", port=…)`
 child binds the port it was given, or the first free port above it when this
 host's own records already hold that one. That is how a second editor comes up
 while the first is still listening, and the launch reply carries the port the
-child actually got. `GDTF_EDITOR_MCP` is read by nothing, and the spawner
-sets neither enable variable.
+child actually got. The spawner sets no environment variable on either child.
 
 When the channel comes up the editor writes this line to **stderr** at `info`
 level (`crates/gdtf_editor/src/mcp/plugin.rs`), carrying the port it
@@ -260,15 +256,15 @@ so a build without that feature never contains the server code. The editor mirro
 `mcp` is a feature on each host package, and `development` turns it on alongside dynamic
 linking, the dev tools and the file watcher. A release build with `--features mcp` serves the
 MCP host, which is what a release-only bug needs. `cargo mcpbuild` and `cargo edmcpbuild` build
-those, and a `launch` call carrying `"profile": "release"` starts one as the child under test. The enable names `GDTF_MCP` and
-`GDTF_EDITOR_MCP` are read by nothing; the port variable is what arms each host.
-`McpPlugin::from_env` (`crates/gdtf_game/src/dev/mcp/plugin/mcp_plugin.rs`) reads
-`GDTF_MCP_PORT` and `McpEditorPlugin::from_env`
-(`crates/gdtf_editor/src/mcp/plugin.rs`) reads `EDITOR_MCP_PORT`. Each binds the
-value it finds and builds a disabled plugin when the value is absent or does not
-parse, so a hand-run `cargo drun` or `cargo edrun` opens no MCP channel. The
-spawner sets the port name on both children, so each binds the port its launch
-picked.
+those, and a `launch` call carrying `"profile": "release"` starts one as the child under test.
+No environment variable arms either host; the `--mcp-port` argument does.
+`McpPlugin::from_args` (`crates/gdtf_game/src/dev/mcp/plugin/mcp_plugin.rs`) and
+`McpEditorPlugin::from_args` (`crates/gdtf_editor/src/mcp/plugin.rs`) each read
+the argument after `--mcp-port` off their own process's argument vector. Each
+binds the value it finds and builds a disabled plugin when the argument is
+absent or does not parse, so a hand-run `cargo drun` or `cargo edrun` opens no
+MCP channel. The spawner appends that argument to both children, so each binds
+the port its launch picked.
 
 The listen **interface** is never configurable — hardcoded to
 `Ipv4Addr::LOCALHOST`. The **ports** live in one place, the two `host(...)` calls
@@ -522,8 +518,8 @@ The game is on the port its launch picked, `7616` for a launch that named none.
 The editor is on the recorded
 port of the instance the call named, which the courier points the link at before
 it sends, and which is `7617` for a first editor launch that
-named no `port`. The spawner sets the port name on both children, so
-each child binds the port its launch picked and the link reaches it there.
+named no `port`. The spawner appends `-- --mcp-port <N>` to both children,
+so each child binds the port its launch picked and the link reaches it there.
 That crate is bevy-free — it links only `serde`, `ron`,
 and `bevy_derive` (the `Deref` derive), so neither half pulls in the engine. Its
 shape:

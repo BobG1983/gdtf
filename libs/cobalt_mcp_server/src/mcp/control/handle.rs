@@ -48,7 +48,7 @@ pub fn handle_stop(
     let outcome = match choice {
         InstanceChoice::Refused(refusal) => return refusal,
         InstanceChoice::Named(instance) => lifecycle.stop_instance(&instance),
-        InstanceChoice::Unnamed => lifecycle.stop(host.port_from_env()),
+        InstanceChoice::Unnamed => lifecycle.stop(host.default_port()),
     };
     ToolCallOutcome::Result(render_stop(host, &outcome))
 }
@@ -90,7 +90,7 @@ fn parse_max_lines(args: &Value) -> Result<TailLines, String> {
 
 pub(super) fn parse_port(host: &McpHostSpec, args: &Value) -> Result<McpPort, String> {
     match args.get("port") {
-        None | Some(Value::Null) => Ok(host.port_from_env()),
+        None | Some(Value::Null) => Ok(host.default_port()),
         Some(value) => {
             let Some(raw) = value.as_u64() else {
                 return Err("`port` must be a non-negative integer".to_owned());

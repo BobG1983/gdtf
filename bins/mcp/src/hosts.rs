@@ -1,8 +1,8 @@
 //! The hosts this game's bridge drives: the game binary and the content editor.
 
 use cobalt_mcp_server::{
-    CargoPackage, EnvVarName, FeatureList, FeatureName, HostName, HostRegistry, LaunchPolicy,
-    LifecycleConfig, McpChannel, McpHostSpec, McpPort,
+    CargoPackage, FeatureList, FeatureName, HostName, HostRegistry, LaunchPolicy, LifecycleConfig,
+    McpHostSpec, McpPort,
 };
 
 /// The loopback port the game host's listener binds by default.
@@ -19,20 +19,13 @@ fn development() -> FeatureList {
 }
 
 // One host value from the parts that differ between this game's two hosts.
-fn host(
-    name: HostName,
-    package: CargoPackage,
-    port: McpPort,
-    channel: McpChannel,
-    policy: LaunchPolicy,
-) -> McpHostSpec {
+fn host(name: HostName, package: CargoPackage, port: McpPort, policy: LaunchPolicy) -> McpHostSpec {
     McpHostSpec::new(
         name,
         package,
         development(),
         port,
         None,
-        channel,
         LifecycleConfig::defaults_with_policy(policy),
     )
 }
@@ -45,20 +38,12 @@ pub fn registry() -> HostRegistry {
             HostName::new("game".to_owned()),
             CargoPackage::new("game".to_owned()),
             DEFAULT_GAME_PORT,
-            McpChannel::new(
-                EnvVarName::new("GDTF_MCP".to_owned()),
-                EnvVarName::new("GDTF_MCP_PORT".to_owned()),
-            ),
             LaunchPolicy::Reuse,
         ),
         host(
             HostName::new("editor".to_owned()),
             CargoPackage::new("editor".to_owned()),
             DEFAULT_EDITOR_PORT,
-            McpChannel::new(
-                EnvVarName::new("GDTF_EDITOR_MCP".to_owned()),
-                EnvVarName::new("EDITOR_MCP_PORT".to_owned()),
-            ),
             LaunchPolicy::AlwaysSpawn,
         ),
     ])

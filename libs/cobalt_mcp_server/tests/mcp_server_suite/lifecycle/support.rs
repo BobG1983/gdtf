@@ -14,10 +14,9 @@ use cobalt_mcp_protocol::{
     },
 };
 use cobalt_mcp_server::{
-    BootTimeout, CargoPackage, ChildSpawner, EnvVarName, FeatureList, FeatureName, KillGrace,
-    LaunchPolicy, LaunchSpec, LifecycleConfig, ManagedChild, McpChannel, McpPort, OrphanStop,
-    OrphanTarget, OrphanWatch, PollInterval, PortHold, ProbeTimeout, ProcessChild, SweepInterval,
-    SystemOrphanWatch,
+    BootTimeout, CargoPackage, ChildSpawner, FeatureList, FeatureName, KillGrace, LaunchPolicy,
+    LaunchSpec, LifecycleConfig, ManagedChild, McpPort, OrphanStop, OrphanTarget, OrphanWatch,
+    PollInterval, PortHold, ProbeTimeout, ProcessChild, SweepInterval, SystemOrphanWatch,
 };
 
 use crate::ports::{bind_loopback, issue_free_port, port_of};
@@ -237,20 +236,11 @@ pub(crate) fn recipe_with_features(features: &[&str]) -> LaunchSpec {
                 .collect(),
         ),
         None,
-        sample_channel(),
     )
 }
 
 // The package a test child is launched from. No test builds it; the spawners are stubs.
 pub(crate) const SAMPLE_PACKAGE: &str = "sample_package";
-
-/// Channel env var names for a host these tests register.
-pub(crate) fn sample_channel() -> McpChannel {
-    McpChannel::new(
-        EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
-        EnvVarName::new("SAMPLE_CHANNEL_PORT".to_owned()),
-    )
-}
 
 /// The launch recipe a registered host hands the manager when a call overrides nothing.
 pub(crate) fn sample_spec() -> LaunchSpec {

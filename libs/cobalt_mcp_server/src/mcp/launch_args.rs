@@ -18,10 +18,7 @@ pub fn parse_launch_spec(defaults: &LaunchSpec, args: &Value) -> Result<LaunchSp
     let features = parse_features(args)?.unwrap_or_else(|| defaults.features().clone());
     let profile = parse_profile(args)?;
     let working_dir = parse_working_dir(args)?;
-    Ok(
-        LaunchSpec::new(package, features, working_dir, defaults.channel().clone())
-            .with_profile(profile),
-    )
+    Ok(LaunchSpec::new(package, features, working_dir).with_profile(profile))
 }
 
 fn parse_profile(args: &Value) -> Result<Option<CargoProfile>, String> {
@@ -94,8 +91,8 @@ fn refuse_env(args: &Value) -> Result<(), String> {
         None | Some(Value::Null) => Ok(()),
         Some(_) => Err(
             "launch takes no `env`: a child is configured by its package, features, \
-                        profile and working directory, and the only variable the spawner sets is \
-                        the launch port"
+                        profile and working directory, the spawner sets no variable at all, and \
+                        the launch port reaches the child on its command line"
                 .to_owned(),
         ),
     }
@@ -197,7 +194,7 @@ mod tests {
             unreachable!("an empty argument object parses");
         };
         assert_eq!(spec.package().as_str(), "beta_package");
-        assert_eq!(spec.channel().enable().as_str(), "BETA_CHANNEL");
+        assert_eq!(spec.features().render(), Some("beta_feature".to_owned()));
     }
 
     #[test]
@@ -218,8 +215,7 @@ mod tests {
         let Ok(spec) = parse_against("beta", &json!({ "env": null })) else {
             unreachable!("an absent `env` is not an argument at all");
         };
-        assert_eq!(spec.channel().enable().as_str(), "BETA_CHANNEL");
-        assert_eq!(spec.channel().port().as_str(), "BETA_CHANNEL_PORT");
+        assert_eq!(spec.package().as_str(), "beta_package");
     }
 
     #[test]

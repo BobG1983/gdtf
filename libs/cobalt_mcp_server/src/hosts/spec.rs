@@ -4,7 +4,7 @@ use cobalt_mcp_protocol::ports::McpPort;
 
 use super::name::HostName;
 use crate::lifecycle::{
-    CargoPackage, FeatureList, LaunchPolicy, LaunchSpec, LifecycleConfig, McpChannel, WorkingDir,
+    CargoPackage, FeatureList, LaunchPolicy, LaunchSpec, LifecycleConfig, WorkingDir,
 };
 
 /// Everything the bridge needs to launch and address one host.
@@ -15,7 +15,6 @@ pub struct McpHostSpec {
     features:     FeatureList,
     default_port: McpPort,
     working_dir:  Option<WorkingDir>,
-    channel:      McpChannel,
     lifecycle:    LifecycleConfig,
 }
 
@@ -28,7 +27,6 @@ impl McpHostSpec {
         features: FeatureList,
         default_port: McpPort,
         working_dir: Option<WorkingDir>,
-        channel: McpChannel,
         lifecycle: LifecycleConfig,
     ) -> Self {
         Self {
@@ -37,7 +35,6 @@ impl McpHostSpec {
             features,
             default_port,
             working_dir,
-            channel,
             lifecycle,
         }
     }
@@ -72,12 +69,6 @@ impl McpHostSpec {
         self.working_dir.as_ref()
     }
 
-    /// Env var names that enable and address this host's channel.
-    #[must_use]
-    pub const fn channel(&self) -> &McpChannel {
-        &self.channel
-    }
-
     /// Boot, kill and sweep timing, with the launch policy.
     #[must_use]
     pub const fn lifecycle_config(&self) -> LifecycleConfig {
@@ -96,15 +87,6 @@ impl McpHostSpec {
         matches!(self.launch_policy(), LaunchPolicy::AlwaysSpawn)
     }
 
-    /// Port from this host's own port env var, or its default.
-    #[must_use]
-    pub fn port_from_env(&self) -> McpPort {
-        std::env::var(self.channel.port().as_str())
-            .ok()
-            .and_then(|value| value.trim().parse::<u16>().ok())
-            .map_or(self.default_port, McpPort::new)
-    }
-
     /// Launch recipe this host uses when a call overrides nothing.
     #[must_use]
     pub fn default_spec(&self) -> LaunchSpec {
@@ -112,7 +94,6 @@ impl McpHostSpec {
             self.package.clone(),
             self.features.clone(),
             self.working_dir.clone(),
-            self.channel.clone(),
         )
     }
 

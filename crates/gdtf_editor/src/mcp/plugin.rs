@@ -18,7 +18,7 @@ use cobalt_screenshot::{
 
 use super::{
     commands::{EditorShotResponder, register_editor_commands},
-    config::{editor_hello_facts, editor_port_from_env},
+    config::{editor_hello_facts, editor_port_from_args},
     router::route_editor_requests,
     schedule::EditorMcpSystems,
 };
@@ -58,10 +58,10 @@ impl McpEditorPlugin {
         Self { wiring }
     }
 
-    /// Build the wiring `EDITOR_MCP_PORT` asks for; no variable means no listener.
+    /// Build the wiring `--mcp-port` asks for; no such argument means no listener.
     #[must_use]
-    pub fn from_env() -> Self {
-        Self::from_port(editor_port_from_env())
+    pub fn from_args() -> Self {
+        Self::from_port(editor_port_from_args())
     }
 
     /// Bind a loopback listener on `port` for tests, running with [`NetTimeouts::NO_IDLE_REAP`].
@@ -92,7 +92,7 @@ impl McpEditorPlugin {
 
 impl Default for McpEditorPlugin {
     fn default() -> Self {
-        Self::from_env()
+        Self::from_args()
     }
 }
 

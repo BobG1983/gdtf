@@ -16,10 +16,10 @@ use cobalt_mcp_protocol::{
     },
 };
 use cobalt_mcp_server::{
-    CargoPackage, EnvVarName, FeatureList, HostLifecycle, HostName, HostPair, HostRegistry,
-    HostSet, InstanceId, LaunchOutcome, LaunchPolicy, LaunchSpec, LifecycleConfig, LinkTimeout,
-    McpChannel, McpClient, McpError, McpHostSpec, McpLink, McpPort, OutputTail, RecordedInstance,
-    ServerIdentity, ServerName, ServerVersion, StopOutcome, TailLines, WorkingDir, dispatch,
+    CargoPackage, FeatureList, HostLifecycle, HostName, HostPair, HostRegistry, HostSet,
+    InstanceId, LaunchOutcome, LaunchPolicy, LaunchSpec, LifecycleConfig, LinkTimeout, McpClient,
+    McpError, McpHostSpec, McpLink, McpPort, OutputTail, RecordedInstance, ServerIdentity,
+    ServerName, ServerVersion, StopOutcome, TailLines, WorkingDir, dispatch,
 };
 use serde_json::Value;
 
@@ -27,14 +27,6 @@ use crate::ports::{bind_loopback, port_of};
 
 /// A read wait no run reaches, so a loaded machine cannot cut a reply short.
 const NO_READ_DEADLINE: LinkTimeout = LinkTimeout::new(Duration::MAX);
-
-// The channel env var the client names when it cannot connect.
-fn sample_channel() -> McpChannel {
-    McpChannel::new(
-        EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
-        EnvVarName::new("SAMPLE_CHANNEL_PORT".to_owned()),
-    )
-}
 
 // One host registered under `name`, listening on `port`.
 fn registered(name: &str, port: u16) -> McpHostSpec {
@@ -44,7 +36,6 @@ fn registered(name: &str, port: u16) -> McpHostSpec {
         FeatureList::default(),
         McpPort::new(port),
         None,
-        sample_channel(),
         LifecycleConfig::defaults_with_policy(LaunchPolicy::Reuse),
     )
 }
@@ -174,11 +165,7 @@ fn answer(request: &McpRequest) -> McpResponse {
 #[test]
 fn a_catalogue_round_trips_through_the_real_client() {
     let (port, seen) = spawn_fake_game();
-    let mut client = McpClient::with_timeout(
-        McpPort::new(port),
-        sample_channel().enable().clone(),
-        NO_READ_DEADLINE,
-    );
+    let mut client = McpClient::with_timeout(McpPort::new(port), NO_READ_DEADLINE);
     let mut unused_second = DeadLink;
     let (mut first_life, mut second_life) = (NoLifecycle, NoLifecycle);
     let mut hosts = HostSet::new(
@@ -225,11 +212,7 @@ const fn refuse_everything(_request: &McpRequest) -> McpResponse {
 #[test]
 fn a_refused_handshake_fails_the_request_and_sends_nothing_else() {
     let (port, seen) = spawn_fake_game_with(refuse_everything);
-    let mut client = McpClient::with_timeout(
-        McpPort::new(port),
-        sample_channel().enable().clone(),
-        NO_READ_DEADLINE,
-    );
+    let mut client = McpClient::with_timeout(McpPort::new(port), NO_READ_DEADLINE);
 
     let result = client.request(McpRequest::Catalogue);
     assert!(

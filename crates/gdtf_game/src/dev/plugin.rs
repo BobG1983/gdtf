@@ -23,7 +23,7 @@ impl Plugin for DevAffordancesPlugin {
             false,
         ));
         #[cfg(feature = "mcp")]
-        app.add_plugins(super::mcp::McpPlugin::from_env());
+        app.add_plugins(super::mcp::McpPlugin::from_args());
         #[cfg(not(any(feature = "dev_tools", feature = "mcp")))]
         let _ = app;
     }

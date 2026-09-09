@@ -3,19 +3,21 @@
 use core::fmt::{self, Display};
 use std::io;
 
-use cobalt_mcp_protocol::{framing::WireError, message::McpSessionError};
-
-use crate::lifecycle::EnvVarName;
+use cobalt_mcp_protocol::{
+    framing::WireError,
+    message::McpSessionError,
+    ports::{MCP_PORT_FLAG, McpPort},
+};
 
 /// Failure talking to a host over MCP.
 #[derive(Debug)]
 pub enum McpError {
-    /// Could not open a TCP connection to the host whose channel `channel` enables.
+    /// Could not open a TCP connection to the host listening on `port`.
     Connect {
-        /// Env var that turns the host's channel on.
-        channel: EnvVarName,
+        /// Port the host's channel was expected on.
+        port:  McpPort,
         /// Why the connection could not be opened.
-        error:   io::Error,
+        error: io::Error,
     },
     /// Read/write on an open connection failed.
     Io(io::Error),
@@ -32,11 +34,11 @@ pub enum McpError {
 impl Display for McpError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Connect { channel, error } => write!(
+            Self::Connect { port, error } => write!(
                 f,
-                "could not connect to the host's mcp channel (is the host running with {}=1?): \
-                 {error}",
-                channel.as_str()
+                "could not connect to the host's mcp channel on port {} (is the host running \
+                 with {MCP_PORT_FLAG} {}?): {error}",
+                **port, **port
             ),
             Self::Io(err) => write!(f, "mcp connection I/O failed: {err}"),
             Self::Wire(err) => write!(f, "mcp framing failed: {err}"),

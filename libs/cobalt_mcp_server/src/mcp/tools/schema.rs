@@ -10,23 +10,6 @@ use crate::{
     },
 };
 
-// One row per registered host: its name, its port variable and its default port.
-fn channel_table(hosts: &HostRegistry) -> String {
-    let rows: Vec<String> = hosts
-        .hosts()
-        .iter()
-        .map(|host| {
-            format!(
-                "{} reads {} and defaults to {}",
-                host.name(),
-                host.channel().port().as_str(),
-                *host.default_port()
-            )
-        })
-        .collect();
-    rows.join("; ")
-}
-
 // "name: value" for every registered host, under a field each host supplies its own value for.
 fn per_host_table(hosts: &HostRegistry, field: impl Fn(&McpHostSpec) -> String) -> String {
     let rows: Vec<String> = hosts
@@ -83,12 +66,12 @@ fn launch_schema(hosts: &HostRegistry) -> Value {
             "host": host_property(hosts),
             "port": { "type": "integer", "minimum": 0, "maximum": 65535,
                       "description": format!(
-                          "Loopback port for the child's mcp listener. The spawner sets each \
-                           host's own port variable on the child it starts ({}). The launch \
-                           probes the port given, so a child that binds a different one answers \
-                           a 'did not answer within' error after the boot timeout. Omit it for \
-                           that host's default.",
-                          channel_table(hosts),
+                          "Loopback port for the child's mcp listener. The spawner hands it to \
+                           the child on the command line, and sets no environment variable. The \
+                           launch probes the port given, so a child that binds a different one \
+                           answers a 'did not answer within' error after the boot timeout. Omit \
+                           it for that host's default ({}).",
+                          per_host_table(hosts, |host| host.default_port().to_string()),
                       ) },
             "package": { "type": "string",
                          "description": format!(

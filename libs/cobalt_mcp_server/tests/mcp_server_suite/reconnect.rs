@@ -18,7 +18,7 @@ use cobalt_mcp_protocol::{
         HelloFacts, McpRequest, McpResponse, McpSessionError, ProtocolVersion, ServerNameNet,
     },
 };
-use cobalt_mcp_server::{EnvVarName, LinkTimeout, McpClient, McpLink, McpPort};
+use cobalt_mcp_server::{LinkTimeout, McpClient, McpLink, McpPort};
 
 use crate::ports::port_of;
 
@@ -115,11 +115,7 @@ fn a_reused_connection_the_game_closed_reconnects_and_succeeds() {
         }
     });
 
-    let mut client = McpClient::with_timeout(
-        McpPort::new(port),
-        EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
-        NO_READ_DEADLINE,
-    );
+    let mut client = McpClient::with_timeout(McpPort::new(port), NO_READ_DEADLINE);
 
     let first = request_catalogue(&mut client);
     assert!(
@@ -153,11 +149,7 @@ fn retarget_on_the_same_port_invalidates_the_connection() {
         }
     });
 
-    let mut client = McpClient::with_timeout(
-        McpPort::new(port),
-        EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
-        NO_READ_DEADLINE,
-    );
+    let mut client = McpClient::with_timeout(McpPort::new(port), NO_READ_DEADLINE);
 
     let first = request_catalogue(&mut client);
     assert!(
@@ -194,11 +186,7 @@ fn an_unreachable_game_fails_promptly_without_retrying_forever() {
     drop(listener);
 
     // Returning at all is the proof: an unbounded reconnect loop would hang right here.
-    let mut client = McpClient::with_timeout(
-        McpPort::new(port),
-        EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
-        NO_READ_DEADLINE,
-    );
+    let mut client = McpClient::with_timeout(McpPort::new(port), NO_READ_DEADLINE);
     let result = request_catalogue(&mut client);
 
     assert!(

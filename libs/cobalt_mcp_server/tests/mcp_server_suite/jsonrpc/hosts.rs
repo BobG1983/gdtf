@@ -1,26 +1,21 @@
 //! The two hosts these tests register, and the identity the server advertises.
 
 use cobalt_mcp_server::{
-    CargoPackage, EnvVarName, FeatureList, FeatureName, HostLifecycle, HostName, HostPair,
-    HostRegistry, HostSet, LaunchPolicy, LifecycleConfig, McpChannel, McpHostSpec, McpLink,
-    McpPort, ServerIdentity, ServerName, ServerVersion,
+    CargoPackage, FeatureList, FeatureName, HostLifecycle, HostName, HostPair, HostRegistry,
+    HostSet, LaunchPolicy, LifecycleConfig, McpHostSpec, McpLink, McpPort, ServerIdentity,
+    ServerName, ServerVersion,
 };
 
 use crate::jsonrpc::support::{BRAMBLE_PORT, THISTLE_PORT};
 
 // A host registered under `name`, on `port`, with the policy its instance rules follow.
 fn registered(name: &str, port: u16, policy: LaunchPolicy) -> McpHostSpec {
-    let upper = name.to_uppercase();
     McpHostSpec::new(
         HostName::new(name.to_owned()),
         CargoPackage::new(format!("{name}_package")),
         FeatureList::new(vec![FeatureName::new(format!("{name}_feature"))]),
         McpPort::new(port),
         None,
-        McpChannel::new(
-            EnvVarName::new(format!("{upper}_CHANNEL")),
-            EnvVarName::new(format!("{upper}_CHANNEL_PORT")),
-        ),
         LifecycleConfig::defaults_with_policy(policy),
     )
 }

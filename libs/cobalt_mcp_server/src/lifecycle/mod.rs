@@ -15,10 +15,7 @@ pub mod values;
 
 pub use child::{ManagedChild, OUTPUT_TAIL_LINES, ProcessChild};
 pub use config::{LaunchPolicy, LifecycleConfig};
-pub use launch::{
-    CargoPackage, CargoProfile, EnvVarName, FeatureList, FeatureName, LaunchSpec, McpChannel,
-    WorkingDir,
-};
+pub use launch::{CargoPackage, CargoProfile, FeatureList, FeatureName, LaunchSpec, WorkingDir};
 pub use liveness::{ChildLiveness, SystemLiveness};
 pub use manager::{HostLifecycle, HostManager};
 pub use orphan::{

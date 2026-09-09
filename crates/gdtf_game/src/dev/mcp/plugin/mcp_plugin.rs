@@ -10,7 +10,7 @@ use super::{
     register_consumers::register_consumers, register_present::register_present,
     register_transport::register_transport,
 };
-use crate::dev::mcp::{config::hello_facts, env::port_from_env};
+use crate::dev::mcp::{config::hello_facts, env::port_from_args};
 
 enum Wiring {
     Disabled,
@@ -53,10 +53,10 @@ impl McpPlugin {
     }
 
     crate::support_item! {
-        /// Build the wiring `GDTF_MCP_PORT` asks for; no variable means no listener.
+        /// Build the wiring `--mcp-port` asks for; no such argument means no listener.
         #[must_use]
-        fn from_env() -> Self {
-            Self::from_port(port_from_env())
+        fn from_args() -> Self {
+            Self::from_port(port_from_args())
         }
     }
 
@@ -113,7 +113,7 @@ fn serve(app: &mut App, listener: TcpListener, timeouts: NetTimeouts) {
 
 impl Default for McpPlugin {
     fn default() -> Self {
-        Self::from_env()
+        Self::from_args()
     }
 }
 

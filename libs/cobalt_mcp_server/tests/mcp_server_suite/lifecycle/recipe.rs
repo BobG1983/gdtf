@@ -10,18 +10,18 @@ use cobalt_mcp_server::{
     LaunchFailure, LaunchOutcome, LaunchSpec, McpPort, WorkingDir,
 };
 
-use crate::lifecycle::support::{
-    SAMPLE_PACKAGE, free_port, no_boot_deadline_config, sample_channel,
-};
+use crate::lifecycle::support::{SAMPLE_PACKAGE, free_port, no_boot_deadline_config};
 
 const PROBE_PACKAGE: &str = "recipe_probe";
 
 const PROBE_PORT_MARKER: &str = "recipe-probe-port";
 
+// Prints the argument after `--mcp-port`, or `absent` when the child was handed none.
 const PROBE_ECHO_MAIN: &str = r#"fn main() {
-    let shown = match std::env::var("__PORT_VAR__") {
-        Ok(value) => value,
-        Err(_) => "absent".to_owned(),
+    let mut after_flag = std::env::args_os().skip_while(|arg| *arg != "--mcp-port");
+    let shown = match after_flag.nth(1).and_then(|value| value.into_string().ok()) {
+        Some(value) => value,
+        None => "absent".to_owned(),
     };
     eprintln!("__MARKER__={shown}");
 }
@@ -74,11 +74,9 @@ fn probe_package_outside_a_workspace(tag: &str) -> PathBuf {
     probe_package_with_main(tag, "fn main() {}\n")
 }
 
-// Prints the value the child was handed, or `absent` when the name reaches it unset.
-fn probe_main_echoing(var: &str) -> String {
-    PROBE_ECHO_MAIN
-        .replace("__PORT_VAR__", var)
-        .replace("__MARKER__", PROBE_PORT_MARKER)
+// Prints the port the child was handed, or `absent` when it was given none.
+fn probe_main_echoing_the_port() -> String {
+    PROBE_ECHO_MAIN.replace("__MARKER__", PROBE_PORT_MARKER)
 }
 
 // The child always exits, which `await_readiness` notices before it tests any deadline.
@@ -103,7 +101,6 @@ fn the_recipe_features_reach_the_real_cargo_command() {
         CargoPackage::new(PROBE_PACKAGE.to_owned()),
         FeatureList::new(vec![FeatureName::new("recipe_no_such_feature".to_owned())]),
         Some(WorkingDir::new(dir.clone())),
-        sample_channel(),
     );
 
     let tail = stderr_of_a_failed_launch(&spec);
@@ -115,15 +112,12 @@ fn the_recipe_features_reach_the_real_cargo_command() {
 }
 
 #[test]
-fn the_launch_port_reaches_the_real_child_on_the_channel_variable() {
-    let channel = sample_channel();
-    let port_var = channel.port().as_str().to_owned();
-    let dir = probe_package_kept_warm("port", &probe_main_echoing(&port_var));
+fn the_launch_port_reaches_the_real_child_on_the_command_line() {
+    let dir = probe_package_kept_warm("port", &probe_main_echoing_the_port());
     let spec = LaunchSpec::new(
         CargoPackage::new(PROBE_PACKAGE.to_owned()),
         FeatureList::default(),
         Some(WorkingDir::new(dir)),
-        channel,
     );
     let port = free_port();
 
@@ -131,7 +125,7 @@ fn the_launch_port_reaches_the_real_child_on_the_channel_variable() {
     let tail = stderr_of_a_failed_launch_on(McpPort::new(port), &spec);
     assert!(
         tail.contains(&format!("{PROBE_PORT_MARKER}={port}")),
-        "the child read {port} back out of {port_var}: {tail}"
+        "the child read {port} back off its own `--mcp-port` argument: {tail}"
     );
 }
 
@@ -142,7 +136,6 @@ fn the_recipe_working_directory_is_where_cargo_runs() {
         CargoPackage::new(SAMPLE_PACKAGE.to_owned()),
         FeatureList::default(),
         Some(WorkingDir::new(dir.clone())),
-        sample_channel(),
     );
     let mut manager =
         HostManager::with_config(Box::new(CargoSpawner::new()), no_boot_deadline_config());
@@ -174,7 +167,6 @@ fn successive_launches_can_name_different_recipes() {
             CargoPackage::new(SAMPLE_PACKAGE.to_owned()),
             FeatureList::default(),
             Some(WorkingDir::new(dir.clone())),
-            sample_channel(),
         );
         let outcome = manager.launch(McpPort::new(free_port()), &spec);
         let LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail)) = outcome else {

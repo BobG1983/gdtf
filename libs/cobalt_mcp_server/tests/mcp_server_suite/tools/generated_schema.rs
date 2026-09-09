@@ -8,15 +8,7 @@ use crate::tools::support::two_registered_hosts;
 const TOOLS: [&str; 5] = ["launch", "stop", "logs", "commands", "run"];
 
 // Names this crate must never write into a schema on its own.
-const NEVER_LITERAL: [&str; 7] = [
-    "game",
-    "editor",
-    "GDTF_MCP",
-    "GDTF_MCP_PORT",
-    "EDITOR_MCP_PORT",
-    "7616",
-    "7617",
-];
+const NEVER_LITERAL: [&str; 4] = ["game", "editor", "7616", "7617"];
 
 fn listed(result: &Value) -> Vec<Value> {
     result["tools"].as_array().cloned().unwrap_or_default()

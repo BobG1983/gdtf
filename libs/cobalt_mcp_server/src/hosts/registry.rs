@@ -131,7 +131,7 @@ mod test {
     }
 
     #[test]
-    fn each_registered_host_keeps_its_own_package_channel_port_and_policy() {
+    fn each_registered_host_keeps_its_own_package_port_and_policy() {
         let registry = two_hosts();
 
         let (Some(alpha), Some(beta)) =
@@ -140,7 +140,6 @@ mod test {
             unreachable!("both registered hosts resolve by name");
         };
         assert_ne!(alpha.package(), beta.package());
-        assert_ne!(alpha.channel().enable(), beta.channel().enable());
         assert_ne!(alpha.default_port(), beta.default_port());
         assert!(!alpha.runs_many_instances());
         assert!(beta.runs_many_instances());

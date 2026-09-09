@@ -22,13 +22,12 @@ pub use error::McpError;
 pub use hosts::{HostName, HostPair, HostRegistry, HostRuntime, HostSet, McpHostSpec};
 pub use lifecycle::{
     BootTimeout, CargoPackage, CargoProfile, CargoSpawner, ChildLiveness, ChildPid, ChildSpawner,
-    EnvVarName, FailureTail, FeatureList, FeatureName, HostLifecycle, HostManager, InstanceId,
-    KillGrace, LaunchFailure, LaunchOutcome, LaunchPolicy, LaunchSpec, LifecycleConfig,
-    ManagedChild, McpChannel, OUTPUT_TAIL_LINES, OrphanEscalation, OrphanEvent, OrphanPid,
-    OrphanStop, OrphanTarget, OrphanWatch, OutputTail, PollInterval, PortHold, PortListening,
-    ProbeTimeout, ProcessChild, RecordedInstance, StopOutcome, SweepClock, SweepDue, SweepEntry,
-    SweepInterval, SweepSchedule, SystemLiveness, SystemOrphanWatch, TailLines, WorkingDir,
-    build_command,
+    FailureTail, FeatureList, FeatureName, HostLifecycle, HostManager, InstanceId, KillGrace,
+    LaunchFailure, LaunchOutcome, LaunchPolicy, LaunchSpec, LifecycleConfig, ManagedChild,
+    OUTPUT_TAIL_LINES, OrphanEscalation, OrphanEvent, OrphanPid, OrphanStop, OrphanTarget,
+    OrphanWatch, OutputTail, PollInterval, PortHold, PortListening, ProbeTimeout, ProcessChild,
+    RecordedInstance, StopOutcome, SweepClock, SweepDue, SweepEntry, SweepInterval, SweepSchedule,
+    SystemLiveness, SystemOrphanWatch, TailLines, WorkingDir, build_command,
 };
 pub use link::{LINK_TIMEOUT, LinkTimeout, McpClient, McpLink};
 pub use mcp::{

@@ -1,9 +1,7 @@
-//! Launch recipes: package, features, and QA channel.
+//! Launch recipes: package, features, profile and working directory.
 
-pub mod channel;
 pub mod spec;
 pub mod values;
 
-pub use channel::McpChannel;
 pub use spec::LaunchSpec;
-pub use values::{CargoPackage, CargoProfile, EnvVarName, FeatureList, FeatureName, WorkingDir};
+pub use values::{CargoPackage, CargoProfile, FeatureList, FeatureName, WorkingDir};

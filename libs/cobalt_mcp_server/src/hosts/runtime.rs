@@ -88,14 +88,9 @@ mod test {
         for (runtime, host) in built.iter().zip(registry.hosts()) {
             assert_eq!(runtime.name(), host.name());
             assert_eq!(
-                runtime.link().channel(),
-                host.channel().enable(),
-                "the link names the env var that enables this host's own channel"
-            );
-            assert_eq!(
                 runtime.link().port(),
-                host.port_from_env(),
-                "the link is aimed at this host's own port"
+                host.default_port(),
+                "the link is aimed at this host's own registered port"
             );
             assert_eq!(
                 runtime.lifecycle().launch_policy(),

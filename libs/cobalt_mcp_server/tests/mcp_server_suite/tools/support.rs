@@ -8,26 +8,20 @@ use cobalt_mcp_protocol::{
     message::{McpRequest, McpResponse, McpSessionError, ServerNameNet},
 };
 use cobalt_mcp_server::{
-    CargoPackage, ChildPid, EnvVarName, FeatureList, FeatureName, HostLifecycle, HostName,
-    HostPair, HostRegistry, HostSet, InstanceId, LaunchOutcome, LaunchPolicy, LaunchSpec,
-    LifecycleConfig, McpChannel, McpError, McpHostSpec, McpLink, McpPort, OutputTail,
-    RecordedInstance, ServerIdentity, ServerName, ServerVersion, StopOutcome, TailLines,
-    WorkingDir,
+    CargoPackage, ChildPid, FeatureList, FeatureName, HostLifecycle, HostName, HostPair,
+    HostRegistry, HostSet, InstanceId, LaunchOutcome, LaunchPolicy, LaunchSpec, LifecycleConfig,
+    McpError, McpHostSpec, McpLink, McpPort, OutputTail, RecordedInstance, ServerIdentity,
+    ServerName, ServerVersion, StopOutcome, TailLines, WorkingDir,
 };
 
 /// A host registered under `name`, with every field derived from that name.
 pub(crate) fn registered(name: &str, port: u16, policy: LaunchPolicy) -> McpHostSpec {
-    let upper = name.to_uppercase();
     McpHostSpec::new(
         HostName::new(name.to_owned()),
         CargoPackage::new(format!("{name}_package")),
         FeatureList::new(vec![FeatureName::new(format!("{name}_feature"))]),
         McpPort::new(port),
         None,
-        McpChannel::new(
-            EnvVarName::new(format!("{upper}_CHANNEL")),
-            EnvVarName::new(format!("{upper}_CHANNEL_PORT")),
-        ),
         LifecycleConfig::defaults_with_policy(policy),
     )
 }

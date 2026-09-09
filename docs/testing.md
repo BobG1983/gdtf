@@ -48,13 +48,12 @@ pre-commit hook.
 
 ## The `GDTF_*`, `COBALT_*` and `EDITOR_*` census
 
-The workspace configures nothing through an environment variable of its own except the QA
-channel's port, and those names are `GDTF_*` or `EDITOR_*`. Each host reads its port behind
-that host package's `mcp` feature, so a binary built without the feature opens no listener and
-reads nothing. The MCP server reads the same two names unconditionally, through
-`McpHostSpec::port_from_env`, to find the port a `launch` or `stop` that names none targets.
-Cargo's own variables, such as `CARGO_TARGET_TMPDIR` in a test, are cargo's and are not on this
-list.
+The workspace configures nothing through an environment variable of its own. A host takes the
+port its listener binds on the command line, as `-- --mcp-port <N>`, which the spawner appends
+to the `cargo run` it starts the child with. A host started without that argument opens no
+listener. A `launch` or `stop` that names no port targets the host's registered default, held
+by `registry()` in `bins/mcp/src/hosts.rs`. Cargo's own variables, such as
+`CARGO_TARGET_TMPDIR` in a test, are cargo's and are not on this list.
 
 The old env-var battle capture/drive rig (`GDTF_AUTOBATTLE`, capture paths, fire-at-frame flags)
 was deleted, not deprecated. The one drive path now is the `mcp` loopback QA network control
@@ -68,22 +67,21 @@ reads, starting and fleeing a battle, the procgen step, `wait`, the acts, the ra
 and the view controls. Read the names off [tooling/qa-commands.md](tooling/qa-commands.md) — a
 second copy here would only rot. That guide is also how a command is added, and driving it is
 [tooling/agent-qa.md](tooling/agent-qa.md). Census command (run from the repo root; re-run it
-when adding a flag and keep this table in step):
+when adding a flag):
 
 ```bash
-grep -rhoE '"(GDTF|COBALT|EDITOR)_[A-Z_0-9]+"' crates/ bins/ libs/ --include='*.rs' | tr -d '"' | sort -u
+grep -rhoE '"(GDTF|COBALT|EDITOR)_[A-Z_0-9]+"' crates/ bins/ libs/ --include='*.rs' \
+  --exclude='poisoned_environment.rs' | tr -d '"' | sort -u
 ```
 
-Four names are left, and they are all the QA channel's own. The battle seed is a
+It prints nothing. The one excluded file is
+`bins/mcp/tests/mcp_suite/launch/poisoned_environment.rs`, which writes `GDTF_MCP_PORT`,
+`EDITOR_MCP_PORT`, `GDTF_MCP` and `GDTF_EDITOR_MCP` onto a child to prove the launcher sets
+no variable and a poisoned one cannot move the port that child binds. A file that writes a
+name so a run can forbid it is excluded for the same reason `ALLOWED` exists in
+`crates/gdtf_conformance/tests/conformance_suite/libs_layer/scan.rs`. The battle seed is a
 `battle.start` argument, the reachable-range overlay is `view.toggle_reachable_overlay`, and
 the GPU probe takes its force-absent flag as a parameter.
-
-| Variable | Read by | Effect |
-| --- | --- | --- |
-| `GDTF_MCP_PORT` | `port_from_env` in `crates/gdtf_game/src/dev/mcp/env.rs`, and `McpHostSpec::port_from_env`; named by `registry()` in `bins/mcp/src/hosts.rs` | Required. The game binds this value when it trims and parses as a `u16`, always on `Ipv4Addr::LOCALHOST`, and opens no listener at all otherwise. There is no fallback port. The spawner sets it on every child it starts, so `launch(host="game", port=N)` puts the game child on `N`. Read in the MCP host's own environment, it moves the port the game link opens on and the port a `launch` or `stop` that names none targets. |
-| `EDITOR_MCP_PORT` | `editor_port_from_env` in `crates/gdtf_editor/src/mcp/config.rs`, and the same host spec | Required. The editor binds this value when it trims and parses as a `u16`, always on `Ipv4Addr::LOCALHOST`, and opens no listener at all otherwise. There is no fallback port. The spawner sets the port name on every child it starts from the port the launch picked, so `launch(host="editor", port=…)` puts the editor child there unless a record of that host already holds the port, in which case it takes the first free port above. Read in the MCP host's own environment, it also moves the port the editor link opens on and the port a `launch` or `stop` that names none targets. |
-| `GDTF_MCP` | Nothing reads it. It is the enable half of the game's `McpChannel` in `bins/mcp/src/hosts.rs`, asserted by `bins/mcp/tests/mcp_suite/registration/hosts.rs` | The game's channel is armed by `GDTF_MCP_PORT` alone, and the spawner sets no enable name on a child. That channel is the ONE drive path (`launch` → `commands` → `run` → `stop`, driven via `mcp` or any `cobalt_mcp_protocol` client). |
-| `GDTF_EDITOR_MCP` | Nothing reads it. It is the enable half of the editor's `McpChannel` in `bins/mcp/src/hosts.rs`, asserted by the same test | The editor's channel is armed by `EDITOR_MCP_PORT` alone. Launch recipe is in [tooling/agent-qa.md](tooling/agent-qa.md). |
 
 ## What the suite pins (and what it doesn't)
 

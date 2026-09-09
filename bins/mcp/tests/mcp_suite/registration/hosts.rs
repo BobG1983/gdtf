@@ -1,4 +1,4 @@
-//! This game registers two hosts, each with its own package, channel, port and policy.
+//! This game registers two hosts, each with its own package, port and policy.
 
 use cobalt_mcp_protocol::ports::McpPort;
 use cobalt_mcp_server::{HostName, LaunchPolicy, initialize_result};
@@ -13,7 +13,7 @@ fn named(name: &str) -> HostName {
 }
 
 #[test]
-fn the_game_and_the_editor_are_both_registered_with_their_own_package_and_channel() {
+fn the_game_and_the_editor_are_both_registered_with_their_own_package_and_port() {
     let registry = registry();
 
     let names: Vec<&str> = registry.names().iter().map(|name| name.as_str()).collect();
@@ -24,8 +24,6 @@ fn the_game_and_the_editor_are_both_registered_with_their_own_package_and_channe
     };
     assert_eq!(game.package().as_str(), "game");
     assert_eq!(editor.package().as_str(), "editor");
-    assert_eq!(game.channel().enable().as_str(), "GDTF_MCP");
-    assert_eq!(editor.channel().enable().as_str(), "GDTF_EDITOR_MCP");
     let expected_game: McpPort = DEFAULT_GAME_PORT;
     let expected_editor: McpPort = DEFAULT_EDITOR_PORT;
     assert_eq!(

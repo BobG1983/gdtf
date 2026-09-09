@@ -12,7 +12,7 @@ use cobalt_mcp_protocol::{
     ports::McpPort,
 };
 
-use crate::{error::McpError, hosts::McpHostSpec, lifecycle::EnvVarName};
+use crate::{error::McpError, hosts::McpHostSpec};
 
 /// Default connect/read/write timeout for an MCP link.
 ///
@@ -87,33 +87,31 @@ impl Connection {
 /// Default TCP implementation of [`McpLink`].
 pub struct McpClient {
     port:    McpPort,
-    channel: EnvVarName,
     timeout: LinkTimeout,
     conn:    Option<Connection>,
 }
 
 impl McpClient {
-    /// Client for `port`, naming the env var that enables that channel, with the default timeout.
+    /// Client for `port`, with the default timeout.
     #[must_use]
-    pub const fn new(port: McpPort, channel: EnvVarName) -> Self {
-        Self::with_timeout(port, channel, LINK_TIMEOUT)
+    pub const fn new(port: McpPort) -> Self {
+        Self::with_timeout(port, LINK_TIMEOUT)
     }
 
     /// Client for `port` with an explicit timeout.
     #[must_use]
-    pub const fn with_timeout(port: McpPort, channel: EnvVarName, timeout: LinkTimeout) -> Self {
+    pub const fn with_timeout(port: McpPort, timeout: LinkTimeout) -> Self {
         Self {
             port,
-            channel,
             timeout,
             conn: None,
         }
     }
 
-    /// Client for a registered host's env-resolved port and channel.
+    /// Client for a registered host's default port.
     #[must_use]
-    pub fn for_host(host: &McpHostSpec) -> Self {
-        Self::new(host.port_from_env(), host.channel().enable().clone())
+    pub const fn for_host(host: &McpHostSpec) -> Self {
+        Self::new(host.default_port())
     }
 
     /// Port this client is aimed at.
@@ -122,19 +120,13 @@ impl McpClient {
         self.port
     }
 
-    /// Env var name that enables the channel this client talks to.
-    #[must_use]
-    pub const fn channel(&self) -> &EnvVarName {
-        &self.channel
-    }
-
     fn ensure_connected(&mut self) -> Result<(), McpError> {
         if self.conn.is_some() {
             return Ok(());
         }
         let stream = TcpStream::connect((Ipv4Addr::LOCALHOST, *self.port)).map_err(|error| {
             McpError::Connect {
-                channel: self.channel.clone(),
+                port: self.port,
                 error,
             }
         })?;

@@ -5,7 +5,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use cobalt_mcp_protocol::ports::McpPort;
+use cobalt_mcp_protocol::ports::{MCP_PORT_FLAG, McpPort};
 
 use super::{
     child::{ManagedChild, ProcessChild},
@@ -35,6 +35,8 @@ impl CargoSpawner {
 }
 
 /// Build the `cargo run` command for a recipe and port.
+///
+/// The child is handed no environment of its own; the port goes on its command line.
 #[must_use]
 pub fn build_command(port: McpPort, spec: &LaunchSpec) -> Command {
     let mut command = Command::new("cargo");
@@ -48,7 +50,7 @@ pub fn build_command(port: McpPort, spec: &LaunchSpec) -> Command {
     if let Some(dir) = spec.working_dir() {
         command.current_dir(&**dir);
     }
-    command.env(spec.channel().port().as_str(), (*port).to_string());
+    command.args(["--", MCP_PORT_FLAG, &(*port).to_string()]);
     command.stdin(Stdio::null());
     command
 }
@@ -61,7 +63,7 @@ impl ChildSpawner for CargoSpawner {
 
 #[cfg(test)]
 mod tests {
-    use std::{ffi::OsStr, path::PathBuf};
+    use std::path::PathBuf;
 
     use super::{McpPort, build_command};
     use crate::{
@@ -84,12 +86,9 @@ mod tests {
             .collect()
     }
 
-    fn env_of(command: &std::process::Command, name: &str) -> Option<String> {
-        command
-            .get_envs()
-            .find(|(key, _)| *key == OsStr::new(name))
-            .and_then(|(_, value)| value)
-            .map(|value| value.to_string_lossy().into_owned())
+    // The trailing arguments cargo passes on to the child, naming the port it binds.
+    fn port_arguments(port: &str) -> Vec<String> {
+        vec!["--".to_owned(), "--mcp-port".to_owned(), port.to_owned()]
     }
 
     #[test]
@@ -98,18 +97,17 @@ mod tests {
         let command = build_command(port, &spec);
         assert_eq!(
             args_of(&command),
-            vec![
-                "run".to_owned(),
-                "-p".to_owned(),
-                "alpha_package".to_owned(),
-                "--features".to_owned(),
-                "alpha_feature".to_owned(),
+            [
+                vec![
+                    "run".to_owned(),
+                    "-p".to_owned(),
+                    "alpha_package".to_owned(),
+                    "--features".to_owned(),
+                    "alpha_feature".to_owned(),
+                ],
+                port_arguments("4100"),
             ]
-        );
-        assert_eq!(env_of(&command, "ALPHA_CHANNEL"), None);
-        assert_eq!(
-            env_of(&command, "ALPHA_CHANNEL_PORT"),
-            Some("4100".to_owned())
+            .concat()
         );
         assert!(command.get_current_dir().is_none());
     }
@@ -120,15 +118,19 @@ mod tests {
         let command = build_command(port, &spec.with_profile(Some(CargoProfile::release())));
         assert_eq!(
             args_of(&command),
-            vec![
-                "run".to_owned(),
-                "-p".to_owned(),
-                "alpha_package".to_owned(),
-                "--profile".to_owned(),
-                "release".to_owned(),
-                "--features".to_owned(),
-                "alpha_feature".to_owned(),
+            [
+                vec![
+                    "run".to_owned(),
+                    "-p".to_owned(),
+                    "alpha_package".to_owned(),
+                    "--profile".to_owned(),
+                    "release".to_owned(),
+                    "--features".to_owned(),
+                    "alpha_feature".to_owned(),
+                ],
+                port_arguments("4100"),
             ]
+            .concat()
         );
     }
 
@@ -136,33 +138,36 @@ mod tests {
     fn the_child_is_handed_the_launch_port() {
         let (spec, _) = recipe_of("beta", 4200, true);
         let command = build_command(McpPort::new(4220), &spec);
+        let args = args_of(&command);
         assert_eq!(
-            env_of(&command, spec.channel().port().as_str()),
-            Some("4220".to_owned())
+            args.get(args.len().saturating_sub(3)..),
+            Some(port_arguments("4220").as_slice()),
+            "the launch port ends the command line, not the recipe's own default: {args:?}"
         );
     }
 
     #[test]
-    fn the_launch_port_is_the_only_variable_the_child_is_handed() {
+    fn the_child_is_handed_no_variable_and_takes_its_port_on_the_command_line() {
         let (default, _) = recipe_of("beta", 4200, true);
-        let port_var = default.channel().port().as_str().to_owned();
         let command = build_command(McpPort::new(4220), &default);
         let handed: Vec<String> = command
             .get_envs()
             .map(|(key, _)| key.to_string_lossy().into_owned())
             .collect();
-        assert_eq!(
-            handed,
-            vec![port_var.clone()],
-            "a recipe carries no environment of its own, so the launch port is all the spawner \
-             sets"
+        assert!(
+            handed.is_empty(),
+            "a recipe carries no environment of its own, and the spawner sets none: {handed:?}"
         );
-        assert_eq!(env_of(&command, &port_var), Some("4220".to_owned()));
+        let args = args_of(&command);
+        assert_eq!(
+            args.get(args.len().saturating_sub(3)..),
+            Some(port_arguments("4220").as_slice()),
+            "the launch port reaches the child as an argument instead: {args:?}"
+        );
     }
 
     #[test]
     fn recipe_drives_package_features_and_directory() {
-        let (default, _) = recipe_of("alpha", 4100, false);
         let spec = LaunchSpec::new(
             CargoPackage::new("another_package".to_owned()),
             FeatureList::new(vec![
@@ -170,18 +175,21 @@ mod tests {
                 FeatureName::new("dev_tools".to_owned()),
             ]),
             Some(WorkingDir::new(PathBuf::from("/tmp/a-worktree"))),
-            default.channel().clone(),
         );
         let command = build_command(McpPort::new(4321), &spec);
         assert_eq!(
             args_of(&command),
-            vec![
-                "run".to_owned(),
-                "-p".to_owned(),
-                "another_package".to_owned(),
-                "--features".to_owned(),
-                "dynamic_linking,dev_tools".to_owned(),
+            [
+                vec![
+                    "run".to_owned(),
+                    "-p".to_owned(),
+                    "another_package".to_owned(),
+                    "--features".to_owned(),
+                    "dynamic_linking,dev_tools".to_owned(),
+                ],
+                port_arguments("4321"),
             ]
+            .concat()
         );
         assert_eq!(
             command.get_current_dir().and_then(std::path::Path::to_str),
@@ -195,15 +203,17 @@ mod tests {
         let command = build_command(port, &spec);
         assert_eq!(
             args_of(&command),
-            vec![
-                "run".to_owned(),
-                "-p".to_owned(),
-                "beta_package".to_owned(),
-                "--features".to_owned(),
-                "beta_feature".to_owned(),
+            [
+                vec![
+                    "run".to_owned(),
+                    "-p".to_owned(),
+                    "beta_package".to_owned(),
+                    "--features".to_owned(),
+                    "beta_feature".to_owned(),
+                ],
+                port_arguments("4200"),
             ]
+            .concat()
         );
-        assert_eq!(env_of(&command, "BETA_CHANNEL"), None);
-        assert_eq!(env_of(&command, "ALPHA_CHANNEL"), None);
     }
 }

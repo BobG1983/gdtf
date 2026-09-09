@@ -5,8 +5,8 @@ use cobalt_mcp_server::{
 
 use crate::lifecycle::support::{
     GatedStubSpawner, SAMPLE_PACKAGE, STUB_STDERR_LINE, StubSpawner, WatchFreePort, fast_config,
-    free_port, no_boot_deadline_config, recipe_with_features, sample_channel, sample_spec,
-    spawn_gated_fake_game, spawn_silent_listener,
+    free_port, no_boot_deadline_config, recipe_with_features, sample_spec, spawn_gated_fake_game,
+    spawn_silent_listener,
 };
 
 #[test]
@@ -124,7 +124,6 @@ fn an_unnamed_directory_matches_the_hosts_own_directory() {
         CargoPackage::new(SAMPLE_PACKAGE.to_owned()),
         sample_spec().features().clone(),
         Some(WorkingDir::new(here)),
-        sample_channel(),
     );
 
     let LaunchOutcome::Launched { .. } = manager.launch(McpPort::new(port), &named) else {

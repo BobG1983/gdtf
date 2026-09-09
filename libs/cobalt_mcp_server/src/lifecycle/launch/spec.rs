@@ -1,18 +1,14 @@
 //! Full launch recipe for a host process.
 
-use super::{
-    channel::McpChannel,
-    values::{CargoPackage, CargoProfile, FeatureList, WorkingDir},
-};
+use super::values::{CargoPackage, CargoProfile, FeatureList, WorkingDir};
 
-/// Package, features, profile, cwd, and channel for one launch.
+/// Package, features, profile and working directory for one launch.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchSpec {
     package:     CargoPackage,
     features:    FeatureList,
     profile:     Option<CargoProfile>,
     working_dir: Option<WorkingDir>,
-    channel:     McpChannel,
 }
 
 impl LaunchSpec {
@@ -22,14 +18,12 @@ impl LaunchSpec {
         package: CargoPackage,
         features: FeatureList,
         working_dir: Option<WorkingDir>,
-        channel: McpChannel,
     ) -> Self {
         Self {
             package,
             features,
             profile: None,
             working_dir,
-            channel,
         }
     }
 
@@ -63,12 +57,6 @@ impl LaunchSpec {
         self.working_dir.as_ref()
     }
 
-    /// MCP channel env names.
-    #[must_use]
-    pub const fn channel(&self) -> &McpChannel {
-        &self.channel
-    }
-
     /// Explicit cwd, or the current process cwd.
     #[must_use]
     pub fn resolved_working_dir(&self) -> Option<WorkingDir> {
@@ -83,7 +71,6 @@ impl LaunchSpec {
         self.package == other.package
             && self.features == other.features
             && self.profile == other.profile
-            && self.channel == other.channel
             && self.resolved_working_dir() == other.resolved_working_dir()
     }
 }
