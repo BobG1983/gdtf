@@ -76,6 +76,7 @@ fn the_game_offers_the_reads_the_lifecycle_the_acts_raw_input_and_the_view_and_b
             CommandName::from_static("view.level_up"),
             CommandName::from_static("view.level_down"),
             CommandName::from_static("view.toggle_full_view"),
+            CommandName::from_static("view.toggle_reachable_overlay"),
             CommandName::from_static("view.pan"),
             CommandName::from_static("view.look_at"),
             CommandName::from_static("battle.set_fire_mode"),

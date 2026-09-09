@@ -1,14 +1,19 @@
 //! Stepping the shown storey and flipping full view, one `app.update()` per call.
 
 use bevy::app::App;
-use gdtf_battle_presenter::{ActiveLevel, ViewMode};
-use gdtf_game::qa_wire::{cell::LevelNet, misc::ViewModeNet};
+use gdtf_battle_presenter::{ActiveLevel, ReachableOverlayEnabled, ViewMode};
+use gdtf_game::qa_wire::{
+    cell::LevelNet,
+    misc::{ReachableOverlayNet, ViewModeNet},
+};
 use serde::Deserialize;
 
 use super::{
     battle_fixture::{decoded, drive_into_battle_running, menu_app_with_mcp, run_one_frame},
     battle_setup::hold_the_screen_still,
-    command_exchange::{VIEW_LEVEL_DOWN, VIEW_LEVEL_UP, VIEW_TOGGLE_FULL_VIEW},
+    command_exchange::{
+        VIEW_LEVEL_DOWN, VIEW_LEVEL_UP, VIEW_TOGGLE_FULL_VIEW, VIEW_TOGGLE_REACHABLE_OVERLAY,
+    },
 };
 
 /// What all three view commands answer with.
@@ -16,6 +21,19 @@ use super::{
 struct ShownBody {
     level:     LevelNet,
     full_view: ViewModeNet,
+}
+
+/// What the reachable-overlay toggle answers with.
+#[derive(Debug, Deserialize)]
+struct OverlayBody {
+    overlay: ReachableOverlayNet,
+}
+
+fn overlay_flag(app: &App) -> ReachableOverlayNet {
+    let Some(enabled) = app.world().get_resource::<ReachableOverlayEnabled>() else {
+        unreachable!("the presenter puts ReachableOverlayEnabled up when its plugin is built");
+    };
+    ReachableOverlayNet::from_presenter(*enabled)
 }
 
 fn active_level(app: &App) -> LevelNet {
@@ -152,5 +170,49 @@ fn a_full_view_toggle_flips_the_view_mode_in_the_frame_that_follows_the_call() {
         body.level,
         LevelNet::new(0),
         "a toggle leaves the storey alone: {body:?}",
+    );
+}
+
+#[test]
+fn a_reachable_overlay_toggle_turns_it_on_and_a_second_call_turns_it_back_off() {
+    let (mut app, tx) = menu_app_with_mcp();
+    drive_into_battle_running(&mut app);
+    assert_eq!(
+        overlay_flag(&app),
+        ReachableOverlayNet::Off,
+        "the battle opens with the reachable-range overlay off, which is what the toggle flips",
+    );
+
+    let first: OverlayBody = decoded(
+        VIEW_TOGGLE_REACHABLE_OVERLAY,
+        run_one_frame(&mut app, &tx, VIEW_TOGGLE_REACHABLE_OVERLAY, "()"),
+    );
+
+    assert_eq!(
+        first.overlay,
+        ReachableOverlayNet::On,
+        "the reply reports the overlay state the flip lands on: {first:?}",
+    );
+    assert_eq!(
+        overlay_flag(&app),
+        ReachableOverlayNet::On,
+        "the flag is written in the frame the call was claimed in, so the world already agrees \
+         with the reply",
+    );
+
+    let second: OverlayBody = decoded(
+        VIEW_TOGGLE_REACHABLE_OVERLAY,
+        run_one_frame(&mut app, &tx, VIEW_TOGGLE_REACHABLE_OVERLAY, "()"),
+    );
+
+    assert_eq!(
+        second.overlay,
+        ReachableOverlayNet::Off,
+        "a second call puts the overlay back where it started: {second:?}",
+    );
+    assert_eq!(
+        overlay_flag(&app),
+        ReachableOverlayNet::Off,
+        "the second flip is a write, not a reply-only value",
     );
 }

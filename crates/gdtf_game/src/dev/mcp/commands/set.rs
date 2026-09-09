@@ -10,6 +10,7 @@ use super::{
     capture::CaptureScreenshot,
     control::{
         BattleSetFireMode, ViewLevelDown, ViewLevelUp, ViewLookAt, ViewPan, ViewToggleFullView,
+        ViewToggleReachableOverlay,
     },
     input::{
         InputActivate, InputClickCell, InputFocusStep, InputHover, InputPressKey, InputSetFocus,
@@ -74,6 +75,7 @@ pub(in crate::dev::mcp) const GAME_COMMANDS: &[&dyn ErasedCommand<GameFacts>] = 
     &ViewLevelUp,
     &ViewLevelDown,
     &ViewToggleFullView,
+    &ViewToggleReachableOverlay,
     &ViewPan,
     &ViewLookAt,
     &BattleSetFireMode,

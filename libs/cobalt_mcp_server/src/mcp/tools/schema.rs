@@ -113,11 +113,7 @@ fn launch_schema(hosts: &HostRegistry) -> Value {
             "working_dir": { "type": "string",
                              "description": "Directory to run the build in — the \
                               checkout under test. Omit to use the MCP host's own; \
-                              pass a git worktree path to QA that tree." },
-            "env": { "type": "object",
-                     "additionalProperties": { "type": "string" },
-                     "description": "Extra environment variables for the child, \
-                      e.g. {\"SOME_VAR\": \"42\"}." }
+                              pass a git worktree path to QA that tree." }
         }
     })
 }

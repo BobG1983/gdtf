@@ -21,10 +21,6 @@
 #   stdin  : event JSON, e.g. {"tool_name":"Bash","tool_input":{"command":"..."}}
 #   exit 0 : allow the tool call.
 #   exit 2 : BLOCK the tool call; stderr is shown to the model.
-#
-# TEST OVERRIDE: set PRE_COMMIT_GATE_SUITE_CMD to replace the suite command
-# (e.g. =true for a guaranteed-green run, =false for guaranteed-red) so the
-# gate's logic can be exercised without running cargo.
 
 set -u
 
@@ -137,7 +133,7 @@ fi
 # Full green is every alias listed in verification.md, via /gate.
 # Pre-commit subset: fmt, dclippy, dtest, dbuild.
 # Use `.cargo/config.toml` aliases — never hand-typed feature lists.
-SUITE_CMD="${PRE_COMMIT_GATE_SUITE_CMD:-cargo fmt --check && cargo dclippy -- -D warnings && cargo dtest && cargo dbuild}"
+SUITE_CMD="cargo fmt --check && cargo dclippy -- -D warnings && cargo dtest && cargo dbuild"
 SUITE_OUTPUT="$(cd "$REPO_DIR" && bash -c "$SUITE_CMD" 2>&1)"
 SUITE_STATUS=$?
 if [ "$SUITE_STATUS" -ne 0 ]; then

@@ -1,4 +1,5 @@
-//! Debug-only reachable-range cell tint.
+//! Reachable-range cell tint, render-only. Compiles in every build; the draw system
+//! registers in debug builds only.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_sim::prelude::{CellLevel, Level, Tu};
@@ -8,16 +9,11 @@ use crate::{
     overlays::pool::draw_pool,
 };
 
-/// Env var that enables the reachable overlay in debug builds.
-#[cfg(debug_assertions)]
-pub const REACHABLE_OVERLAY_ENV: &str = "GDTF_DEBUG_REACHABLE_OVERLAY";
-
-/// Whether the reachable-range overlay renders this process.
-#[cfg(debug_assertions)]
+/// Whether the reachable-range overlay draws. The `view.toggle_reachable_overlay`
+/// command flips it at runtime.
 #[derive(Resource, Debug, Clone, Copy, Default, PartialEq, Eq, Deref)]
 pub struct ReachableOverlayEnabled(bool);
 
-#[cfg(debug_assertions)]
 impl ReachableOverlayEnabled {
     /// Build from an explicit flag.
     #[must_use]
@@ -25,15 +21,10 @@ impl ReachableOverlayEnabled {
         Self(enabled)
     }
 
-    /// Read enablement from [`REACHABLE_OVERLAY_ENV`].
+    /// The same flag the other way round.
     #[must_use]
-    pub fn from_env() -> Self {
-        Self(std::env::var(REACHABLE_OVERLAY_ENV).is_ok_and(|value| {
-            matches!(
-                value.trim().to_ascii_lowercase().as_str(),
-                "1" | "true" | "yes" | "on"
-            )
-        }))
+    pub const fn flipped(self) -> Self {
+        Self(!self.0)
     }
 }
 

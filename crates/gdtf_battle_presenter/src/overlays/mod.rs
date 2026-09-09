@@ -12,8 +12,7 @@ pub mod highlight;
 pub mod path_preview;
 /// Shared sprite-pool grow/hide helper.
 pub mod pool;
-/// Reachable-range DEBUG overlay — render-only; compiles only in debug builds.
-#[cfg(debug_assertions)]
+/// Reachable-range debug overlay, render-only. Its draw system registers in debug builds only.
 pub mod reachable;
 /// Whether a cell is squad-visible for targeting UI.
 pub mod targeting_gate;

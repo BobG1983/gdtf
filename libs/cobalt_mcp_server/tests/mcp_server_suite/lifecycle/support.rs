@@ -14,10 +14,9 @@ use cobalt_mcp_protocol::{
     },
 };
 use cobalt_mcp_server::{
-    BootTimeout, CargoPackage, ChildSpawner, EnvOverrides, EnvVarName, FeatureList, FeatureName,
-    KillGrace, LaunchPolicy, LaunchSpec, LifecycleConfig, ManagedChild, McpChannel, McpPort,
-    OrphanStop, OrphanTarget, OrphanWatch, PollInterval, PortHold, ProbeTimeout, ProcessChild,
-    SweepInterval,
+    BootTimeout, CargoPackage, ChildSpawner, EnvVarName, FeatureList, FeatureName, KillGrace,
+    LaunchPolicy, LaunchSpec, LifecycleConfig, ManagedChild, McpChannel, McpPort, OrphanStop,
+    OrphanTarget, OrphanWatch, PollInterval, PortHold, ProbeTimeout, ProcessChild, SweepInterval,
 };
 
 pub(crate) const STUB_STDERR_LINE: &str = "boot-oops";
@@ -183,7 +182,6 @@ pub(crate) fn recipe_with_features(features: &[&str]) -> LaunchSpec {
                 .collect(),
         ),
         None,
-        EnvOverrides::default(),
         sample_channel(),
     )
 }

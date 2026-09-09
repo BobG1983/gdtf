@@ -48,10 +48,6 @@ pub fn build_command(port: McpPort, spec: &LaunchSpec) -> Command {
     if let Some(dir) = spec.working_dir() {
         command.current_dir(&**dir);
     }
-    for var in spec.env().iter() {
-        command.env(var.name().as_str(), var.value().as_str());
-    }
-    // After the overrides, so an `env` argument cannot displace the launch port.
     command.env(spec.channel().port().as_str(), (*port).to_string());
     command.stdin(Stdio::null());
     command
@@ -71,8 +67,7 @@ mod tests {
     use crate::{
         hosts::test_support::registered,
         lifecycle::launch::{
-            CargoPackage, CargoProfile, EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList,
-            FeatureName, LaunchSpec, WorkingDir,
+            CargoPackage, CargoProfile, FeatureList, FeatureName, LaunchSpec, WorkingDir,
         },
     };
 
@@ -148,25 +143,25 @@ mod tests {
     }
 
     #[test]
-    fn the_launch_port_outranks_an_env_override_of_the_same_name() {
+    fn the_launch_port_is_the_only_variable_the_child_is_handed() {
         let (default, _) = recipe_of("beta", 4200, true);
         let port_var = default.channel().port().as_str().to_owned();
-        let spec = LaunchSpec::new(
-            default.package().clone(),
-            default.features().clone(),
-            None,
-            EnvOverrides::new(vec![EnvVar::new(
-                EnvVarName::new(port_var.clone()),
-                EnvVarValue::new("7999".to_owned()),
-            )]),
-            default.channel().clone(),
+        let command = build_command(McpPort::new(4220), &default);
+        let handed: Vec<String> = command
+            .get_envs()
+            .map(|(key, _)| key.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(
+            handed,
+            vec![port_var.clone()],
+            "a recipe carries no environment of its own, so the launch port is all the spawner \
+             sets"
         );
-        let command = build_command(McpPort::new(4220), &spec);
         assert_eq!(env_of(&command, &port_var), Some("4220".to_owned()));
     }
 
     #[test]
-    fn recipe_drives_package_features_directory_and_env() {
+    fn recipe_drives_package_features_and_directory() {
         let (default, _) = recipe_of("alpha", 4100, false);
         let spec = LaunchSpec::new(
             CargoPackage::new("another_package".to_owned()),
@@ -175,10 +170,6 @@ mod tests {
                 FeatureName::new("dev_tools".to_owned()),
             ]),
             Some(WorkingDir::new(PathBuf::from("/tmp/a-worktree"))),
-            EnvOverrides::new(vec![EnvVar::new(
-                EnvVarName::new("SAMPLE_SEED".to_owned()),
-                EnvVarValue::new("42".to_owned()),
-            )]),
             default.channel().clone(),
         );
         let command = build_command(McpPort::new(4321), &spec);
@@ -196,7 +187,6 @@ mod tests {
             command.get_current_dir().and_then(std::path::Path::to_str),
             Some("/tmp/a-worktree")
         );
-        assert_eq!(env_of(&command, "SAMPLE_SEED"), Some("42".to_owned()));
     }
 
     #[test]

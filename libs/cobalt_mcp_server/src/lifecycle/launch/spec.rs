@@ -2,17 +2,16 @@
 
 use super::{
     channel::McpChannel,
-    values::{CargoPackage, CargoProfile, EnvOverrides, FeatureList, WorkingDir},
+    values::{CargoPackage, CargoProfile, FeatureList, WorkingDir},
 };
 
-/// Package, features, profile, cwd, env, and channel for one launch.
+/// Package, features, profile, cwd, and channel for one launch.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchSpec {
     package:     CargoPackage,
     features:    FeatureList,
     profile:     Option<CargoProfile>,
     working_dir: Option<WorkingDir>,
-    env:         EnvOverrides,
     channel:     McpChannel,
 }
 
@@ -23,7 +22,6 @@ impl LaunchSpec {
         package: CargoPackage,
         features: FeatureList,
         working_dir: Option<WorkingDir>,
-        env: EnvOverrides,
         channel: McpChannel,
     ) -> Self {
         Self {
@@ -31,7 +29,6 @@ impl LaunchSpec {
             features,
             profile: None,
             working_dir,
-            env,
             channel,
         }
     }
@@ -66,12 +63,6 @@ impl LaunchSpec {
         self.working_dir.as_ref()
     }
 
-    /// Extra environment variables.
-    #[must_use]
-    pub const fn env(&self) -> &EnvOverrides {
-        &self.env
-    }
-
     /// MCP channel env names.
     #[must_use]
     pub const fn channel(&self) -> &McpChannel {
@@ -92,7 +83,6 @@ impl LaunchSpec {
         self.package == other.package
             && self.features == other.features
             && self.profile == other.profile
-            && self.env == other.env
             && self.channel == other.channel
             && self.resolved_working_dir() == other.resolved_working_dir()
     }

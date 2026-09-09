@@ -3,9 +3,6 @@
 use bevy::tasks::block_on;
 use wgpu::{Instance, RequestAdapterOptions};
 
-/// Env var that forces the probe to report absent (skip path).
-pub const FORCE_NO_GPU_ENV: &str = "COBALT_TEST_FORCE_NO_GPU";
-
 /// Result of a GPU adapter probe.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GpuAdapterProbe {
@@ -29,24 +26,10 @@ impl GpuAdapterProbe {
     }
 }
 
-fn force_value_is_on(value: Option<&str>) -> bool {
-    match value {
-        Some(raw) => {
-            let v = raw.trim().to_ascii_lowercase();
-            !(v.is_empty() || v == "0" || v == "false")
-        }
-        None => false,
-    }
-}
-
-fn force_no_gpu() -> bool {
-    force_value_is_on(std::env::var(FORCE_NO_GPU_ENV).ok().as_deref())
-}
-
-/// Probe for a GPU adapter, honoring [`FORCE_NO_GPU_ENV`].
+/// Probe for a GPU adapter, asking the machine rather than any ambient setting.
 #[must_use]
 pub fn gpu_adapter_probe() -> GpuAdapterProbe {
-    gpu_adapter_probe_forced(force_no_gpu())
+    gpu_adapter_probe_forced(false)
 }
 
 /// Probe for a GPU adapter; when `force_absent` is true, always returns [`GpuAdapterProbe::Absent`].
@@ -69,7 +52,7 @@ pub fn gpu_adapter_probe_forced(force_absent: bool) -> GpuAdapterProbe {
 
 #[cfg(test)]
 mod tests {
-    use super::{GpuAdapterProbe, force_value_is_on, gpu_adapter_probe_forced};
+    use super::{GpuAdapterProbe, gpu_adapter_probe_forced};
 
     #[test]
     fn force_no_gpu_hook_reports_absent_without_panicking() {
@@ -77,7 +60,7 @@ mod tests {
         assert_eq!(
             verdict,
             GpuAdapterProbe::Absent,
-            "the FORCE_NO_GPU hook must make the probe report Absent (the skip path)",
+            "the injected force-absent flag must make the probe report Absent (the skip path)",
         );
         assert!(
             verdict.should_skip(),
@@ -89,22 +72,5 @@ mod tests {
         );
 
         let _real = gpu_adapter_probe_forced(false);
-    }
-
-    #[test]
-    fn force_value_maps_env_string_to_on_off() {
-        for on in ["1", "true", "TRUE", "yes", " on "] {
-            assert!(force_value_is_on(Some(on)), "{on:?} must read as ON");
-        }
-        for off in [
-            None,
-            Some(""),
-            Some("   "),
-            Some("0"),
-            Some("false"),
-            Some("FALSE"),
-        ] {
-            assert!(!force_value_is_on(off), "{off:?} must read as OFF");
-        }
     }
 }

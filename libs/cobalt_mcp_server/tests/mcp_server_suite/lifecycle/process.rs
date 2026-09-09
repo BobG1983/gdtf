@@ -1,6 +1,6 @@
 use cobalt_mcp_server::{
-    CargoPackage, EnvOverrides, HostLifecycle, HostManager, LaunchFailure, LaunchOutcome,
-    LaunchSpec, McpPort, StopOutcome, WorkingDir,
+    CargoPackage, HostLifecycle, HostManager, LaunchFailure, LaunchOutcome, LaunchSpec, McpPort,
+    StopOutcome, WorkingDir,
 };
 
 use crate::lifecycle::support::{
@@ -111,7 +111,6 @@ fn an_unnamed_directory_matches_the_hosts_own_directory() {
         CargoPackage::new(SAMPLE_PACKAGE.to_owned()),
         sample_spec().features().clone(),
         Some(WorkingDir::new(here)),
-        EnvOverrides::default(),
         sample_channel(),
     );
 

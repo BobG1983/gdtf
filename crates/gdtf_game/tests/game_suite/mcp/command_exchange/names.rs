@@ -98,6 +98,8 @@ pub(crate) const VIEW_LEVEL_DOWN: &str = "view.level_down";
 
 pub(crate) const VIEW_TOGGLE_FULL_VIEW: &str = "view.toggle_full_view";
 
+pub(crate) const VIEW_TOGGLE_REACHABLE_OVERLAY: &str = "view.toggle_reachable_overlay";
+
 pub(crate) const VIEW_PAN: &str = "view.pan";
 
 pub(crate) const VIEW_LOOK_AT: &str = "view.look_at";
@@ -155,6 +157,7 @@ pub(crate) fn published_names() -> Vec<CommandName> {
         VIEW_LEVEL_UP,
         VIEW_LEVEL_DOWN,
         VIEW_TOGGLE_FULL_VIEW,
+        VIEW_TOGGLE_REACHABLE_OVERLAY,
         VIEW_PAN,
         VIEW_LOOK_AT,
         BATTLE_SET_FIRE_MODE,

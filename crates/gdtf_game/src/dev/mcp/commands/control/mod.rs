@@ -6,6 +6,7 @@ pub(crate) mod pan;
 pub(crate) mod set_fire_mode;
 pub(crate) mod support;
 pub(crate) mod toggle_full_view;
+pub(crate) mod toggle_reachable_overlay;
 
 #[cfg(test)]
 mod test;
@@ -16,3 +17,4 @@ pub(crate) use look_at::ViewLookAt;
 pub(crate) use pan::ViewPan;
 pub(crate) use set_fire_mode::BattleSetFireMode;
 pub(crate) use toggle_full_view::ViewToggleFullView;
+pub(crate) use toggle_reachable_overlay::ViewToggleReachableOverlay;

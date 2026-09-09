@@ -42,12 +42,6 @@ pub use actors::{
         update_ganger_life_state,
     },
 };
-// Reachable-range overlay is debug-only.
-#[cfg(debug_assertions)]
-pub use overlays::reachable::{
-    REACHABLE_OVERLAY_ENV, ReachableCellSprite, ReachableCells, ReachableOverlayEnabled,
-    draw_reachable_overlay,
-};
 pub use overlays::{
     cross_level_signals::{
         BADGE_CAP_PER_CELL, CrossLevelBadgeKind, CrossLevelBadgeLabel, CrossLevelBadgeTile,
@@ -58,6 +52,9 @@ pub use overlays::{
     fire_target::{FireTargetHighlight, FireTargetLabel, FireTargetTile, draw_fire_target},
     highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request},
     path_preview::{PathPreview, PathStepSprite, PathTargetLabel, draw_path_preview},
+    reachable::{
+        ReachableCellSprite, ReachableCells, ReachableOverlayEnabled, draw_reachable_overlay,
+    },
     targeting_gate::{CellVisibility, cell_squad_visible},
 };
 pub use playback::{

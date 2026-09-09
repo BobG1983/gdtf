@@ -62,6 +62,7 @@ const NOT_BATTLE_READS: &[&str] = &[
     "view.level_up",
     "view.level_down",
     "view.toggle_full_view",
+    "view.toggle_reachable_overlay",
     "view.pan",
     "view.look_at",
     "battle.set_fire_mode",

@@ -8,11 +8,12 @@ use crate::dev::mcp::{
     wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet, RunningPhaseNet},
 };
 
-/// The six controls, all of which share one availability word.
+/// The seven controls, all of which share one availability word.
 const CONTROLS: &[&str] = &[
     "view.level_up",
     "view.level_down",
     "view.toggle_full_view",
+    "view.toggle_reachable_overlay",
     "view.pan",
     "view.look_at",
     "battle.set_fire_mode",

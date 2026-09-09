@@ -1,7 +1,7 @@
 //! Misc scalar and command payloads on the wire.
 
 use bevy::prelude::Deref;
-use gdtf_battle_presenter::ViewMode;
+use gdtf_battle_presenter::{ReachableOverlayEnabled, ViewMode};
 use gdtf_battle_sim::{procgen::ProcgenStage, weapon::ModeKind};
 use serde::{Deserialize, Serialize};
 
@@ -55,6 +55,23 @@ impl ViewModeNet {
             ViewMode::DownToActive => Self::DownToActive,
             ViewMode::FullView => Self::FullView,
         }
+    }
+}
+
+/// Whether the reachable-range debug overlay is switched on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ReachableOverlayNet {
+    /// The overlay is on.
+    On,
+    /// The overlay is off.
+    Off,
+}
+
+impl ReachableOverlayNet {
+    /// Mirror the presenter's overlay flag.
+    #[must_use]
+    pub fn from_presenter(enabled: ReachableOverlayEnabled) -> Self {
+        if *enabled { Self::On } else { Self::Off }
     }
 }
 

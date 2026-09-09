@@ -8,16 +8,17 @@ use cobalt_mcp_protocol::{
 use super::{
     command_exchange::{
         BATTLE_SET_FIRE_MODE, VIEW_LEVEL_DOWN, VIEW_LEVEL_UP, VIEW_LOOK_AT, VIEW_PAN,
-        VIEW_TOGGLE_FULL_VIEW, exchange,
+        VIEW_TOGGLE_FULL_VIEW, VIEW_TOGGLE_REACHABLE_OVERLAY, exchange,
     },
     socket_support::{TestResult, game_app_listening},
 };
 
 /// Every view and battle control, with the timing its row must publish.
-const CONTROL_TIMINGS: [(&str, CommandTiming); 6] = [
+const CONTROL_TIMINGS: [(&str, CommandTiming); 7] = [
     (VIEW_LEVEL_UP, CommandTiming::Immediate),
     (VIEW_LEVEL_DOWN, CommandTiming::Immediate),
     (VIEW_TOGGLE_FULL_VIEW, CommandTiming::Immediate),
+    (VIEW_TOGGLE_REACHABLE_OVERLAY, CommandTiming::Immediate),
     (VIEW_PAN, CommandTiming::Deferred),
     (VIEW_LOOK_AT, CommandTiming::Deferred),
     (BATTLE_SET_FIRE_MODE, CommandTiming::Immediate),

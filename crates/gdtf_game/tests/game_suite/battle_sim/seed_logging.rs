@@ -6,16 +6,14 @@ use std::{
 
 use bevy::log::tracing_subscriber::{self, fmt::MakeWriter, util::SubscriberInitExt as _};
 use gdtf_battle_sim::rng::{BattleSeed, ShotRng};
+use gdtf_game::test_support::BattleAppBuilder;
 
 use super::harness::*;
 
-const SEED_ENV_VAR: &str = "GDTF_BATTLE_SEED";
-const CASE_ENV_VAR: &str = "GDTF_SEED_LOGGING_CASE";
-const PINNED_CASE: &str = "env-pinned";
-const UNSET_CASE: &str = "wall-clock";
 const PINNED: u64 = 0x0BAD_F00D_DEAD_BEEF;
-// Libtest path of the test below, so a child runs that one case and nothing else.
-const TEST_PATH: &str = "battle_sim::seed_logging::resolve_root_seed_drives_streams_and_logs";
+// Libtest path of the ignored case below, so a child runs that one and nothing else.
+const CHILD_TEST_PATH: &str =
+    "battle_sim::seed_logging::an_unpinned_battle_seeds_from_the_wall_clock_and_logs_it";
 // Printed by a case that ran to its end; its absence means the child ran no case.
 const CASE_PASSED: &str = "gdtf-seed-logging-case-passed";
 
@@ -63,70 +61,41 @@ fn captured_log() -> String {
         .unwrap_or_default()
 }
 
-// A child process is the only way to pin GDTF_BATTLE_SEED without mutating this
-// process's environment, and it also makes the unset case independent of whatever
-// the developer has exported.
-fn spawn_case(case: &str) -> std::io::Result<Output> {
+// LOG_CAPTURE wins the try_init race only when the case runs alone, so libtest runs it in a child.
+fn spawn_child_case() -> std::io::Result<Output> {
     let mut command = Command::new(std::env::current_exe()?);
     command
         .arg("--exact")
+        .arg("--ignored")
         .arg("--nocapture")
-        .arg(TEST_PATH)
-        .env(CASE_ENV_VAR, case);
-    if case == PINNED_CASE {
-        command.env(SEED_ENV_VAR, PINNED.to_string());
-    } else {
-        command.env_remove(SEED_ENV_VAR);
-    }
+        .arg(CHILD_TEST_PATH);
     command.output()
 }
 
-fn run_case(case: &str) {
-    let spawned = spawn_case(case);
-    assert!(
-        spawned.is_ok(),
-        "the `{case}` case must re-run in a child process; spawning failed: {:?}",
-        spawned.as_ref().err(),
-    );
-    let Ok(output) = spawned else {
-        return;
-    };
-    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-    assert!(
-        output.status.success(),
-        "the `{case}` case failed in its child process ({}).\nstdout:\n{stdout}\nstderr:\n{stderr}",
-        output.status,
-    );
-    assert!(
-        stdout.contains(CASE_PASSED),
-        "the `{case}` child ran no case — `{TEST_PATH}` matched no test. stdout:\n{stdout}",
-    );
-}
+#[test]
+fn a_pinned_battle_seed_drives_the_shot_stream() {
+    let mut app = BattleAppBuilder::new()
+        .with_seed(BattleSeed::new(PINNED))
+        .build();
 
-fn assert_env_pinned_seed_drives_streams() {
-    LazyLock::force(&LOG_CAPTURE);
-
-    let mut app = walk_app(None);
-    drive_to_generation(&mut app);
     assert!(
         app.world().get_resource::<ShotRng>().is_some(),
-        "the env-pinned Generation must insert a ShotRng stream (resolve_root_seed path)",
+        "a battle set up from a pinned seed must insert a ShotRng stream",
     );
-
     let world_first = app.world_mut().resource_mut::<ShotRng>().next_u64();
     let mut expected = ShotRng::from_root(BattleSeed::new(PINNED));
     assert_eq!(
         world_first,
         expected.next_u64(),
         "the resolved ShotRng's first draw must equal \
-         ShotRng::from_root(BattleSeed::new(PINNED)).next_u64() — proving GDTF_BATTLE_SEED drove \
-         the streams end-to-end through resolve_root_seed (not the with_seed override)",
+         ShotRng::from_root(BattleSeed::new(PINNED)).next_u64(). That is what proves the pinned \
+         seed drove the streams end to end through the seed override",
     );
-    println!("{CASE_PASSED}");
 }
 
-fn assert_unset_seed_is_wall_clock_and_logged() {
+#[test]
+#[ignore = "installs a global log subscriber, so it runs alone in a child process"]
+fn an_unpinned_battle_seeds_from_the_wall_clock_and_logs_it() {
     LazyLock::force(&LOG_CAPTURE);
 
     let mut app = walk_app(None);
@@ -136,8 +105,8 @@ fn assert_unset_seed_is_wall_clock_and_logged() {
     assert_ne!(
         world_first,
         zero_stream.next_u64(),
-        "the unset path must still derive a NON-ZERO wall-clock seed (its stream must differ from \
-         the zero-seed stream)",
+        "the unpinned path must still derive a NON-ZERO wall-clock seed (its stream must differ \
+         from the zero-seed stream)",
     );
     let logs = captured_log();
     assert!(
@@ -149,13 +118,26 @@ fn assert_unset_seed_is_wall_clock_and_logged() {
 }
 
 #[test]
-fn resolve_root_seed_drives_streams_and_logs() {
-    match std::env::var(CASE_ENV_VAR).ok().as_deref() {
-        Some(PINNED_CASE) => assert_env_pinned_seed_drives_streams(),
-        Some(UNSET_CASE) => assert_unset_seed_is_wall_clock_and_logged(),
-        _ => {
-            run_case(PINNED_CASE);
-            run_case(UNSET_CASE);
-        }
-    }
+fn the_wall_clock_case_passes_in_its_own_process() {
+    let spawned = spawn_child_case();
+    assert!(
+        spawned.is_ok(),
+        "the wall-clock case must re-run in a child process; spawning failed: {:?}",
+        spawned.as_ref().err(),
+    );
+    let Ok(output) = spawned else {
+        return;
+    };
+    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    assert!(
+        output.status.success(),
+        "the wall-clock case failed in its child process ({}).\nstdout:\n{stdout}\nstderr:\n\
+         {stderr}",
+        output.status,
+    );
+    assert!(
+        stdout.contains(CASE_PASSED),
+        "the child ran no case. `{CHILD_TEST_PATH}` matched no ignored test. stdout:\n{stdout}",
+    );
 }

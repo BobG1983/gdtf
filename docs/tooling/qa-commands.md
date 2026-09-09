@@ -323,7 +323,7 @@ The game offers these commands today: `app.phase`, `capture.screenshot`,
 `act.open_door`, `act.enter_emplacement`, `act.exit_emplacement`, `input.press_key`,
 `input.hover`, `input.set_focus`, `input.focus_step`, `input.activate`,
 `input.click_cell`, `view.level_up`, `view.level_down`, `view.toggle_full_view`,
-`view.pan`, `view.look_at` and `battle.set_fire_mode`.
+`view.toggle_reachable_overlay`, `view.pan`, `view.look_at` and `battle.set_fire_mode`.
 
 `settings.read`, `ui.focus` and `playback.state` are the shell reads — they take `()`, are
 `Immediate`, and answer before a battle: `settings.read` reports the Options values,
@@ -721,6 +721,13 @@ each takes the path the matching keyboard or panel control takes. `view.level_up
 answer `Immediate` with the storey and view mode the frame settles on — stepping past the
 ground floor or the top storey clamps and the reply reports the unchanged value. Neither
 needs a caught-up screen, because the view moves while the act log is still playing back.
+`view.toggle_reachable_overlay` flips the reachable-range debug overlay, which tints the cells
+the selected ganger can walk to, and answers `Immediate` with whether it is on after the flip.
+It writes `ReachableOverlayEnabled` rather than pushing an intent. The flag starts off when the
+top-down renderer builds and nothing else writes it, so a flip stands until the next flip or
+the end of the process, and a second battle in the same run opens with the overlay where the
+first left it. A release build keeps the flag and registers no draw system, so the command
+answers there and nothing is drawn.
 `view.pan` moves the camera by a signed cell offset and `view.look_at` centres it on a cell;
 both write the transform through the one function every camera mover uses, both are
 `Deferred` until the frame's bounds clamp has run, and both then answer with the cell the

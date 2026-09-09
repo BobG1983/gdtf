@@ -24,9 +24,7 @@ pub use default_plugins_harness::{
     ui::{NoCamera, UiTestAppBuilder, WithCamera},
     windowed::WindowedTestAppBuilder,
 };
-pub use gpu_probe::{
-    FORCE_NO_GPU_ENV, GpuAdapterProbe, gpu_adapter_probe, gpu_adapter_probe_forced,
-};
+pub use gpu_probe::{GpuAdapterProbe, gpu_adapter_probe, gpu_adapter_probe_forced};
 pub use input::{clear_keys, clear_mouse, press_key, press_left, press_mouse, press_ui_button};
 pub use minimal_harness::builder::{MinimalTestAppBuilder, NoState, WithState};
 pub use probe::{MessageProbe, MessageProbePlugin, drain_message_probe, probed};

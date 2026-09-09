@@ -37,23 +37,25 @@ The MCP host launches the game as a child process when the harness calls the
 `libs/cobalt_mcp_server/src/lifecycle/spawn.rs` (behind the `ChildSpawner` trait, so
 tests can substitute a stub). WHAT it launches is the call's own recipe — a
 `LaunchSpec` (`libs/cobalt_mcp_server/src/lifecycle/launch/`) of these typed values:
-package, features, cargo profile, working directory, environment overrides. Each one
-the call omits falls back to the default game recipe, so a bare `launch`
-still runs:
+package, features, cargo profile, working directory. Each one the call omits
+falls back to the default game recipe, so a bare `launch` still runs:
 
 ```bash
 cargo run -p game --features development
 ```
 
-in the MCP host's own directory. A call that names them runs what it names —
-this launches a `dev_tools` build of a git worktree, with a dev gate set:
+in the MCP host's own directory. A call that names them runs what it names.
+This launches a release-profile `development` build of a git worktree:
 
 ```json
 {"package": "game",
  "features": ["development"],
- "working_dir": "/Users/you/dev/gdtf-some-worktree",
- "env": {"GDTF_BATTLE_SEED": "42"}}
+ "profile": "release",
+ "working_dir": "/Users/you/dev/gdtf-some-worktree"}
 ```
+
+A launch takes no `env`. A child is configured by its package, features, profile and
+working directory, and an arguments object carrying `env` is refused rather than ignored.
 
 `working_dir` is the one that decides WHICH CHECKOUT is under test: without it
 the build comes from whatever directory the host itself runs in, which is how a
@@ -63,10 +65,9 @@ dropped.
 
 The spawner does **not** inject either enable name, `GDTF_MCP` or
 `GDTF_EDITOR_MCP`, onto the child; both remain historical `McpChannel` labels
-read by nothing. It DOES set
-the port name from `spec.channel().port()` on both children, to the port the
-launch was given, and it sets it AFTER the recipe's `env` overrides, so an `env`
-entry of that name cannot displace it. That port name is what arms each host:
+read by nothing. It DOES set the port name from `spec.channel().port()` on both
+children, to the port the launch was given, and that is the only variable it
+sets. That port name is what arms each host:
 the game reads `GDTF_MCP_PORT` through `port_from_env`
 (`crates/gdtf_game/src/dev/mcp/env.rs`) and the editor reads `EDITOR_MCP_PORT`
 through `editor_port_from_env` (`crates/gdtf_editor/src/mcp/config.rs`), and a
@@ -308,7 +309,7 @@ rebuild, and needs no MCP reconnect. That is the whole point of the design; see
 
 | Tool | Kind | Maps to | Arguments |
 | --- | --- | --- | --- |
-| `launch` | host-local | — (starts the child via that host's `HostManager`) | all optional: `host`, `port`, `package`, `features` (array or comma-separated string), `profile` (cargo profile, e.g. `"release"`), `working_dir`, `env` |
+| `launch` | host-local | — (starts the child via that host's `HostManager`) | all optional: `host`, `port`, `package`, `features` (array or comma-separated string), `profile` (cargo profile, e.g. `"release"`), `working_dir`. An `env` is refused |
 | `stop` | host-local | — (stops a recorded child via that host's `HostManager`) | optional `host`, `instance` (which recorded child to stop, as the launch reply named it; an editor call naming none while the host records any is refused, listing the recorded ids) |
 | `logs` | host-local | — (reads a recorded child's captured output) | optional `host`, `instance` (which recorded child to read, refused the same way), `max_lines` (trailing lines to return) |
 | `commands` | forward | `McpRequest::Catalogue` | optional `host`, `instance` (which recorded child to ask, as the launch reply named it; required on the editor, refused without it), `command` (name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the published RON shapes) |
@@ -407,12 +408,15 @@ Notes an agent relies on:
   `input.activate` are the focus bridge the menu, the Options screen, the
   contextual panel's act buttons and the weapon panel's Reload button are
   driven with, and `input.click_cell` takes the game's own left-click decision
-  on a cell and names that decision in the reply. The `view.*` commands aim the
+  on a cell and names that decision in the reply. The `view.*` commands drive the
   battle view: `view.pan` and
   `view.look_at` move the camera through the one function every camera mover
   writes the transform with, and `view.level_up`, `view.level_down` and
   `view.toggle_full_view` pick the storey it draws down to by the same path the
-  level keys and the action bar's level buttons take. `battle.set_fire_mode`
+  level keys and the action bar's level buttons take.
+  `view.toggle_reachable_overlay` moves no camera: it flips the reachable-range
+  debug overlay, which a debug build draws and a release build does not.
+  `battle.set_fire_mode`
   picks a fire mode on the weapon the selected shooter fires, the same weapon the
   action bar's mode panel sets it on, through the same lookup.
   The EDITOR host publishes thirty-eight commands. `editor.phase` reports the

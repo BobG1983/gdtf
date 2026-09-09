@@ -6,9 +6,8 @@ use std::{
 };
 
 use cobalt_mcp_server::{
-    CargoPackage, CargoSpawner, EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList,
-    FeatureName, HostLifecycle, HostManager, LaunchFailure, LaunchOutcome, LaunchSpec, McpPort,
-    WorkingDir,
+    CargoPackage, CargoSpawner, FeatureList, FeatureName, HostLifecycle, HostManager,
+    LaunchFailure, LaunchOutcome, LaunchSpec, McpPort, WorkingDir,
 };
 
 use crate::lifecycle::support::{SAMPLE_PACKAGE, fast_config, free_port, sample_channel};
@@ -100,7 +99,6 @@ fn the_recipe_features_reach_the_real_cargo_command() {
         CargoPackage::new(PROBE_PACKAGE.to_owned()),
         FeatureList::new(vec![FeatureName::new("recipe_no_such_feature".to_owned())]),
         Some(WorkingDir::new(dir.clone())),
-        EnvOverrides::default(),
         sample_channel(),
     );
 
@@ -108,28 +106,6 @@ fn the_recipe_features_reach_the_real_cargo_command() {
     assert!(
         tail.contains("recipe_no_such_feature"),
         "cargo saw the recipe's features: {tail}"
-    );
-    drop(fs::remove_dir_all(&dir));
-}
-
-#[test]
-fn the_recipe_environment_reaches_the_real_child() {
-    let dir = probe_package_outside_a_workspace("env");
-    let spec = LaunchSpec::new(
-        CargoPackage::new(PROBE_PACKAGE.to_owned()),
-        FeatureList::default(),
-        Some(WorkingDir::new(dir.clone())),
-        EnvOverrides::new(vec![EnvVar::new(
-            EnvVarName::new("CARGO_BUILD_TARGET".to_owned()),
-            EnvVarValue::new("recipe-not-a-real-target".to_owned()),
-        )]),
-        sample_channel(),
-    );
-
-    let tail = stderr_of_a_failed_launch(&spec);
-    assert!(
-        tail.contains("recipe-not-a-real-target"),
-        "the child ran with the recipe's environment: {tail}"
     );
     drop(fs::remove_dir_all(&dir));
 }
@@ -143,7 +119,6 @@ fn the_launch_port_reaches_the_real_child_on_the_channel_variable() {
         CargoPackage::new(PROBE_PACKAGE.to_owned()),
         FeatureList::default(),
         Some(WorkingDir::new(dir)),
-        EnvOverrides::default(),
         channel,
     );
     let port = free_port();
@@ -164,7 +139,6 @@ fn the_recipe_working_directory_is_where_cargo_runs() {
         CargoPackage::new(SAMPLE_PACKAGE.to_owned()),
         FeatureList::default(),
         Some(WorkingDir::new(dir.clone())),
-        EnvOverrides::default(),
         sample_channel(),
     );
     let mut manager = HostManager::with_config(Box::new(CargoSpawner::new()), fast_config(30_000));
@@ -195,7 +169,6 @@ fn successive_launches_can_name_different_recipes() {
             CargoPackage::new(SAMPLE_PACKAGE.to_owned()),
             FeatureList::default(),
             Some(WorkingDir::new(dir.clone())),
-            EnvOverrides::default(),
             sample_channel(),
         );
         let outcome = manager.launch(McpPort::new(free_port()), &spec);

@@ -5,9 +5,6 @@ use std::{
 };
 
 pub(crate) fn workspace_root() -> PathBuf {
-    if let Some(override_root) = std::env::var_os("GDTF_MODULE_LAYOUT_ROOT") {
-        return PathBuf::from(override_root);
-    }
     let Some(root) = cobalt_ron_assets::workspace_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
     };

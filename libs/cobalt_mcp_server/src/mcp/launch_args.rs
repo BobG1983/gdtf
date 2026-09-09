@@ -3,29 +3,25 @@
 use serde_json::Value;
 
 use crate::lifecycle::{
-    CargoPackage, CargoProfile, EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList,
-    FeatureName, LaunchSpec, WorkingDir,
+    CargoPackage, CargoProfile, FeatureList, FeatureName, LaunchSpec, WorkingDir,
 };
 
 /// Merge tool args onto `defaults` to produce a launch recipe.
 ///
 /// # Errors
 ///
-/// Returns a human-readable message when an argument has the wrong shape.
+/// Returns a human-readable message when an argument has the wrong shape, or when the call
+/// carries an `env` a launch no longer takes.
 pub fn parse_launch_spec(defaults: &LaunchSpec, args: &Value) -> Result<LaunchSpec, String> {
+    refuse_env(args)?;
     let package = parse_package(args)?.unwrap_or_else(|| defaults.package().clone());
     let features = parse_features(args)?.unwrap_or_else(|| defaults.features().clone());
     let profile = parse_profile(args)?;
     let working_dir = parse_working_dir(args)?;
-    let env = parse_env(args)?;
-    Ok(LaunchSpec::new(
-        package,
-        features,
-        working_dir,
-        env,
-        defaults.channel().clone(),
+    Ok(
+        LaunchSpec::new(package, features, working_dir, defaults.channel().clone())
+            .with_profile(profile),
     )
-    .with_profile(profile))
 }
 
 fn parse_profile(args: &Value) -> Result<Option<CargoProfile>, String> {
@@ -93,23 +89,15 @@ fn parse_working_dir(args: &Value) -> Result<Option<WorkingDir>, String> {
     }
 }
 
-fn parse_env(args: &Value) -> Result<EnvOverrides, String> {
+fn refuse_env(args: &Value) -> Result<(), String> {
     match args.get("env") {
-        None | Some(Value::Null) => Ok(EnvOverrides::default()),
-        Some(Value::Object(map)) => {
-            let mut vars = Vec::with_capacity(map.len());
-            for (name, value) in map {
-                let Some(text) = value.as_str() else {
-                    return Err(format!("`env` value for `{name}` must be a string"));
-                };
-                vars.push(EnvVar::new(
-                    EnvVarName::new(name.clone()),
-                    EnvVarValue::new(text.to_owned()),
-                ));
-            }
-            Ok(EnvOverrides::new(vars))
-        }
-        Some(_) => Err("`env` must be an object of variable name to string value".to_owned()),
+        None | Some(Value::Null) => Ok(()),
+        Some(_) => Err(
+            "launch takes no `env`: a child is configured by its package, features, \
+                        profile and working directory, and the only variable the spawner sets is \
+                        the launch port"
+                .to_owned(),
+        ),
     }
 }
 
@@ -118,10 +106,7 @@ mod tests {
     use serde_json::json;
 
     use super::parse_launch_spec;
-    use crate::{
-        hosts::test_support::registered,
-        lifecycle::{EnvOverrides, LaunchSpec},
-    };
+    use crate::{hosts::test_support::registered, lifecycle::LaunchSpec};
 
     fn parse_against(name: &str, args: &serde_json::Value) -> Result<LaunchSpec, String> {
         parse_launch_spec(&registered(name, 4100, false).default_spec(), args)
@@ -139,7 +124,6 @@ mod tests {
         assert_eq!(spec.package().as_str(), "alpha_package");
         assert_eq!(spec.features().render(), Some("alpha_feature".to_owned()));
         assert!(spec.working_dir().is_none());
-        assert_eq!(spec.env(), &EnvOverrides::default());
     }
 
     #[test]
@@ -155,23 +139,24 @@ mod tests {
         let Ok(spec) = parse_game(&json!({
             "package": "another_package",
             "features": ["dynamic_linking", "dev_tools"],
+            "profile": "release",
             "working_dir": dir,
-            "env": { "SAMPLE_SEED": "42" },
         })) else {
             unreachable!("a full recipe parses");
         };
+        assert_eq!(spec.package().as_str(), "another_package");
         assert_eq!(
             spec.features().render(),
             Some("dynamic_linking,dev_tools".to_owned())
         );
         assert_eq!(
+            spec.profile().map(|profile| profile.to_string()),
+            Some("release".to_owned())
+        );
+        assert_eq!(
             spec.working_dir().map(|path| path.to_path_buf()),
             Some(dir.into())
         );
-        let Some(first) = spec.env().first() else {
-            unreachable!("the recipe carries its one override");
-        };
-        assert_eq!(first.name().as_str(), "SAMPLE_SEED");
     }
 
     #[test]
@@ -216,9 +201,22 @@ mod tests {
     }
 
     #[test]
-    fn the_qa_channel_names_are_not_a_caller_argument() {
-        let Ok(spec) = parse_against("beta", &json!({ "env": { "ALPHA_CHANNEL": "1" } })) else {
-            unreachable!("an env override parses");
+    fn an_env_argument_is_refused_rather_than_ignored() {
+        for shape in [
+            json!({ "env": { "ALPHA_CHANNEL": "1" } }),
+            json!({ "env": { "SAMPLE_SEED": "42" } }),
+            json!({ "env": "A=1" }),
+        ] {
+            let Err(message) = parse_against("beta", &shape) else {
+                unreachable!("a launch that names `env` is refused: {shape}");
+            };
+            assert!(
+                message.contains("env"),
+                "the refusal names the argument it will not take: {message}"
+            );
+        }
+        let Ok(spec) = parse_against("beta", &json!({ "env": null })) else {
+            unreachable!("an absent `env` is not an argument at all");
         };
         assert_eq!(spec.channel().enable().as_str(), "BETA_CHANNEL");
         assert_eq!(spec.channel().port().as_str(), "BETA_CHANNEL_PORT");
@@ -230,7 +228,5 @@ mod tests {
         assert!(parse_game(&json!({ "features": [7] })).is_err());
         assert!(parse_game(&json!({ "profile": 7 })).is_err());
         assert!(parse_game(&json!({ "profile": "  " })).is_err());
-        assert!(parse_game(&json!({ "env": { "A": 1 } })).is_err());
-        assert!(parse_game(&json!({ "env": "A=1" })).is_err());
     }
 }

@@ -59,9 +59,9 @@ fn launch_description(hosts: &HostRegistry) -> String {
         )
     });
     format!(
-        "Start a child process and wait for its QA channel to answer. `host` picks which one — \
-         {choices} — and everything else is optional: `port`, `package`, `features`, \
-         `working_dir` and `env` override that host's own defaults, so one call can build another \
+        "Start a child process and wait for its QA channel to answer. `host` picks which one: \
+         {choices}. Everything else is optional: `port`, `package`, `features`, `profile` \
+         and `working_dir` override that host's own defaults, so one call can build another \
          package or another checkout.{many}{one} The launched reply names the instance the child \
          was recorded under; keep that id for `run`, `commands`, `stop` and `logs`. Call \
          `commands` next to see what that child offers.",

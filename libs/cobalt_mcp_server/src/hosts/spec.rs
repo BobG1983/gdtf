@@ -112,7 +112,6 @@ impl McpHostSpec {
             self.package.clone(),
             self.features.clone(),
             self.working_dir.clone(),
-            crate::lifecycle::EnvOverrides::default(),
             self.channel.clone(),
         )
     }

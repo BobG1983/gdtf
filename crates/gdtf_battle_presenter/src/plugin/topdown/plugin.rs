@@ -80,8 +80,6 @@ impl Plugin for TopDownRendererPlugin {
 
         super::combat_log::register_combat_log_forwarders(app);
 
-        // Reachable-range overlay is debug-only.
-        #[cfg(debug_assertions)]
         super::overlays::register_reachable_overlay_systems(app);
 
         super::overlays::register_fire_target_systems(app);

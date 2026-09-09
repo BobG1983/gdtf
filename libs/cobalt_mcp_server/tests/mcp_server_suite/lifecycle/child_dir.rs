@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 
 use cobalt_mcp_server::{
-    CargoPackage, EnvOverrides, FeatureList, HostLifecycle, HostManager, LaunchOutcome, LaunchSpec,
-    McpPort, StopOutcome, WorkingDir,
+    CargoPackage, FeatureList, HostLifecycle, HostManager, LaunchOutcome, LaunchSpec, McpPort,
+    StopOutcome, WorkingDir,
 };
 
 use crate::lifecycle::{
@@ -18,7 +18,6 @@ fn recipe_in(dir: &WorkingDir) -> LaunchSpec {
         CargoPackage::new(SAMPLE_PACKAGE.to_owned()),
         FeatureList::default(),
         Some(dir.clone()),
-        EnvOverrides::default(),
         sample_channel(),
     )
 }

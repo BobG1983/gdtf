@@ -3,14 +3,14 @@ use gdtf_battle_sim::{
     effects::fields::FieldRegistry, prelude::BattleInProgress, visibility::SquadVisibility,
 };
 
-use crate::{
-    CrossLevelSignals, HighlightRequest, PresenterSystems, derive_cross_level_signals,
-    draw_cross_level_signals, draw_field_overlay, draw_fire_target, draw_highlight_on_request,
-    draw_path_preview,
-};
-// Reachable-range overlay is debug-only; import only under cfg so release never names it.
+// The overlay's draw system is debug-only, so only a debug build names it.
 #[cfg(debug_assertions)]
-use crate::{ReachableCells, ReachableOverlayEnabled, draw_reachable_overlay};
+use crate::draw_reachable_overlay;
+use crate::{
+    CrossLevelSignals, HighlightRequest, PresenterSystems, ReachableCells, ReachableOverlayEnabled,
+    derive_cross_level_signals, draw_cross_level_signals, draw_field_overlay, draw_fire_target,
+    draw_highlight_on_request, draw_path_preview,
+};
 
 pub(super) fn register_highlight_systems(app: &mut App) {
     app.add_message::<HighlightRequest>().add_systems(
@@ -65,21 +65,22 @@ pub(super) fn register_cross_level_signals_systems(app: &mut App) {
         );
 }
 
-/// Register the reachable-range debug overlay. Debug builds only.
-#[cfg(debug_assertions)]
+/// Register the reachable-range debug overlay, off until a QA client turns it on.
 pub(super) fn register_reachable_overlay_systems(app: &mut App) {
-    app.insert_resource(ReachableOverlayEnabled::from_env())
-        .init_resource::<ReachableCells>()
-        .add_systems(
-            Update,
-            draw_reachable_overlay
-                .in_set(PresenterSystems::Overlay)
-                .run_if(
-                    resource_exists::<BattleInProgress>
-                        .and_then(resource_exists::<SquadVisibility>)
-                        .and_then(reachable_overlay_enabled),
-                ),
-        );
+    app.insert_resource(ReachableOverlayEnabled::new(false))
+        .init_resource::<ReachableCells>();
+    // The flag is written in every build; only a debug build draws from it.
+    #[cfg(debug_assertions)]
+    app.add_systems(
+        Update,
+        draw_reachable_overlay
+            .in_set(PresenterSystems::Overlay)
+            .run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(resource_exists::<SquadVisibility>)
+                    .and_then(reachable_overlay_enabled),
+            ),
+    );
 }
 
 /// Whether the reachable-range debug overlay is enabled.
