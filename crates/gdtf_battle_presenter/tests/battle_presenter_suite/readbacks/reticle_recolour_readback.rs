@@ -1,6 +1,4 @@
 //! Reticle recolour: visible vs non-visible cells render distinct GPU pixels.
-use std::sync::{Mutex, MutexGuard};
-
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
@@ -23,6 +21,8 @@ use gdtf_battle_presenter::{
 };
 use gdtf_battle_sim::prelude::{BattleInProgress, Cell, CellLevel, Level};
 
+use crate::gpu_lock::lock_gpu;
+
 const TARGET_PX: u32 = 64;
 
 /// Frames the hand-inserted scene needs to extract, prepare and draw — per-frame work, no IO.
@@ -32,14 +32,6 @@ const SCENE_SETTLE_FRAMES: u32 = 8;
 struct CapturedPixel {
     captured: bool,
     rgba:     [u8; 4],
-}
-
-static GPU_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_gpu() -> MutexGuard<'static, ()> {
-    GPU_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn build_render_app() -> Option<App> {

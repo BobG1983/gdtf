@@ -6,6 +6,7 @@ mod fog_present;
 mod fog_shader_readback;
 mod fx_draw;
 mod ganger_draw;
+mod gpu_lock;
 mod path_preview;
 mod playback;
 mod presenter_flats;

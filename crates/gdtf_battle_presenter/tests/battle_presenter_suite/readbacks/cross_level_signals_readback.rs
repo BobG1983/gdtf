@@ -1,8 +1,5 @@
 //! Cross-level signals readback: threat badge renders red-dominant; absent slot stays dark.
-use std::{
-    path::PathBuf,
-    sync::{Mutex, MutexGuard},
-};
+use std::path::PathBuf;
 
 use bevy::{
     DefaultPlugins,
@@ -31,6 +28,8 @@ use gdtf_battle_sim::{
     visibility::SquadVisibility,
 };
 
+use crate::gpu_lock::lock_gpu;
+
 const DARK_CLEAR: Color = Color::srgb(0.02, 0.02, 0.03);
 
 const TARGET_PX: u32 = 8;
@@ -43,14 +42,6 @@ struct CapturedFrame {
     captured:       bool,
     mean:           [u8; 4],
     max_red_excess: i16,
-}
-
-static GPU_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_gpu() -> MutexGuard<'static, ()> {
-    GPU_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn workspace_assets_root() -> PathBuf {

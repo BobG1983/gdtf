@@ -1,8 +1,5 @@
 //! Fire target GPU readback: highlighted cell renders red; cleared cell is dark.
-use std::{
-    path::PathBuf,
-    sync::{Mutex, MutexGuard},
-};
+use std::path::PathBuf;
 
 use bevy::{
     DefaultPlugins,
@@ -25,6 +22,8 @@ use gdtf_battle_presenter::{
 };
 use gdtf_battle_sim::prelude::{BattleInProgress, Cell, CellLevel, Level, Tu};
 
+use crate::gpu_lock::lock_gpu;
+
 const DARK_CLEAR: Color = Color::srgb(0.02, 0.02, 0.03);
 
 const TARGET_PX: u32 = 16;
@@ -36,14 +35,6 @@ const SCENE_SETTLE_FRAMES: u32 = 8;
 struct CapturedPixel {
     captured: bool,
     rgba:     [u8; 4],
-}
-
-static GPU_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_gpu() -> MutexGuard<'static, ()> {
-    GPU_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn workspace_assets_root() -> PathBuf {

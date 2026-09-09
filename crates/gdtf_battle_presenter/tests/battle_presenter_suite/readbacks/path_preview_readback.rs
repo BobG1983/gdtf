@@ -1,6 +1,4 @@
 //! Path-preview pixel proof: route cells render warmer than off-route clear.
-use std::sync::{Mutex, MutexGuard};
-
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
@@ -17,6 +15,8 @@ use bevy::{
 };
 use cobalt_test_utils::gpu_adapter_probe;
 
+use crate::gpu_lock::lock_gpu;
+
 /// The translucent warm-amber tint the route preview draws (mirrors the private `PREVIEW_TINT`).
 const TINT: Color = Color::srgba(1.0, 0.75, 0.2, 0.55);
 
@@ -31,14 +31,6 @@ const SCENE_SETTLE_FRAMES: u32 = 8;
 struct CapturedPixel {
     captured: bool,
     rgba:     [u8; 4],
-}
-
-static GPU_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_gpu() -> MutexGuard<'static, ()> {
-    GPU_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn build_render_app() -> Option<App> {

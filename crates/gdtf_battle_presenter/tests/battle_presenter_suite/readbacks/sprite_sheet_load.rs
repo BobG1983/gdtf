@@ -1,8 +1,5 @@
 //! Sprite sheets: all `SheetRole` PNGs load from the sprites folder under a real `AssetServer`.
-use std::{
-    path::PathBuf,
-    sync::{Mutex, MutexGuard},
-};
+use std::path::PathBuf;
 
 use bevy::{
     DefaultPlugins,
@@ -16,13 +13,7 @@ use bevy::{
 use cobalt_test_utils::{advance_until_load_state, asset_plugin_at, gpu_adapter_probe};
 use gdtf_battle_presenter::SheetRole;
 
-static GPU_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_gpu() -> MutexGuard<'static, ()> {
-    GPU_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
+use crate::gpu_lock::lock_gpu;
 
 fn workspace_assets_root() -> PathBuf {
     let Some(root) = cobalt_ron_assets::workspace_assets_root() else {

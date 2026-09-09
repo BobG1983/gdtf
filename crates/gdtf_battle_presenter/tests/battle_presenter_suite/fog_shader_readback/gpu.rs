@@ -1,7 +1,4 @@
-use std::{
-    path::PathBuf,
-    sync::{Mutex, MutexGuard},
-};
+use std::path::PathBuf;
 
 use bevy::{
     DefaultPlugins,
@@ -24,6 +21,7 @@ use cobalt_test_utils::asset_plugin_at;
 use gdtf_battle_presenter::{Brightness, TerrainFogMaterial};
 
 use super::color::CapturedPixel;
+use crate::gpu_lock::lock_gpu;
 
 pub(crate) fn workspace_assets_root() -> PathBuf {
     let Some(root) = cobalt_ron_assets::workspace_assets_root() else {
@@ -88,14 +86,6 @@ pub(crate) fn build_render_app() -> Option<App> {
 
     app.get_sub_app(RenderApp)?;
     Some(app)
-}
-
-pub(crate) static GPU_LOCK: Mutex<()> = Mutex::new(());
-
-pub(crate) fn lock_gpu() -> MutexGuard<'static, ()> {
-    GPU_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 pub(crate) fn render_and_read(

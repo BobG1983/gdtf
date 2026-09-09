@@ -1,9 +1,6 @@
 //! GPU readback: stair and ladder terrain tiles render nonempty and distinct.
 
-use std::{
-    path::PathBuf,
-    sync::{Mutex, MutexGuard},
-};
+use std::path::PathBuf;
 
 use bevy::{
     DefaultPlugins,
@@ -20,6 +17,8 @@ use bevy::{
     winit::WinitPlugin,
 };
 use cobalt_test_utils::{asset_plugin_at, gpu_adapter_probe};
+
+use crate::gpu_lock::lock_gpu;
 
 const STAIR_UP_INDEX: usize = 29;
 
@@ -41,14 +40,6 @@ struct CapturedPixel {
     captured:       bool,
     rgba:           [u8; 4],
     max_brightness: u16,
-}
-
-static GPU_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_gpu() -> MutexGuard<'static, ()> {
-    GPU_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn workspace_assets_root() -> PathBuf {
