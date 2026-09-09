@@ -49,10 +49,8 @@ fn bundled_runtime_is_inert_pre_battle_and_post_teardown() {
         "no setup means no BattleInProgress, so the Simulate band is skipped",
     );
 
-    app.world_mut().write_message(SetupBattleRequested::new(
-        two_ganger_situation(),
-        BattleSeed::new(SEED),
-    ));
+    app.world_mut()
+        .write_message(setup_request(two_ganger_situation(), BattleSeed::new(SEED)));
     app.update();
     assert!(
         app.world().get_resource::<BattleInProgress>().is_some(),

@@ -94,8 +94,11 @@ fn placed_footprints_grow_one_per_step_over_real_content() {
         terrain_defs,
         tuning,
     };
-    let mut driver =
-        StagedProcgen::new(BattleSeed::new(FIXED_SEED), loaded.theme, loaded.grid_size);
+    let mut driver = StagedProcgen::new(
+        BattleSeed::new(FIXED_SEED),
+        loaded.map.theme,
+        loaded.map.grid_size,
+    );
 
     assert!(
         driver.placed_footprints().is_empty(),

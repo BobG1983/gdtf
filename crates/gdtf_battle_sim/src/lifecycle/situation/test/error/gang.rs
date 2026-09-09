@@ -2,15 +2,15 @@ use super::super::support::*;
 
 #[test]
 fn setup_errors_on_a_missing_gang_key() {
-    let (mut situation, gangs) = SituationBuilder::new()
+    let (situation, mut placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .build_with_gangs();
     let missing_gang = GangName::new("no-such-gang".to_owned());
     assert!(
-        !situation.gangers.is_empty(),
+        !placements.is_empty(),
         "the fixture must field a ganger to re-point",
     );
-    for placed in &mut situation.gangers {
+    for placed in &mut placements {
         placed.gang = missing_gang.clone();
     }
 
@@ -24,7 +24,8 @@ fn setup_errors_on_a_missing_gang_key() {
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
-                &situation,
+                &situation.map,
+                &placements,
                 BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,
@@ -57,7 +58,7 @@ fn setup_errors_on_a_missing_gang_key() {
 
 #[test]
 fn setup_errors_on_a_missing_member_key() {
-    let (mut situation, gangs) = SituationBuilder::new()
+    let (situation, mut placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .build_with_gangs();
     let present_gang = GangName::new("gang_0".to_owned());
@@ -67,10 +68,10 @@ fn setup_errors_on_a_missing_member_key() {
         "the synthesized registry must hold gang_0 (so the gang resolves, isolating the member)",
     );
     assert!(
-        !situation.gangers.is_empty(),
+        !placements.is_empty(),
         "the fixture must field a ganger to re-point",
     );
-    for placed in &mut situation.gangers {
+    for placed in &mut placements {
         placed.gang = present_gang.clone();
         placed.member = missing_member.clone();
     }
@@ -85,7 +86,8 @@ fn setup_errors_on_a_missing_member_key() {
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
-                &situation,
+                &situation.map,
+                &placements,
                 BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,

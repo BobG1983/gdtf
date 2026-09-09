@@ -27,10 +27,8 @@ fn run_down_injury(seed: u64) -> DownInjuryRun {
     let (registry, tables) = aim_debuff_catalog();
     app.insert_resource(registry);
     app.insert_resource(tables);
-    app.world_mut().write_message(SetupBattleRequested::new(
-        duel_situation(),
-        BattleSeed::new(seed),
-    ));
+    app.world_mut()
+        .write_message(setup_request(duel_situation(), BattleSeed::new(seed)));
     for _ in 0..4 {
         app.update();
     }

@@ -132,11 +132,13 @@ fn deleting_a_piece_repoints_the_situations_piece_lists_and_default_floor() {
         dir.path(),
         &format!(
             "(
-    default_floor: \"{DELETED_PIECE}\",
-    walls: [(at: (cell: (x: 1, y: 1), level: 0), piece: \"{DELETED_PIECE}\")],
-    scatter: [(at: (cell: (x: 2, y: 1), level: 0), piece: \"{DELETED_PIECE}\")],
-    slabs: [(at: (cell: (x: 3, y: 1), level: 0), piece: \"{DELETED_PIECE}\")],
-    floors: [(at: (cell: (x: 4, y: 1), level: 0), piece: \"{DELETED_PIECE}\")],
+    map: (
+        default_floor: \"{DELETED_PIECE}\",
+        walls: [(at: (cell: (x: 1, y: 1), level: 0), piece: \"{DELETED_PIECE}\")],
+        scatter: [(at: (cell: (x: 2, y: 1), level: 0), piece: \"{DELETED_PIECE}\")],
+        slabs: [(at: (cell: (x: 3, y: 1), level: 0), piece: \"{DELETED_PIECE}\")],
+        floors: [(at: (cell: (x: 4, y: 1), level: 0), piece: \"{DELETED_PIECE}\")],
+    ),
 )
 "
         ),
@@ -177,8 +179,10 @@ fn every_occurrence_in_one_record_is_repointed_not_only_the_one_a_finding_names(
         dir.path(),
         &format!(
             "(
-    walls: [(at: (cell: (x: 1, y: 1), level: 0), piece: \"{DELETED_PIECE}\")],
-    floors: [(at: (cell: (x: 2, y: 2), level: 0), piece: \"{DELETED_PIECE}\")],
+    map: (
+        walls: [(at: (cell: (x: 1, y: 1), level: 0), piece: \"{DELETED_PIECE}\")],
+        floors: [(at: (cell: (x: 2, y: 2), level: 0), piece: \"{DELETED_PIECE}\")],
+    ),
 )
 "
         ),

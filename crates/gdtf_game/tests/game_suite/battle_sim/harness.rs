@@ -2,7 +2,7 @@ use bevy::state::state::State;
 use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
-    situation::Situation,
+    situation::{PlacedGanger, Situation},
     test_support::{
         SituationBuilder, ganger_at, key, test_armor_registry, test_melee_weapon_registry,
         test_weapon_registry,
@@ -10,13 +10,13 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
 };
 use gdtf_content_families::situation::LoadedSituation;
-use gdtf_game::test_support::{BattleScapeState, RunningState};
+use gdtf_game::test_support::{BattleScapeState, PreplacedGangers, RunningState};
 use gdtf_ui::theme::default_theme;
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
 const ONE_STEP_A_FRAME: u32 = 1;
 
-pub(crate) fn two_ganger_situation() -> Situation {
+pub(crate) fn two_ganger_situation() -> (Situation, Vec<PlacedGanger>) {
     SituationBuilder::new()
         .with_gangers([ganger_at(key(5, 6, 0), 0), ganger_at(key(7, 8, 0), 1)])
         .build()
@@ -45,7 +45,8 @@ pub(crate) fn drive_past_menu(app: &mut bevy::app::App) {
         .set(RunningState::Game);
 }
 
-pub(crate) fn walk_app(situation: Option<Situation>) -> bevy::app::App {
+pub(crate) fn walk_app(built: Option<(Situation, Vec<PlacedGanger>)>) -> bevy::app::App {
+    let (situation, placements) = built.unwrap_or_default();
     let mut app =
         MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
             .default_start()
@@ -60,7 +61,9 @@ pub(crate) fn walk_app(situation: Option<Situation>) -> bevy::app::App {
     app.world_mut()
         .insert_resource(gdtf_battle_sim::test_support::test_gang_registry());
     app.world_mut()
-        .insert_resource(LoadedSituation::new(situation.unwrap_or_default()));
+        .insert_resource(LoadedSituation::new(situation));
+    app.world_mut()
+        .insert_resource(PreplacedGangers::new(placements));
     app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
         ONE_STEP_A_FRAME,
     ));

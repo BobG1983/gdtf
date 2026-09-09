@@ -10,7 +10,7 @@ use gdtf_battle_sim::{
     metric::{Cell, CellLevel, Level},
     prelude::{Faction, Stance, StanceKind},
     rng::BattleSeed,
-    situation::{CoverSpawn, Situation},
+    situation::{CoverSpawn, PlacedGanger, Situation},
     terrain::{entity::TerrainCell, facing::TerrainFacing, occupancy::OccupancyGrid},
     test_support::{
         GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_melee_weapon_registry,
@@ -55,11 +55,14 @@ fn battle_app() -> App {
     app
 }
 
-fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRegistry)) {
-    let (situation, gangs) = situation_and_gangs;
+fn drive_setup(app: &mut App, situation_and_gangs: (Situation, Vec<PlacedGanger>, GangRegistry)) {
+    let (situation, placements, gangs) = situation_and_gangs;
     app.world_mut().insert_resource(gangs);
-    app.world_mut()
-        .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+    app.world_mut().write_message(SetupBattleRequested::new(
+        situation,
+        placements,
+        BattleSeed::new(SEED),
+    ));
     app.update();
     app.update();
     app.update();
@@ -71,7 +74,7 @@ fn squad(app: &App) -> Option<SquadVisibility> {
 
 fn observer_situation(
     add_terrain: impl FnOnce(SituationBuilder) -> SituationBuilder,
-) -> (Situation, GangRegistry) {
+) -> (Situation, Vec<PlacedGanger>, GangRegistry) {
     let builder = SituationBuilder::new().with_ganger(
         GangerSpawnBuilder::new()
             .at(observer_at())

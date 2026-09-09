@@ -13,10 +13,10 @@ pub(super) use crate::{
     occupancy::OccupancyGrid,
     occupancy_sync::TerrainPieceDestroyed,
     rng::{BattleSeed, ShotRng},
-    situation::{BattleRegistries, BattleSetupError, Situation, setup_battle},
+    situation::{BattleRegistries, BattleSetupError, PlacedGanger, Situation, setup_battle},
     surface::SurfaceGrid,
     test_support::{
-        SimAppBuilder, SituationBuilder, fixtures, ganger_at, key,
+        SimAppBuilder, SituationBuilder, fixtures, ganger_at, key, setup_request,
         test_armor_registry as armor_registry, test_gang_registry,
         test_melee_weapon_registry as melee_weapon_registry,
         test_weapon_registry as weapon_registry,
@@ -28,24 +28,24 @@ pub(super) use crate::{
 
 pub(super) const SEED: u64 = 0x5A1C_AC75;
 
-pub(super) fn two_ganger_situation() -> Situation {
+pub(super) fn two_ganger_situation() -> (Situation, Vec<PlacedGanger>) {
     fixtures::two_ganger()
 }
 
-pub(super) fn two_ganger_situation_player_faction_one() -> Situation {
+pub(super) fn two_ganger_situation_player_faction_one() -> (Situation, Vec<PlacedGanger>) {
     fixtures::two_ganger_player_faction_one()
 }
 
-pub(super) fn dangling_link_situation() -> (Situation, VerticalLink) {
+pub(super) fn dangling_link_situation() -> ((Situation, Vec<PlacedGanger>), VerticalLink) {
     let present = key(4, 4, 0);
     let missing = key(4, 4, 1);
     let link = VerticalLink::new(present, missing, LinkKind::stair());
-    let situation = SituationBuilder::new()
+    let built = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .slab_at(present)
         .vertical_link(link)
         .build();
-    (situation, link)
+    (built, link)
 }
 
 pub(super) fn headless_app() -> App {
@@ -73,11 +73,11 @@ pub(super) fn drain_battle_lost(app: &mut App) -> usize {
         .count()
 }
 
-pub(super) fn one_player_two_enemy_situation() -> Situation {
+pub(super) fn one_player_two_enemy_situation() -> (Situation, Vec<PlacedGanger>) {
     fixtures::one_player_two_enemies()
 }
 
-pub(super) fn player_only_situation() -> Situation {
+pub(super) fn player_only_situation() -> (Situation, Vec<PlacedGanger>) {
     fixtures::player_only()
 }
 

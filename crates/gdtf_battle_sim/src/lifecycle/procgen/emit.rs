@@ -1,4 +1,4 @@
-//! Emit a situation from filled placements.
+//! Emit a map from filled placements.
 
 use super::{
     assembler::PlacedPrefab,
@@ -14,7 +14,7 @@ use crate::{
     level::{GridSize, PrefabRegistry, ThemeUuid, UuidThemeRegistry},
     metric::{Cell, CellLevel, Level},
     rng::ProcgenRng,
-    situation::{CoverSpawn, FloorSpawn, Situation, SlabSpawn},
+    situation::{BattleMap, CoverSpawn, FloorSpawn, SlabSpawn},
     terrain::{
         def::{TerrainDefRegistry, TerrainUuid},
         entity::TerrainPieceKind,
@@ -51,7 +51,7 @@ pub fn generate_level(
     }
 }
 
-/// Build a situation from a filled placement.
+/// Build a map from a filled placement.
 #[must_use]
 pub fn emit_level(
     filled: &FilledPlacement,
@@ -68,29 +68,19 @@ pub fn emit_level(
         crate::terrain::def::TerrainUuid::default()
     });
 
-    let mut situation = Situation::new();
-    situation.theme = theme;
-    situation.grid_size = grid_size;
-    situation.default_floor = default_floor;
+    let mut map = BattleMap::new();
+    map.theme = theme;
+    map.grid_size = grid_size;
+    map.default_floor = default_floor;
 
-    pour_prefab(
-        placement.player(),
-        &mut situation,
-        terrain_defs,
-        &mut findings,
-    );
-    pour_prefab(
-        placement.enemy(),
-        &mut situation,
-        terrain_defs,
-        &mut findings,
-    );
+    pour_prefab(placement.player(), &mut map, terrain_defs, &mut findings);
+    pour_prefab(placement.enemy(), &mut map, terrain_defs, &mut findings);
     for placed in filled.fill() {
-        pour_prefab(placed, &mut situation, terrain_defs, &mut findings);
+        pour_prefab(placed, &mut map, terrain_defs, &mut findings);
     }
 
     for rect in filled.dead_space() {
-        floor_region(*rect, default_floor, &mut situation);
+        floor_region(*rect, default_floor, &mut map);
     }
 
     let zones = DeploymentZones::new(
@@ -99,7 +89,7 @@ pub fn emit_level(
     );
 
     EmittedLevel {
-        situation,
+        map,
         findings,
         zones,
     }
@@ -107,7 +97,7 @@ pub fn emit_level(
 
 fn pour_prefab(
     placed: &PlacedPrefab,
-    situation: &mut Situation,
+    map: &mut BattleMap,
     terrain_defs: &TerrainDefRegistry,
     findings: &mut Vec<ProcgenFinding>,
 ) {
@@ -118,18 +108,15 @@ fn pour_prefab(
         let at = translate(placement.at, origin);
         match classify(placement.piece, terrain_defs) {
             PlacedKind::Slab => {
-                situation
-                    .slabs
+                map.slabs
                     .push(SlabSpawn::new(at, placement.piece, placement.facing));
             }
             PlacedKind::Cover => {
-                situation
-                    .walls
+                map.walls
                     .push(CoverSpawn::new(at, placement.piece, placement.facing));
             }
             PlacedKind::Unresolved => {
-                situation
-                    .walls
+                map.walls
                     .push(CoverSpawn::new(at, placement.piece, placement.facing));
                 let finding = ProcgenFinding::UnresolvedTerrainPiece {
                     piece: placement.piece,
@@ -158,13 +145,13 @@ fn classify(piece: TerrainUuid, terrain_defs: &TerrainDefRegistry) -> PlacedKind
     }
 }
 
-fn floor_region(rect: RegionRect, default_floor: TerrainUuid, situation: &mut Situation) {
+fn floor_region(rect: RegionRect, default_floor: TerrainUuid, map: &mut BattleMap) {
     let origin = rect.origin();
     let footprint = rect.footprint();
     for dy in 0..footprint.height() {
         for dx in 0..footprint.width() {
             let cell = Cell::new(origin.x + dx, origin.y + dy);
-            situation.floors.push(FloorSpawn::new(
+            map.floors.push(FloorSpawn::new(
                 CellLevel::new(cell, Level::new(0)),
                 default_floor,
                 TerrainFacing::default(),

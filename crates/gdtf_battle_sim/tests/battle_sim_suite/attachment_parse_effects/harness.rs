@@ -15,7 +15,7 @@ use gdtf_battle_sim::{
     magazine::{Magazine, ReloadTu},
     prelude::{Cell, CellLevel, Faction, Stance, StanceKind},
     rng::BattleSeed,
-    situation::{GangerSpawn, Situation},
+    situation::{GangerSpawn, PlacedGanger, Situation},
     test_support::{
         GangerSpawnBuilder, single_mode, test_armor_registry, test_melee_weapon_registry,
         test_terrain_registry, test_weapon_spec,
@@ -96,11 +96,17 @@ pub(crate) fn battle_app(effects: Vec<AttachmentEffect>) -> App {
     app
 }
 
-pub(crate) fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRegistry)) {
-    let (situation, gangs) = situation_and_gangs;
+pub(crate) fn drive_setup(
+    app: &mut App,
+    situation_and_gangs: (Situation, Vec<PlacedGanger>, GangRegistry),
+) {
+    let (situation, placements, gangs) = situation_and_gangs;
     app.world_mut().insert_resource(gangs);
-    app.world_mut()
-        .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+    app.world_mut().write_message(SetupBattleRequested::new(
+        situation,
+        placements,
+        BattleSeed::new(SEED),
+    ));
     for _ in 0..8 {
         app.update();
     }

@@ -7,7 +7,7 @@ use super::super::terrain_resolve::resolve_slab_def;
 use crate::{
     metric::{Cell, CellLevel, CellUnit, Level},
     occupancy::{GRID_HEIGHT, GRID_WIDTH},
-    situation::Situation,
+    situation::BattleMap,
     terrain::{
         def::{TerrainDefRegistry, TerrainUuid},
         entity::TerrainCell,
@@ -19,11 +19,13 @@ use crate::{
 const GROUND: Level = Level::new(0);
 
 // The def and facing a cell takes: its own storey-0 `FloorSpawn`, else the default floor.
-fn floor_for(situation: &Situation, at: CellLevel) -> (TerrainUuid, TerrainFacing) {
-    situation.floors.iter().find(|floor| floor.at == at).map_or(
-        (situation.default_floor, TerrainFacing::default()),
-        |floor| (floor.piece, floor.facing),
-    )
+fn floor_for(map: &BattleMap, at: CellLevel) -> (TerrainUuid, TerrainFacing) {
+    map.floors
+        .iter()
+        .find(|floor| floor.at == at)
+        .map_or((map.default_floor, TerrainFacing::default()), |floor| {
+            (floor.piece, floor.facing)
+        })
 }
 
 // One dimension of the dense grid, in cells.
@@ -70,14 +72,14 @@ fn floor_stands(
 /// Spawn a floor piece on every storey-0 cell of the drawn extent that holds no
 /// authored cover, scatter or slab.
 pub(super) fn seed_floor_terrain(
-    situation: &Situation,
+    map: &BattleMap,
     terrain: Option<&TerrainDefRegistry>,
     commands: &mut Commands,
 ) {
     let Some(registry) = terrain else {
         return;
     };
-    let taken: HashSet<CellLevel> = situation.authored_cells().collect();
+    let taken: HashSet<CellLevel> = map.authored_cells().collect();
     let mut seen: HashMap<TerrainUuid, FloorStands> = HashMap::new();
     let width = axis_bound(GridExtent::new(GRID_WIDTH));
     let height = axis_bound(GridExtent::new(GRID_HEIGHT));
@@ -87,7 +89,7 @@ pub(super) fn seed_floor_terrain(
             if taken.contains(&at) {
                 continue;
             }
-            let (piece, facing) = floor_for(situation, at);
+            let (piece, facing) = floor_for(map, at);
             if !*floor_stands(&mut seen, registry, piece) {
                 continue;
             }

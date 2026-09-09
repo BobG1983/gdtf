@@ -23,16 +23,13 @@ pub(super) fn insert_battle_runtime(commands: &mut Commands, request: &SetupBatt
     commands.insert_resource(ReactionRng::from_root(root));
     commands.insert_resource(FightRng::from_root(root));
 
+    let player_faction = request.situation.combatants.player_faction;
     commands.insert_resource(BattleInProgress);
-    commands.insert_resource(PlayerFaction::new(request.situation.player_faction));
+    commands.insert_resource(PlayerFaction::new(player_faction));
     commands.insert_resource(BattleRoster::new(
-        request
-            .situation
-            .gangers
-            .iter()
-            .map(|ganger| ganger.faction),
+        request.placements.iter().map(|ganger| ganger.faction),
     ));
-    commands.insert_resource(ActiveFaction::new(request.situation.player_faction));
+    commands.insert_resource(ActiveFaction::new(player_faction));
     commands.insert_resource(ActLog::default());
     commands.insert_resource(SquadVisibility::default());
     commands.insert_resource(OmniscientFog::new(SquadVisibility::omniscient(

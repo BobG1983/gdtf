@@ -21,7 +21,7 @@ pub(crate) fn ganger_at(at: CellLevel, faction: u8) -> GangerSpawn {
         .build()
 }
 
-pub(crate) fn two_ganger_situation() -> Situation {
+pub(crate) fn two_ganger_situation() -> (Situation, Vec<gdtf_battle_sim::situation::PlacedGanger>) {
     let (sx, sy, sl) = SHOOTER_AT;
     let (tx, ty, tl) = TARGET_AT;
     SituationBuilder::new()

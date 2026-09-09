@@ -9,7 +9,7 @@ use cobalt_test_utils::{MinimalTestAppBuilder, advance_until};
 use gdtf_battle_sim::{
     effects::fields::FieldDefRegistry,
     rng::BattleSeed,
-    situation::Situation,
+    situation::{PlacedGanger, Situation},
     test_support::{
         fixtures, test_armor_registry, test_gang_registry, test_melee_weapon_registry,
         test_weapon_registry,
@@ -20,7 +20,10 @@ use gdtf_content_families::situation::LoadedSituation;
 use gdtf_ui::theme::default_theme;
 
 use super::register::register_headless;
-use crate::states::{AppState, BattleScapeState, RunningState};
+use crate::states::{
+    AppState, BattleScapeState, RunningState,
+    running::game::battlescape::generation::battle_sim::PreplacedGangers,
+};
 
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
 const ONE_STEP_A_FRAME: u32 = 1;
@@ -28,24 +31,29 @@ const ONE_STEP_A_FRAME: u32 = 1;
 /// Builds a `MinimalPlugins` app already in [`BattleScapeState::BattleRunning`].
 #[derive(Debug, Clone)]
 pub struct BattleAppBuilder {
-    situation: Situation,
-    seed:      Option<BattleSeed>,
+    situation:  Situation,
+    placements: Vec<PlacedGanger>,
+    seed:       Option<BattleSeed>,
 }
 
 impl BattleAppBuilder {
-    /// Two-ganger fixture situation, no fixed seed.
+    /// Two-ganger fixture situation and its placements, no fixed seed.
     #[must_use]
     pub fn new() -> Self {
+        let (situation, placements) = fixtures::two_ganger();
         Self {
-            situation: fixtures::two_ganger(),
-            seed:      None,
+            situation,
+            placements,
+            seed: None,
         }
     }
 
-    /// Override the situation.
+    /// Override the situation and the gangers placed on it.
     #[must_use]
-    pub fn with_situation(mut self, situation: Situation) -> Self {
+    pub fn with_situation(mut self, built: (Situation, Vec<PlacedGanger>)) -> Self {
+        let (situation, placements) = built;
         self.situation = situation;
+        self.placements = placements;
         self
     }
 
@@ -73,6 +81,8 @@ impl BattleAppBuilder {
         app.world_mut().insert_resource(test_gang_registry());
         app.world_mut()
             .insert_resource(LoadedSituation::new(self.situation));
+        app.world_mut()
+            .insert_resource(PreplacedGangers::new(self.placements));
         if let Some(seed) = self.seed {
             app.world_mut().insert_resource(seed);
         }

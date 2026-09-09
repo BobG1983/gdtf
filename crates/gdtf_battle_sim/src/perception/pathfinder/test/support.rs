@@ -60,8 +60,8 @@ pub(super) fn links_graph(links: &[VerticalLink]) -> Option<VerticalLinkGraph> {
         builder = builder.slab_at(link.from).slab_at(link.to);
         builder = builder.vertical_link(*link);
     }
-    let situation = builder.build();
-    build_vertical_link_graph(&situation).ok()
+    let (situation, _placements) = builder.build();
+    build_vertical_link_graph(&situation.map).ok()
 }
 
 pub(super) fn tuning() -> CombatTuning {

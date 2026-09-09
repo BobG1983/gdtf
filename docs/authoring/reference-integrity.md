@@ -36,9 +36,9 @@ the injury-weighting keys, each terrain def's own view coverage, its
 sprite-def key, the prefab `theme` → theme UUID, every prefab
 `placements[].piece` → terrain UUID, every `on_death` `LeaveField.field` key
 a terrain def or a ranged weapon spec authors, and the situation's
-`gangers[].gang`, `gangers[].member`, `theme`, terrain and `fields[].field` keys — and RE-ARMS it
-on every hot-reload of a watched registry: the report is reset, re-checked
-against the current content, and re-published.
+`rosters[].gang`, `rosters[].member`, `theme`, terrain and `fields[].field` keys.
+The editor RE-ARMS that pass on every hot-reload of a watched registry: the
+report is reset, re-checked against the current content, and re-published.
 The watch set spans every registry the registered checks read, so an edit to
 EITHER side of an edge — the gang file OR the weapons/armor/melee folder it
 references — re-runs every check onto the one consolidated report. The field
@@ -52,8 +52,8 @@ surfaces at authoring time (at the save/edit), not on the next game launch.
 
 | Referencing content | Key it authors | Resolves against | Key scheme |
 | --- | --- | --- | --- |
-| situation `gangers[].gang` (`assets/content/situations/skirmish.ron`) | gang name | gang files' stems (`assets/content/gangs/`) | file stem |
-| situation `gangers[].member` | member name | that gang's roster `members[].name` | display name |
+| situation `rosters[].gang` (`assets/content/situations/skirmish.ron`) | gang name | gang files' stems (`assets/content/gangs/`) | file stem |
+| situation `rosters[].member` | member name | that gang's roster `members[].name` | display name |
 | gang member `weapon`, when authored | weapon key | `assets/content/weapons/ranged/` stems | file stem |
 | gang member `armor`, when authored | armor key | `assets/content/armor/` stems | file stem |
 | gang member `melee_weapon` (or the implicit `fists` default) | melee key | `assets/content/weapons/melee/` stems | file stem |

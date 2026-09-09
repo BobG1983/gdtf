@@ -2,11 +2,10 @@ use bevy::{app::App, asset::uuid::Uuid, prelude::Entity};
 
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
-    battle::SetupBattleRequested,
     cover::{CoverHp, HeightBand},
     metric::{Cell, CellLevel, Level},
     rng::BattleSeed,
-    situation::{CoverSpawn, Situation, SlabSpawn},
+    situation::{CoverSpawn, PlacedGanger, Situation, SlabSpawn},
     slab::SlabHp,
     terrain::{
         def::{
@@ -18,7 +17,9 @@ use crate::{
         piece::{LeftoverSprite, TerrainGraphicKey},
         vertical::{LinkKind, VerticalLink},
     },
-    test_support::{SimAppBuilder, SituationBuilder, TEST_SEED, ganger_at, test_terrain_registry},
+    test_support::{
+        SimAppBuilder, SituationBuilder, TEST_SEED, ganger_at, setup_request, test_terrain_registry,
+    },
 };
 
 /// A cover piece that leaves [`SUCCESSOR_WALL`] behind.
@@ -154,18 +155,20 @@ pub(super) fn battle_with(covers: &[(CellLevel, TerrainUuid)]) -> App {
     let mut app = SimAppBuilder::new().with_battle().with_registries().build();
     app.insert_resource(successor_registry());
 
-    let (mut situation, gangs) = SituationBuilder::new()
+    let (mut situation, placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .build_with_gangs();
     for (at, piece) in covers {
         situation
+            .map
             .scatter
             .push(CoverSpawn::new(*at, *piece, TerrainFacing::East));
         situation
+            .map
             .slabs
             .push(SlabSpawn::new(*at, PLAIN_SLAB, TerrainFacing::North));
     }
-    drive_setup(&mut app, situation, gangs);
+    drive_setup(&mut app, (situation, placements), gangs);
     app
 }
 
@@ -174,22 +177,24 @@ pub(super) fn battle_with_braced_slab(below: CellLevel, at: CellLevel) -> App {
     let mut app = SimAppBuilder::new().with_battle().with_registries().build();
     app.insert_resource(successor_registry());
 
-    let (situation, gangs) = SituationBuilder::new()
+    let (situation, placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .slab_piece_at(below, PLAIN_SLAB)
         .slab_piece_at(at, BRACED_SLAB)
         .vertical_link(VerticalLink::new(below, at, LinkKind::stair()))
         .build_with_gangs();
-    drive_setup(&mut app, situation, gangs);
+    drive_setup(&mut app, (situation, placements), gangs);
     app
 }
 
-fn drive_setup(app: &mut App, situation: Situation, gangs: crate::ganger::GangRegistry) {
+fn drive_setup(
+    app: &mut App,
+    built: (Situation, Vec<PlacedGanger>),
+    gangs: crate::ganger::GangRegistry,
+) {
     app.world_mut().insert_resource(gangs);
-    app.world_mut().write_message(SetupBattleRequested::new(
-        situation,
-        BattleSeed::new(TEST_SEED),
-    ));
+    app.world_mut()
+        .write_message(setup_request(built, BattleSeed::new(TEST_SEED)));
     for _ in 0..4 {
         app.update();
     }

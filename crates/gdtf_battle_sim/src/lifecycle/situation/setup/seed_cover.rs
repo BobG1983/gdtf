@@ -4,7 +4,7 @@ use super::super::terrain_resolve::ResolvedCoverPiece;
 use crate::{
     cover::{CoverEntry, CoverLedger},
     occupancy::TerrainKind,
-    situation::Situation,
+    situation::BattleMap,
     terrain::{
         emplacement::{
             EmplacementEntrySides, EmplacementFacing, EmplacementState, MountedWeaponKey,
@@ -15,16 +15,16 @@ use crate::{
 };
 
 pub(super) fn seed_cover_terrain(
-    situation: &Situation,
+    map: &BattleMap,
     resolved_covers: Vec<ResolvedCoverPiece>,
     commands: &mut Commands,
 ) -> (Vec<(TerrainIndexKey, Entity)>, Vec<TerrainKind>) {
     let mut cover_ledger = CoverLedger::new();
     let mut terrain_pairs: Vec<(TerrainIndexKey, bevy::prelude::Entity)> = Vec::new();
     let mut occupancy_kinds: Vec<TerrainKind> =
-        Vec::with_capacity(situation.walls.len() + situation.scatter.len());
+        Vec::with_capacity(map.walls.len() + map.scatter.len());
     let mut resolved_covers_iter = resolved_covers.into_iter();
-    for cover in situation.walls.iter().chain(situation.scatter.iter()) {
+    for cover in map.walls.iter().chain(map.scatter.iter()) {
         let resolved = resolved_covers_iter
             .next()
             .unwrap_or_else(|| unreachable!("resolved_covers length matches covers length"));

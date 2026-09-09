@@ -10,7 +10,8 @@ use gdtf_battle_sim::{
     ganger::{Aiming, Facing, Hp, LifeState, Position, Stance, Tu, Wounds},
     prelude::{CellLevel, Faction},
     rng::{BattleSeed, ShotRng},
-    situation::Situation,
+    situation::{PlacedGanger, Situation},
+    test_support::setup_request,
 };
 
 const MAX_UPDATES: u32 = 128;
@@ -25,10 +26,10 @@ pub(super) fn register_setup_driver(app: &mut App) {
 }
 
 /// Run `setup_battle` on this situation and settle, answering whether it completed.
-pub(crate) fn drive_setup(app: &mut App, situation: Situation) -> bool {
+pub(crate) fn drive_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) -> bool {
     app.world_mut()
         .resource_mut::<Messages<SetupBattleRequested>>()
-        .write(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+        .write(setup_request(built, BattleSeed::new(SEED)));
     for _ in 0..MAX_UPDATES {
         app.update();
         if app.world().get_resource::<ShotRng>().is_some() {

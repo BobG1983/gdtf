@@ -28,7 +28,7 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::situation::LoadedSituation;
 use gdtf_game::test_support::{
-    AppState, BattleScapeState, McpPlugin, RunningState, StartBattleRequested,
+    AppState, BattleScapeState, McpPlugin, PreplacedGangers, RunningState, StartBattleRequested,
 };
 use gdtf_ui::theme::default_theme;
 
@@ -67,8 +67,9 @@ pub(crate) fn menu_app_with_mcp() -> (App, mpsc::Sender<IncomingRequest>) {
 
 /// The same harness on a chosen battlefield, for a case the shipped two-ganger one cannot tell.
 pub(crate) fn menu_app_with_situation(
-    situation: Situation,
+    built: (Situation, Vec<gdtf_battle_sim::situation::PlacedGanger>),
 ) -> (App, mpsc::Sender<IncomingRequest>) {
+    let (situation, placements) = built;
     let mut app =
         MinimalTestAppBuilder::new_with_scene_support(gdtf_game::test_support::register_headless)
             .starting_in(AppState::Running)
@@ -84,6 +85,8 @@ pub(crate) fn menu_app_with_situation(
     app.world_mut().insert_resource(test_gang_registry());
     app.world_mut()
         .insert_resource(LoadedSituation::new(situation));
+    app.world_mut()
+        .insert_resource(PreplacedGangers::new(placements));
 
     let (tx, rx) = mpsc::channel();
     app.add_plugins(McpPlugin::with_channels(rx));

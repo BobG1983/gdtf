@@ -21,7 +21,7 @@ fn shipped_skirmish_names_a_migrated_theme_uuid_that_resolves() {
     let authored_theme_uuid = app
         .world()
         .get_resource::<LoadedSituation>()
-        .map(|loaded| loaded.theme);
+        .map(|loaded| loaded.map.theme);
 
     assert_eq!(
         authored_theme_uuid,

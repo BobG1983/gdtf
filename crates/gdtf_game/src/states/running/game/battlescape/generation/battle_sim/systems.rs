@@ -8,14 +8,15 @@ use gdtf_battle_sim::{
 use gdtf_content_families::situation::LoadedSituation;
 
 use super::{
-    content::ProcgenContent, procgen::procgen_battle_situation, resolved::ResolvedBattleSeed,
-    seed::resolve_root_seed,
+    content::ProcgenContent, preplaced::PreplacedGangers, procgen::procgen_battle_situation,
+    resolved::ResolvedBattleSeed, seed::resolve_root_seed,
 };
 use crate::states::running::game::battlescape::generation::resources::GenerationComplete;
 
 pub(in crate::states::running::game::battlescape::generation::battle_sim) fn request_battle_setup(
     loaded: Option<Res<LoadedSituation>>,
     seed_override: Option<Res<BattleSeed>>,
+    preplaced: Option<Res<PreplacedGangers>>,
     content: ProcgenContent,
     report: Option<ResMut<ContentIntegrityReport>>,
     mut setup: MessageWriter<SetupBattleRequested>,
@@ -41,7 +42,12 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
         );
         return;
     }
-    setup.write(SetupBattleRequested::new(outcome.situation, seed));
+    let placements = preplaced.map_or(outcome.placements, |settled| (**settled).clone());
+    setup.write(SetupBattleRequested::new(
+        outcome.situation,
+        placements,
+        seed,
+    ));
 }
 
 pub(in crate::states::running::game::battlescape::generation::battle_sim) fn gate_generation_complete(

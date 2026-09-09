@@ -8,7 +8,7 @@ use crate::{
         RegionRect, deploy_rosters, generate_level,
     },
     rng::{BattleSeed, ProcgenRng},
-    situation::{RosterMember, Situation},
+    situation::{BattleMap, RosterMember},
 };
 
 fn skirmish_rosters() -> Vec<RosterMember> {
@@ -27,7 +27,7 @@ fn skirmish_rosters() -> Vec<RosterMember> {
     ]
 }
 
-fn generated(seed: BattleSeed) -> Option<(DeploymentZones, Situation)> {
+fn generated(seed: BattleSeed) -> Option<(DeploymentZones, BattleMap)> {
     let theme = theme();
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
     else {
@@ -39,7 +39,7 @@ fn generated(seed: BattleSeed) -> Option<(DeploymentZones, Situation)> {
     let knobs = ProcgenTuning::default();
     let mut rng = ProcgenRng::from_root(seed);
     let emitted = generate_level(&prefabs, &themes, &defs, theme, board, &mut rng, &knobs).ok()?;
-    Some((emitted.zones, emitted.situation))
+    Some((emitted.zones, emitted.map))
 }
 
 #[test]
@@ -162,7 +162,7 @@ fn deploy_fails_closed_when_a_zone_cannot_fit_its_roster() {
             RegionRect::new(Cell::new(50, 50), Footprint::new(4, 4)),
         ),
     );
-    let terrain = Situation::new();
+    let terrain = BattleMap::new();
     let rosters = vec![
         RosterMember::new(
             GangName::new("gang_0".to_owned()),

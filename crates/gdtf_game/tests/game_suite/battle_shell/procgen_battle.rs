@@ -43,42 +43,33 @@ fn skirmish_ron_authors_no_terrain() {
         return;
     };
 
+    let map = &situation.map;
     assert_eq!(
-        situation.theme,
+        map.theme,
         industrial_hive_theme(),
         "skirmish.ron must author its theme (the IndustrialHive ThemeUuid)",
     );
     assert!(
-        !situation.rosters.is_empty(),
+        !situation.combatants.rosters.is_empty(),
         "skirmish.ron must author its roster members (gang-name refs, no cells)",
     );
-    assert!(
-        situation.gangers.is_empty(),
-        "skirmish.ron must author NO placed gangers (zero authored cells; the deploy step derives them)",
-    );
 
+    assert!(map.walls.is_empty(), "skirmish.ron must author no walls");
     assert!(
-        situation.walls.is_empty(),
-        "skirmish.ron must author no walls"
-    );
-    assert!(
-        situation.scatter.is_empty(),
+        map.scatter.is_empty(),
         "skirmish.ron must author no scatter",
     );
+    assert!(map.slabs.is_empty(), "skirmish.ron must author no slabs");
     assert!(
-        situation.slabs.is_empty(),
-        "skirmish.ron must author no slabs"
-    );
-    assert!(
-        situation.floors.is_empty(),
+        map.floors.is_empty(),
         "skirmish.ron must author no floor overrides",
     );
     assert!(
-        situation.vertical_links.is_empty(),
+        map.vertical_links.is_empty(),
         "skirmish.ron must author no vertical_links (they are terrain)",
     );
     assert!(
-        *situation.default_floor.is_nil(),
+        *map.default_floor.is_nil(),
         "skirmish.ron must author no default_floor (procgen supplies it)",
     );
 }

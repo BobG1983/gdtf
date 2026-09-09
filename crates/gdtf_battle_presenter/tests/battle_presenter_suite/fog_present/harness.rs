@@ -22,10 +22,10 @@ use gdtf_battle_sim::{
     ganger::{Aiming, Facing, GangerName},
     prelude::{CellLevel, Direction, Faction, Position},
     rng::{BattleSeed, ShotRng},
-    situation::{GangerSpawn, Situation},
+    situation::{GangerSpawn, PlacedGanger, Situation},
     test_support::{
-        GangerSpawnBuilder, test_armor_registry, test_gang_registry, test_melee_weapon_registry,
-        test_terrain_registry, test_weapon_registry,
+        GangerSpawnBuilder, setup_request, test_armor_registry, test_gang_registry,
+        test_melee_weapon_registry, test_terrain_registry, test_weapon_registry,
     },
     tuning::CombatTuning,
     visibility::SquadVisibility,
@@ -99,10 +99,10 @@ pub(crate) fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> Ganger
         .build()
 }
 
-pub(crate) fn drive_setup(app: &mut App, situation: Situation) -> bool {
+pub(crate) fn drive_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) -> bool {
     app.world_mut()
         .resource_mut::<Messages<SetupBattleRequested>>()
-        .write(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+        .write(setup_request(built, BattleSeed::new(SEED)));
     for _ in 0..MAX_UPDATES {
         app.update();
         if app.world().get_resource::<ShotRng>().is_some() {

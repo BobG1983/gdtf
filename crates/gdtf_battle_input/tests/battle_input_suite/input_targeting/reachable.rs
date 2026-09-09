@@ -55,8 +55,8 @@ fn stair_graph(foot: CellLevel, head: CellLevel) -> Option<VerticalLinkGraph> {
     let mut builder = SituationBuilder::new();
     builder = builder.slab_at(foot).slab_at(head);
     builder = builder.vertical_link(link);
-    let situation = builder.build();
-    build_vertical_link_graph(&situation).ok()
+    let (situation, _placements) = builder.build();
+    build_vertical_link_graph(&situation.map).ok()
 }
 
 fn reachable_app(links: VerticalLinkGraph, overlay_enabled: bool) -> App {

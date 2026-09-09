@@ -13,12 +13,12 @@ use super::harness::*;
 
 fn link_graph_with_link(from: CellLevel, to: CellLevel) -> VerticalLinkGraph {
     let link = VerticalLink::new(from, to, LinkKind::stair());
-    let situation = SituationBuilder::new()
+    let (situation, _placements) = SituationBuilder::new()
         .slab_at(from)
         .slab_at(to)
         .vertical_link(link)
         .build();
-    build_vertical_link_graph(&situation).unwrap_or_default()
+    build_vertical_link_graph(&situation.map).unwrap_or_default()
 }
 
 fn turn(app: &mut App) -> Option<SetFacingRequested> {

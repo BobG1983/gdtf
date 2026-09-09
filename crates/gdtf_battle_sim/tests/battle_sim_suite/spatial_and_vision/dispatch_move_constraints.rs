@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
     metric::{Cell, CellLevel, Level},
     prelude::{Faction, Position, Stance, StanceKind, Tu},
     rng::BattleSeed,
-    situation::Situation,
+    situation::{PlacedGanger, Situation},
     test_support::{
         GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_melee_weapon_registry,
         test_weapon_registry,
@@ -42,7 +42,7 @@ fn far_unseen() -> CellLevel {
     ground(40, 40)
 }
 
-fn one_player_situation(speed: f32) -> (Situation, GangRegistry) {
+fn one_player_situation(speed: f32) -> (Situation, Vec<PlacedGanger>, GangRegistry) {
     SituationBuilder::new()
         .with_gangers([GangerSpawnBuilder::new()
             .at(player_at())
@@ -67,11 +67,14 @@ fn battle_app() -> App {
     app
 }
 
-fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRegistry)) {
-    let (situation, gangs) = situation_and_gangs;
+fn drive_setup(app: &mut App, situation_and_gangs: (Situation, Vec<PlacedGanger>, GangRegistry)) {
+    let (situation, placements, gangs) = situation_and_gangs;
     app.world_mut().insert_resource(gangs);
-    app.world_mut()
-        .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+    app.world_mut().write_message(SetupBattleRequested::new(
+        situation,
+        placements,
+        BattleSeed::new(SEED),
+    ));
     app.update();
     app.update();
     app.update();

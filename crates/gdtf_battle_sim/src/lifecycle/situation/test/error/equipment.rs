@@ -7,7 +7,7 @@ fn setup_errors_on_a_missing_weapon_key() {
         .faction(Faction::new(0))
         .weapon(WeaponName::new("no-such-weapon".to_owned()))
         .build();
-    let (situation, gangs) = SituationBuilder::new()
+    let (situation, placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger)
         .build_with_gangs();
 
@@ -21,7 +21,8 @@ fn setup_errors_on_a_missing_weapon_key() {
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
-                &situation,
+                &situation.map,
+                &placements,
                 BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,
@@ -61,7 +62,7 @@ fn setup_errors_on_a_missing_armor_key() {
         .faction(Faction::new(0))
         .armor(ArmorName::new("no-such-armor".to_owned()))
         .build();
-    let (situation, gangs) = SituationBuilder::new()
+    let (situation, placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger)
         .build_with_gangs();
 
@@ -75,7 +76,8 @@ fn setup_errors_on_a_missing_armor_key() {
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
-                &situation,
+                &situation.map,
+                &placements,
                 BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,

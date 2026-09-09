@@ -140,7 +140,7 @@ fn an_edit_to_the_loaded_situation_rearms_validation_the_way_a_registry_edit_doe
         let Some(mut loaded) = app.world_mut().get_resource_mut::<LoadedSituation>() else {
             return;
         };
-        loaded.situation_mut().rosters.clear();
+        loaded.situation_mut().combatants.rosters.clear();
     }
     app.update();
 

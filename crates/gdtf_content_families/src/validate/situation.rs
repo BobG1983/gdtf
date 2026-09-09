@@ -30,15 +30,10 @@ pub fn check_situation_gang_refs(
     mut report: ResMut<ContentIntegrityReport>,
 ) {
     let combatant_refs = situation
-        .gangers
+        .combatants
+        .rosters
         .iter()
-        .map(|placed| (&placed.gang, &placed.member))
-        .chain(
-            situation
-                .rosters
-                .iter()
-                .map(|member| (&member.gang, &member.member)),
-        );
+        .map(|member| (&member.gang, &member.member));
     for (gang, member) in combatant_refs {
         let Some(roster) = gangs.roster(gang) else {
             report.record(ContentFinding::DanglingRef {
@@ -46,7 +41,7 @@ pub fn check_situation_gang_refs(
                     "{SITUATION_RON_PATH}: situation ganger `{}`",
                     **member,
                 )),
-                referring_record: situation_record("gangers[].gang"),
+                referring_record: situation_record("rosters[].gang"),
                 target:           FindingTarget::new((**gang).clone()),
                 family:           FindingFamily::new("GangRegistry".to_owned()),
                 scheme:           ReferenceKeyScheme::FileStem,
@@ -59,7 +54,7 @@ pub fn check_situation_gang_refs(
                     "{SITUATION_RON_PATH}: situation ganger of gang `{}`",
                     **gang,
                 )),
-                referring_record: situation_record("gangers[].member"),
+                referring_record: situation_record("rosters[].member"),
                 target:           FindingTarget::new((**member).clone()),
                 family:           FindingFamily::new(format!("GangRegistry roster `{}`", **gang)),
                 scheme:           ReferenceKeyScheme::DisplayName,
@@ -76,14 +71,15 @@ pub fn check_situation_theme_ref(
     themes: Res<UuidThemeRegistry>,
     mut report: ResMut<ContentIntegrityReport>,
 ) {
-    if *situation.theme.is_nil() {
+    let theme = situation.map.theme;
+    if *theme.is_nil() {
         return;
     }
-    if themes.def(&situation.theme).is_none() {
+    if themes.def(&theme).is_none() {
         report.record(ContentFinding::DanglingRef {
             referrer:         FindingReferrer::new(format!("{SITUATION_RON_PATH}: theme")),
             referring_record: situation_record("theme"),
-            target:           FindingTarget::new(situation.theme.to_string()),
+            target:           FindingTarget::new(theme.to_string()),
             family:           FindingFamily::new("UuidThemeRegistry".to_owned()),
             scheme:           ReferenceKeyScheme::Uuid,
         });
@@ -97,18 +93,14 @@ pub fn check_situation_terrain_refs(
     mut report: ResMut<ContentIntegrityReport>,
 ) {
     let mut seen: Vec<TerrainUuid> = Vec::new();
-    let pieces = situation
+    let map = &situation.map;
+    let pieces = map
         .walls
         .iter()
         .map(|spawn| ("walls", spawn.piece))
-        .chain(
-            situation
-                .scatter
-                .iter()
-                .map(|spawn| ("scatter", spawn.piece)),
-        )
-        .chain(situation.slabs.iter().map(|spawn| ("slabs", spawn.piece)))
-        .chain(situation.floors.iter().map(|spawn| ("floors", spawn.piece)));
+        .chain(map.scatter.iter().map(|spawn| ("scatter", spawn.piece)))
+        .chain(map.slabs.iter().map(|spawn| ("slabs", spawn.piece)))
+        .chain(map.floors.iter().map(|spawn| ("floors", spawn.piece)));
     for (list, piece) in pieces {
         if seen.contains(&piece) {
             continue;
@@ -124,11 +116,11 @@ pub fn check_situation_terrain_refs(
             });
         }
     }
-    if !*situation.default_floor.is_nil() && terrain.def(&situation.default_floor).is_none() {
+    if !*map.default_floor.is_nil() && terrain.def(&map.default_floor).is_none() {
         report.record(ContentFinding::DanglingRef {
             referrer:         FindingReferrer::new(format!("{SITUATION_RON_PATH}: default_floor")),
             referring_record: situation_record("default_floor"),
-            target:           FindingTarget::new(situation.default_floor.to_string()),
+            target:           FindingTarget::new(map.default_floor.to_string()),
             family:           FindingFamily::new("TerrainDefRegistry".to_owned()),
             scheme:           ReferenceKeyScheme::Uuid,
         });
@@ -141,7 +133,7 @@ pub fn check_situation_field_refs(
     fields: Res<FieldDefRegistry>,
     mut report: ResMut<ContentIntegrityReport>,
 ) {
-    for spawn in &situation.fields {
+    for spawn in &situation.map.fields {
         if fields.def(&spawn.field).is_none() {
             report.record(ContentFinding::DanglingRef {
                 referrer:         FindingReferrer::new(format!("{SITUATION_RON_PATH}: fields")),

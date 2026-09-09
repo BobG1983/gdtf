@@ -13,9 +13,9 @@ fn teardown_despawns_the_battle_gangers_so_a_second_battle_stands_alone() {
     let mut app = headless_app();
 
     let first = fixtures::two_ganger();
-    let first_authored = first.gangers.len();
+    let first_authored = first.1.len();
     app.world_mut()
-        .write_message(SetupBattleRequested::new(first, BattleSeed::new(SEED)));
+        .write_message(setup_request(first, BattleSeed::new(SEED)));
     app.update();
     app.update();
 
@@ -32,9 +32,9 @@ fn teardown_despawns_the_battle_gangers_so_a_second_battle_stands_alone() {
     app.update();
 
     let second = fixtures::one_player_two_enemies();
-    let second_authored = second.gangers.len();
+    let second_authored = second.1.len();
     app.world_mut()
-        .write_message(SetupBattleRequested::new(second, BattleSeed::new(SEED)));
+        .write_message(setup_request(second, BattleSeed::new(SEED)));
     app.update();
     app.update();
 

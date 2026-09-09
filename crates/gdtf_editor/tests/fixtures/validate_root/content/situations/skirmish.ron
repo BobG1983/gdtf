@@ -1,10 +1,14 @@
 // A fixture situation naming one gang and one field key this root does not hold.
 // Every other field defaults, so it raises the dangling gang key and the dangling field key.
 (
-    rosters: [
-        (gang: "ghost_gang", member: "Nobody", faction: 0),
-    ],
-    fields: [
-        (at: (cell: (x: 2, y: 2), level: 0), field: "ghost_field"),
-    ],
+    map: (
+        fields: [
+            (at: (cell: (x: 2, y: 2), level: 0), field: "ghost_field"),
+        ],
+    ),
+    combatants: (
+        rosters: [
+            (gang: "ghost_gang", member: "Nobody", faction: 0),
+        ],
+    ),
 )

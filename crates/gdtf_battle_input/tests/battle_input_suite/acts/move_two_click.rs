@@ -161,12 +161,12 @@ fn click_on_a_link_tile_is_not_a_move_target() {
     let up_storey = (*target.level()).saturating_add(1);
     let up = CellLevel::new(target.cell(), Level::new(up_storey));
     let link = VerticalLink::new(target, up, LinkKind::stair());
-    let graph = SituationBuilder::new()
+    let (graph, _placements) = SituationBuilder::new()
         .slab_at(target)
         .slab_at(up)
         .vertical_link(link)
         .build();
-    if let Ok(graph) = build_vertical_link_graph(&graph) {
+    if let Ok(graph) = build_vertical_link_graph(&graph.map) {
         app.world_mut().insert_resource(graph);
     }
 

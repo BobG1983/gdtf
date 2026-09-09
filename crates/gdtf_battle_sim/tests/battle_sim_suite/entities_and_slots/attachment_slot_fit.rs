@@ -138,15 +138,18 @@ fn spawn_battle(
     app.insert_resource(test_armor_registry());
     app.insert_resource(test_terrain_registry());
 
-    let (situation, gangs) = SituationBuilder::new()
+    let (situation, placements, gangs) = SituationBuilder::new()
         .with_gangers([
             standing(ground(5, 5), PLAYER, Direction::East),
             standing(ground(20, 20), ENEMY, Direction::West),
         ])
         .build_with_gangs();
     app.world_mut().insert_resource(gangs);
-    app.world_mut()
-        .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+    app.world_mut().write_message(SetupBattleRequested::new(
+        situation,
+        placements,
+        BattleSeed::new(SEED),
+    ));
     for _ in 0..8 {
         app.update();
     }

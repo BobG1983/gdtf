@@ -10,7 +10,7 @@ use crate::{
     occupancy::{OccupancyGrid, OccupancyInput, TerrainKind, TerrainPlacement},
     procgen::{PackingError, RosterDemand, ZoneCapacity},
     rng::{BattleSeed, DeploymentRng},
-    situation::{PlacedGanger, Placement, RosterMember, Situation},
+    situation::{BattleMap, PlacedGanger, Placement, RosterMember},
 };
 
 /// Whether a cell can stand a ganger.
@@ -33,14 +33,14 @@ impl Standable {
 /// Returns [`PackingError::DeploymentZoneTooSmall`] when a zone has fewer standable cells than roster members for that side.
 pub fn deploy_rosters(
     zones: &DeploymentZones,
-    terrain: &Situation,
+    map: &BattleMap,
     rosters: &[RosterMember],
     player_faction: Faction,
     seed: BattleSeed,
 ) -> Result<Vec<PlacedGanger>, PackingError> {
-    let grid = blocking_grid(terrain);
-    let grid_size = terrain.grid_size;
-    let mut occupied: HashSet<CellLevel> = terrain.gangers.iter().map(|g| g.at).collect();
+    let grid = blocking_grid(map);
+    let grid_size = map.grid_size;
+    let mut occupied: HashSet<CellLevel> = HashSet::new();
     let mut rng = DeploymentRng::from_root(seed);
     let mut placed: Vec<PlacedGanger> = Vec::new();
 
@@ -162,11 +162,11 @@ fn is_standable(
     Standable::new(in_bounds && !*grid.is_blocked(&cell_level) && !occupied.contains(&cell_level))
 }
 
-fn blocking_grid(terrain: &Situation) -> OccupancyGrid {
-    let terrain_placements: Vec<TerrainPlacement> = terrain
+fn blocking_grid(map: &BattleMap) -> OccupancyGrid {
+    let terrain_placements: Vec<TerrainPlacement> = map
         .walls
         .iter()
-        .chain(terrain.scatter.iter())
+        .chain(map.scatter.iter())
         .map(|cover| TerrainPlacement::new(cover.at, TerrainKind::Wall))
         .collect();
     let input = OccupancyInput {

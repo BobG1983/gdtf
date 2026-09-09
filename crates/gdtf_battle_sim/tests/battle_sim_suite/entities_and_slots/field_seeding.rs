@@ -14,7 +14,9 @@ use gdtf_battle_sim::{
     },
     ganger::GangRegistry,
     metric::{Cell, CellLevel, Level},
-    situation::{BattleRegistries, BattleSetupError, FieldSpawn, Situation, setup_battle},
+    situation::{
+        BattleRegistries, BattleSetupError, FieldSpawn, PlacedGanger, Situation, setup_battle,
+    },
     test_support::{
         SituationBuilder, field_turns, ganger_at, test_armor_registry, test_melee_weapon_registry,
         test_terrain_registry, test_weapon_registry,
@@ -43,6 +45,7 @@ fn catalog() -> FieldDefRegistry {
 
 fn run_setup(
     situation: Situation,
+    placements: Vec<PlacedGanger>,
     gangs: GangRegistry,
     field_defs: &FieldDefRegistry,
 ) -> (App, Result<(), BattleSetupError>) {
@@ -59,7 +62,8 @@ fn run_setup(
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
-                &situation,
+                &situation.map,
+                &placements,
                 BattleRegistries::new(
                     &gangs,
                     &weapons,
@@ -80,23 +84,23 @@ fn run_setup(
     (app, setup)
 }
 
-fn situation_with_field(field_cell: CellLevel) -> (Situation, GangRegistry) {
-    let (mut situation, gangs) = SituationBuilder::new()
+fn situation_with_field(field_cell: CellLevel) -> (Situation, Vec<PlacedGanger>, GangRegistry) {
+    let (mut situation, placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(ground(1, 1), 0))
         .with_ganger(ganger_at(ground(2, 1), 1))
         .build_with_gangs();
-    situation.fields = vec![FieldSpawn::new(
+    situation.map.fields = vec![FieldSpawn::new(
         field_cell,
         FieldKey::new(TOXIC_KEY.to_owned()),
     )];
-    (situation, gangs)
+    (situation, placements, gangs)
 }
 
 #[test]
 fn authored_field_seeds_the_field_registry() {
     let field_cell = ground(4, 4);
-    let (situation, gangs) = situation_with_field(field_cell);
-    let (app, setup) = run_setup(situation, gangs, &catalog());
+    let (situation, placements, gangs) = situation_with_field(field_cell);
+    let (app, setup) = run_setup(situation, placements, gangs, &catalog());
 
     assert!(
         setup.is_ok(),
@@ -123,7 +127,7 @@ fn authored_field_seeds_the_field_registry() {
 #[test]
 fn situation_without_fields_deserializes_to_an_empty_list() {
     // `#[serde(default)]`, so this must parse and carry NO fields.
-    let ron = "(gangers: [], grid_size: (width: 10, height: 10, levels: 1))";
+    let ron = "(map: (grid_size: (width: 10, height: 10, levels: 1)))";
     let parsed = ron::de::from_str::<Situation>(ron);
     assert!(
         parsed.is_ok(),
@@ -132,7 +136,7 @@ fn situation_without_fields_deserializes_to_an_empty_list() {
     );
     if let Ok(situation) = parsed {
         assert!(
-            situation.fields.is_empty(),
+            situation.map.fields.is_empty(),
             "an omitted `fields:` list defaults to empty (existing situations stay unchanged)",
         );
     }
@@ -140,8 +144,8 @@ fn situation_without_fields_deserializes_to_an_empty_list() {
 
 #[test]
 fn authored_fields_ron_parses_into_field_spawns() {
-    let ron = "(gangers: [], grid_size: (width: 10, height: 10, levels: 1), \
-                fields: [(at: (cell: (x: 4, y: 4), level: 0), field: \"toxic_waste_pool\")])";
+    let ron = "(map: (grid_size: (width: 10, height: 10, levels: 1), \
+                fields: [(at: (cell: (x: 4, y: 4), level: 0), field: \"toxic_waste_pool\")]))";
     let parsed = ron::de::from_str::<Situation>(ron);
     assert!(
         parsed.is_ok(),
@@ -150,17 +154,17 @@ fn authored_fields_ron_parses_into_field_spawns() {
     );
     if let Ok(situation) = parsed {
         assert_eq!(
-            situation.fields.len(),
+            situation.map.fields.len(),
             1,
             "the authored field placement parses into one FieldSpawn",
         );
         assert_eq!(
-            situation.fields.first().map(|f| f.at),
+            situation.map.fields.first().map(|f| f.at),
             Some(ground(4, 4)),
             "the FieldSpawn carries its authored (cell, level)",
         );
         assert_eq!(
-            situation.fields.first().map(|f| (*f.field).clone()),
+            situation.map.fields.first().map(|f| (*f.field).clone()),
             Some(TOXIC_KEY.to_owned()),
             "the FieldSpawn carries its authored field-type KEY",
         );
@@ -169,15 +173,15 @@ fn authored_fields_ron_parses_into_field_spawns() {
 
 #[test]
 fn unknown_field_key_aborts_with_field_not_found() {
-    let (mut situation, gangs) = SituationBuilder::new()
+    let (mut situation, placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(ground(1, 1), 0))
         .with_ganger(ganger_at(ground(2, 1), 1))
         .build_with_gangs();
-    situation.fields = vec![FieldSpawn::new(
+    situation.map.fields = vec![FieldSpawn::new(
         ground(4, 4),
         FieldKey::new("no_such_field".to_owned()),
     )];
-    let (app, setup) = run_setup(situation, gangs, &catalog());
+    let (app, setup) = run_setup(situation, placements, gangs, &catalog());
 
     assert!(
         matches!(setup, Err(BattleSetupError::FieldNotFound { .. })),

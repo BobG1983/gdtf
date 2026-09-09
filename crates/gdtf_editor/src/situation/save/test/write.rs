@@ -10,7 +10,7 @@ use super::super::write_situation_in;
 // A situation carrying two roster members and two field spawns.
 fn fixture_situation() -> Situation {
     let mut situation = Situation::new();
-    situation.rosters = vec![
+    situation.combatants.rosters = vec![
         RosterMember::new(
             GangName::new("scav_pack".to_owned()),
             GangerName::new("Grist".to_owned()),
@@ -22,7 +22,7 @@ fn fixture_situation() -> Situation {
             Faction::new(1),
         ),
     ];
-    situation.fields = vec![
+    situation.map.fields = vec![
         FieldSpawn::new(
             CellLevel::new(Cell::new(1, 1), Level::new(0)),
             FieldKey::new("toxic_waste_pool".to_owned()),
@@ -63,11 +63,11 @@ fn a_written_situation_reads_back_with_every_roster_member_and_field_spawn() {
     let Ok(reloaded) = reloaded else { return };
 
     assert_eq!(
-        reloaded.rosters, situation.rosters,
+        reloaded.combatants.rosters, situation.combatants.rosters,
         "a writer that serializes only the list it is editing loses the rosters",
     );
     assert_eq!(
-        reloaded.fields, situation.fields,
+        reloaded.map.fields, situation.map.fields,
         "both field spawns must come back, in the order they were authored",
     );
 }

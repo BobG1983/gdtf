@@ -2,11 +2,10 @@
 use super::support::*;
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
-    battle::SetupBattleRequested,
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
     terrain::entity::{TerrainCell, TerrainIndex, TerrainIndexKey},
-    test_support::{SituationBuilder, ganger_at},
+    test_support::{SituationBuilder, ganger_at, setup_request},
 };
 
 #[test]
@@ -20,10 +19,8 @@ fn test1_one_entity_per_terrain_piece() {
         .slab_at(cl(3, 3, 1))
         .build();
 
-    app.world_mut().write_message(SetupBattleRequested::new(
-        situation,
-        crate::rng::BattleSeed::new(0xAB),
-    ));
+    app.world_mut()
+        .write_message(setup_request(situation, crate::rng::BattleSeed::new(0xAB)));
     app.update();
 
     let world = app.world_mut();
@@ -56,10 +53,8 @@ fn test1_counts_all_kinds() {
         .slab_at(cl(5, 5, 1))
         .build();
 
-    app.world_mut().write_message(SetupBattleRequested::new(
-        situation,
-        crate::rng::BattleSeed::new(0xCD),
-    ));
+    app.world_mut()
+        .write_message(setup_request(situation, crate::rng::BattleSeed::new(0xCD)));
     app.update();
 
     let world = app.world_mut();
@@ -85,10 +80,8 @@ fn test2_cover_entity_carries_authored_stats() {
         .with_ganger(ganger_at(cl(1, 1, 0), 1))
         .wall_at(wall_cell)
         .build();
-    app.world_mut().write_message(SetupBattleRequested::new(
-        situation,
-        crate::rng::BattleSeed::new(0xEF),
-    ));
+    app.world_mut()
+        .write_message(setup_request(situation, crate::rng::BattleSeed::new(0xEF)));
     app.update();
 
     let world = app.world_mut();
@@ -145,10 +138,8 @@ fn test2_slab_entity_carries_prototype_stats_no_height_band() {
         .with_ganger(ganger_at(cl(1, 1, 0), 1))
         .slab_at(slab_cell)
         .build();
-    app.world_mut().write_message(SetupBattleRequested::new(
-        situation,
-        crate::rng::BattleSeed::new(0x01),
-    ));
+    app.world_mut()
+        .write_message(setup_request(situation, crate::rng::BattleSeed::new(0x01)));
     app.update();
 
     let world = app.world_mut();

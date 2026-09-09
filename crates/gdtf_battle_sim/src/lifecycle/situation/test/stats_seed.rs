@@ -4,11 +4,11 @@ use super::support::*;
 /// contract). Asserted as the RELATION via `derive_stats` over the fixture's authored
 #[test]
 fn setup_seeds_hp_max_and_wounds_max_onto_each_ganger() {
-    let (situation, ..) = minimal_fixture();
+    let (built, ..) = minimal_fixture();
     let tuning = GangerStatTuning::default();
-    let alice_derived = derive_stats(&attributes_of(&situation.gangers[0]), &tuning);
-    let bob_derived = derive_stats(&attributes_of(&situation.gangers[1]), &tuning);
-    let Some((mut app, setup)) = run_setup(situation) else {
+    let alice_derived = derive_stats(&attributes_of(&built.1[0]), &tuning);
+    let bob_derived = derive_stats(&attributes_of(&built.1[1]), &tuning);
+    let Some((mut app, setup)) = run_setup(built) else {
         return;
     };
 
@@ -67,13 +67,13 @@ fn setup_seeds_empty_inflicted_wounds_onto_each_ganger() {
 
 #[test]
 fn setup_seeds_attribute_stats_onto_each_ganger() {
-    let (situation, ..) = minimal_fixture();
+    let (built, ..) = minimal_fixture();
     let tuning = GangerStatTuning::default();
-    let alice_attrs = attributes_of(&situation.gangers[0]);
-    let bob_attrs = attributes_of(&situation.gangers[1]);
+    let alice_attrs = attributes_of(&built.1[0]);
+    let bob_attrs = attributes_of(&built.1[1]);
     let alice_derived = derive_stats(&alice_attrs, &tuning);
     let bob_derived = derive_stats(&bob_attrs, &tuning);
-    let Some((mut app, setup)) = run_setup(situation) else {
+    let Some((mut app, setup)) = run_setup(built) else {
         return;
     };
 

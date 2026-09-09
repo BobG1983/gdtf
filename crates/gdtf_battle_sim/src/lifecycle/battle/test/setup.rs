@@ -6,10 +6,8 @@ use crate::rng::ReactionRng;
 #[test]
 fn setup_request_seeds_rng_inserts_resources_and_signals_ready() {
     let mut app = headless_app();
-    app.world_mut().write_message(SetupBattleRequested::new(
-        two_ganger_situation(),
-        BattleSeed::new(SEED),
-    ));
+    app.world_mut()
+        .write_message(setup_request(two_ganger_situation(), BattleSeed::new(SEED)));
     app.update();
 
     assert!(
@@ -53,10 +51,8 @@ fn setup_request_seeds_rng_inserts_resources_and_signals_ready() {
 fn setup_threads_the_message_seed_through_rng_streams() {
     let first_draw = |seed: u64| {
         let mut app = headless_app();
-        app.world_mut().write_message(SetupBattleRequested::new(
-            two_ganger_situation(),
-            BattleSeed::new(seed),
-        ));
+        app.world_mut()
+            .write_message(setup_request(two_ganger_situation(), BattleSeed::new(seed)));
         app.update();
         app.world_mut()
             .get_resource_mut::<ShotRng>()
@@ -76,11 +72,11 @@ fn setup_threads_the_message_seed_through_rng_streams() {
 
 #[test]
 fn setup_runs_setup_battle_on_the_real_commands_path() {
-    let situation = two_ganger_situation();
-    let authored = situation.gangers.len();
+    let built = two_ganger_situation();
+    let deployed = built.1.len();
     let mut app = headless_app();
     app.world_mut()
-        .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+        .write_message(setup_request(built, BattleSeed::new(SEED)));
     app.update();
     app.update();
 
@@ -88,9 +84,9 @@ fn setup_runs_setup_battle_on_the_real_commands_path() {
     let mut query = world.query::<&Wears>();
     assert_eq!(
         query.iter(world).count(),
-        authored,
-        "the spawned ganger count (each wearing armor via Wears) must equal the authored ganger \
-         count (the real setup_battle ran, not a stub)",
+        deployed,
+        "the spawned ganger count (each wearing armor via Wears) must equal the placement count \
+         the request carried (the real setup_battle ran, not a stub)",
     );
 }
 
@@ -99,7 +95,7 @@ fn failed_setup_emits_no_ready_and_inserts_no_resource() {
     let (situation, _link) = dangling_link_situation();
     let mut app = headless_app();
     app.world_mut()
-        .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+        .write_message(setup_request(situation, BattleSeed::new(SEED)));
     app.update();
 
     assert_eq!(
@@ -125,7 +121,7 @@ fn failed_setup_emits_no_ready_and_inserts_no_resource() {
 fn dangling_link_fixture_yields_the_typed_error() {
     use bevy::ecs::system::RunSystemOnce as _;
 
-    let (situation, link) = dangling_link_situation();
+    let ((situation, placements), link) = dangling_link_situation();
     let gangs = test_gang_registry();
     let registry = weapon_registry();
     let melee = melee_weapon_registry();
@@ -135,7 +131,8 @@ fn dangling_link_fixture_yields_the_typed_error() {
     let mut world = World::new();
     let result = world.run_system_once(move |mut commands: Commands| {
         setup_battle(
-            &situation,
+            &situation.map,
+            &placements,
             BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
             fallback_floor_cost,
             &mut commands,
@@ -158,10 +155,8 @@ fn dangling_link_fixture_yields_the_typed_error() {
 fn teardown_removes_battle_resources_and_leaves_tuning() {
     let mut app = headless_app();
 
-    app.world_mut().write_message(SetupBattleRequested::new(
-        two_ganger_situation(),
-        BattleSeed::new(SEED),
-    ));
+    app.world_mut()
+        .write_message(setup_request(two_ganger_situation(), BattleSeed::new(SEED)));
     app.update();
     assert!(
         app.world().get_resource::<ShotRng>().is_some(),
@@ -223,10 +218,8 @@ fn battle_in_progress_tracks_the_battle_active_window() {
         "BattleInProgress must be absent before any setup",
     );
 
-    app.world_mut().write_message(SetupBattleRequested::new(
-        two_ganger_situation(),
-        BattleSeed::new(SEED),
-    ));
+    app.world_mut()
+        .write_message(setup_request(two_ganger_situation(), BattleSeed::new(SEED)));
     app.update();
     assert_eq!(
         drain_battle_ready(&mut app),
@@ -251,7 +244,7 @@ fn failed_setup_inserts_no_battle_in_progress() {
     let (situation, _link) = dangling_link_situation();
     let mut app = headless_app();
     app.world_mut()
-        .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+        .write_message(setup_request(situation, BattleSeed::new(SEED)));
     app.update();
 
     assert_eq!(
@@ -278,10 +271,8 @@ fn reaction_rng_present_after_setup_and_absent_after_teardown() {
         "ReactionRng must be absent before any battle setup",
     );
 
-    app.world_mut().write_message(SetupBattleRequested::new(
-        two_ganger_situation(),
-        BattleSeed::new(SEED),
-    ));
+    app.world_mut()
+        .write_message(setup_request(two_ganger_situation(), BattleSeed::new(SEED)));
     app.update();
     assert_eq!(
         drain_battle_ready(&mut app),

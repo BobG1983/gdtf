@@ -16,12 +16,18 @@ pub(crate) fn deploy_over_generated(
     seed: BattleSeed,
 ) -> ProcgenOutcome {
     let zones = emitted.zones;
-    let rosters = authored.rosters.clone();
-    let player_faction = authored.player_faction;
-    let theme = authored.theme;
+    let rosters = authored.combatants.rosters.clone();
+    let player_faction = authored.combatants.player_faction;
+    let theme = authored.map.theme;
     let mut outcome = outcome_from_emitted(authored, emitted);
-    match deploy_rosters(&zones, &outcome.situation, &rosters, player_faction, seed) {
-        Ok(placed) => outcome.situation.gangers.extend(placed),
+    match deploy_rosters(
+        &zones,
+        &outcome.situation.map,
+        &rosters,
+        player_faction,
+        seed,
+    ) {
+        Ok(placed) => outcome.placements.extend(placed),
         Err(err) => {
             warn!(
                 "procgen could not deploy the roster into its zone ({err}); the battle will not \

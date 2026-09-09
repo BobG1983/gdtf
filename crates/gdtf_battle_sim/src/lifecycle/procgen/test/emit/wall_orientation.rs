@@ -140,19 +140,19 @@ fn ns_and_ew_walls_both_emit_as_walls_through_the_loader() {
     let Ok(emitted) = result else {
         return;
     };
-    let situation = emitted.situation;
+    let map = emitted.map;
 
     assert!(
-        situation.walls.iter().any(|w| w.piece == WALL_NS_EW_NS),
+        map.walls.iter().any(|w| w.piece == WALL_NS_EW_NS),
         "the NS-wall TerrainUuid must emit into the walls list (the Wall classification)",
     );
     assert!(
-        situation.walls.iter().any(|w| w.piece == WALL_NS_EW_EW),
+        map.walls.iter().any(|w| w.piece == WALL_NS_EW_EW),
         "the EW-wall TerrainUuid must emit into the walls list, classified identically to the \
          NS wall (C4 — it resolves through the loader; C5 — same Wall sim semantics)",
     );
     assert!(
-        !situation.slabs.iter().any(|s| s.piece == WALL_NS_EW_EW),
+        !map.slabs.iter().any(|s| s.piece == WALL_NS_EW_EW),
         "the EW wall must classify as a Wall (walls list), never a Slab (C5)",
     );
 }

@@ -49,7 +49,7 @@ pub(super) fn aim_debuff_catalog() -> (InjuryRegistry, InjuryTables) {
     (registry, tables)
 }
 
-pub(super) fn duel_situation() -> Situation {
+pub(super) fn duel_situation() -> (Situation, Vec<crate::situation::PlacedGanger>) {
     let shooter = GangerSpawnBuilder::new()
         .at(CellLevel::new(Cell::new(5, 5), Level::new(0)))
         .faction(Faction::new(0))
@@ -130,10 +130,8 @@ fn run_battle(seed: u64) -> BattleRun {
     let (registry, tables) = aim_debuff_catalog();
     app.insert_resource(registry);
     app.insert_resource(tables);
-    app.world_mut().write_message(SetupBattleRequested::new(
-        duel_situation(),
-        BattleSeed::new(seed),
-    ));
+    app.world_mut()
+        .write_message(setup_request(duel_situation(), BattleSeed::new(seed)));
     for _ in 0..4 {
         app.update();
     }

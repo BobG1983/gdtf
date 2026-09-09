@@ -31,7 +31,11 @@ pub(super) fn engage_stepper(
     let authored: Situation = loaded.map_or_else(Situation::default, |loaded| (**loaded).clone());
     let seed = seed_override.map_or_else(resolve_root_seed, |r| *r);
     commands.insert_resource(ResolvedBattleSeed::new(seed));
-    commands.insert_resource(StagedProcgen::new(seed, authored.theme, authored.grid_size));
+    commands.insert_resource(StagedProcgen::new(
+        seed,
+        authored.map.theme,
+        authored.map.grid_size,
+    ));
     commands.insert_resource(ProcgenStepperContext { authored, seed });
     commands.insert_resource(PendingStepCommand::default());
     commands.insert_resource(AutoRunning::default());
@@ -109,7 +113,11 @@ pub(super) fn finish_stepper_drive(
         return;
     }
 
-    setup.write(SetupBattleRequested::new(outcome.situation, context.seed));
+    setup.write(SetupBattleRequested::new(
+        outcome.situation,
+        outcome.placements,
+        context.seed,
+    ));
 
     remove_stepper_resources(&mut commands);
 }

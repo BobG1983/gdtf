@@ -52,7 +52,8 @@ fn cancelling_a_terrain_delete_leaves_every_file_and_the_registry_as_they_were()
         || write_situation(
             dir.path(),
             &format!(
-                "(walls: [(at: (cell: (x: 1, y: 1), level: 0), piece: \"{DELETED_PIECE}\")])\n"
+                "(map: (walls: [(at: (cell: (x: 1, y: 1), level: 0), piece: \
+                 \"{DELETED_PIECE}\")]))\n"
             ),
         )
         .is_none()

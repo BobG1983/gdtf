@@ -12,13 +12,14 @@ use gdtf_battle_sim::{
     prelude::{CellLevel, Direction, Position, Stance, StanceKind},
     resolve_coarse::ShotInputs,
     sample_cone::ConcentrationP,
-    situation::{BattleRegistries, BattleSetup, Situation, setup_battle},
+    situation::{BattleRegistries, BattleSetup, PlacedGanger, Situation, setup_battle},
     stability::RecoilGrowth,
     test_support::{test_armor_registry, test_weapon_registry},
     tuning::{GangerStatTuning, RecoilClimb},
 };
 
-pub(crate) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
+pub(crate) fn run_setup(built: (Situation, Vec<PlacedGanger>)) -> Option<(App, BattleSetup)> {
+    let (situation, placements) = built;
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
 
@@ -35,7 +36,8 @@ pub(crate) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
-                &situation,
+                &situation.map,
+                &placements,
                 BattleRegistries::new(
                     &gangs,
                     &registry,

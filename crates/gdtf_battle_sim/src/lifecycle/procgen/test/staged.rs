@@ -74,7 +74,7 @@ fn stepped_to_completion_matches_generate_level_for_the_same_seed() {
         return;
     };
 
-    assert!(terrain_eq(&one_shot.situation, &staged_result.situation));
+    assert!(terrain_eq(&one_shot.map, &staged_result.map));
     assert_eq!(one_shot.findings, staged_result.findings);
 }
 
@@ -203,7 +203,7 @@ fn advance_per_placement_matches_generate_level_for_the_same_seed() {
         return;
     };
     assert!(
-        terrain_eq(&one_shot.situation, &staged_result.situation),
+        terrain_eq(&one_shot.map, &staged_result.map),
         "advance-per-placement must equal generate_level for the same seed (step-equivalence)",
     );
     assert_eq!(one_shot.findings, staged_result.findings);
@@ -231,8 +231,8 @@ fn advance_after_done_is_idempotent() {
     let repeat = staged.advance(registries);
     assert_eq!(repeat, Ok(ProcgenStage::Done));
     assert_eq!(
-        staged.emitted().cloned().map(|e| e.situation.theme),
-        first_emitted.map(|e| e.situation.theme)
+        staged.emitted().cloned().map(|e| e.map.theme),
+        first_emitted.map(|e| e.map.theme)
     );
 }
 

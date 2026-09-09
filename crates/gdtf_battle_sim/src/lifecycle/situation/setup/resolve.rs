@@ -14,7 +14,7 @@ use crate::{
     },
     equipment::attachments::{AttachmentRegistry, resolve_pending_attachments},
     ganger::{GangMember, GangRegistry},
-    situation::{BattleSetupError, PlacedGanger, Situation},
+    situation::{BattleMap, BattleSetupError, PlacedGanger},
     terrain::{def::TerrainDefRegistry, entity::TerrainIndexKey},
     weapon::{
         FISTS_KEY, MeleeWeaponBundle, MeleeWeaponRegistry, PendingAttachments, WeaponBundle,
@@ -23,12 +23,12 @@ use crate::{
 };
 
 pub(super) fn resolve_members<'s, 'g>(
-    situation: &'s Situation,
+    placements: &'s [PlacedGanger],
     gangs: &'g GangRegistry,
 ) -> Result<Vec<(&'s PlacedGanger, &'g GangMember)>, BattleSetupError> {
     let mut resolved_members: Vec<(&PlacedGanger, &GangMember)> =
-        Vec::with_capacity(situation.gangers.len());
-    for placed in &situation.gangers {
+        Vec::with_capacity(placements.len());
+    for placed in placements {
         let Some(roster) = gangs.roster(&placed.gang) else {
             return Err(BattleSetupError::GangNotFound {
                 gang: placed.gang.clone(),
@@ -127,12 +127,12 @@ pub(super) struct ResolvedCovers {
 }
 
 pub(super) fn resolve_covers(
-    situation: &Situation,
+    map: &BattleMap,
     terrain: Option<&TerrainDefRegistry>,
 ) -> Result<ResolvedCovers, BattleSetupError> {
     let mut pieces: Vec<ResolvedCoverPiece> = Vec::new();
     let mut on_death = TerrainOnDeathRegistry::default();
-    for cover in situation.walls.iter().chain(situation.scatter.iter()) {
+    for cover in map.walls.iter().chain(map.scatter.iter()) {
         let def = resolve_terrain_or_err(terrain, &cover.piece)?;
         if !def.on_death.is_empty() {
             on_death.insert(TerrainIndexKey::Cover(cover.at), def.on_death.clone());
@@ -147,12 +147,12 @@ pub(super) fn resolve_covers(
 
 /// Resolve the slab pieces, registering each def's `on_death` under its slab key.
 pub(super) fn resolve_slabs(
-    situation: &Situation,
+    map: &BattleMap,
     terrain: Option<&TerrainDefRegistry>,
     on_death: &mut TerrainOnDeathRegistry,
 ) -> Result<Vec<ResolvedSlabPiece>, BattleSetupError> {
     let mut resolved_slabs: Vec<ResolvedSlabPiece> = Vec::new();
-    for slab_spawn in &situation.slabs {
+    for slab_spawn in &map.slabs {
         let def = resolve_terrain_or_err(terrain, &slab_spawn.piece)?;
         if !def.on_death.is_empty() {
             on_death.insert(TerrainIndexKey::Slab(slab_spawn.at), def.on_death.clone());
@@ -168,11 +168,11 @@ pub(super) fn resolve_slabs(
 }
 
 pub(super) fn build_field_registry(
-    situation: &Situation,
+    map: &BattleMap,
     catalog: Option<&FieldDefRegistry>,
 ) -> Result<FieldRegistry, BattleSetupError> {
     let mut registry = FieldRegistry::new();
-    for spawn in &situation.fields {
+    for spawn in &map.fields {
         let Some(def) = catalog.and_then(|c| c.def(&spawn.field)) else {
             return Err(BattleSetupError::FieldNotFound {
                 field: spawn.field.clone(),
@@ -183,10 +183,10 @@ pub(super) fn build_field_registry(
     Ok(registry)
 }
 
-/// Whether any two gangers share a spawn cell.
+/// Whether any two deployed gangers share a spawn cell.
 #[must_use]
-pub fn has_stacked_gangers(situation: &Situation) -> StackedGangers {
-    StackedGangers::new(first_stacked_cell(situation).is_some())
+pub fn has_stacked_gangers(placements: &[PlacedGanger]) -> StackedGangers {
+    StackedGangers::new(first_stacked_cell(placements).is_some())
 }
 
 /// Flag: at least one cell has stacked gangers.
@@ -202,11 +202,7 @@ impl StackedGangers {
 }
 
 #[must_use]
-pub(super) fn first_stacked_cell(situation: &Situation) -> Option<crate::metric::CellLevel> {
+pub(super) fn first_stacked_cell(placements: &[PlacedGanger]) -> Option<crate::metric::CellLevel> {
     let mut seen = HashSet::new();
-    situation
-        .gangers
-        .iter()
-        .find(|g| !seen.insert(g.at))
-        .map(|g| g.at)
+    placements.iter().find(|g| !seen.insert(g.at)).map(|g| g.at)
 }

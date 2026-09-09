@@ -17,10 +17,10 @@ use gdtf_battle_sim::{
     ganger::{Aiming, Facing},
     prelude::{CellLevel, Direction, Faction},
     rng::{BattleSeed, ShotRng},
-    situation::{GangerSpawn, Situation},
+    situation::{GangerSpawn, PlacedGanger, Situation},
     test_support::{
-        test_armor_registry, test_gang_registry, test_melee_weapon_registry, test_terrain_registry,
-        test_weapon_registry,
+        setup_request, test_armor_registry, test_gang_registry, test_melee_weapon_registry,
+        test_terrain_registry, test_weapon_registry,
     },
 };
 use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
@@ -104,10 +104,10 @@ pub(crate) fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> Ganger
         .build()
 }
 
-pub(crate) fn drive_setup(app: &mut App, situation: Situation) -> bool {
+pub(crate) fn drive_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) -> bool {
     app.world_mut()
         .resource_mut::<Messages<SetupBattleRequested>>()
-        .write(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+        .write(setup_request(built, BattleSeed::new(SEED)));
     for _ in 0..MAX_UPDATES {
         app.update();
         if app.world().get_resource::<ShotRng>().is_some() {

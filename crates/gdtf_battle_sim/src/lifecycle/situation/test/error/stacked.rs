@@ -4,13 +4,13 @@ use super::super::support::*;
 #[test]
 fn setup_errors_on_stacked_gangers() {
     let shared = key(5, 5, 0);
-    let (situation, gangs) = SituationBuilder::new()
+    let (situation, placements, gangs) = SituationBuilder::new()
         .with_gangers([ganger_at(shared, 0), ganger_at(shared, 1)])
         .build_with_gangs();
-    assert_eq!(situation.gangers.len(), 2, "the fixture fields two gangers");
+    assert_eq!(placements.len(), 2, "the fixture fields two gangers");
     assert!(
-        situation.gangers.iter().all(|g| g.at == shared),
-        "both gangers are authored on the one shared cell",
+        placements.iter().all(|g| g.at == shared),
+        "both gangers are deployed onto the one shared cell",
     );
 
     let mut app = App::new();
@@ -23,7 +23,8 @@ fn setup_errors_on_stacked_gangers() {
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
-                &situation,
+                &situation.map,
+                &placements,
                 BattleRegistries::new(&gangs, &registry, &melee, &armor, &stat_tuning, None),
                 crate::tuning::CombatTuning::default().move_costs.open,
                 &mut commands,

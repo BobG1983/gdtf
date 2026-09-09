@@ -4,12 +4,31 @@ use gdtf_battle_input::GdtfBattleInputPlugin;
 use gdtf_battle_presenter::{ActiveLevel, ViewMode, cell_to_world};
 // ---------------------------------------------------------------------------------
 use gdtf_battle_sim::{
-    armor::ArmorFloor, armor::ArmorHardness, armor::ArmorIntegrity, armor::ArmorName,
-    armor::ArmorPiece, armor::ArmorProtection, armor::ArmorRegistry, armor::ArmorSpec,
-    armor::ArmorType, battle::SetupBattleRequested, ganger::Aim, ganger::Aiming, ganger::Direction,
-    ganger::Facing, ganger::GangerName, ganger::Luck, ganger::Stance, ganger::StanceKind,
-    ganger::Toughness, rng::BattleSeed, situation::GangerSpawn, situation::Situation,
-    test_support::test_weapon_spec, tuning::CombatTuning, weapon::WeaponName,
+    armor::ArmorFloor,
+    armor::ArmorHardness,
+    armor::ArmorIntegrity,
+    armor::ArmorName,
+    armor::ArmorPiece,
+    armor::ArmorProtection,
+    armor::ArmorRegistry,
+    armor::ArmorSpec,
+    armor::ArmorType,
+    ganger::Aim,
+    ganger::Aiming,
+    ganger::Direction,
+    ganger::Facing,
+    ganger::GangerName,
+    ganger::Luck,
+    ganger::Stance,
+    ganger::StanceKind,
+    ganger::Toughness,
+    rng::BattleSeed,
+    situation::GangerSpawn,
+    situation::PlacedGanger,
+    situation::Situation,
+    test_support::{setup_request, test_weapon_spec},
+    tuning::CombatTuning,
+    weapon::WeaponName,
     weapon::WeaponRegistry,
 };
 use gdtf_battle_sim::{
@@ -62,7 +81,7 @@ fn real_flow_ganger(at: CellLevel, faction: u8) -> GangerSpawn {
         .build()
 }
 
-fn real_flow_situation() -> Situation {
+fn real_flow_situation() -> (Situation, Vec<PlacedGanger>) {
     use gdtf_battle_sim::test_support::SituationBuilder;
     let level = Level::new(0);
     SituationBuilder::new()
@@ -95,11 +114,9 @@ fn real_flow_app() -> App {
     app
 }
 
-fn request_setup(app: &mut App, situation: Situation) {
-    app.world_mut().write_message(SetupBattleRequested::new(
-        situation,
-        BattleSeed::new(0x5A1C),
-    ));
+fn request_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) {
+    app.world_mut()
+        .write_message(setup_request(built, BattleSeed::new(0x5A1C)));
 }
 
 fn selected_faction(app: &mut App) -> Option<Faction> {

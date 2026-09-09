@@ -5,12 +5,12 @@ use super::{
 use crate::{
     ganger::Tu,
     metric::{CellLevel, MAX_LEVELS},
-    situation::Situation,
+    situation::BattleMap,
     test_support::{SituationBuilder, key},
     tuning::LinkTu,
 };
 
-fn situation_with(cells: &[CellLevel], links: Vec<VerticalLink>) -> Situation {
+fn situation_with(cells: &[CellLevel], links: Vec<VerticalLink>) -> BattleMap {
     let mut builder = SituationBuilder::new();
     for &cell in cells {
         builder = builder.slab_at(cell);
@@ -18,11 +18,11 @@ fn situation_with(cells: &[CellLevel], links: Vec<VerticalLink>) -> Situation {
     for link in links {
         builder = builder.vertical_link(link);
     }
-    builder.build()
+    builder.build().0.map
 }
 
-fn ok_graph(situation: &Situation) -> Option<VerticalLinkGraph> {
-    let result = build_vertical_link_graph(situation);
+fn ok_graph(map: &BattleMap) -> Option<VerticalLinkGraph> {
+    let result = build_vertical_link_graph(map);
     assert!(result.is_ok(), "expected a valid graph, got {result:?}");
     result.ok()
 }
@@ -133,7 +133,7 @@ fn same_level_link_is_rejected() {
 
 #[test]
 fn empty_situation_builds_empty_graph() {
-    let Some(graph) = ok_graph(&Situation::new()) else {
+    let Some(graph) = ok_graph(&BattleMap::new()) else {
         return;
     };
     assert!(graph.is_empty());
@@ -265,7 +265,7 @@ fn bidirectional_link_is_traversable_both_ways() {
 
 #[test]
 fn no_link_yields_no_hops() {
-    let Some(graph) = ok_graph(&Situation::new()) else {
+    let Some(graph) = ok_graph(&BattleMap::new()) else {
         return;
     };
     assert_eq!(

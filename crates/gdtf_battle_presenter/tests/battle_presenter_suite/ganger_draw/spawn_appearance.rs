@@ -9,8 +9,8 @@ use gdtf_battle_sim::{
     ganger::{Aiming, Suppressed, SuppressorCell},
     prelude::{Cell, CellLevel, Direction, Level, Stance, StanceKind},
     rng::{BattleSeed, ShotRng},
-    situation::Situation,
-    test_support::{GangerSpawnBuilder, SituationBuilder},
+    situation::{PlacedGanger, Situation},
+    test_support::{GangerSpawnBuilder, SituationBuilder, setup_request},
 };
 
 use super::{harness::*, probes::*};
@@ -65,13 +65,13 @@ fn print_trace(label: &str, trace: &[FrameTint]) {
 
 fn spawn_trace(
     app: &mut App,
-    situation: Situation,
+    built: (Situation, Vec<PlacedGanger>),
     subject_at: CellLevel,
     suppress: bool,
 ) -> Vec<FrameTint> {
     app.world_mut()
         .resource_mut::<Messages<SetupBattleRequested>>()
-        .write(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+        .write(setup_request(built, BattleSeed::new(SEED)));
     let mut trace = Vec::new();
     let mut frame: u32 = 0;
     if suppress {

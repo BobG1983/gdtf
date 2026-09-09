@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
     entity::TerrainCell,
     level::{GridHeight, GridLevels, GridSize, GridWidth},
     metric::{Cell, CellLevel, Level},
-    situation::{BattleRegistries, Situation, setup_battle},
+    situation::{BattleRegistries, PlacedGanger, Situation, setup_battle},
     test_support::{
         SituationBuilder, ganger_at, test_armor_registry, test_melee_weapon_registry, test_pieces,
         test_terrain_registry, test_weapon_registry,
@@ -39,7 +39,7 @@ fn small_grid() -> GridSize {
 }
 
 fn seeded_world() -> App {
-    let (situation, gangs) = SituationBuilder::new()
+    let (situation, placements, gangs) = SituationBuilder::new()
         .with_gangers([
             ganger_at(ground(Cell::new(1, 1)), 0),
             ganger_at(ground(Cell::new(2, 1)), 1),
@@ -53,10 +53,14 @@ fn seeded_world() -> App {
         .grid_size(small_grid())
         .wall_at(ground(WALLED))
         .build_with_gangs();
-    run_setup(situation, gangs)
+    run_setup(situation, placements, gangs)
 }
 
-fn run_setup(situation: Situation, gangs: gdtf_battle_sim::ganger::GangRegistry) -> App {
+fn run_setup(
+    situation: Situation,
+    placements: Vec<PlacedGanger>,
+    gangs: gdtf_battle_sim::ganger::GangRegistry,
+) -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     let weapons = test_weapon_registry();
@@ -69,7 +73,8 @@ fn run_setup(situation: Situation, gangs: gdtf_battle_sim::ganger::GangRegistry)
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             let done = setup_battle(
-                &situation,
+                &situation.map,
+                &placements,
                 BattleRegistries::new(
                     &gangs,
                     &weapons,

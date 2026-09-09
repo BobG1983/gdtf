@@ -1,4 +1,4 @@
-//! Vertical-link graph built from situation-authored links.
+//! Vertical-link graph built from the map's authored links.
 
 use bevy::{
     platform::collections::{HashMap, HashSet},
@@ -7,7 +7,7 @@ use bevy::{
 
 use crate::{
     metric::{CellLevel, MAX_LEVELS},
-    situation::Situation,
+    situation::BattleMap,
     vertical::links::VerticalLink,
 };
 
@@ -66,19 +66,19 @@ impl VerticalLinkGraph {
     }
 }
 
-/// Build the vertical-link graph from situation-authored links.
+/// Build the vertical-link graph from the map's authored links.
 ///
 /// # Errors
 ///
 /// Returns [`InvalidVerticalLink::LevelOutOfRange`] if either end is outside valid levels, [`InvalidVerticalLink::DanglingCell`] if an end is not an authored cell, or [`InvalidVerticalLink::SameLevel`] if both ends share a Z.
 pub fn build_vertical_link_graph(
-    situation: &Situation,
+    map: &BattleMap,
 ) -> Result<VerticalLinkGraph, InvalidVerticalLink> {
-    let authored: HashSet<CellLevel> = situation.authored_cells().collect();
+    let authored: HashSet<CellLevel> = map.authored_cells().collect();
 
     let mut graph = VerticalLinkGraph::default();
 
-    for &link in &situation.vertical_links {
+    for &link in &map.vertical_links {
         validate_link(&link, &authored)?;
 
         let index = graph.links.len();

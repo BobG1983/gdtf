@@ -1,4 +1,4 @@
-//! Top-level battle setup from a situation.
+//! Top-level battle setup from a map and the gangers deployed onto it.
 
 use bevy::prelude::Commands;
 
@@ -8,19 +8,20 @@ use super::{
 };
 use crate::{
     occupancy::{OccupancyGrid, OccupancyInput, TerrainPlacement},
-    situation::{BattleSetupError, Situation},
+    situation::{BattleMap, BattleSetupError, PlacedGanger},
     terrain::{entity::TerrainIndex, floor::FloorCostGrid},
     tuning::MoveCost,
     vertical::build_vertical_link_graph,
 };
 
-/// Resolve situation data and spawn the battle world resources.
+/// Resolve map and placement data and spawn the battle world resources.
 ///
 /// # Errors
 ///
 /// Returns [`BattleSetupError`] when vertical links are invalid, roster/weapon/armor resolution fails, gangers share a cell, or field/cover setup cannot complete.
 pub fn setup_battle(
-    situation: &Situation,
+    map: &BattleMap,
+    placements: &[PlacedGanger],
     registries: BattleRegistries<'_>,
     fallback_floor_cost: MoveCost,
     commands: &mut Commands,
@@ -35,11 +36,11 @@ pub fn setup_battle(
         fields,
         attachments,
     } = registries;
-    let vertical_graph = build_vertical_link_graph(situation)?;
+    let vertical_graph = build_vertical_link_graph(map)?;
 
-    let resolved_members = resolve::resolve_members(situation, gangs)?;
+    let resolved_members = resolve::resolve_members(placements, gangs)?;
 
-    if let Some(at) = resolve::first_stacked_cell(situation) {
+    if let Some(at) = resolve::first_stacked_cell(placements) {
         return Err(BattleSetupError::StackedGangers { at });
     }
 
@@ -47,10 +48,10 @@ pub fn setup_battle(
     let melee_bundles =
         resolve::resolve_melee_bundles(&resolved_members, melee_weapons, attachments)?;
     let armor_specs = resolve::resolve_armor_specs(&resolved_members, armor)?;
-    let mut resolved_covers = resolve::resolve_covers(situation, terrain)?;
-    let resolved_slabs = resolve::resolve_slabs(situation, terrain, &mut resolved_covers.on_death)?;
+    let mut resolved_covers = resolve::resolve_covers(map, terrain)?;
+    let resolved_slabs = resolve::resolve_slabs(map, terrain, &mut resolved_covers.on_death)?;
 
-    let field_registry = resolve::build_field_registry(situation, fields)?;
+    let field_registry = resolve::build_field_registry(map, fields)?;
 
     let (default_floor_cost, floor_overrides) = (fallback_floor_cost, Vec::new());
 
@@ -64,25 +65,25 @@ pub fn setup_battle(
     );
 
     let (mut terrain_pairs, occupancy_kinds) =
-        seed_cover::seed_cover_terrain(situation, resolved_covers.pieces, commands);
+        seed_cover::seed_cover_terrain(map, resolved_covers.pieces, commands);
 
-    let (stair_cell_set, brace_stair_cells_set) = seed_slabs::stair_cell_sets(situation);
+    let (stair_cell_set, brace_stair_cells_set) = seed_slabs::stair_cell_sets(map);
 
     terrain_pairs.extend(seed_slabs::seed_slab_terrain(
-        situation,
+        map,
         &resolved_slabs,
         &brace_stair_cells_set,
         commands,
     ));
 
-    seed_floor::seed_floor_terrain(situation, terrain, commands);
+    seed_floor::seed_floor_terrain(map, terrain, commands);
 
     let setup = BattleSetup { occupants };
 
-    let terrain_placements: Vec<TerrainPlacement> = situation
+    let terrain_placements: Vec<TerrainPlacement> = map
         .walls
         .iter()
-        .chain(situation.scatter.iter())
+        .chain(map.scatter.iter())
         .zip(occupancy_kinds)
         .map(|(cover, kind)| TerrainPlacement::new(cover.at, kind))
         .collect();

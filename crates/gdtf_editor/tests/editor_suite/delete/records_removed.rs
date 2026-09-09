@@ -118,7 +118,10 @@ fn deleting_a_gang_removes_its_own_file_and_takes_it_out_of_the_registry() {
     let file = gdtf_editor::gang_save_path_in(dir.path(), &GangName::new(DELETED_GANG.to_owned()));
     if write_situation(
         dir.path(),
-        &format!("(rosters: [(gang: \"{DELETED_GANG}\", member: \"{MEMBER}\", faction: 0)])\n"),
+        &format!(
+            "(combatants: (rosters: [(gang: \"{DELETED_GANG}\", member: \"{MEMBER}\", faction: \
+             0)]))\n"
+        ),
     )
     .is_none()
     {

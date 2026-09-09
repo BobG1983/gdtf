@@ -34,7 +34,7 @@ const fn enemy_at() -> bevy::math::IVec2 {
 }
 
 fn battle_app() -> Option<(App, BattleSetup)> {
-    let (situation, gangs) = SituationBuilder::new()
+    let (situation, placements, gangs) = SituationBuilder::new()
         .with_gangers([
             GangerSpawnBuilder::new()
                 .at(key(shooter_at().x, shooter_at().y, 0))
@@ -66,7 +66,8 @@ fn battle_app() -> Option<(App, BattleSetup)> {
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
-                &situation,
+                &situation.map,
+                &placements,
                 BattleRegistries::new(
                     &gangs,
                     &registry,

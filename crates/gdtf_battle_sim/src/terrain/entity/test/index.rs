@@ -1,9 +1,8 @@
 use super::support::*;
 use crate::{
-    battle::SetupBattleRequested,
     cover::{CoverHp, CoverLedger},
     terrain::entity::{TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind},
-    test_support::{SituationBuilder, ganger_at},
+    test_support::{SituationBuilder, ganger_at, setup_request},
 };
 
 #[test]
@@ -18,10 +17,8 @@ fn test3_queryable_by_cell() {
         .wall_at(wall_cell)
         .slab_at(slab_cell)
         .build();
-    app.world_mut().write_message(SetupBattleRequested::new(
-        situation,
-        crate::rng::BattleSeed::new(0x02),
-    ));
+    app.world_mut()
+        .write_message(setup_request(situation, crate::rng::BattleSeed::new(0x02)));
     app.update();
 
     let world = app.world_mut();
@@ -85,10 +82,8 @@ fn test6_bridge_max_hp_on_entity_live_hp_in_ledger() {
         .with_ganger(ganger_at(cl(1, 1, 0), 1))
         .wall_at(wall_cell)
         .build();
-    app.world_mut().write_message(SetupBattleRequested::new(
-        situation,
-        crate::rng::BattleSeed::new(0x04),
-    ));
+    app.world_mut()
+        .write_message(setup_request(situation, crate::rng::BattleSeed::new(0x04)));
     app.update();
 
     let world = app.world_mut();
@@ -140,10 +135,8 @@ fn test7_typed_key_no_collision_at_shared_cell() {
         .wall_at(shared_cell)
         .slab_at(shared_cell)
         .build();
-    app.world_mut().write_message(SetupBattleRequested::new(
-        situation,
-        crate::rng::BattleSeed::new(0x05),
-    ));
+    app.world_mut()
+        .write_message(setup_request(situation, crate::rng::BattleSeed::new(0x05)));
     app.update();
 
     let world = app.world_mut();

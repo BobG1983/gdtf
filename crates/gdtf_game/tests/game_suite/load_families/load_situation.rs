@@ -47,7 +47,7 @@ fn real_asset_resolves_persistent_loaded_situation() {
 
     if let Some(loaded) = app.world().get_resource::<LoadedSituation>() {
         assert!(
-            !loaded.rosters.is_empty(),
+            !loaded.combatants.rosters.is_empty(),
             "the resolved LoadedSituation must carry the authored (non-empty) roster members",
         );
     }
@@ -78,7 +78,7 @@ fn real_asset_gate_waits_for_the_real_situation() {
     );
     if let Some(loaded) = loaded {
         assert!(
-            !loaded.rosters.is_empty(),
+            !loaded.combatants.rosters.is_empty(),
             "the situation that cleared the gate must be the real (non-empty) skirmish, not the \
              empty default — Load waited for the real situation (distinguished by its non-empty roster)",
         );
@@ -127,8 +127,9 @@ fn real_asset_failed_situation_falls_back_and_does_not_strand() {
 
     if let Some(loaded) = app.world().get_resource::<LoadedSituation>() {
         assert!(
-            loaded.gangers.is_empty(),
-            "the failure path must insert exactly the empty default situation (zero gangers)",
+            loaded.combatants.rosters.is_empty(),
+            "the failure path must insert exactly the empty default situation (zero roster \
+             members)",
         );
     }
 

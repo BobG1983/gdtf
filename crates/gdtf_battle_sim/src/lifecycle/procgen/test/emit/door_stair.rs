@@ -192,25 +192,25 @@ fn door_and_stair_tiles_emit_through_the_loader_classified_by_kind() {
     let Ok(emitted) = result else {
         return;
     };
-    let situation = emitted.situation;
+    let map = emitted.map;
 
     for door in [DOOR_NS, DOOR_EW] {
         assert!(
-            situation.walls.iter().any(|w| w.piece == door),
+            map.walls.iter().any(|w| w.piece == door),
             "the door {door:?} must emit into the walls list (Wall classification, C4/C5)",
         );
         assert!(
-            !situation.slabs.iter().any(|s| s.piece == door),
+            !map.slabs.iter().any(|s| s.piece == door),
             "a door (Wall) must never classify as a Slab (C5)",
         );
     }
     for stair in [STAIR_NS_UP, STAIR_NS_DOWN, STAIR_EW_UP, STAIR_EW_DOWN] {
         assert!(
-            situation.slabs.iter().any(|s| s.piece == stair),
+            map.slabs.iter().any(|s| s.piece == stair),
             "the stair {stair:?} must emit into the slabs list (Slab classification, C4/C5)",
         );
         assert!(
-            !situation.walls.iter().any(|w| w.piece == stair),
+            !map.walls.iter().any(|w| w.piece == stair),
             "a stair (Slab) must never classify as a Wall (C5)",
         );
     }

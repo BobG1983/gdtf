@@ -164,12 +164,13 @@ pub(super) fn shipped_gang_registry() -> Option<GangRegistry> {
 }
 
 pub(super) fn run_setup_with(
-    situation: Situation,
+    built: (Situation, Vec<PlacedGanger>),
     gangs: GangRegistry,
     registry: WeaponRegistry,
     armor: ArmorRegistry,
     terrain: Option<&TerrainDefRegistry>,
 ) -> Option<(App, BattleSetup)> {
+    let (situation, placements) = built;
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     let stat_tuning = GangerStatTuning::default();
@@ -181,7 +182,8 @@ pub(super) fn run_setup_with(
         .world_mut()
         .run_system_once(move |mut commands: Commands| {
             setup_battle(
-                &situation,
+                &situation.map,
+                &placements,
                 BattleRegistries::new(
                     &gangs,
                     &registry,
@@ -230,48 +232,58 @@ pub(super) fn attributes_of(placed: &crate::situation::PlacedGanger) -> GangerAt
     member.attributes()
 }
 
-pub(super) fn minimal_fixture() -> (Situation, CellLevel, CellLevel, CellLevel, CellLevel) {
+pub(super) fn minimal_fixture() -> (
+    (Situation, Vec<PlacedGanger>),
+    CellLevel,
+    CellLevel,
+    CellLevel,
+    CellLevel,
+) {
     let alice_at = key(5, 6, 0);
     let bob_at = key(7, 8, 0);
     let wall_cell = key(1, 2, 0);
     let slab_cell = key(3, 4, 1);
 
-    let situation = SituationBuilder::new()
+    let built = SituationBuilder::new()
         .with_gangers([ganger_at(alice_at, 0), ganger_at(bob_at, 1)])
         .wall_at(wall_cell)
         .slab_at(slab_cell)
         .build();
-    (situation, alice_at, bob_at, wall_cell, slab_cell)
+    (built, alice_at, bob_at, wall_cell, slab_cell)
 }
 
 /// A Cover-spec piece authored in the walls list and a Wall-spec piece authored in the
 /// scatter list, so a reader that trusts the authoring list disagrees with the def.
-pub(super) fn crossed_terrain_fixture() -> (Situation, CellLevel, CellLevel) {
+pub(super) fn crossed_terrain_fixture() -> ((Situation, Vec<PlacedGanger>), CellLevel, CellLevel) {
     let cover_in_walls_cell = key(1, 2, 0);
     let wall_in_scatter_cell = key(3, 4, 0);
 
-    let mut situation = SituationBuilder::new()
+    let (mut situation, placements) = SituationBuilder::new()
         .with_gangers([ganger_at(key(10, 10, 0), 0), ganger_at(key(12, 12, 0), 1)])
         .build();
 
-    situation.walls.push(CoverSpawn::new(
+    situation.map.walls.push(CoverSpawn::new(
         cover_in_walls_cell,
         test_pieces::COVER,
         TerrainFacing::default(),
     ));
-    situation.scatter.push(CoverSpawn::new(
+    situation.map.scatter.push(CoverSpawn::new(
         wall_in_scatter_cell,
         test_pieces::WALL,
         TerrainFacing::default(),
     ));
 
-    (situation, cover_in_walls_cell, wall_in_scatter_cell)
+    (
+        (situation, placements),
+        cover_in_walls_cell,
+        wall_in_scatter_cell,
+    )
 }
 
-pub(super) fn run_setup(situation: Situation) -> Option<(App, BattleSetup)> {
+pub(super) fn run_setup(built: (Situation, Vec<PlacedGanger>)) -> Option<(App, BattleSetup)> {
     let terrain = test_terrain_registry();
     run_setup_with(
-        situation,
+        built,
         test_gang_registry(),
         test_registry(),
         test_armor_registry(),

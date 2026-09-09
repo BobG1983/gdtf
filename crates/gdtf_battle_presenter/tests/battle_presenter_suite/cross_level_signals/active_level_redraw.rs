@@ -39,7 +39,7 @@ fn active_level_change_alone_redraws_the_badge_at_the_new_storeys_z_band() {
     let b_lower = key(5, 5, 3);
     let b_upper = key(5, 5, 6);
 
-    let situation = SituationBuilder::new()
+    let (situation, _placements) = SituationBuilder::new()
         .slab_at(a_lower)
         .slab_at(a_upper)
         .slab_at(b_lower)
@@ -47,7 +47,7 @@ fn active_level_change_alone_redraws_the_badge_at_the_new_storeys_z_band() {
         .vertical_link(VerticalLink::new(a_lower, a_upper, LinkKind::stair()))
         .vertical_link(VerticalLink::new(b_lower, b_upper, LinkKind::stair()))
         .build();
-    let result = build_vertical_link_graph(&situation);
+    let result = build_vertical_link_graph(&situation.map);
     assert!(result.is_ok(), "expected a valid graph, got {result:?}");
     let Ok(graph) = result else {
         return;

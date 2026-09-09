@@ -59,35 +59,35 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
     let Ok(emitted) = result else {
         return;
     };
-    let situation = emitted.situation;
+    let map = emitted.map;
 
     assert_eq!(
-        situation.theme, theme,
+        map.theme, theme,
         "the emitted level's theme must be the requested ThemeUuid (no shim)",
     );
 
     assert!(
-        !situation.walls.is_empty(),
+        !map.walls.is_empty(),
         "the emitted level must carry the translated prefab walls (C1 — the v2 placements \
-         list was poured into the situation, classified into the walls list)",
+         list was poured into the map, classified into the walls list)",
     );
 
     let in_bounds = |c: CellLevel| c.x >= 0 && c.x < board_w && c.y >= 0 && c.y < board_h;
-    for w in &situation.walls {
+    for w in &map.walls {
         assert!(
             in_bounds(w.at),
             "every emitted wall cell must be in-bounds: {:?} on a {board_w}x{board_h} board",
             w.at,
         );
     }
-    for s in &situation.scatter {
+    for s in &map.scatter {
         assert!(
             in_bounds(s.at),
             "every emitted scatter cell must be in-bounds: {:?}",
             s.at
         );
     }
-    for f in &situation.floors {
+    for f in &map.floors {
         assert!(
             in_bounds(f.at),
             "every emitted floored dead-space cell must be in-bounds: {:?}",
@@ -96,15 +96,15 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
     }
 
     assert!(
-        !situation.floors.is_empty(),
+        !map.floors.is_empty(),
         "the leftover dead space must be FLOORED with explicit default_floor entries (C3)",
     );
     assert!(
-        !*situation.default_floor.is_nil(),
+        !*map.default_floor.is_nil(),
         "the emitted level must carry a default_floor (the theme's nominated ground terrain)",
     );
     assert_eq!(
-        situation.default_floor,
+        map.default_floor,
         floor_piece(),
         "the default_floor must resolve from the theme registry's nominated terrain ",
     );

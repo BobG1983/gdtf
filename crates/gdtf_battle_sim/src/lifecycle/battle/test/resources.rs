@@ -17,7 +17,7 @@ fn player_faction_constructs_and_derefs_to_its_inner_faction() {
 #[test]
 fn authored_player_faction_overrides_the_default_seed() {
     let mut app = headless_app();
-    app.world_mut().write_message(SetupBattleRequested::new(
+    app.world_mut().write_message(setup_request(
         two_ganger_situation_player_faction_one(),
         BattleSeed::new(SEED),
     ));
@@ -34,12 +34,12 @@ fn authored_player_faction_overrides_the_default_seed() {
 #[test]
 fn lifecycle_messages_carry_their_payload() {
     let seed = BattleSeed::new(SEED);
-    let setup: SetupBattleRequested = SetupBattleRequested::new(two_ganger_situation(), seed);
+    let setup: SetupBattleRequested = setup_request(two_ganger_situation(), seed);
     assert_eq!(setup.seed, seed, "SetupBattleRequested carries the seed");
     assert_eq!(
-        setup.situation.gangers.len(),
+        setup.placements.len(),
         2,
-        "SetupBattleRequested carries the owned Situation",
+        "SetupBattleRequested carries the deployed placements beside the owned Situation",
     );
     let teardown = TeardownBattleRequested;
     assert_eq!(

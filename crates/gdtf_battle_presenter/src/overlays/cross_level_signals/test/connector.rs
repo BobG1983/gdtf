@@ -13,12 +13,12 @@ fn key(x: i32, y: i32, z: u8) -> CellLevel {
 }
 
 fn stair_graph(lower: CellLevel, upper: CellLevel) -> Option<VerticalLinkGraph> {
-    let situation = SituationBuilder::new()
+    let (situation, _placements) = SituationBuilder::new()
         .slab_at(lower)
         .slab_at(upper)
         .vertical_link(VerticalLink::new(lower, upper, LinkKind::stair()))
         .build();
-    let result = build_vertical_link_graph(&situation);
+    let result = build_vertical_link_graph(&situation.map);
     assert!(result.is_ok(), "expected a valid graph, got {result:?}");
     result.ok()
 }

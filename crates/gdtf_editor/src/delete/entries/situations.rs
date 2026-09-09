@@ -28,8 +28,8 @@ pub(super) fn replace_situation_piece(
                 changed = true;
             }
         }
-        if situation.default_floor == deleted {
-            situation.default_floor = replacement;
+        if situation.map.default_floor == deleted {
+            situation.map.default_floor = replacement;
             changed = true;
         }
         changed
@@ -44,15 +44,15 @@ pub(super) fn replace_situation_theme(
     replacement: ThemeUuid,
 ) -> DroppedReferences {
     rewrite_situation(world, root, |situation| {
-        let names_it = situation.theme == deleted;
+        let names_it = situation.map.theme == deleted;
         if names_it {
-            situation.theme = replacement;
+            situation.map.theme = replacement;
         }
         names_it
     })
 }
 
-/// Point every placed ganger and roster entry at the `replacement` gang instead.
+/// Point every roster entry at the `replacement` gang instead.
 pub(super) fn replace_situation_gang(
     world: &mut World,
     root: &Path,
@@ -71,41 +71,35 @@ pub(super) fn replace_situation_gang(
     })
 }
 
-/// Every member name the situation asks `gang` for, placed or rostered.
+/// Every member name the situation's rosters ask `gang` for.
 pub(super) fn members_of(situation: &Situation, gang: &GangName) -> Vec<GangerName> {
     situation
-        .gangers
+        .combatants
+        .rosters
         .iter()
-        .filter(|placed| placed.gang == *gang)
-        .map(|placed| placed.member.clone())
-        .chain(
-            situation
-                .rosters
-                .iter()
-                .filter(|member| member.gang == *gang)
-                .map(|member| member.member.clone()),
-        )
+        .filter(|member| member.gang == *gang)
+        .map(|member| member.member.clone())
         .collect()
 }
 
 // Every terrain key the situation places, across all four piece lists.
 fn situation_pieces(situation: &mut Situation) -> impl Iterator<Item = &mut TerrainUuid> {
-    situation
-        .walls
+    let map = &mut situation.map;
+    map.walls
         .iter_mut()
         .map(|spawn| &mut spawn.piece)
-        .chain(situation.scatter.iter_mut().map(|spawn| &mut spawn.piece))
-        .chain(situation.slabs.iter_mut().map(|spawn| &mut spawn.piece))
-        .chain(situation.floors.iter_mut().map(|spawn| &mut spawn.piece))
+        .chain(map.scatter.iter_mut().map(|spawn| &mut spawn.piece))
+        .chain(map.slabs.iter_mut().map(|spawn| &mut spawn.piece))
+        .chain(map.floors.iter_mut().map(|spawn| &mut spawn.piece))
 }
 
-// Every gang key the situation names, placed or rostered.
+// Every gang key the situation's rosters name.
 fn situation_gangs(situation: &mut Situation) -> impl Iterator<Item = &mut GangName> {
     situation
-        .gangers
+        .combatants
+        .rosters
         .iter_mut()
-        .map(|placed| &mut placed.gang)
-        .chain(situation.rosters.iter_mut().map(|member| &mut member.gang))
+        .map(|member| &mut member.gang)
 }
 
 // Rewrite the situation `edit` changes, its file written before the loaded resource.

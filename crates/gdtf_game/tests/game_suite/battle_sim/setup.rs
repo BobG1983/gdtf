@@ -18,7 +18,7 @@ use super::harness::*;
 /// Frames the machine is given to prove it stays put — per-frame work, no IO.
 const HOLD_FRAMES: u32 = 96;
 
-fn dangling_link_situation() -> Situation {
+fn dangling_link_situation() -> (Situation, Vec<gdtf_battle_sim::situation::PlacedGanger>) {
     let present = key(4, 4, 0);
     let missing = key(4, 4, 1);
     SituationBuilder::new()
@@ -30,9 +30,9 @@ fn dangling_link_situation() -> Situation {
 
 #[test]
 fn setup_battle_lands_resources_and_spawns_gangers() {
-    let situation = two_ganger_situation();
-    let authored_gangers = situation.gangers.len();
-    let mut app = walk_app(Some(situation));
+    let built = two_ganger_situation();
+    let authored_gangers = built.1.len();
+    let mut app = walk_app(Some(built));
     drive_to_generation(&mut app);
 
     assert!(

@@ -13,7 +13,7 @@ use crate::{
         fill_placement_with,
     },
     rng::{BattleSeed, ProcgenRng},
-    situation::Situation,
+    situation::BattleMap,
     terrain::{
         def::{TerrainDefRegistry, TerrainUuid},
         facing::TerrainFacing,
@@ -106,7 +106,7 @@ pub(in crate::lifecycle::procgen::test) fn tuning(
     }
 }
 
-pub(in crate::lifecycle::procgen::test) fn terrain_eq(a: &Situation, b: &Situation) -> bool {
+pub(in crate::lifecycle::procgen::test) fn terrain_eq(a: &BattleMap, b: &BattleMap) -> bool {
     a.theme == b.theme
         && a.grid_size == b.grid_size
         && a.default_floor == b.default_floor

@@ -2,7 +2,7 @@ use super::support::*;
 use crate::{
     procgen::generate_level,
     rng::{BattleSeed, ProcgenRng},
-    situation::Situation,
+    situation::BattleMap,
 };
 
 #[test]
@@ -24,7 +24,7 @@ fn pipeline_emit_is_deterministic_under_a_seed() {
     let terrain_defs = terrain_defs();
     let knobs = tuning(0.9, 49, 2);
 
-    let run = |seed: BattleSeed| -> Option<Situation> {
+    let run = |seed: BattleSeed| -> Option<BattleMap> {
         let mut rng = ProcgenRng::from_root(seed);
         generate_level(
             &prefabs,
@@ -36,7 +36,7 @@ fn pipeline_emit_is_deterministic_under_a_seed() {
             &knobs,
         )
         .ok()
-        .map(|emitted| emitted.situation)
+        .map(|emitted| emitted.map)
     };
 
     let seed = BattleSeed::new(0x5EED_4311);

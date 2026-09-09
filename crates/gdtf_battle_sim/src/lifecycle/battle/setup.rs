@@ -74,7 +74,8 @@ pub fn setup_battle_on_request(
             battle_registries = battle_registries.with_attachments(attachments);
         }
         match setup_battle(
-            &request.situation,
+            &request.situation.map,
+            &request.placements,
             battle_registries,
             fallback_floor_cost,
             &mut commands,

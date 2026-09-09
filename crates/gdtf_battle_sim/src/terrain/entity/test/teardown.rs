@@ -1,9 +1,9 @@
 use super::support::*;
 use crate::{
-    battle::{SetupBattleRequested, TeardownBattleRequested},
+    battle::TeardownBattleRequested,
     slab::SlabLedger,
     terrain::entity::TerrainIndex,
-    test_support::{SituationBuilder, ganger_at},
+    test_support::{SituationBuilder, ganger_at, setup_request},
 };
 
 #[test]
@@ -17,10 +17,8 @@ fn test5_terrain_index_and_slab_ledger_removed_on_teardown() {
         .slab_at(cl(3, 3, 1))
         .build();
 
-    app.world_mut().write_message(SetupBattleRequested::new(
-        situation,
-        crate::rng::BattleSeed::new(0x03),
-    ));
+    app.world_mut()
+        .write_message(setup_request(situation, crate::rng::BattleSeed::new(0x03)));
     app.update();
     drain_ready(&mut app);
 

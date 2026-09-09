@@ -11,7 +11,7 @@ use gdtf_battle_sim::{
     metric::{Cell, CellLevel, Level},
     occupancy_sync::TerrainPieceDestroyed,
     rng::{BattleSeed, InjuryRng, SeverityRng},
-    situation::{GangerSpawn, Situation},
+    situation::{GangerSpawn, PlacedGanger, Situation},
     slab::SlabHp,
     surface::{SlabState, SurfaceGrid},
     terrain::def::{
@@ -96,11 +96,11 @@ fn battle_on(piece: TerrainUuid) -> (App, Entity, Entity) {
     app.insert_resource(SeverityRng::from_root(BattleSeed::new(SEED)));
     app.insert_resource(InjuryRng::from_root(BattleSeed::new(SEED)));
 
-    let (situation, gangs) = SituationBuilder::new()
+    let (situation, placements, gangs) = SituationBuilder::new()
         .with_gangers([sharp_shooter(ground(5, 5)), sharp_shooter(floor_cell())])
         .slab_piece_at(floor_cell(), piece)
         .build_with_gangs();
-    drive_setup(&mut app, situation, gangs);
+    drive_setup(&mut app, situation, placements, gangs);
 
     let shooter = ganger_on(&mut app, ground(5, 5));
     let faller = ganger_on(&mut app, floor_cell());
@@ -118,10 +118,18 @@ fn sharp_shooter(at: CellLevel) -> GangerSpawn {
         .build()
 }
 
-fn drive_setup(app: &mut App, situation: Situation, gangs: GangRegistry) {
+fn drive_setup(
+    app: &mut App,
+    situation: Situation,
+    placements: Vec<PlacedGanger>,
+    gangs: GangRegistry,
+) {
     app.world_mut().insert_resource(gangs);
-    app.world_mut()
-        .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+    app.world_mut().write_message(SetupBattleRequested::new(
+        situation,
+        placements,
+        BattleSeed::new(SEED),
+    ));
     for _ in 0..4 {
         app.update();
     }

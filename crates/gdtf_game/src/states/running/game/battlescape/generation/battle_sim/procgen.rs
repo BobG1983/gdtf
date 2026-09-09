@@ -1,11 +1,11 @@
-//! Merge generated terrain with the authored situation's gangers and spawns.
+//! Merge generated terrain with the authored situation's theme, size and fields.
 use bevy::prelude::warn;
 use gdtf_assets::{ContentFinding, FindingDetail, FindingReferrer};
 use gdtf_battle_sim::{
     level::{PrefabRegistry, UuidThemeRegistry},
     procgen::{EmittedLevel, PackingError, ProcgenFinding, ProcgenTuning, generate_level},
     rng::{BattleSeed, ProcgenRng},
-    situation::Situation,
+    situation::{BattleMap, PlacedGanger, Situation, SituationCombatants},
     terrain::def::TerrainDefRegistry,
 };
 
@@ -21,6 +21,7 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) struct
 
 pub(crate) struct ProcgenOutcome {
     pub situation:        Situation,
+    pub placements:       Vec<PlacedGanger>,
     pub findings:         Vec<ContentFinding>,
     pub deployment_error: Option<PackingError>,
 }
@@ -32,8 +33,16 @@ pub(crate) fn outcome_from_emitted(authored: Situation, emitted: EmittedLevel) -
         .iter()
         .map(|finding| convert_procgen_finding(*finding))
         .collect();
+    let situation = Situation {
+        map:        merge_procgen_terrain(authored.map, emitted.map),
+        combatants: SituationCombatants {
+            rosters:        Vec::new(),
+            player_faction: authored.combatants.player_faction,
+        },
+    };
     ProcgenOutcome {
-        situation: merge_procgen_terrain(authored, emitted.situation),
+        situation,
+        placements: Vec::new(),
         findings,
         deployment_error: None,
     }
@@ -50,6 +59,7 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn pro
     else {
         return ProcgenOutcome {
             situation:        authored,
+            placements:       Vec::new(),
             findings:         Vec::new(),
             deployment_error: None,
         };
@@ -62,8 +72,8 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn pro
         prefabs,
         themes,
         terrain,
-        authored.theme,
-        authored.grid_size,
+        authored.map.theme,
+        authored.map.grid_size,
         &mut rng,
         &tuning,
     ) {
@@ -84,7 +94,7 @@ pub(crate) fn outcome_from_packing_error(
     let finding = ContentFinding::DegradedFallback {
         context: FindingReferrer::new(format!(
             "procgen for theme {} (empty-board fallback)",
-            *authored.theme,
+            *authored.map.theme,
         )),
         detail:  FindingDetail::new(format!(
             "could not assemble a level ({err}); the authored situation's terrain was used \
@@ -93,6 +103,7 @@ pub(crate) fn outcome_from_packing_error(
     };
     ProcgenOutcome {
         situation:        authored,
+        placements:       Vec::new(),
         findings:         vec![finding],
         deployment_error: None,
     }
@@ -133,11 +144,8 @@ fn convert_procgen_finding(finding: ProcgenFinding) -> ContentFinding {
     }
 }
 
-fn merge_procgen_terrain(authored: Situation, generated: Situation) -> Situation {
-    Situation {
-        gangers:        authored.gangers,
-        rosters:        Vec::new(),
-        player_faction: authored.player_faction,
+fn merge_procgen_terrain(authored: BattleMap, generated: BattleMap) -> BattleMap {
+    BattleMap {
         fields:         authored.fields,
         theme:          authored.theme,
         grid_size:      authored.grid_size,

@@ -5,7 +5,7 @@ use super::support::*;
 #[test]
 fn all_enemies_down_with_live_player_emits_one_battle_won_and_no_loss() {
     let mut app = headless_app();
-    app.world_mut().write_message(SetupBattleRequested::new(
+    app.world_mut().write_message(setup_request(
         one_player_two_enemy_situation(),
         BattleSeed::new(SEED),
     ));
@@ -38,7 +38,7 @@ fn all_enemies_down_with_live_player_emits_one_battle_won_and_no_loss() {
 #[test]
 fn any_enemy_alive_emits_no_battle_won() {
     let mut app = headless_app();
-    app.world_mut().write_message(SetupBattleRequested::new(
+    app.world_mut().write_message(setup_request(
         one_player_two_enemy_situation(),
         BattleSeed::new(SEED),
     ));
@@ -61,10 +61,8 @@ fn any_enemy_alive_emits_no_battle_won() {
 #[test]
 fn all_players_down_emits_one_battle_lost_and_no_win() {
     let mut app = headless_app();
-    app.world_mut().write_message(SetupBattleRequested::new(
-        two_ganger_situation(),
-        BattleSeed::new(SEED),
-    ));
+    app.world_mut()
+        .write_message(setup_request(two_ganger_situation(), BattleSeed::new(SEED)));
     app.update();
     let _ = drain_battle_won(&mut app);
     let _ = drain_battle_lost(&mut app);
@@ -87,7 +85,7 @@ fn all_players_down_emits_one_battle_lost_and_no_win() {
 #[test]
 fn outcomes_emit_at_most_once_per_battle() {
     let mut win_app = headless_app();
-    win_app.world_mut().write_message(SetupBattleRequested::new(
+    win_app.world_mut().write_message(setup_request(
         one_player_two_enemy_situation(),
         BattleSeed::new(SEED),
     ));
@@ -113,10 +111,7 @@ fn outcomes_emit_at_most_once_per_battle() {
     let mut loss_app = headless_app();
     loss_app
         .world_mut()
-        .write_message(SetupBattleRequested::new(
-            two_ganger_situation(),
-            BattleSeed::new(SEED),
-        ));
+        .write_message(setup_request(two_ganger_situation(), BattleSeed::new(SEED)));
     loss_app.update();
     let _ = drain_battle_lost(&mut loss_app);
 
@@ -171,7 +166,7 @@ fn census_is_inert_without_a_live_battle() {
 #[test]
 fn empty_enemy_roster_never_wins() {
     let mut app = headless_app();
-    app.world_mut().write_message(SetupBattleRequested::new(
+    app.world_mut().write_message(setup_request(
         player_only_situation(),
         BattleSeed::new(SEED),
     ));
@@ -192,7 +187,7 @@ fn empty_enemy_roster_never_wins() {
 #[test]
 fn wiped_out_enemy_gang_still_wins_from_the_roster() {
     let mut app = headless_app();
-    app.world_mut().write_message(SetupBattleRequested::new(
+    app.world_mut().write_message(setup_request(
         one_player_two_enemy_situation(),
         BattleSeed::new(SEED),
     ));
@@ -234,7 +229,7 @@ fn battle_roster_lifetime_tracks_battle_in_progress() {
         "BattleRoster must be absent before any setup",
     );
 
-    app.world_mut().write_message(SetupBattleRequested::new(
+    app.world_mut().write_message(setup_request(
         one_player_two_enemy_situation(),
         BattleSeed::new(SEED),
     ));
@@ -265,7 +260,7 @@ fn battle_roster_lifetime_tracks_battle_in_progress() {
 #[test]
 fn mutual_wipe_resolves_to_battle_lost_not_won() {
     let mut app = headless_app();
-    app.world_mut().write_message(SetupBattleRequested::new(
+    app.world_mut().write_message(setup_request(
         one_player_two_enemy_situation(),
         BattleSeed::new(SEED),
     ));

@@ -104,7 +104,7 @@ fn missing_theme_default_floor_pours_nil_and_is_reported() {
         return;
     };
     assert!(
-        *degraded.situation.default_floor.is_nil(),
+        *degraded.map.default_floor.is_nil(),
         "a theme absent from the registry must pour the NIL-sentinel default_floor (the \
          last-resort degraded pour)",
     );
@@ -169,7 +169,7 @@ fn unresolved_terrain_piece_pours_fail_open_and_is_reported_once() {
     };
 
     let ghost_walls = emitted
-        .situation
+        .map
         .walls
         .iter()
         .filter(|w| w.piece == GHOST_PIECE)

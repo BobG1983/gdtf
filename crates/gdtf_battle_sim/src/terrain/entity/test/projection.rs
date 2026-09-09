@@ -1,9 +1,8 @@
 use super::support::*;
 use crate::{
-    battle::SetupBattleRequested,
     occupancy::OccupancyGrid,
     terrain::entity::{BlocksPathfinding, TerrainCell},
-    test_support::{SituationBuilder, ganger_at},
+    test_support::{SituationBuilder, ganger_at, setup_request},
 };
 
 #[test]
@@ -19,10 +18,8 @@ fn wall_is_path_blocked_after_setup() {
         .wall_at(wall_cell)
         .slab_at(slab_cell)
         .build();
-    app.world_mut().write_message(SetupBattleRequested::new(
-        situation,
-        crate::rng::BattleSeed::new(0x07),
-    ));
+    app.world_mut()
+        .write_message(setup_request(situation, crate::rng::BattleSeed::new(0x07)));
     app.update();
 
     let world = app.world_mut();

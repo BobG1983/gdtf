@@ -91,13 +91,11 @@ fn write_leaving_weapon(root: &Path) -> bool {
 
 // Write a situation placing the field on one cell.
 fn write_placing_situation(root: &Path) -> bool {
-    let situation = Situation {
-        fields: vec![FieldSpawn::new(
-            CellLevel::new(Cell::new(1, 1), Level::new(0)),
-            field_key(),
-        )],
-        ..Situation::default()
-    };
+    let mut situation = Situation::new();
+    situation.map.fields = vec![FieldSpawn::new(
+        CellLevel::new(Cell::new(1, 1), Level::new(0)),
+        field_key(),
+    )];
     write_situation_in(root, &situation).is_ok()
 }
 
@@ -142,6 +140,7 @@ fn deleting_a_field_rewrites_the_situation_the_terrain_def_and_the_weapon_spec()
     assert!(
         app.world()
             .resource::<LoadedSituation>()
+            .map
             .fields
             .iter()
             .any(|spawn| spawn.field == field_key()),
@@ -164,12 +163,13 @@ fn deleting_a_field_rewrites_the_situation_the_terrain_def_and_the_weapon_spec()
     let situation: Option<Situation> =
         record_in_file(&dir.path().join("content/situations/skirmish.ron"));
     assert!(
-        situation.is_some_and(|situation| situation.fields.is_empty()),
+        situation.is_some_and(|situation| situation.map.fields.is_empty()),
         "the situation file must come back without the spawn",
     );
     assert!(
         !app.world()
             .resource::<LoadedSituation>()
+            .map
             .fields
             .iter()
             .any(|spawn| spawn.field == field_key()),

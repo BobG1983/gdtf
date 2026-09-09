@@ -119,8 +119,10 @@ fn deleting_a_theme_repoints_the_situations_own_theme() {
     if !two_themes(dir.path()) {
         return;
     }
-    let Some(situation) = write_situation(dir.path(), &format!("(theme: \"{DELETED_THEME}\")\n"))
-    else {
+    let Some(situation) = write_situation(
+        dir.path(),
+        &format!("(map: (theme: \"{DELETED_THEME}\"))\n"),
+    ) else {
         return;
     };
 

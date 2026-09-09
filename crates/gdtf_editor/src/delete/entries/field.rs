@@ -116,11 +116,11 @@ fn drop_from_situation(world: &mut World, root: &Path, field: &FieldKey) -> Drop
     let Some(loaded) = world.get_resource::<LoadedSituation>() else {
         return DroppedReferences::Nothing;
     };
-    if !loaded.fields.iter().any(|spawn| spawn.field == *field) {
+    if !loaded.map.fields.iter().any(|spawn| spawn.field == *field) {
         return DroppedReferences::Nothing;
     }
     let mut situation = (**loaded).clone();
-    situation.fields.retain(|spawn| spawn.field != *field);
+    situation.map.fields.retain(|spawn| spawn.field != *field);
     if write_situation_in(root, &situation).is_err() {
         return DroppedReferences::Failed;
     }
@@ -129,6 +129,7 @@ fn drop_from_situation(world: &mut World, root: &Path, field: &FieldKey) -> Drop
     };
     loaded
         .situation_mut()
+        .map
         .fields
         .retain(|spawn| spawn.field != *field);
     DroppedReferences::Rewritten

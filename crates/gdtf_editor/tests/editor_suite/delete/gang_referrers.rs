@@ -23,7 +23,7 @@ const MATCHING_GANG: &str = "matching_gang";
 // A gang whose roster holds none of those members.
 const EMPTY_GANG: &str = "empty_gang";
 
-// The one member the situation places and rosters.
+// The one member the situation's two roster entries both name.
 const MEMBER: &str = "Scrap";
 
 // Write a gang at the top of the gangs folder, holding the members named.
@@ -40,15 +40,18 @@ fn write_gang(root: &Path, stem: &str, members: &[&str]) -> bool {
     write_gang_in(root, &name, &roster).is_ok()
 }
 
-// A situation naming the deleted gang in one placement and one roster entry.
+// A situation naming the deleted gang in two roster entries, one per side.
 fn situation_naming_deleted(root: &Path) -> bool {
     write_situation(
         root,
         &format!(
             "(
-    gangers: [(gang: \"{DELETED_GANG}\", member: \"{MEMBER}\", at: (cell: (x: 1, y: 1), level: \
-             0), faction: 0, facing: North, stance: Standing, aiming: false, life_state: Alive)],
-    rosters: [(gang: \"{DELETED_GANG}\", member: \"{MEMBER}\", faction: 1)],
+    combatants: (
+        rosters: [
+            (gang: \"{DELETED_GANG}\", member: \"{MEMBER}\", faction: 0),
+            (gang: \"{DELETED_GANG}\", member: \"{MEMBER}\", faction: 1),
+        ],
+    ),
 )
 "
         ),
@@ -87,8 +90,8 @@ fn deleting_a_gang_names_the_replacement_in_every_entry_the_situation_held() {
     assert_eq!(
         text.matches(MATCHING_GANG).count(),
         2,
-        "the situation names the deleted gang in a placement AND a roster entry, so both must \
-         hold the replacement: {text}",
+        "the situation names the deleted gang in two roster entries, so both must hold the \
+         replacement: {text}",
     );
     assert!(
         !text.contains(DELETED_GANG),

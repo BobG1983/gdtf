@@ -9,7 +9,7 @@ use gdtf_battle_sim::{
     occupancy_sync::TerrainPieceDestroyed,
     prelude::{Faction, LifeState, Position, Stance, StanceKind},
     rng::BattleSeed,
-    situation::Situation,
+    situation::{PlacedGanger, Situation},
     test_support::{
         GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_melee_weapon_registry,
         test_weapon_registry,
@@ -37,7 +37,7 @@ fn enemy_at() -> CellLevel {
     ground(7, 5)
 }
 
-fn two_ganger_situation() -> (Situation, GangRegistry) {
+fn two_ganger_situation() -> (Situation, Vec<PlacedGanger>, GangRegistry) {
     SituationBuilder::new()
         .with_gangers([
             GangerSpawnBuilder::new()
@@ -68,11 +68,14 @@ fn battle_app() -> App {
     app
 }
 
-fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRegistry)) {
-    let (situation, gangs) = situation_and_gangs;
+fn drive_setup(app: &mut App, situation_and_gangs: (Situation, Vec<PlacedGanger>, GangRegistry)) {
+    let (situation, placements, gangs) = situation_and_gangs;
     app.world_mut().insert_resource(gangs);
-    app.world_mut()
-        .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+    app.world_mut().write_message(SetupBattleRequested::new(
+        situation,
+        placements,
+        BattleSeed::new(SEED),
+    ));
     app.update();
     app.update();
     app.update();

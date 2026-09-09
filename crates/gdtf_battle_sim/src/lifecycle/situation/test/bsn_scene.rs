@@ -170,8 +170,8 @@ fn assert_worn_armor(world: &World, alice: Entity, expected_armor: &ArmorSpec) {
 
 #[test]
 fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
-    let (situation, alice_at, ..) = minimal_fixture();
-    let alice_attrs = attributes_of(&situation.gangers[0]);
+    let (built, alice_at, ..) = minimal_fixture();
+    let alice_attrs = attributes_of(&built.1[0]);
     let alice_derived = derive_stats(&alice_attrs, &GangerStatTuning::default());
     let expected_armor = arbitrary_armor(1);
     let weapon_key = WeaponName::new(TEST_WEAPON_KEY.to_owned());
@@ -179,7 +179,7 @@ fn bsn_scene_ganger_carries_full_set_and_occupancy_placement() {
         .spec(&weapon_key)
         .cloned()
         .map(|spec| spec.into_bundle(weapon_key.clone()).0.damage_type);
-    let Some((mut app, setup)) = run_setup(situation) else {
+    let Some((mut app, setup)) = run_setup(built) else {
         return;
     };
 

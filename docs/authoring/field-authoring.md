@@ -51,14 +51,14 @@ From the shipped `assets/content/fields/toxic_waste_pool.field.ron`
 
 A catalog entry does nothing until something PLACES it at a `(cell, level)`:
 
-1. **A situation** — the authored `fields:` list in
+1. **A situation.** The authored `fields:` list inside the `map:` block of
    `assets/content/situations/skirmish.ron` places initial-terrain hazards
    (each entry names a `field:` key + a position). See
    [battlefield-authoring.md](battlefield-authoring.md).
-2. **An on-death effect** — `on_death: [LeaveField(field: "<key>")]` on a
+2. **An on-death effect.** `on_death: [LeaveField(field: "<key>")]` on a
    weapon or terrain def spawns the field at the death cell
    ([on-death-authoring.md](on-death-authoring.md)).
-3. **Code** — `FieldRegistry::spawn`
+3. **Code.** `FieldRegistry::spawn`
    (`crates/gdtf_battle_sim/src/effects/fields/registry.rs`), the API both of
    the above resolve through.
 

@@ -14,7 +14,7 @@ use gdtf_battle_sim::{
     weapon::{FatalBias, WeaponName, WeaponRegistry, WeaponSpec},
 };
 use gdtf_content_families::situation::LoadedSituation;
-use gdtf_game::test_support::{AppState, ModePanelRoot, ModeSingleButton};
+use gdtf_game::test_support::{AppState, ModePanelRoot, ModeSingleButton, PreplacedGangers};
 use gdtf_ui::theme::default_theme;
 
 use super::harness::*;
@@ -52,7 +52,11 @@ fn armed_armor_registry() -> ArmorRegistry {
     )])
 }
 
-fn armed_player_situation() -> (Situation, gdtf_battle_sim::ganger::GangRegistry) {
+fn armed_player_situation() -> (
+    Situation,
+    Vec<gdtf_battle_sim::situation::PlacedGanger>,
+    gdtf_battle_sim::ganger::GangRegistry,
+) {
     use gdtf_battle_sim::test_support::{GangerSpawnBuilder, SituationBuilder};
     SituationBuilder::new()
         .with_ganger(
@@ -71,6 +75,7 @@ fn armed_player_situation() -> (Situation, gdtf_battle_sim::ganger::GangRegistry
 
 fn walk_app_with_situation(
     situation: Situation,
+    placements: Vec<gdtf_battle_sim::situation::PlacedGanger>,
     gangs: gdtf_battle_sim::ganger::GangRegistry,
 ) -> App {
     let mut app =
@@ -86,14 +91,17 @@ fn walk_app_with_situation(
     app.world_mut().insert_resource(gangs);
     app.world_mut()
         .insert_resource(LoadedSituation::new(situation));
+    app.world_mut()
+        .insert_resource(PreplacedGangers::new(placements));
     app
 }
 
 fn battle_running_app_with_situation(
     situation: Situation,
+    placements: Vec<gdtf_battle_sim::situation::PlacedGanger>,
     gangs: gdtf_battle_sim::ganger::GangRegistry,
 ) -> App {
-    let mut app = walk_app_with_situation(situation, gangs);
+    let mut app = walk_app_with_situation(situation, placements, gangs);
     drive_to_battle_running(&mut app);
     app
 }
@@ -118,8 +126,8 @@ fn mode_panel_hidden_when_nothing_armed_selected() {
 
 #[test]
 fn mode_panel_visible_when_armed_player_ganger_selected() {
-    let (situation, gangs) = armed_player_situation();
-    let mut app = battle_running_app_with_situation(situation, gangs);
+    let (situation, placements, gangs) = armed_player_situation();
+    let mut app = battle_running_app_with_situation(situation, placements, gangs);
     app.update();
     app.update();
 

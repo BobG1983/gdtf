@@ -91,42 +91,49 @@ in `crates/gdtf_content_families/src/situation.rs`; the game's `LoadScenePlugin`
 and the editor's `register_load` both call them, so the editor checks the
 situation's references too.
 
-### 3b. The schema — by example (abridged from the shipped file)
+### 3b. The schema, by example (abridged from the shipped file)
+
+A situation is two halves. `map:` is the battlefield with no combatant in it
+(`BattleMap`), and `combatants:` is who fights and on whose side
+(`SituationCombatants`). Both are `#[serde(default)]`, so an omitted field
+takes its default and an omitted terrain list parses to empty.
 
 ```ron
 (
-    theme: "00000000-0000-0000-0000-01840a900001",   // ThemeUuid — the terrain family to generate from
-    grid_size: (width: 30, height: 30, levels: 4),   // the procgen board (≤ 60×60×8)
-    rosters: [                           // the combatants — gang + member + side refs, NO cells
-        (gang: "gang_0", member: "Alex Mercer", faction: 0),  // gang ROSTER ref + member + SIDE
-        (gang: "gang_0", member: "Kira Vann",   faction: 0),  // faction 0 → the player deployment zone
-        (gang: "gang_1", member: "Vex 1",       faction: 1),  // faction 1 → the enemy deployment zone
-        // … more roster members …
-    ],
-    fields: [ // optional initial hazards
-        (at: (cell: (x: 9, y: 8), level: 0), field: "toxic_waste_pool"),
-    ],
+    map: (
+        theme: "00000000-0000-0000-0000-01840a900001",   // ThemeUuid, the terrain family to generate from
+        grid_size: (width: 30, height: 30, levels: 4),   // the procgen board (≤ 60×60×8)
+        fields: [ // optional initial hazards
+            (at: (cell: (x: 9, y: 8), level: 0), field: "toxic_waste_pool"),
+        ],
+    ),
+    combatants: (
+        rosters: [                       // gang + member + side refs, no cells
+            (gang: "gang_0", member: "Alex Mercer", faction: 0),  // gang ROSTER ref, member, SIDE
+            (gang: "gang_0", member: "Kira Vann",   faction: 0),  // faction 0 deploys in the player zone
+            (gang: "gang_1", member: "Vex 1",       faction: 1),  // faction 1 deploys in the enemy zone
+            // more roster members
+        ],
+        // player_faction omitted, so it defaults to faction 0
+    ),
 )
 ```
 
-The situation authors ONLY theme + board size + roster (+ initial fields):
-now the TERRAIN is procgen-generated from `theme` + `grid_size`
-against the loaded prefab library, and now each roster member's SPAWN
-CELL / facing / stance is procgen-DERIVED too — `deploy_rosters` places each
-member into its side's deployment zone (faction == `player_faction` → the
-player zone, else the enemy zone) DETERMINISTICALLY by the battle's seed. So a
-shipped situation authors NO placement cells and NO inline terrain (both are
-`#[serde(default)]`). A roster member is a REFERENCE — the roster (identity,
-attributes, equipment) resolves against the `GangRegistry` at setup; the
-situation assigns only which member and which side.
+The situation authors ONLY theme + board size + roster (+ initial fields). The
+TERRAIN is procgen-generated from the map's `theme` + `grid_size` against the
+loaded prefab library, and each roster member's SPAWN CELL / facing / stance is
+procgen-DERIVED too. `deploy_rosters` places each member into its side's
+deployment zone (faction == `player_faction` gets the player zone, else the
+enemy zone) DETERMINISTICALLY by the battle's seed. It returns those placements
+as a `Vec<PlacedGanger>` that travels BESIDE the situation into `setup_battle`,
+so no schema field holds a spawn cell and no authored file can supply one. A
+roster member is a REFERENCE. The roster (identity, attributes, equipment)
+resolves against the `GangRegistry` at setup, and the situation assigns only
+which member and which side.
 
-A `gangers:` list of fully-placed `PlacedGanger`s (each with `at` / `facing` /
-`stance` / …) is STILL accepted (`#[serde(default)]`) for TEST fixtures that
-need exact cells — but shipped content authors `rosters`.
-
-Note the gang path's TWO key schemes: `gang:` is a FILE-STEM key, `member:` is
-that roster's DISPLAY-NAME — the reference report names which scheme failed
-([reference-integrity.md](reference-integrity.md)).
+Note the gang path's TWO key schemes. `gang:` is a FILE-STEM key and `member:`
+is that roster's DISPLAY-NAME, and the reference report names which scheme
+failed ([reference-integrity.md](reference-integrity.md)).
 
 ## Part 4 — Gangs (reusable rosters)
 

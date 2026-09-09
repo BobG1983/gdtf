@@ -6,7 +6,7 @@ use gdtf_battle_sim::{
     def::TerrainUuid,
     level::{GridHeight, GridLevels, GridSize, GridWidth},
     prelude::{Cell, CellLevel, Level},
-    situation::Situation,
+    situation::{PlacedGanger, Situation},
     test_support::{SituationBuilder, ganger_at, key, test_pieces},
 };
 
@@ -28,7 +28,7 @@ fn small_grid() -> GridSize {
     size
 }
 
-fn situation_with_floor(default_floor: TerrainUuid) -> Situation {
+fn situation_with_floor(default_floor: TerrainUuid) -> (Situation, Vec<PlacedGanger>) {
     SituationBuilder::new()
         .with_gangers([ganger_at(key(1, 1, 0), 0), ganger_at(key(2, 1, 0), 1)])
         .default_floor(default_floor)

@@ -52,15 +52,16 @@ fn cover_uuid_resolves_against_def_registry_seeding_entry_and_kind() {
     let wall_key = TerrainUuid::new(Uuid::from_u128(0x0149_c0de_0000_0011));
     let registry = single_def_registry(wall_def(wall_key));
 
-    let (mut situation, gangs) = SituationBuilder::new()
+    let (mut situation, placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .build_with_gangs();
     situation
+        .map
         .walls
         .push(CoverSpawn::new(wall_at, wall_key, TerrainFacing::default()));
 
     let Some((mut app, _setup)) = run_setup_with(
-        situation,
+        (situation, placements),
         gangs,
         test_registry(),
         test_armor_registry(),
@@ -117,18 +118,20 @@ fn wall_entity_carries_its_def_key_and_slab_carries_footfall() {
         (slab_key, slab_def(slab_key, Some("spec-step"))),
     ]);
 
-    let (mut situation, gangs) = SituationBuilder::new()
+    let (mut situation, placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .build_with_gangs();
     situation
+        .map
         .walls
         .push(CoverSpawn::new(wall_at, wall_key, TerrainFacing::default()));
     situation
+        .map
         .slabs
         .push(SlabSpawn::new(slab_at, slab_key, TerrainFacing::default()));
 
     let Some((mut app, _setup)) = run_setup_with(
-        situation,
+        (situation, placements),
         gangs,
         test_registry(),
         test_armor_registry(),
@@ -183,25 +186,26 @@ fn spawned_entities_carry_blocks_pathfinding_per_def() {
         (barricade_slab_key, blocking_slab_def(barricade_slab_key)),
     ]);
 
-    let (mut situation, gangs) = SituationBuilder::new()
+    let (mut situation, placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .build_with_gangs();
     situation
+        .map
         .walls
         .push(CoverSpawn::new(wall_at, wall_key, TerrainFacing::default()));
-    situation.slabs.push(SlabSpawn::new(
+    situation.map.slabs.push(SlabSpawn::new(
         plain_slab_at,
         plain_slab_key,
         TerrainFacing::default(),
     ));
-    situation.slabs.push(SlabSpawn::new(
+    situation.map.slabs.push(SlabSpawn::new(
         barricade_slab_at,
         barricade_slab_key,
         TerrainFacing::default(),
     ));
 
     let Some((mut app, _setup)) = run_setup_with(
-        situation,
+        (situation, placements),
         gangs,
         test_registry(),
         test_armor_registry(),
@@ -249,18 +253,20 @@ fn every_seeded_piece_carries_its_def_key_and_its_placement_facing() {
         (slab_key, slab_def(slab_key, None)),
     ]);
 
-    let (mut situation, gangs) = SituationBuilder::new()
+    let (mut situation, placements, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(key(0, 0, 0), 0))
         .build_with_gangs();
     situation
+        .map
         .walls
         .push(CoverSpawn::new(wall_at, wall_key, wall_facing));
     situation
+        .map
         .slabs
         .push(SlabSpawn::new(slab_at, slab_key, slab_facing));
 
     let Some((mut app, _setup)) = run_setup_with(
-        situation,
+        (situation, placements),
         gangs,
         test_registry(),
         test_armor_registry(),

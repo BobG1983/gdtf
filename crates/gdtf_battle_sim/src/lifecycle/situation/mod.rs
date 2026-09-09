@@ -13,6 +13,6 @@ pub use setup::{
     BattleRegistries, BattleSetup, GangerCount, StackedGangers, has_stacked_gangers, setup_battle,
 };
 pub use spawn::{
-    CoverSpawn, FieldSpawn, FloorSpawn, GangerSpawn, PlacedGanger, Placement, RosterMember,
-    Situation, SlabSpawn,
+    BattleMap, CoverSpawn, FieldSpawn, FloorSpawn, GangerSpawn, PlacedGanger, Placement,
+    RosterMember, Situation, SituationCombatants, SlabSpawn,
 };

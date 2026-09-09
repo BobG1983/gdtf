@@ -38,7 +38,8 @@ pub use crate::states::{
                 ThrowGrenadeButton,
             },
             generation::{
-                battle_sim::ResolvedBattleSeed, loading_screen::test_support::LoadingScreenRoot,
+                battle_sim::{PreplacedGangers, ResolvedBattleSeed},
+                loading_screen::test_support::LoadingScreenRoot,
                 test_support::GenerationComplete,
             },
             inspect_panel::test_support::{

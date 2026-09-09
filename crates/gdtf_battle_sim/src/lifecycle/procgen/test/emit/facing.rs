@@ -129,31 +129,31 @@ fn poured_spawns_carry_the_authored_facing_and_floors_take_the_default() {
     let Ok(emitted) = result else {
         return;
     };
-    let situation = emitted.situation;
+    let map = emitted.map;
 
     // pour_prefab translates each cell by the placed prefab's origin, so key on the piece.
-    let turned: Vec<_> = situation
+    let turned: Vec<_> = map
         .walls
         .iter()
         .filter(|wall| wall.piece == TURNED_WALL)
         .collect();
     assert!(
         !turned.is_empty(),
-        "the authored TURNED_WALL must reach situation.walls at least once",
+        "the authored TURNED_WALL must reach the map's walls at least once",
     );
     assert!(
         turned.iter().all(|wall| wall.facing == AUTHORED_FACING),
         "every spawn of the East-facing entry must carry East, not the default: {turned:?}",
     );
 
-    let straight: Vec<_> = situation
+    let straight: Vec<_> = map
         .walls
         .iter()
         .filter(|wall| wall.piece == STRAIGHT_WALL)
         .collect();
     assert!(
         !straight.is_empty(),
-        "the authored STRAIGHT_WALL must reach situation.walls at least once",
+        "the authored STRAIGHT_WALL must reach the map's walls at least once",
     );
     assert!(
         straight
@@ -164,12 +164,11 @@ fn poured_spawns_carry_the_authored_facing_and_floors_take_the_default() {
     );
 
     assert!(
-        !situation.floors.is_empty(),
+        !map.floors.is_empty(),
         "the board must leave dead space, so floor_region emits floors",
     );
     assert!(
-        situation
-            .floors
+        map.floors
             .iter()
             .all(|floor| floor.facing == TerrainFacing::default()),
         "floor_region has no entry to read, so every synthesised floor takes the default",

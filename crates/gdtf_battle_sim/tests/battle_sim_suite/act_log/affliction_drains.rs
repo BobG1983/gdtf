@@ -17,6 +17,7 @@ fn two_ganger_situation(
     enemy_at: gdtf_battle_sim::metric::CellLevel,
 ) -> (
     gdtf_battle_sim::situation::Situation,
+    Vec<gdtf_battle_sim::situation::PlacedGanger>,
     gdtf_battle_sim::ganger::GangRegistry,
 ) {
     SituationBuilder::new()

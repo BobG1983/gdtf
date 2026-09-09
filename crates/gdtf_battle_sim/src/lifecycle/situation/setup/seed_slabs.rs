@@ -6,7 +6,7 @@ use bevy::{
 use super::super::terrain_resolve::ResolvedSlabPiece;
 use crate::{
     metric::CellLevel,
-    situation::Situation,
+    situation::BattleMap,
     slab::{BraceStairCells, SlabEntry, SlabLedger},
     surface::{SlabState, SurfaceGrid},
     terrain::{
@@ -19,9 +19,9 @@ use crate::{
     vertical::LinkKind,
 };
 
-pub(super) fn stair_cell_sets(situation: &Situation) -> (HashSet<CellLevel>, HashSet<CellLevel>) {
+pub(super) fn stair_cell_sets(map: &BattleMap) -> (HashSet<CellLevel>, HashSet<CellLevel>) {
     let mut stair_cell_set = HashSet::new();
-    for link in &situation.vertical_links {
+    for link in &map.vertical_links {
         if matches!(link.kind, LinkKind::Stair { .. }) {
             stair_cell_set.insert(link.from);
             stair_cell_set.insert(link.to);
@@ -30,7 +30,7 @@ pub(super) fn stair_cell_sets(situation: &Situation) -> (HashSet<CellLevel>, Has
 
     let mut brace_stair_cells_set: bevy::platform::collections::HashSet<crate::metric::CellLevel> =
         bevy::platform::collections::HashSet::new();
-    for link in &situation.vertical_links {
+    for link in &map.vertical_links {
         if matches!(link.kind, LinkKind::Stair { .. }) {
             let lower = if link.from.z <= link.to.z {
                 link.from
@@ -44,7 +44,7 @@ pub(super) fn stair_cell_sets(situation: &Situation) -> (HashSet<CellLevel>, Has
 }
 
 pub(super) fn seed_slab_terrain(
-    situation: &Situation,
+    map: &BattleMap,
     resolved_slabs: &[ResolvedSlabPiece],
     brace_cells: &HashSet<CellLevel>,
     commands: &mut Commands,
@@ -53,7 +53,7 @@ pub(super) fn seed_slab_terrain(
     let mut surface_grid = SurfaceGrid::new();
     let mut slab_ledger = SlabLedger::new();
     let mut terrain_pairs: Vec<(TerrainIndexKey, Entity)> = Vec::new();
-    for (slab_spawn, resolved) in situation.slabs.iter().zip(resolved_slabs.iter()) {
+    for (slab_spawn, resolved) in map.slabs.iter().zip(resolved_slabs.iter()) {
         surface_grid.set_slab(slab_spawn.at, SlabState::Present);
 
         let slab_entry = SlabEntry::seeded(

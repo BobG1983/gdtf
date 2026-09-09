@@ -90,12 +90,12 @@ fn four_candidates_across_producers_draw_only_the_top_three_in_priority_order() 
     app.world_mut().spawn(TerrainSprite { at: floor });
 
     let upper = key(5, 5, 4);
-    let situation = SituationBuilder::new()
+    let (situation, _placements) = SituationBuilder::new()
         .slab_at(hole)
         .slab_at(upper)
         .vertical_link(VerticalLink::new(hole, upper, LinkKind::stair()))
         .build();
-    let result = build_vertical_link_graph(&situation);
+    let result = build_vertical_link_graph(&situation.map);
     assert!(result.is_ok(), "expected a valid graph, got {result:?}");
     let Ok(graph) = result else {
         return;

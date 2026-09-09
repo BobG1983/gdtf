@@ -21,12 +21,12 @@ fn stair_endpoint_on_active_storey_emits_connector_delta() {
 
     let lower = key(3, 3, 0);
     let upper = key(3, 3, 1);
-    let situation = SituationBuilder::new()
+    let (situation, _placements) = SituationBuilder::new()
         .slab_at(lower)
         .slab_at(upper)
         .vertical_link(VerticalLink::new(lower, upper, LinkKind::stair()))
         .build();
-    let result = build_vertical_link_graph(&situation);
+    let result = build_vertical_link_graph(&situation.map);
     assert!(result.is_ok(), "expected a valid graph, got {result:?}");
     let Ok(graph) = result else {
         return;
@@ -62,12 +62,12 @@ fn stair_endpoint_on_active_storey_draws_its_connector_delta_badge() {
 
     let lower = key(3, 3, 0);
     let upper = key(3, 3, 1);
-    let situation = SituationBuilder::new()
+    let (situation, _placements) = SituationBuilder::new()
         .slab_at(lower)
         .slab_at(upper)
         .vertical_link(VerticalLink::new(lower, upper, LinkKind::stair()))
         .build();
-    let result = build_vertical_link_graph(&situation);
+    let result = build_vertical_link_graph(&situation.map);
     assert!(result.is_ok(), "expected a valid graph, got {result:?}");
     let Ok(graph) = result else {
         return;

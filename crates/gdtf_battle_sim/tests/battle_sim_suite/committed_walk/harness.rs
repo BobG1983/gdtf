@@ -14,7 +14,7 @@ use gdtf_battle_sim::{
     pathfinder::{MoveGrids, PlanningView, find_path},
     prelude::{Faction, Position, Stance, StanceKind, Tu},
     rng::BattleSeed,
-    situation::Situation,
+    situation::{PlacedGanger, Situation},
     test_support::{
         GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_melee_weapon_registry,
         test_weapon_registry,
@@ -58,11 +58,17 @@ pub(crate) fn battle_app() -> App {
     app
 }
 
-pub(crate) fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRegistry)) {
-    let (situation, gangs) = situation_and_gangs;
+pub(crate) fn drive_setup(
+    app: &mut App,
+    situation_and_gangs: (Situation, Vec<PlacedGanger>, GangRegistry),
+) {
+    let (situation, placements, gangs) = situation_and_gangs;
     app.world_mut().insert_resource(gangs);
-    app.world_mut()
-        .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
+    app.world_mut().write_message(SetupBattleRequested::new(
+        situation,
+        placements,
+        BattleSeed::new(SEED),
+    ));
     app.update();
     app.update();
     app.update();
@@ -119,7 +125,7 @@ pub(crate) fn run_until_walk_ends(app: &mut App, entity: Entity) {
     }
 }
 
-pub(crate) fn one_player_situation(speed: f32) -> (Situation, GangRegistry) {
+pub(crate) fn one_player_situation(speed: f32) -> (Situation, Vec<PlacedGanger>, GangRegistry) {
     SituationBuilder::new()
         .with_gangers([GangerSpawnBuilder::new()
             .at(player_at())
@@ -133,7 +139,7 @@ pub(crate) fn one_player_situation(speed: f32) -> (Situation, GangRegistry) {
 pub(crate) fn player_and_enemy_situation(
     speed: f32,
     enemy_cell: CellLevel,
-) -> (Situation, GangRegistry) {
+) -> (Situation, Vec<PlacedGanger>, GangRegistry) {
     SituationBuilder::new()
         .with_gangers([
             GangerSpawnBuilder::new()
