@@ -22,7 +22,7 @@ A clause missing the third is a wish. "No longer depends on the default order" i
 the ordering edge lands, so nothing can fail. Rewrite it as the case that reads the downed
 selection, plus the update count that keeps that case readable.
 
-## The six things a clause pins down
+## The nine things a clause pins down
 
 ### Direction, for anything ordered
 
@@ -66,6 +66,33 @@ Measured on GTW-1002. Its clause 7 read "The editor's own 'New theme' button is 
 bug against the editor before this ticket lands." The code half was finished, and the gate failed
 the ticket twice on that clause, because the only way to answer it was to query Linear, and the
 answer was no. A blocking edge would have stopped the build from starting.
+
+### The sequence a bug requires
+
+A bug clause names the sequence of events in the running game that produces the failure. If that
+sequence cannot occur, there is no bug.
+
+Measured on GTW-1246. Two stabilize requests were filed and worked as a same-frame double charge,
+in a turn-based game where two units cannot submit a request in the same frame. Nobody named the
+sequence before the ticket was filed and built.
+
+### Where the expected outcome comes from
+
+A clause that states what a test should assert cites where `docs/` or the ticket says that outcome
+is correct. A clause is not evidence for itself.
+
+Measured on GTW-1260. A test asserted that painting outside the grid succeeds, which is the
+opposite of the correct behaviour: an out-of-grid paint should return an error. The ticket
+inherited the test's premise instead of checking it against the design.
+
+### The symbol a fix changes
+
+A fix clause names the symbol it changes. Coordination added elsewhere — an ordering edge, a
+special case, a test-only hook — without touching that symbol is a symptom fix, not the fix.
+
+Measured on GTW-885. The landed fix added ordering-edge tests and drove engine internals through
+the MCP. The actual defect was that focus navigation could not reach the new buttons, and the fix
+never touched it.
 
 ## Assertions
 

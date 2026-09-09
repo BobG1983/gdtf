@@ -90,11 +90,12 @@ Pre-commit always runs its cargo subset. None of this changes the command list a
    asserted, and a numeric difference is not a defect until you have searched the tests for it.
 
 8. Do not pin changeable literals in tests. If an ordinary content or tuning edit turns a test
-   red (a new weapon file, a renamed stem, a magnitude tweak), the test is pinning a changeable
-   literal. Assert the property instead: the registry is non-empty, a `Cone` deserializes
-   somewhere, the gate waits on the resource. Exact filenames, counts, and magnitudes belong in
-   content data, not in `assert!`. Dedicated guard suites under `crates/gdtf_conformance/tests/` are the
-   exception: they pin repo structure on purpose.
+   red (a new weapon file, a renamed stem, a magnitude tweak, a reordered collection), the test
+   is pinning a changeable literal. Assert the property instead: the registry is non-empty, a
+   `Cone` deserializes somewhere, the gate waits on the resource. Exact filenames, counts, and
+   magnitudes belong in content data, not in `assert!`. The order items come back in is not
+   content data either — assert them as a set, not a sequence. Dedicated guard suites under
+   `crates/gdtf_conformance/tests/` are the exception: they pin repo structure on purpose.
 
 ### Gate-pass fingerprint
 

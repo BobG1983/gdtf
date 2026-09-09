@@ -58,11 +58,14 @@ Pre-commit does not implement this skip. It always runs its cargo subset.
    - 4b Wiring. Systems, plugins and resources the ticket claims run are actually registered.
    - 4c Size. Block above 400 lines, unless the file is cohesive and the ticket sanctioned it.
    - 4d Hygiene. No `GTW-` strings, no banned jargon, short doc comments.
+   - 4e Root cause. Where the ticket names a symbol as the root cause, the diff touches that
+     symbol. This catches a fix that ignores its own diagnosis, not a wrong diagnosis.
 
 6. Spawn the read-only design-gate sub-agents in parallel, one per lens: clauses, tests, rules. Give each one the contract and the diff, and tell it to verify first-hand. Any non-compliant lens blocks the gate.
 
 7. Relay the verdict: PASS or VIOLATION per clause, with the evidence.
 
-8. On a violation, repair the code, not the contract. Two repair rounds at most, then stop and report.
+8. On a violation, repair the code, not the contract. Stop when the fix loop's own bound is
+   reached, and report. The bound itself lives in `build-ticket.js`, once, not restated here.
 
 9. On a full pass, report it with the `SCOPE=` line and the ticket. Move the tickets to In Review through the Linear MCP. Point at `/docs-sync`, then `/land`. **Do not write `.claude/.gate-pass`.** `/land` writes it, from the tree it is about to commit. `/docs-sync` runs between the two and moves that tree, so a file written here would describe a tree nobody commits.

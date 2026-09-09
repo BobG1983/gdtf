@@ -21,6 +21,14 @@ kit's number-one failure mode. One agent "right-sized" a hard resolution to some
    sim resolves hits along an arbitrary attack vector". Do NOT collapse that to axis-aligned
    or grid-snapped ECS queries. Build the specified vector math.
 
+6. A design proposal is written against `docs/` and the ticket. The current implementation is
+   not a constraint unless `docs/` says it is. Citing existing code as a reason to keep a shape
+   is a deviation under rule 2, and needs the same approval before building.
+
+   Measured on GTW-702. A software design proposal anchored on the existing stand-in AI as though
+   replacing it were out of bounds, treating code that was always meant to be temporary as the
+   thing the design had to preserve.
+
 ## Descoping protocol (the ONLY legal way to shrink scope)
 
 - Shrinking scope adds one step to rule 2: update the TICKET before writing any code.
