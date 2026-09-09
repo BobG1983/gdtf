@@ -196,7 +196,7 @@ fn fired_rounds_deplete_then_destroy_slab_and_open_los_without_walkability() {
     );
 
     let mut strikes_to_destroy = 1_u32;
-    for _ in 0..64 {
+    loop {
         if app
             .world()
             .resource::<SurfaceGrid>()

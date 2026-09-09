@@ -15,10 +15,7 @@ fn suppression_desaturates_the_sprite_and_clearing_restores_it() {
     let situation = SituationBuilder::new()
         .with_ganger(ganger_at(at, 0, Direction::East))
         .build();
-    assert!(
-        drive_setup(&mut app, situation),
-        "setup_battle must complete"
-    );
+    drive_setup(&mut app, situation);
 
     let sim = sim_entity_at(&mut app, at);
     assert!(sim.is_some(), "the ganger sim entity must exist");

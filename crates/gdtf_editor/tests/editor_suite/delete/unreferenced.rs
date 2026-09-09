@@ -4,10 +4,7 @@ use gdtf_editor::{DeleteOutcome, weapon_save_path_in};
 
 use crate::delete::{
     fixture::{ORPHAN_GUN, weapon_name, write_fixture_weapon},
-    harness::{
-        OUTCOME_UPDATES, OfferAnswer, TERRAIN_FAMILY, WEAPON_FAMILY, editor_on, is_published,
-        run_delete,
-    },
+    harness::{OfferAnswer, TERRAIN_FAMILY, WEAPON_FAMILY, editor_on, is_published, run_delete},
     records::{DELETED_PIECE, file_snapshot, write_terrain_def},
 };
 
@@ -37,9 +34,9 @@ fn a_terrain_def_nothing_names_is_removed_with_no_offer_and_no_other_file_touche
 
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Removed),
-        "no theme, prefab, situation list or other def names it, so it is removed within \
-         {OUTCOME_UPDATES} updates; published at the end: {}",
+        DeleteOutcome::Removed,
+        "no theme, prefab, situation list or other def names it, so it is removed; published at \
+         the end: {}",
         is_published(&app),
     );
     assert!(
@@ -69,9 +66,8 @@ fn a_weapon_nothing_names_is_removed_with_no_offer() {
 
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Removed),
-        "no gang member and no emplacement names it, so it is removed within {OUTCOME_UPDATES} \
-         updates; published at the end: {}",
+        DeleteOutcome::Removed,
+        "no gang member and no emplacement names it, so it is removed; published at the end: {}",
         is_published(&app),
     );
     assert!(

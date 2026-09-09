@@ -14,10 +14,7 @@ fn route_cells_drawn_nonroute_cell_dark() {
     let off_route = CellLevel::new(Cell::new(40, 40), l0);
 
     set_preview(&mut app, vec![a, b, c], Tu::new(12));
-    assert!(
-        settle_steps(&mut app),
-        "the route step sprites must have drawn"
-    );
+    settle_steps(&mut app);
 
     assert!(
         step_visible_at(&mut app, a),
@@ -54,10 +51,7 @@ fn off_storey_route_cells_hard_cut() {
     let on1_b = CellLevel::new(Cell::new(9, 5), l1);
 
     set_preview(&mut app, vec![on0_a, on0_b, on1_a, on1_b], Tu::new(20));
-    assert!(
-        settle_steps(&mut app),
-        "the active-storey steps must have drawn"
-    );
+    settle_steps(&mut app);
 
     assert!(
         step_visible_at(&mut app, on0_a),
@@ -89,7 +83,7 @@ fn clearing_preview_hides_all_steps() {
     let cell = CellLevel::new(Cell::new(7, 7), l0);
 
     set_preview(&mut app, vec![cell], Tu::new(4));
-    assert!(settle_steps(&mut app), "the preview must have drawn");
+    settle_steps(&mut app);
     assert!(
         step_visible_at(&mut app, cell),
         "the route cell is drawn before clear"
@@ -118,7 +112,7 @@ fn shrinking_route_hides_surplus_pooled_steps() {
     let c = CellLevel::new(Cell::new(7, 5), l0);
 
     set_preview(&mut app, vec![a, b, c], Tu::new(12));
-    assert!(settle_steps(&mut app), "the preview must have drawn");
+    settle_steps(&mut app);
     assert_eq!(visible_step_count(&mut app), 3, "all three cells drawn");
 
     set_preview(&mut app, vec![a], Tu::new(4));

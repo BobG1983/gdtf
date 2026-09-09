@@ -1,4 +1,5 @@
 use bevy::{app::App, prelude::Visibility, transform::components::Transform};
+use cobalt_test_utils::advance_until_mut;
 use gdtf_battle_presenter::{ActiveLevel, TerrainSprite};
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Direction, Level, Position},
@@ -14,14 +15,12 @@ fn terrain_z_at(app: &mut App, at: CellLevel) -> Option<f32> {
         .map(|(_, transform)| transform.translation.z)
 }
 
-fn settle_terrain_z_at(app: &mut App, at: CellLevel) -> Option<f32> {
-    for _ in 0..MAX_UPDATES {
-        if let Some(z) = terrain_z_at(app, at) {
-            return Some(z);
-        }
-        app.update();
-    }
-    terrain_z_at(app, at)
+fn settle_terrain_z_at(app: &mut App, at: CellLevel) -> f32 {
+    advance_until_mut(app, |app| terrain_z_at(app, at).is_some());
+    let Some(z) = terrain_z_at(app, at) else {
+        unreachable!("the wait only returns once the terrain sprite at {at:?} carries a z")
+    };
+    z
 }
 
 #[test]
@@ -37,10 +36,7 @@ fn active_level_change_shows_drawn_band_hides_above() {
         .slab_at(l0_at)
         .slab_at(l1_at)
         .build();
-    assert!(
-        drive_setup(&mut app, situation),
-        "setup_battle must complete"
-    );
+    drive_setup(&mut app, situation);
     band_only_fog(&mut app);
     app.update();
 
@@ -86,17 +82,9 @@ fn ganger_draws_above_its_own_floor_at_spawn_and_after_move() {
     let situation = SituationBuilder::new()
         .with_ganger(ganger_at(start, 0, Direction::East))
         .build();
-    assert!(
-        drive_setup(&mut app, situation),
-        "setup_battle must complete"
-    );
+    drive_setup(&mut app, situation);
 
     let floor_z = settle_terrain_z_at(&mut app, start);
-    assert!(
-        floor_z.is_some(),
-        "a co-located floor tile must be drawn under the ganger's cell",
-    );
-    let Some(floor_z) = floor_z else { return };
 
     let drawn = drawn_gangers(&mut app);
     assert_eq!(drawn.len(), 1, "one ganger sprite at spawn");
@@ -129,13 +117,6 @@ fn ganger_draws_above_its_own_floor_at_spawn_and_after_move() {
     );
     let moved_z = drawn_after[0].translation.z;
     let dest_floor_z = settle_terrain_z_at(&mut app, dest);
-    assert!(
-        dest_floor_z.is_some(),
-        "a co-located floor tile must be drawn under the moved ganger's new cell",
-    );
-    let Some(dest_floor_z) = dest_floor_z else {
-        return;
-    };
     assert!(
         moved_z > dest_floor_z,
         "after the move the ganger z ({moved_z}) must still be strictly greater than the floor z at its new cell ({dest_floor_z})",

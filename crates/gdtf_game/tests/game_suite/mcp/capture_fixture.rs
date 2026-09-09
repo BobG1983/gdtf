@@ -20,7 +20,9 @@ use cobalt_screenshot::{
 use cobalt_test_utils::{advance_until, asset_plugin_at};
 use gdtf_game::test_support::{self, AppState, McpPlugin, RunningState};
 
-use super::socket_support::{TestError, capture_app_listening};
+use super::socket_support::{
+    NO_DEFERRAL_DEADLINE, NO_SOCKET_DEADLINE, TestError, capture_app_listening,
+};
 
 /// Stem the windowed capture asks for.
 pub(crate) const GPU_SHOT_NAME: &str = "socket_shot";
@@ -35,7 +37,8 @@ const FIXTURE_FRAME: Color = Color::srgb(0.9, 0.2, 0.4);
 
 const GPU_SETTLE: u32 = 4;
 
-const GPU_POLL_BUDGET: u32 = 240;
+/// A readback poll cap no run reaches, since `FramesLeft::tick` counts one frame down at a time.
+const GPU_POLL_BUDGET: u32 = u32::MAX;
 
 const HEADLESS_SETTLE: u32 = 2;
 
@@ -125,7 +128,7 @@ pub(crate) fn landing_capture_app_listening() -> Result<(App, McpPort), TestErro
 pub(crate) fn gpu_game_app_listening() -> Result<(App, McpPort), TestError> {
     let dir = gpu_shot_dir();
     drop(std::fs::remove_dir_all(dir.as_path()));
-    let (plugin, port) = McpPlugin::listening(McpPort::new(0))?;
+    let (plugin, port) = McpPlugin::listening_with(McpPort::new(0), NO_SOCKET_DEADLINE)?;
     let mut window = Window {
         resolution: WindowResolution::new(GPU_WINDOW_PX.x, GPU_WINDOW_PX.y),
         ..default()
@@ -150,6 +153,8 @@ pub(crate) fn gpu_game_app_listening() -> Result<(App, McpPort), TestError> {
     );
     app.set_error_handler(bevy::ecs::error::warn);
     test_support::register_scenes_with_default_plugins(&mut app);
+    // Before the plugin builds: its `build` is what registers every command's budget.
+    app.insert_resource(NO_DEFERRAL_DEADLINE);
     app.add_plugins(plugin);
     app.insert_resource(dir);
     app.insert_resource(SettleFrames::new(GPU_SETTLE));

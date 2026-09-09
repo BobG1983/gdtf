@@ -43,7 +43,7 @@ fn fire_until_destroyed(app: &mut App, shooter: Entity) {
         "the slab must be standing before the firing loop, or its exit test reads Absent on the \
          first pass and the case asserts nothing",
     );
-    for _ in 0..64 {
+    loop {
         if slab_state(app, overhead()) == SlabState::Absent {
             return;
         }

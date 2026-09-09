@@ -6,6 +6,7 @@ use bevy::{
     ecs::{error::warn, message::Messages},
     prelude::default,
     render::{RenderPlugin, settings::WgpuSettings},
+    time::TimeUpdateStrategy,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
@@ -25,7 +26,7 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
 
-pub(crate) const MAX_UPDATES: u32 = 128;
+use crate::pinned_delta::{PINNED_DELTA, assert_reads_a_pinned_delta};
 
 pub(crate) const SEED: u64 = 0x0D15_EA5E;
 
@@ -71,8 +72,14 @@ pub(crate) fn headless_renderer_app() -> App {
     app.insert_resource(test_armor_registry());
     app.insert_resource(test_terrain_registry());
     app.insert_resource(test_gang_registry());
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
     app.set_error_handler(warn);
     app
+}
+
+#[test]
+fn the_harness_app_reads_a_pinned_delta() {
+    assert_reads_a_pinned_delta(&mut headless_renderer_app());
 }
 
 /// The sheet region a sprite def names, for comparing a drawn rect against its def.
@@ -104,16 +111,10 @@ pub(crate) fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> Ganger
         .build()
 }
 
-pub(crate) fn drive_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) -> bool {
+pub(crate) fn drive_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) {
     app.world_mut()
         .resource_mut::<Messages<SetupBattleRequested>>()
         .write(setup_request(built, BattleSeed::new(SEED)));
-    for _ in 0..MAX_UPDATES {
-        app.update();
-        if app.world().get_resource::<ShotRng>().is_some() {
-            app.update();
-            return true;
-        }
-    }
-    false
+    advance_until_resource_exists::<ShotRng>(app);
+    app.update();
 }

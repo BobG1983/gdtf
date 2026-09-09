@@ -17,7 +17,7 @@ use crate::{
     content_shared::{advance::advance_to_published, app::editor_app_with_asset_root},
     delete::{
         fixture::{WEIGHTED_INJURY, write_fixture_injury, write_fixture_weighting},
-        harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
+        harness::advance_to_outcome,
     },
 };
 
@@ -98,15 +98,9 @@ fn deleting_a_weighting_table_takes_its_buckets_out_and_re_arms_validation() {
         weighting_member_key(CATEGORY, CONTEXT),
     ));
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "taking the table out must re-arm validation so the delete settles within \
-         {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
     assert_eq!(
         outcome,
-        Some(DeleteOutcome::Removed),
+        DeleteOutcome::Removed,
         "no record names a weighting table, so its in-use check finds nothing",
     );
     assert!(

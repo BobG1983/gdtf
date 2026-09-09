@@ -60,12 +60,7 @@ fn a_shot_pop_stacks_above_a_live_consequence_pop_on_the_same_cell() {
     play(&mut app, shot);
     fire_with_zero_delta(&mut app);
 
-    let snapshot = step_until_pop(&mut app, "-7", Duration::from_millis(30), 30);
-    assert!(
-        snapshot.is_some(),
-        "the shot's \"-7\" damage pop must appear once its bolt lands",
-    );
-    let Some(pops) = snapshot else { return };
+    let pops = step_until_pop(&mut app, "-7", Duration::from_millis(30));
 
     let base_y = cell_to_world(CELL, LEVEL).y;
     let shot_y = pop_y_for(&pops, "-7");
@@ -100,12 +95,7 @@ fn a_single_shots_multi_pop_fan_out_ascends_seeded_above_a_live_pop() {
     play(&mut app, shot);
     fire_with_zero_delta(&mut app);
 
-    let snapshot = step_until_pop(&mut app, "-9", Duration::from_millis(30), 30);
-    assert!(
-        snapshot.is_some(),
-        "the lethal shot's pops must appear once its bolt lands",
-    );
-    let Some(pops) = snapshot else { return };
+    let pops = step_until_pop(&mut app, "-9", Duration::from_millis(30));
 
     let base_y = cell_to_world(CELL, LEVEL).y;
     let shot_texts = ["-9", "Torso Critical", "Armor pierced", "DEAD"];

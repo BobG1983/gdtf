@@ -1,11 +1,9 @@
 use bevy::{prelude::*, ui::Display};
+use cobalt_test_utils::advance_until;
 use gdtf_battle_input::{InputSystems, InspectTarget, pick_hovered_cell};
 use gdtf_battle_sim::{prelude::CellLevel, visibility::SquadVisibility};
 
 use super::harness::*;
-
-/// Frames the screen gets to play what a fog change logged before it draws the new fog.
-const CATCH_UP_FRAMES: u8 = 64;
 
 // ---------------------------------------------------------------------------------
 
@@ -45,12 +43,7 @@ pub(crate) fn make_cells_visible(app: &mut App, cells: &[CellLevel]) {
         .insert_resource(SquadVisibility::new(visible, explored));
 
     // A ganger coming into view logs an act, and the drawn fog waits for the screen to play it.
-    for _ in 0..CATCH_UP_FRAMES {
-        app.update();
-        if screen_lights(app, cells) {
-            return;
-        }
-    }
+    advance_until(app, |app| screen_lights(app, cells));
 }
 
 pub(crate) fn screen_lights(app: &App, cells: &[CellLevel]) -> bool {

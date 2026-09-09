@@ -7,6 +7,7 @@ use bevy::{
     time::TimeUpdateStrategy,
     transform::components::Transform,
 };
+use cobalt_test_utils::advance_until_mut;
 use gdtf_battle_presenter::{DrawnPosition, GangerSprites, Layer, cell_to_world_layered};
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Direction, Level, Position},
@@ -42,21 +43,13 @@ fn translation_of_sim(app: &mut App, sim: Entity) -> Option<Vec3> {
 }
 
 fn settle_sprite_mapped(app: &mut App, sim: Entity) {
-    for _ in 0..MAX_UPDATES {
-        if translation_of_sim(app, sim).is_some() {
-            return;
-        }
-        app.update();
-    }
+    advance_until_mut(app, |app| translation_of_sim(app, sim).is_some());
 }
 
 fn settle_visibility(app: &mut App, sim: Entity, expected: Visibility) {
-    for _ in 0..MAX_UPDATES {
-        if visibility_of_sim(app, Some(sim)) == Some(expected) {
-            return;
-        }
-        app.update();
-    }
+    advance_until_mut(app, |app| {
+        visibility_of_sim(app, Some(sim)) == Some(expected)
+    });
 }
 
 #[test]
@@ -71,10 +64,7 @@ fn ganger_visibility_flips_hidden_when_position_leaves_active_storey() {
         .slab_at(l0)
         .slab_at(l1)
         .build();
-    assert!(
-        drive_setup(&mut app, situation),
-        "setup_battle must complete"
-    );
+    drive_setup(&mut app, situation);
 
     let sim = sim_entity_at(&mut app, l0);
     assert!(sim.is_some(), "the ganger sim entity must exist");
@@ -122,10 +112,7 @@ fn moved_sprite_is_intermediate_mid_tween_not_snapped() {
     let situation = SituationBuilder::new()
         .with_ganger(ganger_at(start, 0, Direction::East))
         .build();
-    assert!(
-        drive_setup(&mut app, situation),
-        "setup_battle must complete"
-    );
+    drive_setup(&mut app, situation);
 
     let sim = sim_entity_at(&mut app, start);
     assert!(sim.is_some(), "the ganger sim entity must exist");

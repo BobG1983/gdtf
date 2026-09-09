@@ -122,9 +122,6 @@ fn scatter_is_genuinely_three_dimensional() {
         if shot.z.abs() > 1.0e-3 {
             saw_vertical = true;
         }
-        if saw_lateral && saw_vertical {
-            break;
-        }
     }
     assert!(
         saw_lateral && saw_vertical,

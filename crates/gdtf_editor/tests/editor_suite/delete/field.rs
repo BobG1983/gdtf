@@ -28,7 +28,7 @@ use crate::{
     content_shared::{advance::advance_to_published, app::editor_app_with_asset_root},
     delete::{
         fixture::weapon_name,
-        harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
+        harness::{advance_to_outcome, is_published},
     },
 };
 
@@ -154,9 +154,9 @@ fn deleting_a_field_rewrites_the_situation_the_terrain_def_and_the_weapon_spec()
     let outcome = advance_to_outcome(&mut app);
     assert_eq!(
         outcome,
-        Some(DeleteOutcome::Removed),
-        "all three referrers are rewritten, so the delete settles rather than running out of \
-         {OUTCOME_UPDATES} updates; published at the end: {}",
+        DeleteOutcome::Removed,
+        "all three referrers are rewritten, so the delete settles as Removed; published at the \
+         end: {}",
         is_published(&app),
     );
 

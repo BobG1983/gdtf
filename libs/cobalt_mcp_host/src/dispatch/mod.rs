@@ -33,8 +33,8 @@ pub use capture_drain::drive_rider_captures;
 pub use capture_hold::{CaptureHolds, CaptureTicket, RiderShot, ShotRequest, poll_capture_holds};
 pub use claim::{bad_arguments, claim_calls};
 pub use deferred::{
-    DEFERRED_BUDGET, DeferredBudget, DeferredDelivery, DeferredReplies, DeliveredCount,
-    sweep_deferred,
+    DEFERRED_BUDGET, DeferredBudget, DeferredBudgetOverride, DeferredDelivery, DeferredReplies,
+    DeliveredCount, sweep_deferred,
 };
 pub use inbox::{AdmittedCall, CommandInbox};
 pub use register::{register_command, register_command_set, register_riders};

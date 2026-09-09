@@ -7,12 +7,15 @@ use bevy::{
     ecs::error::warn,
     prelude::{Text2d, Visibility, With, default},
     render::{RenderPlugin, settings::WgpuSettings},
+    time::TimeUpdateStrategy,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
 use cobalt_test_utils::asset_plugin_at;
 use gdtf_battle_presenter::{CrossLevelBadgeLabel, CrossLevelBadgeTile, TopDownRendererPlugin};
 use gdtf_battle_sim::prelude::BattleInProgress;
+
+use crate::pinned_delta::{PINNED_DELTA, assert_reads_a_pinned_delta};
 
 pub(crate) const MAX_UPDATES: u32 = 16;
 
@@ -49,8 +52,14 @@ pub(crate) fn signals_app() -> App {
     )
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(BattleInProgress);
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
     app.set_error_handler(warn);
     app
+}
+
+#[test]
+fn the_harness_app_reads_a_pinned_delta() {
+    assert_reads_a_pinned_delta(&mut signals_app());
 }
 
 pub(crate) fn settle(app: &mut App) {

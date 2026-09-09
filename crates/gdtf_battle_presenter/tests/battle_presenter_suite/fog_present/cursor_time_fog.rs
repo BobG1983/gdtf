@@ -53,17 +53,11 @@ fn revealed_reactor_is_shown_while_terrain_fog_stays_frozen() {
         .with_ganger(ganger_at(reactor_cell, 1, Direction::East))
         .player_faction(Faction::new(0))
         .build();
-    assert!(drive_setup(&mut app, situation), "setup must complete");
-    assert!(
-        settle_terrain_at(&mut app, reactor_cell),
-        "the reactor's terrain tile must have drawn",
-    );
+    drive_setup(&mut app, situation);
+    settle_terrain_at(&mut app, reactor_cell);
     let reactor = sim_entity_at(&mut app, reactor_cell);
     assert!(reactor.is_some(), "the reactor sim ganger must exist");
-    assert!(
-        settle_actor(&mut app, reactor),
-        "the reactor sprite must map"
-    );
+    settle_actor(&mut app, reactor);
 
     open_gate(&mut app);
     set_fog(&mut app, &[player_cell], &[]);

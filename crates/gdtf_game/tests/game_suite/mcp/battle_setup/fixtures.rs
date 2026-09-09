@@ -98,7 +98,7 @@ pub(crate) fn battle_with_an_enemy_beside_an_idle_ganger()
         );
     };
     stand_at(&mut app, enemy, next_to, next_to)?;
-    let_the_screen_catch_up(&mut app)?;
+    let_the_screen_catch_up(&mut app);
     Ok((app, port, IdlePair { shooter, enemy }))
 }
 

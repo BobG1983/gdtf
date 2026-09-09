@@ -8,12 +8,10 @@ use cobalt_mcp_server::{
 use crate::lifecycle::{
     fake_child::{CallLog, ChildCall, PortGatedSpawner, counted, recorded},
     support::{
-        WatchFreePort, always_spawning_config, fast_config_with_policy, gated_listeners,
-        recipe_with_features, sample_spec,
+        WatchFreePort, always_spawning_no_boot_deadline_config, gated_listeners,
+        no_boot_deadline_config_with_policy, recipe_with_features, sample_spec,
     },
 };
-
-const BOOT_MS: u64 = 2000;
 
 struct Fixture {
     manager: HostManager,
@@ -22,7 +20,7 @@ struct Fixture {
 }
 
 fn manager_over_gated_listeners(count: usize) -> Fixture {
-    manager_configured_over_gated_listeners(count, always_spawning_config(BOOT_MS))
+    manager_configured_over_gated_listeners(count, always_spawning_no_boot_deadline_config())
 }
 
 fn manager_configured_over_gated_listeners(count: usize, config: LifecycleConfig) -> Fixture {
@@ -133,8 +131,7 @@ fn two_launches_record_two_instances_on_two_ports() {
 fn an_always_spawning_host_starts_a_second_child() {
     let mut fixture = manager_configured_over_gated_listeners(
         2,
-        fast_config_with_policy(
-            BOOT_MS,
+        no_boot_deadline_config_with_policy(
             LifecycleConfig::defaults_with_policy(LaunchPolicy::AlwaysSpawn).launch_policy(),
         ),
     );

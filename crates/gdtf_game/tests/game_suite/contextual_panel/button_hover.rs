@@ -9,6 +9,7 @@ use cobalt_mcp_protocol::ports::McpPort;
 use cobalt_screenshot::{
     CapturePipelinePlugin, CaptureQueue, PollCap, SettleFrames, ShotDir, ShotStem,
 };
+use cobalt_test_utils::advance_until_mut;
 use gdtf_game::test_support::{EndTurnButton, McpPlugin};
 use tempfile::TempDir;
 
@@ -18,8 +19,6 @@ const TEST_SETTLE: u32 = 2;
 
 // Wide enough that the cursor can be driven off the button and back while a capture is in flight.
 const TEST_POLL_BUDGET: u32 = 12;
-
-const CAPTURE_FRAME_BUDGET: u32 = 64;
 
 const HOVER_FRAMES: u32 = 4;
 
@@ -145,14 +144,8 @@ fn enqueue_capture(app: &mut App, stem: &str) {
 }
 
 /// Run frames until the pump has a readback in flight.
-fn drive_until_in_flight(app: &mut App) -> bool {
-    for _ in 0..CAPTURE_FRAME_BUDGET {
-        app.update();
-        if a_capture_is_in_flight(app) {
-            return true;
-        }
-    }
-    false
+fn drive_until_in_flight(app: &mut App) {
+    advance_until_mut(app, a_capture_is_in_flight);
 }
 
 /// Park the cursor and run a couple of frames so `ui_focus_system` acts on it.
@@ -205,28 +198,17 @@ fn a_capture_leaves_the_hovered_button_hovered() {
 
     enqueue_capture(&mut app, "hover_survives");
 
-    let mut started = false;
-    let mut idle = false;
-    for _ in 0..CAPTURE_FRAME_BUDGET {
+    drive_until_in_flight(&mut app);
+    assert_resolves_to_a_window_camera(&app, button, "while a capture is in flight");
+    loop {
         app.update();
         if a_capture_is_in_flight(&mut app) {
-            started = true;
             assert_resolves_to_a_window_camera(&app, button, "while a capture is in flight");
         }
         if app.world().resource::<CaptureQueue<()>>().is_idle() {
-            idle = true;
             break;
         }
     }
-    assert!(
-        started,
-        "test setup: the capture must actually start — no entity carried a Readback in \
-         {CAPTURE_FRAME_BUDGET} frames, so this case would say nothing about hover surviving one",
-    );
-    assert!(
-        idle,
-        "test setup: the capture queue must reach idle inside {CAPTURE_FRAME_BUDGET} frames",
-    );
 
     assert_eq!(
         physical_cursor(&mut app),
@@ -255,10 +237,7 @@ fn interaction_is_still_written_while_a_capture_is_in_flight() {
     };
 
     enqueue_capture(&mut app, "hover_is_live");
-    assert!(
-        drive_until_in_flight(&mut app),
-        "test setup: the capture must reach a readback inside {CAPTURE_FRAME_BUDGET} frames",
-    );
+    drive_until_in_flight(&mut app);
 
     settle_cursor_at(&mut app, OFF_BUTTON_PX);
     let off_button = interaction_of(&app, button);

@@ -1,4 +1,5 @@
 use bevy::app::App;
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     acts::{EndTurnRequested, FireRequested},
     armor::{ArmorHardness, ArmorProtection},
@@ -14,12 +15,7 @@ use gdtf_battle_sim::{
 use super::harness::*;
 
 fn run_until_active(app: &mut App, faction: u8) {
-    for _ in 0..96 {
-        app.update();
-        if active_faction_is(app, faction) {
-            return;
-        }
-    }
+    advance_until(app, |app| active_faction_is(app, faction));
 }
 
 const fn cover_at_band(band: HeightBand) -> CoverEntry {

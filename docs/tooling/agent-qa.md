@@ -487,11 +487,15 @@ Notes an agent relies on:
   its child: the child is spawned into its own process group and survives, still
   listening on the fixed port, while the new host process owns no handle to it. A
   stop with no owned child therefore checks who holds the port before answering:
-  a port answering the QA protocol is an ORPHAN, and the reply says
-  `orphan_stopped` with the port and pid once it is stopped, or is a tool error
-  naming the process when it could not be. Only a port nothing answers on gets
-  `not_running`. A `launch` into a held port reports the same orphan and starts
-  nothing, rather than racing it for the socket.
+  a port that accepts a connection is an ORPHAN, whether or not it goes on to
+  answer the QA protocol, and the reply says `orphan_stopped` with the port and
+  pid once it is stopped, or is a tool error naming the process when it could not
+  be. Only a port nothing accepts a connection on gets `not_running`. A host slow
+  to answer the handshake still holds the port, so the check is the connection
+  alone. A `launch` into a held port reports the same orphan and starts nothing,
+  rather than racing it for the socket. The launch's own readiness wait is the
+  other probe: it asks for the handshake, because a child that has bound the port
+  is not yet a child that can be driven.
 
 ## The protocol sketch
 
@@ -557,12 +561,16 @@ shape:
   command-set conformance check asserts every command's budget expires before
   that 180. The MCP host's own link timeout — `LINK_TIMEOUT`, **200 seconds**,
   in `libs/cobalt_mcp_server/src/link.rs` — sits outside both, so a slow command comes
-  back as a reply rather than a broken socket. A listener bound inside a test —
-  `McpPlugin::listening` and `McpEditorPlugin::listening` — runs with
-  `NetTimeouts::NO_IDLE_REAP` instead. Such a client drives the app's frames
-  itself, so it reads a long reply over many frames and sends nothing meanwhile;
-  the 5-second reap would close the connection under it and the next request
-  would come back `ConnectionReset`.
+  back as a reply rather than a broken socket. `McpPlugin::listening` and
+  `McpEditorPlugin::listening` bind a listener inside a test and run with
+  `NetTimeouts::NO_IDLE_REAP`, because such a client drives the app's frames
+  itself: it reads a long reply over many frames and sends nothing meanwhile, so
+  the 5-second reap would close the connection under it and the next request would
+  come back `ConnectionReset`. `McpPlugin::listening_with` and
+  `McpEditorPlugin::listening_with` take the pair their caller names. The game and
+  editor socket fixtures call those and pass both waits as `Duration::MAX`, so a
+  slow frame cannot make the listener answer `Timeout` in place of a reply the host
+  has not yet produced.
 
 Every public type in `cobalt_mcp_protocol` round-trips through compact RON
 identically, proven by the crate's per-module round-trip tests.

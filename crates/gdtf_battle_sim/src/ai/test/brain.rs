@@ -1,10 +1,8 @@
 use super::support::{
-    ENEMY, PLAYER, active_of, brain_app, drain_fires, drain_moves, give_disabled_hand, ground,
-    place_occupant, spawn_combatant, spawn_combatant_handed, tu_of,
+    ENEMY, PLAYER, brain_app, drain_fires, drain_moves, drive_until_player_turn,
+    give_disabled_hand, ground, place_occupant, spawn_combatant, spawn_combatant_handed, tu_of,
 };
 use crate::{armor::BodyPart, ganger::Direction, metric::Cell, weapon::Handedness};
-
-const FRAME_CAP: usize = 80;
 
 #[test]
 fn enemy_that_can_see_fires_then_the_turn_returns_to_the_player() {
@@ -22,25 +20,13 @@ fn enemy_that_can_see_fires_then_the_turn_returns_to_the_player() {
     place_occupant(&mut app, player_at, player);
 
     let mut fires = Vec::new();
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
-        fires.extend(drain_fires(&mut app));
-        if active_of(&app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| fires.extend(drain_fires(app)));
 
     assert!(
         fires.iter().any(|f| f.shooter == enemy
             && f.target_cell == Cell::new(8, 5)
             && *f.target_level == 0),
         "the enemy must emit a FireRequested at the player's (8,5,0) cell: {fires:?}",
-    );
-    assert!(
-        returned,
-        "the enemy turn must terminate and hand control back to the player within the cap",
     );
     assert!(
         tu_of(&app, enemy) < 100,
@@ -59,16 +45,10 @@ fn enemy_that_cannot_see_advances_toward_contact() {
 
     let mut moves = Vec::new();
     let mut fires = Vec::new();
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
-        moves.extend(drain_moves(&mut app));
-        fires.extend(drain_fires(&mut app));
-        if active_of(&app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| {
+        moves.extend(drain_moves(app));
+        fires.extend(drain_fires(app));
+    });
 
     assert!(
         moves.iter().any(|m| m.actor == enemy && m.dest.x > 2),
@@ -77,10 +57,6 @@ fn enemy_that_cannot_see_advances_toward_contact() {
     assert!(
         fires.is_empty(),
         "an enemy that cannot see the player must never fire: {fires:?}",
-    );
-    assert!(
-        returned,
-        "the advance turn must terminate and hand control back to the player within the cap",
     );
     assert!(
         tu_of(&app, enemy) < 20,
@@ -109,13 +85,7 @@ fn enemy_fires_the_opposing_player_and_never_a_friendly_enemy() {
     place_occupant(&mut app, player_at, player);
 
     let mut fires = Vec::new();
-    for _ in 0..FRAME_CAP {
-        app.update();
-        fires.extend(drain_fires(&mut app));
-        if active_of(&app) == PLAYER {
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| fires.extend(drain_fires(app)));
 
     assert!(
         fires.iter().any(|f| f.shooter == enemy
@@ -167,14 +137,10 @@ fn enemy_brain_never_drives_a_player_unit() {
 
     let mut fires = Vec::new();
     let mut moves = Vec::new();
-    for _ in 0..FRAME_CAP {
-        app.update();
-        fires.extend(drain_fires(&mut app));
-        moves.extend(drain_moves(&mut app));
-        if active_of(&app) == PLAYER {
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| {
+        fires.extend(drain_fires(app));
+        moves.extend(drain_moves(app));
+    });
 
     assert!(
         !fires
@@ -218,23 +184,11 @@ fn ai_does_not_engage_two_handed_weapon_below_two_hands() {
     place_occupant(&mut app, player_at, player);
 
     let mut fires = Vec::new();
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
-        fires.extend(drain_fires(&mut app));
-        if active_of(&app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| fires.extend(drain_fires(app)));
 
     assert!(
         fires.is_empty(),
         "the AI must NOT engage a TwoHanded weapon below two hands (shared can_fire gate): {fires:?}",
-    );
-    assert!(
-        returned,
-        "the enemy turn must still terminate within the cap (advance/hold, then end-turn)",
     );
 }
 
@@ -259,13 +213,7 @@ fn ai_engages_two_handed_weapon_with_two_hands() {
     place_occupant(&mut app, player_at, player);
 
     let mut fires = Vec::new();
-    for _ in 0..FRAME_CAP {
-        app.update();
-        fires.extend(drain_fires(&mut app));
-        if active_of(&app) == PLAYER {
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| fires.extend(drain_fires(app)));
 
     assert!(
         fires.iter().any(|f| f.shooter == enemy

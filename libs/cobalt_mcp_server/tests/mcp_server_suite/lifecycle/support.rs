@@ -1,7 +1,7 @@
 use core::time::Duration;
 use std::{
     io::{self, Read, Write},
-    net::{Ipv4Addr, TcpListener, TcpStream},
+    net::TcpStream,
     process::{Command, Stdio},
     sync::mpsc,
     thread,
@@ -17,7 +17,10 @@ use cobalt_mcp_server::{
     BootTimeout, CargoPackage, ChildSpawner, EnvVarName, FeatureList, FeatureName, KillGrace,
     LaunchPolicy, LaunchSpec, LifecycleConfig, ManagedChild, McpChannel, McpPort, OrphanStop,
     OrphanTarget, OrphanWatch, PollInterval, PortHold, ProbeTimeout, ProcessChild, SweepInterval,
+    SystemOrphanWatch,
 };
+
+use crate::ports::{bind_loopback, issue_free_port, port_of};
 
 pub(crate) const STUB_STDERR_LINE: &str = "boot-oops";
 
@@ -67,14 +70,23 @@ impl FakeGameGate {
     }
 }
 
+/// Probe timeout the fixtures use while waiting for their own listener to hold the port.
+pub(crate) const PROBE: ProbeTimeout = ProbeTimeout::new(Duration::from_millis(300));
+
+// No deadline: the fixture's own listener always comes up, load only delays it.
+fn await_holding(port: u16) {
+    let watch = SystemOrphanWatch::new();
+    while !matches!(
+        watch.inspect(McpPort::new(port), PROBE),
+        PortHold::Orphan(_)
+    ) {
+        thread::yield_now();
+    }
+}
+
 pub(crate) fn spawn_gated_fake_game() -> (u16, FakeGameGate) {
-    let Ok(listener) = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)) else {
-        unreachable!("the test can bind a loopback listener");
-    };
-    let Ok(addr) = listener.local_addr() else {
-        unreachable!("the listener has a local address");
-    };
-    let port = addr.port();
+    let listener = bind_loopback();
+    let port = port_of(&listener);
     let (open_tx, open_rx) = mpsc::channel::<()>();
     let gate = FakeGameGate(open_tx);
     thread::spawn(move || {
@@ -88,7 +100,25 @@ pub(crate) fn spawn_gated_fake_game() -> (u16, FakeGameGate) {
             answer_one(&mut stream);
         }
     });
+    await_holding(port);
     (port, gate)
+}
+
+/// A listener that accepts the connection and never answers the handshake.
+pub(crate) fn spawn_silent_listener() -> u16 {
+    let listener = bind_loopback();
+    let port = port_of(&listener);
+    thread::spawn(move || {
+        for stream in listener.incoming() {
+            // Accepted and dropped: the connect lands, the handshake never gets an answer.
+            let Ok(stream) = stream else {
+                return;
+            };
+            drop(stream);
+        }
+    });
+    await_holding(port);
+    port
 }
 
 pub(crate) fn gated_listeners(count: usize) -> Vec<(McpPort, FakeGameGate)> {
@@ -136,25 +166,38 @@ pub(crate) fn answer_one(stream: &mut TcpStream) {
 }
 
 pub(crate) fn free_port() -> u16 {
-    let Ok(listener) = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)) else {
-        unreachable!("the test can bind a loopback listener for a free port");
-    };
-    let Ok(addr) = listener.local_addr() else {
-        unreachable!("the listener has a local address");
-    };
-    addr.port()
+    issue_free_port()
 }
 
 pub(crate) const fn fast_config(boot_ms: u64) -> LifecycleConfig {
     fast_config_with_policy(boot_ms, LaunchPolicy::Reuse)
 }
 
-pub(crate) const fn always_spawning_config(boot_ms: u64) -> LifecycleConfig {
-    fast_config_with_policy(boot_ms, LaunchPolicy::AlwaysSpawn)
+pub(crate) const fn fast_config_with_policy(boot_ms: u64, policy: LaunchPolicy) -> LifecycleConfig {
+    config_booting_within(
+        BootTimeout::new(Duration::from_millis(boot_ms)),
+        SweepInterval::new(Duration::from_secs(60)),
+        policy,
+    )
 }
 
-pub(crate) const fn fast_config_with_policy(boot_ms: u64, policy: LaunchPolicy) -> LifecycleConfig {
-    config_sweeping_every(boot_ms, SweepInterval::new(Duration::from_secs(60)), policy)
+/// A config whose boot wait never runs out, for a case that must reach `Launched`.
+pub(crate) const fn no_boot_deadline_config() -> LifecycleConfig {
+    no_boot_deadline_config_with_policy(LaunchPolicy::Reuse)
+}
+
+/// The same never-expiring boot wait, starting a child on every launch.
+pub(crate) const fn always_spawning_no_boot_deadline_config() -> LifecycleConfig {
+    no_boot_deadline_config_with_policy(LaunchPolicy::AlwaysSpawn)
+}
+
+/// The same never-expiring boot wait under an explicit launch policy.
+pub(crate) const fn no_boot_deadline_config_with_policy(policy: LaunchPolicy) -> LifecycleConfig {
+    config_booting_within(
+        BootTimeout::new(Duration::MAX),
+        SweepInterval::new(Duration::from_secs(60)),
+        policy,
+    )
 }
 
 pub(crate) const fn config_sweeping_every(
@@ -162,8 +205,20 @@ pub(crate) const fn config_sweeping_every(
     sweep_interval: SweepInterval,
     launch_policy: LaunchPolicy,
 ) -> LifecycleConfig {
-    LifecycleConfig::new(
+    config_booting_within(
         BootTimeout::new(Duration::from_millis(boot_ms)),
+        sweep_interval,
+        launch_policy,
+    )
+}
+
+pub(crate) const fn config_booting_within(
+    boot_timeout: BootTimeout,
+    sweep_interval: SweepInterval,
+    launch_policy: LaunchPolicy,
+) -> LifecycleConfig {
+    LifecycleConfig::new(
+        boot_timeout,
         PollInterval::new(Duration::from_millis(50)),
         KillGrace::new(Duration::from_secs(1)),
         ProbeTimeout::new(Duration::from_millis(300)),
@@ -202,6 +257,7 @@ pub(crate) fn sample_spec() -> LaunchSpec {
     recipe_with_features(&["sample_feature"])
 }
 
+/// An orphan watch reporting every port free, for a case whose own fixture holds the port.
 pub(crate) struct WatchFreePort;
 
 impl OrphanWatch for WatchFreePort {

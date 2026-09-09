@@ -1,10 +1,11 @@
+use core::time::Duration;
 use std::{
     cell::Cell,
     sync::mpsc::{Receiver, Sender},
 };
 
 use bevy::{app::App, ecs::entity::Entity};
-use cobalt_mcp_host::IncomingRequest;
+use cobalt_mcp_host::{IncomingRequest, dispatch::DeferredBudget};
 use cobalt_mcp_protocol::message::McpResponse;
 use cobalt_test_utils::advance_until;
 use gdtf_battle_presenter::playback::{ActHold, PlaybackCursor};
@@ -12,6 +13,7 @@ use gdtf_battle_sim::{
     act_log::{ActDeed, ActLog, ActProvenance, ActWitnesses, RecordedAct},
     ganger::Faction,
 };
+use gdtf_game::test_support::shorten_wait_budget;
 
 use crate::mcp::battle_fixture::{drive_into_battle_running, menu_app_with_mcp};
 
@@ -21,9 +23,16 @@ const UNENDING_HOLD_SECONDS: f32 = 3600.0;
 /// Frames a parked call must survive before the case makes its condition true.
 pub(crate) const PARKED_FRAMES: u32 = 8;
 
+/// The menu fixture with `wait`'s own budget lifted, so only its condition releases the reply.
+pub(crate) fn menu_app_with_unending_wait() -> (App, Sender<IncomingRequest>) {
+    let (mut app, tx) = menu_app_with_mcp();
+    shorten_wait_budget(&mut app, DeferredBudget::new(Duration::MAX));
+    (app, tx)
+}
+
 /// A live battle whose playback cursor is holding, so the screen cannot be caught up.
 pub(crate) fn holding_battle_with_mcp() -> (App, Sender<IncomingRequest>) {
-    let (mut app, tx) = menu_app_with_mcp();
+    let (mut app, tx) = menu_app_with_unending_wait();
     drive_into_battle_running(&mut app);
     assert!(
         app.world().contains_resource::<ActLog>(),

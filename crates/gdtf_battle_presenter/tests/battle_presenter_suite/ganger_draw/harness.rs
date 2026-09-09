@@ -9,10 +9,11 @@ use bevy::{
     platform::collections::HashSet,
     prelude::{Entity, default},
     render::{RenderPlugin, settings::WgpuSettings},
+    time::TimeUpdateStrategy,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use cobalt_test_utils::{advance_until_resource_exists, asset_plugin_at};
+use cobalt_test_utils::{advance_until_mut, advance_until_resource_exists, asset_plugin_at};
 use gdtf_battle_presenter::{CharacterRoles, TopDownAtlases, TopDownRendererPlugin};
 use gdtf_battle_sim::{
     battle::{BattleReady, SetupBattleRequested, setup_battle_on_request},
@@ -28,8 +29,7 @@ use gdtf_battle_sim::{
 };
 
 use super::probes::visibility_of_sim;
-
-pub(crate) const MAX_UPDATES: u32 = 128;
+use crate::pinned_delta::{PINNED_DELTA, assert_reads_a_pinned_delta};
 
 pub(crate) const SEED: u64 = 0x0D15_EA5E;
 
@@ -77,8 +77,14 @@ pub(crate) fn headless_renderer_app() -> App {
     app.insert_resource(test_armor_registry());
     app.insert_resource(test_terrain_registry());
     app.insert_resource(test_gang_registry());
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
     app.set_error_handler(warn);
     app
+}
+
+#[test]
+fn the_harness_app_reads_a_pinned_delta() {
+    assert_reads_a_pinned_delta(&mut headless_renderer_app());
 }
 
 pub(crate) fn band_only_fog(app: &mut App) {
@@ -99,14 +105,8 @@ pub(crate) fn set_fog(app: &mut App, visible: &[CellLevel], explored: &[CellLeve
         .insert_resource(SquadVisibility::new(visible, explored_set));
 }
 
-pub(crate) fn settle_actor(app: &mut App, sim: Option<Entity>) -> bool {
-    for _ in 0..MAX_UPDATES {
-        if visibility_of_sim(app, sim).is_some() {
-            return true;
-        }
-        app.update();
-    }
-    visibility_of_sim(app, sim).is_some()
+pub(crate) fn settle_actor(app: &mut App, sim: Option<Entity>) {
+    advance_until_mut(app, |app| visibility_of_sim(app, sim).is_some());
 }
 
 pub(crate) fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
@@ -120,16 +120,10 @@ pub(crate) fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> Ganger
         .build()
 }
 
-pub(crate) fn drive_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) -> bool {
+pub(crate) fn drive_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) {
     app.world_mut()
         .resource_mut::<Messages<SetupBattleRequested>>()
         .write(setup_request(built, BattleSeed::new(SEED)));
-    for _ in 0..MAX_UPDATES {
-        app.update();
-        if app.world().get_resource::<ShotRng>().is_some() {
-            app.update();
-            return true;
-        }
-    }
-    false
+    advance_until_resource_exists::<ShotRng>(app);
+    app.update();
 }

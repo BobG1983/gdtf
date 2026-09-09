@@ -16,8 +16,8 @@ use crate::{
 /// Colour the test camera clears the capture image to.
 const LIT: Color = Color::srgb(0.9, 0.2, 0.4);
 
-/// The production per-capture readback poll cap; its expiry retries, never fails the test.
-const GPU_POLL_BUDGET: u32 = 240;
+/// A per-capture readback poll cap no run reaches, so the readback waits out any load.
+const GPU_POLL_BUDGET: u32 = u32::MAX;
 
 const WINDOW_PX: UVec2 = UVec2::new(320, 180);
 
@@ -82,13 +82,10 @@ fn a_capture_of_a_rendered_frame_writes_a_png_that_is_not_black() {
     ));
     enqueue_capture(&mut app, "rendered_frame");
 
-    // A TimedOut readback is the pipeline's slow-machine answer; retry until one lands.
     let png = loop {
         app.update();
-        match next_outcome(&mut app) {
-            Some(CaptureOutcome::Landed(path)) => break (*path).clone(),
-            Some(CaptureOutcome::TimedOut(_)) => enqueue_capture(&mut app, "rendered_frame"),
-            None => {}
+        if let Some(CaptureOutcome::Landed(path)) = next_outcome(&mut app) {
+            break (*path).clone();
         }
     };
 

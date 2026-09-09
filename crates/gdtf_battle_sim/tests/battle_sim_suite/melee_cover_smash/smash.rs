@@ -129,7 +129,7 @@ fn a_smashed_piece_reports_the_kind_the_ledger_held() {
     };
 
     for at in [wall, cover] {
-        for _ in 0..8 {
+        loop {
             if cover_destroyed_flag(&app, at) {
                 break;
             }

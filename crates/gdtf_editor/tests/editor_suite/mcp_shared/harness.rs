@@ -6,14 +6,20 @@ use cobalt_mcp_protocol::{
 use cobalt_test_utils::{UiTestAppBuilder, advance_until};
 use gdtf_editor::{EditorState, MapEditorPlugin, McpEditorPlugin};
 
-use crate::mcp_shared::{hello::assert_hello_ok, socket::Client, support::TestError};
+use crate::mcp_shared::{
+    hello::assert_hello_ok,
+    socket::Client,
+    support::{NO_DEFERRAL_DEADLINE, NO_SOCKET_DEADLINE, TestError},
+};
 
 /// An editor app on a real listener, built with no `EguiPlugin`. Without one the shell never
 /// draws, so the form syncs it owns never run and each draft stays at its own default.
 pub(crate) fn editor_app_listening() -> Result<(App, McpPort), TestError> {
-    let (plugin, port) = McpEditorPlugin::listening(McpPort::new(0))?;
+    let (plugin, port) = McpEditorPlugin::listening_with(McpPort::new(0), NO_SOCKET_DEADLINE)?;
     let mut app = UiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(MapEditorPlugin);
+    // Before the plugin builds: its `build` is what registers every command's budget.
+    app.insert_resource(NO_DEFERRAL_DEADLINE);
     app.add_plugins(plugin);
     Ok((app, port))
 }

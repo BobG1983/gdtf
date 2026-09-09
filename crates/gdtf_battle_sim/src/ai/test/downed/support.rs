@@ -5,16 +5,13 @@ pub(super) use crate::{
     tuning::CombatTuning,
 };
 
-pub(super) const FRAME_CAP: usize = 80;
-
-// The frame each request was drained on, plus the steps and the turn handover.
+// The frame each request was drained on, plus the steps the turn asked for.
 pub(super) struct DownedDrive {
     pub(super) executes:   Vec<(usize, ExecuteDownedRequested)>,
     pub(super) stabilizes: Vec<(usize, StabilizeDownedRequested)>,
     pub(super) aims:       Vec<(usize, SetAimingRequested)>,
     pub(super) fires:      Vec<(usize, FireRequested)>,
     pub(super) moves:      Vec<MoveRequested>,
-    pub(super) returned:   bool,
 }
 
 impl DownedDrive {
@@ -117,10 +114,9 @@ pub(super) fn drive_until_player(app: &mut App) -> DownedDrive {
         aims:       Vec::new(),
         fires:      Vec::new(),
         moves:      Vec::new(),
-        returned:   false,
     };
-    for frame in 0..FRAME_CAP {
-        app.update();
+    let mut frame = 0_usize;
+    drive_until_player_turn(app, |app| {
         drive.executes.extend(
             drain_executes(app)
                 .into_iter()
@@ -138,10 +134,7 @@ pub(super) fn drive_until_player(app: &mut App) -> DownedDrive {
             .fires
             .extend(drain_fires(app).into_iter().map(|request| (frame, request)));
         drive.moves.extend(drain_moves(app));
-        if active_of(app) == PLAYER {
-            drive.returned = true;
-            break;
-        }
-    }
+        frame += 1;
+    });
     drive
 }

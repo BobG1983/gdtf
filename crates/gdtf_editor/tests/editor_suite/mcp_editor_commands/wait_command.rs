@@ -33,6 +33,7 @@ const NEVER_REARMED: &str = "(condition: RegistryRearmed(family: Sprite))";
 #[test]
 fn a_wait_for_the_content_checks_is_held_through_the_load_pass() -> TestResult {
     let (mut app, port) = editor_app_listening()?;
+    shorten_editor_wait_budget(&mut app, DeferredBudget::new(Duration::MAX));
     let mut client = Client::connect(port)?;
     client.send(&McpRequest::Hello(ProtocolVersion::CURRENT))?;
     client.send(&run_editor(WAIT, CHECKS_COMPLETE))?;
@@ -84,6 +85,7 @@ fn a_wait_for_the_content_checks_is_held_through_the_load_pass() -> TestResult {
 #[test]
 fn a_wait_on_a_registry_is_released_by_the_frame_that_loads_it() -> TestResult {
     let (mut app, port) = editor_app_listening()?;
+    shorten_editor_wait_budget(&mut app, DeferredBudget::new(Duration::MAX));
     let mut client = Client::connect(port)?;
     client.send(&McpRequest::Hello(ProtocolVersion::CURRENT))?;
     client.send(&run_editor(WAIT, TERRAIN_REARMED))?;

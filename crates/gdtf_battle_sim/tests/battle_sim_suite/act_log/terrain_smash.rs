@@ -129,7 +129,7 @@ fn a_slab_shot_to_pieces_records_one_smash_deed_naming_the_slab() {
     let shooter = spawn_shooter(&mut app);
     seed_slab(&mut app);
 
-    for _ in 0..64 {
+    loop {
         if slab_state(&app) == Some(SlabState::Absent) {
             break;
         }
@@ -186,7 +186,7 @@ fn a_cover_smashed_in_melee_records_one_smash_deed_naming_the_cover() {
         unreachable!("setup spawns the attacker at its authored cell");
     };
 
-    for _ in 0..16 {
+    loop {
         if cover_destroyed(&app, cover_cell()) {
             break;
         }

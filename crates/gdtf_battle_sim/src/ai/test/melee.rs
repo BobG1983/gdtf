@@ -1,8 +1,8 @@
 use bevy::prelude::{App, Entity, Messages, World};
 
 use super::support::{
-    ENEMY, PLAYER, active_of, brain_app, drain_fires, drain_moves, ground, place_occupant,
-    spawn_combatant, tu_of,
+    ENEMY, PLAYER, brain_app, drain_fires, drain_moves, drive_until_player_turn, ground,
+    place_occupant, spawn_combatant, tu_of,
 };
 use crate::{
     acts::{MeleeRequested, MeleeStruck},
@@ -22,7 +22,6 @@ use crate::{
     },
 };
 
-const FRAME_CAP: usize = 80;
 const STRIKE_TU: u8 = 5;
 
 fn a_swing() -> FightMode {
@@ -118,20 +117,14 @@ fn drain_struck(app: &mut App) -> Vec<MeleeStruck> {
         .collect()
 }
 
-fn drive_until_player(app: &mut App) -> (Vec<MeleeRequested>, Vec<MeleeStruck>, bool) {
+fn drive_until_player(app: &mut App) -> (Vec<MeleeRequested>, Vec<MeleeStruck>) {
     let mut melees = Vec::new();
     let mut struck = Vec::new();
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
+    drive_until_player_turn(app, |app| {
         melees.extend(drain_melees(app));
         struck.extend(drain_struck(app));
-        if active_of(app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
-    (melees, struck, returned)
+    });
+    (melees, struck)
 }
 
 #[test]
@@ -183,14 +176,10 @@ fn gun_with_a_valid_shot_fires_instead_of_swinging() {
 
     let mut fires = Vec::new();
     let mut melees = Vec::new();
-    for _ in 0..FRAME_CAP {
-        app.update();
-        fires.extend(drain_fires(&mut app));
-        melees.extend(drain_melees(&mut app));
-        if active_of(&app) == PLAYER {
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| {
+        fires.extend(drain_fires(app));
+        melees.extend(drain_melees(app));
+    });
 
     assert!(
         fires.iter().any(|fire| fire.shooter == enemy
@@ -218,14 +207,10 @@ fn unaffordable_melee_does_not_emit_and_the_turn_ends() {
     let player = spawn_combatant(app.world_mut(), player_at, PLAYER, Direction::West, 100, 2);
     place_occupant(&mut app, player_at, player);
 
-    let (melees, _, returned) = drive_until_player(&mut app);
+    let (melees, _) = drive_until_player(&mut app);
     assert!(
         melees.is_empty(),
         "a swing the pool cannot cover must not emit MeleeRequested: {melees:?}",
-    );
-    assert!(
-        returned,
-        "an unaffordable melee must still end the turn inside the cap",
     );
 }
 
@@ -239,16 +224,10 @@ fn melee_out_of_reach_still_advances() {
 
     let mut moves = Vec::new();
     let mut melees = Vec::new();
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
-        moves.extend(drain_moves(&mut app));
-        melees.extend(drain_melees(&mut app));
-        if active_of(&app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| {
+        moves.extend(drain_moves(app));
+        melees.extend(drain_melees(app));
+    });
 
     assert!(
         melees.is_empty(),
@@ -260,7 +239,6 @@ fn melee_out_of_reach_still_advances() {
             .any(|step| step.actor == enemy && step.dest.x > 2),
         "out of reach they still advance toward the player: {moves:?}",
     );
-    assert!(returned, "the advance turn must return to the player");
 }
 
 #[test]
@@ -272,7 +250,7 @@ fn los_blocked_adjacency_does_not_swing_and_the_turn_ends() {
     place_occupant(&mut app, player_at, player);
     wall_the_diagonal_corners(&mut app);
 
-    let (melees, struck, returned) = drive_until_player(&mut app);
+    let (melees, struck) = drive_until_player(&mut app);
     assert!(
         melees.is_empty(),
         "a diagonal wall corner must block the swing: {melees:?}",
@@ -280,9 +258,5 @@ fn los_blocked_adjacency_does_not_swing_and_the_turn_ends() {
     assert!(
         struck.is_empty(),
         "dispatch must not resolve a blocked swing: {struck:?}",
-    );
-    assert!(
-        returned,
-        "LOS-blocked adjacency must still end the turn inside the cap",
     );
 }

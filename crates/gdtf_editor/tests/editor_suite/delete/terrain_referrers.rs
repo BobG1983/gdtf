@@ -7,10 +7,7 @@ use gdtf_editor::DeleteOutcome;
 use tempfile::TempDir;
 
 use crate::delete::{
-    harness::{
-        OUTCOME_UPDATES, OfferAnswer, TERRAIN_FAMILY, editor_on, is_published, member_key,
-        run_delete,
-    },
+    harness::{OfferAnswer, TERRAIN_FAMILY, editor_on, is_published, member_key, run_delete},
     records::{
         DELETED_PIECE, REPLACEMENT_PIECE, file_text, root_holds, write_leaves_behind_def,
         write_prefab, write_situation, write_terrain_def, write_theme_def,
@@ -39,9 +36,8 @@ fn delete_with_replacement(app: &mut App) {
     );
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Removed),
-        "the delete must settle as Removed within {OUTCOME_UPDATES} updates; published at the \
-         end: {}",
+        DeleteOutcome::Removed,
+        "the delete must settle as Removed; published at the end: {}",
         is_published(app),
     );
 }

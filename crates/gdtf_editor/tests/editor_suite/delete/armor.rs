@@ -18,7 +18,7 @@ use crate::{
     content_shared::{advance::advance_to_published, app::editor_app_with_asset_root},
     delete::{
         fixture::{FIXTURE_GANG, fixture_gang_member, fixture_gang_path, write_gang_equipped},
-        harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
+        harness::advance_to_outcome,
     },
 };
 
@@ -94,14 +94,9 @@ fn deleting_armor_writes_every_wearer_back_with_none_and_removes_the_record() {
 
     app.insert_resource(request_armor_delete());
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
     assert_eq!(
         outcome,
-        Some(DeleteOutcome::Removed),
+        DeleteOutcome::Removed,
         "the drop rewrites the one wearer, so the re-run finds nothing and the record goes",
     );
 
@@ -162,14 +157,9 @@ fn the_in_use_check_names_the_gang_member_the_report_could_not_have_named_before
 
     app.insert_resource(request_armor_delete());
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
 
     let referring = match outcome {
-        Some(DeleteOutcome::Refused(DeleteRefusal::InUse(ref records))) => records.clone(),
+        DeleteOutcome::Refused(DeleteRefusal::InUse(ref records)) => records.clone(),
         _ => Vec::new(),
     };
     assert!(
@@ -229,17 +219,9 @@ fn a_gang_rewrite_that_cannot_be_written_leaves_the_armor_and_its_file_in_place(
 
     app.insert_resource(request_armor_delete());
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
 
     assert!(
-        matches!(
-            outcome,
-            Some(DeleteOutcome::Refused(DeleteRefusal::InUse(_)))
-        ),
+        matches!(outcome, DeleteOutcome::Refused(DeleteRefusal::InUse(_))),
         "the wearing gang is a referring record the rewrite could not resolve, so the delete \
          is refused; outcome: {outcome:?}",
     );

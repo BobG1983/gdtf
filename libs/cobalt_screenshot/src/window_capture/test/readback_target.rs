@@ -1,8 +1,6 @@
 use bevy::{prelude::*, render::gpu_readback::Readback, window::PrimaryWindow};
 
-use super::harness::{
-    FRAME_BUDGET, a_capture_is_in_flight, drive_until, enqueue_capture, headless_capture_app,
-};
+use super::harness::{a_capture_is_in_flight, drive_until, enqueue_capture, headless_capture_app};
 use crate::window_capture::CaptureImage;
 
 fn readbacks(app: &mut App) -> Vec<Readback> {
@@ -28,10 +26,7 @@ fn a_capture_reads_the_window_sized_image_the_plugin_owns() {
     let mut app = headless_capture_app(tmp.path());
     enqueue_capture(&mut app, "readback_target");
 
-    assert!(
-        drive_until(&mut app, a_capture_is_in_flight),
-        "test setup: the pump must put a capture in flight inside {FRAME_BUDGET} frames",
-    );
+    drive_until(&mut app, a_capture_is_in_flight);
 
     let found = readbacks(&mut app);
     assert_eq!(

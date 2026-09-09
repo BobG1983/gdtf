@@ -1,6 +1,7 @@
 //! the PREFAB placement edge joins the editor's authoring-time validation,
 //! and a prefab-registry change re-arms it.
 use bevy::prelude::DetectChangesMut as _;
+use cobalt_test_utils::advance_until;
 use gdtf_assets::{
     ContentFileStem, ContentIntegrityReport, ContentSourcePaths, ContentValidationDone,
     ReferenceKeyScheme,
@@ -17,9 +18,6 @@ const DANGLING_PLACEMENT: &str = "00000000-0000-0000-0000-063000000f01";
 
 // The stem both fixture prefabs share, one under 3x3 and one under 4x4.
 const SHARED_STEM: &str = "fixture_prefab";
-
-// Few enough that the re-arm fails rather than hangs: `advance_until` has no cap.
-const REARM_UPDATES: usize = 8;
 
 #[test]
 fn a_prefab_placing_an_unknown_terrain_def_is_reported_in_the_editor() {
@@ -55,24 +53,12 @@ fn a_prefab_registry_change_rearms_editor_validation() {
         .resource_mut::<PrefabRegistry>()
         .set_changed();
 
-    let mut cleared = false;
-    for _ in 0..REARM_UPDATES {
-        app.update();
-        if app
-            .world()
+    // A changed PrefabRegistry must re-arm validation, which clears ContentValidationDone.
+    advance_until(&mut app, |app| {
+        app.world()
             .get_resource::<ContentValidationDone>()
             .is_none()
-        {
-            cleared = true;
-            break;
-        }
-    }
-
-    assert!(
-        cleared,
-        "a changed PrefabRegistry must re-arm validation — ContentValidationDone was present \
-         after every one of {REARM_UPDATES} updates",
-    );
+    });
 }
 
 #[test]

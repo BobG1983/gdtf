@@ -125,6 +125,8 @@ fn fog_hidden_enemy_is_not_inspected_but_a_seen_one_is() {
     let cell = CellLevel::new(Cell::new(4, 4), Level::new(0));
     place_ganger(&mut app, cell, enemy_faction);
 
+    // Light the spawned cell first, so the screen has caught up to a drawn state, then hide it.
+    make_cells_visible(&mut app, &[cell]);
     make_cells_visible(&mut app, &[]);
     hover(&mut app, Some(cell));
     let root = single_global::<InspectPanelRoot>(&mut app);

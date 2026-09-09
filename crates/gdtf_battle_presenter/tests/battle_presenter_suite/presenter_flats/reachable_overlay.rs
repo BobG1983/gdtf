@@ -8,10 +8,11 @@ use bevy::{
     platform::collections::HashSet,
     prelude::{Transform, Visibility, default},
     render::{RenderPlugin, settings::WgpuSettings},
+    time::TimeUpdateStrategy,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use cobalt_test_utils::asset_plugin_at;
+use cobalt_test_utils::{advance_until_mut, asset_plugin_at};
 use gdtf_battle_presenter::{
     ActiveLevel, Layer, ReachableCellSprite, ReachableCells, ReachableOverlayEnabled,
     TopDownRendererPlugin, cell_to_world_layered,
@@ -21,7 +22,7 @@ use gdtf_battle_sim::{
     visibility::SquadVisibility,
 };
 
-const MAX_UPDATES: u32 = 16;
+use crate::pinned_delta::{PINNED_DELTA, assert_reads_a_pinned_delta};
 
 fn workspace_assets_root() -> PathBuf {
     let Some(root) = cobalt_ron_assets::workspace_assets_root() else {
@@ -62,8 +63,14 @@ fn overlay_app() -> App {
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(BattleInProgress);
     app.insert_resource(ReachableOverlayEnabled::new(true));
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
     app.set_error_handler(warn);
     app
+}
+
+#[test]
+fn the_harness_app_reads_a_pinned_delta() {
+    assert_reads_a_pinned_delta(&mut overlay_app());
 }
 
 fn set_reachable(app: &mut App, cells: Vec<(CellLevel, Tu)>, active: Level) {
@@ -73,16 +80,11 @@ fn set_reachable(app: &mut App, cells: Vec<(CellLevel, Tu)>, active: Level) {
     app.world_mut().insert_resource(ActiveLevel::new(active));
 }
 
-fn settle_sprites(app: &mut App) -> bool {
-    for _ in 0..MAX_UPDATES {
+fn settle_sprites(app: &mut App) {
+    advance_until_mut(app, |app| {
         let mut q = app.world_mut().query::<&ReachableCellSprite>();
-        if q.iter(app.world()).next().is_some() {
-            return true;
-        }
-        app.update();
-    }
-    let mut q = app.world_mut().query::<&ReachableCellSprite>();
-    q.iter(app.world()).next().is_some()
+        q.iter(app.world()).next().is_some()
+    });
 }
 
 fn sprite_visible_at(app: &mut App, cell: CellLevel) -> bool {
@@ -133,10 +135,7 @@ fn reachable_overlay_renders_on_upper_storey_after_level_switch() {
         ],
         l1,
     );
-    assert!(
-        settle_sprites(&mut app),
-        "the reachable-range sprites must have drawn on the active L1 storey",
-    );
+    settle_sprites(&mut app);
 
     assert!(
         sprite_visible_at(&mut app, on1_a),

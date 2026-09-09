@@ -7,16 +7,19 @@ use cobalt_mcp_server::{
 use crate::lifecycle::{
     fake_child::{CallLog, PortGatedSpawner, tail_on},
     support::{
-        GatedStubSpawner, STUB_STDERR_LINE, WatchFreePort, always_spawning_config, fast_config,
-        gated_listeners, sample_spec, spawn_gated_fake_game,
+        GatedStubSpawner, STUB_STDERR_LINE, WatchFreePort, always_spawning_no_boot_deadline_config,
+        gated_listeners, no_boot_deadline_config, sample_spec, spawn_gated_fake_game,
     },
 };
 
 #[test]
 fn a_running_child_reports_what_it_printed() {
     let (port, gate) = spawn_gated_fake_game();
-    let mut manager =
-        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
+    let mut manager = HostManager::with_orphan_watch(
+        Box::new(GatedStubSpawner::new(gate)),
+        no_boot_deadline_config(),
+        Box::new(WatchFreePort),
+    );
 
     assert_eq!(
         manager.child_output(TailLines::default()),
@@ -53,8 +56,11 @@ fn a_running_child_reports_what_it_printed() {
 #[test]
 fn the_line_cap_reaches_the_childs_ring() {
     let (port, gate) = spawn_gated_fake_game();
-    let mut manager =
-        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
+    let mut manager = HostManager::with_orphan_watch(
+        Box::new(GatedStubSpawner::new(gate)),
+        no_boot_deadline_config(),
+        Box::new(WatchFreePort),
+    );
     let outcome = manager.launch(McpPort::new(port), &sample_spec());
     assert!(
         matches!(outcome, LaunchOutcome::Launched { .. }),
@@ -83,7 +89,7 @@ fn with_two_children_recorded_the_tail_is_the_last_one_launched() {
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(PortGatedSpawner::new(calls, gates)),
-        always_spawning_config(2000),
+        always_spawning_no_boot_deadline_config(),
         Box::new(WatchFreePort),
     );
     let (Some(first), Some(second)) = (ports.first().copied(), ports.get(1).copied()) else {

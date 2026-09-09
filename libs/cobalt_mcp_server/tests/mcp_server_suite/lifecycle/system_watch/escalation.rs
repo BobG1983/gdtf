@@ -1,18 +1,19 @@
 use std::{
-    net::{Ipv4Addr, TcpListener},
     os::unix::process::{CommandExt, ExitStatusExt},
     process::{Command, ExitStatus, Stdio},
     sync::{Arc, Mutex},
     thread,
-    time::Instant,
 };
 
-use cobalt_mcp_server::{ChildPid, McpPort, OrphanStop, OrphanWatch, PortHold, SystemOrphanWatch};
+use cobalt_mcp_server::{
+    ChildPid, McpPort, OrphanEvent, OrphanStop, OrphanWatch, PortHold, SystemOrphanWatch,
+};
 
 use super::{
     super::support::answer_one,
-    placeholder::{PROBE, STOP_GRACE, spawn, target_on},
+    placeholder::{PROBE, spawn, target_on},
 };
+use crate::ports::{bind_loopback, port_of};
 
 const SIGKILL: i32 = 9;
 
@@ -20,14 +21,24 @@ const SIGKILL: i32 = 9;
 fn a_process_that_ignores_the_graceful_signal_is_escalated_to_a_kill() {
     let held = spawn_a_listener_held_until_its_process_dies();
 
-    let started = Instant::now();
-    let outcome = SystemOrphanWatch::new().stop(target_on(held.port, *held.pid));
-    let waited = started.elapsed();
+    let escalation = SystemOrphanWatch::new().stop_recorded(target_on(held.port, *held.pid));
 
-    assert_eq!(outcome, OrphanStop::Stopped);
+    assert_eq!(escalation.outcome(), OrphanStop::Stopped);
+    let events = escalation.events();
+    let Some(kill_at) = events
+        .iter()
+        .position(|event| *event == OrphanEvent::KillSent)
+    else {
+        unreachable!("the process that ignored the graceful signal was killed, steps: {events:?}");
+    };
+    assert_eq!(
+        events.first(),
+        Some(&OrphanEvent::TerminateSent),
+        "the graceful signal goes out first, steps: {events:?}"
+    );
     assert!(
-        waited >= *STOP_GRACE,
-        "the graceful signal was given its full grace before the escalation, waited {waited:?}"
+        events[..kill_at].contains(&OrphanEvent::ProbeHeld),
+        "the kill follows a poll that found the port still held, steps: {events:?}"
     );
     let status = recorded_exit(&held.status);
     assert_eq!(
@@ -53,12 +64,8 @@ fn spawn_a_listener_held_until_its_process_dies() -> HeldPort {
         .process_group(0);
     let mut child = spawn(command);
     let pid = ChildPid::new(child.id());
-    let Ok(listener) = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)) else {
-        unreachable!("the test can bind a loopback listener");
-    };
-    let Ok(addr) = listener.local_addr() else {
-        unreachable!("the listener has a local address");
-    };
+    let listener = bind_loopback();
+    let port = port_of(&listener);
     let status: Arc<Mutex<Option<ExitStatus>>> = Arc::new(Mutex::new(None));
     let sink = Arc::clone(&status);
     thread::spawn(move || {
@@ -78,7 +85,7 @@ fn spawn_a_listener_held_until_its_process_dies() -> HeldPort {
         }
     });
     let held = HeldPort {
-        port: McpPort::new(addr.port()),
+        port: McpPort::new(port),
         pid,
         status,
     };

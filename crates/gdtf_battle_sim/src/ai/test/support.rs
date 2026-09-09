@@ -236,6 +236,17 @@ pub(super) fn drain_opens(app: &mut App) -> Vec<OpenDoorRequested> {
         .collect()
 }
 
+// Run frames until the turn is back with the player, draining what each frame wrote.
+pub(super) fn drive_until_player_turn(app: &mut App, mut drain: impl FnMut(&mut App)) {
+    loop {
+        app.update();
+        drain(app);
+        if active_of(app) == PLAYER {
+            return;
+        }
+    }
+}
+
 pub(super) fn aiming_of(app: &App, entity: Entity) -> bool {
     app.world()
         .get::<Aiming>(entity)

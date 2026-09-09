@@ -22,7 +22,7 @@ fn enemy_hard_cuts_player_always_shown() {
         .with_ganger(ganger_at(enemy_cell, 1, Direction::West))
         .player_faction(Faction::new(0))
         .build();
-    assert!(drive_setup(&mut app, situation), "setup must complete");
+    drive_setup(&mut app, situation);
 
     let player_sim = sim_entity_at(&mut app, player_cell);
     let enemy_sim = sim_entity_at(&mut app, enemy_cell);
@@ -30,10 +30,8 @@ fn enemy_hard_cuts_player_always_shown() {
         player_sim.is_some() && enemy_sim.is_some(),
         "both gangers must have spawned",
     );
-    assert!(
-        settle_actor(&mut app, player_sim) && settle_actor(&mut app, enemy_sim),
-        "both ganger sprites must have materialized",
-    );
+    settle_actor(&mut app, player_sim);
+    settle_actor(&mut app, enemy_sim);
 
     set_fog(&mut app, &[player_cell], &[]);
     app.update();
@@ -82,11 +80,8 @@ fn fog_reapplies_after_level_cycle() {
         ))
         .player_faction(Faction::new(0))
         .build();
-    assert!(drive_setup(&mut app, situation), "setup must complete");
-    assert!(
-        settle_terrain_at(&mut app, CellLevel::new(Cell::new(5, 5), l0)),
-        "the level-0 terrain field must have drawn",
-    );
+    drive_setup(&mut app, situation);
+    settle_terrain_at(&mut app, CellLevel::new(Cell::new(5, 5), l0));
 
     {
         let mut surface = app.world_mut().resource_mut::<SurfaceGrid>();
@@ -97,10 +92,7 @@ fn fog_reapplies_after_level_cycle() {
     set_fog(&mut app, &[visible_l1], &[]);
 
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
-    assert!(
-        settle_terrain_at(&mut app, unseen_l1),
-        "after the level change, the level-1 terrain field must have respawned",
-    );
+    settle_terrain_at(&mut app, unseen_l1);
     app.update();
 
     let visible_terrain = terrain_at(&mut app, visible_l1);

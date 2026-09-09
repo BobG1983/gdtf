@@ -11,9 +11,7 @@ use gdtf_content_families::{PrefabsFamily, prefabs::member_key as prefab_member_
 use gdtf_editor::DeleteOutcome;
 
 use crate::delete::{
-    harness::{
-        OUTCOME_UPDATES, OfferAnswer, THEME_FAMILY, editor_on, is_published, member_key, run_delete,
-    },
+    harness::{OfferAnswer, THEME_FAMILY, editor_on, is_published, member_key, run_delete},
     records::{
         DELETED_THEME, REPLACEMENT_PIECE, REPLACEMENT_THEME, file_text, write_prefab,
         write_situation, write_terrain_def, write_theme_def,
@@ -54,9 +52,8 @@ fn delete_theme(app: &mut App) {
     );
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Removed),
-        "the theme delete must settle as Removed within {OUTCOME_UPDATES} updates; published at \
-         the end: {}",
+        DeleteOutcome::Removed,
+        "the theme delete must settle as Removed; published at the end: {}",
         is_published(app),
     );
 }

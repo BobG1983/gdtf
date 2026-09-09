@@ -22,14 +22,11 @@ fn a_sim_killed_player_ganger_stays_shown_until_the_death_plays() {
         .player_faction(Faction::new(0))
         .slab_at(at)
         .build();
-    assert!(drive_setup(&mut app, situation), "setup must complete");
+    drive_setup(&mut app, situation);
 
     let sim = sim_entity_at(&mut app, at);
     assert!(sim.is_some(), "the ganger must have spawned");
-    assert!(
-        settle_actor(&mut app, sim),
-        "the ganger sprite must have materialized",
-    );
+    settle_actor(&mut app, sim);
 
     set_fog(&mut app, &[], &[]);
     app.update();

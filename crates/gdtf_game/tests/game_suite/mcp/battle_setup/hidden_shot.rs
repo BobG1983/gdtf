@@ -45,7 +45,7 @@ pub(crate) fn battle_with_a_hidden_enemy_shooting_across_the_lit_area()
         );
     };
     stand_at(&mut app, entity, muzzle, muzzle)?;
-    let_the_screen_catch_up(&mut app)?;
+    let_the_screen_catch_up(&mut app);
     for (at, want_lit) in [(muzzle, false), (lit, true), (impact, false)] {
         let is_lit = live_fog(&app).is_some_and(|fog| *fog.is_cell_visible(&at));
         if is_lit != want_lit {

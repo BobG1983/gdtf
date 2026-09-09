@@ -35,10 +35,6 @@ fn an_adjacent_downed_foe_is_executed_and_the_turn_ends() {
         Some(LifeState::Dead),
         "the real dispatch must kill the executed target on the frame the brain wrote it",
     );
-    assert!(
-        drive.returned,
-        "the execute turn must return to the player inside the cap",
-    );
 }
 
 #[test]
@@ -74,10 +70,6 @@ fn an_adjacent_bleeding_ally_is_stabilized_once_and_the_turn_ends() {
     assert!(
         !is_bleeding(&app, ally),
         "the real dispatch must stop the ally bleeding",
-    );
-    assert!(
-        drive.returned,
-        "a stabilized ally must not hold the enemy turn open",
     );
 }
 
@@ -118,10 +110,6 @@ fn a_downed_foe_out_of_reach_is_walked_toward_and_never_executed() {
         "the enemy must still walk toward the downed foe: {:?}",
         drive.moves,
     );
-    assert!(
-        drive.returned,
-        "the advance turn must return to the player inside the cap",
-    );
 }
 
 #[test]
@@ -153,10 +141,6 @@ fn an_unaffordable_execute_is_not_requested_and_the_turn_ends() {
         drive.executes.is_empty(),
         "an execute costing more TU than the actor has must never be requested: {:?}",
         drive.executes,
-    );
-    assert!(
-        drive.returned,
-        "an unaffordable execute must still end the turn inside the cap",
     );
 }
 
@@ -192,9 +176,5 @@ fn an_unaffordable_stabilize_is_not_requested_and_the_turn_ends() {
     assert!(
         is_bleeding(&app, ally),
         "a refused stabilize leaves the ally bleeding",
-    );
-    assert!(
-        drive.returned,
-        "an unaffordable stabilize must still end the turn inside the cap",
     );
 }

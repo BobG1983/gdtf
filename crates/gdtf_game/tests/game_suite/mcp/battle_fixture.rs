@@ -32,6 +32,8 @@ use gdtf_game::test_support::{
 };
 use gdtf_ui::theme::default_theme;
 
+use crate::mcp::socket_support::{FIXTURE_SEED, NO_DEFERRAL_DEADLINE};
+
 /// Fixed steps a frame runs, so the descent advances per frame and never off the real clock.
 const ONE_STEP_A_FRAME: u32 = 1;
 
@@ -89,6 +91,8 @@ pub(crate) fn menu_app_with_situation(
         .insert_resource(PreplacedGangers::new(placements));
 
     let (tx, rx) = mpsc::channel();
+    // Before the plugin builds: its `build` is what registers every command's budget.
+    app.insert_resource(NO_DEFERRAL_DEADLINE);
     app.add_plugins(McpPlugin::with_channels(rx));
 
     app.insert_resource(bevy::time::TimeUpdateStrategy::FixedTimesteps(
@@ -101,6 +105,8 @@ pub(crate) fn menu_app_with_situation(
 }
 
 pub(crate) fn request_battle(app: &mut App) {
+    // Without a seed the generator falls back to `resolve_root_seed()`, which reads the wall clock.
+    app.insert_resource(FIXTURE_SEED);
     app.world_mut()
         .write_message(StartBattleRequested::new(None));
 }

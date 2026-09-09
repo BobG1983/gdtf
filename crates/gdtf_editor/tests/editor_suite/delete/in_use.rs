@@ -15,7 +15,7 @@ use crate::{
     content_shared::{advance::advance_to_published, app::editor_app_with_asset_root},
     delete::{
         fixture::{FIXTURE_GUN, weapon_name, write_fixture_gang, write_fixture_weapon},
-        harness::{OUTCOME_UPDATES, OfferAnswer, WEAPON_FAMILY, advance_answering, is_published},
+        harness::{OfferAnswer, WEAPON_FAMILY, advance_answering},
         records::write_emplacement_def,
     },
 };
@@ -64,14 +64,9 @@ fn the_in_use_check_answers_with_every_referring_record_the_report_holds() {
         ContentMemberKey::new(FIXTURE_GUN.to_owned()),
     ));
     let outcome = advance_answering(&mut app, &OfferAnswer::Confirm(None)).outcome;
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
 
     let referring = match outcome {
-        Some(DeleteOutcome::Refused(DeleteRefusal::InUse(ref records))) => records.clone(),
+        DeleteOutcome::Refused(DeleteRefusal::InUse(ref records)) => records.clone(),
         _ => Vec::new(),
     };
     assert_eq!(
@@ -108,14 +103,9 @@ fn a_weapon_an_emplacement_still_mounts_is_not_deleted_without_a_replacement() {
         ContentMemberKey::new(FIXTURE_GUN.to_owned()),
     ));
     let outcome = advance_answering(&mut app, &OfferAnswer::Confirm(None)).outcome;
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
 
     let referring = match outcome {
-        Some(DeleteOutcome::Refused(DeleteRefusal::InUse(ref records))) => records.clone(),
+        DeleteOutcome::Refused(DeleteRefusal::InUse(ref records)) => records.clone(),
         _ => Vec::new(),
     };
     assert_eq!(

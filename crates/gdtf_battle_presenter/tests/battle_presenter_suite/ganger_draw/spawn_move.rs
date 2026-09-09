@@ -1,4 +1,5 @@
 use bevy::{app::App, math::Vec2, prelude::Entity, time::TimeUpdateStrategy};
+use cobalt_test_utils::advance_until_mut;
 use gdtf_battle_presenter::{CELL_PX, GangerSprites, Layer, cell_to_world_layered};
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Direction, Faction, Level},
@@ -11,12 +12,9 @@ fn settle_sprite_at(app: &mut App, entity: Entity, target: bevy::math::Vec3) {
     app.insert_resource(TimeUpdateStrategy::ManualDuration(
         std::time::Duration::from_millis(500),
     ));
-    for _ in 0..MAX_UPDATES {
-        app.update();
-        if sprite_translation(app, entity).is_some_and(|t| t.distance(target) < 1.0e-3) {
-            return;
-        }
-    }
+    advance_until_mut(app, |app| {
+        sprite_translation(app, entity).is_some_and(|t| t.distance(target) < 1.0e-3)
+    });
 }
 
 #[test]
@@ -30,10 +28,7 @@ fn added_gangers_spawn_one_faction_coloured_sprite_each() {
         .with_ganger(ganger_at(g0_at, 0, Direction::East))
         .with_ganger(ganger_at(g1_at, 1, Direction::North))
         .build();
-    assert!(
-        drive_setup(&mut app, situation),
-        "setup_battle must complete"
-    );
+    drive_setup(&mut app, situation);
 
     let roles = character_roles(&app);
     assert!(roles.is_some(), "CharacterRoles must be resident");
@@ -106,10 +101,7 @@ fn changed_position_moves_the_same_sprite() {
     let situation = SituationBuilder::new()
         .with_ganger(ganger_at(start, 0, Direction::East))
         .build();
-    assert!(
-        drive_setup(&mut app, situation),
-        "setup_battle must complete"
-    );
+    drive_setup(&mut app, situation);
 
     let drawn_before = drawn_gangers(&mut app);
     assert_eq!(drawn_before.len(), 1, "one ganger sprite before the move");

@@ -1,8 +1,8 @@
 use bevy::prelude::{Entity, World};
 
 use super::support::{
-    ENEMY, PLAYER, active_of, brain_app, drain_fires, ground, place_occupant, spawn_combatant,
-    tu_of,
+    ENEMY, PLAYER, brain_app, drain_fires, drive_until_player_turn, ground, place_occupant,
+    spawn_combatant, tu_of,
 };
 use crate::{
     ganger::Direction,
@@ -15,8 +15,6 @@ use crate::{
         WeaponPunch, WeaponShred, WieldedBy,
     },
 };
-
-const FRAME_CAP: usize = 80;
 
 fn man_loaded_mount(world: &mut World, ganger: Entity, ammo: u16) {
     let mode = FireModeSpec::new(
@@ -69,13 +67,7 @@ fn ai_mounted_enemy_engages_on_the_mount() {
     place_occupant(&mut app, player_at, player);
 
     let mut fires = Vec::new();
-    for _ in 0..FRAME_CAP {
-        app.update();
-        fires.extend(drain_fires(&mut app));
-        if active_of(&app) == PLAYER {
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| fires.extend(drain_fires(app)));
 
     assert!(
         fires.iter().any(|f| f.shooter == enemy

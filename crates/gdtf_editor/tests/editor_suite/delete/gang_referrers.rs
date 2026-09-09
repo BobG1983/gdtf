@@ -8,9 +8,7 @@ use gdtf_editor::{
 };
 
 use crate::delete::{
-    harness::{
-        GANG_FAMILY, OUTCOME_UPDATES, OfferAnswer, editor_on, is_published, member_key, run_delete,
-    },
+    harness::{GANG_FAMILY, OfferAnswer, editor_on, is_published, member_key, run_delete},
     records::{file_text, situation_path, write_situation},
 };
 
@@ -80,9 +78,8 @@ fn deleting_a_gang_names_the_replacement_in_every_entry_the_situation_held() {
     );
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Removed),
-        "the gang delete must settle as Removed within {OUTCOME_UPDATES} updates; published at \
-         the end: {}",
+        DeleteOutcome::Removed,
+        "the gang delete must settle as Removed; published at the end: {}",
         is_published(&app),
     );
 
@@ -122,9 +119,7 @@ fn a_replacement_gang_missing_a_member_is_refused_with_nothing_written() {
 
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Refused(DeleteRefusal::ReplacementLacks(
-            member_key(MEMBER)
-        ))),
+        DeleteOutcome::Refused(DeleteRefusal::ReplacementLacks(member_key(MEMBER))),
         "a replacement whose roster does not hold every member the situation asks for must be \
          refused, naming the first one missing; published at the end: {}",
         is_published(&app),

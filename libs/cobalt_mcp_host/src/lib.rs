@@ -12,5 +12,6 @@ pub mod test_support;
 pub mod transport;
 
 pub use transport::{
-    IncomingRequest, NetInbox, PendingQueue, Responder, bind_listener, run_listener, sweep_pending,
+    DEADLINE_BUDGET, FrameDeadline, IncomingRequest, NetInbox, PendingQueue, Responder,
+    bind_listener, run_listener, sweep_pending,
 };

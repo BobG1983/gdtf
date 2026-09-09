@@ -8,7 +8,10 @@ use cobalt_mcp_protocol::{
 };
 use gdtf_game::test_support::shorten_wait_budget;
 
-use super::support::{PARKED_FRAMES, answered_within, holding_battle_with_mcp, release_the_hold};
+use super::support::{
+    PARKED_FRAMES, answered_within, holding_battle_with_mcp, menu_app_with_unending_wait,
+    release_the_hold,
+};
 use crate::mcp::{
     battle_fixture::{drive_into_battle_running, menu_app_with_mcp, run_request, send},
     command_exchange::WAIT,
@@ -47,7 +50,7 @@ fn wait_holds_its_reply_until_the_condition_it_named_comes_true() {
 
 #[test]
 fn wait_on_a_phase_parks_in_the_menu_and_settles_once_the_battle_is_up() {
-    let (mut app, tx) = menu_app_with_mcp();
+    let (mut app, tx) = menu_app_with_unending_wait();
     let reply = send(
         &tx,
         run_request(WAIT, "(condition:Phase((game:Some(BattleScape))))"),

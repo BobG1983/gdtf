@@ -16,10 +16,7 @@ use gdtf_editor::{
 
 use crate::{
     content_shared::{advance::advance_to_published, app::editor_app_with_asset_root},
-    delete::{
-        fixture::weapon_name,
-        harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
-    },
+    delete::{fixture::weapon_name, harness::advance_to_outcome},
 };
 
 /// The attachment both weapons are fitted with.
@@ -87,14 +84,9 @@ fn deleting_an_attachment_takes_its_key_out_of_the_ranged_and_the_melee_spec() {
         ContentMemberKey::new(FIXTURE_SIGHT.to_owned()),
     ));
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
     assert_eq!(
         outcome,
-        Some(DeleteOutcome::Removed),
+        DeleteOutcome::Removed,
         "both fitted specs are rewritten, so the re-run finds nothing and the record goes",
     );
 

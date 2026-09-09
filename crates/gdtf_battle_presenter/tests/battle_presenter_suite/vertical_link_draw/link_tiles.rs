@@ -1,4 +1,5 @@
 use bevy::{app::App, math::Rect, prelude::Visibility, sprite::Sprite};
+use cobalt_test_utils::advance_until_mut;
 use gdtf_battle_presenter::{ActiveLevel, VerticalLinkSprite};
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Level},
@@ -25,12 +26,7 @@ fn visible_link_rects(app: &mut App) -> Vec<Rect> {
 }
 
 fn settle_link_sprites(app: &mut App) {
-    for _ in 0..MAX_UPDATES {
-        if !visible_link_rects(app).is_empty() {
-            return;
-        }
-        app.update();
-    }
+    advance_until_mut(app, |app| !visible_link_rects(app).is_empty());
 }
 
 // Both keys resolve to a sheet rect and the two differ, or two `None` reads compare equal.
@@ -69,10 +65,7 @@ fn loaded_defs_resolve_locked_regions_and_link_cells_carry_them() {
         .vertical_link(VerticalLink::new(stair_lo, stair_hi, LinkKind::stair()))
         .vertical_link(VerticalLink::new(ladder_lo, ladder_hi, LinkKind::ladder()))
         .build();
-    assert!(
-        drive_setup(&mut app, situation),
-        "setup_battle must complete"
-    );
+    drive_setup(&mut app, situation);
 
     let defs = sprite_defs(&app);
     assert!(defs.is_some(), "the SpriteDefRegistry must be resident");
@@ -116,10 +109,7 @@ fn link_draw_hard_cuts_and_picks_directional_stair_tile() {
         .slab_piece_at(hi, test_pieces::STAIR)
         .vertical_link(VerticalLink::new(lo, hi, LinkKind::stair()))
         .build();
-    assert!(
-        drive_setup(&mut app, situation),
-        "setup_battle must complete"
-    );
+    drive_setup(&mut app, situation);
 
     let defs = sprite_defs(&app);
     assert!(defs.is_some(), "the SpriteDefRegistry must be resident");

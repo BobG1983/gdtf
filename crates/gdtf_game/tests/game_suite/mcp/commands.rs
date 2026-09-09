@@ -249,8 +249,8 @@ fn an_unknown_argument_is_bad_arguments_with_the_schema() -> TestResult {
     Ok(())
 }
 
-/// Seconds the held call may keep re-testing; the frame budget runs out long before this does.
-const OPENING_BUDGET: AwaitBudget = AwaitBudget::new(120);
+/// Seconds the held call may keep re-testing; a budget no run reaches, so no wall clock decides.
+const OPENING_BUDGET: AwaitBudget = AwaitBudget::new(u64::MAX);
 
 #[test]
 fn an_await_ready_rider_holds_the_call_until_the_battle_screen_opens() -> TestResult {

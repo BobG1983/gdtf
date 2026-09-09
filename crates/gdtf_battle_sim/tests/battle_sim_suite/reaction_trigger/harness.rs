@@ -3,7 +3,7 @@ use bevy::{
     prelude::{Entity, MinimalPlugins, Resource},
     scene::ScenePlugin,
 };
-use cobalt_test_utils::unwatched_asset_plugin;
+use cobalt_test_utils::{advance_until, unwatched_asset_plugin};
 use gdtf_battle_sim::{
     acts::{EndTurnRequested, movement::WalkInProgress},
     battle::{BattleSimPlugin, SetupBattleRequested},
@@ -191,12 +191,7 @@ pub(crate) fn tough_mover(
 }
 
 pub(crate) fn run_until_walk_ends(app: &mut App, entity: Entity) {
-    for _ in 0..48 {
-        app.update();
-        if !is_walking(app, entity) {
-            return;
-        }
-    }
+    advance_until(app, |app| !is_walking(app, entity));
 }
 
 pub(crate) fn step(app: &mut App, ticks: u32) {
@@ -213,10 +208,5 @@ pub(crate) fn player_turn_active(app: &App) -> bool {
 
 pub(crate) fn cycle_back_to_player_turn(app: &mut App) {
     app.world_mut().write_message(EndTurnRequested);
-    for _ in 0..64 {
-        app.update();
-        if player_turn_active(app) {
-            return;
-        }
-    }
+    advance_until(app, player_turn_active);
 }

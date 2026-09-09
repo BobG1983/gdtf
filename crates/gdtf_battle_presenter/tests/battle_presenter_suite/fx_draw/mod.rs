@@ -10,6 +10,7 @@ mod hit_after_shot;
 mod impact_fct;
 mod injury_fct;
 mod kill_despawn;
+mod pinned_delta_restore;
 mod probes;
 mod projectile;
 mod registrar_contract;

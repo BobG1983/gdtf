@@ -226,7 +226,7 @@ fn a_fired_round_reports_the_kind_of_the_piece_it_destroyed() {
 
     // The wall sits between the shooter and the cover, so it falls first.
     let mut kinds: Vec<TerrainPieceKind> = Vec::new();
-    for _ in 0..8 {
+    loop {
         if kinds.len() >= 2 {
             break;
         }

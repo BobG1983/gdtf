@@ -1,3 +1,4 @@
+use cobalt_test_utils::advance_until;
 use gdtf_battle_sim::{
     acts::{EndTurnRequested, MoveRequested, movement::ReactionShotFired},
     ganger::Direction,
@@ -158,14 +159,8 @@ fn ac5_a_player_watcher_interrupts_an_acting_enemy_on_the_enemy_turn() {
     };
 
     app.world_mut().write_message(EndTurnRequested);
-    let mut tu_at_interrupt = None;
-    for _ in 0..16 {
-        app.update();
-        if shots_by(&app, player_watcher_entity) >= 1 {
-            tu_at_interrupt = tu_of(&app, player_watcher_entity);
-            break;
-        }
-    }
+    advance_until(&mut app, |app| shots_by(app, player_watcher_entity) >= 1);
+    let tu_at_interrupt = tu_of(&app, player_watcher_entity);
 
     assert!(
         shots_by(&app, player_watcher_entity) >= 1,

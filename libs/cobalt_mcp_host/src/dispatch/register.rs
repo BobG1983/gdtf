@@ -4,8 +4,9 @@ use bevy::prelude::*;
 use cobalt_screenshot::CapturePipelinePlugin;
 
 use super::{
-    CaptureHolds, CaptureTicket, CommandCall, CommandInbox, DeferredReplies, McpCommandSystems,
-    WaitingCalls, claim_calls, drive_rider_captures, poll_capture_holds, sweep_deferred,
+    CaptureHolds, CaptureTicket, CommandCall, CommandInbox, DeferredBudgetOverride,
+    DeferredReplies, McpCommandSystems, WaitingCalls, claim_calls, drive_rider_captures,
+    poll_capture_holds, sweep_deferred,
 };
 use crate::{
     command::{ErasedCommand, McpCommand},
@@ -27,6 +28,8 @@ pub fn register_riders(app: &mut App) {
 }
 
 /// Register inbox, queue, claim, sweep, and the command's own handler for `C`.
+///
+/// A [`DeferredBudgetOverride`] already in the world wins over `C`'s own declared budget.
 pub fn register_command<C: McpCommand>(app: &mut App) {
     app.configure_sets(
         Update,
@@ -34,7 +37,11 @@ pub fn register_command<C: McpCommand>(app: &mut App) {
     );
     app.init_resource::<CommandInbox>();
     app.init_resource::<PendingQueue<CommandCall<C>>>();
-    app.insert_resource(DeferredReplies::<C>::with_budget(C::DEFERRED_BUDGET));
+    let budget = app
+        .world()
+        .get_resource::<DeferredBudgetOverride>()
+        .map_or(C::DEFERRED_BUDGET, |override_budget| **override_budget);
+    app.insert_resource(DeferredReplies::<C>::with_budget(budget));
     app.add_systems(Update, claim_calls::<C>.in_set(McpCommandSystems::Claim));
     app.add_systems(Last, (sweep_pending::<CommandCall<C>>, sweep_deferred::<C>));
     C::register_handler(app);

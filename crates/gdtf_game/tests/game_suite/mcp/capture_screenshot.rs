@@ -13,10 +13,7 @@ use super::{
         GPU_SHOT_NAME, HEADLESS_SHOT_NAME, gpu_game_app_listening, gpu_shot_dir, headless_shot_dir,
         landing_capture_app_listening,
     },
-    command_exchange::{
-        APP_PHASE, CAPTURE_SCREENSHOT, exchange, exchange_all, exchange_until_not_timeout,
-        ran_body, run,
-    },
+    command_exchange::{APP_PHASE, CAPTURE_SCREENSHOT, exchange, exchange_all, ran_body, run},
     socket_support::{TestError, TestResult, capture_app_listening},
 };
 
@@ -174,7 +171,7 @@ fn a_real_capture_over_the_socket_decodes_and_is_not_a_black_frame() -> TestResu
         );
         return Ok(());
     }
-    let reply = exchange_until_not_timeout(
+    let reply = exchange(
         gpu_game_app_listening,
         run(
             CAPTURE_SCREENSHOT,

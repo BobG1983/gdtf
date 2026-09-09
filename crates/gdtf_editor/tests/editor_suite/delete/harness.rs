@@ -50,9 +50,6 @@ pub(crate) fn member_key(key: &str) -> ContentMemberKey {
     ContentMemberKey::new(key.to_owned())
 }
 
-/// Enough updates for a delete to settle, and few enough to fail rather than hang.
-pub(crate) const OUTCOME_UPDATES: usize = 16;
-
 /// How a case answers the replacement offer, when the delete opens one.
 pub(crate) enum OfferAnswer {
     /// Confirm, naming this replacement, or naming none when it is `None`.
@@ -63,23 +60,23 @@ pub(crate) enum OfferAnswer {
     Nothing,
 }
 
-/// What the bounded run saw: the outcome if one landed, and whether an offer opened.
+/// What the run saw: the outcome it settled on, and whether an offer opened.
 pub(crate) struct SettledDelete {
-    /// The outcome the delete settled on, absent when it never settled.
-    pub(crate) outcome: Option<DeleteOutcome>,
+    /// The outcome the delete settled on.
+    pub(crate) outcome: DeleteOutcome,
     /// Whether a [`ReplacementOffer`] was open on any of the updates the run made.
     pub(crate) offered: bool,
 }
 
-/// Run at most [`OUTCOME_UPDATES`] updates, answering the outcome if one landed.
-pub(crate) fn advance_to_outcome(app: &mut App) -> Option<DeleteOutcome> {
+/// Run updates until the delete settles, answering no offer.
+pub(crate) fn advance_to_outcome(app: &mut App) -> DeleteOutcome {
     advance_answering(app, &OfferAnswer::Nothing).outcome
 }
 
-/// Run at most [`OUTCOME_UPDATES`] updates, answering any offer that opens with `answer`.
+/// Run updates until the delete settles, answering any offer that opens with `answer`.
 pub(crate) fn advance_answering(app: &mut App, answer: &OfferAnswer) -> SettledDelete {
     let mut offered = false;
-    for _ in 0..OUTCOME_UPDATES {
+    loop {
         app.update();
         if app.world().get_resource::<ReplacementOffer>().is_some() {
             offered = true;
@@ -87,14 +84,10 @@ pub(crate) fn advance_answering(app: &mut App, answer: &OfferAnswer) -> SettledD
         }
         if let Some(outcome) = app.world().get_resource::<DeleteOutcome>() {
             return SettledDelete {
-                outcome: Some(outcome.clone()),
+                outcome: outcome.clone(),
                 offered,
             };
         }
-    }
-    SettledDelete {
-        outcome: None,
-        offered,
     }
 }
 

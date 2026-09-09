@@ -1,9 +1,10 @@
 //! The replacement offer holds the family's other records, and not the one being deleted.
 
+use cobalt_test_utils::advance_until;
 use gdtf_editor::ReplacementOffer;
 
 use crate::delete::{
-    harness::{OUTCOME_UPDATES, TERRAIN_FAMILY, editor_on, is_published},
+    harness::{TERRAIN_FAMILY, editor_on, is_published},
     records::{
         DELETED_PIECE, DELETED_THEME, REPLACEMENT_PIECE, SPARE_PIECE, terrain_display_name,
         write_terrain_def, write_theme_def,
@@ -36,18 +37,16 @@ fn the_offer_holds_every_other_record_of_the_family_and_not_the_deleted_one() {
         gdtf_assets::ContentMemberKey::new(DELETED_PIECE.to_owned()),
     ));
 
-    let mut rows: Vec<(String, String)> = Vec::new();
-    for _ in 0..OUTCOME_UPDATES {
-        app.update();
-        if let Some(offer) = app.world().get_resource::<ReplacementOffer>() {
-            rows = offer
-                .candidates()
-                .iter()
-                .map(|candidate| ((**candidate.key()).clone(), (**candidate.label()).clone()))
-                .collect();
-            break;
-        }
-    }
+    advance_until(&mut app, |app| {
+        app.world().contains_resource::<ReplacementOffer>()
+    });
+    let mut rows: Vec<(String, String)> = app
+        .world()
+        .resource::<ReplacementOffer>()
+        .candidates()
+        .iter()
+        .map(|candidate| ((**candidate.key()).clone(), (**candidate.label()).clone()))
+        .collect();
     rows.sort();
     let keys: Vec<String> = rows.iter().map(|(key, _label)| key.clone()).collect();
 

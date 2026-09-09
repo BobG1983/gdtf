@@ -14,9 +14,6 @@ use super::harness::*;
 /// The seed both runs drive, so they differ only in the messages written into the frame.
 const SEED: u64 = 0x5543_1231;
 
-/// Ticks a walk is given to settle: three steps and the frame that drops the walk.
-const WALK_TICK_CAP: u32 = 16;
-
 /// The exit leaf both runs tune: positive, and cheap enough to leave the route affordable.
 const EXIT_TU: u8 = 11;
 
@@ -64,9 +61,9 @@ fn a_seat_beside_the_actor() -> (App, Entity, Entity) {
     (app, actor, emplacement)
 }
 
-/// Step one tick at a time until the walk settles, or the cap runs out.
+/// Step one tick at a time until the walk settles.
 fn settle(app: &mut App, actor: Entity) {
-    for _ in 0..WALK_TICK_CAP {
+    loop {
         step(app, 1);
         if !is_walking(app, actor) {
             break;

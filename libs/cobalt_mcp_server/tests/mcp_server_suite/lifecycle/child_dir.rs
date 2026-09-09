@@ -8,8 +8,9 @@ use cobalt_mcp_server::{
 use crate::lifecycle::{
     fake_child::{CallLog, PortGatedSpawner},
     support::{
-        GatedStubSpawner, SAMPLE_PACKAGE, WatchFreePort, always_spawning_config, fast_config,
-        gated_listeners, sample_channel, sample_spec, spawn_gated_fake_game,
+        GatedStubSpawner, SAMPLE_PACKAGE, WatchFreePort, always_spawning_no_boot_deadline_config,
+        gated_listeners, no_boot_deadline_config, sample_channel, sample_spec,
+        spawn_gated_fake_game,
     },
 };
 
@@ -25,8 +26,11 @@ fn recipe_in(dir: &WorkingDir) -> LaunchSpec {
 #[test]
 fn a_running_child_reports_the_directory_its_recipe_named() {
     let (port, gate) = spawn_gated_fake_game();
-    let mut manager =
-        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
+    let mut manager = HostManager::with_orphan_watch(
+        Box::new(GatedStubSpawner::new(gate)),
+        no_boot_deadline_config(),
+        Box::new(WatchFreePort),
+    );
     let Ok(here) = std::env::current_dir() else {
         unreachable!("the test process has a current directory");
     };
@@ -68,8 +72,11 @@ fn a_running_child_reports_the_directory_its_recipe_named() {
 #[test]
 fn a_child_from_a_recipe_with_no_directory_reports_the_hosts_own() {
     let (port, gate) = spawn_gated_fake_game();
-    let mut manager =
-        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
+    let mut manager = HostManager::with_orphan_watch(
+        Box::new(GatedStubSpawner::new(gate)),
+        no_boot_deadline_config(),
+        Box::new(WatchFreePort),
+    );
     let Ok(here) = std::env::current_dir() else {
         unreachable!("the test process has a current directory");
     };
@@ -94,7 +101,7 @@ fn with_two_children_recorded_the_directory_is_the_last_one_launched() {
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(PortGatedSpawner::new(calls, gates)),
-        always_spawning_config(2000),
+        always_spawning_no_boot_deadline_config(),
         Box::new(WatchFreePort),
     );
     let (Some(first), Some(second)) = (ports.first().copied(), ports.get(1).copied()) else {
@@ -134,7 +141,7 @@ fn each_recorded_instance_reports_the_directory_its_own_recipe_named() {
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
     let mut manager = HostManager::with_orphan_watch(
         Box::new(PortGatedSpawner::new(calls, gates)),
-        always_spawning_config(2000),
+        always_spawning_no_boot_deadline_config(),
         Box::new(WatchFreePort),
     );
     let (Some(first), Some(second)) = (ports.first().copied(), ports.get(1).copied()) else {

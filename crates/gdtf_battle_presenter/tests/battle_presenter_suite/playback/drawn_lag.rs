@@ -55,11 +55,8 @@ fn the_drawn_position_lags_the_sim_position_until_the_step_plays() {
          skipped and the sprite mover is left reading live `Position`",
     );
 
-    for _ in 0..6 {
+    while *shown(&app) < 2 {
         step(&mut app, Duration::from_millis(100));
-        if *shown(&app) >= 2 {
-            break;
-        }
     }
     assert_eq!(*shown(&app), 2, "the step was shown");
     assert_eq!(
@@ -124,11 +121,8 @@ fn drawn_pose_lags_a_facing_change_and_a_suppression_clear() {
         "the DRAWN suppression must still be set while the clear is unplayed",
     );
 
-    for _ in 0..6 {
+    while *shown(&app) < 2 {
         step(&mut app, Duration::from_millis(100));
-        if *shown(&app) >= 2 {
-            break;
-        }
     }
     assert_eq!(*shown(&app), 2, "the posture change was shown");
     let after = drawn_pose(&app, ganger);

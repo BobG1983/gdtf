@@ -8,10 +8,7 @@ use gdtf_editor::DeleteOutcome;
 
 use crate::delete::{
     fixture::{FIXTURE_GUN, ORPHAN_GUN, weapon_name, write_fixture_gang, write_fixture_weapon},
-    harness::{
-        OUTCOME_UPDATES, OfferAnswer, TERRAIN_FAMILY, WEAPON_FAMILY, editor_on, is_published,
-        run_delete,
-    },
+    harness::{OfferAnswer, TERRAIN_FAMILY, WEAPON_FAMILY, editor_on, is_published, run_delete},
     records::{
         DELETED_PIECE, DELETED_THEME, REPLACEMENT_PIECE, file_snapshot, write_emplacement_def,
         write_leaves_behind_def, write_prefab, write_situation, write_terrain_def, write_theme_def,
@@ -72,7 +69,7 @@ fn cancelling_a_terrain_delete_leaves_every_file_and_the_registry_as_they_were()
 
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Cancelled),
+        DeleteOutcome::Cancelled,
         "a cancel settles as Cancelled, which is not the same answer as a refusal; published at \
          the end: {}",
         is_published(&app),
@@ -111,8 +108,8 @@ fn cancelling_a_weapon_delete_writes_neither_the_gang_nor_the_emplacement() {
 
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Cancelled),
-        "a cancel settles as Cancelled within {OUTCOME_UPDATES} updates; published at the end: {}",
+        DeleteOutcome::Cancelled,
+        "a cancel settles as Cancelled; published at the end: {}",
         is_published(&app),
     );
     assert_eq!(

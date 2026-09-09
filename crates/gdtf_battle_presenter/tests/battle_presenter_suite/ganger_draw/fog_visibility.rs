@@ -38,17 +38,14 @@ fn player_ganger_on_lower_storey_stays_visible_at_own_z_after_fog() {
         .player_faction(Faction::new(0))
         .slab_at(l0_at)
         .build();
-    assert!(drive_setup(&mut app, situation), "setup must complete");
+    drive_setup(&mut app, situation);
 
     let l0_sim = sim_entity_at(&mut app, l0_at);
     assert!(
         l0_sim.is_some(),
         "the ground-floor ganger must have spawned"
     );
-    assert!(
-        settle_actor(&mut app, l0_sim),
-        "the ganger sprite must have materialized",
-    );
+    settle_actor(&mut app, l0_sim);
 
     set_fog(&mut app, &[l0_at], &[]);
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(Level::new(1));
@@ -83,14 +80,11 @@ fn ganger_above_active_is_hidden_after_fog() {
         .slab_at(l0_at)
         .slab_at(l2_at)
         .build();
-    assert!(drive_setup(&mut app, situation), "setup must complete");
+    drive_setup(&mut app, situation);
 
     let l2_sim = sim_entity_at(&mut app, l2_at);
     assert!(l2_sim.is_some(), "the storey-2 ganger must have spawned");
-    assert!(
-        settle_actor(&mut app, l2_sim),
-        "the storey-2 ganger sprite must have materialized",
-    );
+    settle_actor(&mut app, l2_sim);
 
     set_fog(&mut app, &[l0_at, l2_at], &[]);
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(Level::new(1));
@@ -118,7 +112,7 @@ fn unseen_enemy_on_lower_storey_stays_hidden_fog_preserved() {
         .slab_at(player_at)
         .slab_at(enemy_at)
         .build();
-    assert!(drive_setup(&mut app, situation), "setup must complete");
+    drive_setup(&mut app, situation);
 
     let player_sim = sim_entity_at(&mut app, player_at);
     let enemy_sim = sim_entity_at(&mut app, enemy_at);
@@ -126,10 +120,8 @@ fn unseen_enemy_on_lower_storey_stays_hidden_fog_preserved() {
         player_sim.is_some() && enemy_sim.is_some(),
         "both gangers must have spawned",
     );
-    assert!(
-        settle_actor(&mut app, player_sim) && settle_actor(&mut app, enemy_sim),
-        "both ganger sprites must have materialized",
-    );
+    settle_actor(&mut app, player_sim);
+    settle_actor(&mut app, enemy_sim);
 
     set_fog(&mut app, &[player_at], &[]);
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(Level::new(1));
@@ -161,17 +153,14 @@ fn hover_over_lower_storey_ganger_does_not_select_it_active_level_pick() {
         .player_faction(Faction::new(0))
         .slab_at(l0_at)
         .build();
-    assert!(drive_setup(&mut app, situation), "setup must complete");
+    drive_setup(&mut app, situation);
 
     let l0_sim = sim_entity_at(&mut app, l0_at);
     assert!(
         l0_sim.is_some(),
         "the ground-floor ganger must have spawned"
     );
-    assert!(
-        settle_actor(&mut app, l0_sim),
-        "the ganger sprite must have materialized",
-    );
+    settle_actor(&mut app, l0_sim);
 
     set_fog(&mut app, &[l0_at], &[]);
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(active);

@@ -10,7 +10,7 @@ use crate::{
     content_shared::{advance::advance_to_published, app::editor_app_with_asset_root},
     delete::{
         fixture::{FIXTURE_GUN, weapon_name, write_fixture_weapon},
-        harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
+        harness::advance_to_outcome,
     },
 };
 
@@ -44,15 +44,10 @@ fn a_delete_for_a_family_with_no_entry_is_refused_and_takes_nothing_out() {
         ContentMemberKey::new(FIXTURE_GUN.to_owned()),
     ));
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
 
     assert_eq!(
         outcome,
-        Some(DeleteOutcome::Refused(DeleteRefusal::NoEntry)),
+        DeleteOutcome::Refused(DeleteRefusal::NoEntry),
         "a request naming a family the DeleteRegistry holds no entry for must be refused with \
          NoEntry",
     );

@@ -9,7 +9,7 @@ use crate::{
     content_shared::{advance::advance_to_published, app::editor_app_with_asset_root},
     delete::{
         fixture::{FIXTURE_PREFAB, prefab_spec, write_fixture_prefab},
-        harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
+        harness::advance_to_outcome,
     },
 };
 
@@ -49,15 +49,10 @@ fn a_prefab_no_record_names_is_removed_with_its_file() {
         key,
     ));
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
 
     assert_eq!(
         outcome,
-        Some(DeleteOutcome::Removed),
+        DeleteOutcome::Removed,
         "nothing names a prefab, so its in-use check finds nothing and the delete goes through",
     );
     assert!(

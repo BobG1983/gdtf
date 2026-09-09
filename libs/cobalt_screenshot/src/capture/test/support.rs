@@ -13,8 +13,6 @@ pub(super) const TEST_SETTLE: u32 = 2;
 
 pub(super) const TEST_POLL_BUDGET: u32 = 3;
 
-pub(super) const DRIVE_UPDATES: u32 = 64;
-
 /// A `MinimalPlugins` app running the real pump with both tunables pinned.
 pub(super) fn pump_app(dir: PathBuf) -> App {
     let mut app = App::new();
@@ -46,22 +44,22 @@ pub(super) fn outcomes(app: &App) -> Vec<CaptureOutcome> {
         .collect()
 }
 
-pub(super) fn drive_until_spawned(app: &mut App) -> Option<u32> {
-    for frame in 1..=DRIVE_UPDATES {
+pub(super) fn drive_until_spawned(app: &mut App) -> u32 {
+    let mut frame = 0;
+    loop {
         app.update();
+        frame += 1;
         if spawned_captures(app) > 0 {
-            return Some(frame);
+            return frame;
         }
     }
-    None
 }
 
-pub(super) fn drive_until_finished(app: &mut App) -> Option<CaptureOutcome> {
-    for _ in 0..DRIVE_UPDATES {
+pub(super) fn drive_until_finished(app: &mut App) -> CaptureOutcome {
+    loop {
         app.update();
         if let Some(outcome) = outcomes(app).first() {
-            return Some(outcome.clone());
+            return outcome.clone();
         }
     }
-    None
 }

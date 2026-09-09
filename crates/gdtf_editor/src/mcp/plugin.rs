@@ -35,6 +35,7 @@ enum Wiring {
     },
     Bound {
         listener: Mutex<Option<TcpListener>>,
+        timeouts: NetTimeouts,
     },
 }
 
@@ -69,10 +70,20 @@ impl McpEditorPlugin {
     ///
     /// Returns an IO error if the listener cannot bind.
     pub fn listening(port: McpPort) -> io::Result<(Self, McpPort)> {
+        Self::listening_with(port, NetTimeouts::NO_IDLE_REAP)
+    }
+
+    /// Bind a loopback listener on `port` for tests, running with `timeouts`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an IO error if the listener cannot bind.
+    pub fn listening_with(port: McpPort, timeouts: NetTimeouts) -> io::Result<(Self, McpPort)> {
         let (listener, bound) = bind_listener(port)?;
         let plugin = Self {
             wiring: Wiring::Bound {
                 listener: Mutex::new(Some(listener)),
+                timeouts,
             },
         };
         Ok((plugin, bound))
@@ -103,11 +114,11 @@ impl Plugin for McpEditorPlugin {
                 );
                 serve(app, listener, *timeouts);
             }
-            Wiring::Bound { listener } => {
+            Wiring::Bound { listener, timeouts } => {
                 let Some(listener) = listener.lock().ok().and_then(|mut guard| guard.take()) else {
                     return;
                 };
-                serve(app, listener, NetTimeouts::NO_IDLE_REAP);
+                serve(app, listener, *timeouts);
             }
         }
     }

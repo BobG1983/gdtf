@@ -8,6 +8,7 @@ use super::{lifecycle::HostLifecycle, port::pick_port};
 use crate::lifecycle::{
     child::ManagedChild,
     config::{LaunchPolicy, LifecycleConfig},
+    deadline::DeadlineAt,
     launch::{LaunchSpec, WorkingDir},
     liveness::{ChildLiveness, SystemLiveness},
     orphan::{OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, PortHold, SystemOrphanWatch},
@@ -15,10 +16,16 @@ use crate::lifecycle::{
     probe::probe_ready,
     spawn::ChildSpawner,
     values::{
-        ChildStatus, InstanceId, KillGrace, OutputTail, Readiness, RecordedInstance, SpawnError,
-        TailLines,
+        BootTimeout, ChildStatus, InstanceId, KillGrace, OutputTail, Readiness, RecordedInstance,
+        SpawnError, TailLines,
     },
 };
+
+// The instant a boot wait runs out, or None when it never does.
+#[must_use]
+pub(super) fn boot_deadline(now: Instant, timeout: BootTimeout) -> Option<DeadlineAt> {
+    now.checked_add(*timeout).map(DeadlineAt::new)
+}
 
 struct RunningChild {
     child:  Box<dyn ManagedChild>,
@@ -134,7 +141,7 @@ impl HostManager {
         port: McpPort,
         recipe: &LaunchSpec,
     ) -> LaunchOutcome {
-        let deadline = Instant::now() + *self.config.boot_timeout();
+        let deadline = boot_deadline(Instant::now(), self.config.boot_timeout());
         loop {
             if matches!(
                 probe_ready(port, self.config.probe_timeout()),
@@ -159,7 +166,7 @@ impl HostManager {
                 let tail = child.failure_tail();
                 return LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail));
             }
-            if Instant::now() >= deadline {
+            if deadline.is_some_and(|at| Instant::now() >= *at) {
                 shutdown(child.as_mut(), self.config.kill_grace());
                 let tail = child.failure_tail();
                 return LaunchOutcome::Failed(LaunchFailure::Timeout {

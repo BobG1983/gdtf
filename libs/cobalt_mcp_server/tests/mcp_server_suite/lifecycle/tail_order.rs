@@ -7,7 +7,7 @@ use cobalt_mcp_server::{
 
 use crate::lifecycle::{
     fake_child::{CallLog, ChildCall, GATED_LINE, ReapGatedSpawner, recorded},
-    support::{fast_config, free_port, sample_spec},
+    support::{WatchFreePort, fast_config, free_port, sample_spec},
 };
 
 const NO_WAIT_BOOT_MS: u64 = 0;
@@ -17,7 +17,12 @@ const UNREACHED_BOOT_MS: u64 = 2000;
 fn manager_over_gated_child(status: ChildStatus, boot_ms: u64) -> (HostManager, CallLog) {
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
     let spawner = ReapGatedSpawner::new(status, Arc::clone(&calls));
-    let manager = HostManager::with_config(Box::new(spawner), fast_config(boot_ms));
+    // These cases read the child's call order, not the pre-flight orphan check.
+    let manager = HostManager::with_orphan_watch(
+        Box::new(spawner),
+        fast_config(boot_ms),
+        Box::new(WatchFreePort),
+    );
     (manager, calls)
 }
 

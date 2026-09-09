@@ -10,12 +10,14 @@ use bevy::{
     platform::collections::HashSet,
     prelude::{Entity, MeshMaterial2d, Visibility, default},
     render::{RenderPlugin, settings::WgpuSettings},
+    time::TimeUpdateStrategy,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use cobalt_test_utils::{advance_until_resource_exists, asset_plugin_at};
+use cobalt_test_utils::{advance_until_mut, advance_until_resource_exists, asset_plugin_at};
 use gdtf_battle_presenter::{
-    GangerSprites, TerrainFogMaterial, TerrainSprite, TopDownAtlases, TopDownRendererPlugin,
+    CharacterRoles, GangerSprites, TerrainFogMaterial, TerrainSprite, TopDownAtlases,
+    TopDownRendererPlugin,
 };
 use gdtf_battle_sim::{
     battle::{SetupBattleRequested, setup_battle_on_request},
@@ -31,7 +33,7 @@ use gdtf_battle_sim::{
     visibility::SquadVisibility,
 };
 
-pub(crate) const MAX_UPDATES: u32 = 128;
+use crate::pinned_delta::{PINNED_DELTA, assert_reads_a_pinned_delta};
 
 pub(crate) const SEED: u64 = 0x0D15_EA5E;
 
@@ -80,13 +82,20 @@ pub(crate) fn headless_renderer_app() -> App {
     app.insert_resource(test_gang_registry());
     app.insert_resource(test_terrain_registry());
     app.insert_resource(CombatTuning::default());
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
     app.set_error_handler(warn);
     app
+}
+
+#[test]
+fn the_harness_app_reads_a_pinned_delta() {
+    assert_reads_a_pinned_delta(&mut headless_renderer_app());
 }
 
 pub(crate) fn settle_resources(app: &mut App) {
     advance_until_resource_exists::<gdtf_content_families::sprites::SpriteDefRegistry>(app);
     advance_until_resource_exists::<TopDownAtlases>(app);
+    advance_until_resource_exists::<CharacterRoles>(app);
 }
 
 pub(crate) fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
@@ -99,18 +108,12 @@ pub(crate) fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> Ganger
         .build()
 }
 
-pub(crate) fn drive_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) -> bool {
+pub(crate) fn drive_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) {
     app.world_mut()
         .resource_mut::<Messages<SetupBattleRequested>>()
         .write(setup_request(built, BattleSeed::new(SEED)));
-    for _ in 0..MAX_UPDATES {
-        app.update();
-        if app.world().get_resource::<ShotRng>().is_some() {
-            app.update();
-            return true;
-        }
-    }
-    false
+    advance_until_resource_exists::<ShotRng>(app);
+    app.update();
 }
 
 pub(crate) fn set_fog(app: &mut App, visible: &[CellLevel], explored: &[CellLevel]) {
@@ -156,22 +159,10 @@ pub(crate) fn actor_visibility(app: &mut App, sim: Option<Entity>) -> Option<Vis
     q.get(app.world(), sprite).ok().copied()
 }
 
-pub(crate) fn settle_terrain_at(app: &mut App, at: CellLevel) -> bool {
-    for _ in 0..MAX_UPDATES {
-        if terrain_at(app, at).is_some() {
-            return true;
-        }
-        app.update();
-    }
-    terrain_at(app, at).is_some()
+pub(crate) fn settle_terrain_at(app: &mut App, at: CellLevel) {
+    advance_until_mut(app, |app| terrain_at(app, at).is_some());
 }
 
-pub(crate) fn settle_actor(app: &mut App, sim: Option<Entity>) -> bool {
-    for _ in 0..MAX_UPDATES {
-        if actor_visibility(app, sim).is_some() {
-            return true;
-        }
-        app.update();
-    }
-    actor_visibility(app, sim).is_some()
+pub(crate) fn settle_actor(app: &mut App, sim: Option<Entity>) {
+    advance_until_mut(app, |app| actor_visibility(app, sim).is_some());
 }

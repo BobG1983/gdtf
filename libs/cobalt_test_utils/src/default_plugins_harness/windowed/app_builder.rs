@@ -1,16 +1,22 @@
 //! Headless app that still owns a primary window, for render-target tests.
 
+use std::time::Duration;
+
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
     ecs::error::warn,
     prelude::default,
     render::{RenderPlugin, settings::WgpuSettings},
+    time::TimeUpdateStrategy,
     window::{ExitCondition, Window, WindowPlugin},
     winit::WinitPlugin,
 };
 
 use crate::asset_plugin::unwatched_asset_plugin;
+
+/// The delta every frame of a built app reads, so no wall clock reaches `Time`.
+pub const PINNED_DELTA: Duration = Duration::ZERO;
 
 /// Headless `DefaultPlugins` app with a primary window and no wgpu backend.
 ///
@@ -60,6 +66,7 @@ impl WindowedTestAppBuilder {
                 })
                 .set(unwatched_asset_plugin()),
         );
+        app.insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
         app.set_error_handler(warn);
         app
     }

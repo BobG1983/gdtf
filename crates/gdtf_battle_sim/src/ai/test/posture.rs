@@ -1,8 +1,8 @@
 use bevy::prelude::{App, Entity};
 
 use super::support::{
-    ENEMY, PLAYER, active_of, aiming_of, brain_app, drain_aims, drain_fires, drain_stances, ground,
-    place_occupant, spawn_combatant, stance_of, tu_of,
+    ENEMY, PLAYER, aiming_of, brain_app, drain_aims, drain_fires, drain_stances,
+    drive_until_player_turn, ground, place_occupant, spawn_combatant, stance_of, tu_of,
 };
 use crate::{
     acts::{AimRequest, FireRequested, SetAimingRequested, SetStanceRequested},
@@ -14,8 +14,6 @@ use crate::{
     turn::ActiveFaction,
     weapon::{FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
 };
-
-const FRAME_CAP: usize = 80;
 
 fn single_shot() -> FireModeSpec {
     FireModeSpec::new(
@@ -58,30 +56,22 @@ fn drive_until_player(app: &mut App) -> Drive {
     let mut aims = Vec::new();
     let mut fires = Vec::new();
     let mut stances = Vec::new();
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
+    drive_until_player_turn(app, |app| {
         aims.extend(drain_aims(app));
         fires.extend(drain_fires(app));
         stances.extend(drain_stances(app));
-        if active_of(app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
+    });
     Drive {
         aims,
         fires,
         stances,
-        returned,
     }
 }
 
 struct Drive {
-    aims:     Vec<SetAimingRequested>,
-    fires:    Vec<FireRequested>,
-    stances:  Vec<SetStanceRequested>,
-    returned: bool,
+    aims:    Vec<SetAimingRequested>,
+    fires:   Vec<FireRequested>,
+    stances: Vec<SetStanceRequested>,
 }
 
 #[test]
@@ -133,10 +123,6 @@ fn aim_then_fire_aimed_when_the_premium_fits() {
         aiming_of(&app, enemy),
         "the shot is the aimed one: Aiming stays on",
     );
-    assert!(
-        driven.returned,
-        "the aimed fire turn must return to the player inside the cap",
-    );
 }
 
 #[test]
@@ -171,10 +157,6 @@ fn unaimed_shot_when_the_aim_premium_does_not_fit() {
     assert!(
         !aiming_of(&app, enemy),
         "Aiming stays off when they fire unaimed",
-    );
-    assert!(
-        driven.returned,
-        "the unaimed fire turn must return to the player inside the cap",
     );
 }
 
@@ -213,10 +195,6 @@ fn incoming_fire_with_no_cover_crouches() {
         Some(StanceKind::Crouching),
         "the real set-stance dispatch must kneel them",
     );
-    assert!(
-        driven.returned,
-        "after the crouch the turn must return to the player",
-    );
 }
 
 #[test]
@@ -248,10 +226,6 @@ fn incoming_fire_with_adjacent_cover_does_not_re_crouch() {
         Some(StanceKind::Crouching),
         "they stay crouched",
     );
-    assert!(
-        driven.returned,
-        "an already-dropped stance must still end the turn inside the cap",
-    );
 }
 
 #[test]
@@ -278,18 +252,6 @@ fn idle_crouches_once_then_the_turn_ends() {
     );
 
     let mut more = Vec::new();
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
-        more.extend(drain_stances(&mut app));
-        if active_of(&app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| more.extend(drain_stances(app)));
     assert!(more.is_empty(), "already crouched, they hold: {more:?}");
-    assert!(
-        returned,
-        "after the one crouch the turn must come back to the player",
-    );
 }

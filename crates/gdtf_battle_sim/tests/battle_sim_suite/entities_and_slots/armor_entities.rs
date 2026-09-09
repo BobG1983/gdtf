@@ -26,6 +26,9 @@ use gdtf_battle_sim::{
     tuning::{CombatTuning, GangerStatTuning},
 };
 
+/// The shot seed that lands on the enemy, so the case drives one volley and no search.
+const LANDING_SEED: u64 = 0;
+
 const fn shooter_at() -> bevy::math::IVec2 {
     bevy::math::IVec2::new(5, 6)
 }
@@ -191,21 +194,14 @@ fn a_landed_shot_wears_the_struck_piece_entity_integrity() {
         "the enemy must carry worn-piece integrity components (the Wears entities)",
     );
 
-    let mut landed = false;
-    for seed in 0..256u64 {
-        let volley = fire_once(&mut app, shooter, seed);
-        let hit_ganger = volley
+    let volley = fire_once(&mut app, shooter, LANDING_SEED);
+    assert!(
+        volley
             .reports
             .iter()
-            .any(|r| matches!(r.kind, ShotKind::Ganger(e) if e == enemy));
-        if hit_ganger {
-            landed = true;
-            break;
-        }
-    }
-    assert!(
-        landed,
-        "across the seed sweep at least one volley must land on the enemy (a Ganger hit)",
+            .any(|report| matches!(report.kind, ShotKind::Ganger(e) if e == enemy)),
+        "the pinned seed's volley must land on the enemy (a Ganger hit): {:?}",
+        volley.reports,
     );
 
     let after = min_piece_integrity(&app, enemy);

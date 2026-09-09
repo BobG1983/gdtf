@@ -6,8 +6,9 @@ use cobalt_mcp_protocol::ports::McpPort;
 
 use super::{
     config::LifecycleConfig,
-    probe::probe_ready,
-    values::{ChildPid, KillGrace, PollInterval, ProbeTimeout, Readiness},
+    deadline::grace_deadline,
+    probe::probe_listening,
+    values::{ChildPid, KillGrace, PollInterval, PortListening, ProbeTimeout},
 };
 
 /// Whether a port is free or held by an unknown process.
@@ -35,6 +36,38 @@ pub enum OrphanStop {
     Stopped,
     /// Still listening after kill attempts.
     Survived,
+}
+
+/// One step of an orphan stop, recorded in the order it happened.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OrphanEvent {
+    /// The graceful signal went out.
+    TerminateSent,
+    /// A poll found the port still held.
+    ProbeHeld,
+    /// The forced kill went out.
+    KillSent,
+}
+
+/// What a recorded orphan stop did, and the order it did it in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OrphanEscalation {
+    outcome: OrphanStop,
+    events:  Vec<OrphanEvent>,
+}
+
+impl OrphanEscalation {
+    /// Whether the port ended free.
+    #[must_use]
+    pub const fn outcome(&self) -> OrphanStop {
+        self.outcome
+    }
+
+    /// The steps the stop took, oldest first.
+    #[must_use]
+    pub fn events(&self) -> &[OrphanEvent] {
+        &self.events
+    }
 }
 
 /// Parameters for stopping a known orphan pid on a port.
@@ -127,6 +160,24 @@ impl SystemOrphanWatch {
     pub const fn new() -> Self {
         Self
     }
+
+    /// Stop an orphan and report each step in the order it happened.
+    #[must_use]
+    pub fn stop_recorded(&self, target: OrphanTarget) -> OrphanEscalation {
+        let mut events = Vec::new();
+        signal(target.pid(), StopSignal::Terminate);
+        events.push(OrphanEvent::TerminateSent);
+        if matches!(wait_until_free(&target, &mut events), OrphanStop::Stopped) {
+            return OrphanEscalation {
+                outcome: OrphanStop::Stopped,
+                events,
+            };
+        }
+        signal(target.pid(), StopSignal::Kill);
+        events.push(OrphanEvent::KillSent);
+        let outcome = wait_until_free(&target, &mut events);
+        OrphanEscalation { outcome, events }
+    }
 }
 
 impl Default for SystemOrphanWatch {
@@ -137,19 +188,14 @@ impl Default for SystemOrphanWatch {
 
 impl OrphanWatch for SystemOrphanWatch {
     fn inspect(&self, port: McpPort, timeout: ProbeTimeout) -> PortHold {
-        match probe_ready(port, timeout) {
-            Readiness::NotYet => PortHold::Free,
-            Readiness::Ready => PortHold::Orphan(pid_listening_on(port)),
+        match probe_listening(port, timeout) {
+            PortListening::Silent => PortHold::Free,
+            PortListening::Listening => PortHold::Orphan(pid_listening_on(port)),
         }
     }
 
     fn stop(&self, target: OrphanTarget) -> OrphanStop {
-        signal(target.pid(), StopSignal::Terminate);
-        if matches!(wait_until_free(&target), OrphanStop::Stopped) {
-            return OrphanStop::Stopped;
-        }
-        signal(target.pid(), StopSignal::Kill);
-        wait_until_free(&target)
+        self.stop_recorded(target).outcome()
     }
 }
 
@@ -168,16 +214,17 @@ impl StopSignal {
     }
 }
 
-fn wait_until_free(target: &OrphanTarget) -> OrphanStop {
-    let deadline = std::time::Instant::now() + *target.grace();
+fn wait_until_free(target: &OrphanTarget, events: &mut Vec<OrphanEvent>) -> OrphanStop {
+    let deadline = grace_deadline(std::time::Instant::now(), target.grace());
     loop {
         if matches!(
-            probe_ready(target.port(), target.probe()),
-            Readiness::NotYet
+            probe_listening(target.port(), target.probe()),
+            PortListening::Silent
         ) {
             return OrphanStop::Stopped;
         }
-        if std::time::Instant::now() >= deadline {
+        events.push(OrphanEvent::ProbeHeld);
+        if deadline.is_some_and(|at| std::time::Instant::now() >= *at) {
             return OrphanStop::Survived;
         }
         std::thread::sleep(*target.poll());

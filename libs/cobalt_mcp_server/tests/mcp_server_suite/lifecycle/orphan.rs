@@ -6,7 +6,9 @@ use cobalt_mcp_server::{
     SystemOrphanWatch,
 };
 
-use super::support::{StubSpawner, fast_config, free_port, sample_spec, spawn_fake_game};
+use super::support::{
+    PROBE, StubSpawner, fast_config, free_port, sample_spec, spawn_fake_game, spawn_silent_listener,
+};
 
 type StopLog = Arc<Mutex<Vec<McpPort>>>;
 
@@ -162,6 +164,19 @@ fn a_held_port_answers_the_same_way_under_either_launch_policy() {
             "{policy:?}: a held port stops the orphan, got: {stop:?}"
         );
     }
+}
+
+#[test]
+fn a_held_port_answers_the_same_way_under_a_slow_hello() {
+    let port = McpPort::new(spawn_silent_listener());
+
+    let hold = SystemOrphanWatch::new().inspect(port, PROBE);
+
+    assert!(
+        matches!(hold, PortHold::Orphan(_)),
+        "a listener that accepts the connection holds the port whether it answers the handshake \
+         or not, got: {hold:?}"
+    );
 }
 
 #[test]

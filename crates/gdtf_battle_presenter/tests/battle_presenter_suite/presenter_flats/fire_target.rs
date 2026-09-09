@@ -8,17 +8,21 @@ use bevy::{
     prelude::{Alpha, Text2d, Transform, Visibility, default},
     render::{RenderPlugin, settings::WgpuSettings},
     text::TextColor,
+    time::TimeUpdateStrategy,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use cobalt_test_utils::asset_plugin_at;
+use cobalt_test_utils::{advance_until_mut, asset_plugin_at};
 use gdtf_battle_presenter::{
     FireTargetHighlight, FireTargetLabel, FireTargetTile, Layer, TopDownRendererPlugin,
     cell_to_world, cell_to_world_layered,
 };
 use gdtf_battle_sim::prelude::{BattleInProgress, Cell, CellLevel, Level, Tu};
 
-const MAX_UPDATES: u32 = 16;
+use crate::pinned_delta::{PINNED_DELTA, assert_reads_a_pinned_delta};
+
+/// Frames the hard-cut case holds, reading that no tile was ever drawn.
+const HOLD_FRAMES: u32 = 16;
 
 fn workspace_assets_root() -> PathBuf {
     let Some(root) = cobalt_ron_assets::workspace_assets_root() else {
@@ -53,8 +57,14 @@ fn fire_target_app() -> App {
     )
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(BattleInProgress);
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
     app.set_error_handler(warn);
     app
+}
+
+#[test]
+fn the_harness_app_reads_a_pinned_delta() {
+    assert_reads_a_pinned_delta(&mut fire_target_app());
 }
 
 fn set_highlight(app: &mut App, cell: CellLevel, cost: Tu) {
@@ -62,16 +72,11 @@ fn set_highlight(app: &mut App, cell: CellLevel, cost: Tu) {
         .insert_resource(FireTargetHighlight::new(cell, cost));
 }
 
-fn settle_tile(app: &mut App) -> bool {
-    for _ in 0..MAX_UPDATES {
+fn settle_tile(app: &mut App) {
+    advance_until_mut(app, |app| {
         let mut q = app.world_mut().query::<&FireTargetTile>();
-        if q.iter(app.world()).next().is_some() {
-            return true;
-        }
-        app.update();
-    }
-    let mut q = app.world_mut().query::<&FireTargetTile>();
-    q.iter(app.world()).next().is_some()
+        q.iter(app.world()).next().is_some()
+    });
 }
 
 fn planar_eq(a: f32, b: f32) -> bool {
@@ -136,10 +141,7 @@ fn fire_target_tile_under_actor_and_opaque_cost_label() {
     let cost = Tu::new(14);
 
     set_highlight(&mut app, cell, cost);
-    assert!(
-        settle_tile(&mut app),
-        "the fire-target tile must have drawn"
-    );
+    settle_tile(&mut app);
 
     assert_eq!(
         visible_tile_count(&mut app),
@@ -198,7 +200,7 @@ fn clearing_highlight_hides_tile_and_cost_label() {
     let cell = CellLevel::new(Cell::new(7, 7), l0);
 
     set_highlight(&mut app, cell, Tu::new(10));
-    assert!(settle_tile(&mut app), "the fire target must have drawn");
+    settle_tile(&mut app);
     assert_eq!(
         visible_tile_count(&mut app),
         1,
@@ -233,7 +235,7 @@ fn fire_target_hard_cut_when_off_storey() {
     let off_storey = CellLevel::new(Cell::new(8, 5), l1);
 
     set_highlight(&mut app, off_storey, Tu::new(12));
-    for _ in 0..MAX_UPDATES {
+    for _ in 0..HOLD_FRAMES {
         app.update();
     }
 

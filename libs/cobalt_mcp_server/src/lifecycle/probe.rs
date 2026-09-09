@@ -1,4 +1,6 @@
-//! version mismatch) proves the listener is answering, i.e. [`Ready`](Readiness::Ready).
+//! Probe a port: whether anything holds it, and whether a host answers the handshake.
+//!
+//! Any decodable answer, a version mismatch included, proves the listener is answering.
 use std::{
     io::{Read, Write},
     net::{Ipv4Addr, SocketAddr, TcpStream},
@@ -10,11 +12,21 @@ use cobalt_mcp_protocol::{
     ports::McpPort,
 };
 
-use super::values::{ProbeTimeout, Readiness};
+use super::values::{PortListening, ProbeTimeout, Readiness};
 
 const PROBE_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1);
 
 const READ_CHUNK: usize = 1024;
+
+// Whether anything accepts a connection on the port, with no handshake asked for.
+#[must_use]
+pub(super) fn probe_listening(port: McpPort, timeout: ProbeTimeout) -> PortListening {
+    let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, *port));
+    match TcpStream::connect_timeout(&addr, *timeout) {
+        Ok(_) => PortListening::Listening,
+        Err(_) => PortListening::Silent,
+    }
+}
 
 #[must_use]
 pub(super) fn probe_ready(port: McpPort, timeout: ProbeTimeout) -> Readiness {

@@ -24,6 +24,20 @@ impl DeferredBudget {
 /// Default two-second budget for deferred replies.
 pub const DEFERRED_BUDGET: DeferredBudget = DeferredBudget::new(Duration::from_secs(2));
 
+/// Budget every command registers with, in place of its own declared one.
+///
+/// Insert it before the plugin builds and `register_command` reads it for every command type.
+#[derive(Resource, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DeferredBudgetOverride(DeferredBudget);
+
+impl DeferredBudgetOverride {
+    /// Wrap the budget every registered command is to take.
+    #[must_use]
+    pub const fn new(budget: DeferredBudget) -> Self {
+        Self(budget)
+    }
+}
+
 /// How many deferred replies were delivered in one `answer_all`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DeliveredCount(usize);

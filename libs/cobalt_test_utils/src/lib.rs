@@ -17,7 +17,9 @@ pub mod probe;
 /// Bevy state inspection.
 pub mod state;
 
-pub use advance::{advance_until, advance_until_load_state, advance_until_resource_exists};
+pub use advance::{
+    advance_until, advance_until_load_state, advance_until_mut, advance_until_resource_exists,
+};
 pub use asset_plugin::{asset_plugin_at, unwatched_asset_plugin};
 pub use default_plugins_harness::{
     load::LoadTestAppBuilder,

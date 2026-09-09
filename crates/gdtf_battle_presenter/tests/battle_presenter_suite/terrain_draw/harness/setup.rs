@@ -4,6 +4,7 @@ use bevy::{
     app::{App, Update},
     ecs::{entity::Entity, message::Messages},
 };
+use cobalt_test_utils::advance_until_resource_exists;
 use gdtf_battle_sim::{
     battle::{SetupBattleRequested, setup_battle_on_request},
     emplacement::{SetEmplacement, apply_emplacement_toggle},
@@ -14,8 +15,6 @@ use gdtf_battle_sim::{
     test_support::setup_request,
 };
 
-const MAX_UPDATES: u32 = 128;
-
 const SEED: u64 = 0x0D15_EA5E;
 
 /// Register the sim systems a driven battle setup and an emplacement occupy need.
@@ -25,19 +24,13 @@ pub(super) fn register_setup_driver(app: &mut App) {
         .add_systems(Update, (setup_battle_on_request, apply_emplacement_toggle));
 }
 
-/// Run `setup_battle` on this situation and settle, answering whether it completed.
-pub(crate) fn drive_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) -> bool {
+/// Run `setup_battle` on this situation and settle.
+pub(crate) fn drive_setup(app: &mut App, built: (Situation, Vec<PlacedGanger>)) {
     app.world_mut()
         .resource_mut::<Messages<SetupBattleRequested>>()
         .write(setup_request(built, BattleSeed::new(SEED)));
-    for _ in 0..MAX_UPDATES {
-        app.update();
-        if app.world().get_resource::<ShotRng>().is_some() {
-            app.update();
-            return true;
-        }
-    }
-    false
+    advance_until_resource_exists::<ShotRng>(app);
+    app.update();
 }
 
 /// Spawn one living ganger the presenter's own spawn system draws a sprite for.

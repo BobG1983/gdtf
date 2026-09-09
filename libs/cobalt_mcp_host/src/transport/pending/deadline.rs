@@ -1,7 +1,11 @@
-pub(crate) const DEADLINE_BUDGET: FrameDeadline = FrameDeadline::new(4);
+//! Frame budget an unclaimed pending request is swept after.
 
+/// Frames an unclaimed pending request is held before the sweep answers it.
+pub const DEADLINE_BUDGET: FrameDeadline = FrameDeadline::new(4);
+
+/// Frames left before a pending request expires.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct FrameDeadline(u32);
+pub struct FrameDeadline(u32);
 
 pub(super) enum DeadlineTick {
     Live,
@@ -11,6 +15,12 @@ pub(super) enum DeadlineTick {
 impl FrameDeadline {
     const fn new(frames: u32) -> Self {
         Self(frames)
+    }
+
+    /// Frames still left on the deadline.
+    #[must_use]
+    pub const fn frames(&self) -> u32 {
+        self.0
     }
 
     pub(super) const fn tick(&mut self) -> DeadlineTick {

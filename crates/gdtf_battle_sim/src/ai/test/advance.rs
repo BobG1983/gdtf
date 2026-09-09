@@ -1,17 +1,14 @@
 use bevy::prelude::Entity;
 
 use super::support::{
-    ENEMY, LifeState, MoveRequested, PLAYER, active_of, brain_app, drain_moves, ground,
-    place_occupant, spawn_combatant,
+    ENEMY, LifeState, MoveRequested, PLAYER, brain_app, drain_moves, drive_until_player_turn,
+    ground, place_occupant, spawn_combatant,
 };
 use crate::ganger::Direction;
 
-const FRAME_CAP: usize = 80;
-
 struct Advanced {
-    enemy:    Entity,
-    moves:    Vec<MoveRequested>,
-    returned: bool,
+    enemy: Entity,
+    moves: Vec<MoveRequested>,
 }
 
 // One enemy at (2,5) facing East, one player at (40,5) out of sight carrying the given life state.
@@ -24,20 +21,8 @@ fn drive_toward_lone_target(life: LifeState) -> Advanced {
     app.world_mut().entity_mut(player).insert(life);
 
     let mut moves = Vec::new();
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
-        moves.extend(drain_moves(&mut app));
-        if active_of(&app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
-    Advanced {
-        enemy,
-        moves,
-        returned,
-    }
+    drive_until_player_turn(&mut app, |app| moves.extend(drain_moves(app)));
+    Advanced { enemy, moves }
 }
 
 #[test]
@@ -48,10 +33,6 @@ fn a_corpse_is_never_walked_toward() {
         !driven.moves.iter().any(|step| step.actor == driven.enemy),
         "a dead target must leave the advance list, so the enemy never steps at it: {:?}",
         driven.moves,
-    );
-    assert!(
-        driven.returned,
-        "with nothing to advance on the turn must come back to the player inside the cap",
     );
 }
 

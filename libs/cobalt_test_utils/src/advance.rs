@@ -18,6 +18,18 @@ pub fn advance_until(app: &mut App, predicate: impl Fn(&App) -> bool) {
     }
 }
 
+/// Run `app.update()` until `predicate` is true, for a predicate that needs `&mut App`.
+///
+/// The same uncapped shape as [`advance_until`], for a probe that goes through `World::query`.
+pub fn advance_until_mut(app: &mut App, mut predicate: impl FnMut(&mut App) -> bool) {
+    loop {
+        app.update();
+        if predicate(app) {
+            return;
+        }
+    }
+}
+
 /// Run updates until resource `T` exists.
 pub fn advance_until_resource_exists<T: Resource>(app: &mut App) {
     advance_until(app, |app| app.world().get_resource::<T>().is_some());

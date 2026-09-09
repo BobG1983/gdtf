@@ -3,10 +3,7 @@
 use gdtf_editor::DeleteOutcome;
 
 use crate::delete::{
-    harness::{
-        OUTCOME_UPDATES, OfferAnswer, TERRAIN_FAMILY, editor_on, is_published, member_key,
-        run_delete,
-    },
+    harness::{OfferAnswer, TERRAIN_FAMILY, editor_on, is_published, member_key, run_delete},
     records::{
         DELETED_PIECE, DELETED_THEME, REPLACEMENT_PIECE, REPLACEMENT_THEME, file_snapshot,
         file_text, write_prefab, write_terrain_def, write_theme_def,
@@ -78,8 +75,8 @@ fn both_prefabs_are_written_back_to_their_own_files_and_no_new_file_appears() {
     );
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Removed),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
+        DeleteOutcome::Removed,
+        "the delete must settle as Removed; published at the end: {}",
         is_published(&app),
     );
 

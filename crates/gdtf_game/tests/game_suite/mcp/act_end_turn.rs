@@ -19,9 +19,6 @@ use super::{
 };
 use crate::mcp::battle_fixture::{drive_into_battle_running, menu_app_with_mcp, run_request, send};
 
-/// Frames the enemy is given to take its turn and hand back.
-const TURN_FRAMES: u32 = 512;
-
 fn the_players_turn(app: &App) -> bool {
     let world = app.world();
     let (Some(active), Some(player)) = (
@@ -109,9 +106,10 @@ fn ending_the_turn_parks_until_the_turn_comes_back_to_the_player() {
 
     let reply = send(&tx, run_request(ACT_END_TURN, "()"));
     let mut handed_over = false;
-    let mut answered = None;
-    for frame in 0..TURN_FRAMES {
+    let mut frame = 0_u32;
+    let answered = loop {
         app.update();
+        frame += 1;
         let players_turn = the_players_turn(&app);
         if !players_turn {
             handed_over = true;
@@ -128,23 +126,21 @@ fn ending_the_turn_parks_until_the_turn_comes_back_to_the_player() {
                     "the reply lands only once the turn is back with the player — it answered \
                      on frame {frame} while the enemy was acting",
                 );
-                answered = Some(landed);
-                break;
+                break landed;
             }
             Err(TryRecvError::Empty) => {}
-            Err(TryRecvError::Disconnected) => break,
+            Err(TryRecvError::Disconnected) => {
+                unreachable!("the responder outlives the parked call")
+            }
         }
-    }
+    };
 
     assert!(
         handed_over,
         "ending the turn must actually hand it to the enemy, or nothing was being waited on",
     );
     assert!(
-        matches!(
-            answered,
-            Some(McpResponse::Outcome(CommandOutcome::Ran { .. }))
-        ),
+        matches!(answered, McpResponse::Outcome(CommandOutcome::Ran { .. })),
         "the enemy AI ends its own turn once it can neither shoot nor step, which hands the turn \
          back and releases the parked call; got {answered:?}",
     );

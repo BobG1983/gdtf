@@ -10,7 +10,10 @@ use std::{
     time::Instant,
 };
 
-use super::values::{ChildPid, ChildStatus, FailureTail, KillGrace, OutputTail, TailLines};
+use super::{
+    deadline::grace_deadline,
+    values::{ChildPid, ChildStatus, FailureTail, KillGrace, OutputTail, TailLines},
+};
 
 /// Max lines kept in the output ring for failure tails.
 pub const OUTPUT_TAIL_LINES: TailLines = TailLines::new(512);
@@ -187,12 +190,12 @@ impl ManagedChild for ProcessChild {
     }
 
     fn wait_until_exit(&mut self, within: KillGrace) -> ChildStatus {
-        let deadline = Instant::now() + *within;
+        let deadline = grace_deadline(Instant::now(), within);
         loop {
             if matches!(self.poll(), ChildStatus::Exited) {
                 return ChildStatus::Exited;
             }
-            if Instant::now() >= deadline {
+            if deadline.is_some_and(|at| Instant::now() >= *at) {
                 return ChildStatus::Running;
             }
             thread::sleep(EXIT_POLL_STEP);

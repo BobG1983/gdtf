@@ -4,7 +4,7 @@ use gdtf_battle_sim::terrain::def::{TerrainDefRegistry, TerrainUuid};
 use gdtf_editor::{DeleteOutcome, DeleteRefusal};
 
 use crate::delete::{
-    harness::{OUTCOME_UPDATES, OfferAnswer, TERRAIN_FAMILY, editor_on, is_published, run_delete},
+    harness::{OfferAnswer, TERRAIN_FAMILY, editor_on, is_published, run_delete},
     records::{
         DELETED_PIECE, DELETED_THEME, REPLACEMENT_PIECE, file_text, write_terrain_def,
         write_theme_def,
@@ -41,13 +41,13 @@ fn a_confirm_with_no_replacement_chosen_refuses_and_leaves_the_reference_standin
     );
 
     let referring = match settled.outcome {
-        Some(DeleteOutcome::Refused(DeleteRefusal::InUse(ref records))) => records.clone(),
+        DeleteOutcome::Refused(DeleteRefusal::InUse(ref records)) => records.clone(),
         _ => Vec::new(),
     };
     assert!(
         referring.iter().any(|record| *record.key == *DELETED_THEME),
-        "the refusal must name the theme that still holds the reference; settled as {:?} within \
-         {OUTCOME_UPDATES} updates, published at the end: {}",
+        "the refusal must name the theme that still holds the reference; settled as {:?}, \
+         published at the end: {}",
         settled.outcome,
         is_published(&app),
     );

@@ -9,15 +9,13 @@ use bevy::{
     window::{ExitCondition, WindowPlugin, WindowResolution},
     winit::WinitPlugin,
 };
-use cobalt_test_utils::WindowedTestAppBuilder;
+use cobalt_test_utils::{WindowedTestAppBuilder, advance_until_mut};
 
 use crate::{
     capture::{CapturePipelinePlugin, CaptureQueue, ShotDir, ShotStem},
     settle::{PollCap, SettleFrames},
     window_capture::WindowCapturePlugin,
 };
-
-pub(super) const FRAME_BUDGET: u32 = 64;
 
 const GPU_WINDOW_PX: UVec2 = UVec2::new(320, 180);
 
@@ -86,12 +84,6 @@ pub(super) fn the_queue_is_idle(app: &mut App) -> bool {
     app.world().resource::<CaptureQueue<()>>().is_idle()
 }
 
-pub(super) fn drive_until<F: FnMut(&mut App) -> bool>(app: &mut App, mut done: F) -> bool {
-    for _ in 0..FRAME_BUDGET {
-        app.update();
-        if done(app) {
-            return true;
-        }
-    }
-    false
+pub(super) fn drive_until<F: FnMut(&mut App) -> bool>(app: &mut App, done: F) {
+    advance_until_mut(app, done);
 }

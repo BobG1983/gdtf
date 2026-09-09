@@ -180,7 +180,7 @@ fn fire_until_replaced(app: &mut App, shooter: Entity) {
         before.is_some(),
         "the floor must be indexed before the firing loop, or the loop exits without a shot",
     );
-    for _ in 0..64 {
+    loop {
         if indexed_slab(app) != before {
             return;
         }

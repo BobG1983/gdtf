@@ -74,7 +74,7 @@ pub(crate) fn battle_app_prepared<T>(
     move || {
         let (mut app, port) = battle_app_listening()?;
         let chosen = prepare(&mut app).ok_or_else(|| TestError::from(missing))?;
-        let_the_screen_catch_up(&mut app)?;
+        let_the_screen_catch_up(&mut app);
         Ok((app, port, chosen))
     }
 }

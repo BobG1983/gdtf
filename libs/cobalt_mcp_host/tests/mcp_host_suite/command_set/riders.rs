@@ -261,7 +261,10 @@ fn both_riders_on_one_call_wait_for_admission_and_then_attach() {
         FAKE_COMMANDS,
         &FakePoint::NAME,
         &args(POINT_ARGS),
-        &RunOptions::new(Some(AwaitBudget::new(60)), Some(CaptureRider::new(None))),
+        &RunOptions::new(
+            Some(AwaitBudget::new(u64::MAX)),
+            Some(CaptureRider::new(None)),
+        ),
     );
 
     app.update();

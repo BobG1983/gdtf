@@ -25,6 +25,7 @@ enum Wiring {
     #[cfg(feature = "headless_test")]
     Bound {
         listener: std::sync::Mutex<Option<TcpListener>>,
+        timeouts: NetTimeouts,
     },
 }
 
@@ -77,10 +78,24 @@ impl McpPlugin {
     /// Returns an IO error if the listener cannot bind.
     #[cfg(feature = "headless_test")]
     pub fn listening(port: McpPort) -> std::io::Result<(Self, McpPort)> {
+        Self::listening_with(port, NetTimeouts::NO_IDLE_REAP)
+    }
+
+    /// Bind a loopback listener on `port` for tests, running with `timeouts`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an IO error if the listener cannot bind.
+    #[cfg(feature = "headless_test")]
+    pub fn listening_with(
+        port: McpPort,
+        timeouts: NetTimeouts,
+    ) -> std::io::Result<(Self, McpPort)> {
         let (listener, bound) = bind_listener(port)?;
         let plugin = Self {
             wiring: Wiring::Bound {
                 listener: std::sync::Mutex::new(Some(listener)),
+                timeouts,
             },
         };
         Ok((plugin, bound))
@@ -121,11 +136,11 @@ impl Plugin for McpPlugin {
                 serve(app, listener, *timeouts);
             }
             #[cfg(feature = "headless_test")]
-            Wiring::Bound { listener } => {
+            Wiring::Bound { listener, timeouts } => {
                 let Some(listener) = listener.lock().ok().and_then(|mut guard| guard.take()) else {
                     return;
                 };
-                serve(app, listener, NetTimeouts::NO_IDLE_REAP);
+                serve(app, listener, *timeouts);
             }
             #[cfg(feature = "headless_test")]
             Wiring::Channels { inbox } => {

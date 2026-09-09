@@ -28,10 +28,7 @@ fn teardown_despawns_every_ganger_sprite_and_clears_the_map() {
         .with_ganger(ganger_at(g0_at, 0, Direction::East))
         .with_ganger(ganger_at(g1_at, 1, Direction::North))
         .build();
-    assert!(
-        drive_setup(&mut app, situation),
-        "setup_battle must complete"
-    );
+    drive_setup(&mut app, situation);
 
     assert_eq!(
         drawn_gangers(&mut app).len(),

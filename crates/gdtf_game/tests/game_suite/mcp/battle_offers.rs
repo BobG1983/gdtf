@@ -131,7 +131,7 @@ fn battle_with_a_pool_for_one_shove(
         return Err("the idle ganger the fixture reported must still exist".into());
     };
     row.insert(pool);
-    let_the_screen_catch_up(&mut app)?;
+    let_the_screen_catch_up(&mut app);
     Ok((app, port, adjacent))
 }
 
@@ -157,7 +157,7 @@ fn a_shove_at_a_pool(short_by_one: bool) -> Result<ShoveRun, TestError> {
     let _shooter = selected(ACT_SELECT, next(ACT_SELECT, &mut replies)?)?;
     let offers = decode::<OffersBody>(BATTLE_OFFERS, next(BATTLE_OFFERS, &mut replies)?)?;
     let _shoved = next(ACT_SHOVE, &mut replies)?;
-    let_the_screen_catch_up(&mut app)?;
+    let_the_screen_catch_up(&mut app);
 
     let cost = shove_cost(&app)?;
     let Some(shove) = offers

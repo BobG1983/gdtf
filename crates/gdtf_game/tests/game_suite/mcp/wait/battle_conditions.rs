@@ -9,9 +9,11 @@ use gdtf_battle_sim::{
 };
 use gdtf_game::test_support::{BattleRunningComplete, GenerationComplete};
 
-use super::support::{PARKED_FRAMES, act_log_len, answered_within, append_act_log_lines};
+use super::support::{
+    PARKED_FRAMES, act_log_len, answered_within, append_act_log_lines, menu_app_with_unending_wait,
+};
 use crate::mcp::{
-    battle_fixture::{drive_into_battle_running, menu_app_with_mcp, run_request, send},
+    battle_fixture::{drive_into_battle_running, run_request, send},
     command_exchange::WAIT,
 };
 
@@ -29,7 +31,7 @@ fn start_a_walk(app: &mut App) -> Entity {
 
 #[test]
 fn wait_on_generation_complete_parks_in_the_menu_and_settles_while_the_situation_generates() {
-    let (mut app, tx) = menu_app_with_mcp();
+    let (mut app, tx) = menu_app_with_unending_wait();
 
     let reply = send(&tx, run_request(WAIT, "(condition:GenerationComplete)"));
     for frame in 0..PARKED_FRAMES {
@@ -61,7 +63,7 @@ fn wait_on_generation_complete_parks_in_the_menu_and_settles_while_the_situation
 
 #[test]
 fn wait_on_turn_changed_parks_until_a_turn_actually_hands_over() {
-    let (mut app, tx) = menu_app_with_mcp();
+    let (mut app, tx) = menu_app_with_unending_wait();
     drive_into_battle_running(&mut app);
 
     let reply = send(&tx, run_request(WAIT, "(condition:TurnChanged)"));
@@ -87,7 +89,7 @@ fn wait_on_turn_changed_parks_until_a_turn_actually_hands_over() {
 
 #[test]
 fn wait_on_the_act_log_answers_only_once_the_log_holds_the_entries_asked_for() {
-    let (mut app, tx) = menu_app_with_mcp();
+    let (mut app, tx) = menu_app_with_unending_wait();
     drive_into_battle_running(&mut app);
 
     let wanted = act_log_len(&app) + 1;
@@ -126,7 +128,7 @@ fn wait_on_the_act_log_answers_only_once_the_log_holds_the_entries_asked_for() {
 
 #[test]
 fn wait_on_the_act_log_answers_for_a_count_past_the_deleted_ring_buffer_cap() {
-    let (mut app, tx) = menu_app_with_mcp();
+    let (mut app, tx) = menu_app_with_unending_wait();
     drive_into_battle_running(&mut app);
 
     let wanted = DELETED_CAP.saturating_add(1);
@@ -154,7 +156,7 @@ fn wait_on_the_act_log_answers_for_a_count_past_the_deleted_ring_buffer_cap() {
 
 #[test]
 fn wait_on_walk_complete_parks_while_someone_is_part_way_through_a_walk() {
-    let (mut app, tx) = menu_app_with_mcp();
+    let (mut app, tx) = menu_app_with_unending_wait();
     drive_into_battle_running(&mut app);
     let walker = start_a_walk(&mut app);
 
@@ -187,7 +189,7 @@ fn wait_on_walk_complete_parks_while_someone_is_part_way_through_a_walk() {
 
 #[test]
 fn wait_on_battle_decided_settles_on_the_same_marker_the_flee_button_inserts() {
-    let (mut app, tx) = menu_app_with_mcp();
+    let (mut app, tx) = menu_app_with_unending_wait();
     drive_into_battle_running(&mut app);
 
     let reply = send(&tx, run_request(WAIT, "(condition:BattleDecided)"));

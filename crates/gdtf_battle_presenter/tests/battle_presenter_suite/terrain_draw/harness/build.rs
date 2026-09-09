@@ -8,6 +8,7 @@ use bevy::{
     ecs::error::warn,
     prelude::default,
     render::{RenderPlugin, settings::WgpuSettings},
+    time::TimeUpdateStrategy,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
@@ -23,6 +24,8 @@ use gdtf_battle_sim::{
     },
 };
 use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
+
+use crate::pinned_delta::{PINNED_DELTA, assert_reads_a_pinned_delta};
 
 pub(crate) fn workspace_assets_root() -> PathBuf {
     let Some(root) = cobalt_ron_assets::workspace_assets_root() else {
@@ -65,8 +68,14 @@ fn renderer_app_at(assets_root: &std::path::Path) -> App {
     app.insert_resource(test_terrain_registry());
     app.insert_resource(test_gang_registry());
     super::setup::register_setup_driver(&mut app);
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
     app.set_error_handler(warn);
     app
+}
+
+#[test]
+fn the_harness_app_reads_a_pinned_delta() {
+    assert_reads_a_pinned_delta(&mut headless_renderer_app());
 }
 
 pub(crate) fn headless_renderer_app_at(assets_root: &std::path::Path) -> App {

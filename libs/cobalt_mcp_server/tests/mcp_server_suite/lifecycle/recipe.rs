@@ -10,7 +10,9 @@ use cobalt_mcp_server::{
     LaunchFailure, LaunchOutcome, LaunchSpec, McpPort, WorkingDir,
 };
 
-use crate::lifecycle::support::{SAMPLE_PACKAGE, fast_config, free_port, sample_channel};
+use crate::lifecycle::support::{
+    SAMPLE_PACKAGE, free_port, no_boot_deadline_config, sample_channel,
+};
 
 const PROBE_PACKAGE: &str = "recipe_probe";
 
@@ -79,8 +81,10 @@ fn probe_main_echoing(var: &str) -> String {
         .replace("__MARKER__", PROBE_PORT_MARKER)
 }
 
-fn stderr_of_a_failed_launch_on(port: McpPort, boot_ms: u64, spec: &LaunchSpec) -> String {
-    let mut manager = HostManager::with_config(Box::new(CargoSpawner::new()), fast_config(boot_ms));
+// The child always exits, which `await_readiness` notices before it tests any deadline.
+fn stderr_of_a_failed_launch_on(port: McpPort, spec: &LaunchSpec) -> String {
+    let mut manager =
+        HostManager::with_config(Box::new(CargoSpawner::new()), no_boot_deadline_config());
     let outcome = manager.launch(port, spec);
     let LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail)) = outcome else {
         unreachable!("the child exits without ever answering a QA probe: {outcome:?}");
@@ -89,7 +93,7 @@ fn stderr_of_a_failed_launch_on(port: McpPort, boot_ms: u64, spec: &LaunchSpec) 
 }
 
 fn stderr_of_a_failed_launch(spec: &LaunchSpec) -> String {
-    stderr_of_a_failed_launch_on(McpPort::new(free_port()), 30_000, spec)
+    stderr_of_a_failed_launch_on(McpPort::new(free_port()), spec)
 }
 
 #[test]
@@ -123,9 +127,8 @@ fn the_launch_port_reaches_the_real_child_on_the_channel_variable() {
     );
     let port = free_port();
 
-    // The first run compiles the probe, so the budget covers a cold rustc. The package stays
-    // where it is afterwards, and the next run finds it built.
-    let tail = stderr_of_a_failed_launch_on(McpPort::new(port), 120_000, &spec);
+    // The first run compiles the probe; later runs find it built.
+    let tail = stderr_of_a_failed_launch_on(McpPort::new(port), &spec);
     assert!(
         tail.contains(&format!("{PROBE_PORT_MARKER}={port}")),
         "the child read {port} back out of {port_var}: {tail}"
@@ -141,7 +144,8 @@ fn the_recipe_working_directory_is_where_cargo_runs() {
         Some(WorkingDir::new(dir.clone())),
         sample_channel(),
     );
-    let mut manager = HostManager::with_config(Box::new(CargoSpawner::new()), fast_config(30_000));
+    let mut manager =
+        HostManager::with_config(Box::new(CargoSpawner::new()), no_boot_deadline_config());
 
     let outcome = manager.launch(McpPort::new(free_port()), &spec);
     let LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail)) = outcome else {
@@ -162,7 +166,8 @@ fn the_recipe_working_directory_is_where_cargo_runs() {
 fn successive_launches_can_name_different_recipes() {
     let first_dir = temp_dir_outside_a_workspace("first");
     let second_dir = temp_dir_outside_a_workspace("second");
-    let mut manager = HostManager::with_config(Box::new(CargoSpawner::new()), fast_config(30_000));
+    let mut manager =
+        HostManager::with_config(Box::new(CargoSpawner::new()), no_boot_deadline_config());
 
     for dir in [&first_dir, &second_dir] {
         let spec = LaunchSpec::new(

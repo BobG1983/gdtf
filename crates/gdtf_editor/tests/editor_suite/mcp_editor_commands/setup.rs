@@ -20,7 +20,7 @@ use crate::{
         mirror::ModeRow,
         outcome::ran_body,
         socket::{Client, run_editor},
-        support::TestError,
+        support::{NO_DEFERRAL_DEADLINE, NO_SOCKET_DEADLINE, TestError},
         world::{editor_mode, session},
     },
 };
@@ -68,11 +68,13 @@ pub(crate) fn theme_tab_app_and_client() -> Result<(App, Client), TestError> {
 /// The shared harness reads the workspace assets, so a delete driven against a temp
 /// QA assets root would remove nothing and assert nothing.
 pub(crate) fn editor_app_listening_on(root: &Path) -> Result<(App, McpPort), TestError> {
-    let (plugin, port) = McpEditorPlugin::listening(McpPort::new(0))?;
+    let (plugin, port) = McpEditorPlugin::listening_with(McpPort::new(0), NO_SOCKET_DEADLINE)?;
     let mut app = UiTestAppBuilder::on_asset_root(root)
         .with_ui_camera()
         .build();
     app.add_plugins(MapEditorPlugin);
+    // Before the plugin builds: its `build` is what registers every command's budget.
+    app.insert_resource(NO_DEFERRAL_DEADLINE);
     app.add_plugins(plugin);
     Ok((app, port))
 }

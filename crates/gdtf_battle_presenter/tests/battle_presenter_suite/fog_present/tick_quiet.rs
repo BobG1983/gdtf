@@ -66,17 +66,12 @@ fn steady_frame_leaves_fog_visibility_and_material_ticks_untouched() {
         .with_ganger(ganger_at(enemy_cell, 1, Direction::West))
         .player_faction(Faction::new(0))
         .build();
-    assert!(drive_setup(&mut app, situation), "setup must complete");
-    assert!(
-        settle_terrain_at(&mut app, player_cell),
-        "the terrain field must have drawn",
-    );
+    drive_setup(&mut app, situation);
+    settle_terrain_at(&mut app, player_cell);
     let player_sim = sim_entity_at(&mut app, player_cell);
     let enemy_sim = sim_entity_at(&mut app, enemy_cell);
-    assert!(
-        settle_actor(&mut app, player_sim) && settle_actor(&mut app, enemy_sim),
-        "both ganger sprites must have materialized",
-    );
+    settle_actor(&mut app, player_sim);
+    settle_actor(&mut app, enemy_sim);
 
     set_fog(&mut app, &[player_cell], &[explored_cell]);
     app.update();

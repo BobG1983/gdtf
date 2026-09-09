@@ -1,8 +1,8 @@
 use bevy::prelude::{App, Entity, IntoScheduleConfigs, Update, World};
 
 use super::support::{
-    ENEMY, LifeState, PLAYER, active_of, brain_app, drain_fires, drain_moves, drain_opens, ground,
-    place_occupant, spawn_combatant, tu_of,
+    ENEMY, LifeState, PLAYER, brain_app, drain_fires, drain_moves, drain_opens,
+    drive_until_player_turn, ground, place_occupant, spawn_combatant, tu_of,
 };
 use crate::{
     acts::OpenDoorRequested,
@@ -16,7 +16,6 @@ use crate::{
     terrain::entity::{BlocksPathfinding, BlocksVision, TerrainCell},
 };
 
-const FRAME_CAP: usize = 160;
 const WALL_X: i32 = 5;
 const DOOR_Y: i32 = 5;
 
@@ -100,11 +99,9 @@ fn adjacent_closed_door_opens_then_the_enemy_walks_through() {
     let mut moves = Vec::new();
     let mut opened = false;
     let mut walked_through = false;
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
-        opens.extend(drain_opens(&mut app));
-        moves.extend(drain_moves(&mut app));
+    drive_until_player_turn(&mut app, |app| {
+        opens.extend(drain_opens(app));
+        moves.extend(drain_moves(app));
         if opens
             .iter()
             .any(|open| open.actor == enemy && open.door == door)
@@ -112,18 +109,14 @@ fn adjacent_closed_door_opens_then_the_enemy_walks_through() {
             opened = true;
         }
         if opened
-            && (door_is_open(&app, door) && enemy_x(&app, enemy) > WALL_X
+            && (door_is_open(app, door) && enemy_x(app, enemy) > WALL_X
                 || moves
                     .iter()
                     .any(|step| step.actor == enemy && step.dest.x > WALL_X))
         {
             walked_through = true;
         }
-        if active_of(&app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
+    });
 
     assert!(
         opened,
@@ -136,10 +129,6 @@ fn adjacent_closed_door_opens_then_the_enemy_walks_through() {
     assert!(
         walked_through,
         "after the door opens the enemy must walk through it toward the player"
-    );
-    assert!(
-        returned,
-        "the enemy turn must hand control back to the player within the cap"
     );
 }
 
@@ -166,11 +155,9 @@ fn reachable_door_is_walked_to_then_opened() {
     let mut walked_to_door = false;
     let mut opened = false;
     let mut left = false;
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
-        opens.extend(drain_opens(&mut app));
-        moves.extend(drain_moves(&mut app));
+    drive_until_player_turn(&mut app, |app| {
+        opens.extend(drain_opens(app));
+        moves.extend(drain_moves(app));
         if moves.iter().any(|step| {
             step.actor == enemy && step.dest.x > 2 && step.dest.x <= WALL_X && step.dest.y == DOOR_Y
         }) {
@@ -183,18 +170,14 @@ fn reachable_door_is_walked_to_then_opened() {
             opened = true;
         }
         if opened
-            && (enemy_x(&app, enemy) > WALL_X
+            && (enemy_x(app, enemy) > WALL_X
                 || moves
                     .iter()
                     .any(|step| step.actor == enemy && step.dest.x > WALL_X))
         {
             left = true;
         }
-        if active_of(&app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
+    });
 
     assert!(
         walked_to_door,
@@ -202,10 +185,6 @@ fn reachable_door_is_walked_to_then_opened() {
     );
     assert!(opened, "once adjacent, the enemy must open the door");
     assert!(left, "after opening, the enemy must leave the room");
-    assert!(
-        returned,
-        "the enemy turn must hand control back to the player within the cap"
-    );
 }
 
 #[test]
@@ -228,17 +207,11 @@ fn a_clear_advance_does_not_open_a_side_door() {
     let mut opens = Vec::new();
     let mut moves = Vec::new();
     let mut fires = Vec::new();
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
-        opens.extend(drain_opens(&mut app));
-        moves.extend(drain_moves(&mut app));
-        fires.extend(drain_fires(&mut app));
-        if active_of(&app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| {
+        opens.extend(drain_opens(app));
+        moves.extend(drain_moves(app));
+        fires.extend(drain_fires(app));
+    });
 
     assert!(
         opens.is_empty(),
@@ -254,7 +227,6 @@ fn a_clear_advance_does_not_open_a_side_door() {
         fires.is_empty(),
         "the far player must not be fired on: {fires:?}"
     );
-    assert!(returned, "the enemy turn must return to the player");
 }
 
 #[test]
@@ -275,15 +247,7 @@ fn an_adjacent_door_is_not_opened_when_the_pool_cannot_cover_it() {
     place_occupant(&mut app, player_at, player);
 
     let mut opens: Vec<OpenDoorRequested> = Vec::new();
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
-        opens.extend(drain_opens(&mut app));
-        if active_of(&app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| opens.extend(drain_opens(app)));
 
     assert!(
         opens.is_empty(),
@@ -294,8 +258,4 @@ fn an_adjacent_door_is_not_opened_when_the_pool_cannot_cover_it() {
         "the door must stay closed when the pool cannot cover the act"
     );
     assert_eq!(tu_of(&app, enemy), 3, "a refused open spends nothing");
-    assert!(
-        returned,
-        "the enemy turn must end and hand control back to the player"
-    );
 }

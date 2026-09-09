@@ -1,3 +1,4 @@
+use core::time::Duration;
 use std::{
     error::Error,
     io::{self, ErrorKind, Read as _, Write as _},
@@ -9,10 +10,12 @@ use bevy::{
     state::state::{NextState, State},
     time::TimeUpdateStrategy,
 };
+use cobalt_mcp_host::dispatch::{DeferredBudget, DeferredBudgetOverride};
 use cobalt_mcp_protocol::{
     framing::{FrameDecoder, encode},
     message::{McpRequest, McpResponse},
     ports::McpPort,
+    timeouts::{NetIoTimeout, NetReplyTimeout, NetTimeouts},
 };
 use cobalt_screenshot::{PollCap, SettleFrames};
 use cobalt_test_utils::{LoadTestAppBuilder, advance_until};
@@ -33,7 +36,17 @@ const STOPPED: u32 = 0;
 const ONE_STEP_A_FRAME: u32 = 1;
 
 /// Pins procgen so every battle fixture generates the same map on every run.
-const FIXTURE_SEED: BattleSeed = BattleSeed::new(20_260_805);
+pub(crate) const FIXTURE_SEED: BattleSeed = BattleSeed::new(20_260_805);
+
+/// A deferral budget no run reaches, so a parked reply waits out any load.
+pub(crate) const NO_DEFERRAL_DEADLINE: DeferredBudgetOverride =
+    DeferredBudgetOverride::new(DeferredBudget::new(Duration::MAX));
+
+/// Socket waits no run reaches, so the listener never cuts a reply short.
+pub(crate) const NO_SOCKET_DEADLINE: NetTimeouts = NetTimeouts::new(
+    NetIoTimeout::new(Duration::MAX),
+    NetReplyTimeout::new(Duration::MAX),
+);
 
 pub(crate) struct Client {
     stream:  TcpStream,
@@ -100,11 +113,13 @@ fn battlescape_state(app: &App) -> Option<BattleScapeState> {
 }
 
 fn listening_menu_app() -> Result<(App, McpPort), TestError> {
-    let (plugin, port) = McpPlugin::listening(McpPort::new(0))?;
+    let (plugin, port) = McpPlugin::listening_with(McpPort::new(0), NO_SOCKET_DEADLINE)?;
     let mut app =
         LoadTestAppBuilder::new(gdtf_game::test_support::register_scenes_with_default_plugins)
             .starting_in(AppState::Load)
             .build();
+    // Before the plugin builds: its `build` is what registers every command's budget.
+    app.insert_resource(NO_DEFERRAL_DEADLINE);
     app.add_plugins(plugin);
     app.insert_resource(TimeUpdateStrategy::FixedTimesteps(ONE_STEP_A_FRAME));
     advance_until(&mut app, |app| {

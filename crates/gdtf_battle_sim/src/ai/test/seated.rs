@@ -22,8 +22,6 @@ use crate::{
     visibility::{FactionRelation, OmniscientFog},
 };
 
-const FRAME_CAP: usize = 80;
-
 // TU the seated enemy carries: enough for a short advance once the exit is paid.
 const ENEMY_TU: u8 = 20;
 
@@ -65,7 +63,7 @@ fn a_seated_enemy_advances_only_where_its_entry_side_lets_it_go() {
     let anywhere = reachable_for(&app, enemy, &Departure::anywhere(seat_cell));
 
     let mut requested: Option<CellLevel> = None;
-    for _ in 0..FRAME_CAP {
+    loop {
         app.update();
         if let Some(step) = drain_moves(&mut app)
             .into_iter()

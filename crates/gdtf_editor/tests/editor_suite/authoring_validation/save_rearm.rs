@@ -32,9 +32,6 @@ const REARM_FIELD: &str = "rearm_field";
 
 const MALFORMED_FIELD_STEM: &str = "broken_field";
 
-// Few enough that the re-arm fails rather than hangs: `advance_until` has no cap.
-const REARM_UPDATES: usize = 8;
-
 // Only `damage` differs between the field the test saves and the one it re-saves.
 fn field_def(damage: FieldDamage) -> FieldDef {
     FieldDef::new(
@@ -205,24 +202,10 @@ fn field_save_reload_rearms_validation_and_republishes_findings() {
             .is_some_and(|registry| registry.def(&key) == Some(&edited_def))
     });
 
-    let mut republished = false;
-    for _ in 0..REARM_UPDATES {
-        app.update();
-        if app
-            .world()
+    // Wait for the re-armed pass to publish a report without the malformed finding.
+    advance_until(&mut app, |app| {
+        app.world()
             .get_resource::<ContentIntegrityReport>()
             .is_some_and(|report| !has_malformed(report, MALFORMED_FIELD_STEM))
-        {
-            republished = true;
-            break;
-        }
-    }
-
-    assert!(
-        republished,
-        "the field re-save must re-arm validation: a re-armed pass replaces the \
-         ContentIntegrityReport with a fresh one and never re-raises the salvage-time malformed \
-         finding, so `{MALFORMED_FIELD_STEM}` still standing after {REARM_UPDATES} updates means \
-         the rebuilt FieldDefRegistry was not watched",
-    );
+    });
 }

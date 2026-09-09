@@ -64,10 +64,7 @@ fn draws_the_marker(app: &mut App, at: CellLevel) -> Option<bool> {
 fn a_cell_with_no_authored_piece_draws_the_situations_default_floor() {
     let mut app = headless_renderer_app();
     settle_resources(&mut app);
-    assert!(
-        drive_setup(&mut app, situation_with_floor(test_pieces::FLOOR)),
-        "setup_battle must complete",
-    );
+    drive_setup(&mut app, situation_with_floor(test_pieces::FLOOR));
 
     let defs = sprite_defs(&app);
     assert!(defs.is_some(), "the SpriteDefRegistry must be resident");
@@ -89,10 +86,7 @@ fn a_cell_with_no_authored_piece_draws_the_situations_default_floor() {
 fn a_cell_outside_the_authored_grid_still_draws_the_default_floor() {
     let mut app = headless_renderer_app();
     settle_resources(&mut app);
-    assert!(
-        drive_setup(&mut app, situation_with_floor(test_pieces::FLOOR)),
-        "setup_battle must complete",
-    );
+    drive_setup(&mut app, situation_with_floor(test_pieces::FLOOR));
 
     let defs = sprite_defs(&app);
     assert!(defs.is_some(), "the SpriteDefRegistry must be resident");
@@ -115,10 +109,7 @@ fn a_cell_outside_the_authored_grid_still_draws_the_default_floor() {
 fn a_situation_with_no_default_floor_draws_the_marker() {
     let mut app = headless_renderer_app();
     settle_resources(&mut app);
-    assert!(
-        drive_setup(&mut app, situation_with_floor(TerrainUuid::nil())),
-        "setup_battle must complete",
-    );
+    drive_setup(&mut app, situation_with_floor(TerrainUuid::nil()));
 
     assert_eq!(
         draws_the_marker(&mut app, ground(INSIDE)),

@@ -1,7 +1,8 @@
 use bevy::prelude::{App, Entity};
 
 use super::support::{
-    ENEMY, PLAYER, active_of, brain_app, drain_moves, ground, place_occupant, spawn_combatant,
+    ENEMY, PLAYER, brain_app, drain_moves, drive_until_player_turn, ground, place_occupant,
+    spawn_combatant,
 };
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -10,9 +11,6 @@ use crate::{
     metric::CellLevel,
     terrain::entity::TerrainPieceKind,
 };
-
-/// Frames the enemy turn is given to finish.
-const FRAME_CAP: usize = 80;
 
 /// How far east the cover strip runs, past anything the enemy can reach.
 const STRIP_END: i32 = 45;
@@ -44,13 +42,7 @@ fn wall_the_line(app: &mut App, at: CellLevel) {
 /// Every move the enemy turn asks for, over the frames it takes the turn to come back.
 fn moves_of_one_enemy_turn(app: &mut App) -> Vec<crate::acts::MoveRequested> {
     let mut moves = Vec::new();
-    for _ in 0..FRAME_CAP {
-        app.update();
-        moves.extend(drain_moves(app));
-        if active_of(app) == PLAYER {
-            break;
-        }
-    }
+    drive_until_player_turn(app, |app| moves.extend(drain_moves(app)));
     moves
 }
 
@@ -82,26 +74,14 @@ fn a_pinned_enemy_that_cannot_break_away_ends_its_turn_instead_of_asking_forever
     place_occupant(&mut app, player_at, player);
     suppress(&mut app, enemy, player_at);
 
+    // An enemy that can neither shoot nor legally move ends its turn.
     let mut moves = Vec::new();
-    let mut returned = false;
-    for _ in 0..FRAME_CAP {
-        app.update();
-        moves.extend(drain_moves(&mut app));
-        if active_of(&app) == PLAYER {
-            returned = true;
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| moves.extend(drain_moves(app)));
 
     assert!(
         moves.is_empty(),
         "stepping toward the fire that pinned this enemy is a move the sim refuses, so the brain \
          must never ask for it — asking again every frame is what hangs the turn: {moves:?}",
-    );
-    assert!(
-        returned,
-        "an enemy that can neither shoot nor legally move has nothing left to do, so the turn \
-         must come back to the player inside {FRAME_CAP} frames",
     );
 }
 
@@ -116,13 +96,7 @@ fn a_pinned_enemy_still_advances_when_the_step_breaks_away_from_the_fire() {
     suppress(&mut app, enemy, ground(-40, 5));
 
     let mut moves = Vec::new();
-    for _ in 0..FRAME_CAP {
-        app.update();
-        moves.extend(drain_moves(&mut app));
-        if active_of(&app) == PLAYER {
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| moves.extend(drain_moves(app)));
 
     assert!(
         moves.iter().any(|step| step.actor == enemy),

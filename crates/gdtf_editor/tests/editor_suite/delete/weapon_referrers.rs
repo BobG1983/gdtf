@@ -7,10 +7,7 @@ use crate::delete::{
         FIXTURE_GUN, ORPHAN_GUN, fixture_gang_member, weapon_name, write_fixture_gang,
         write_fixture_weapon,
     },
-    harness::{
-        OUTCOME_UPDATES, OfferAnswer, WEAPON_FAMILY, editor_on, is_published, member_key,
-        run_delete,
-    },
+    harness::{OfferAnswer, WEAPON_FAMILY, editor_on, is_published, member_key, run_delete},
     records::{file_text, write_emplacement_def},
 };
 
@@ -43,9 +40,8 @@ fn one_weapon_delete_drops_it_from_the_gang_and_replaces_it_in_the_emplacement()
     );
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Removed),
-        "the weapon delete must settle as Removed within {OUTCOME_UPDATES} updates; published at \
-         the end: {}",
+        DeleteOutcome::Removed,
+        "the weapon delete must settle as Removed; published at the end: {}",
         is_published(&app),
     );
 
@@ -81,9 +77,9 @@ fn a_weapon_only_a_gang_member_holds_is_removed_with_no_offer_at_all() {
 
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Removed),
-        "every referrer resolves by dropping the reference, so the delete goes through within \
-         {OUTCOME_UPDATES} updates; published at the end: {}",
+        DeleteOutcome::Removed,
+        "every referrer resolves by dropping the reference, so the delete goes through; \
+         published at the end: {}",
         is_published(&app),
     );
     assert!(

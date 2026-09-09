@@ -9,8 +9,8 @@ use gdtf_editor::{DeleteOutcome, GangDraft, draft_to_roster, write_gang_in};
 
 use crate::delete::{
     harness::{
-        GANG_FAMILY, OUTCOME_UPDATES, OfferAnswer, TERRAIN_FAMILY, THEME_FAMILY, editor_on,
-        is_published, member_key, run_delete,
+        GANG_FAMILY, OfferAnswer, TERRAIN_FAMILY, THEME_FAMILY, editor_on, is_published,
+        member_key, run_delete,
     },
     records::{
         DELETED_PIECE, DELETED_THEME, REPLACEMENT_PIECE, write_situation, write_terrain_def,
@@ -46,8 +46,8 @@ fn deleting_a_terrain_def_removes_the_file_it_was_read_from() {
 
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Removed),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
+        DeleteOutcome::Removed,
+        "the delete must settle as Removed; published at the end: {}",
         is_published(&app),
     );
     assert!(
@@ -88,8 +88,8 @@ fn deleting_a_theme_def_removes_the_file_it_was_read_from() {
 
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Removed),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
+        DeleteOutcome::Removed,
+        "the delete must settle as Removed; published at the end: {}",
         is_published(&app),
     );
     assert!(
@@ -138,8 +138,8 @@ fn deleting_a_gang_removes_its_own_file_and_takes_it_out_of_the_registry() {
 
     assert_eq!(
         settled.outcome,
-        Some(DeleteOutcome::Removed),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
+        DeleteOutcome::Removed,
+        "the delete must settle as Removed; published at the end: {}",
         is_published(&app),
     );
     assert!(!file.exists(), "the deleted gang's own file must be gone");

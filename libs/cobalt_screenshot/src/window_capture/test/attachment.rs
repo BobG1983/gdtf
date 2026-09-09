@@ -10,9 +10,7 @@ use bevy::{
 };
 use cobalt_test_utils::gpu_probe::gpu_adapter_probe;
 
-use super::harness::{
-    FRAME_BUDGET, a_capture_is_in_flight, drive_until, enqueue_capture, gpu_capture_app,
-};
+use super::harness::{a_capture_is_in_flight, drive_until, enqueue_capture, gpu_capture_app};
 use crate::window_capture::CaptureImage;
 
 #[test]
@@ -35,10 +33,7 @@ fn a_capture_frame_aims_the_windows_output_attachment_at_the_capture_image() {
         .id();
     enqueue_capture(&mut app, "attachment");
 
-    assert!(
-        drive_until(&mut app, a_capture_is_in_flight),
-        "test setup: the pump must put a capture in flight inside {FRAME_BUDGET} frames",
-    );
+    drive_until(&mut app, a_capture_is_in_flight);
 
     let Some(render_camera) = app
         .world()

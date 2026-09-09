@@ -15,9 +15,6 @@ use super::harness::*;
 /// The seed both legs drive, so they differ only in whether the blocker is spawned.
 const SEED: u64 = 0x5543_1239;
 
-/// Ticks a walk is given to settle. Three steps and a frame to drop the walk fits easily.
-const WALK_TICK_CAP: u32 = 16;
-
 /// The seat's one rotated entry cell: North authored, turned East by the placed facing.
 fn entry() -> CellLevel {
     ground(7, 5)
@@ -59,7 +56,7 @@ fn steps_taken(app: &mut App, actor: Entity, dest: CellLevel) -> Vec<MovementOcc
     app.world_mut()
         .write_message(MoveRequested::new(actor, dest));
     let mut taken: Vec<MovementOccurred> = Vec::new();
-    for _ in 0..WALK_TICK_CAP {
+    loop {
         step(app, 1);
         taken.extend(
             drain_movements(app)

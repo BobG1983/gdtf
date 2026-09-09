@@ -13,7 +13,7 @@ use crate::{
     content_shared::{advance::advance_to_published, app::editor_app_with_asset_root},
     delete::{
         fixture::{fixture_gang_member, fixture_gang_path, write_gang_equipped},
-        harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
+        harness::advance_to_outcome,
     },
 };
 
@@ -86,14 +86,9 @@ fn deleting_a_melee_weapon_writes_every_holder_back_with_none() {
 
     app.insert_resource(request_melee_delete(FIXTURE_BLADE));
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
     assert_eq!(
         outcome,
-        Some(DeleteOutcome::Removed),
+        DeleteOutcome::Removed,
         "the drop rewrites the one holder, so the re-run finds nothing and the record goes",
     );
 
@@ -138,17 +133,9 @@ fn deleting_the_default_melee_weapon_is_refused_while_a_member_resolves_to_it() 
 
     app.insert_resource(request_melee_delete(FISTS_KEY));
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
 
     assert!(
-        matches!(
-            outcome,
-            Some(DeleteOutcome::Refused(DeleteRefusal::InUse(_)))
-        ),
+        matches!(outcome, DeleteOutcome::Refused(DeleteRefusal::InUse(_))),
         "a member that wrote no melee key still resolves to `{FISTS_KEY}`, and no drop can \
          rewrite a field that already reads `None`; outcome: {outcome:?}",
     );
@@ -182,15 +169,10 @@ fn the_default_melee_weapon_is_removed_when_no_gang_resolves_to_it() {
 
     app.insert_resource(request_melee_delete(FISTS_KEY));
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
 
     assert_eq!(
         outcome,
-        Some(DeleteOutcome::Removed),
+        DeleteOutcome::Removed,
         "the refusal falls out of a finding no drop can rewrite, so a root with no gang \
          deletes `{FISTS_KEY}` like any other record",
     );
@@ -224,17 +206,9 @@ fn deleting_a_melee_weapon_is_refused_when_the_root_holds_no_default_to_fall_bac
 
     app.insert_resource(request_melee_delete(FIXTURE_BLADE));
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
 
     assert!(
-        matches!(
-            outcome,
-            Some(DeleteOutcome::Refused(DeleteRefusal::InUse(_)))
-        ),
+        matches!(outcome, DeleteOutcome::Refused(DeleteRefusal::InUse(_))),
         "the root holds no `{FISTS_KEY}` record, so writing the member `None` would leave it \
          resolving to a melee key nothing holds; outcome: {outcome:?}",
     );

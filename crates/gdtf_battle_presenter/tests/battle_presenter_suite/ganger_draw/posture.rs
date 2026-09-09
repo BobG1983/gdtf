@@ -15,10 +15,7 @@ fn changed_facing_reframes_and_stance_aiming_retints_the_same_sprite() {
     let situation = SituationBuilder::new()
         .with_ganger(ganger_at(at, 0, Direction::East))
         .build();
-    assert!(
-        drive_setup(&mut app, situation),
-        "setup_battle must complete"
-    );
+    drive_setup(&mut app, situation);
 
     let roles = character_roles(&app);
     assert!(roles.is_some(), "CharacterRoles must be resident");

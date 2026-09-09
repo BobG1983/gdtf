@@ -29,7 +29,7 @@ fn the_cursor_releases_one_reaction_shot_per_beat() {
     let mut released_per_step: Vec<u64> = Vec::new();
     let mut steps = 0_u32;
     let mut previous = shown(&app);
-    while (*shown(&app) < 5 || holding(&app)) && steps < 200 {
+    while *shown(&app) < 5 || holding(&app) {
         step(&mut app, increment);
         let now = shown(&app);
         released_per_step.push(now.distance_from(previous));

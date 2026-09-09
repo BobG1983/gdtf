@@ -5,9 +5,9 @@ use cobalt_mcp_protocol::{
     message::McpResponse,
 };
 
-use super::support::{PARKED_FRAMES, answered_within};
+use super::support::{PARKED_FRAMES, answered_within, menu_app_with_unending_wait};
 use crate::mcp::{
-    battle_fixture::{menu_app_with_mcp, run_request, send},
+    battle_fixture::{run_request, send},
     command_exchange::{WAIT, exchange, run},
     socket_support::{TestResult, game_app_listening},
 };
@@ -76,7 +76,7 @@ fn a_condition_this_host_does_not_offer_is_bad_arguments_with_the_wait_shape() -
 
 #[test]
 fn every_published_condition_is_accepted_and_only_the_unmet_ones_park() {
-    let (mut app, tx) = menu_app_with_mcp();
+    let (mut app, tx) = menu_app_with_unending_wait();
     let asked: Vec<(&str, Settles, Receiver<McpResponse>)> = [
         ("(condition:CaughtUp)", Settles::AtOnce),
         ("(condition:Phase(()))", Settles::AtOnce),

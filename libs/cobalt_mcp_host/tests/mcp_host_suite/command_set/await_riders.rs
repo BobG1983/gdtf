@@ -34,7 +34,7 @@ fn an_await_ready_rider_holds_the_call_until_the_command_admits() {
         FAKE_COMMANDS,
         &FakePoint::NAME,
         &args(POINT_ARGS),
-        &await_for(60),
+        &await_for(u64::MAX),
     );
 
     app.update();
@@ -80,7 +80,7 @@ fn an_await_ready_rider_on_a_name_the_host_does_not_know_answers_at_once() {
         FAKE_COMMANDS,
         &CommandName::from_static("fake.nope"),
         &args("()"),
-        &await_for(60),
+        &await_for(u64::MAX),
     );
 
     let answered = outcome(&channel);
@@ -115,7 +115,7 @@ fn a_held_call_is_answered_exactly_once() {
         FAKE_COMMANDS,
         &FakePoint::NAME,
         &args(POINT_ARGS),
-        &await_for(60),
+        &await_for(u64::MAX),
     );
 
     app.update();

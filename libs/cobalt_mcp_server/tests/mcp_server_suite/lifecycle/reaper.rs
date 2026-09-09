@@ -11,10 +11,11 @@ use cobalt_mcp_server::{
 
 use crate::lifecycle::{
     fake_child::{CallLog, ChildCall, PortGatedSpawner, counted, recorded, tail_on},
-    support::{WatchFreePort, always_spawning_config, fast_config, gated_listeners, sample_spec},
+    support::{
+        WatchFreePort, always_spawning_no_boot_deadline_config, gated_listeners,
+        no_boot_deadline_config, sample_spec,
+    },
 };
-
-const BOOT_MS: u64 = 2000;
 
 type ProbeLog = Arc<Mutex<Vec<ChildPid>>>;
 
@@ -138,8 +139,8 @@ fn one_reaper_call_clears_a_record_whose_child_the_probe_calls_dead() {
     let mut fixture = manager_over_a_gated_listener(
         1,
         LivenessAnswer::always(ChildStatus::Exited),
-        Box::new(SystemOrphanWatch::new()),
-        fast_config(BOOT_MS),
+        Box::new(WatchFreePort),
+        no_boot_deadline_config(),
     );
     let launched = launched_pid(&mut fixture);
 
@@ -167,8 +168,8 @@ fn one_reaper_call_keeps_a_record_whose_child_the_probe_calls_alive() {
     let mut fixture = manager_over_a_gated_listener(
         1,
         LivenessAnswer::always(ChildStatus::Running),
-        Box::new(SystemOrphanWatch::new()),
-        fast_config(BOOT_MS),
+        Box::new(WatchFreePort),
+        no_boot_deadline_config(),
     );
     let launched = launched_pid(&mut fixture);
 
@@ -187,7 +188,7 @@ fn a_reaper_call_with_no_record_touches_nothing() {
         1,
         LivenessAnswer::always(ChildStatus::Exited),
         Box::new(SystemOrphanWatch::new()),
-        fast_config(BOOT_MS),
+        no_boot_deadline_config(),
     );
 
     fixture.manager.reap_dead_child();
@@ -212,7 +213,7 @@ fn launch_starts_a_new_child_once_the_reaper_has_cleared_the_record() {
         1,
         LivenessAnswer::always(ChildStatus::Exited),
         Box::new(WatchFreePort),
-        fast_config(BOOT_MS),
+        no_boot_deadline_config(),
     );
     let first = launched_pid(&mut fixture);
 
@@ -236,7 +237,7 @@ fn one_reaper_call_drops_the_dead_instance_and_keeps_the_live_one() {
             2,
             answer.clone(),
             Box::new(WatchFreePort),
-            always_spawning_config(BOOT_MS),
+            always_spawning_no_boot_deadline_config(),
         );
         let first = launched_at(&mut fixture, 0);
         let second = launched_at(&mut fixture, 1);
@@ -276,7 +277,7 @@ fn logs_with_no_instance_read_the_child_the_reaper_left_running() {
         2,
         answer.clone(),
         Box::new(WatchFreePort),
-        always_spawning_config(BOOT_MS),
+        always_spawning_no_boot_deadline_config(),
     );
     let older = launched_at(&mut fixture, 0);
     let newer = launched_at(&mut fixture, 1);

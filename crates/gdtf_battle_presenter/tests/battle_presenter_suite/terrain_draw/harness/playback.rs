@@ -16,9 +16,6 @@ use gdtf_battle_sim::{
     prelude::CellLevel,
 };
 
-// How many manual frames the bounded advance loop is allowed before it gives up.
-const MAX_FRAMES: usize = 16;
-
 /// Sequence of the next act-log entry the cursor will show.
 pub(crate) fn shown(app: &App) -> ActSeq {
     app.world().resource::<PlaybackCursor>().shown()
@@ -96,17 +93,11 @@ pub(crate) fn moved_to_log(app: &mut App, actor: Entity, to: CellLevel) -> ActSe
 pub(crate) fn play_past(app: &mut App, seq: ActSeq, each_frame: impl Fn(&App)) {
     let step = hold_step(app);
     app.insert_resource(TimeUpdateStrategy::ManualDuration(step));
-    for _ in 0..MAX_FRAMES {
+    loop {
         app.update();
         each_frame(app);
         if shown(app) > seq {
             return;
         }
     }
-    assert!(
-        shown(app) > seq,
-        "the cursor never played the entry {seq:?} within {MAX_FRAMES} manual frames of \
-         {step:?} — it is still at {:?}",
-        shown(app),
-    );
 }

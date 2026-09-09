@@ -6,5 +6,6 @@ mod jsonrpc;
 mod lifecycle;
 mod link_timeout;
 mod loopback;
+mod ports;
 mod reconnect;
 mod tools;

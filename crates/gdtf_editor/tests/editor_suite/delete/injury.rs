@@ -18,7 +18,7 @@ use gdtf_editor::{
 
 use crate::{
     content_shared::{advance::advance_to_published, app::editor_app_with_asset_root},
-    delete::harness::{OUTCOME_UPDATES, advance_to_outcome, is_published},
+    delete::harness::advance_to_outcome,
 };
 
 /// The injury the weighting table names in two of its three buckets.
@@ -101,14 +101,9 @@ fn deleting_an_injury_takes_its_row_out_of_every_bucket_that_held_one() {
         ContentMemberKey::new(DELETED_INJURY.to_owned()),
     ));
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
     assert_eq!(
         outcome,
-        Some(DeleteOutcome::Removed),
+        DeleteOutcome::Removed,
         "every bucket holding a row for the injury is rewritten, so the re-run finds nothing",
     );
 

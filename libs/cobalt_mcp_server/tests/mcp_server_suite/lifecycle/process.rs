@@ -4,15 +4,19 @@ use cobalt_mcp_server::{
 };
 
 use crate::lifecycle::support::{
-    GatedStubSpawner, SAMPLE_PACKAGE, STUB_STDERR_LINE, StubSpawner, fast_config, free_port,
-    recipe_with_features, sample_channel, sample_spec, spawn_gated_fake_game,
+    GatedStubSpawner, SAMPLE_PACKAGE, STUB_STDERR_LINE, StubSpawner, WatchFreePort, fast_config,
+    free_port, no_boot_deadline_config, recipe_with_features, sample_channel, sample_spec,
+    spawn_gated_fake_game, spawn_silent_listener,
 };
 
 #[test]
 fn launch_becomes_ready_then_stops() {
     let (port, gate) = spawn_gated_fake_game();
-    let mut manager =
-        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
+    let mut manager = HostManager::with_orphan_watch(
+        Box::new(GatedStubSpawner::new(gate)),
+        no_boot_deadline_config(),
+        Box::new(WatchFreePort),
+    );
 
     let outcome = manager.launch(McpPort::new(port), &sample_spec());
     let LaunchOutcome::Launched {
@@ -39,8 +43,11 @@ fn launch_becomes_ready_then_stops() {
 #[test]
 fn second_launch_is_already_running() {
     let (port, gate) = spawn_gated_fake_game();
-    let mut manager =
-        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
+    let mut manager = HostManager::with_orphan_watch(
+        Box::new(GatedStubSpawner::new(gate)),
+        no_boot_deadline_config(),
+        Box::new(WatchFreePort),
+    );
     let spec = recipe_with_features(&["dynamic_linking", "file_watcher"]);
 
     let LaunchOutcome::Launched { pid: first_pid, .. } = manager.launch(McpPort::new(port), &spec)
@@ -75,8 +82,11 @@ fn second_launch_is_already_running() {
 #[test]
 fn a_second_launch_of_a_different_recipe_is_rejected() {
     let (port, gate) = spawn_gated_fake_game();
-    let mut manager =
-        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
+    let mut manager = HostManager::with_orphan_watch(
+        Box::new(GatedStubSpawner::new(gate)),
+        no_boot_deadline_config(),
+        Box::new(WatchFreePort),
+    );
     let running_recipe = recipe_with_features(&["dynamic_linking", "dev_tools"]);
 
     let LaunchOutcome::Launched { pid: first_pid, .. } =
@@ -102,8 +112,11 @@ fn a_second_launch_of_a_different_recipe_is_rejected() {
 #[test]
 fn an_unnamed_directory_matches_the_hosts_own_directory() {
     let (port, gate) = spawn_gated_fake_game();
-    let mut manager =
-        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
+    let mut manager = HostManager::with_orphan_watch(
+        Box::new(GatedStubSpawner::new(gate)),
+        no_boot_deadline_config(),
+        Box::new(WatchFreePort),
+    );
     let Ok(here) = std::env::current_dir() else {
         unreachable!("the test process has a current directory");
     };
@@ -129,7 +142,8 @@ fn an_unnamed_directory_matches_the_hosts_own_directory() {
 #[test]
 fn launch_times_out_and_captures_stderr() {
     let port = free_port();
-    let config = fast_config(800);
+    // A zero boot wait expires on the first pass whatever the machine is doing.
+    let config = fast_config(0);
     let mut manager = HostManager::with_config(Box::new(StubSpawner), config);
 
     let outcome = manager.launch(McpPort::new(port), &sample_spec());
@@ -145,6 +159,30 @@ fn launch_times_out_and_captures_stderr() {
         waited,
         config.boot_timeout(),
         "the failure reports the boot timeout the manager was configured with"
+    );
+    assert_eq!(manager.stop(McpPort::new(port)), StopOutcome::NotRunning);
+}
+
+#[test]
+fn a_listener_that_never_answers_the_handshake_never_becomes_ready() {
+    let port = spawn_silent_listener();
+    let config = fast_config(0);
+    let mut manager =
+        HostManager::with_orphan_watch(Box::new(StubSpawner), config, Box::new(WatchFreePort));
+
+    let outcome = manager.launch(McpPort::new(port), &sample_spec());
+    let LaunchOutcome::Failed(LaunchFailure::Timeout { tail, waited }) = outcome else {
+        unreachable!("an accepted connection alone is not readiness: {outcome:?}");
+    };
+    assert_eq!(
+        waited,
+        config.boot_timeout(),
+        "readiness needs the handshake answered, so the launch waits out the boot budget"
+    );
+    assert!(
+        tail.contains(STUB_STDERR_LINE),
+        "the failure carries the child's output tail: {}",
+        tail.as_str()
     );
     assert_eq!(manager.stop(McpPort::new(port)), StopOutcome::NotRunning);
 }

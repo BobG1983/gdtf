@@ -15,9 +15,6 @@ use super::harness::*;
 /// The seed every case here drives, so two runs of one case differ only in what they tune.
 const SEED: u64 = 0x5543_1226;
 
-/// Ticks a walk is given to settle. Three steps and a frame to drop the walk fits easily.
-const WALK_TICK_CAP: u32 = 16;
-
 /// The cell the actor starts on beside the all-sided seat, and the one the exit act reverts to.
 fn start() -> CellLevel {
     ground(5, 5)
@@ -88,7 +85,7 @@ fn walk_to(app: &mut App, actor: Entity, emplacement: Entity, dest: CellLevel) -
     app.world_mut()
         .write_message(MoveRequested::new(actor, dest));
     let mut ticks: Vec<Tick> = Vec::new();
-    for _ in 0..WALK_TICK_CAP {
+    loop {
         step(app, 1);
         ticks.push(Tick {
             occupant: occupant(app, emplacement),

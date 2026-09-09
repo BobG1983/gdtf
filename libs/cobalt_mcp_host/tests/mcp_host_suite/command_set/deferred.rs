@@ -19,6 +19,9 @@ use crate::command_set::support::{answer, args, no_answer_yet, plain, ran};
 #[test]
 fn a_parked_reply_settles_on_a_later_frame() {
     let mut app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
+    app.world_mut()
+        .resource_mut::<DeferredReplies<FakeSettle>>()
+        .set_budget(DeferredBudget::new(Duration::MAX));
     let channel = run_fake_command(
         &mut app,
         FAKE_COMMANDS,

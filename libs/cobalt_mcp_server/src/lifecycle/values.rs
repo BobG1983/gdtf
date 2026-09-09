@@ -276,11 +276,22 @@ pub enum ChildStatus {
     Exited,
 }
 
-/// Result of a readiness probe.
+/// Result of a readiness probe: the host answered the protocol handshake.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Readiness {
-    /// Host accepted a connection.
+    /// Host answered the handshake.
     Ready,
-    /// Not accepting yet.
+    /// Did not answer yet.
     NotYet,
+}
+
+/// Result of a connect-only probe: whether anything holds the port at all.
+///
+/// A process that answers the handshake slowly, or never, still holds the port.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PortListening {
+    /// Something accepted the connection.
+    Listening,
+    /// Nothing accepted.
+    Silent,
 }

@@ -1,8 +1,7 @@
 use bevy::{camera::RenderTarget, prelude::*, window::WindowRef};
 
 use super::harness::{
-    FRAME_BUDGET, a_capture_is_in_flight, drive_until, enqueue_capture, headless_capture_app,
-    the_queue_is_idle,
+    a_capture_is_in_flight, drive_until, enqueue_capture, headless_capture_app, the_queue_is_idle,
 };
 
 fn target_of(app: &App, camera: Entity) -> Option<RenderTarget> {
@@ -22,10 +21,7 @@ fn the_capture_path_leaves_a_window_camera_on_the_window() {
 
     enqueue_capture(&mut app, "window_camera");
 
-    assert!(
-        drive_until(&mut app, a_capture_is_in_flight),
-        "test setup: the pump must put a capture in flight inside {FRAME_BUDGET} frames",
-    );
+    drive_until(&mut app, a_capture_is_in_flight);
     let in_flight = target_of(&app, camera);
     assert!(
         matches!(in_flight, Some(RenderTarget::Window(_))),
@@ -34,10 +30,7 @@ fn the_capture_path_leaves_a_window_camera_on_the_window() {
          an image target here kills every button while a capture runs",
     );
 
-    assert!(
-        drive_until(&mut app, the_queue_is_idle),
-        "test setup: the capture queue must reach idle inside {FRAME_BUDGET} frames",
-    );
+    drive_until(&mut app, the_queue_is_idle);
     app.update();
     let after = target_of(&app, camera);
     assert!(

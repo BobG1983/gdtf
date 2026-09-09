@@ -1,12 +1,10 @@
 use bevy::prelude::Entity;
 
 use super::support::{
-    ENEMY, FireRequested, LifeState, PLAYER, SetAimingRequested, active_of, brain_app, drain_aims,
-    drain_fires, ground, place_occupant, spawn_combatant,
+    ENEMY, FireRequested, LifeState, PLAYER, SetAimingRequested, brain_app, drain_aims,
+    drain_fires, drive_until_player_turn, ground, place_occupant, spawn_combatant,
 };
 use crate::{ganger::Direction, metric::Cell};
-
-const FRAME_CAP: usize = 80;
 
 struct Engaged {
     enemy: Entity,
@@ -32,14 +30,10 @@ fn drive_against_lone_target(life: LifeState) -> Engaged {
 
     let mut fires = Vec::new();
     let mut aims = Vec::new();
-    for _ in 0..FRAME_CAP {
-        app.update();
-        fires.extend(drain_fires(&mut app));
-        aims.extend(drain_aims(&mut app));
-        if active_of(&app) == PLAYER {
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| {
+        fires.extend(drain_fires(app));
+        aims.extend(drain_aims(app));
+    });
     Engaged { enemy, fires, aims }
 }
 
@@ -95,13 +89,7 @@ fn a_live_enemy_is_fired_at_over_a_nearer_body() {
     app.world_mut().entity_mut(body).insert(LifeState::Dead);
 
     let mut fires = Vec::new();
-    for _ in 0..FRAME_CAP {
-        app.update();
-        fires.extend(drain_fires(&mut app));
-        if active_of(&app) == PLAYER {
-            break;
-        }
-    }
+    drive_until_player_turn(&mut app, |app| fires.extend(drain_fires(app)));
 
     let cells: Vec<Cell> = fires
         .iter()

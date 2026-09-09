@@ -8,10 +8,11 @@ use bevy::{
     platform::collections::HashSet,
     prelude::{Text2d, Transform, Visibility, default},
     render::{RenderPlugin, settings::WgpuSettings},
+    time::TimeUpdateStrategy,
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use cobalt_test_utils::asset_plugin_at;
+use cobalt_test_utils::{advance_until_mut, asset_plugin_at};
 use gdtf_battle_presenter::{
     PathPreview, PathStepSprite, PathTargetLabel, TopDownRendererPlugin, cell_to_world,
 };
@@ -20,7 +21,7 @@ use gdtf_battle_sim::{
     visibility::SquadVisibility,
 };
 
-pub(crate) const MAX_UPDATES: u32 = 16;
+use crate::pinned_delta::{PINNED_DELTA, assert_reads_a_pinned_delta};
 
 pub(crate) fn workspace_assets_root() -> PathBuf {
     let Some(root) = cobalt_ron_assets::workspace_assets_root() else {
@@ -60,8 +61,14 @@ pub(crate) fn preview_app() -> App {
     )
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(BattleInProgress);
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
     app.set_error_handler(warn);
     app
+}
+
+#[test]
+fn the_harness_app_reads_a_pinned_delta() {
+    assert_reads_a_pinned_delta(&mut preview_app());
 }
 
 pub(crate) fn set_preview(app: &mut App, cells: Vec<CellLevel>, cost: Tu) {
@@ -70,16 +77,11 @@ pub(crate) fn set_preview(app: &mut App, cells: Vec<CellLevel>, cost: Tu) {
         .insert_resource(PathPreview::new(cells, cost));
 }
 
-pub(crate) fn settle_steps(app: &mut App) -> bool {
-    for _ in 0..MAX_UPDATES {
+pub(crate) fn settle_steps(app: &mut App) {
+    advance_until_mut(app, |app| {
         let mut q = app.world_mut().query::<&PathStepSprite>();
-        if q.iter(app.world()).next().is_some() {
-            return true;
-        }
-        app.update();
-    }
-    let mut q = app.world_mut().query::<&PathStepSprite>();
-    q.iter(app.world()).next().is_some()
+        q.iter(app.world()).next().is_some()
+    });
 }
 
 pub(crate) fn step_visible_at(app: &mut App, cell: CellLevel) -> bool {
@@ -102,16 +104,11 @@ pub(crate) fn visible_step_count(app: &mut App) -> usize {
         .count()
 }
 
-pub(crate) fn settle_label(app: &mut App) -> bool {
-    for _ in 0..MAX_UPDATES {
+pub(crate) fn settle_label(app: &mut App) {
+    advance_until_mut(app, |app| {
         let mut q = app.world_mut().query::<&PathTargetLabel>();
-        if q.iter(app.world()).next().is_some() {
-            return true;
-        }
-        app.update();
-    }
-    let mut q = app.world_mut().query::<&PathTargetLabel>();
-    q.iter(app.world()).next().is_some()
+        q.iter(app.world()).next().is_some()
+    });
 }
 
 pub(crate) fn target_label_state(app: &mut App, target: CellLevel) -> Option<(String, bool, bool)> {

@@ -3,7 +3,7 @@
 use bevy::app::App;
 use cobalt_mcp_protocol::{
     command::{CommandArgsRon, CommandName, CommandOutcome, RunOptions, UnavailableCode},
-    message::{McpRequest, McpResponse, McpSessionError, RunCommand},
+    message::{McpRequest, McpResponse, RunCommand},
     ports::McpPort,
 };
 use gdtf_game::test_support::MCP_PROTOCOL_VERSION;
@@ -108,24 +108,6 @@ pub(crate) fn exchange(
 ) -> Result<McpResponse, TestError> {
     let mut replies = exchange_all(fixture, vec![request])?;
     replies.pop().ok_or_else(|| "no reply arrived".into())
-}
-
-/// Exchange `request` repeatedly until the reply is not `Timeout`.
-///
-/// A capture answers Timeout while its readback is still in flight; a loaded machine
-/// makes that happen more often, never differently.
-pub(crate) fn exchange_until_not_timeout(
-    fixture: SocketFixture,
-    request: McpRequest,
-) -> Result<McpResponse, TestError> {
-    let (mut app, port) = fixture()?;
-    let mut client = greet(&mut app, port)?;
-    loop {
-        let reply = client.exchange(&mut app, &request)?;
-        if !matches!(reply, McpResponse::Error(McpSessionError::Timeout)) {
-            return Ok(reply);
-        }
-    }
 }
 
 pub(crate) fn run(name: &'static str, arguments: &str, options: RunOptions) -> McpRequest {

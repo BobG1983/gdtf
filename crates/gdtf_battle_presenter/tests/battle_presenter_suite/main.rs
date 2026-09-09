@@ -8,6 +8,7 @@ mod fx_draw;
 mod ganger_draw;
 mod gpu_lock;
 mod path_preview;
+mod pinned_delta;
 mod playback;
 mod presenter_flats;
 mod readbacks;

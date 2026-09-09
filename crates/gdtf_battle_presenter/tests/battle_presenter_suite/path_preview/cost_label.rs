@@ -12,10 +12,7 @@ fn target_cell_cost_label_renders_at_destination() {
     let target = CellLevel::new(Cell::new(12, 10), l0);
 
     set_preview(&mut app, vec![start, mid, target], Tu::new(12));
-    assert!(
-        settle_label(&mut app),
-        "the target cost label must have drawn"
-    );
+    settle_label(&mut app);
 
     assert_eq!(
         visible_label_count(&mut app),
@@ -48,10 +45,7 @@ fn target_label_hard_cut_when_target_off_storey() {
     let target = CellLevel::new(Cell::new(8, 5), l1);
 
     set_preview(&mut app, vec![on0, target], Tu::new(14));
-    assert!(
-        settle_steps(&mut app),
-        "the active-storey step must have drawn"
-    );
+    settle_steps(&mut app);
 
     assert_eq!(
         visible_label_count(&mut app),
@@ -71,7 +65,7 @@ fn clearing_preview_hides_cost_label_and_idle_board_is_clean() {
         vec![CellLevel::new(Cell::new(6, 7), l0), target],
         Tu::new(8),
     );
-    assert!(settle_label(&mut app), "the cost label must have drawn");
+    settle_label(&mut app);
     assert_eq!(
         visible_label_count(&mut app),
         1,

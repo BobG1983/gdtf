@@ -1,4 +1,5 @@
 use cobalt_mcp_host::{
+    DEADLINE_BUDGET,
     command::McpCommand,
     test_support::{
         FAKE_COMMANDS_STALLED, FakeStall, fake_app, fake_facts_loaded, run_fake_command,
@@ -8,7 +9,8 @@ use cobalt_mcp_protocol::message::{McpResponse, McpSessionError};
 
 use crate::command_set::support::{answer, args, no_answer_yet, plain};
 
-const FRAMES_TO_EXPIRY: usize = 5;
+/// The sweep answers on the frame after the last one the budget still holds.
+const FRAMES_TO_EXPIRY: u32 = DEADLINE_BUDGET.frames() + 1;
 
 #[test]
 fn a_call_no_handler_drains_is_answered_by_the_pending_deadline() {

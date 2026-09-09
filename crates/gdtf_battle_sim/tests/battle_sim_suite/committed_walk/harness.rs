@@ -3,7 +3,7 @@ use bevy::{
     prelude::{Entity, MinimalPlugins},
     scene::ScenePlugin,
 };
-use cobalt_test_utils::unwatched_asset_plugin;
+use cobalt_test_utils::{advance_until, unwatched_asset_plugin};
 use gdtf_battle_sim::{
     acts::movement::WalkInProgress,
     battle::{BattleSimPlugin, SetupBattleRequested},
@@ -117,12 +117,7 @@ pub(crate) fn plan_total(app: &App, start: CellLevel, goal: CellLevel) -> Option
 }
 
 pub(crate) fn run_until_walk_ends(app: &mut App, entity: Entity) {
-    for _ in 0..32 {
-        app.update();
-        if !is_walking(app, entity) {
-            return;
-        }
-    }
+    advance_until(app, |app| !is_walking(app, entity));
 }
 
 pub(crate) fn one_player_situation(speed: f32) -> (Situation, Vec<PlacedGanger>, GangRegistry) {

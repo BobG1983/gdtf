@@ -29,11 +29,8 @@ fn terrain_renders_visible_explored_unseen() {
         .with_ganger(ganger_at(visible_cell, 0, Direction::East))
         .player_faction(Faction::new(0))
         .build();
-    assert!(drive_setup(&mut app, situation), "setup must complete");
-    assert!(
-        settle_terrain_at(&mut app, unseen_cell),
-        "the terrain field must have drawn (every in-range cell is at least floor)",
-    );
+    drive_setup(&mut app, situation);
+    settle_terrain_at(&mut app, unseen_cell);
 
     set_fog(&mut app, &[visible_cell], &[explored_cell]);
     app.update();
@@ -123,11 +120,8 @@ fn dense_floor_set_renders_lit_floor_around_observer() {
         .with_ganger(ganger_at(observer_cell, 0, Direction::East))
         .player_faction(Faction::new(0))
         .build();
-    assert!(drive_setup(&mut app, situation), "setup must complete");
-    assert!(
-        settle_terrain_at(&mut app, far_floor),
-        "the open-floor terrain field must have drawn (every in-range cell is at least floor)",
-    );
+    drive_setup(&mut app, situation);
+    settle_terrain_at(&mut app, far_floor);
 
     let visible = dense_visible_from_observer(&app, observer_cell);
     assert!(

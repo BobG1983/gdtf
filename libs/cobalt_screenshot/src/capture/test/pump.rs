@@ -45,9 +45,7 @@ fn the_pump_waits_out_the_whole_settle_window_before_spawning() {
     let mut app = pump_app(tmp.path().to_path_buf());
     enqueue(&mut app, "settled");
 
-    let Some(spawned_at) = drive_until_spawned(&mut app) else {
-        unreachable!("the pump never spawned a capture");
-    };
+    let spawned_at = drive_until_spawned(&mut app);
     assert_eq!(
         spawned_at,
         TEST_SETTLE + 2,
@@ -75,9 +73,7 @@ fn the_pump_creates_a_missing_shot_directory_before_it_spawns() {
     let mut app = pump_app(dir.clone());
     enqueue(&mut app, "fresh");
 
-    let Some(_spawned_at) = drive_until_spawned(&mut app) else {
-        unreachable!("the pump never spawned a capture");
-    };
+    drive_until_spawned(&mut app);
     assert!(
         dir.is_dir(),
         "the pump must create {} before it spawns — the capture's PNG writer cannot write into a \
@@ -97,9 +93,7 @@ fn a_stale_png_already_at_the_path_is_purged_and_never_landed() {
     let mut app = pump_app(tmp.path().to_path_buf());
     enqueue(&mut app, "stale");
 
-    let Some(_spawned_at) = drive_until_spawned(&mut app) else {
-        unreachable!("the pump never spawned a capture");
-    };
+    drive_until_spawned(&mut app);
     assert!(
         !path.exists(),
         "the stale file at {} must be deleted before the capture spawns",
@@ -108,7 +102,7 @@ fn a_stale_png_already_at_the_path_is_purged_and_never_landed() {
 
     let finished = drive_until_finished(&mut app);
     assert!(
-        matches!(finished, Some(CaptureOutcome::TimedOut(_))),
+        matches!(finished, CaptureOutcome::TimedOut(_)),
         "a stale PNG at the target path must be purged, never served — the capture times out, \
          got {finished:?}",
     );
@@ -124,14 +118,12 @@ fn bytes_that_do_not_decode_as_a_png_are_never_landed() {
     let mut app = pump_app(tmp.path().to_path_buf());
     enqueue(&mut app, "garbled");
 
-    let Some(_spawned_at) = drive_until_spawned(&mut app) else {
-        unreachable!("the pump never spawned a capture");
-    };
+    drive_until_spawned(&mut app);
     plant_garbage(&path);
 
     let finished = drive_until_finished(&mut app);
     assert!(
-        matches!(finished, Some(CaptureOutcome::TimedOut(_))),
+        matches!(finished, CaptureOutcome::TimedOut(_)),
         "bytes that do not decode as a PNG must never be reported Landed, got {finished:?}",
     );
 }
@@ -146,9 +138,7 @@ fn a_png_landing_after_the_spawn_is_landed_at_that_exact_path() {
     let mut app = pump_app(tmp.path().to_path_buf());
     enqueue(&mut app, "landed");
 
-    let Some(_spawned_at) = drive_until_spawned(&mut app) else {
-        unreachable!("the pump never spawned a capture");
-    };
+    drive_until_spawned(&mut app);
     assert!(
         outcomes(&app).is_empty(),
         "no reply may exist before a PNG has landed: {:?}",
@@ -159,7 +149,7 @@ fn a_png_landing_after_the_spawn_is_landed_at_that_exact_path() {
     let finished = drive_until_finished(&mut app);
     assert_eq!(
         finished,
-        Some(CaptureOutcome::Landed(path.clone())),
+        CaptureOutcome::Landed(path.clone()),
         "a PNG landing after the capture spawned must be reported Landed at {}",
         path.display(),
     );
@@ -176,16 +166,14 @@ fn a_stem_lands_under_the_shot_directory() {
         .push(Some(ShotStem::new("named")), ());
     let dir = app.world().resource::<ShotDir>().clone();
 
-    let Some(_spawned_at) = drive_until_spawned(&mut app) else {
-        unreachable!("the pump never spawned a capture");
-    };
+    drive_until_spawned(&mut app);
     let planted = CapturePath::new(dir.join("named_0.png"));
     plant_decodable_png(&planted);
 
     let finished = drive_until_finished(&mut app);
     assert_eq!(
         finished,
-        Some(CaptureOutcome::Landed(planted)),
+        CaptureOutcome::Landed(planted),
         "a stem-named capture must land under the shot directory",
     );
 }

@@ -2,5 +2,7 @@
 
 /// Windowed test app builder.
 pub mod app_builder;
+#[cfg(test)]
+mod test;
 
-pub use app_builder::WindowedTestAppBuilder;
+pub use app_builder::{PINNED_DELTA, WindowedTestAppBuilder};

@@ -24,6 +24,8 @@ use gdtf_battle_sim::{
     suppression::SuppressionApplied,
 };
 
+use crate::pinned_delta::{PINNED_DELTA, assert_reads_a_pinned_delta};
+
 pub(crate) fn workspace_assets_root() -> PathBuf {
     let Some(root) = cobalt_ron_assets::workspace_assets_root() else {
         unreachable!("found no `Cargo.lock` or `[workspace]` manifest above the crate");
@@ -64,8 +66,14 @@ pub(crate) fn headless_renderer_app() -> App {
     .add_message::<FallOccurred>()
     .add_message::<ThrowResolved>()
     .add_plugins(TopDownRendererPlugin);
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
     app.set_error_handler(warn);
     app
+}
+
+#[test]
+fn the_harness_app_reads_a_pinned_delta() {
+    assert_reads_a_pinned_delta(&mut headless_renderer_app());
 }
 
 pub(crate) fn play<M: bevy::ecs::message::Message + Clone>(app: &mut App, fact: M) {
@@ -98,7 +106,7 @@ pub(crate) fn advance_past_ttl(app: &mut App) {
         app.update();
     }
     app.world_mut()
-        .insert_resource(TimeUpdateStrategy::Automatic);
+        .insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
 }
 
 pub(crate) fn fire_with_zero_delta(app: &mut App) {
@@ -108,28 +116,25 @@ pub(crate) fn fire_with_zero_delta(app: &mut App) {
         ));
     app.update();
     app.world_mut()
-        .insert_resource(TimeUpdateStrategy::Automatic);
+        .insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
 }
 
 pub(crate) fn step_until_pop(
     app: &mut App,
     text: &str,
     step: std::time::Duration,
-    max_steps: u32,
-) -> Option<Vec<(String, f32)>> {
+) -> Vec<(String, f32)> {
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::ManualDuration(step));
-    let mut found = None;
-    for _ in 0..max_steps {
+    let found = loop {
         app.update();
         let snapshot = super::probes::fct_pops_with_y(app);
         if snapshot.iter().any(|(t, _)| t == text) {
-            found = Some(snapshot);
-            break;
+            break snapshot;
         }
-    }
+    };
     app.world_mut()
-        .insert_resource(TimeUpdateStrategy::Automatic);
+        .insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
     found
 }
 
@@ -140,7 +145,7 @@ pub(crate) fn step_app(app: &mut App, step: std::time::Duration, updates: u32) {
         app.update();
     }
     app.world_mut()
-        .insert_resource(TimeUpdateStrategy::Automatic);
+        .insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
 }
 
 pub(crate) fn drain_impacts(app: &mut App) -> Vec<ShotImpactResolved> {
@@ -163,6 +168,6 @@ pub(crate) fn step_counting_impacts(
         total += drain_impacts(app).len();
     }
     app.world_mut()
-        .insert_resource(TimeUpdateStrategy::Automatic);
+        .insert_resource(TimeUpdateStrategy::ManualDuration(PINNED_DELTA));
     total
 }

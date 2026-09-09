@@ -1,8 +1,9 @@
 //! Reconnect and retarget behaviour for the QA client.
 
+use core::time::Duration;
 use std::{
     io::{Read, Write},
-    net::{Ipv4Addr, TcpListener, TcpStream},
+    net::{TcpListener, TcpStream},
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -17,17 +18,16 @@ use cobalt_mcp_protocol::{
         HelloFacts, McpRequest, McpResponse, McpSessionError, ProtocolVersion, ServerNameNet,
     },
 };
-use cobalt_mcp_server::{EnvVarName, McpClient, McpLink, McpPort};
+use cobalt_mcp_server::{EnvVarName, LinkTimeout, McpClient, McpLink, McpPort};
+
+use crate::ports::port_of;
+
+/// A read wait no run reaches, so a loaded machine cannot cut a reply short.
+const NO_READ_DEADLINE: LinkTimeout = LinkTimeout::new(Duration::MAX);
 
 fn bind_loopback() -> (TcpListener, u16) {
-    let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, 0)) {
-        Ok(listener) => listener,
-        Err(err) => unreachable!("the test can bind a loopback listener: {err}"),
-    };
-    let port = match listener.local_addr() {
-        Ok(addr) => addr.port(),
-        Err(err) => unreachable!("the listener has a local address: {err}"),
-    };
+    let listener = crate::ports::bind_loopback();
+    let port = port_of(&listener);
     (listener, port)
 }
 
@@ -115,9 +115,10 @@ fn a_reused_connection_the_game_closed_reconnects_and_succeeds() {
         }
     });
 
-    let mut client = McpClient::new(
+    let mut client = McpClient::with_timeout(
         McpPort::new(port),
         EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
+        NO_READ_DEADLINE,
     );
 
     let first = request_catalogue(&mut client);
@@ -152,9 +153,10 @@ fn retarget_on_the_same_port_invalidates_the_connection() {
         }
     });
 
-    let mut client = McpClient::new(
+    let mut client = McpClient::with_timeout(
         McpPort::new(port),
         EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
+        NO_READ_DEADLINE,
     );
 
     let first = request_catalogue(&mut client);
@@ -192,9 +194,10 @@ fn an_unreachable_game_fails_promptly_without_retrying_forever() {
     drop(listener);
 
     // Returning at all is the proof: an unbounded reconnect loop would hang right here.
-    let mut client = McpClient::new(
+    let mut client = McpClient::with_timeout(
         McpPort::new(port),
         EnvVarName::new("SAMPLE_CHANNEL".to_owned()),
+        NO_READ_DEADLINE,
     );
     let result = request_catalogue(&mut client);
 

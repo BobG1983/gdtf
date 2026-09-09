@@ -8,7 +8,7 @@ use crate::{
     content_shared::{advance::advance_to_published, app::editor_app_with_asset_root},
     delete::{
         fixture::{FIXTURE_GUN, ORPHAN_GUN, weapon_name, write_fixture_gang, write_fixture_weapon},
-        harness::{OUTCOME_UPDATES, WEAPON_FAMILY, advance_to_outcome, is_published},
+        harness::{WEAPON_FAMILY, advance_to_outcome},
     },
 };
 
@@ -39,15 +39,10 @@ fn a_weapon_no_record_names_is_removed_with_its_file() {
         ContentMemberKey::new(ORPHAN_GUN.to_owned()),
     ));
     let outcome = advance_to_outcome(&mut app);
-    assert!(
-        outcome.is_some(),
-        "the delete must settle within {OUTCOME_UPDATES} updates; published at the end: {}",
-        is_published(&app),
-    );
 
     assert_eq!(
         outcome,
-        Some(DeleteOutcome::Removed),
+        DeleteOutcome::Removed,
         "a delete no record references must settle as Removed",
     );
     assert!(
