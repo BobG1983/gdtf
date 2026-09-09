@@ -3,6 +3,9 @@ name = "gdtf_battle_sim"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+doctest = false
+
 [dependencies]
 bevy = { workspace = true }
 rand_chacha = { workspace = true }
@@ -10,6 +13,7 @@ rand = { workspace = true }
 serde = { workspace = true }
 
 [dev-dependencies]
+cobalt_test_utils = { path = "../../libs/cobalt_test_utils" }
 ron = { workspace = true }
 
 [lints]

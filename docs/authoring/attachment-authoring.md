@@ -179,9 +179,9 @@ reference-integrity report — see
 ## Part 4 — Verify
 
 - **Suite:** `cargo dtest`. The family's load coverage is
-  `crates/gdtf_game/tests/load_families/load_attachments.rs` (registry presence +
+  `crates/gdtf_game/tests/game_suite/load_families/load_attachments.rs` (registry presence +
   shipped stems, value-agnostic); the slot-gated fit path is
-  `crates/gdtf_game/tests/load_families/load_attachment_fit.rs`; the per-effect
+  `crates/gdtf_game/tests/game_suite/load_families/load_attachment_fit.rs`; the per-effect
   fold semantics
   are unit tests inside each palette file
   (`crates/gdtf_battle_sim/src/effects/attachments/`).

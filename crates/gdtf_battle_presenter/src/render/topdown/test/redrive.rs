@@ -1,10 +1,11 @@
 use bevy::{
     MinimalPlugins,
-    asset::{AssetApp, AssetEvent, AssetId, AssetPlugin, Assets, Handle},
+    asset::{AssetApp, AssetEvent, AssetId, Assets, Handle},
     image::{Image, TextureAtlasLayout},
     platform::collections::HashMap,
     prelude::*,
 };
+use cobalt_test_utils::unwatched_asset_plugin;
 
 use super::super::{
     atlases::{SheetAtlas, SheetRole, TopDownAtlases},
@@ -31,7 +32,7 @@ fn witness_material_modified(
 fn app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(unwatched_asset_plugin())
         .init_asset::<Image>()
         .init_asset::<TextureAtlasLayout>()
         .init_asset::<TerrainFogMaterial>()

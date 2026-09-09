@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
-    asset::AssetPlugin,
     ecs::error::warn,
     prelude::default,
     render::{RenderPlugin, settings::WgpuSettings},
@@ -13,6 +12,8 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+
+use crate::asset_plugin::asset_plugin_at;
 
 fn workspace_assets_root() -> PathBuf {
     let Some(root) = cobalt_ron_assets::workspace_assets_root() else {
@@ -57,10 +58,7 @@ impl LoadTestAppBuilder {
                     exit_condition: ExitCondition::DontExit,
                     ..default()
                 })
-                .set(AssetPlugin {
-                    file_path: root.to_string_lossy().into_owned(),
-                    ..default()
-                }),
+                .set(asset_plugin_at(&root)),
         );
         app.set_error_handler(warn);
         register(&mut app);

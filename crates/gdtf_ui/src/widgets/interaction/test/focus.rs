@@ -1,12 +1,12 @@
 use bevy::{
     MinimalPlugins,
-    asset::AssetPlugin,
     input::InputPlugin,
     input_focus::InputFocus,
     prelude::*,
     scene::ScenePlugin,
     ui::{Interaction, widget::Button},
 };
+use cobalt_test_utils::unwatched_asset_plugin;
 
 use crate::{UiPlugin, widgets::core::DisabledButton};
 
@@ -14,7 +14,7 @@ use crate::{UiPlugin, widgets::core::DisabledButton};
 fn hover_moves_input_focus_to_button() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(unwatched_asset_plugin())
         .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);
@@ -34,7 +34,7 @@ fn hover_moves_input_focus_to_button() {
 fn hover_does_not_focus_disabled_button() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(unwatched_asset_plugin())
         .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);

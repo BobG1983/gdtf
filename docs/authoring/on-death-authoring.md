@@ -129,7 +129,7 @@ write it.
   shipped serde forms and the delegation), plus the per-effect unit tests in
   `explode.rs` / `leave_field.rs`. The end-to-end fans — a smashed barrel, a
   destroyed slab, a def authoring two effects that both land — are driven
-  through a real battle in `crates/gdtf_battle_sim/tests/ondeath_effects/`.
+  through a real battle in `crates/gdtf_battle_sim/tests/battle_sim_suite/ondeath_effects/`.
 - **In game:** `cargo drun` — the shipped skirmish fields "Alex Mercer" with
   the `volatile_charge` satchel weapon: when Alex dies, the radius-1 blast
   detonates at the body (the presenter marks it with a bold "BOOM" floating

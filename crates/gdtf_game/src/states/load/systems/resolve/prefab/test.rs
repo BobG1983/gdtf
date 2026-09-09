@@ -1,9 +1,10 @@
 use bevy::{
     MinimalPlugins,
-    asset::{AssetEvent, AssetPlugin, AssetServer, Assets, Handle, LoadedFolder},
+    asset::{AssetEvent, AssetServer, Assets, Handle, LoadedFolder},
     prelude::*,
 };
 use cobalt_ron_assets::{RonAsset, RonAssetAppExt};
+use cobalt_test_utils::unwatched_asset_plugin;
 use gdtf_battle_sim::{
     level::{
         GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, PrefabSpec,
@@ -43,7 +44,7 @@ fn prefab_spec(theme: ThemeUuid, size: GridSize, placements: usize) -> PrefabSpe
 fn app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(unwatched_asset_plugin())
         .init_ron_asset_with_extensions::<PrefabSpec>(vec!["prefab.ron"])
         .add_systems(Update, redrive_prefabs_on_asset_event);
     app

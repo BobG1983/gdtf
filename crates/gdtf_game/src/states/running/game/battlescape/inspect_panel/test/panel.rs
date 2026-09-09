@@ -1,12 +1,12 @@
 use bevy::{
     MinimalPlugins,
-    asset::AssetPlugin,
     ecs::system::{RunSystemOnce, SystemState},
     platform::collections::HashSet,
     prelude::*,
     scene::ScenePlugin,
     ui::{Display, Node, PositionType, Val},
 };
+use cobalt_test_utils::unwatched_asset_plugin;
 use gdtf_battle_input::InspectTarget;
 use gdtf_battle_presenter::ShownSquadVisibility;
 use gdtf_battle_sim::{
@@ -37,7 +37,7 @@ const PLAYER: Faction = Faction::new(0);
 
 fn panel_app() -> App {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     app.insert_resource(default_theme());
     let world = app.world_mut();
 

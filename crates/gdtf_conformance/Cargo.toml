@@ -3,6 +3,9 @@ name = "gdtf_conformance"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+doctest = false
+
 [dependencies]
 
 # The guard suites read the repo tree and its manifests. `cobalt_ron_assets` locates the

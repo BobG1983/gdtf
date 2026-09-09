@@ -3,12 +3,12 @@ use std::time::Duration;
 use bevy::{
     MinimalPlugins,
     app::{App, Update},
-    asset::AssetPlugin,
     math::Vec3,
     prelude::{Transform, Visibility},
     scene::ScenePlugin,
     time::TimeUpdateStrategy,
 };
+use cobalt_test_utils::unwatched_asset_plugin;
 use gdtf_battle_sim::{
     prelude::{Cell, Level, SimPos},
     resolve_and_apply::HitReport,
@@ -65,7 +65,7 @@ fn pending_impact_count(app: &mut App) -> usize {
 #[test]
 fn projectile_travels_then_despawns_leaving_a_pending_impact() {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     let from = Vec3::new(0.0, 0.0, 0.0);
     let to = Vec3::new(100.0, 0.0, 0.0);
     let flight_seconds = from.distance(to) / TEST_VELOCITY;
@@ -229,7 +229,7 @@ fn stub_roles() -> EffectRoles {
 #[test]
 fn a_played_shot_with_no_effects_sheet_still_flies_a_bolt() {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     app.insert_resource(FxTuning::default());
     app.insert_resource(stub_roles());
     app.insert_resource(TopDownAtlases::empty());

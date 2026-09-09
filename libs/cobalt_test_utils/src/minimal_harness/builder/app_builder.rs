@@ -5,11 +5,12 @@ use core::marker::PhantomData;
 use bevy::{
     MinimalPlugins,
     app::App,
-    asset::AssetPlugin,
     scene::ScenePlugin,
     state::state::{FreelyMutableState, NextState, States},
     time::TimeUpdateStrategy,
 };
+
+use crate::asset_plugin::unwatched_asset_plugin;
 
 /// Builder phase: no starting state set yet.
 pub struct NoState;
@@ -40,7 +41,7 @@ impl MinimalTestAppBuilder<NoState> {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         if scene_support {
-            app.add_plugins((AssetPlugin::default(), ScenePlugin));
+            app.add_plugins((unwatched_asset_plugin(), ScenePlugin));
         }
         app.insert_resource(TimeUpdateStrategy::FixedTimesteps(1));
         register(&mut app);

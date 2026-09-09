@@ -1,0 +1,23 @@
+//! Integration tests for the battle sim crate, one binary holding every suite.
+mod act_log;
+mod acts_flat;
+mod aoe_hittype;
+mod attachment_liveness_sweep;
+mod attachment_parse_effects;
+mod bridges;
+mod committed_walk;
+mod emplacement_act;
+mod entities_and_slots;
+mod fall_resolution;
+mod grenade_arc_throw;
+mod melee_act;
+mod melee_cover_smash;
+mod ondeath_effects;
+mod pass_through_dead;
+mod point_blank_shot;
+mod reaction_trigger;
+mod resolve_coarse;
+mod shove_act;
+mod shove_weapon_tag;
+mod spatial_and_vision;
+mod suppression_core;

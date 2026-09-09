@@ -1,4 +1,5 @@
-use bevy::{asset::AssetPlugin, prelude::*, scene::ScenePlugin, window::PrimaryWindow};
+use bevy::{prelude::*, scene::ScenePlugin, window::PrimaryWindow};
+use cobalt_test_utils::unwatched_asset_plugin;
 use gdtf_battle_presenter::{WorldCamera, spawn_world_camera};
 
 use super::set_world_viewport;
@@ -33,7 +34,7 @@ fn world_viewport(app: &mut App) -> Option<bevy::camera::Viewport> {
 #[test]
 fn set_world_viewport_insets_the_map_by_the_bottom_bar_only() {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     spawn_window(&mut app);
 
     app.add_systems(Startup, spawn_world_camera);
@@ -66,7 +67,7 @@ fn set_world_viewport_insets_the_map_by_the_bottom_bar_only() {
 #[test]
 fn set_world_viewport_full_window_when_no_bottom_bar() {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     spawn_window(&mut app);
 
     app.add_systems(Startup, spawn_world_camera);

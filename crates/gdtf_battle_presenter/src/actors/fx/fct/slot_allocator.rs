@@ -43,11 +43,11 @@ mod test {
     use bevy::{
         MinimalPlugins,
         app::{App, Update},
-        asset::AssetPlugin,
         prelude::{Color, Commands, IntoScheduleConfigs, ResMut, Resource, resource_exists},
         scene::ScenePlugin,
         time::TimeUpdateStrategy,
     };
+    use cobalt_test_utils::unwatched_asset_plugin;
     use gdtf_battle_sim::prelude::{Cell, CellLevel, Level};
 
     use super::{super::text::spawn_floating_text, FctSlotAllocator};
@@ -87,7 +87,7 @@ mod test {
 
     fn alloc_app(delta: Duration, ttl: FctTtlSeconds) -> App {
         let mut app = App::new();
-        app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin))
+        app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin))
             .insert_resource(TimeUpdateStrategy::ManualDuration(delta))
             .insert_resource(AllocProbe {
                 ttl,

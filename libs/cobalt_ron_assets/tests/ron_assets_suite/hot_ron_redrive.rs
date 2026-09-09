@@ -1,13 +1,14 @@
 //! Hot RON redrive: modified assets re-derive in place and mark changed.
 use bevy::{
     MinimalPlugins,
-    asset::{AssetEvent, AssetPlugin, Assets, Handle},
+    asset::{AssetEvent, Assets, Handle},
     prelude::*,
     reflect::TypePath,
 };
 use cobalt_ron_assets::{
     HotRonAppExt, HotRonHandle, HotRonResolved, RonAsset, redrive_hot_ron_resource,
 };
+use cobalt_test_utils::unwatched_asset_plugin;
 use serde::Deserialize;
 
 #[derive(Resource, Deserialize, TypePath, Debug, Clone, PartialEq, Eq)]
@@ -24,7 +25,7 @@ const CHAIN_PATH: &str = "test/hot_ron_fixture.ron";
 fn app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_plugins(AssetPlugin::default());
+        .add_plugins(unwatched_asset_plugin());
     app.init_hot_ron_resource::<HotSwatch>(CHAIN_PATH);
     app
 }

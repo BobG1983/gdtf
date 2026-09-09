@@ -1,11 +1,11 @@
 use bevy::{
     MinimalPlugins,
-    asset::AssetPlugin,
     input::InputPlugin,
     prelude::*,
     scene::ScenePlugin,
     ui::{BackgroundColor, Interaction},
 };
+use cobalt_test_utils::unwatched_asset_plugin;
 
 use super::support::{app_with_interaction, set_interaction, theme};
 use crate::{
@@ -71,7 +71,7 @@ fn held_hover_button_repaints_to_new_hover_on_theme_change() -> Result<(), ron::
     )?;
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(unwatched_asset_plugin())
         .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);
@@ -137,7 +137,7 @@ fn held_pressed_button_repaints_to_new_pressed_on_theme_change()
     )?;
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(unwatched_asset_plugin())
         .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);
@@ -187,7 +187,7 @@ fn theme_change_repaint_leaves_disabled_and_active_buttons() -> Result<(), ron::
     )?;
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(unwatched_asset_plugin())
         .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);

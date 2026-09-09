@@ -1,4 +1,5 @@
-use bevy::{MinimalPlugins, asset::AssetPlugin, prelude::*};
+use bevy::{MinimalPlugins, prelude::*};
+use cobalt_test_utils::unwatched_asset_plugin;
 
 use crate::{
     GdtfBattleInputPlugin,
@@ -39,7 +40,7 @@ fn keybinds_exist_from_plugin_build_without_an_asset_server() {
 fn keybinds_exist_from_plugin_build_with_an_asset_server() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
-    app.add_plugins(AssetPlugin::default());
+    app.add_plugins(unwatched_asset_plugin());
     app.add_plugins(GdtfBattleInputPlugin);
 
     assert_eq!(

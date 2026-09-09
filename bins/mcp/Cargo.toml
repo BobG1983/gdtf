@@ -3,6 +3,9 @@ name = "mcp"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+doctest = false
+
 [dependencies]
 cobalt_mcp_server = { path = "../../libs/cobalt_mcp_server" }
 

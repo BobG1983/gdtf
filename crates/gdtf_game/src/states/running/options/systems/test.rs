@@ -1,6 +1,5 @@
 use bevy::{
     MinimalPlugins,
-    asset::AssetPlugin,
     ecs::system::{RunSystemOnce, SystemState},
     input_focus::directional_navigation::DirectionalNavigationMap,
     prelude::*,
@@ -8,6 +7,7 @@ use bevy::{
     ui::{BackgroundColor, BorderColor as UiBorderColor, Checked, Node, Val},
     ui_widgets::Checkbox,
 };
+use cobalt_test_utils::unwatched_asset_plugin;
 use gdtf_ui::theme::default_theme;
 
 use super::{paint_sound_toggle, spawn_options_screen, theming::toggle_colors};
@@ -25,7 +25,7 @@ type SpawnParams<'w, 's> = SystemState<(
 
 fn spawn_screen(sound_on: bool) -> App {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     app.insert_resource(default_theme());
     app.insert_resource(GameSettings::default().with_sound(SoundEnabled::new(sound_on)));
     app.init_resource::<DirectionalNavigationMap>();

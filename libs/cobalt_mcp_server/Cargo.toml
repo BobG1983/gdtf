@@ -3,6 +3,9 @@ name = "cobalt_mcp_server"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+doctest = false
+
 [dependencies]
 cobalt_mcp_protocol = { path = "../cobalt_mcp_protocol" }
 serde = { workspace = true }

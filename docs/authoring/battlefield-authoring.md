@@ -195,13 +195,13 @@ same one-owner spellings the loader reads — /634).
 ## Part 5 — Verify
 
 - **Suite:** `cargo dtest`. Situations:
-  `crates/gdtf_game/tests/load_families/load_situation.rs` +
-  `crates/gdtf_game/tests/migrated_content/migrated_skirmish_theme.rs`. Prefabs:
-  `crates/gdtf_game/tests/load_families/load_prefab.rs`, `load_prefabs.rs`,
-  `migrated_prefab_content.rs`. Gangs:
-  `crates/gdtf_game/tests/load_families/load_gangs.rs`
+  `crates/gdtf_game/tests/game_suite/load_families/load_situation.rs` +
+  `crates/gdtf_game/tests/game_suite/migrated_content/migrated_skirmish_theme.rs`. Prefabs:
+  `crates/gdtf_game/tests/game_suite/load_families/load_prefab.rs`, `load_prefabs.rs`,
+  `crates/gdtf_game/tests/game_suite/migrated_content/migrated_prefab_content.rs`. Gangs:
+  `crates/gdtf_game/tests/game_suite/load_families/load_gangs.rs`
   (family suite), `load_gangs_spawn.rs` (setup resolution), and the GANG-mode
-  round-trip (`crates/gdtf_editor/tests/mode_shells/gang_mode.rs` — save into a
+  round-trip (`crates/gdtf_editor/tests/editor_suite/mode_shells/gang_mode.rs` — save into a
   TempDir root, reload through the real loader). The whole graph:
   `load_ref_integrity.rs` / `load_ref_salvage.rs`.
 - **In game:** `cargo drun` — the shipped skirmish loads, procgen assembles

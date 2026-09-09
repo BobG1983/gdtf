@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
-    asset::AssetPlugin,
     camera::Camera2d,
     ecs::error::warn,
     prelude::default,
@@ -14,6 +13,8 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+
+use crate::asset_plugin::asset_plugin_at;
 
 /// Builder phase: no camera spawned yet.
 pub struct NoCamera;
@@ -65,10 +66,7 @@ impl UiTestAppBuilder<NoCamera> {
                     exit_condition: ExitCondition::DontExit,
                     ..default()
                 })
-                .set(AssetPlugin {
-                    file_path: root.to_string_lossy().into_owned(),
-                    ..default()
-                }),
+                .set(asset_plugin_at(root)),
         );
         app.set_error_handler(warn);
         Self {

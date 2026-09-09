@@ -116,9 +116,9 @@ the same event also pops floating text, see
 - **Suite:** `cargo dtest`. Presenter-side event coverage:
   `crates/gdtf_battle_presenter/src/actors/fx/fct/log_event/test/` (events /
   shot_outcomes / state_changes). App-side end-to-end (real battle app, real
-  lines): `crates/gdtf_game/tests/combat_log/` (lines_from_events, overflow,
+  lines): `crates/gdtf_game/tests/game_suite/combat_log/` (lines_from_events, overflow,
   presentation, shot_outcomes, fog_gate) and
-  `crates/gdtf_game/tests/battle_shell/combat_log_state_changes.rs` (the
+  `crates/gdtf_game/tests/game_suite/battle_shell/combat_log_state_changes.rs` (the
   coverage-contract pin — every covered state change gains its line).
 - **In game:** `cargo drun` — play a round: fire, move, reload, melee; watch
   the bottom-left strip gain one line per finished walk and per state change,

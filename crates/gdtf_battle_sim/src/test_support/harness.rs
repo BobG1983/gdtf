@@ -163,7 +163,13 @@ impl SimAppBuilder {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         if self.parts.contains(&SimAppPart::Battle) {
-            app.add_plugins((AssetPlugin::default(), ScenePlugin));
+            app.add_plugins((
+                AssetPlugin {
+                    watch_for_changes_override: Some(false),
+                    ..AssetPlugin::default()
+                },
+                ScenePlugin,
+            ));
             app.add_plugins(BattleSimPlugin);
             app.insert_resource(CombatTuning::default());
             app.insert_resource(GangerStatTuning::default());

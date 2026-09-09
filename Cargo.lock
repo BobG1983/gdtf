@@ -2935,6 +2935,7 @@ name = "gdtf_battle_sim"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "cobalt_test_utils",
  "rand",
  "rand_chacha",
  "ron",
@@ -3028,6 +3029,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "cobalt_ron_assets",
+ "cobalt_test_utils",
  "ron",
  "serde",
 ]

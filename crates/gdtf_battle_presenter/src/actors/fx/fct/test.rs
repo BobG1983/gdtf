@@ -3,13 +3,13 @@ use std::time::Duration;
 use bevy::{
     MinimalPlugins,
     app::{App, SpawnScene, Update},
-    asset::AssetPlugin,
     ecs::system::RunSystemOnce,
     prelude::{Alpha, Color, Commands, Transform},
     scene::ScenePlugin,
     text::{FontSize, FontWeight, TextColor, TextFont},
     time::TimeUpdateStrategy,
 };
+use cobalt_test_utils::unwatched_asset_plugin;
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Level},
     severity::Severity,
@@ -28,7 +28,7 @@ const TEST_TTL: FctTtlSeconds = FctTtlSeconds::new(0.6);
 
 fn fct_app() -> App {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin))
+    app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin))
         .add_systems(Update, animate_floating_text);
     app
 }

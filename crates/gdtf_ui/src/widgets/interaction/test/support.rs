@@ -1,4 +1,5 @@
-use bevy::{MinimalPlugins, asset::AssetPlugin, prelude::*, scene::ScenePlugin, ui::Interaction};
+use bevy::{MinimalPlugins, prelude::*, scene::ScenePlugin, ui::Interaction};
+use cobalt_test_utils::unwatched_asset_plugin;
 
 use super::super::theme_interaction;
 use crate::{
@@ -37,7 +38,7 @@ pub(super) fn theme(
 
 pub(super) fn app_with_interaction() -> App {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     app.add_systems(
         Update,
         (

@@ -1,6 +1,5 @@
-use bevy::{
-    MinimalPlugins, asset::AssetPlugin, input::InputPlugin, prelude::*, scene::ScenePlugin,
-};
+use bevy::{MinimalPlugins, input::InputPlugin, prelude::*, scene::ScenePlugin};
+use cobalt_test_utils::unwatched_asset_plugin;
 
 use crate::{
     UiPlugin,
@@ -13,7 +12,7 @@ pub(crate) const LOST: Color = Color::srgb(0.8, 0.2, 0.2);
 pub(crate) fn harness() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(unwatched_asset_plugin())
         .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);
@@ -22,7 +21,7 @@ pub(crate) fn harness() -> App {
 
 pub(crate) fn scene_app() -> App {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     app
 }
 

@@ -27,17 +27,19 @@ green while asserting nothing.
 
 ## Running a subset
 
-Both forms take the alias:
+All three forms take the alias:
 
 ```bash
-cargo dtest -- selected_fire_mode    # name filter, matches nested modules
-cargo dtest --test action_bar        # one integration suite
+cargo dtest -- selected_fire_mode               # name filter, matches nested modules
+cargo dtest --test game_suite                   # one crate's integration binary
+cargo dtest --test game_suite -- action_bar::   # one suite inside that binary
 ```
 
-`--test` takes the suite target name, not a file. Integration tests here are
-nested modules under a top-level suite, so `--test fire_one_spec` fails. Run
-`cargo dtest --test __x__` to list the real target names. If two packages share a
-target name, `--test` runs both.
+`--test` takes a target name. Every crate has one integration-test binary, `<name>_suite`
+(`game_suite`, `editor_suite`, `battle_sim_suite`), and the old per-suite targets are modules
+inside it, so `--test action_bar` fails. A suite is
+selected by the name filter after `--`, with the trailing `::`. Run
+`cargo dtest --test __x__` to list the real target names.
 
 ## Not aliased
 

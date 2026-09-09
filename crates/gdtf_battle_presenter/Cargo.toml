@@ -3,6 +3,9 @@ name = "gdtf_battle_presenter"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+doctest = false
+
 [dependencies]
 bevy = { workspace = true }
 # authoritative render-free sim (one-way: presenter reads the sim, never the

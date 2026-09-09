@@ -1,0 +1,26 @@
+//! Headless pins for the editor's record delete: refused while a reference is unresolved.
+mod armor;
+mod attachment;
+mod cancel;
+mod field;
+mod fixture;
+mod gang_referrers;
+mod harness;
+mod in_use;
+mod injury;
+mod labels;
+mod melee_weapon;
+mod no_entry;
+mod offer;
+mod prefab;
+mod prefab_paths;
+mod records;
+mod records_removed;
+mod refused;
+mod removed;
+mod take_matching;
+mod terrain_referrers;
+mod theme_referrers;
+mod unreferenced;
+mod weapon_referrers;
+mod weighting;

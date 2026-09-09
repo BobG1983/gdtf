@@ -7,8 +7,8 @@ Standing finding, first written when picking was investigated. Verified against 
 (crates.io registry copies of `bevy`, `bevy_internal`, `bevy_ui`, `bevy_picking`,
 `bevy_input_focus`, `bevy_ui_widgets`) and against the live tree on 2026-07-24. Every claim
 below is re-runnable through two headless probe suites,
-`crates/gdtf_battle_input/tests/picking/ui_picking_coexistence.rs` and
-`crates/gdtf_battle_input/tests/picking/ui_widget_pointer_activation.rs`.
+`crates/gdtf_battle_input/tests/battle_input_suite/picking/ui_picking_coexistence.rs` and
+`crates/gdtf_battle_input/tests/battle_input_suite/picking/ui_widget_pointer_activation.rs`.
 
 The wiring spec in [§4](#4-recommended-path-and-exact-wiring) is the input to the follow-up
 picking / widget rollout work.
@@ -51,7 +51,7 @@ harness. It passes.
 **No source comment contradicts this.** Three once said the backend was off:
 `crates/gdtf_game/src/states/running/options/systems/actions.rs`,
 `crates/gdtf_game/src/states/running/options/systems/settings_input.rs`, and the module doc
-of `crates/gdtf_game/tests/shell_scenes/options_scene.rs`. None of the three carries that
+of `crates/gdtf_game/tests/game_suite/shell_scenes/options_scene.rs`. None of the three carries that
 claim now.
 
 The backend is involved on the Options screen. The sound toggle is a real
@@ -140,7 +140,7 @@ act bus) without a click also firing a shot in the world?
 
 ### Evidence
 
-`crates/gdtf_battle_input/tests/picking/ui_picking_coexistence.rs`, run under the real
+`crates/gdtf_battle_input/tests/battle_input_suite/picking/ui_picking_coexistence.rs`, run under the real
 `DefaultPlugins` headless UI harness with `GdtfBattleInputPlugin` and the real battle
 resources:
 
@@ -155,7 +155,7 @@ resources:
   This is what makes the first test non-vacuous and rules out both suppression and
   duplication.
 
-The pre-existing viewport picking suite (`crates/gdtf_battle_input/tests/picking/viewport.rs`) still
+The pre-existing viewport picking suite (`crates/gdtf_battle_input/tests/battle_input_suite/picking/viewport.rs`) still
 passes unchanged, so the gate is not regressed under either harness.
 
 ## 4. Recommended path and exact wiring
@@ -167,7 +167,7 @@ hybrid" is rejected too: scoping requires turning the backend *off* somewhere, a
 be turned off without dropping the whole `ui` feature.
 
 Supporting evidence for retiring the bridge —
-`crates/gdtf_battle_input/tests/picking/ui_widget_pointer_activation.rs`,
+`crates/gdtf_battle_input/tests/battle_input_suite/picking/ui_widget_pointer_activation.rs`,
 `a_first_party_button_activates_from_a_real_pointer_click`: a bare
 `bevy_ui_widgets::Button` with **no project code at all** produces an `Activate` from a real
 pointer press/release, via Bevy's own `button_on_pointer_click`. The bridge's mouse

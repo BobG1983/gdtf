@@ -125,13 +125,13 @@ the end-of-`Load` reference-integrity report — see
 ## Part 4 — Verify
 
 - **Suite:** `cargo dtest`. Load coverage:
-  `crates/gdtf_game/tests/load_families/load_fields.rs` (registry presence +
+  `crates/gdtf_game/tests/game_suite/load_families/load_fields.rs` (registry presence +
   shipped stem, value-agnostic). Tick/immunity/duration mechanics: the in-crate
   tests in `crates/gdtf_battle_sim/src/effects/fields/` (per-consequence unit
   tests + the family suite in `test.rs` / `tests.rs`). Editor re-arm: writing a
   field with `write_field_in` and reloading it rebuilds `FieldDefRegistry` and
   re-runs the validation pass
-  (`crates/gdtf_editor/tests/authoring_validation/save_rearm.rs`).
+  (`crates/gdtf_editor/tests/editor_suite/authoring_validation/save_rearm.rs`).
 - **In game:** `cargo drun` — the shipped skirmish authors one
   `toxic_waste_pool` between the deployments; walk a ganger onto it and end
   the round: the hazard-orange FCT tick pop and the one-time combat-log

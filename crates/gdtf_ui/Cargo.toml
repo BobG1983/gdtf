@@ -3,11 +3,17 @@ name = "gdtf_ui"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+doctest = false
+
 [dependencies]
 bevy = { workspace = true }
 cobalt_ron_assets = { path = "../../libs/cobalt_ron_assets" }
 ron = { workspace = true }
 serde = { workspace = true }
+
+[dev-dependencies]
+cobalt_test_utils = { path = "../../libs/cobalt_test_utils" }
 
 [lints]
 workspace = true

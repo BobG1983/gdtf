@@ -63,24 +63,24 @@ what is in view.
    [its own `commands/set.rs`](../../crates/gdtf_editor/src/mcp/commands/set.rs);
    the whole entry is `&YourCommand`.
 3. **A test.** The suite for the game's command layer is
-   [`crates/gdtf_game/tests/mcp/commands.rs`](../../crates/gdtf_game/tests/mcp/commands.rs).
+   [`crates/gdtf_game/tests/game_suite/mcp/commands.rs`](../../crates/gdtf_game/tests/game_suite/mcp/commands.rs).
    The editor has seven. Hello and the lifecycle commands are in
-   [`crates/gdtf_editor/tests/mcp_hello/`](../../crates/gdtf_editor/tests/mcp_hello),
+   [`crates/gdtf_editor/tests/editor_suite/mcp_hello/`](../../crates/gdtf_editor/tests/editor_suite/mcp_hello),
    the shared reads are in
-   [`crates/gdtf_editor/tests/mcp_editor_reads/`](../../crates/gdtf_editor/tests/mcp_editor_reads),
+   [`crates/gdtf_editor/tests/editor_suite/mcp_editor_reads/`](../../crates/gdtf_editor/tests/editor_suite/mcp_editor_reads),
    the theme helpers and the Injury sub-tab write are in
-   [`crates/gdtf_editor/tests/mcp_editor_commands/`](../../crates/gdtf_editor/tests/mcp_editor_commands),
+   [`crates/gdtf_editor/tests/editor_suite/mcp_editor_commands/`](../../crates/gdtf_editor/tests/editor_suite/mcp_editor_commands),
    the draft writes over every form tab are in
-   [`crates/gdtf_editor/tests/mcp_editor_forms/`](../../crates/gdtf_editor/tests/mcp_editor_forms),
+   [`crates/gdtf_editor/tests/editor_suite/mcp_editor_forms/`](../../crates/gdtf_editor/tests/editor_suite/mcp_editor_forms),
    the prefab-canvas commands are in
-   [`crates/gdtf_editor/tests/mcp_editor_prefab/`](../../crates/gdtf_editor/tests/mcp_editor_prefab),
+   [`crates/gdtf_editor/tests/editor_suite/mcp_editor_prefab/`](../../crates/gdtf_editor/tests/editor_suite/mcp_editor_prefab),
    the Injury weighting table is in
-   [`crates/gdtf_editor/tests/mcp_editor_weighting/`](../../crates/gdtf_editor/tests/mcp_editor_weighting),
+   [`crates/gdtf_editor/tests/editor_suite/mcp_editor_weighting/`](../../crates/gdtf_editor/tests/editor_suite/mcp_editor_weighting),
    and one authoring session end to end is in
-   [`crates/gdtf_editor/tests/mcp_editor_authoring/`](../../crates/gdtf_editor/tests/mcp_editor_authoring).
+   [`crates/gdtf_editor/tests/editor_suite/mcp_editor_authoring/`](../../crates/gdtf_editor/tests/editor_suite/mcp_editor_authoring).
    All seven build their app and their client from
-   [`crates/gdtf_editor/tests/mcp_shared/`](../../crates/gdtf_editor/tests/mcp_shared),
-   which each target includes by `#[path]`, and the four that answer during the Load pass take
+   [`crates/gdtf_editor/tests/editor_suite/mcp_shared/`](../../crates/gdtf_editor/tests/editor_suite/mcp_shared),
+   a module of the one `editor_suite` binary reached as `crate::mcp_shared`, and the four that answer during the Load pass take
    that case from there too. All of them use a real socket, a real listener,
    and the real router.
 
@@ -222,7 +222,7 @@ frame has nothing to drain.
   second system that reads `Res<NetInbox>`: `drain()` takes everything in the channel, so
   two readers means whichever runs first swallows the other's requests. The property is
   pinned by
-  [`crates/gdtf_game/tests/mcp/command_set.rs`](../../crates/gdtf_game/tests/mcp/command_set.rs).
+  [`crates/gdtf_game/tests/game_suite/mcp/command_set.rs`](../../crates/gdtf_game/tests/game_suite/mcp/command_set.rs).
 - **The MCP courier.** `commands` and `run` carry any command by name. Neither names one,
   and neither should learn to.
 
@@ -234,17 +234,17 @@ Both layers are cheap:
   unique names, parseable shapes, one body per type name, and a deferral budget that expires
   before the socket stops waiting for the reply — over the real slice. It is already
   registered; a new command is covered by it the moment it joins the list.
-- **The command.** Add a case file per command under `crates/gdtf_game/tests/mcp/` and declare
-  it in that directory's `main.rs`. One file is the usual shape —
-  [`settings_read.rs`](../../crates/gdtf_game/tests/mcp/settings_read.rs) and
-  [`battle_start.rs`](../../crates/gdtf_game/tests/mcp/battle_start.rs) — and a command with
+- **The command.** Add a case file per command under `crates/gdtf_game/tests/game_suite/mcp/` and declare
+  it in that directory's `mod.rs`. One file is the usual shape —
+  [`settings_read.rs`](../../crates/gdtf_game/tests/game_suite/mcp/settings_read.rs) and
+  [`battle_start.rs`](../../crates/gdtf_game/tests/game_suite/mcp/battle_start.rs) — and a command with
   several kinds of case gets a directory instead, as `wait` does in
-  [`tests/mcp/wait`](../../crates/gdtf_game/tests/mcp/wait).
+  [`tests/game_suite/mcp/wait`](../../crates/gdtf_game/tests/game_suite/mcp/wait).
   The shared `exchange` helper takes a fixture, negotiates, and
   sends over a real socket into the real router, so a case there exercises the whole path a
   live client drives. Assert on the reply rather than on published shape TEXT: the shape is
   traced from the type, so pinning it re-states the type instead of testing behaviour.
-  [`crates/gdtf_game/tests/mcp/commands.rs`](../../crates/gdtf_game/tests/mcp/commands.rs)
+  [`crates/gdtf_game/tests/game_suite/mcp/commands.rs`](../../crates/gdtf_game/tests/game_suite/mcp/commands.rs)
   is for the cases that span the whole host — the catalogue listing, an unknown name, the
   deferral budget — and grows by a name in those lists, not by a per-command case.
 
@@ -596,9 +596,9 @@ whether the actor wields a melee weapon to price a strike with at all.
 `act.throw_grenade` is the one that needs more than a selection: the panel offers
 the button while the shooter wields an arcing ranged weapon, and a press aims at
 the last cell the cursor hovered —
-[`crates/gdtf_game/tests/contextual_panel/throw.rs`](../../crates/gdtf_game/tests/contextual_panel/throw.rs)
+[`crates/gdtf_game/tests/game_suite/contextual_panel/throw.rs`](../../crates/gdtf_game/tests/game_suite/contextual_panel/throw.rs)
 and
-[`crates/gdtf_game/tests/contextual_panel/throw_hover.rs`](../../crates/gdtf_game/tests/contextual_panel/throw_hover.rs)
+[`crates/gdtf_game/tests/game_suite/contextual_panel/throw_hover.rs`](../../crates/gdtf_game/tests/game_suite/contextual_panel/throw_hover.rs)
 pin both halves, and pin that a press after the hover leaves the map still aims
 at that last cell. On a host with a primary
 window the drive is `input.hover`, then `battle.offers` to see which cell came out, then
@@ -666,11 +666,11 @@ primary window refuses `WrongState` naming it.
 Whether that pixel becomes a cell is `pick_hovered_cell`'s call, and it resolves `None` unless a
 `WorldCamera` and a primary window are both there, the cursor sits off the UI and inside the
 viewport, and the pixel lands on the grid.
-[`crates/gdtf_battle_input/tests/picking/resolve.rs`](../../crates/gdtf_battle_input/tests/picking/resolve.rs)
+[`crates/gdtf_battle_input/tests/battle_input_suite/picking/resolve.rs`](../../crates/gdtf_battle_input/tests/battle_input_suite/picking/resolve.rs)
 asserts the projection and these refusals: no cursor position, an off-grid pixel, no
 `WorldCamera`, and no primary window. That last one resolves a cell first and then despawns the
 window, so it also catches a pick that holds the cell it last resolved instead of dropping it.
-[`crates/gdtf_battle_input/tests/picking/viewport.rs`](../../crates/gdtf_battle_input/tests/picking/viewport.rs)
+[`crates/gdtf_battle_input/tests/battle_input_suite/picking/viewport.rs`](../../crates/gdtf_battle_input/tests/battle_input_suite/picking/viewport.rs)
 asserts the rest, a cursor outside the viewport rect and a cursor over a HUD panel.
 `input.click_cell` is no substitute: it
 writes the hovered cell directly and runs before that same pick, which overwrites it inside the
@@ -680,7 +680,7 @@ frame, so only the cell it pins survives.
 `input.hover` and then read `battle.selection`: a pixel over the grid comes back as a cell, and
 a pixel over the UI or off the grid comes back `None`, because the pick fails closed rather
 than holding the cell it last resolved. The battle cases under
-[`crates/gdtf_game/tests/mcp/`](../../crates/gdtf_game/tests/mcp) run on one of two headless
+[`crates/gdtf_game/tests/game_suite/mcp/`](../../crates/gdtf_game/tests/game_suite/mcp) run on one of two headless
 harnesses and neither has a primary window: `battle_app_listening` builds on
 `LoadTestAppBuilder`, which sets `primary_window: None`, and
 `battle_fixture::menu_app_with_mcp` builds on `MinimalTestAppBuilder`, which is `MinimalPlugins`

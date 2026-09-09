@@ -3,6 +3,9 @@ name = "cobalt_mcp_host"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+doctest = false
+
 [dependencies]
 bevy = { workspace = true }
 serde = { workspace = true }

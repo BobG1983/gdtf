@@ -1,11 +1,11 @@
 use bevy::{
     MinimalPlugins,
-    asset::AssetPlugin,
     input::InputPlugin,
     prelude::*,
     scene::ScenePlugin,
     ui::{BackgroundColor, Interaction},
 };
+use cobalt_test_utils::unwatched_asset_plugin;
 
 use super::support::theme;
 use crate::{
@@ -22,7 +22,7 @@ fn deactivated_button_repaints_to_resting_same_frame() -> Result<(), ron::error:
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(unwatched_asset_plugin())
         .add_plugins(ScenePlugin)
         .add_plugins(InputPlugin)
         .add_plugins(UiPlugin);

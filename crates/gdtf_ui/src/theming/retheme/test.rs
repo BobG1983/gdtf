@@ -1,12 +1,13 @@
 use bevy::{
     MinimalPlugins,
-    asset::{AssetApp, AssetEvent, AssetPlugin, AssetServer, Assets, Handle},
+    asset::{AssetApp, AssetEvent, AssetServer, Assets, Handle},
     input::InputPlugin,
     prelude::*,
     text::Font,
     ui::{BackgroundColor, Interaction, Node, widget::Button},
 };
 use cobalt_ron_assets::{HotRonHandle, RonAsset, RonAssetAppExt};
+use cobalt_test_utils::unwatched_asset_plugin;
 
 use crate::{
     UiPlugin,
@@ -46,7 +47,7 @@ fn app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(InputPlugin)
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(unwatched_asset_plugin())
         .init_ron_asset::<GdtfThemeSpec>()
         .init_asset::<Font>()
         .add_plugins(UiPlugin);

@@ -432,7 +432,7 @@ The def round-trip tests live beside the types
 (`crates/gdtf_battle_sim/src/terrain/def/test/`,
 `crates/gdtf_battle_sim/src/level/theme_def/test/`); the shipped-content
 integration test is
-`crates/gdtf_game/tests/migrated_content/migrated_terrain_content.rs`. A new
+`crates/gdtf_game/tests/game_suite/migrated_content/migrated_terrain_content.rs`. A new
 required field breaks their inline RON — add the field or `#[serde(default)]`.
 
 ### Step 5 — Update authoring docs

@@ -1,10 +1,10 @@
 pub(super) use bevy::{
     app::App,
-    asset::AssetPlugin,
     ecs::system::RunSystemOnce,
     prelude::{Commands, Entity, MinimalPlugins, World},
     scene::ScenePlugin,
 };
+pub(super) use cobalt_test_utils::unwatched_asset_plugin;
 
 pub(super) use super::super::*;
 pub(super) use crate::{
@@ -171,7 +171,7 @@ pub(super) fn run_setup_with(
     terrain: Option<&TerrainDefRegistry>,
 ) -> Option<(App, BattleSetup)> {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     let stat_tuning = GangerStatTuning::default();
     let melee = crate::test_support::test_melee_weapon_registry();
     let fallback_floor_cost = crate::tuning::CombatTuning::default().move_costs.open;

@@ -1,9 +1,10 @@
 use bevy::{
     MinimalPlugins,
-    asset::{AssetPlugin, AssetServer, Assets, Handle, LoadedFolder},
+    asset::{AssetServer, Assets, Handle, LoadedFolder},
     prelude::*,
 };
 use cobalt_ron_assets::{RonAsset, RonAssetAppExt};
+use cobalt_test_utils::unwatched_asset_plugin;
 use gdtf_battle_sim::{
     armor::InjuryCategory,
     injuries::{DamageContext, InjuryDef, InjuryRegistry, InjuryTables, InjuryWeighting},
@@ -94,7 +95,7 @@ pub(super) fn weighting_in_context(
 pub(super) fn app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(unwatched_asset_plugin())
         .init_ron_asset_with_extensions::<InjuryDef>(vec![INJURY_DEF_EXTENSION])
         .init_ron_asset_with_extensions::<InjuryWeighting>(vec![INJURY_WEIGHTING_EXTENSION])
         .add_systems(Update, redrive_injuries_on_asset_event);

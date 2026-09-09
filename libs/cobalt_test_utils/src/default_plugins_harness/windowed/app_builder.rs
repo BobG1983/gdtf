@@ -10,6 +10,8 @@ use bevy::{
     winit::WinitPlugin,
 };
 
+use crate::asset_plugin::unwatched_asset_plugin;
+
 /// Headless `DefaultPlugins` app with a primary window and no wgpu backend.
 ///
 /// Window-sized render targets and scale factors are real; nothing is drawn.
@@ -55,7 +57,8 @@ impl WindowedTestAppBuilder {
                     primary_window: Some(self.window),
                     exit_condition: ExitCondition::DontExit,
                     ..default()
-                }),
+                })
+                .set(unwatched_asset_plugin()),
         );
         app.set_error_handler(warn);
         app

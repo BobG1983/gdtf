@@ -1,4 +1,5 @@
-use bevy::{asset::AssetPlugin, camera::visibility::RenderLayers, prelude::*, scene::ScenePlugin};
+use bevy::{camera::visibility::RenderLayers, prelude::*, scene::ScenePlugin};
+use cobalt_test_utils::unwatched_asset_plugin;
 
 use super::super::marker::{WORLD_RENDER_LAYER, WorldCamera, spawn_world_camera};
 
@@ -17,7 +18,7 @@ fn world_render_layer_misses_layer_zero() {
 #[test]
 fn world_camera_spawns_at_half_orthographic_scale() {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.add_plugins((MinimalPlugins, unwatched_asset_plugin(), ScenePlugin));
     app.add_systems(Startup, spawn_world_camera);
     app.update();
     app.update();

@@ -3,7 +3,6 @@ use std::{path::PathBuf, time::Duration};
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
-    asset::AssetPlugin,
     ecs::error::warn,
     math::Vec3,
     prelude::default,
@@ -12,7 +11,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use cobalt_test_utils::advance_until_resource_exists;
+use cobalt_test_utils::{advance_until_resource_exists, asset_plugin_at};
 use gdtf_battle_sim::{prelude::BattleInProgress, weapon::DamageType};
 
 use super::super::animation::{ImpactAnimation, ImpactStep};
@@ -50,10 +49,7 @@ fn impact_fx_app() -> App {
                 exit_condition: ExitCondition::DontExit,
                 ..default()
             })
-            .set(AssetPlugin {
-                file_path: workspace_assets_root().to_string_lossy().into_owned(),
-                ..default()
-            }),
+            .set(asset_plugin_at(&workspace_assets_root())),
     )
     .add_plugins(TopDownRendererPlugin);
     app.set_error_handler(warn);

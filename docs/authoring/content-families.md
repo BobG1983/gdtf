@@ -118,9 +118,9 @@ file per chain, with a fallback so a bad file never strands `Load`.
 ## Part 5 — Verify
 
 - **Suite:** `cargo dtest`. Every family the GAME registers binds the ONE generic
-  load suite (`crates/gdtf_game/tests/load_families/load_suite/`) through a thin
+  load suite (`crates/gdtf_game/tests/game_suite/load_families/load_suite/`) through a thin
   `FamilyLoadContract` wrapper — one file per family under
-  `crates/gdtf_game/tests/load_families/` (`load_weapons.rs`,
+  `crates/gdtf_game/tests/game_suite/load_families/` (`load_weapons.rs`,
   `load_melee_weapons.rs`, `load_armor.rs`, `load_fields.rs`, `load_gangs.rs`,
   `load_attachments.rs`, `load_terrain.rs`, `load_themes.rs`, `load_sprites.rs`)
   pinning: the headless
@@ -128,7 +128,7 @@ file per chain, with a fallback so a bad file never strands `Load`.
   and the real-asset folder resolve with the shipped member stems
   (value-agnostic — presence, never magnitudes). A NEW family the game registers
   adds its own thin wrapper. `PrefabsFamily` gets none while only the editor
-  registers it; `crates/gdtf_editor/tests/load_and_roundtrip/prefab_family_load.rs`
+  registers it; `crates/gdtf_editor/tests/editor_suite/load_and_roundtrip/prefab_family_load.rs`
   covers it instead.
 - **Hot-reload:** `cargo drun`, edit a member `.ron`, watch the
   "hot-reload: rebuilt … from …" info line name the registry and folder.

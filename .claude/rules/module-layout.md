@@ -24,9 +24,11 @@ review and bisect get harder, and no one reads it in one sitting.
    must not land. There is no second, lower limit.
 4. A `lib.rs` is wiring only on the same terms, plus `pub mod` declarations. An `src/main.rs`
    contains only `fn main()` and delegates everything else to crates.
-5. Unit tests live in `<module>/test/mod.rs` behind `#[cfg(test)] mod test`. For integration
-   tests, `<crate>/tests/main.rs` holds the suite module, which lives in
-   `<crate>/tests/<suite_name>`.
+5. Unit tests live in `<module>/test/mod.rs` behind `#[cfg(test)] mod test`. Integration tests
+   are one binary per crate: `<crate>/tests/<name>_suite/main.rs` (`game_suite`, `editor_suite`,
+   `battle_sim_suite`) declares one `mod` per suite, and each suite is a directory
+   `<crate>/tests/<name>_suite/<suite>/` with a wiring-only `mod.rs`. A second `tests/<dir>/main.rs`, or a flat `tests/*.rs`, adds a binary that compiles
+   and links Bevy again on every edit.
 6. A split is a pure move that preserves behaviour. Beyond the move you may change only
    visibility (`pub(super)`, `pub(crate)`, `pub(in path)`), import paths, and intra-doc links
    pointing at the new paths. Never invent a shared abstraction to shrink a line count. Never
@@ -40,6 +42,6 @@ review and bisect get harder, and no one reads it in one sitting.
 
 ## Enforcement
 
-The conformance test `crates/gdtf_conformance/tests/module_layout/` walks the tracked tree on
+The conformance test `crates/gdtf_conformance/tests/conformance_suite/module_layout/` walks the tracked tree on
 every `cargo dtest` run. Any file over the block line, or any mod.rs carrying logic, fails the
 suite.

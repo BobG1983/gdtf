@@ -2,6 +2,8 @@
 
 /// Frame advance helpers.
 pub mod advance;
+/// Asset plugins for test apps, with the file watcher off.
+pub mod asset_plugin;
 /// Headless apps with a full DefaultPlugins stack.
 pub mod default_plugins_harness;
 /// GPU adapter presence probe for skip-or-run decisions.
@@ -16,6 +18,7 @@ pub mod probe;
 pub mod state;
 
 pub use advance::{advance_until, advance_until_load_state, advance_until_resource_exists};
+pub use asset_plugin::{asset_plugin_at, unwatched_asset_plugin};
 pub use default_plugins_harness::{
     load::LoadTestAppBuilder,
     ui::{NoCamera, UiTestAppBuilder, WithCamera},
