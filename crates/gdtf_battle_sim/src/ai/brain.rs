@@ -1,4 +1,5 @@
-//! Enemy turn brain: fire if possible, else reload, else melee, else advance, else a door, else crouch, else end turn.
+//! Enemy turn brain: a downed act if one is adjacent, else fire, else reload, else melee, else
+//! advance, else a door, else crouch, else end turn.
 
 use bevy::prelude::{Entity, Query, Res};
 
@@ -6,6 +7,7 @@ use super::{
     advance::plan_reposition,
     decide::{AiTarget, pick_nearest},
     door::{door_rows, plan_door, write_door_act},
+    downed::{plan_downed_act, write_downed_act},
     engage::{WeaponLookup, engageable_targets},
     params::{AiActRequests, AiPlanningGrids, AiTurnSides},
     posture::{plan_aim, plan_crouch},
@@ -167,7 +169,8 @@ fn split_sides(rows: &[GangerRow], active: Faction) -> (Vec<GangerRow>, Vec<Gang
     (enemies, targets)
 }
 
-/// One enemy acts: aim, shoot, reload, melee, move closer, open a door, crouch, or end the turn.
+/// One enemy acts: execute or stabilize an adjacent downed ganger, aim, shoot, reload, melee,
+/// move closer, open a door, crouch, or end the turn.
 pub fn enemy_ai_turn(
     sides: AiTurnSides,
     omniscient: Option<Res<OmniscientFog>>,
@@ -204,6 +207,11 @@ pub fn enemy_ai_turn(
     for enemy in &enemies {
         if !*enemy.life.is_active() || *enemy.walking {
             continue;
+        }
+        if let Some(downed) = plan_downed_act(enemy, &rows, &grids) {
+            write_downed_act(&mut orders, downed);
+            acted = true;
+            break;
         }
         if let Some(aim) = plan_aim(enemy, &targets, &weapon_lookup, &grids, is_floored) {
             orders.aim.write(aim);

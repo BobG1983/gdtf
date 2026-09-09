@@ -126,13 +126,17 @@ the frame it was claimed in, exactly as a press is.
 
 The enemy-AI act contract is what the brain (`crates/gdtf_battle_sim/src/ai/`)
 writes today: `SetAimingRequested`, `FireRequested`, `ReloadRequested`,
-`MeleeRequested`, `MoveRequested`, `OpenDoorRequested`, `SetStanceRequested` and
-`EndTurnRequested` (`AiActRequests`, `crates/gdtf_battle_sim/src/ai/params.rs`).
+`MeleeRequested`, `MoveRequested`, `OpenDoorRequested`, `SetStanceRequested`,
+`ExecuteDownedRequested`, `StabilizeDownedRequested` and `EndTurnRequested`
+(`AiActRequests`, `crates/gdtf_battle_sim/src/ai/params.rs`).
 Every new act must EITHER add a brain arm that can emit its `*Requested`, OR
 record here (and on the ticket) why the AI does not use it yet.
 
-Why-not record for the existing contextual acts: they are player-affordance
-surfaces pending the AI-acts expansion; none has a brain arm today.
+Why-not record: Shove, Enter Emplacement, Exit Emplacement and Throw Grenade have
+no brain arm. Only a player press reaches them. The other four acts have one:
+`plan_melee` (`crates/gdtf_battle_sim/src/ai/brain.rs`) for Melee, `plan_door`
+(`crates/gdtf_battle_sim/src/ai/door.rs`) for Open Door, and `plan_downed_act`
+(`crates/gdtf_battle_sim/src/ai/downed.rs`) for Execute and Stabilize.
 
 ### 5. QA command (one file + one line + one socket case)
 

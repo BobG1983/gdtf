@@ -7,9 +7,9 @@ use bevy::{
 
 use crate::{
     acts::{
-        DismountSurcharge, EndTurnRequested, FireRequested, MeleeRequested, MoveRequested,
-        OpenDoorRequested, ReloadRequested, SetAimingRequested, SetStanceRequested, SightWorld,
-        seat_departure, seat_surcharge,
+        DismountSurcharge, EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested,
+        MoveRequested, OpenDoorRequested, ReloadRequested, SetAimingRequested, SetStanceRequested,
+        SightWorld, StabilizeDownedRequested, seat_departure, seat_surcharge,
     },
     battle::PlayerFaction,
     cover::CoverLedger,
@@ -126,5 +126,7 @@ pub struct AiActRequests<'w> {
     pub(super) open_door: MessageWriter<'w, OpenDoorRequested>,
     pub(super) aim:       MessageWriter<'w, SetAimingRequested>,
     pub(super) stance:    MessageWriter<'w, SetStanceRequested>,
+    pub(super) execute:   MessageWriter<'w, ExecuteDownedRequested>,
+    pub(super) stabilize: MessageWriter<'w, StabilizeDownedRequested>,
     pub(super) end_turn:  MessageWriter<'w, EndTurnRequested>,
 }

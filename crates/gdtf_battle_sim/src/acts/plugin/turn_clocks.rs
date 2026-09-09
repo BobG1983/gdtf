@@ -2,9 +2,14 @@ use bevy::prelude::{App, IntoScheduleConfigs, Update, resource_exists};
 
 use crate::{
     acts::{
-        dispatch_set_aiming, dispatch_set_stance, downed::dispatch_stabilize_downed,
-        fire::dispatch_fire, injury::apply_injury, melee::dispatch_melee, movement::dispatch_move,
-        open_door::dispatch_open_door, reload::dispatch_reload,
+        dispatch_set_aiming, dispatch_set_stance,
+        downed::{dispatch_execute_downed, dispatch_stabilize_downed},
+        fire::dispatch_fire,
+        injury::apply_injury,
+        melee::dispatch_melee,
+        movement::dispatch_move,
+        open_door::dispatch_open_door,
+        reload::dispatch_reload,
     },
     ai::enemy_ai_turn,
     effects::{
@@ -42,6 +47,9 @@ pub(super) fn wire_turn_clocks(app: &mut App) {
             .before(dispatch_set_aiming)
             .before(dispatch_set_stance)
             .before(dispatch_move)
+            // Direct, so a downed act is read on the frame the brain writes it.
+            .before(dispatch_execute_downed)
+            .before(dispatch_stabilize_downed)
             .in_set(SimSystems::Simulate),
     );
     app.add_systems(
