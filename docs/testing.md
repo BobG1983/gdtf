@@ -32,6 +32,7 @@ These repo-wide **guard suites** live in `crates/gdtf_conformance/tests/` and ri
 - **`mcp_feature_gate`** — every file declaring the MCP host gates it on that host package's `mcp` feature, never on the build profile.
 - **`asset_plugin_sites`** fails when an `AssetPlugin` outside the game and editor hosts leaves `watch_for_changes_override` unset or true.
 - **`no_restored_automatic_time`** fails when a tracked Rust file under `crates/`, `bins/` or `libs/` names `TimeUpdateStrategy::Automatic`, so a test that pins a manual frame delta leaves it pinned.
+- **`workflow_scripts`** — every tracked `*.js` file under `.claude/workflows/` compiles, and `WORK_RESULT` in `build-ticket.js` stays within the guard's `LIMIT`, 3500 characters, above which an agent's output schema is refused before the agent does any work. Those scripts use a top-level `return`, so the guard compiles each one wrapped in a function body, the way the harness that runs them does. It parses with `node` and fails when `node` is absent rather than skipping, because a script no run can load would otherwise reach develop.
 
 A guard suite asserts something about the code. One that asserts the state of the checkout instead
 does not belong here: it goes red on ordinary editing, and it cannot tell a real defect from a file
