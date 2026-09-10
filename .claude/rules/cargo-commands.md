@@ -48,5 +48,6 @@ selected by the name filter after `--`, with the trailing `::`. Run
 
 `cargo mcpbuild` and `cargo edmcpbuild` are the release aliases: `--release` with
 only the `mcp` feature, so the QA host can be driven against a release build.
-They are not part of green. Do not hand-type a run without dynamic linking to get
-past the gate. Add the alias instead.
+Both are part of green, run by `/gate` and `/land` and not by the pre-commit hook.
+Do not hand-type a run without dynamic linking to get past the gate. Add the alias
+instead.

@@ -11,6 +11,8 @@ const WORKSPACE_MANIFEST: &str = "Cargo.toml";
 
 const RUSTDOC_GROUP: &str = "workspace.lints.rustdoc.all";
 
+const RUST_WARNINGS_GROUP: &str = "workspace.lints.rust.warnings";
+
 const DENY: &str = "deny";
 
 // A negative priority lets the lints named under the group override the group level.
@@ -64,11 +66,10 @@ fn unwalked_member(member: &str) -> Option<String> {
     ))
 }
 
-#[test]
-fn workspace_denies_the_whole_rustdoc_lint_group() {
-    let root = repo_root();
-    let manifest = read_manifest(&root, WORKSPACE_MANIFEST);
-    let group = item_at(&manifest, RUSTDOC_GROUP);
+// Fail unless the workspace manifest denies this whole lint group at the group priority.
+fn assert_group_denied(root: &Path, group_path: &str, reason: &str) {
+    let manifest = read_manifest(root, WORKSPACE_MANIFEST);
+    let group = item_at(&manifest, group_path);
     let level = group.and_then(lint_level);
     let priority = group.and_then(lint_priority);
     let found_level = level.unwrap_or("nothing");
@@ -77,12 +78,33 @@ fn workspace_denies_the_whole_rustdoc_lint_group() {
         .map_or_else(|| "nothing".to_owned(), ToString::to_string);
     assert!(
         level == Some(DENY) && priority == Some(GROUP_PRIORITY),
-        "{WORKSPACE_MANIFEST} must set `{RUSTDOC_GROUP}` to level \"{DENY}\" with priority \
-         {GROUP_PRIORITY} — without the group deny only the individually-named rustdoc lints can \
-         fail a doc run, and every other rustdoc warning accumulates while \
-         `cargo doc --workspace --no-deps` and `cargo doc-full` keep exiting 0. Any TOML spelling \
-         works: inline table, dotted keys, either key order. It reads as level {found_level} and \
-         priority {found_priority} today."
+        "{WORKSPACE_MANIFEST} must set `{group_path}` to level \"{DENY}\" with priority \
+         {GROUP_PRIORITY} — {reason} Any TOML spelling works: inline table, dotted keys, either \
+         key order. It reads as level {found_level} and priority {found_priority} today."
+    );
+}
+
+#[test]
+fn workspace_denies_the_whole_rustdoc_lint_group() {
+    assert_group_denied(
+        &repo_root(),
+        RUSTDOC_GROUP,
+        "without the group deny only the individually-named rustdoc lints can fail a doc run, and \
+         every other rustdoc warning accumulates while `cargo doc --workspace --no-deps` and \
+         `cargo doc-full` keep exiting 0.",
+    );
+}
+
+#[test]
+fn workspace_denies_the_whole_rust_warnings_lint_group() {
+    assert_group_denied(
+        &repo_root(),
+        RUST_WARNINGS_GROUP,
+        "`cargo build` takes no trailing `-- -D warnings`, so this manifest line is the only \
+         thing that makes a rustc warning fail `cargo mcpbuild` and `cargo edmcpbuild`, the two \
+         release builds of the QA hosts. Without it every command in the suite still exits 0: \
+         `cargo dclippy -- -D warnings` denies rustc warnings from its own command line, and both \
+         release builds compile and exit 0 while printing warnings nothing reads.",
     );
 }
 
@@ -123,7 +145,8 @@ fn every_workspace_member_opts_in_to_the_workspace_lints() {
         if item_at(&member, LINTS_OPT_IN).and_then(Item::as_bool) != Some(true) {
             violations.insert(format!(
                 "MISSING {path} — no `[lints]` table setting `workspace = true`; the workspace \
-                 lint table, including the rustdoc group deny, does not reach this crate"
+                 lint table, including the rustdoc and rust warning group denies, does not reach \
+                 this crate"
             ));
         }
     }

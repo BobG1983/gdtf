@@ -35,6 +35,13 @@ bevy = { version = "0.19.0", default-features = false, features = ["2d", "ui", "
 bevy_derive = "0.19.0"
 
 [workspace.lints.rust]
+# The whole warning group is fatal. `cargo build` takes no trailing `-- -D warnings`, so the
+# release QA-host builds (`mcpbuild`, `edmcpbuild`) can deny a warning only from here, and a
+# level set in the manifest cannot drift away from the aliases the way flags beside an alias
+# do. `priority = -1` lets an individual lint named below override the group level, the same
+# shape the clippy and rustdoc tables use. This reaches every cargo command, not just the two
+# release builds.
+warnings               = { level = "deny", priority = -1 }
 missing_docs           = "deny"
 unsafe_code            = "deny"
 unsafe_op_in_unsafe_fn = "deny"

@@ -132,6 +132,10 @@ fi
 # automated here. This hook stays fail-closed: always cargo.
 # Full green is every alias listed in verification.md, via /gate.
 # Pre-commit subset: fmt, dclippy, dtest, dbuild.
+# Outside the subset: mcpbuild and edmcpbuild, the release builds of the two QA
+# hosts. Release sets lto = "thin" and codegen-units = 1, so both cost minutes and
+# every commit would pay it. /gate and /land run them, and /land re-runs the full
+# list on the exact tree it commits.
 # Use `.cargo/config.toml` aliases — never hand-typed feature lists.
 SUITE_CMD="cargo fmt --check && cargo dclippy -- -D warnings && cargo dtest && cargo dbuild"
 SUITE_OUTPUT="$(cd "$REPO_DIR" && bash -c "$SUITE_CMD" 2>&1)"

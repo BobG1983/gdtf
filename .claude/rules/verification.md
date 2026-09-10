@@ -26,6 +26,8 @@ cargo dtest
 cargo dbuild
 cargo doc --workspace --no-deps
 cargo doc-full
+cargo mcpbuild
+cargo edmcpbuild
 ```
 
 | Alias | Purpose |
@@ -36,6 +38,8 @@ cargo doc-full
 | `dbuild` | Links the real `game` binary (check/clippy never link it). |
 | `doc` | Default-feature rustdoc. Workspace rustdoc lints are deny. |
 | `doc-full` | Same + `development` on both hosts so feature-gated modules are checked. |
+| `mcpbuild` | Release build of `game` carrying only `mcp`. No other listed command compiles that configuration. |
+| `edmcpbuild` | Release build of `editor` carrying only `mcp`. Same configuration on the editor side. |
 
 Running one test or one suite uses the same aliases.
 [cargo-commands.md](./cargo-commands.md) owns that, and a hook blocks a bare cargo command.
@@ -47,12 +51,25 @@ suite. A suite target that needs the feature says so with `compile_error!`, so d
 breaks the build instead of running zero tests. Protocol schema derives are always on, so
 there is no `schema` feature and no separate schema steps in the suite.
 
+`mcpbuild` and `edmcpbuild` build a host on the release profile with `mcp` and nothing else,
+which no other command in the list compiles. A rustc warning fails those two because the root
+`Cargo.toml` denies the whole `warnings` group in `[workspace.lints.rust]`. `cargo build` takes
+no trailing `-- -D warnings`, so the manifest is the only place that deny can live. It applies
+to every cargo command here and to every crate in the workspace, not only to the two release
+builds. The first build after that lint level changes rebuilds everything, because an edit to
+`[workspace.lints]` invalidates every crate's fingerprint.
+
 `cargo nextest run` may replace `cargo dtest` when available.
 
 ### Pre-commit subset
 
 `.claude/hooks/pre-commit-gate.sh` runs a fast subset: `fmt`, `dclippy`, `dtest`, `dbuild`. Full
 green is still every command above, run by `/gate`.
+
+`mcpbuild` and `edmcpbuild` are outside that subset and run in `/gate` and `/land`. Release
+carries `lto = "thin"` and `codegen-units = 1`, so both cost minutes, and every commit would pay
+it. `/land` re-runs the full list on the exact tree it commits, so nothing reaches develop
+without both builds passing.
 
 ### Suite scope (docs-only skip)
 
