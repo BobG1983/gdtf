@@ -53,8 +53,8 @@ Four bounds hold on every carried fix, all of them required:
   `Area: summary (GTW-N)` style of [git-workflow.md](./git-workflow.md) rule 5.
 - A project-manager step of the run files that ticket before the fix is committed, never the build
   agent. `HOUSE_RULES` rule 7 in `.claude/workflows/build-ticket.js` makes those steps the only
-  Linear writers, and [linear-discipline.md](./linear-discipline.md) rule 4 puts the ticket before
-  the fix.
+  Linear writers, and [linear-discipline.md](./linear-discipline.md) rule 4 names this as the one
+  case where the code is written before its ticket exists.
 - The build declares the carried fix in its report: the files it touched, the clause the defect
   blocked, and what the defect was.
 

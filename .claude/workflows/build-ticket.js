@@ -990,9 +990,10 @@ const carriedTicket = carriedFixDeclared
   ? await agent(`File the carried fix's ticket for ${TICKET} in project GDTF.
 
 The build of ${TICKET} fixed a defect that blocked its clause ${work.carriedFix.clause}, under the
-carried fix section of \`.claude/rules/design-fidelity.md\`. The fix is uncommitted in ${REPO} on
-${BRANCH}. The land step commits those files on their own under the id you return, so it cannot
-run until this ticket exists.
+carried fix section of \`.claude/rules/design-fidelity.md\`. The fix is written and uncommitted in
+${REPO} on ${BRANCH}, which is the one case `linear-discipline.md` rule 4 allows. The land step
+commits those files on their own under the id you return, so it cannot run until this ticket
+exists.
 
 File one ticket and nothing else:
 

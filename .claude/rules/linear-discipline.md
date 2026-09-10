@@ -20,8 +20,12 @@ persistent PM agent.
 3. Decisions and evidence live on the ticket: approved deviations, gate results, the
    green-suite result, QA screenshots and repro notes. A future reader must be able to audit
    the claim from the ticket alone.
-4. Bugs are filed BEFORE fixing (`/file-bug`), including bugs you found yourself and intend to
-   fix immediately. The fix commit references the bug ticket.
+4. Bugs are filed BEFORE the fix is committed (`/file-bug`), including bugs you found yourself
+   and intend to fix immediately. The fix commit references the bug ticket. Normally that means
+   filing before writing the fix. The one case where the code comes first is the carried fix in
+   [design-fidelity.md](./design-fidelity.md): a build that hits a defect blocking one of its own
+   clauses fixes it in place, and a project-manager step of the same run files the ticket before
+   the land step commits it.
 5. "Done" on the board is a claim. Audit the code before relying on it (see
    `design-fidelity.md`, rule 3).
 
