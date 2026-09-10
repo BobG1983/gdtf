@@ -1,4 +1,6 @@
-//! the authoritative render-free sim, consumed ONE-WAY by the app). The sim owns its
+//! Wires the sim into the battlescape: it adds the sim's own plugin, runs one battle
+//! generation from entering Generation to the setup request, and asks for teardown on the
+//! way out of the battlescape.
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     battle::{BattleSimPlugin as SimBattleSimPlugin, setup_battle_on_request},
