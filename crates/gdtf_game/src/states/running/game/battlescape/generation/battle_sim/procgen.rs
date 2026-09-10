@@ -2,22 +2,9 @@
 use bevy::prelude::warn;
 use gdtf_assets::{ContentFinding, FindingDetail, FindingReferrer};
 use gdtf_battle_sim::{
-    level::{PrefabRegistry, UuidThemeRegistry},
-    procgen::{EmittedLevel, PackingError, ProcgenFinding, ProcgenTuning, generate_level},
-    rng::{BattleSeed, ProcgenRng},
+    procgen::{EmittedLevel, PackingError, ProcgenFinding},
     situation::{BattleMap, PlacedGanger, Situation, SituationCombatants},
-    terrain::def::TerrainDefRegistry,
 };
-
-#[derive(Clone, Copy)]
-pub(in crate::states::running::game::battlescape::generation::battle_sim) struct ProcgenRegistries<
-    'a,
-> {
-    pub prefabs: Option<&'a PrefabRegistry>,
-    pub themes:  Option<&'a UuidThemeRegistry>,
-    pub terrain: Option<&'a TerrainDefRegistry>,
-    pub tuning:  Option<&'a ProcgenTuning>,
-}
 
 pub(crate) struct ProcgenOutcome {
     pub situation:        Situation,
@@ -45,40 +32,6 @@ pub(crate) fn outcome_from_emitted(authored: Situation, emitted: EmittedLevel) -
         placements: Vec::new(),
         findings,
         deployment_error: None,
-    }
-}
-
-#[must_use]
-pub(in crate::states::running::game::battlescape::generation::battle_sim) fn procgen_battle_situation(
-    authored: Situation,
-    registries: ProcgenRegistries<'_>,
-    seed: BattleSeed,
-) -> ProcgenOutcome {
-    let (Some(prefabs), Some(themes), Some(terrain)) =
-        (registries.prefabs, registries.themes, registries.terrain)
-    else {
-        return ProcgenOutcome {
-            situation:        authored,
-            placements:       Vec::new(),
-            findings:         Vec::new(),
-            deployment_error: None,
-        };
-    };
-
-    let mut rng = ProcgenRng::from_root(seed);
-    let tuning = registries.tuning.copied().unwrap_or_default();
-
-    match generate_level(
-        prefabs,
-        themes,
-        terrain,
-        authored.map.theme,
-        authored.map.grid_size,
-        &mut rng,
-        &tuning,
-    ) {
-        Ok(emitted) => super::deploy::deploy_over_generated(authored, emitted, seed),
-        Err(err) => outcome_from_packing_error(authored, &err),
     }
 }
 

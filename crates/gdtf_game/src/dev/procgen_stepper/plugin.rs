@@ -3,16 +3,16 @@
 use bevy::prelude::*;
 #[cfg(not(feature = "headless_test"))]
 use bevy_egui::EguiPrimaryContextPass;
-#[cfg(not(feature = "headless_test"))]
-use gdtf_battle_sim::procgen::StagedProcgen;
 
 #[cfg(not(feature = "headless_test"))]
 use super::ui::draw_stepper_panel;
 use super::{
-    drive::{advance_stepper_drive, cleanup_stepper_drive, engage_stepper, finish_stepper_drive},
+    drive::{cleanup_stepper_drive, engage_stepper, signal_stepper_advance},
     gate::ProcgenStepperActive,
 };
-use crate::states::BattleScapeState;
+use crate::states::{
+    BattleScapeState, running::game::battlescape::generation::battle_sim::advance_battle_generation,
+};
 
 crate::support_item! {
     /// Drives situation generation one stage at a time.
@@ -50,17 +50,15 @@ impl Plugin for ProcgenStepperPlugin {
         );
         app.add_systems(
             Update,
-            (
-                advance_stepper_drive,
-                finish_stepper_drive.after(advance_stepper_drive),
-            )
+            signal_stepper_advance
+                .before(advance_battle_generation)
                 .run_if(in_state(BattleScapeState::Generation)),
         );
         app.add_systems(OnExit(BattleScapeState::Generation), cleanup_stepper_drive);
         #[cfg(not(feature = "headless_test"))]
         app.add_systems(
             EguiPrimaryContextPass,
-            draw_stepper_panel.run_if(resource_exists::<StagedProcgen>),
+            draw_stepper_panel.run_if(resource_exists::<ProcgenStepperActive>),
         );
     }
 }

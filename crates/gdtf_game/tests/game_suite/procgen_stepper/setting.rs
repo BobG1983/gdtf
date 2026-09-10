@@ -154,7 +154,8 @@ fn the_default_off_setting_leaves_the_normal_path_alone() {
     drive_into_battle_running(&mut app);
     assert!(
         app.world().get_resource::<StagedProcgen>().is_none(),
-        "no stepper drive may ever have been engaged with the setting off",
+        "the staged driver must not outlive Generation: with the setting off it is inserted and \
+         cleared away inside one frame",
     );
     let fingerprint = terrain_fingerprint(&app);
     assert!(

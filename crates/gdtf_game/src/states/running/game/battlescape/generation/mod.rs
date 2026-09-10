@@ -8,7 +8,7 @@ pub(crate) mod test_support {
     pub use super::resources::GenerationComplete;
 }
 
-// drive through the SAME deploy + finding-conversion logic `request_battle_setup` uses
+// The one route that generates a battle: begin, advance, finish.
 pub(crate) mod battle_sim;
 
 pub(crate) mod loading_screen;

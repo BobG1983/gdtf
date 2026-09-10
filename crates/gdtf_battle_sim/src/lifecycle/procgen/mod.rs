@@ -1,5 +1,6 @@
 //! Procedural level generation: packing, fill, deploy zones, and emit.
 
+mod advance;
 mod anchor;
 mod assembler;
 mod deploy;
@@ -16,6 +17,7 @@ mod tuning;
 #[cfg(test)]
 mod test;
 
+pub use advance::ProcgenAdvance;
 pub use anchor::Anchor;
 pub use assembler::{PlacedPrefab, Placement, assemble_placement, assemble_placement_with};
 pub use deploy::{DeploymentZone, DeploymentZones, Standable, deploy_rosters, facing_for_anchor};

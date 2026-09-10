@@ -13,8 +13,8 @@ pub use crate::dev::mcp::{
 };
 #[cfg(feature = "dev_tools")]
 pub use crate::dev::procgen_stepper::{
-    AutoRunning, AutoStepDelay, PendingStepCommand, ProcgenStepperActive, ProcgenStepperPlugin,
-    StepCommand, draw_schematic,
+    AutoRunning, AutoStepDelay, AutoStepTimer, PendingStepCommand, ProcgenStepperActive,
+    ProcgenStepperPlugin, StepCommand, draw_schematic,
 };
 #[cfg(feature = "dev_tools")]
 pub use crate::states::running::options::test_support::{
@@ -39,7 +39,7 @@ pub use crate::states::{
                 ThrowGrenadeButton,
             },
             generation::{
-                battle_sim::{PreplacedGangers, ResolvedBattleSeed},
+                battle_sim::{BattleGenerationContext, PreplacedGangers, ResolvedBattleSeed},
                 loading_screen::test_support::LoadingScreenRoot,
                 test_support::GenerationComplete,
             },

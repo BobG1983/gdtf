@@ -1,13 +1,7 @@
-use bevy::prelude::{Res, Resource};
+use bevy::prelude::Resource;
 
 crate::support_item! {
-    /// Present while the stepper owns situation generation.
+    /// Present while the stepper holds situation generation between stages.
     #[derive(Resource, Debug, Default, Clone, Copy)]
     struct ProcgenStepperActive;
-}
-
-/// battle instead — see `battle_sim::plugin`'s `cfg(feature = "dev_tools")` wiring for the
-#[must_use]
-pub(crate) const fn battle_setup_runs_directly(active: Option<Res<ProcgenStepperActive>>) -> bool {
-    active.is_none()
 }

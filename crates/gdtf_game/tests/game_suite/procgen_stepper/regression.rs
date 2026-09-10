@@ -29,7 +29,8 @@ fn stepper_plugin_added_disengaged_leaves_the_normal_path() {
 
     assert!(
         app.world().get_resource::<StagedProcgen>().is_none(),
-        "no stepper drive may ever have been engaged",
+        "the staged driver must not outlive Generation: with the stepper off it is inserted and \
+         cleared away inside one frame",
     );
     let fingerprint = terrain_fingerprint(&app);
     assert!(

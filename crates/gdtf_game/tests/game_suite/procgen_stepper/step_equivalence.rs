@@ -6,7 +6,7 @@ use gdtf_battle_sim::{
     terrain::def::TerrainDefRegistry,
 };
 use gdtf_content_families::situation::LoadedSituation;
-use gdtf_game::test_support::BattleScapeState;
+use gdtf_game::test_support::{BattleScapeState, PendingStepCommand, StepCommand};
 
 use super::harness::{
     FIXED_SEED, app_engaged_in_generation, app_ready_for_battle, battlescape_state,
@@ -64,6 +64,40 @@ fn stepper_engaged_path_deploys_the_same_roster() {
         actual, expected,
         "the stepper-engaged finish must DEPLOY the same roster the normal path does: \
          the pre-fix terrain-only finish left {actual} deployed gangers, expected {expected}",
+    );
+}
+
+#[test]
+fn a_skipped_generation_deploys_the_same_roster() {
+    let expected = {
+        let mut app = app_ready_for_battle(FIXED_SEED);
+        drive_into_battle_running(&mut app);
+        deployed_ganger_count(&mut app)
+    };
+    assert!(
+        expected > 0,
+        "the normal path must deploy a non-empty roster for the fixed seed (guarding the test \
+         itself); got {expected} deployed gangers",
+    );
+
+    let mut app = app_engaged_in_generation(FIXED_SEED);
+    let pending = app.world_mut().get_resource_mut::<PendingStepCommand>();
+    assert!(
+        pending.is_some(),
+        "PendingStepCommand must exist while the stepper is engaged in Generation",
+    );
+    if let Some(mut pending) = pending {
+        pending.request(StepCommand::Skip);
+    }
+    advance_until(&mut app, |app| {
+        battlescape_state(app) == Some(BattleScapeState::BattleRunning)
+    });
+
+    let actual = deployed_ganger_count(&mut app);
+    assert_eq!(
+        actual, expected,
+        "Skip runs every remaining stage in one update, and that finish must DEPLOY the same \
+         roster the normal path does; got {actual} deployed gangers, expected {expected}",
     );
 }
 

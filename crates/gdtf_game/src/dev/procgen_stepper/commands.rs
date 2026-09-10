@@ -81,8 +81,11 @@ impl AutoStepDelay {
     }
 }
 
-#[derive(Resource, Debug, Deref, DerefMut)]
-pub(crate) struct AutoStepTimer(Timer);
+crate::support_item! {
+    /// The repeating clock an auto-running stepper advances on.
+    #[derive(Resource, Debug, Deref, DerefMut)]
+    struct AutoStepTimer(Timer);
+}
 
 impl Default for AutoStepTimer {
     fn default() -> Self {
