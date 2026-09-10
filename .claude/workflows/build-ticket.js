@@ -134,28 +134,28 @@ const WORK_RESULT = {
   type: 'object', additionalProperties: false,
   required: ['filesChanged', 'suite', 'clauses', 'corrections', 'tests', 'deviations', 'carriedFix', 'foreignDirtyFiles', 'outOfScope', 'report'],
   properties: {
-    filesChanged: { type: 'array', items: { type: 'string' }, description: 'Every path you created or edited, by name, exactly as git reports it. Empty only if you truly changed nothing.' },
+    filesChanged: { type: 'array', items: { type: 'string' }, description: 'Every path you created or edited.' },
     suite: SUITE_ROWS,
     clauses: {
-      type: 'array', description: 'One row per clause in the contract, none omitted.',
+      type: 'array', description: 'One row per clause, none omitted.',
       items: {
         type: 'object', additionalProperties: false, required: ['clause', 'status', 'symbols', 'evidence'],
         properties: {
-          clause: { type: 'string', description: 'The clause number as the contract numbers it.' },
-          status: { type: 'string', enum: ['built', 'already-true', 'blocked'], description: 'already-true means the tree satisfied it before you touched it. Say that rather than claiming work you did not do.' },
-          symbols: { type: 'array', items: { type: 'string' }, description: 'Symbols you added or changed for this clause, each with the file holding it.' },
-          evidence: { type: 'string', description: 'What shows the clause holds. A blocked clause states what stopped you.' },
+          clause: { type: 'string', description: 'The clause number.' },
+          status: { type: 'string', enum: ['built', 'already-true', 'blocked'], description: 'already-true means the tree already satisfied it.' },
+          symbols: { type: 'array', items: { type: 'string' }, description: 'Symbols changed, each with its file.' },
+          evidence: { type: 'string', description: 'What shows it holds, or what stopped you.' },
         },
       },
     },
     corrections: {
-      type: 'array', description: 'One row per correction the clause audit handed you — every one, including corrections that needed no work.',
+      type: 'array', description: 'One row per correction the clause audit handed you.',
       items: {
         type: 'object', additionalProperties: false, required: ['clause', 'applied', 'how'],
         properties: {
           clause: { type: 'string' },
           applied: { type: 'boolean' },
-          how: { type: 'string', description: 'Where it landed, or why it needed nothing.' },
+          how: { type: 'string', description: 'Where it landed, or why not needed.' },
         },
       },
     },
@@ -166,13 +166,13 @@ const WORK_RESULT = {
         properties: {
           name: { type: 'string' },
           file: { type: 'string' },
-          clause: { type: 'string', description: 'The clause this test proves.' },
-          catches: { type: 'string', description: 'The mutation this test turns red. A test with no answer here does not discriminate, so do not write it.' },
+          clause: { type: 'string', description: 'The clause it proves.' },
+          catches: { type: 'string', description: 'The mutation this test turns red.' },
         },
       },
     },
     deviations: {
-      type: 'array', description: 'Anything built differently from the contract. Empty is the expected value — design-fidelity.md makes a silent deviation a defect.',
+      type: 'array', description: 'Anything built differently from the contract.',
       items: {
         type: 'object', additionalProperties: false, required: ['clause', 'built', 'why'],
         properties: { clause: { type: 'string' }, built: { type: 'string' }, why: { type: 'string' } },
@@ -180,17 +180,17 @@ const WORK_RESULT = {
     },
     carriedFix: {
       type: 'object', additionalProperties: false, required: ['files', 'clause', 'defect', 'title'],
-      description: 'One defect you fixed because it blocked a clause of THIS ticket, under the carried fix section of design-fidelity.md. An empty array and empty strings when you carried none, which is the common case. You still do not commit: a project-manager step files the ticket and the land step makes the commit.',
+      description: 'One defect you fixed that blocked a clause of THIS ticket. Empty when none.',
       properties: {
-        files: { type: 'array', items: { type: 'string' }, description: 'The paths the fix touched. Every one is also in filesChanged, because the tree holds both. Land stages these on their own, so a path missing here lands under the wrong ticket.' },
-        clause: { type: 'string', description: 'The clause of THIS ticket the defect blocked. A defect that blocked no clause is not carried: name it in outOfScope instead.' },
-        defect: { type: 'string', description: 'What was broken and where, by symbol or quoted text, and what the fix does. A project-manager step files this verbatim as the ticket description.' },
-        title: { type: 'string', description: 'The title for that ticket, in the style linear-discipline.md asks for. The step that files it copies text and judges nothing, so the wording is yours.' },
+        files: { type: 'array', items: { type: 'string' }, description: 'Paths the fix touched; land stages these alone.' },
+        clause: { type: 'string', description: 'The clause it blocked.' },
+        defect: { type: 'string', description: 'What was broken, where, and the fix.' },
+        title: { type: 'string', description: 'Its ticket title.' },
       },
     },
-    foreignDirtyFiles: { type: 'array', items: { type: 'string' }, description: 'Files dirty in the tree that are not this ticket\'s work. You left them alone; naming them is what stops land from staging them.' },
-    outOfScope: { type: 'array', items: { type: 'string' }, description: 'Ticket-worthy findings outside this contract. You cannot file them; the orchestrator does.' },
-    report: { type: 'string', description: 'Only what the rows do not carry.' },
+    foreignDirtyFiles: { type: 'array', items: { type: 'string' }, description: 'Dirty files that are not this ticket\'s work.' },
+    outOfScope: { type: 'array', items: { type: 'string' }, description: 'Ticket-worthy findings outside this contract.' },
+    report: { type: 'string', description: 'Only what the rows omit.' },
   },
 }
 
