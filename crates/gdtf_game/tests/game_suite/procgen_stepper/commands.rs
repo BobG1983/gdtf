@@ -67,8 +67,6 @@ fn auto_run_advances_every_stage_without_a_manual_command() {
     advance_until(&mut app, |app| {
         battlescape_state(app) == Some(BattleScapeState::BattleRunning)
     });
-    app.world_mut()
-        .insert_resource(TimeUpdateStrategy::Automatic);
 
     let actual = terrain_fingerprint(&app);
     assert_eq!(

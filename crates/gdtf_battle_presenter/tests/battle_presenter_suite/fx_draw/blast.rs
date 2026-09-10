@@ -72,8 +72,6 @@ fn throw_resolved_blast_impact_carries_no_shot_verdict() {
         ));
     app.update();
     app.update();
-    app.world_mut()
-        .insert_resource(TimeUpdateStrategy::Automatic);
 
     let impacts = drain_impacts(&mut app);
     assert_eq!(

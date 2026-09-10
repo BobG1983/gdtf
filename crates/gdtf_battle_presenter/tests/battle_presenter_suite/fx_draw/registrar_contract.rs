@@ -45,8 +45,6 @@ fn two_families_on_one_cell_across_consecutive_frames_take_distinct_stack_slots(
 
     play(&mut app, DotTicked::new(pinned, at, DotDamage::new(4)));
     app.update();
-    app.world_mut()
-        .insert_resource(TimeUpdateStrategy::Automatic);
 
     let pops = fct_pops(&mut app);
     assert!(

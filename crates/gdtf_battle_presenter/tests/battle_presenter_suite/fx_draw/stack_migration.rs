@@ -169,8 +169,6 @@ fn two_falls_on_one_cell_across_consecutive_frames_stack() {
         FallOccurred::new(faller_b, from_level, LEVEL, StoreysFallen::new(1)),
     );
     app.update();
-    app.world_mut()
-        .insert_resource(bevy::time::TimeUpdateStrategy::Automatic);
 
     let fell_ys: Vec<f32> = fct_pops_with_y(&mut app)
         .into_iter()

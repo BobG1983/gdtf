@@ -1,4 +1,4 @@
-//! (CORRECT — it is the "outcome decided" latch). The BUG was that the marker-gated transition
+//! The battlescape stays in `BattleRunning` until the deciding shot's impact lands.
 use bevy::{app::App, prelude::*, state::state::State, time::TimeUpdateStrategy};
 use cobalt_test_utils::{LoadTestAppBuilder, advance_until};
 use gdtf_battle_presenter::{PendingImpact, Played, ShotProjectile};
@@ -96,7 +96,7 @@ fn lethal_ganger_hit(struck: Entity) -> HitReport {
     }
 }
 
-/// — long enough that, under the BUG, `move_on`'s next `FixedUpdate` tick (a fraction of a second
+// Play a lethal shot from far across the map, so its bolt is in flight for many frames.
 fn write_deciding_shot(app: &mut App) {
     let cell = Cell::new(55, 5);
     let level = Level::new(0);
@@ -118,24 +118,22 @@ fn write_deciding_shot(app: &mut App) {
         .write(Played::new(shot));
 }
 
+// Pin `step` as the frame delta and run `updates` frames. The pin stays after the return.
 fn step_app(app: &mut App, step: std::time::Duration, updates: u32) {
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::ManualDuration(step));
     for _ in 0..updates {
         app.update();
     }
-    app.world_mut()
-        .insert_resource(TimeUpdateStrategy::Automatic);
 }
 
+// Run one frame that advances no clock. The zero pin stays after the return.
 fn drain_frame_zero_delta(app: &mut App) {
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::ManualDuration(
             std::time::Duration::ZERO,
         ));
     app.update();
-    app.world_mut()
-        .insert_resource(TimeUpdateStrategy::Automatic);
 }
 
 #[test]
@@ -178,15 +176,50 @@ fn a_shot_kill_keeps_battle_running_until_the_deciding_impact_lands() {
     });
 }
 
-// Advance the virtual clock by `step` per update until `predicate` holds.
+// Step the clock by `step` until `predicate` holds. The pin stays after the return.
 fn step_until(app: &mut App, step: std::time::Duration, predicate: impl Fn(&App) -> bool) {
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::ManualDuration(step));
     while !predicate(app) {
         app.update();
     }
-    app.world_mut()
-        .insert_resource(TimeUpdateStrategy::Automatic);
+}
+
+// Assert `helper` left `step` pinned as the frame delta.
+fn assert_pinned(app: &App, step: std::time::Duration, helper: &str) {
+    let strategy = app.world().resource::<TimeUpdateStrategy>();
+    assert!(
+        matches!(strategy, TimeUpdateStrategy::ManualDuration(pinned) if *pinned == step),
+        "{helper} must leave {step:?} pinned as the frame delta, and never hand the clock back \
+         to Bevy",
+    );
+}
+
+#[test]
+fn the_time_helpers_leave_a_manual_delta_pinned() {
+    let mut app = battle_running_app();
+
+    step_app(&mut app, FLIGHT_STEP, 1);
+    assert_pinned(&app, FLIGHT_STEP, "step_app");
+    app.update();
+    assert_eq!(
+        app.world().resource::<Time>().delta(),
+        FLIGHT_STEP,
+        "a frame run after step_app returns must read step_app's pinned delta",
+    );
+
+    drain_frame_zero_delta(&mut app);
+    assert_pinned(&app, std::time::Duration::ZERO, "drain_frame_zero_delta");
+
+    let held = std::time::Duration::from_millis(50);
+    step_until(&mut app, held, |_| true);
+    assert_pinned(&app, held, "step_until");
+    app.update();
+    assert_eq!(
+        app.world().resource::<Time>().delta(),
+        held,
+        "a frame run after step_until returns must read step_until's pinned delta",
+    );
 }
 
 #[test]
