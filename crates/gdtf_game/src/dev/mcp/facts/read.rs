@@ -2,7 +2,9 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::playback::PlaybackGate;
 use gdtf_battle_sim::{battle::PlayerFaction, prelude::BattleInProgress, turn::ActiveFaction};
 
-use super::{BattleModel, GameFacts, PlaybackCatchUp, StepperActivity, TurnOwner};
+#[cfg(feature = "dev_tools")]
+use super::StepperActivity;
+use super::{BattleModel, GameFacts, PlaybackCatchUp, TurnOwner};
 use crate::{
     dev::mcp::wire::{
         AfterMathPhaseNet, AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet,
@@ -42,8 +44,6 @@ impl GameFactsParam<'_> {
                 Some(_) => StepperActivity::Stepping,
                 None => StepperActivity::NotStepping,
             };
-            #[cfg(not(feature = "dev_tools"))]
-            let stepper = StepperActivity::NotStepping;
 
             GameFacts::new(
                 AppPhaseNet::new(
@@ -62,6 +62,7 @@ impl GameFactsParam<'_> {
                         .map(|state| AfterMathPhaseNet::from_state(*state.get())),
                 ),
                 self.battle_model(),
+                #[cfg(feature = "dev_tools")]
                 stepper,
                 self.catch_up(),
                 self.turn_owner(),

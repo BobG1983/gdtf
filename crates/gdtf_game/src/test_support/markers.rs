@@ -2,13 +2,14 @@
 
 pub use gdtf_ui::UiPlugin;
 
+#[cfg(all(feature = "mcp", feature = "dev_tools"))]
+pub use crate::dev::mcp::StepperActivity;
 #[cfg(feature = "mcp")]
 pub use crate::dev::mcp::{
     ActCommandSystems, BattleActivity, BattleModel, BattleScreen, ContextualReply, GameFacts,
     GameFactsParam, MCP_PROTOCOL_VERSION, MCP_SERVER_NAME, McpPlugin, PlaybackCatchUp,
-    PresenterReadiness, StepperActivity, TurnChangeCount, TurnOwner,
-    assert_game_command_set_is_conformant, count_turn_changes, game_command_names, mcp_hello_facts,
-    shorten_wait_budget,
+    PresenterReadiness, TurnChangeCount, TurnOwner, assert_game_command_set_is_conformant,
+    count_turn_changes, game_command_names, mcp_hello_facts, shorten_wait_budget,
 };
 #[cfg(feature = "dev_tools")]
 pub use crate::dev::procgen_stepper::{

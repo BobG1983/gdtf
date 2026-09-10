@@ -20,8 +20,10 @@ pub use commands::{
 pub use config::{
     MCP_PROTOCOL_VERSION, SERVER_NAME as MCP_SERVER_NAME, hello_facts as mcp_hello_facts,
 };
+#[cfg(all(feature = "headless_test", feature = "dev_tools"))]
+pub use facts::StepperActivity;
 #[cfg(feature = "headless_test")]
 pub use facts::{
     BattleActivity, BattleModel, BattleScreen, GameFacts, GameFactsParam, PlaybackCatchUp,
-    PresenterReadiness, StepperActivity, TurnOwner,
+    PresenterReadiness, TurnOwner,
 };

@@ -1,6 +1,7 @@
+#[cfg(feature = "dev_tools")]
+use super::StepperActivity;
 use super::{
-    BattleActivity, BattleModel, BattleScreen, PlaybackCatchUp, PresenterReadiness,
-    StepperActivity, TurnOwner,
+    BattleActivity, BattleModel, BattleScreen, PlaybackCatchUp, PresenterReadiness, TurnOwner,
 };
 use crate::dev::mcp::wire::{AppPhaseNet, BattleScapePhaseNet, GamePhaseNet};
 
@@ -10,6 +11,7 @@ crate::support_item! {
     struct GameFacts {
         phase:      AppPhaseNet,
         model:      BattleModel,
+        #[cfg(feature = "dev_tools")]
         stepper:    StepperActivity,
         catch_up:   PlaybackCatchUp,
         turn_owner: TurnOwner,
@@ -20,13 +22,14 @@ impl GameFacts {
     pub(crate) const fn new(
         phase: AppPhaseNet,
         model: BattleModel,
-        stepper: StepperActivity,
+        #[cfg(feature = "dev_tools")] stepper: StepperActivity,
         catch_up: PlaybackCatchUp,
         turn_owner: TurnOwner,
     ) -> Self {
         Self {
             phase,
             model,
+            #[cfg(feature = "dev_tools")]
             stepper,
             catch_up,
             turn_owner,
@@ -41,6 +44,7 @@ impl GameFacts {
         }
     }
 
+    #[cfg(feature = "dev_tools")]
     crate::support_item! {
         /// Whether the procgen stepper owns generation right now.
         #[must_use]

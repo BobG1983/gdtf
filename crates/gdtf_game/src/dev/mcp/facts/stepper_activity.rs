@@ -6,7 +6,7 @@ crate::support_item! {
     enum StepperActivity {
         /// The stepper drives generation one stage at a time.
         Stepping,
-        /// Generation runs itself, or the stepper is not in this build.
+        /// Generation runs itself.
         NotStepping,
     }
 }
