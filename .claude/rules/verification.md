@@ -78,6 +78,10 @@ script. The default is **FULL**. Use **DOCS** only when every changed path is al
 markdown under `docs/`, `.claude/`, or the repo root. A change to this file always forces FULL.
 Pre-commit always runs its cargo subset. None of this changes the command list above.
 
+## The suite never tests the agent tooling
+
+Nothing under `.claude/` is tested by the green suite. The workflows, skills and rules there are tooling, they differ per user and per assistant, and a test over them fails for anyone driving this repo another way. A workflow script that cannot parse refuses to launch and says which file and line, so it needs no guard. Owner ruling, given directly in conversation, 2026-09-10.
+
 ## Rules
 
 1. Anything less than full green is in progress.

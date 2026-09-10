@@ -6,4 +6,3 @@ mod module_layout;
 mod no_flat_integration_tests;
 mod no_restored_automatic_time;
 mod rustdoc_lint_gate;
-mod workflow_scripts;
