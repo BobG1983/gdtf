@@ -4,7 +4,8 @@ description: >-
   Makes a Linear ticket buildable before anyone writes code. Reads the live
   ticket text, opens every citation, and hands the builder corrected clause
   text. Corrects facts; never cuts a requirement. Returns AUDIT_OK with
-  binding CORRECTIONS, or AUDIT_BLOCK for a product decision only.
+  binding CORRECTIONS, or AUDIT_BLOCK for a product decision, or for a sweep
+  ticket whose site list has no guard behind it.
 tools: Read, Grep, Glob, Bash, ToolSearch, LSP, Agent
 model: opus
 ---
@@ -54,6 +55,9 @@ Never block for any of these:
 - a test that should be edited rather than deleted
 - a clause that is only vague
 
+A sweep ticket that lists its sites with no guard command behind them is not on this list. It is
+the second `AUDIT_BLOCK` case below.
+
 "This is hard", "this is a large diff", "this touches shared code" and "this needs a production
 change" are not reasons to block. If replacing, deleting or simplifying existing code or
 dependencies is the cleaner path, specify it.
@@ -88,9 +92,19 @@ state has moved. "A pixel over the grid returns a cell and an off-grid pixel ret
 checkable. "`input.hover (400,420)` returns `(16,19)`" is a changeable literal of the kind
 [`verification.md`](../rules/verification.md) rule 6 bans.
 
-Use `AUDIT_BLOCK` only when answering would invent product behaviour: what a command should return
+Use `AUDIT_BLOCK` for two reasons, and no others.
+
+The first is a question whose answer would invent product behaviour: what a command should return
 in a situation nobody has decided, whether a feature should exist at all, or whether a requirement
 should be dropped.
+
+The second is a sweep ticket whose site list has no guard behind it. A sweep ticket is one whose
+work is the same edit at many sites, and
+[`clause-writing.md`](../rules/clause-writing.md) says the command that becomes its conformance
+guard produces the list, as clause one. A list written by hand covers less than the guard will
+enforce, so whatever the list missed survives the build and becomes another ticket. That happened
+on GTW-1358, which missed seven sites and produced GTW-1365. Block the ticket and name the command
+whose output should be the site list.
 
 ## Check the acceptance clauses as a set
 
@@ -134,7 +148,8 @@ it as written, and the whole clause rewritten. The builder follows those rewrite
 each one as an instruction, not a report about the ticket. Never write a correction that says a
 clause was fine.
 
-On `AUDIT_BLOCK`, name the one product decision needed and recommend an answer.
+On `AUDIT_BLOCK`, name what the run must settle before the build starts, and recommend an answer.
+That is either the product decision, or the command a sweep ticket's site list must come from.
 
 Everything that belongs to no single clause goes in the report: what you opened, what you checked,
 and why a clause stands as written.

@@ -38,7 +38,28 @@ kit's number-one failure mode. One agent "right-sized" a hard resolution to some
 - A ticket lands only when EVERY clause is implemented. There is no "MVP of a ticket" unless
   the USER splits it.
 
+## The carried fix: a defect that blocks a clause of the ticket being built
+
+A build that finds a defect blocking a clause of the ticket it is building may fix it, instead of
+filing the defect and stopping. Measured on GTW-1017, whose build could not show its own
+determinism clause green until the presenter's GPU lock race was fixed. One ticket became two for a
+change of a few lines.
+
+Four bounds hold on every carried fix, all of them required:
+
+- The defect blocks a clause of the ticket being built, and the build says which clause. A defect
+  that blocks no clause is reported, not fixed.
+- The fix lands as its own commit, and that commit's subject names its own ticket, in the
+  `Area: summary (GTW-N)` style of [git-workflow.md](./git-workflow.md) rule 5.
+- A project-manager step of the run files that ticket before the fix is committed, never the build
+  agent. `HOUSE_RULES` rule 7 in `.claude/workflows/build-ticket.js` makes those steps the only
+  Linear writers, and [linear-discipline.md](./linear-discipline.md) rule 4 puts the ticket before
+  the fix.
+- The build declares the carried fix in its report: the files it touched, the clause the defect
+  blocked, and what the defect was.
+
 ## Enforcement
 
 `/gate` runs the `design-gate` agent. It audits the diff against the ticket and `docs/` before
-any commit. A change that passes the green suite but deviates from spec FAILS the gate.
+any commit. A change that passes the green suite but deviates from spec FAILS the gate. A carried
+fix the build declared is not a deviation, so the gate does not fail it as one.

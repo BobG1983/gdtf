@@ -33,7 +33,7 @@ If one fails, refuse, say which, and stop.
 
 4. You are on a `feature/*` branch for this ticket, not `develop` or `main`.
 
-5. The tree holds no files outside ticket scope. List anything extra from `git status --porcelain` and ask. Never auto-stage, stash or delete it. Never stage `.claude/.gate-pass`.
+5. The tree holds no files outside ticket scope. List anything extra from `git status --porcelain` and ask. Never auto-stage, stash or delete it. Never stage `.claude/.gate-pass`. The files the build declared as a carried fix are the exception: they are in scope, and they are committed on their own under the carried fix's own ticket, per the carried fix section of [`design-fidelity.md`](../../rules/design-fidelity.md).
 
 6. Every contract clause is implemented. No stubs, no "for now".
 
@@ -45,7 +45,7 @@ If one fails, refuse, say which, and stop.
 2. Stage files by name. Never `git add -A`, `-u`, or `.`.
 3. Commit with the subject `Area: summary (GTW-N)` and a body saying what changed and why. Match the voice of `git log --oneline -15`. The body ends the message: no session URL, no `Co-Authored-By`. The pre-commit hook re-checks the gate-pass. Do not use `--no-verify`.
 4. `OLD=$(git rev-parse origin/develop)`.
-5. Rebase, then fast-forward, so the ticket lands as one commit:
+5. Rebase, then fast-forward, so the branch lands as the ticket's own commit plus a carried fix commit where the run made one, and no merge commit is created:
 
    ```bash
    git fetch origin develop

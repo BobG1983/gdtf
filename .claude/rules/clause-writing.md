@@ -94,6 +94,24 @@ Measured on GTW-885. The landed fix added ordering-edge tests and drove engine i
 the MCP. The actual defect was that focus navigation could not reach the new buttons, and the fix
 never touched it.
 
+## A sweep ticket's site list comes from its guard
+
+A sweep ticket is one whose work is the same edit at many sites.
+
+Its site list is produced by the command that becomes its conformance guard. Never write the list
+by hand. That guard is clause one of the ticket, and the ticket's scope is then whatever the guard
+enforces, so a site cannot survive the build.
+
+Read `no_tracked_rust_file_hands_the_frame_clock_back_to_bevy` in
+`crates/gdtf_conformance/tests/conformance_suite/no_restored_automatic_time/check.rs` for the shape.
+Its site list comes from `offending_lines` in that module's `scan.rs`, which reads every tracked
+Rust file. One command gives the ticket its sites and the suite its guard, so the two cannot
+disagree.
+
+Measured on GTW-1358. It swept 104 sites for frame and wall-clock budgets from a list written
+before the guard existed. The census searched for waits and never searched for handbacks, so seven
+tests that pin the clock and hand it back survived the build and became GTW-1365.
+
 ## Assertions
 
 An assertion distinguishes zero from many. A helper that returns `Option` for both "none" and

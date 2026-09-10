@@ -9,7 +9,7 @@ export const meta = {
     { title: 'Gate', detail: '3 read-only lenses, any-non-compliant blocks (/gate skill)' },
     { title: 'Fix', detail: 'bounded repair loop on a red verdict' },
     { title: 'Docs-sync', detail: 're-align docs/ if the change drifted design claims (/docs-sync skill)' },
-    { title: 'Land', detail: 'commit, rebase onto develop, fast-forward, push, summarize, close (/land skill)' },
+    { title: 'Land', detail: 'file any carried fix, commit, rebase onto develop, fast-forward, push, summarize, close (/land skill)' },
   ],
 }
 
@@ -32,6 +32,7 @@ export const meta = {
 //   gate:*          opus    design-gate lens
 //   fix:*           opus    repair engineering
 //   docs-sync:*     opus    decides doc drift against source
+//   file-carried:*  sonnet  files the carried fix's ticket from text the builder wrote
 //   land:*          sonnet  rebase, suite, and the git facts only
 //   summarize:*     sonnet  gathers its own evidence; owns every judged field of the result
 //   confirm-land:*  sonnet  compares expected landing state to actual
@@ -98,7 +99,7 @@ const AUDIT_RESULT = {
   type: 'object', additionalProperties: false,
   required: ['verdict', 'corrections', 'blockingQuestion', 'report'],
   properties: {
-    verdict: { type: 'string', enum: ['AUDIT_OK', 'AUDIT_BLOCK'], description: 'AUDIT_BLOCK only for a product decision the code cannot answer.' },
+    verdict: { type: 'string', enum: ['AUDIT_OK', 'AUDIT_BLOCK'], description: 'AUDIT_BLOCK for a product decision the code cannot answer, or for a sweep ticket whose site list has no guard command behind it.' },
     corrections: {
       type: 'array', description: 'One row per clause you corrected. Empty when the ticket needed none — never a row saying a clause was fine.',
       items: {
@@ -110,7 +111,7 @@ const AUDIT_RESULT = {
         },
       },
     },
-    blockingQuestion: { type: 'string', description: 'On AUDIT_BLOCK, the one product decision to put to the owner. Empty on AUDIT_OK.' },
+    blockingQuestion: { type: 'string', description: 'On AUDIT_BLOCK, what to put to the owner: the product decision, or the command a sweep ticket\'s site list must come from. Empty on AUDIT_OK.' },
     report: { type: 'string', description: 'Everything the rows do not carry: what you opened, what you checked, why a clause stands as written.' },
   },
 }
@@ -131,7 +132,7 @@ const SUITE_ROWS = {
 // reported as success — both hid in prose.
 const WORK_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['filesChanged', 'suite', 'clauses', 'corrections', 'tests', 'deviations', 'foreignDirtyFiles', 'outOfScope', 'report'],
+  required: ['filesChanged', 'suite', 'clauses', 'corrections', 'tests', 'deviations', 'carriedFix', 'foreignDirtyFiles', 'outOfScope', 'report'],
   properties: {
     filesChanged: { type: 'array', items: { type: 'string' }, description: 'Every path you created or edited, by name, exactly as git reports it. Empty only if you truly changed nothing.' },
     suite: SUITE_ROWS,
@@ -175,6 +176,16 @@ const WORK_RESULT = {
       items: {
         type: 'object', additionalProperties: false, required: ['clause', 'built', 'why'],
         properties: { clause: { type: 'string' }, built: { type: 'string' }, why: { type: 'string' } },
+      },
+    },
+    carriedFix: {
+      type: 'object', additionalProperties: false, required: ['files', 'clause', 'defect', 'title'],
+      description: 'One defect you fixed because it blocked a clause of THIS ticket, under the carried fix section of design-fidelity.md. An empty array and empty strings when you carried none, which is the common case. You still do not commit: a project-manager step files the ticket and the land step makes the commit.',
+      properties: {
+        files: { type: 'array', items: { type: 'string' }, description: 'The paths the fix touched. Every one is also in filesChanged, because the tree holds both. Land stages these on their own, so a path missing here lands under the wrong ticket.' },
+        clause: { type: 'string', description: 'The clause of THIS ticket the defect blocked. A defect that blocked no clause is not carried: name it in outOfScope instead.' },
+        defect: { type: 'string', description: 'What was broken and where, by symbol or quoted text, and what the fix does. A project-manager step files this verbatim as the ticket description.' },
+        title: { type: 'string', description: 'The title for that ticket, in the style linear-discipline.md asks for. The step that files it copies text and judges nothing, so the wording is yours.' },
       },
     },
     foreignDirtyFiles: { type: 'array', items: { type: 'string' }, description: 'Files dirty in the tree that are not this ticket\'s work. You left them alone; naming them is what stops land from staging them.' },
@@ -279,16 +290,25 @@ const DOCS_RESULT = {
 const LAND_RESULT = {
   type: 'object', additionalProperties: false,
   required: ['committed', 'commitSha', 'pushedRange', 'filesStaged', 'filesLeftUnstaged',
-    'carriedCommits', 'rebase', 'conflictedFiles', 'developBefore', 'developAfter',
-    'gatePass', 'branchDeleted', 'suite'],
+    'carriedFixCommit', 'carriedCommits', 'rebase', 'conflictedFiles', 'developBefore',
+    'developAfter', 'gatePass', 'branchDeleted', 'suite'],
   properties: {
     committed: { type: 'boolean', description: 'Did the commit and push actually run' },
     commitSha: { type: 'string', description: 'Feature commit sha, or empty if none. Empty with committed true is a contradiction the run rejects.' },
     pushedRange: { type: 'string', description: 'Exactly what git push printed, or empty' },
     filesStaged: { type: 'array', items: { type: 'string' }, description: 'Every path staged, by name. Never a glob or a count.' },
     filesLeftUnstaged: { type: 'array', items: { type: 'string' }, description: 'Paths dirty in the tree you deliberately did not stage. "I left them alone" is checkable only if you name them.' },
+    carriedFixCommit: {
+      type: 'object', additionalProperties: false, required: ['sha', 'subject', 'ticket'],
+      description: 'The commit you made for the carried fix the run handed you. Empty strings when the run handed you none.',
+      properties: {
+        sha: { type: 'string' },
+        subject: { type: 'string', description: 'The subject line you wrote, so the ticket in it can be read rather than assumed.' },
+        ticket: { type: 'string', description: 'The GTW id that subject names. It is the carried fix\'s own ticket, never this one.' },
+      },
+    },
     carriedCommits: {
-      type: 'array', description: 'Commits in `develop..branch` whose subject does not name this ticket — read from git log, not from memory. They reach develop with this land whether or not they belong to it.',
+      type: 'array', description: 'Commits in `develop..branch` whose subject does not name this ticket, and that nobody in this run expected. Read them from git log, not from memory. They reach develop with this land whether or not they belong to it. The carried fix commit you made is expected, so it goes in carriedFixCommit and not here.',
       items: { type: 'object', additionalProperties: false, required: ['sha', 'subject'], properties: { sha: { type: 'string' }, subject: { type: 'string' } } },
     },
     rebase: { type: 'string', enum: ['clean', 'conflicts-resolved', 'stopped', 'not-needed'], description: 'What the rebase onto origin/develop actually did.' },
@@ -309,7 +329,8 @@ const LAND_RESULT = {
 // came with the push. On GTW-1159 two unrelated commits rode in and nobody asked.
 const CONFIRM_RESULT = {
   type: 'object', additionalProperties: false,
-  required: ['landedSha', 'subject', 'developSha', 'extraCommits', 'gatePass'],
+  required: ['landedSha', 'subject', 'developSha', 'carriedFixSha', 'carriedFixSubject',
+    'extraCommits', 'gatePass'],
   properties: {
     gatePass: {
       type: 'object', additionalProperties: false, required: ['matchedReport', 'deleted', 'note'],
@@ -323,8 +344,10 @@ const CONFIRM_RESULT = {
     landedSha: { type: 'string', description: 'The sha on origin/develop whose subject names this ticket, or the empty string if there is none.' },
     subject: { type: 'string', description: 'That commit\'s subject line, so the sha is checkable against the ticket rather than assumed.' },
     developSha: { type: 'string', description: 'origin/develop head after the fetch.' },
+    carriedFixSha: { type: 'string', description: 'The sha on origin/develop whose subject names the carried fix ticket the prompt gave you, or the empty string when the prompt named no ticket or no such commit is on origin/develop. The rebase rewrites shas, so this is the only sha the run can report for that commit.' },
+    carriedFixSubject: { type: 'string', description: 'That commit\'s subject line, so the sha is checkable against the carried ticket rather than assumed. Empty whenever carriedFixSha is.' },
     extraCommits: {
-      type: 'array', description: 'Commits pushed in the same range whose subject does not name this ticket. Empty is the expected value.',
+      type: 'array', description: 'Commits pushed in the same range whose subject does not name this ticket, apart from the carried fix commit you reported in carriedFixSha. Empty is the expected value.',
       items: { type: 'object', additionalProperties: false, required: ['sha', 'subject'], properties: { sha: { type: 'string' }, subject: { type: 'string' } } },
     },
   },
@@ -406,6 +429,23 @@ function renderDeviations(work) {
   return `<declared-deviations>
 ${ds.map(d => `- clause ${d.clause}\n  built: ${d.built}\n  why it could not be built as written: ${d.why}`).join('\n')}
 </declared-deviations>`
+}
+
+// A carried fix touches files no clause asks for, so a reviewer told nothing reads them as an
+// undeclared deviation or as scope creep. design-fidelity.md says a declared carried fix is neither.
+function renderCarriedFix(work) {
+  const c = work?.carriedFix
+  if (!c?.files?.length) return '<carried-fix>\n(none declared)\n</carried-fix>'
+  return `<carried-fix clause="${c.clause}">
+files: ${c.files.join(', ')}
+title: ${c.title}
+the defect: ${c.defect}
+
+The carried fix section of .claude/rules/design-fidelity.md allows this: a defect blocking a clause
+of this ticket is fixed by the build, filed as its own ticket by a project-manager step, and
+committed on its own at land. Declared here, it is not an undeclared deviation and not out-of-scope
+work. Judge whether it blocks the clause it names, and judge the rest of the diff as usual.
+</carried-fix>`
 }
 
 function renderFindings(v, lensKey) {
@@ -602,6 +642,12 @@ name one, the test does not discriminate — do not write it.
 reason, and a gate lens judges whether it was forced; leaving it out and reporting success is a
 defect under design-fidelity.md.
 
+A defect that blocks a clause of THIS ticket may be fixed in this run instead of filed and left, on
+the four bounds in the carried fix section of \`.claude/rules/design-fidelity.md\`. Declare it in
+\`carriedFix\`: the files, the clause it blocked, what was broken, and the title its ticket should
+carry. A project-manager step files that ticket and the land step commits those files on their own
+under it. You still do not commit, and a defect that blocks no clause goes in \`outOfScope\` instead.
+
 Dirty files that are not this ticket's work go in \`foreignDirtyFiles\`. Anything ticket-worthy you
 noticed outside this contract goes in \`outOfScope\` — you cannot file it, the orchestrator does.`,
   { model: 'opus', label: `build:${TICKET}`, phase: 'Build', agentType: 'engineer', schema: WORK_RESULT })
@@ -691,6 +737,8 @@ ${(work.tests ?? []).map(t => `${t.name} (${t.file}) clause ${t.clause} — catc
 ${(work.deviations ?? []).map(d => `clause ${d.clause}: built ${d.built} — ${d.why}`).join('\n') || '(none declared)'}
 </implementer-deviations>
 
+${renderCarriedFix(work)}
+
 ${GREEN}
 
 Fill \`suite\` with one row per command in verification.md and the exit code you read yourself —
@@ -720,7 +768,9 @@ Check the two claim lists against the tree, not against the prose:
   is not a finding, a false \`true\` is.
 - Put in \`undeclaredDeviations\` anything the code does differently from what the contract
   **requires** and the implementer did not declare. A deviation it declared is the gate's business,
-  not this field's.
+  not this field's. Files named in the carried-fix section above are not a deviation either: check
+  they are in the tree and that the clause they claim to unblock is one of this ticket's, then say
+  in your report what you found. Files it changed that it named nowhere still belong in this field.
 
   A prediction is not a requirement. Clause prose that guesses at an incidental number — a line
   count a change is expected to land on, a count of call sites, a file size — is a guess about an
@@ -752,6 +802,8 @@ ${verifyOut?.report ?? '(verify died — treat cargo claims as UNPROVEN)'}
 </verify-report>
 
 ${lens.key === 'deviations' ? renderDeviations(work) : ''}
+
+${renderCarriedFix(work)}
 
 ${HOUSE_RULES}
 
@@ -842,6 +894,8 @@ ${contract}
 ## WHAT BLOCKED IT
 ${problems}
 
+${renderCarriedFix(work)}
+
 Fix at root. Do NOT weaken tests and do NOT edit the gate.
 
 Files dirty in the tree that are not this ticket's work stay exactly as they are — do not stage
@@ -856,7 +910,11 @@ Report on the same terms as the build: \`filesChanged\` matching \`git status --
 \`clauses\` row per clause, one \`corrections\` row per audit correction, a \`tests\` row naming the
 mutation each test turns red, \`deviations\` empty unless you truly could not build a clause as
 written, dirty files that are not this ticket's in \`foreignDirtyFiles\`, and anything ticket-worthy
-outside the contract in \`outOfScope\`.`,
+outside the contract in \`outOfScope\`.
+
+\`carriedFix\` carries forward. Any carried fix declared above is still in the tree, so repeat it in
+your own \`carriedFix\` field, adding any file this round touched for the same defect. Drop it and
+land commits those files under this ticket instead of the fix's own.`,
     { model: 'opus', label: `fix:${TICKET}#${attempt}`, phase: 'Fix', schema: WORK_RESULT })
 
   if (!work) throw new Error(`fix agent died on ${TICKET} round ${attempt}`)
@@ -912,6 +970,67 @@ Do NOT commit — /land owns the commit.`,
 
 phase('Land')
 
+// The carried fix is committed under its own ticket, so that ticket has to exist before land runs.
+// Only a project-manager step can write to Linear (HOUSE_RULES rule 7), and linear-discipline.md
+// rule 4 puts the ticket before the fix.
+const CARRIED_TICKET_RESULT = {
+  type: 'object', additionalProperties: false,
+  required: ['filed', 'ticket', 'title', 'report'],
+  properties: {
+    filed: { type: 'boolean', description: 'Did the ticket get created. False with a reason in report is honest; a made-up id is not.' },
+    ticket: { type: 'string', description: 'The id the board returned, as GTW-n. Empty if nothing was filed.' },
+    title: { type: 'string', description: 'The title the board shows for it.' },
+    report: { type: 'string', description: 'What you posted, what the board said back, and the relation you set.' },
+  },
+}
+
+const carriedFixDeclared = (work.carriedFix?.files?.length ?? 0) > 0
+
+const carriedTicket = carriedFixDeclared
+  ? await agent(`File the carried fix's ticket for ${TICKET} in project GDTF.
+
+The build of ${TICKET} fixed a defect that blocked its clause ${work.carriedFix.clause}, under the
+carried fix section of \`.claude/rules/design-fidelity.md\`. The fix is uncommitted in ${REPO} on
+${BRANCH}. The land step commits those files on their own under the id you return, so it cannot
+run until this ticket exists.
+
+File one ticket and nothing else:
+
+- title: ${work.carriedFix.title}
+- label: Bug
+- state: In Progress
+- relation: blocks ${TICKET}
+- description: the text below, with no source line above it. Every description is agent-written.
+
+<description>
+${work.carriedFix.defect}
+
+Files: ${work.carriedFix.files.join(', ')}
+
+Fixed by the build of ${TICKET}, which could not show its clause ${work.carriedFix.clause} green
+until this was fixed. The fix lands as its own commit under this ticket.
+</description>
+
+Return the id the board gave it in \`ticket\`. You judge nothing: the wording above was written by
+the build, so post it as it stands. Do not move ${TICKET}, and do not close anything.`,
+    { model: 'sonnet', label: `file-carried:${TICKET}`, phase: 'Land', agentType: 'project-manager', schema: CARRIED_TICKET_RESULT })
+  : null
+
+const carriedTicketId = /^GTW-\d+$/i.test(carriedTicket?.ticket ?? '') ? carriedTicket.ticket : null
+
+if (carriedFixDeclared && !carriedTicketId) {
+  return {
+    ticket: TICKET, landed: false,
+    reason: 'the carried fix has no ticket of its own, so land cannot commit it',
+    carriedFix: work.carriedFix,
+    fileCarried: carriedTicket?.report ?? '(the step that files it died)',
+  }
+}
+
+if (carriedTicketId) {
+  log(`${TICKET}: carried fix filed as ${carriedTicketId}, for the defect blocking clause ${work.carriedFix.clause}`)
+}
+
 const landed = await agent(`Land ${TICKET} following the /land skill.
 
 Repo: ${REPO} — no worktree; the work is on ${BRANCH} in the main tree.
@@ -924,6 +1043,19 @@ reports are not yours to read, and the summarize step re-derives anything anyone
 ${(work.foreignDirtyFiles ?? []).length ? work.foreignDirtyFiles.map(f => `- ${f}`).join('\n') : '(none reported)'}
 
 Never stage or revert those. They belong to someone else and a repair round has discarded one before.
+
+## THE CARRIED FIX
+${carriedTicketId ? `The build fixed a defect that blocked clause ${work.carriedFix.clause} of ${TICKET}, and it is filed as ${carriedTicketId}. These are its files:
+
+${work.carriedFix.files.map(f => `- ${f}`).join('\n')}
+
+Stage exactly those paths and commit them FIRST, on their own, with the subject
+\`Area: summary (${carriedTicketId})\` and a body saying what was broken. ${TICKET}'s tree stands on
+that fix, so the fix is the earlier of the two commits. Then stage ${TICKET}'s own files and commit
+them as step 3 says. Then rebase and fast-forward, which carries both commits to develop.
+
+Report that commit's sha, subject and ticket in \`carriedFixCommit\`. It is expected, so it does not
+also go in \`carriedCommits\`.` : '(none. The build carried no fix, so leave every field of `carriedFixCommit` empty.)'}
 
 Run every command in the foreground and read its exit code in the same turn. Never start the suite
 in the background and end your turn waiting on it — that is how a previous attempt at this step died
@@ -960,9 +1092,14 @@ Four things this workflow pins on top of that file:
 Every field is something git printed this run, not something you remember.
 
 - \`carriedCommits\`: run \`git -C ${REPO} log --oneline origin/develop..${BRANCH}\` BEFORE the
-  fast-forward and list every commit whose subject does not name ${TICKET}. They reach develop with
-  this land whether they belong to it or not. Do not delete them and do not rewrite history — report
-  them.
+  fast-forward and list every commit whose subject does not name ${TICKET}, apart from the carried
+  fix commit you made yourself. They reach develop with this land whether they belong to it or not.
+  Report them. Do not delete them and do not rewrite history.
+- \`carriedFixCommit\`: the sha, subject and ticket of the commit you made for the carried fix, or
+  three empty strings when the section above said there was none. Read the sha from the same
+  \`git log\` you ran for \`carriedCommits\`, AFTER the rebase, because the rebase rewrites it. The
+  confirm step re-finds that commit on origin/develop by its subject, so the subject you report is
+  the subject you wrote.
 - \`rebase\` and \`conflictedFiles\`: say what the rebase did. If you resolved a conflict, name every
   file you resolved — a quiet revert of someone else's work hides exactly there.
 - \`developBefore\` and \`developAfter\`: the two shas around the fast-forward.
@@ -988,13 +1125,23 @@ Return that sha in \`landedSha\` only if step 3 exits 0. Otherwise return the em
 its subject line too, so the sha can be checked against the ticket rather than assumed, and
 origin/develop's head in \`developSha\`.
 
-4. \`git -C ${REPO} log --oneline ${landed?.developBefore || 'origin/develop@{1}'}..origin/develop\`
+4. ${carriedTicketId
+  ? `This land carried a fix for ${carriedTicketId}, committed on the same branch under its own
+subject. Find the commit on origin/develop whose subject contains ${carriedTicketId} (most recent if
+several), run \`git -C ${REPO} merge-base --is-ancestor <sha> origin/develop\`, and return that sha in
+\`carriedFixSha\`, with its subject line in \`carriedFixSubject\`, only if it exits 0. The land step
+reads its sha on the branch, and a rebase rewrites shas, so yours is the sha that is on develop.
+Report what you find whatever the land step said, because it may have made that commit and left its
+own report of it empty. That commit is expected. It does not also go in \`extraCommits\`.`
+  : '(this run carried no fix, so leave `carriedFixSha` and `carriedFixSubject` empty)'}
 
-Every commit in that range whose subject does not name ${TICKET} goes in \`extraCommits\`. You are
-the only step that fetches origin, so this is the only place the question gets asked. Report them;
-never try to remove one.
+5. \`git -C ${REPO} log --oneline ${landed?.developBefore || 'origin/develop@{1}'}..origin/develop\`
 
-5. You own the rest of step 7 of .claude/skills/land/SKILL.md: once step 3 has exited 0, compare
+Every commit in that range whose subject does not name ${TICKET}${carriedTicketId ? ` or ${carriedTicketId}` : ''} goes in
+\`extraCommits\`. You are the only step that fetches origin, so this is the only place the question
+gets asked. Report them; never try to remove one.
+
+6. You own the rest of step 7 of .claude/skills/land/SKILL.md: once step 3 has exited 0, compare
 \`.claude/.gate-pass\` against what the land step reported and then delete the file. The land step
 must leave it on disk for exactly this comparison, and a gate-pass naming a branch that no longer
 exists blocks the next commit on the next feature branch. If step 3 did not exit 0, leave the file
@@ -1010,7 +1157,68 @@ if (landed?.committed && !landed.commitSha) {
   log(`${TICKET}: land reported committed with no sha — treating the land as unproven`)
 }
 
+// The two git commands print shas of different lengths, so they are compared by prefix.
+const sameCommit = (a, b) => !!a && !!b && (a.startsWith(b) || b.startsWith(a))
+
+// The id this run filed decides whether there is a carried fix, never the land step's word for it.
+// Read from the report alone, a sha land names on a run that filed nothing would be pulled out of
+// `carried` and reported under a ticket nobody filed. `carried` is where that rider must show up.
+//
+// The sha comes from confirm, which read origin/develop after the rebase, the same way `landedSha`
+// does. Land reads its sha on the branch, and a rebase that replays the commit rewrites it.
+//
+// Either report alone is enough to say the commit exists. Confirm is told to keep it out of
+// `extraCommits`, so a land step that made the commit and left its own report of it empty would
+// otherwise leave a commit on develop that no field of this run names.
+const confirmedCarriedSha = /^[0-9a-f]{7,40}$/i.test(confirm?.carriedFixSha ?? '') ? confirm.carriedFixSha : null
+const landCarriedSha = landed?.carriedFixCommit?.sha || null
+const carriedFixCommit = carriedTicketId && (confirmedCarriedSha || landCarriedSha)
+  ? {
+    sha: confirmedCarriedSha || landCarriedSha,
+    subject: landed?.carriedFixCommit?.subject || confirm?.carriedFixSubject || '',
+    ticket: landed?.carriedFixCommit?.ticket || carriedTicketId,
+  }
+  : null
+if (confirmedCarriedSha && landCarriedSha && !sameCommit(confirmedCarriedSha, landCarriedSha)) {
+  log(`${TICKET}: the rebase rewrote the carried fix commit. ${landCarriedSha} on the branch is ${confirmedCarriedSha} on develop`)
+}
+if (carriedFixCommit && !confirmedCarriedSha) {
+  log(`${TICKET}: confirm found no commit naming ${carriedTicketId} on origin/develop. The reported sha is the one land read on the branch`)
+}
+if (carriedFixCommit && !landCarriedSha) {
+  log(`${TICKET}: land reported no commit for ${carriedTicketId} and confirm found ${confirmedCarriedSha} on develop under it`)
+}
+
+// Where the report and the filed id disagree, the run says so instead of dropping one side.
+if (!carriedTicketId && landCarriedSha) {
+  log(`${TICKET}: land named ${landCarriedSha} a carried fix and this run filed none. It stays a rider`)
+}
+if (carriedTicketId && !landCarriedSha && !confirmedCarriedSha) {
+  log(`${TICKET}: ${carriedTicketId} was filed for the carried fix and no commit under it reached develop`)
+}
+
+// carriedCommits and extraCommits hold what nobody expected. The carried fix commit was expected,
+// so it is reported under its own name and never as a rider.
+//
+// The subject decides which commit that is, because the run told land to write
+// `Area: summary (<id>)` and a rebase cannot change what it says. The sha is checked too and is the
+// weaker test: land reads its sha on the branch, confirm reads the rider shas off develop, so a
+// rebase that replays the commit leaves only the subject matching. The id is validated as
+// `GTW-<digits>`, so it holds no regex character, and `\b` keeps GTW-136 from matching GTW-1368.
+//
+// A sha land named on a run that filed no ticket is not the carried fix, so it stays in `carried`.
+const namesCarriedTicket = carriedTicketId
+  ? new RegExp(`\\b${carriedTicketId}\\b`, 'i')
+  : null
+const isTheCarriedFix = c => !!carriedFixCommit && (
+  namesCarriedTicket.test(c.subject ?? '')
+  || sameCommit(c.sha, carriedFixCommit.sha)
+  || sameCommit(c.sha, landCarriedSha))
 const carried = [...(landed?.carriedCommits ?? []), ...(confirm?.extraCommits ?? [])]
+  .filter(c => !isTheCarriedFix(c))
+if (carriedFixCommit) {
+  log(`${TICKET}: carried fix landed as ${carriedFixCommit.sha} under ${carriedFixCommit.ticket || carriedTicketId}`)
+}
 if (carried.length) {
   log(`${TICKET}: ${carried.length} commit(s) reached develop that do not name this ticket — ${carried.map(c => c.sha).join(', ')}`)
 }
@@ -1098,6 +1306,12 @@ ${JSON.stringify(landed, null, 2)}
 ${JSON.stringify(confirm, null, 2)}
 </confirm-result>
 
+<carried-fix>
+${carriedFixCommit
+  ? `${carriedFixCommit.sha} ${carriedFixCommit.subject}\nticket: ${carriedFixCommit.ticket || carriedTicketId}\nclause of ${TICKET} it unblocked: ${work.carriedFix?.clause}\nfiles: ${(work.carriedFix?.files ?? []).join(', ')}\n\nThis commit was made on purpose, under the carried fix section of .claude/rules/design-fidelity.md.\nIt is not a rider and not a process violation.`
+  : '(none. This run carried no fix.)'}
+</carried-fix>
+
 <commits-that-do-not-name-this-ticket>
 ${JSON.stringify(carried, null, 2)}
 </commits-that-do-not-name-this-ticket>
@@ -1155,6 +1369,11 @@ visible nowhere else.
 You judge nothing here. The summary below was written by a step that re-checked the tree; post it
 as it stands rather than rewriting it, and do not add a defect of your own.
 
+Where the carried fix section below names a commit, that fix's own ticket landed with this push.
+Close it on the same terms as this one: post a comment first, opening with the source line
+\`**[build-ticket / land]**\` and carrying that commit's sha, then move it to Done. Record both in
+\`boardEffects\`. \`.claude/rules/linear-discipline.md\` rule 2 leaves no landed ticket open.
+
 <summary>
 ${summarized?.summary ?? '(no summary — say so rather than writing one)'}
 </summary>
@@ -1179,6 +1398,12 @@ ${(summarized?.findings ?? []).map(f => `- [${f.kind}] ${f.detail}`).join('\n') 
 ${(summarized?.followUps ?? []).map(f => `- ${f.title} (${f.label}) — ${f.why}`).join('\n') || '(none)'}
 </follow-ups-the-orchestrator-will-file>
 
+<carried-fix>
+${carriedFixCommit
+  ? `${carriedFixCommit.sha} ${carriedFixCommit.subject}\nticket: ${carriedFixCommit.ticket || carriedTicketId}\nit unblocked clause ${work.carriedFix?.clause} of ${TICKET}`
+  : '(none)'}
+</carried-fix>
+
 <commits-that-do-not-name-this-ticket>
 ${carried.map(c => `${c.sha} ${c.subject}`).join('\n') || '(none)'}
 </commits-that-do-not-name-this-ticket>`,
@@ -1191,6 +1416,17 @@ return {
   ticket: TICKET,
   landed: !!landedSha,
   landedSha,
+  // The carried fix's own commit, next to the ticket's. Both landed in this push, under different
+  // ticket ids, and this is where the record says which is which.
+  carriedFix: carriedFixCommit
+    ? {
+      sha: carriedFixCommit.sha,
+      subject: carriedFixCommit.subject,
+      ticket: carriedFixCommit.ticket || carriedTicketId,
+      clause: work.carriedFix?.clause ?? null,
+      files: work.carriedFix?.files ?? [],
+    }
+    : null,
   rounds: attempt,
   summary: summarized?.summary ?? null,
   findings: summarized?.findings ?? [],

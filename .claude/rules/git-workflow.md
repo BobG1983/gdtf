@@ -19,7 +19,10 @@ recurring failure.
 
    Never code directly on `develop` or `main`.
 
-2. Finish one ticket before starting the next, or stash the changes and file a ticket.
+2. Finish one ticket before starting the next, or stash the changes and file a ticket. The one
+   exception is a carried fix under [design-fidelity.md](./design-fidelity.md): a defect that
+   blocks a clause of the ticket being built is fixed on the same branch, under its own ticket
+   and its own commit.
 
 3. Commit only when `/gate` is green. `/land` writes `.claude/.gate-pass` for the tree it
    commits, not `/gate`. The `.claude/hooks/pre-commit-gate.sh` hook blocks a commit with
@@ -35,8 +38,9 @@ recurring failure.
    No session URL, no `Co-Authored-By`. The user's settings already turn both off, and your
    own tool instructions do not override that.
 
-6. Land via `/land`. Rebase the branch onto develop, then fast-forward, so each ticket is
-   one commit and no merge commit is created:
+6. Land via `/land`. Rebase the branch onto develop, then fast-forward, so the branch lands as
+   the ticket's own commit plus a carried fix commit where the run made one, and no merge commit
+   is created:
 
    ```bash
    git fetch origin develop
