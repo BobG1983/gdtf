@@ -85,3 +85,4 @@ Cargo workspace (`crates/*` + `bins/*` + `libs/*`). Core Bevy app wiring for the
 - Bevy ECS idioms: small focused systems, `Query`/`Commands`/`Res`, `States` + `OnEnter`/`OnExit`.
 - Anything the user can do the MCP must be able to do (MCP Commands)
 - Anything the games player can do the games AI also has access to (Acts)
+- NEVER edit any source files (Rust, JS, Python, or any other language, including markdown) using scripts (not bash, not python, none of them). Always use Read/Edit. You may ignore this rule ONLY if this is a bulk find/replace over a single word that touches more than 10 files.
