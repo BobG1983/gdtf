@@ -1,8 +1,6 @@
 use cobalt_mcp_protocol::{command::RunOptions, message::McpResponse};
 use gdtf_game::qa_wire::{
-    cell::CellLevelNet,
-    inspect::{InspectShownNet, TerrainKindNet},
-    roster::GangerCardNet,
+    cell::CellLevelNet, deed::TerrainPieceKindNet, inspect::InspectShownNet, roster::GangerCardNet,
     token::GangerToken,
 };
 use serde::Deserialize;
@@ -127,7 +125,7 @@ fn inspecting_a_manned_emplacement_answers_with_the_ganger_and_the_terrain_toget
     };
     assert_eq!(
         terrain.kind,
-        TerrainKindNet::Emplacement,
+        TerrainPieceKindNet::Emplacement,
         "the terrain half names the emplacement the shooter is riding: {inspect:?}",
     );
     assert!(

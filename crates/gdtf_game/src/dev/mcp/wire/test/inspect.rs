@@ -5,9 +5,12 @@ use gdtf_battle_sim::{
 };
 
 use super::{assert_ron_round_trip, roster::a_card};
-use crate::dev::mcp::wire::inspect::{
-    CoverBlockNet, CoverHpNet, EmplacementStateNet, HardnessNet, HeightBandNet, InspectShownNet,
-    InspectTerrainNet, MountedWeaponNet, ProtectionNet, TerrainKindNet,
+use crate::dev::mcp::wire::{
+    deed::TerrainPieceKindNet,
+    inspect::{
+        CoverBlockNet, CoverHpNet, EmplacementStateNet, HardnessNet, HeightBandNet,
+        InspectShownNet, InspectTerrainNet, MountedWeaponNet, ProtectionNet,
+    },
 };
 
 fn a_block() -> CoverBlockNet {
@@ -41,7 +44,7 @@ fn a_cover_block_round_trips() {
 
 fn a_wall() -> InspectTerrainNet {
     InspectTerrainNet {
-        kind:   TerrainKindNet::Wall,
+        kind:   TerrainPieceKindNet::Wall,
         cover:  Some(a_block()),
         state:  None,
         weapon: None,
@@ -50,7 +53,7 @@ fn a_wall() -> InspectTerrainNet {
 
 fn a_seat() -> InspectTerrainNet {
     InspectTerrainNet {
-        kind:   TerrainKindNet::Emplacement,
+        kind:   TerrainPieceKindNet::Emplacement,
         cover:  None,
         state:  Some(EmplacementStateNet::Occupied),
         weapon: Some(MountedWeaponNet::new("Heavy Stubber".to_owned())),
@@ -60,10 +63,10 @@ fn a_seat() -> InspectTerrainNet {
 #[test]
 fn the_terrain_half_and_its_own_scalars_round_trip() {
     for kind in [
-        TerrainKindNet::Wall,
-        TerrainKindNet::Cover,
-        TerrainKindNet::Slab,
-        TerrainKindNet::Emplacement,
+        TerrainPieceKindNet::Wall,
+        TerrainPieceKindNet::Cover,
+        TerrainPieceKindNet::Slab,
+        TerrainPieceKindNet::Emplacement,
     ] {
         assert_ron_round_trip(&kind);
     }

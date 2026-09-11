@@ -4,11 +4,10 @@ use bevy::prelude::Deref;
 use gdtf_battle_sim::{
     cover::{CoverEntry, HeightBand},
     emplacement::EmplacementState,
-    entity::TerrainPieceKind,
 };
 use serde::{Deserialize, Serialize};
 
-use super::roster::GangerCardNet;
+use super::{deed::TerrainPieceKindNet, roster::GangerCardNet};
 
 /// How much damage cover shrugs off.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -102,32 +101,6 @@ impl CoverBlockNet {
     }
 }
 
-/// Which kind of terrain piece stands on an inspected cell.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum TerrainKindNet {
-    /// Full wall.
-    Wall,
-    /// Partial cover.
-    Cover,
-    /// Floor slab.
-    Slab,
-    /// Weapon emplacement.
-    Emplacement,
-}
-
-impl TerrainKindNet {
-    /// Mirror the sim's own piece kind.
-    #[must_use]
-    pub const fn from_sim(kind: TerrainPieceKind) -> Self {
-        match kind {
-            TerrainPieceKind::Wall => Self::Wall,
-            TerrainPieceKind::Cover => Self::Cover,
-            TerrainPieceKind::Slab => Self::Slab,
-            TerrainPieceKind::Emplacement => Self::Emplacement,
-        }
-    }
-}
-
 /// Whether an emplacement is vacant or manned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EmplacementStateNet {
@@ -166,7 +139,7 @@ impl MountedWeaponNet {
 #[serde(deny_unknown_fields)]
 pub struct InspectTerrainNet {
     /// Which kind of piece stands on the cell.
-    pub kind:   TerrainKindNet,
+    pub kind:   TerrainPieceKindNet,
     /// The cover block, when the ledger holds an entry for the cell.
     pub cover:  Option<CoverBlockNet>,
     /// Whether the emplacement is manned, when the cell holds one.

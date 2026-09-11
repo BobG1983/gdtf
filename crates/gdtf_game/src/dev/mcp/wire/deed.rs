@@ -53,7 +53,7 @@ impl MoveRejectionNet {
     }
 }
 
-/// Which kind of terrain piece a smash destroyed.
+/// Which kind of terrain piece stands on a cell, and which kind a smash destroyed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TerrainPieceKindNet {
     /// Full wall.

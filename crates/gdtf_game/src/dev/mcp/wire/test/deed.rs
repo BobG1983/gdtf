@@ -330,6 +330,20 @@ fn every_terrain_piece_kind_round_trips_and_mirrors_its_sim_kind() {
 }
 
 #[test]
+fn every_sim_piece_kind_reaches_the_wire_under_its_own_name() {
+    for kind in TerrainPieceKind::ALL {
+        assert_eq!(
+            ron::ser::to_string(&TerrainPieceKindNet::from_sim(kind))
+                .ok()
+                .as_deref(),
+            Some(format!("{kind:?}").as_str()),
+            "a client tells the kinds apart by the name on the wire, so `{kind:?}` mirrors \
+             onto the wire kind of the same name",
+        );
+    }
+}
+
+#[test]
 fn the_kind_list_has_no_duplicates() {
     let mut seen: Vec<String> = KINDS.iter().map(|kind| format!("{kind:?}")).collect();
     seen.sort_unstable();

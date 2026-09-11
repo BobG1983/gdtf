@@ -1,7 +1,7 @@
 //! The cover half of the lit area, checked against the inspect panel's own block.
 
 use cobalt_mcp_protocol::command::RunOptions;
-use gdtf_game::qa_wire::inspect::{CoverBlockNet, TerrainKindNet};
+use gdtf_game::qa_wire::{deed::TerrainPieceKindNet, inspect::CoverBlockNet};
 
 use super::body::{InspectBody, VisibleBody, decode, lit_area};
 use crate::mcp::{
@@ -79,7 +79,7 @@ fn an_emplacement_in_the_lit_area_is_listed_with_the_block_inspect_draws() -> Te
     };
     assert_eq!(
         terrain.kind,
-        TerrainKindNet::Emplacement,
+        TerrainPieceKindNet::Emplacement,
         "the authored seat reads as an emplacement: {inspect:?}",
     );
     let Some(entry) = visible.cover.iter().find(|entry| entry.at == seat.at) else {
@@ -117,7 +117,7 @@ fn terrain_the_ledger_has_no_entry_for_is_left_out_of_the_lit_area() -> TestResu
     };
     assert_eq!(
         (terrain.kind, terrain.cover),
-        (TerrainKindNet::Wall, None),
+        (TerrainPieceKindNet::Wall, None),
         "no ledger entry means inspect names the kind and mints no stats: {inspect:?}",
     );
     assert!(

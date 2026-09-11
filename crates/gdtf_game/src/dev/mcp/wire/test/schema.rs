@@ -17,7 +17,7 @@ use crate::dev::mcp::{
         deed::{ActDeedKindNet, MoveRejectionNet, ReloadOutcomeNet, TerrainPieceKindNet},
         inspect::{
             CoverBlockNet, CoverHpNet, EmplacementStateNet, HardnessNet, HeightBandNet,
-            InspectShownNet, InspectTerrainNet, MountedWeaponNet, ProtectionNet, TerrainKindNet,
+            InspectShownNet, InspectTerrainNet, MountedWeaponNet, ProtectionNet,
         },
         key::{FocusStepNet, KeyNet, KeyPressNet, KeybindActionNet},
         log::{ActProvenanceNet, LogDroppedCount, LogEntryNet, LogReadCap},
@@ -192,11 +192,33 @@ fn every_inspect_wire_type_traces_a_usable_shape() {
     assert_schema_is_usable::<HeightBandNet>("HeightBandNet");
     assert_schema_is_usable::<CoverHpNet>("CoverHpNet");
     assert_schema_is_usable::<CoverBlockNet>("CoverBlockNet");
-    assert_schema_is_usable::<TerrainKindNet>("TerrainKindNet");
     assert_schema_is_usable::<EmplacementStateNet>("EmplacementStateNet");
     assert_schema_is_usable::<MountedWeaponNet>("MountedWeaponNet");
     assert_schema_is_usable::<InspectTerrainNet>("InspectTerrainNet");
     assert_schema_is_usable::<InspectShownNet>("InspectShownNet");
+}
+
+fn inspected_kind_shape() -> Option<RonShape> {
+    let doc = shape_trace::<InspectTerrainNet>().ok()?;
+    let Some(ShapeBody::Record(fields)) = doc.root_body() else {
+        return None;
+    };
+    fields
+        .iter()
+        .find(|field| field.name().as_str() == "kind")
+        .map(|field| field.shape().clone())
+}
+
+#[test]
+fn an_inspected_cells_kind_resolves_to_the_one_terrain_piece_kind_type() {
+    assert_eq!(
+        inspected_kind_shape(),
+        Some(RonShape::Named(ShapeName::from_static(
+            "TerrainPieceKindNet"
+        ))),
+        "one sim kind reaches the wire under one name, so a client reading the published \
+         shape finds an inspected cell's kind and a smashed piece's kind at the same type",
+    );
 }
 
 #[test]

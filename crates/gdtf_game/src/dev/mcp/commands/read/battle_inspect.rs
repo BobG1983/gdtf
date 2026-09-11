@@ -20,9 +20,10 @@ use crate::{
         facts::GameFacts,
         wire::{
             cell::CellLevelNet,
+            deed::TerrainPieceKindNet,
             inspect::{
                 CoverBlockNet, EmplacementStateNet, InspectShownNet, InspectTerrainNet,
-                MountedWeaponNet, TerrainKindNet,
+                MountedWeaponNet,
             },
         },
     },
@@ -125,7 +126,7 @@ fn on_the_wire(
 fn terrain_on_the_wire(terrain: &InspectTerrain) -> InspectTerrainNet {
     let seat = terrain.emplacement();
     InspectTerrainNet {
-        kind:   TerrainKindNet::from_sim(terrain.kind()),
+        kind:   TerrainPieceKindNet::from_sim(terrain.kind()),
         cover:  terrain.cover().map(CoverBlockNet::from_sim),
         state:  seat.map(|seat| EmplacementStateNet::from_sim(seat.state())),
         weapon: seat.map(|seat| MountedWeaponNet::new((***seat.weapon()).clone())),
