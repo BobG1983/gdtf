@@ -43,7 +43,7 @@ If one fails, refuse, say which, and stop.
 
 1. Write `.claude/.gate-pass` for the tree you just ran the suite on. It holds `TICKET=`, `BRANCH=` (current branch), `HEAD=` (current HEAD), `FINGERPRINT=` from the one command in [verification.md → Gate-pass fingerprint](../../rules/verification.md#gate-pass-fingerprint), and `SCOPE=` from precondition 3.
 2. Stage files by name. Never `git add -A`, `-u`, or `.`.
-3. Commit with the subject `Area: summary (GTW-N)` and a body saying what changed and why. Match the voice of `git log --oneline -15`. The body ends the message: no session URL, no `Co-Authored-By`. The pre-commit hook re-checks the gate-pass. Do not use `--no-verify`.
+3. Commit with the subject `Area: summary (GTW-N)` and a body saying what changed and why. The "why" comes from the landed diff and the ticket's clauses, and for any clause the clause audit corrected, from that correction instead of the ticket's original description of it. Inside a `build-ticket` run the land prompt carries them under the heading "THE CORRECTED CLAUSES". For a `/land` run started on its own they are the `[clause-audit]` comment on the ticket. A claim the landed diff contradicts never goes in the body. Match the voice of `git log --oneline -15`. The body ends the message: no session URL, no `Co-Authored-By`. The pre-commit hook re-checks the gate-pass. Do not use `--no-verify`.
 4. `OLD=$(git rev-parse origin/develop)`.
 5. Rebase, then fast-forward, so the branch lands as the ticket's own commit plus a carried fix commit where the run made one, and no merge commit is created:
 

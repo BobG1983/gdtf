@@ -1082,6 +1082,15 @@ codes.
 
 ${GREEN}
 
+## THE CORRECTED CLAUSES, which the commit body's "why" is drafted from
+
+The corrections were NOT written back to Linear, so ${TICKET}'s description is the uncorrected
+original. Where they differ, the corrections are the source for the commit body's "why". They are
+here to draft that body, not to judge the code, so they do not loosen "You report no findings,
+risks or judgements about the code" below.
+
+${renderCorrections(audit)}
+
 ## What you own
 
 Steps 1 to 5 of .claude/skills/land/SKILL.md, which is the git half. Read that file and follow it; it is
