@@ -1,5 +1,5 @@
 //! Enemy turn brain: a downed act if one is adjacent, else fire, else reload, else melee, else
-//! advance, else a door, else crouch, else end turn.
+//! shove off an edge, else advance, else a door, else crouch, else end turn.
 
 use bevy::prelude::{Entity, Query, Res};
 
@@ -11,6 +11,7 @@ use super::{
     engage::{WeaponLookup, engageable_targets},
     params::{AiActRequests, AiPlanningGrids, AiTurnSides},
     posture::{plan_aim, plan_crouch},
+    shove::plan_shove,
     snapshot::{EnemyTurnGangers, GangerRow, cell_order, ganger_rows},
 };
 use crate::{
@@ -170,7 +171,7 @@ fn split_sides(rows: &[GangerRow], active: Faction) -> (Vec<GangerRow>, Vec<Gang
 }
 
 /// One enemy acts: execute or stabilize an adjacent downed ganger, aim, shoot, reload, melee,
-/// move closer, open a door, crouch, or end the turn.
+/// shove an adjacent foe off an edge, move closer, open a door, crouch, or end the turn.
 pub fn enemy_ai_turn(
     sides: AiTurnSides,
     omniscient: Option<Res<OmniscientFog>>,
@@ -230,6 +231,11 @@ pub fn enemy_ai_turn(
         }
         if let Some(swing) = plan_melee(enemy, &targets, &weapon_lookup, &grids, is_floored) {
             orders.melee.write(swing);
+            acted = true;
+            break;
+        }
+        if let Some(shove) = plan_shove(enemy, &targets, &grids) {
+            orders.shove.write(shove);
             acted = true;
             break;
         }

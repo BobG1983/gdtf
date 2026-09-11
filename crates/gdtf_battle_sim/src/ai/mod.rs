@@ -1,5 +1,5 @@
-//! Enemy turn AI: snapshot, target pick, downed acts, advance, engage, reload, melee, doors,
-//! aim, crouch.
+//! Enemy turn AI: snapshot, target pick, downed acts, advance, engage, reload, melee, shove,
+//! doors, aim, crouch.
 
 mod advance;
 mod brain;
@@ -9,6 +9,7 @@ mod downed;
 mod engage;
 mod params;
 mod posture;
+mod shove;
 mod snapshot;
 
 #[cfg(test)]

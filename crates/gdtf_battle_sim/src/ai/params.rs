@@ -9,7 +9,7 @@ use crate::{
     acts::{
         DismountSurcharge, EndTurnRequested, ExecuteDownedRequested, FireRequested, MeleeRequested,
         MoveRequested, OpenDoorRequested, ReloadRequested, SetAimingRequested, SetStanceRequested,
-        SightWorld, StabilizeDownedRequested, seat_departure, seat_surcharge,
+        ShoveRequested, SightWorld, StabilizeDownedRequested, seat_departure, seat_surcharge,
     },
     battle::PlayerFaction,
     cover::CoverLedger,
@@ -122,6 +122,7 @@ pub struct AiActRequests<'w> {
     pub(super) fire:      MessageWriter<'w, FireRequested>,
     pub(super) reload:    MessageWriter<'w, ReloadRequested>,
     pub(super) melee:     MessageWriter<'w, MeleeRequested>,
+    pub(super) shove:     MessageWriter<'w, ShoveRequested>,
     pub(super) step:      MessageWriter<'w, MoveRequested>,
     pub(super) open_door: MessageWriter<'w, OpenDoorRequested>,
     pub(super) aim:       MessageWriter<'w, SetAimingRequested>,

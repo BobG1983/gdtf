@@ -126,17 +126,21 @@ the frame it was claimed in, exactly as a press is.
 
 The enemy-AI act contract is what the brain (`crates/gdtf_battle_sim/src/ai/`)
 writes today: `SetAimingRequested`, `FireRequested`, `ReloadRequested`,
-`MeleeRequested`, `MoveRequested`, `OpenDoorRequested`, `SetStanceRequested`,
-`ExecuteDownedRequested`, `StabilizeDownedRequested` and `EndTurnRequested`
+`MeleeRequested`, `ShoveRequested`, `MoveRequested`, `OpenDoorRequested`,
+`SetStanceRequested`, `ExecuteDownedRequested`, `StabilizeDownedRequested` and
+`EndTurnRequested`
 (`AiActRequests`, `crates/gdtf_battle_sim/src/ai/params.rs`).
 Every new act must EITHER add a brain arm that can emit its `*Requested`, OR
 record here (and on the ticket) why the AI does not use it yet.
 
-Why-not record: Shove, Enter Emplacement, Exit Emplacement and Throw Grenade have
-no brain arm. Only a player press reaches them. The other four acts have one:
-`plan_melee` (`crates/gdtf_battle_sim/src/ai/brain.rs`) for Melee, `plan_door`
+Why-not record: Enter Emplacement, Exit Emplacement and Throw Grenade have
+no brain arm. Only a player press reaches them. The other five acts have one:
+`plan_melee` (`crates/gdtf_battle_sim/src/ai/brain.rs`) for Melee, `plan_shove`
+(`crates/gdtf_battle_sim/src/ai/shove.rs`) for Shove, `plan_door`
 (`crates/gdtf_battle_sim/src/ai/door.rs`) for Open Door, and `plan_downed_act`
-(`crates/gdtf_battle_sim/src/ai/downed.rs`) for Execute and Stabilize.
+(`crates/gdtf_battle_sim/src/ai/downed.rs`) for Execute and Stabilize. The shove arm is
+narrower than the player's button: it asks only when `resolve_shove` answers
+`ShoveOutcome::Fell`, because a push across flat ground spends the pool and does no wound.
 
 ### 5. QA command (one file + one line + one socket case)
 
@@ -200,11 +204,11 @@ no brain arm. Only a player press reaches them. The other four acts have one:
 
 ## Worked reference
 
-`Shove` (ported end-to-end in) is the reference walk: sim
+`Shove` is the reference walk: sim
 `crates/gdtf_battle_sim/src/acts/shove/`, input `act_bus/contextual/shove.rs` +
 `.add_contextual_act::<ShoveAct>()`, app `contextual_panel/acts/shove.rs` +
 `.add_contextual_act_button::<ShoveAct, _>(acts::shove::offer_shove)`, QA
-`commands/act/contextual/shove.rs` + its `GAME_COMMANDS` line, AI why-not
-recorded above, and the press/offer/same-frame tests in
+`commands/act/contextual/shove.rs` + its `GAME_COMMANDS` line, AI arm
+`plan_shove` recorded above, and the press/offer/same-frame tests in
 `crates/gdtf_game/tests/game_suite/contextual_panel/shove.rs` plus the socket case in
 `crates/gdtf_game/tests/game_suite/mcp/contextual_acts/`.

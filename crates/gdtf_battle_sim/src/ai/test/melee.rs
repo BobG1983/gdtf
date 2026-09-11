@@ -1,8 +1,9 @@
 use bevy::prelude::{App, Entity, Messages, World};
 
 use super::support::{
-    ENEMY, PLAYER, brain_app, drain_fires, drain_moves, drive_until_player_turn, ground,
-    place_occupant, spawn_combatant, tu_of,
+    ENEMY, PLAYER, STRIKE_TU, brain_app, drain_fires, drain_melees, drain_moves,
+    drive_until_player_turn, give_melee, ground, melee_bundle, place_occupant, spawn_combatant,
+    tu_of,
 };
 use crate::{
     acts::{MeleeRequested, MeleeStruck},
@@ -15,39 +16,8 @@ use crate::{
     inflicted_wound::InflictedWounds,
     metric::{Cell, CellLevel},
     terrain::entity::TerrainPieceKind,
-    weapon::{
-        DamageType, FatalBias, FightMode, FightModeKind, FightModeSpec, Handedness,
-        MeleeDamageProfile, MeleeWeaponBundle, Reach, Shove, Strikes, TuCost, WeaponDamage,
-        WeaponName, WeaponPunch, WeaponShred, WieldedBy,
-    },
+    weapon::WieldedBy,
 };
-
-const STRIKE_TU: u8 = 5;
-
-fn a_swing() -> FightMode {
-    FightMode::new(vec![FightModeSpec::new(
-        FightModeKind::Swing,
-        TuCost::new(u16::from(STRIKE_TU)),
-        Strikes::new(1),
-    )])
-}
-
-fn melee_bundle() -> MeleeWeaponBundle {
-    MeleeWeaponBundle::new(
-        WeaponName::new("test-blade".to_owned()),
-        MeleeDamageProfile::new(
-            WeaponDamage::new(20),
-            WeaponPunch::new(10),
-            WeaponShred::new(5),
-            DamageType::Kinetic,
-        ),
-        FatalBias::new(0.0),
-        Handedness::OneHanded,
-        Reach::DEFAULT,
-        a_swing(),
-        Shove::new(false),
-    )
-}
 
 fn spawn_melee_combatant(
     world: &mut World,
@@ -81,10 +51,6 @@ fn spawn_melee_combatant(
     ganger
 }
 
-fn give_melee(world: &mut World, wielder: Entity) {
-    world.spawn((WieldedBy::new(wielder), melee_bundle()));
-}
-
 fn wall_the_diagonal_corners(app: &mut App) {
     let Some(mut ledger) = app.world_mut().get_resource_mut::<CoverLedger>() else {
         unreachable!("the sim resources carry a cover ledger");
@@ -101,13 +67,6 @@ fn wall_the_diagonal_corners(app: &mut App) {
             ),
         );
     }
-}
-
-fn drain_melees(app: &mut App) -> Vec<MeleeRequested> {
-    app.world_mut()
-        .resource_mut::<Messages<MeleeRequested>>()
-        .drain()
-        .collect()
 }
 
 fn drain_struck(app: &mut App) -> Vec<MeleeStruck> {

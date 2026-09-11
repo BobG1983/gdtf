@@ -111,8 +111,9 @@ refuses, or is denied one it would have allowed. Nothing errors either way.
 `crates/gdtf_battle_sim/src/acts/`, `.../combatants/`, `.../equipment/magazine/` and
 `.../perception/los/` (`can_see`). Consumers:
 `crates/gdtf_game/src/states/running/game/battlescape/contextual_panel/acts/`,
-`crates/gdtf_game/src/dev/mcp/commands/`, and
-`crates/gdtf_battle_input/src/pointer/fire_surface.rs`.
+`crates/gdtf_game/src/dev/mcp/commands/`,
+`crates/gdtf_battle_input/src/pointer/fire_surface.rs`, and the enemy brain's
+planners under `crates/gdtf_battle_sim/src/ai/`.
 
 ## The UI boundary
 

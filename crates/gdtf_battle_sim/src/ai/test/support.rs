@@ -2,8 +2,8 @@ pub(super) use bevy::prelude::{App, Entity, Messages, MinimalPlugins, World};
 
 pub(super) use crate::{
     acts::{
-        FireRequested, MoveRequested, OpenDoorRequested, SetAimingRequested, SetStanceRequested,
-        SimActsPlugin,
+        FireRequested, MeleeRequested, MoveRequested, OpenDoorRequested, SetAimingRequested,
+        SetStanceRequested, SimActsPlugin,
     },
     cover::HeightBand,
     ganger::{
@@ -19,9 +19,10 @@ pub(super) use crate::{
     turn::ActiveFaction,
     visibility::{OmniscientFog, SquadVisibility},
     weapon::{
-        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FightMode, FightModeKind,
+        FightModeSpec, FireMode, FireModeSpec, Handedness, HandlingProfile, Kickback, MagazineSize,
+        MeleeDamageProfile, MeleeWeaponBundle, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+        Reach, Shove, Stable, Strikes, TuCost, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
         WeaponShred, WieldedBy,
     },
 };
@@ -32,6 +33,39 @@ pub(super) const PLAYER: Faction = Faction::new(0);
 pub(super) const ENEMY: Faction = Faction::new(1);
 
 const MODE_TU_PERCENT: f32 = 0.2;
+
+/// TU one swing of the shared test blade charges.
+pub(super) const STRIKE_TU: u8 = 5;
+
+fn a_swing() -> FightMode {
+    FightMode::new(vec![FightModeSpec::new(
+        FightModeKind::Swing,
+        TuCost::new(u16::from(STRIKE_TU)),
+        Strikes::new(1),
+    )])
+}
+
+// One swing, and `Shove::new(false)` so a hit never writes a weapon-tag shove of its own.
+pub(super) fn melee_bundle() -> MeleeWeaponBundle {
+    MeleeWeaponBundle::new(
+        WeaponName::new("test-blade".to_owned()),
+        MeleeDamageProfile::new(
+            WeaponDamage::new(20),
+            WeaponPunch::new(10),
+            WeaponShred::new(5),
+            DamageType::Kinetic,
+        ),
+        FatalBias::new(0.0),
+        Handedness::OneHanded,
+        Reach::DEFAULT,
+        a_swing(),
+        Shove::new(false),
+    )
+}
+
+pub(super) fn give_melee(world: &mut World, wielder: Entity) {
+    world.spawn((WieldedBy::new(wielder), melee_bundle()));
+}
 
 pub(super) fn brain_app() -> App {
     let mut app = App::new();
@@ -225,6 +259,13 @@ pub(super) fn drain_aims(app: &mut App) -> Vec<SetAimingRequested> {
 pub(super) fn drain_stances(app: &mut App) -> Vec<SetStanceRequested> {
     app.world_mut()
         .resource_mut::<Messages<SetStanceRequested>>()
+        .drain()
+        .collect()
+}
+
+pub(super) fn drain_melees(app: &mut App) -> Vec<MeleeRequested> {
+    app.world_mut()
+        .resource_mut::<Messages<MeleeRequested>>()
         .drain()
         .collect()
 }
