@@ -1,3 +1,5 @@
+//! Reads the launch argument vector for the port after the `--mcp-port` flag.
+
 use std::ffi::{OsStr, OsString};
 
 use cobalt_mcp_protocol::ports::{MCP_PORT_FLAG, McpPort};

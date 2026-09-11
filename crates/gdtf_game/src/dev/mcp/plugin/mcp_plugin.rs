@@ -10,7 +10,7 @@ use super::{
     register_consumers::register_consumers, register_present::register_present,
     register_transport::register_transport,
 };
-use crate::dev::mcp::{config::hello_facts, env::port_from_args};
+use crate::dev::mcp::{args::port_from_args, config::hello_facts};
 
 enum Wiring {
     Disabled,

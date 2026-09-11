@@ -67,7 +67,7 @@ dropped.
 The spawner sets **no** environment variable on the child, of any name. It
 appends `-- --mcp-port <N>` to the `cargo run` instead, carrying the port the
 launch was given, and that argument is what arms each host: the game reads it
-through `port_from_args` (`crates/gdtf_game/src/dev/mcp/env.rs`) and the editor
+through `port_from_args` (`crates/gdtf_game/src/dev/mcp/args.rs`) and the editor
 through `editor_port_from_args` (`crates/gdtf_editor/src/mcp/config.rs`). A
 child started without it opens no listener at all.
 BOTH of the child's output streams are piped and drained into one ring by

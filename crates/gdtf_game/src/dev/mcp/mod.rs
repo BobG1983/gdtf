@@ -1,8 +1,8 @@
 //! Game MCP control channel, compiled under the `mcp` feature.
 
+mod args;
 mod commands;
 mod config;
-mod env;
 mod facts;
 mod plugin;
 mod router;
