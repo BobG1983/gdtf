@@ -1,4 +1,5 @@
-//! A one-sided seat whose one entry cell is held: the occupant cannot exit and cannot walk off.
+//! The two tests on a one-sided seat's one entry cell. Free, the occupant walks out by it. Held,
+//! the occupant cannot exit and cannot walk off.
 
 use bevy::{app::App, prelude::Entity};
 use gdtf_battle_sim::{
@@ -12,7 +13,7 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-/// The seed both legs drive, so they differ only in whether the blocker is spawned.
+/// The seed both tests drive, so they differ only in whether the blocker is spawned.
 const SEED: u64 = 0x5543_1239;
 
 /// The seat's one rotated entry cell: North authored, turned East by the placed facing.
@@ -25,7 +26,7 @@ fn blocker_start() -> CellLevel {
     ground(8, 5)
 }
 
-/// Where both legs send the occupant: off the seat it is reachable only through [`entry`].
+/// Where both tests send the occupant: off the seat it is reachable only through [`entry`].
 fn destination() -> CellLevel {
     ground(6, 2)
 }
@@ -79,8 +80,7 @@ fn walked_cells(steps: &[MovementOccurred]) -> Vec<(Cell, Cell)> {
 }
 
 #[test]
-fn a_held_entry_cell_leaves_the_occupant_of_a_one_sided_seat_stuck_in_it() {
-    // Free entry cell: the same walk leaves by that cell and reaches the destination.
+fn a_free_entry_cell_lets_the_occupant_of_a_one_sided_seat_walk_out_by_it() {
     let (mut app, emplacement, a) = a_one_sided_seat(false);
     mount(&mut app, a, emplacement);
 
@@ -97,13 +97,16 @@ fn a_held_entry_cell_leaves_the_occupant_of_a_one_sided_seat_stuck_in_it() {
     assert_eq!(
         pos_of(&app, a),
         Some(destination()),
-        "the free-cell walk must reach {:?}, or the held leg below reads an unreachable \
-         destination as a closed way out; it ended on {:?}",
+        "the free-cell walk must reach {:?}, or \
+         a_held_entry_cell_leaves_the_occupant_of_a_one_sided_seat_stuck_in_it reads an \
+         unreachable destination as a closed way out; it ended on {:?}",
         destination(),
         pos_of(&app, a),
     );
+}
 
-    // Held entry cell: the exit act is refused for it and the walk has no first step.
+#[test]
+fn a_held_entry_cell_leaves_the_occupant_of_a_one_sided_seat_stuck_in_it() {
     let (mut app, emplacement, a) = a_one_sided_seat(true);
     let b = player_on(&mut app, blocker_start());
     mount(&mut app, a, emplacement);
