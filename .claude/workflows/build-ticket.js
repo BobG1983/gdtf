@@ -17,7 +17,6 @@ export const meta = {
 // Skills /gate, /docs-sync, /land are the source of truth for process.
 //
 // Every agent answers through a schema. Nothing here reads a verdict out of prose.
-// That cost repair rounds on correct code when a report opened "NON-COMPLIANT? No. COMPLIANT".
 
 // Model tier per call. The rubric is .claude/rules/model-tiering.md (user ruling 2026-08-18).
 // Very hard or creative -> fable. Hard, engineering-focused -> opus. Mechanical copy/compare ->
@@ -102,7 +101,7 @@ const AUDIT_RESULT = {
   type: 'object', additionalProperties: false,
   required: ['verdict', 'corrections', 'blockingQuestion', 'report'],
   properties: {
-    verdict: { type: 'string', enum: ['AUDIT_OK', 'AUDIT_BLOCK'], description: 'AUDIT_BLOCK for a product decision the code cannot answer, or for a sweep ticket whose site list has no guard command behind it.' },
+    verdict: { type: 'string', enum: ['AUDIT_OK', 'AUDIT_BLOCK'], description: 'AUDIT_BLOCK for a product decision the code cannot answer, or for a ticket making the same edit in many places without saying which search found them.' },
     corrections: {
       type: 'array', description: 'One row per clause you corrected. Empty when the ticket needed none. Never a row saying a clause was fine.',
       items: {
@@ -114,7 +113,7 @@ const AUDIT_RESULT = {
         },
       },
     },
-    blockingQuestion: { type: 'string', description: 'On AUDIT_BLOCK, what to put to the owner: the product decision, or the command a sweep ticket\'s site list must come from. Empty on AUDIT_OK.' },
+    blockingQuestion: { type: 'string', description: 'On AUDIT_BLOCK, what to put to the owner: the product decision, or the search the ticket\'s list of places must come from. Empty on AUDIT_OK.' },
     report: { type: 'string', description: 'Everything the rows do not carry: what you opened, what you checked, why a clause stands as written.' },
   },
 }
@@ -130,9 +129,7 @@ const SUITE_ROWS = {
   },
 }
 
-// Everything the run has to check later is a field. Prose in `report` cannot be asserted against,
-// and the two things that went wrong most, a correction nobody answered and a quiet narrowing
-// reported as success, both hid in prose.
+// Everything the run has to check later is a field. Prose in `report` cannot be asserted against.
 const WORK_RESULT = {
   type: 'object', additionalProperties: false,
   required: ['filesChanged', 'suite', 'clauses', 'corrections', 'tests', 'deviations', 'carriedFix', 'foreignDirtyFiles', 'outOfScope', 'report'],
@@ -343,7 +340,7 @@ const CARRIED_TICKET_RESULT = {
 }
 
 // The only agent in the run that fetches origin, so it is also the cheapest place to ask what else
-// came with the push. Two unrelated commits have ridden in with nobody asking.
+// came with the push.
 const CONFIRM_RESULT = {
   type: 'object', additionalProperties: false,
   required: ['landedSha', 'subject', 'developSha', 'carriedFixSha', 'carriedFixSubject',
@@ -470,8 +467,7 @@ work. Judge whether it blocks the clause it names, and judge the rest of the dif
 </carried-fix>`
 }
 
-// summarize and close both need these two blocks; they used to be built twice with different
-// wording. `full` adds what only summarize acts on.
+// summarize and close both need these two blocks. `full` adds what only summarize acts on.
 function renderLandedFix(fix, fallbackTicket, work, full) {
   if (!fix) return '<carried-fix>\n(none. This run carried no fix.)\n</carried-fix>'
   const head = `${fix.sha} ${fix.subject}\nticket: ${fix.ticket || fallbackTicket}`
@@ -516,8 +512,6 @@ Fill every schema field the same way each time:
   with edges is indistinguishable from one without.
 `
 
-// Repeated in four prompts before this was one string. A repair round has discarded an unrelated
-// edit, so the wording is the same everywhere it is said.
 const FOREIGN_FILES = `
 Files dirty in the tree that are not this ticket's work stay exactly as they are. Do not stage
 them, do not revert them, and do not build on top of them. Name them in your report.
@@ -582,8 +576,7 @@ Run them SEQUENTIALLY, one command per tool call, and read each exit code on its
 directory on every cargo call (\`cd ${REPO} && ...\`). The Bash tool cwd resets between calls.
 
 NEVER pipe cargo into \`tail\`/\`head\`/\`grep\` inside an \`&&\` chain. The pipeline's exit code is
-the filter's, which always succeeds, so a failing step reports green. That produced a false
-all-green while \`cargo doc\` was exiting 101.
+the filter's, which always succeeds, so a failing step reports green.
 
 Green means every command in that file exited 0, after your final edit.
 `
@@ -708,8 +701,8 @@ if (!built) throw new Error(`build agent died on ${TICKET}`)
 
 // The contract everyone downstream judges against: the live ticket text PLUS the audit's
 // corrections. The corrections are never written back to Linear, so a re-fetch alone loses them,
-// and then the builder builds to one contract while verify and the lenses judge another. That has
-// cost five gate rounds and a non-landing. The audit goes LAST so it wins on conflict.
+// and then the builder builds to one contract while verify and the lenses judge another. The audit
+// goes LAST so it wins on conflict.
 const fresh = await agent(`Re-fetch ${TICKET} from Linear. READ-ONLY.
 
 Return the CURRENT state of every schema field.
@@ -730,8 +723,7 @@ ${audit.report}`
 
 // --- Verify and gate -------------------------------------------------------
 
-// One lens per question, and each owns its own failure modes. They used to share a checklist in
-// the agent definition, which is how three reviews came back saying the same thing.
+// One lens per question, and each owns its own failure modes.
 const LENSES = [
   {
     key: 'clauses', focus: `Is every clause true of the code? Open each one and trace it. "The report
@@ -803,13 +795,11 @@ reach is \`met: false\` with the reason as its evidence, never a missing row.
 **Never run git to undo your own edit.** Copy the file first, mutate it, run the test, restore from
 your copy. \`git checkout --\`, \`git restore\`, \`git stash\` and \`git reset\` all reset to HEAD, and the
 ticket's work is uncommitted, so each of them silently deletes the implementer's changes to every
-file you name. That has destroyed a ticket's work twice. Reading git is fine:
-\`status\`, \`diff\` and \`log\` change nothing.
+file you name. Reading git is fine: \`status\`, \`diff\` and \`log\` change nothing.
 
 Run \`git -C ${REPO} status --porcelain\` and compare it against the claimed file list above. Set
 \`reportMatchesTree\` false if the implementer named a file it did not touch or missed one it did,
-and say which in your report. An implementer has reported doing nothing while its branch held six
-edited files.
+and say which in your report.
 
 Check the two claim lists against the tree, not against the prose:
 
@@ -827,7 +817,7 @@ Check the two claim lists against the tree, not against the prose:
   line count a change is expected to land on or a count of call sites, is a guess about an outcome,
   and a guess that misses is a defect in the clause, not in the code. Say so in your report and
   leave the field empty. It belongs there only when the code fails to do something the clause asks
-  for. A run whose suite was green and whose every clause was met has gone RED on exactly that gap.
+  for.
 
 A GREEN verdict with either array non-empty is a contradiction; the run reads it as RED.
 
@@ -1071,7 +1061,7 @@ reports are not yours to read, and the summarize step re-derives anything anyone
 ## FILES THAT ARE NOT THIS TICKET'S
 ${(work.foreignDirtyFiles ?? []).length ? work.foreignDirtyFiles.map(f => `- ${f}`).join('\n') : '(none reported)'}
 
-Never stage or revert those. They belong to someone else and a repair round has discarded one before.
+Never stage or revert those. They belong to someone else.
 
 ## THE CARRIED FIX
 ${carriedTicketId ? `The build fixed a defect that blocked clause ${work.carriedFix.clause} of ${TICKET}, and it is filed as ${carriedTicketId}. These are its files:
@@ -1087,8 +1077,8 @@ Report that commit's sha, subject and ticket in \`carriedFixCommit\`. It is expe
 also go in \`carriedCommits\`.` : '(none. The build carried no fix, so leave every field of `carriedFixCommit` empty.)'}
 
 Run every command in the foreground and read its exit code in the same turn. Never start the suite
-in the background and end your turn waiting on it. That is how a previous attempt at this step died
-without committing. There is no monitor coming to report your exit codes.
+in the background and end your turn waiting on it. There is no monitor coming to report your exit
+codes.
 
 ${GREEN}
 
@@ -1305,7 +1295,7 @@ Red suites, gate lenses that failed, defects an engineer then fixed. So anything
 defect may describe a state that no longer exists. Nothing reaches your output on their word.
 
 **Check the tree before you write a finding.** Open the file, grep the line, re-run the test, read
-\`git -C ${REPO} show ${landedSha} -- <path>\`. Three ways a claim dies, all measured:
+\`git -C ${REPO} show ${landedSha} -- <path>\`. Three ways a claim dies:
 
 1. **Its fix is in the landed diff.** A docs line called stale that this commit corrected.
 2. **A later round fixed it.** The history below gives every round in order. A defect named in a
@@ -1328,8 +1318,7 @@ downstream reads that list, so an entry you leave out of both is discarded.
 ticket as it was before the run finished: In Progress, with no evidence comment on it. That is the
 close step's job, not a defect. Never write the ticket's status, its comments or its labels into any
 field. Those come from the close step's own return, which happens after you have finished, and a
-claim from you about them is wrong by construction. This step used to report a process violation
-against itself for exactly this reason.
+claim from you about them is wrong by construction.
 
 <land-result>
 ${JSON.stringify(landed, null, 2)}

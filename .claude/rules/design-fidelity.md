@@ -3,9 +3,6 @@
 > **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything here. It is
 > binding on every word, and it is not optional.**
 
-Why this rule exists: narrowing or descoping a user-specified design without asking is this
-kit's number-one failure mode. One agent "right-sized" a hard resolution to something simpler.
-
 ## Rules
 
 1. Build EXACTLY what the user or the Linear ticket specifies. Never narrow, simplify or
@@ -25,10 +22,6 @@ kit's number-one failure mode. One agent "right-sized" a hard resolution to some
    not a constraint unless `docs/` says it is. Citing existing code as a reason to keep a shape
    is a deviation under rule 2, and needs the same approval before building.
 
-   Measured on GTW-702. A software design proposal anchored on the existing stand-in AI as though
-   replacing it were out of bounds, treating code that was always meant to be temporary as the
-   thing the design had to preserve.
-
 ## Descoping protocol (the ONLY legal way to shrink scope)
 
 - Shrinking scope adds one step to rule 2: update the TICKET before writing any code.
@@ -41,9 +34,7 @@ kit's number-one failure mode. One agent "right-sized" a hard resolution to some
 ## The carried fix: a defect that blocks a clause of the ticket being built
 
 A build that finds a defect blocking a clause of the ticket it is building may fix it, instead of
-filing the defect and stopping. Measured on GTW-1017, whose build could not show its own
-determinism clause green until the presenter's GPU lock race was fixed. One ticket became two for a
-change of a few lines.
+filing the defect and stopping.
 
 Four bounds hold on every carried fix, all of them required:
 

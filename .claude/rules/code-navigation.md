@@ -25,9 +25,8 @@ on that first call and takes a few minutes to index this workspace. An early cal
 indexing has not finished means cold, not broken, so retry. `cargo build` does not help,
 because rust-analyzer keeps its own index.
 
-A cold answer is EMPTY, not an error, and empty looks exactly like a real zero. Measured
-2026-08-04: `workspaceSymbol` for `apply_suppression`, a symbol that exists in the tree,
-returned in 5 seconds with *"No symbols found in workspace. This may occur if the workspace
+A cold answer is EMPTY, not an error, and empty looks exactly like a real zero. A cold
+`workspaceSymbol` returns *"No symbols found in workspace. This may occur if the workspace
 is empty, or if the LSP server has not finished indexing the project."*
 
 File-local operations (`documentSymbol`, `hover`, `goToDefinition`) answer while cold.
@@ -94,11 +93,6 @@ help says its subcommands "do not provide any stability guarantees and may be re
 changed without notice".
 
 ## Do not write a script to edit source
-
-Why this rule exists: an engineer migrating call sites across ~90 files wrote a Python
-rewriter in the scratchpad, then spent most of the run patching what it did. One pass
-walked every `.rs` file in the repo injecting `use` lines, and three more passes removed
-the ones it got wrong.
 
 Ad-hoc Python, `sed`, `awk` or `perl` that edits Rust source is banned. Regex cannot tell a
 call from a comment, a doc example, or a string literal. The script also has to be written,

@@ -9,13 +9,12 @@ Start everything in the background unless the background agent needs `LSP` acces
 ## Rules
 
 1. Never poll for work the harness tracks. A background job or sub-agent
-   notifies the main session when it finishes. A loop that sleeps and checks
-   burns turns to learn what the notification will already say.
+   notifies the main session when it finishes.
    That includes "just one quick check on progress".
 2. To wait on something the harness cannot see, such as an external process or a
    file another machine writes, use `Monitor`. Never take repeated turns that check.
 3. Always run sub-agents in the background. Every one, including the one whose
-   answer you want most. A foreground agent blocks the session while it runs.
+   answer you want most.
 
    **One exception:** an agent that needs the `LSP` runs in the foreground. A
    backgrounded sub-agent never gets it, whatever its definition says, and
@@ -32,8 +31,6 @@ Start everything in the background unless the background agent needs `LSP` acces
 
 ## Sub-agents **MUST** run everything in the foreground
 
-A sub-agent ending it's turn ends the agent, which can leave background shells unreported,
-background tasks incomplete, etc.
 If you are a sub-agent (not the Orchestrator), run each command in the foreground
 and read its exit code in the same turn. Several commands, one at a time.
 
@@ -42,8 +39,7 @@ and read its exit code in the same turn. Several commands, one at a time.
 Carry what the agent cannot find for itself: the user's rulings, citations,
 quoted output, decisions already made, tests already tested, findings already found.
 
-The agent writes its ticket or report in the style of your prompt, so a long
-chatty prompt produces a long chatty ticket. **BE CONCISE**
+The agent writes its ticket or report in the style of your prompt. **BE CONCISE**
 
 Before sending, ask whether each sentence should survive into the ticket or the
 report. If not, cut it.

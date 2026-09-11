@@ -4,10 +4,6 @@ paths: ["**/*"]
 
 # Driving the running app through the QA MCP
 
-Why this rule exists: an agent that reaches past the QA MCP to a raw socket proves
-nothing about the path a real client takes, and hides a broken MCP instead of reporting
-it.
-
 ## Rules
 
 1. Drive the game and editor only through the `mcp__gdtf-mcp__*` tools: `launch`, `run`,

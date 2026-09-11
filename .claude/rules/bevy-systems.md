@@ -7,10 +7,6 @@ paths: ["**/*.rs"]
 > **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything here. It is
 > binding on every word, and it is not optional.**
 
-Why this rule exists: fat system signatures get silenced with
-`#[expect(clippy::too_many_arguments)]` instead of being reshaped. That hides what the system
-borrows.
-
 ## The rule
 
 1. `#[expect]` is not available for any lint, anywhere in the repo. Fix the shape instead.

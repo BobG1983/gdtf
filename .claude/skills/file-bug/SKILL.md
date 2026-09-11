@@ -24,7 +24,7 @@ A silently narrowed design is a defect even when the suite is green (`design-fid
 
 ## 1. Investigate the root cause
 
-Reproduce it, with a failing assert or `cargo drun`. Name the symbol and quote the line. A bare line number rots, see `linear-discipline.md`. Find the ticket that shipped the bug with `git log -S` or `git blame`. If the design was narrowed, cite the `docs/` source.
+Reproduce it, with a failing assert or `cargo drun`. Name the symbol and quote the line. Never a bare line number, see `linear-discipline.md`. Find the ticket that shipped the bug with `git log -S` or `git blame`. If the design was narrowed, cite the `docs/` source.
 
 ## 2. File the Linear bug
 

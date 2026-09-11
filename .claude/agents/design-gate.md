@@ -86,11 +86,10 @@ when doing that serially is the slow part of your job. One agent per question.
 
 A spawned agent runs zero cargo. Only one cargo build runs at a time in this repo. Two concurrent
 `--workspace` runs leave the dylib stale against the rlibs, and that shows up as a link error at
-land, after a green verify, which is the worst place to find it. If the suite needs running, you
-run it yourself, once, before or after the fan-out, and never inside it.
+land, after a green verify. If the suite needs running, you run it yourself, once, before or after
+the fan-out, and never inside it.
 
 Pass `run_in_background: false` so the call returns the child's result to you directly. A
-backgrounded child notifies whoever spawned it, and whether that reaches you inside a sub-agent
-turn has not been measured here.
+backgrounded child notifies whoever spawned it instead.
 
 Do not spawn a child to do your thinking.

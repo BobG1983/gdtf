@@ -7,11 +7,6 @@ paths: ["**/*"]
 > **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything here. It is
 > binding on every word, and it is not optional.**
 
-Why this rule exists: on 2026-07-31 the user corrected reply shape three times: "wildly verbose",
-"wall of noise", and "Pretend you're talking to an executive. Recommendation → 2–3 plainly stated
-reasons → evidence if not obvious." Each reply was accurate and used plain words. The structure
-was the defect.
-
 This file owns the structure of a chat reply, and nothing else. Agents and skills that talk to
 the user follow this shape too.
 

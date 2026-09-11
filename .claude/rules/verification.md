@@ -80,7 +80,7 @@ Pre-commit always runs its cargo subset. None of this changes the command list a
 
 ## The suite never tests the agent tooling
 
-Nothing under `.claude/` is tested by the green suite. The workflows, skills and rules there are tooling, they differ per user and per assistant, and a test over them fails for anyone driving this repo another way. A workflow script that cannot parse refuses to launch and says which file and line, so it needs no guard. Owner ruling, given directly in conversation, 2026-09-10.
+Nothing under `.claude/` is tested by the green suite. A workflow script that cannot parse refuses to launch and says which file and line, so it needs no guard. Owner ruling, given directly in conversation, 2026-09-10.
 
 ## Rules
 

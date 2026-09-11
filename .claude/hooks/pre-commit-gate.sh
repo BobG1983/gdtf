@@ -1,20 +1,17 @@
 #!/usr/bin/env bash
 # pre-commit-gate.sh — PreToolUse hook (matcher: "Bash") for gdtf.
 #
-# WHY THIS EXISTS: to make these failure modes impossible at the tool boundary,
-# before git runs:
-#   1. Branch guard — features branch off develop
+# Three guards, run before git does:
+#   1. Branch guard. Features branch off develop
 #      (git checkout -b feature/<name>); never commit directly to
 #      develop or main.
-#   2. Gate-pass guard — /land records the tree it is committing in
+#   2. Gate-pass guard. /land records the tree it is committing in
 #      .claude/.gate-pass (TICKET / BRANCH / HEAD / FINGERPRINT / SCOPE lines).
 #      /gate does not write that file. A commit is allowed only if it exists,
 #      names the CURRENT branch, and its recorded HEAD is an ancestor-or-equal
 #      of the current HEAD (so /land's multiple per-concern commits all pass off
-#      one gate). This hook does NOT read FINGERPRINT. This guard is the
-#      deterministic backstop that makes "commit without a gate-pass is blocked"
-#      literally true.
-#   3. Suite gate — the workspace green suite is the ONE definition of green.
+#      one gate). This hook does NOT read FINGERPRINT.
+#   3. Suite gate. The workspace green suite is the ONE definition of green.
 #      A red suite blocks the commit; "it should pass" is not evidence.
 #
 # CONTRACT (Claude Code PreToolUse hook):
@@ -95,11 +92,9 @@ C_DIR="${DETECT#COMMIT}"
 C_DIR="${C_DIR#?}"        # strip the tab (empty when no -C was given)
 FALLBACK_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
 TARGET_DIR="${C_DIR:-$FALLBACK_DIR}"   # `git -C <dir> commit` is judged against <dir>
-# REPO_DIR follows TARGET_DIR's own toplevel (correct inside a linked worktree,
-# where the gate-pass and the suite must run against THAT tree, not the main one)
-# rather than the fixed CLAUDE_PROJECT_DIR — a worktree-rooted commit with its own
-# legitimate .claude/.gate-pass was otherwise always judged against the main
-# tree's gate-pass and its suite ran against the main tree's code (GTW-753).
+# REPO_DIR follows TARGET_DIR's own toplevel, not the fixed CLAUDE_PROJECT_DIR.
+# Inside a linked worktree the gate-pass and the suite must run against THAT
+# tree, not the main one.
 REPO_DIR="$(git -C "$TARGET_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$FALLBACK_DIR")"
 
 # --- (1) Branch guard: never commit on develop or main. ---

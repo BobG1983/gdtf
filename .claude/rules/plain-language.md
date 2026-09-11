@@ -16,17 +16,33 @@ colleague. If not, rewrite it.
 Then delete the sentence and ask whether the reader lost anything. If not, leave it
 deleted.
 
+Before sending, ask what the reader now knows that they did not before. If the answer is
+nothing, delete it.
+
 ## Banned
+
+### Anecdotes
+
+Never write the story behind a rule. No "Measured on GTW-1358...", no "an agent once...",
+no "why this rule exists: ...", no "because X happened, do Y". State the rule and stop.
+If a fact only lives inside the story, state the fact.
+
+This holds everywhere: rules, docs, tickets, commit messages, code comments, chat
+replies. A story about an incident pulls the reader onto the incident and teaches them
+to write more stories.
+
+Ticket ids do not appear in any file. The only exception is a format placeholder that
+stands for any ticket: `GTW-N`, `GTW-*`, `feature/gtw-N-slug`, or a pattern that matches
+ticket ids.
+
+A dated owner ruling stays. That is provenance for a decision, not a story. Keep the
+ruling and its date, and drop any narrative wrapped around it.
 
 ### Coined vocabulary
 
 Do not invent a name for something. Use the name Rust, Bevy or this repo already uses.
 A `SystemSet` is a system set. `mcp` is the MCP server. A file many modules read
 is a file many modules read.
-
-Real failures: "the trapped test's control leg", "load-bearing", "the seam", "a pool
-that cannot pay", "the junk gate". Each was invented mid-sentence and then used as if
-the reader already knew it.
 
 ### Em dashes
 
@@ -92,13 +108,3 @@ issues", not "Rough edges worth knowing".
 A ticket title says what changes, using names from the tree. "Split
 `a_held_entry_cell_leaves_the_occupant_stuck` into two tests", not "Split the trapped
 test's control leg". A long real name beats a short invented one.
-
-## Why this is strict
-
-Measured across one session on 2026-08-21, the user corrected wording eleven times, and
-every correction was one of the bans above. The pattern has a name outside this repo and
-a browser extension exists to translate it back into English.
-
-The failure underneath is writing to show the reasoning instead of writing to inform.
-Before sending, ask what the reader now knows that they did not before. If the answer is
-nothing, delete it.

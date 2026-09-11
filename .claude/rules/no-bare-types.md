@@ -7,10 +7,7 @@ paths: ["**/*.rs"]
 > **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything here. It is
 > binding on every word, and it is not optional.**
 
-Why this rule exists: a field or signature of `u32`/`f32`/`String` tells you nothing and lets
-the compiler accept nonsense. Hit points get passed where time units belong, a column
-where a row was meant. In gdtf the type carries the meaning, never a comment and never a
-variable name.
+The type carries the meaning, never a comment and never a variable name.
 
 ## The rule
 

@@ -39,7 +39,7 @@ export const meta = {
 //   finish-parent     opus    applies edits to a live description with a do-not-force guard
 //
 // args: {
-//   ticket:    "GTW-1175"                     required
+//   ticket:    "GTW-N"                        required
 //   proposals: 3                              how many splits to propose (usually 3-10)
 //   scratch:   "/abs/path"                    where stage files are written (usually /tmp/private/...)
 //   startFrom: "propose" | "vote" | "map"     that stage and everything after it
@@ -47,9 +47,8 @@ export const meta = {
 //   proposalPaths: ["/abs/a.md", …]           required when startFrom is "vote"
 // }
 //
-// Re-entry exists because this workflow is allowed to stop without an answer. A
-// vote that never reaches consensus returns the disagreement instead of picking
-// for you; you settle it and re-enter at "map" with the file you chose.
+// A vote that never reaches consensus returns the disagreement instead of picking
+// for you. Settle it and re-enter at "map" with the file you chose.
 let A = args
 if (typeof A === 'string') {
   try { A = JSON.parse(A) } catch (e) { throw new Error(`args was an unparseable string: ${A}`) }
@@ -376,7 +375,7 @@ const FILED = {
   required: ['childKey', 'identifier', 'url', 'title'],
   properties: {
     childKey: { type: 'string' },
-    identifier: { type: 'string', description: 'e.g. GTW-1180' },
+    identifier: { type: 'string', description: 'e.g. GTW-N' },
     url: { type: 'string' },
     title: { type: 'string' },
   },
@@ -581,9 +580,8 @@ ${HOUSE}`,
     if (round === 1) phase('Argue')
   }
 
-  // The panel's findings outlive this run: a hand-picked winner is re-entered as a fresh
-  // process, and the objections that cost it consensus are exactly what it needs revising
-  // against. The script has no filesystem, so an agent writes them.
+  // The script has no filesystem, so an agent writes the vote record. A hand-picked winner
+  // is re-entered as a fresh process and revises against that file.
   await agent(
     `Write this vote record to \`${SCRATCH}/votes-final.json\` as JSON, verbatim, and return the path. Do not summarise it, do not judge it, do not read anything else.
 
@@ -610,8 +608,7 @@ ${JSON.stringify({ ticket: TICKET, winner: chosen?.id ?? null, rounds: history.l
 
 // --- Settle ----------------------------------------------------------------
 // A winner still carries every objection the losing lenses raised against it. Fold them in
-// before anyone writes a ticket from it, on both paths — the hand-picked winner needs this
-// most, because it lost the vote it was picked out of.
+// before anyone writes a ticket from it, on both paths.
 
 phase('Settle')
 await agent(
@@ -767,7 +764,7 @@ Delivers: ${child.delivers}
 Green on its own because: ${child.greenBecause}
 Lands after: ${child.dependsOn.join(', ') || 'nothing'}
 
-The parent clauses this child owns, verbatim. Write to THESE WORDS, not to the summary above — a ticket written from a summary is how scope narrows:
+The parent clauses this child owns, verbatim. Write to THESE WORDS, not to the summary above:
 
 ${owned || '(this child owns no clause — say so and stop)'}
 
@@ -815,7 +812,7 @@ ${fresh.map((f) => `- ${f.id} [${f.where}] ${f.problem}\n  must say: ${f.fix}`).
 
 Count the Done-when clauses before you start and after you finish, and report both.
 
-Rewrite the file in place. Correct the facts. **Never resolve a finding by deleting what it is about** — a clause that looks wrong stays, and you say so in the ticket. \`${REPO}/.claude/rules/design-fidelity.md\`: narrowing a requirement to make it fit is the failure this kit exists to stop, and a fix round is where it happens.
+Rewrite the file in place. Correct the facts. **Never resolve a finding by deleting what it is about** — a clause that looks wrong stays, and you say so in the ticket. \`${REPO}/.claude/rules/design-fidelity.md\`: never narrow a requirement to make it fit.
 
 Report every finding as resolved or not resolved. Leaving one standing because it is wrong is legitimate — give the evidence.
 

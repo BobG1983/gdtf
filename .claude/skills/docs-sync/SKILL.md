@@ -31,14 +31,6 @@ state as a state: what the tree carries now, and what replaces it, with no actor
 No dates as promises. A date recording when something was measured is fine. A date implying a
 schedule is not.
 
-Measured: `architecture.md` carried `until GTW-1175 moves it (clause 15) and then deletes both
-(clause 13)`. GTW-1175 carries `Needs Splitting`, so those clause numbers became children with
-different numbers and the sentence pointed at nothing.
-
-The same file used "load-bearing" in four headings, a coined figure of speech that
-`plain-language.md` bans. `What breaks without it:` replaced it, the literal thing those sections
-say.
-
 ## What code decides and what docs/ decides
 
 Code is the authority for what exists. `docs/` is the authority for design intent. If the code is

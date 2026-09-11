@@ -41,8 +41,7 @@ Prefer finishing what is In Progress and unblocking dependencies over starting n
 Cite identifier and title.
 
 Create a ticket with a clear title and a markdown body, using real newlines and never a
-literal `\n`. A behavioural ticket must say it ADDS tests on the real code path. The suite is
-large and green, so a green run says nothing about a feature no test names.
+literal `\n`. A behavioural ticket must say it ADDS tests on the real code path.
 
 Update status as work moves. **Post a comment BEFORE you move the status**.
 `save_comment` fails against an archived issue, a Done ticket can be archived at any moment,
@@ -68,15 +67,14 @@ both an **MCP surface** block and wiring for the games AI to also perform the ac
 A ticket that adds a new act without either is a VIOLATION.
 
 Leave out provenance: which agent found it, what it was doing, and whether it checked its own
-work. This is just noise no future agent requires.
+work.
 
 Write the ticket from the facts in the caller's prompt. The prompt is not a draft of it.
 
 ## Always fetch the comments
 
 Whenever you fetch a ticket, fetch `list_comments` too and include them, even when you expect
-the list to be empty. A report that echoes only the description can show an answered
-question as open. This has burned the project.
+the list to be empty.
 
 ## Never close a parent with open children
 
@@ -130,5 +128,5 @@ Meanings, who applies each and what removes it can be found in `linear-disciplin
 Labels section. Do not restate the table here.
 
 Pass `team: GDTF` to `list_issue_labels`. Without it the team-scoped labels are silently
-omitted and agents invent names. Do not invent labels. A new one is added in Linear and
+omitted. Do not invent labels. A new one is added in Linear and
 documented in `linear-discipline.md` in the same change.

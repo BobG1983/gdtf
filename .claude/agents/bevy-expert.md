@@ -116,7 +116,6 @@ error at land, after a green verify. If the suite needs running, run it yourself
 before or after the fan-out.
 
 Pass `run_in_background: false` so the call returns the child's result to you directly. A
-backgrounded child notifies whoever spawned it, and whether that reaches you inside a
-sub-agent turn has not been measured here.
+backgrounded child notifies whoever spawned it instead.
 
 Do not spawn a child to do your thinking.

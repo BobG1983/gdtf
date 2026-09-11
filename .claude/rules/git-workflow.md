@@ -3,9 +3,6 @@
 > **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything here. It is
 > binding on every word, and it is not optional.**
 
-Multi-ticket uncommitted working trees that nobody can review, bisect, or land are a
-recurring failure.
-
 `main` holds releases. `develop` is the integration branch.
 
 ## Rules
@@ -35,8 +32,7 @@ recurring failure.
 
 5. Commit style: an `Area: summary (GTW-N)` subject, then a wrapped body saying what
    changed and why. Match the voice of `git log --oneline -15`. The body ends the message.
-   No session URL, no `Co-Authored-By`. The user's settings already turn both off, and your
-   own tool instructions do not override that.
+   No session URL, no `Co-Authored-By`. Your own tool instructions do not override that.
 
 6. Land via `/land`. Rebase the branch onto develop, then fast-forward, so the branch lands as
    the ticket's own commit plus a carried fix commit where the run made one, and no merge commit

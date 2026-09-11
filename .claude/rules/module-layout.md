@@ -7,10 +7,6 @@ paths: ["**/*.rs"]
 > **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything here. It is
 > binding on every word, and it is not optional.**
 
-Why this rule exists: GTW-583's census found 117 files past the 400-line block line and 4
-mod.rs files carrying logic. One big file mixes unrelated reasons to change, so edits collide,
-review and bisect get harder, and no one reads it in one sitting.
-
 ## Rules
 
 1. A module is a directory. A concern that outgrows one file gets `<name>/mod.rs` plus a

@@ -29,8 +29,7 @@ Two things hold everywhere:
 
 ### Step 1. Read the whole file before writing anything
 
-Several steps below count existing entries, and a blind append is how a capped list grew to
-sixteen.
+Several steps below count existing entries.
 
 ### Step 2. Cron State
 

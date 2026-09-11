@@ -3,9 +3,6 @@
 > **You MUST read and follow [plain-language.md](./plain-language.md) before writing anything here. It is
 > binding on every word, and it is not optional.**
 
-Tickets marked Done while unfinished, and work with no ticket, make the board useless as
-evidence.
-
 The board is Linear, project **GDTF**, tickets prefixed **GTW-**. Find the owning team through
 the Linear MCP. Do not hardcode a team name. Operate the board through those tools inside
 the relevant workflow step: never a markdown kanban, never a hand-tracked TODO list, never a
@@ -62,10 +59,6 @@ edit above it, a rename, and a file split.
 A line number may follow the symbol as a hint, `fire_mode.rs:100`. It is never the only
 locator, and never the thing a clause is written against.
 
-GTW-1148's verify report quoted two failures at `fire_one_spec.rs:208` and `:240` while the
-final file held them at `:212` and `:244`. Four lines had been inserted above them between the
-run and the report.
-
 A citation that has drifted looks exactly like one that has not, so re-resolve it every time.
 
 The same holds for a `docs/` citation, and for any file:line an agent hands back in a report
@@ -76,12 +69,10 @@ that is about to become a clause.
 **Never report absence from a default fetch.**
 
 1. Labels need the team. Without `team: GDTF` you get only the workspace labels and
-   `hasNextPage: false`, which reads as a complete list and is not. Two agents contradicted
-   each other about whether a label exists, and the one that scoped the query was right.
+   `hasNextPage: false`, which reads as a complete list and is not.
 2. Relations need `includeRelations: true`. Without it `get_issue` returns no blocks,
    blocked-by or related-to edges at all, so a ticket with relations looks exactly like a
-   ticket without any. One agent reported a blocked-by edge "lives only in a comment and does
-   not exist". It existed, reciprocal on both tickets.
+   ticket without any.
 3. Text search never reaches archived issues, and `includeArchived: true` does not fix it. The
    flag admits archived issues to enumeration, not to the query. Done tickets are archived
    routinely to stay under the workspace cap, so **most of the board cannot be found by
@@ -97,11 +88,6 @@ evidence that anything was agreed.
 
 Do not split a ticket because it looks big. Gating costs about the same whatever the ticket
 holds, so a small ticket pays a full gate bill for less delivered work.
-
-Measured on 2026-09-04. GTW-1071's gate spent 4.24M tokens across 75 agents checking a build
-that cost 3.35M across 31. Checking cost more than building. GTW-1069 was 1904 files in one
-commit and passed on its first gate round. GTW-1330 was 28 clauses and took four rounds. Both
-landed for one gate bill each.
 
 The build workflow's fix loop absorbs size. It reads the ticket, builds, verifies, runs three
 or four gate lenses, repairs what they find, and repeats. A long ticket goes round that loop

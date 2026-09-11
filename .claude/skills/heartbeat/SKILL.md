@@ -69,8 +69,8 @@ The job also expires after 7 days, even in a session that never restarts. Recrea
    verbatim and do not guess at a path.
 4. Check the tree: the current branch, `git status --porcelain`, and `git worktree list`.
    Builds run on a feature branch in the MAIN repo, because
-   [`git-workflow.md`](../../rules/git-workflow.md) bans worktrees. Any entry past the main
-   repo predates that ban: report it, never adopt it as a live build.
+   [`git-workflow.md`](../../rules/git-workflow.md) bans worktrees. Report any entry past the
+   main repo. Never adopt one as a live build.
 5. If a run is claimed in-flight, judge liveness from the last records in the run
    transcript or the workflow status. Do not go by file mtime.
 6. Act:
@@ -100,12 +100,9 @@ The setting lives in one place that is read: the inline `lspServers` block for
 `rust-analyzer-lsp` plugin also ships its own `.lsp.json`. Setting the env there looks
 correct and does nothing.
 
-The setting keeps reverting because the marketplace directory is not a git checkout. Each
-sync replaces the directory wholesale and drops the block. The LSP still answers, just from
-the contended directory, so agents see slow calls rather than an error.
-
-Measured 2026-08-14: all three config homes had their marketplace copies rewritten the same
-day, and the env was gone from every one.
+The marketplace directory is not a git checkout. Each sync replaces the directory wholesale
+and drops the block. The LSP still answers, just from the contended directory, so agents see
+slow calls rather than an error.
 
 Verify a restore took effect:
 

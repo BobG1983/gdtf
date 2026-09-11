@@ -20,9 +20,7 @@ in `.claude/agents/` all carry `model: opus` in frontmatter, and a call-site
 
 A call between two tiers takes the higher one.
 
-Measured before this ruling and still true after it: sonnet on real work costs
-more than opus, because correcting it costs more turns than the cheaper run
-saves. Use `sonnet` only for steps where being wrong is cheap and visible.
+Use `sonnet` only for steps where being wrong is cheap and visible.
 
 ## When adding an agent() call
 
