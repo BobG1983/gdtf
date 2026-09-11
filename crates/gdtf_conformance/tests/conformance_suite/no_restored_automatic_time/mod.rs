@@ -2,5 +2,6 @@
 //! manual frame delta leaves it pinned.
 
 mod check;
+mod message;
 mod scan;
 mod tree;
