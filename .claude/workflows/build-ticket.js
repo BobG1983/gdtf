@@ -432,7 +432,7 @@ ${comments}`
 // only mark of a real ruling. Rendered separately above so a builder cannot mistake an agent's own
 // note for one.
 function renderCorrections(a) {
-  if (!a?.corrections?.length) return '(the audit corrected no clause; build the ticket exactly as written)'
+  if (!a?.corrections?.length) return '(the audit corrected no clause; the ticket stands exactly as written)'
   return a.corrections.map(c => `### Clause ${c.clause}
 
 **Wrong as written:** ${c.problem}

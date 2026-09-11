@@ -13,8 +13,8 @@ in `.claude/agents/` all carry `model: opus` in frontmatter, and a call-site
 | Tier | Work | Examples |
 |------|------|----------|
 | `fable` | Very hard, or creative. Inventing from a blank page, or rulings where the answer cannot be derived | split proposals, proposal revision, requirement-vs-directive rulings |
-| `opus` | Hard engineering. Building, verifying, auditing, judging against code | the engineer, clause-audit, gate lenses, vote lenses, land |
-| `sonnet` | Mechanical. Compare X with Y, copy text from place to place, read a file into a schema | Linear fetches, status moves, filing finished text, recording votes |
+| `opus` | Hard engineering. Building, verifying, auditing, judging against code | the engineer, clause-audit, gate lenses, vote lenses |
+| `sonnet` | Mechanical. Compare X with Y, copy text from place to place, read a file into a schema | Linear fetches, status moves, filing finished text, recording votes, land |
 
 ## The tie-breaker
 
