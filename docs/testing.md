@@ -32,7 +32,6 @@ These repo-wide **guard suites** live in `crates/gdtf_conformance/tests/` and ri
 - **`mcp_feature_gate`** — every file declaring the MCP host gates it on that host package's `mcp` feature, never on the build profile.
 - **`asset_plugin_sites`** fails when an `AssetPlugin` outside the game and editor hosts leaves `watch_for_changes_override` unset or true.
 - **`no_restored_automatic_time`** fails when a tracked Rust file under `crates/`, `bins/` or `libs/` names `TimeUpdateStrategy::Automatic`, so a test that pins a manual frame delta leaves it pinned.
-- **`one_battle_setup_writer`** fails unless exactly one tracked file under `crates/gdtf_game/src` names `MessageWriter<SetupBattleRequested>`, listing every file that does, so a second route into generating a battle map cannot come back.
 
 A guard suite asserts something about the code. One that asserts the state of the checkout instead
 does not belong here: it goes red on ordinary editing, and it cannot tell a real defect from a file
