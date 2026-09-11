@@ -2,13 +2,35 @@
 
 use bevy::prelude::{Deref, Entity};
 
-use crate::{metric::MAX_LEVELS, occupancy::TerrainKind};
+use crate::{
+    metric::{CellUnit, MAX_LEVELS},
+    occupancy::TerrainKind,
+};
 
 /// Grid width in cells.
 pub const GRID_WIDTH: usize = 60;
 
 /// Grid height in cells.
 pub const GRID_HEIGHT: usize = 60;
+
+/// One dimension of the dense grid, in cells.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GridExtent(usize);
+
+impl GridExtent {
+    /// Wrap a grid dimension in cells.
+    #[must_use]
+    pub const fn new(extent: usize) -> Self {
+        Self(extent)
+    }
+}
+
+/// The cell axis bound this extent reaches, saturating at [`i32::MAX`].
+impl From<GridExtent> for CellUnit {
+    fn from(extent: GridExtent) -> Self {
+        Self::new(i32::try_from(*extent).unwrap_or(i32::MAX))
+    }
+}
 
 /// Contents of one cell slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

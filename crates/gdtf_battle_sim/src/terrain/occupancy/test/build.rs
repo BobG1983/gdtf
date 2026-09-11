@@ -2,12 +2,15 @@ use bevy::ecs::world::World;
 
 use super::{
     super::{
-        GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainKind,
-        TerrainPlacement,
+        GRID_HEIGHT, GRID_WIDTH, GridExtent, OccupancyGrid, OccupancyInput, OccupantPlacement,
+        TerrainKind, TerrainPlacement,
     },
     support::*,
 };
-use crate::{cover::HeightBand, metric::MAX_LEVELS};
+use crate::{
+    cover::HeightBand,
+    metric::{CellUnit, MAX_LEVELS},
+};
 
 #[test]
 fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
@@ -88,8 +91,8 @@ fn out_of_range_coords_are_graceful() {
     let mut grid = OccupancyGrid::new();
 
     let negative = key(-1, 5, 0);
-    let past_x = key(extent_i32(GRID_WIDTH), 0, 0);
-    let past_y = key(0, extent_i32(GRID_HEIGHT), 0);
+    let past_x = key(*CellUnit::from(GridExtent::new(GRID_WIDTH)), 0, 0);
+    let past_y = key(0, *CellUnit::from(GridExtent::new(GRID_HEIGHT)), 0);
     let past_level = key(0, 0, MAX_LEVELS);
 
     for oob in [negative, past_x, past_y, past_level] {
@@ -114,8 +117,8 @@ fn grid_spans_full_extent() {
 
     let grid = OccupancyGrid::new();
     let last = key(
-        extent_i32(GRID_WIDTH) - 1,
-        extent_i32(GRID_HEIGHT) - 1,
+        *CellUnit::from(GridExtent::new(GRID_WIDTH)) - 1,
+        *CellUnit::from(GridExtent::new(GRID_HEIGHT)) - 1,
         MAX_LEVELS - 1,
     );
     assert!(
@@ -123,7 +126,11 @@ fn grid_spans_full_extent() {
         "(59,59,7) is the last valid slot"
     );
 
-    let past = key(extent_i32(GRID_WIDTH), extent_i32(GRID_HEIGHT), MAX_LEVELS);
+    let past = key(
+        *CellUnit::from(GridExtent::new(GRID_WIDTH)),
+        *CellUnit::from(GridExtent::new(GRID_HEIGHT)),
+        MAX_LEVELS,
+    );
     assert!(grid.slot(&past).is_none(), "(60,60,8) is out of range");
 }
 

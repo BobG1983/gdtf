@@ -196,7 +196,3 @@ pub(super) fn storey_has_terrain(
         || matches!(map.surface.slab_state(key), SlabState::Present)
         || !matches!(map.occupancy.terrain(key), TerrainKind::Open)
 }
-
-pub(super) fn i32_extent(extent: usize) -> i32 {
-    i32::try_from(extent).unwrap_or(i32::MAX)
-}

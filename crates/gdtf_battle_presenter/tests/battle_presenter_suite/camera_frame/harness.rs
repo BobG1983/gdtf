@@ -4,7 +4,11 @@ use bevy::{
     prelude::{Transform, With},
 };
 use gdtf_battle_presenter::{BoundsMarginWorld, PanTuning, WorldCamera, cell_to_world};
-use gdtf_battle_sim::prelude::{Cell, Level};
+use gdtf_battle_sim::{
+    metric::CellUnit,
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent},
+    prelude::{Cell, Level},
+};
 
 pub(crate) const PLAYER_GANG: u8 = 0;
 pub(crate) const ENEMY_GANG: u8 = 1;
@@ -33,8 +37,8 @@ pub(crate) fn camera_xy(app: &mut App) -> Vec2 {
 }
 
 pub(crate) fn battlefield_bounds() -> (Vec2, Vec2) {
-    let w = i32::try_from(gdtf_battle_sim::occupancy::GRID_WIDTH).unwrap_or(i32::MAX);
-    let h = i32::try_from(gdtf_battle_sim::occupancy::GRID_HEIGHT).unwrap_or(i32::MAX);
+    let w = *CellUnit::from(GridExtent::new(GRID_WIDTH));
+    let h = *CellUnit::from(GridExtent::new(GRID_HEIGHT));
     let corners = [
         cell_to_world(Cell::new(0, 0), Level::new(0)),
         cell_to_world(Cell::new(w, 0), Level::new(0)),

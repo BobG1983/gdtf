@@ -1,6 +1,6 @@
 //! FOV union across observers and accrue into squad fog.
 
-use bevy::{platform::collections::HashSet, prelude::Deref};
+use bevy::platform::collections::HashSet;
 
 use crate::{
     cover::CoverLedger,
@@ -8,7 +8,7 @@ use crate::{
     los::{Observer, PeekOffset, Target, can_see},
     march::MarchGrids,
     metric::{Cell, CellLevel, CellUnit, Level},
-    occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, StairEyeOffset},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent, OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
     tuning::{CombatTuning, ViewRange},
     visibility::SquadVisibility,
@@ -93,28 +93,14 @@ fn disc_cells(
         Some((lo, hi)) => (lo.min(observer_level), hi.max(observer_level)),
     };
     let x_min = (observer.x - radius).max(0);
-    let x_max = (observer.x + radius).min(*i32_extent(GridExtent::new(GRID_WIDTH)) - 1);
+    let x_max = (observer.x + radius).min(*CellUnit::from(GridExtent::new(GRID_WIDTH)) - 1);
     let y_min = (observer.y - radius).max(0);
-    let y_max = (observer.y + radius).min(*i32_extent(GridExtent::new(GRID_HEIGHT)) - 1);
+    let y_max = (observer.y + radius).min(*CellUnit::from(GridExtent::new(GRID_HEIGHT)) - 1);
     (*lo..=*hi).flat_map(move |level_index| {
         (y_min..=y_max).flat_map(move |y| {
             (x_min..=x_max).map(move |x| (Level::new(level_index), Cell::new(x, y)))
         })
     })
-}
-
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
-struct GridExtent(usize);
-
-impl GridExtent {
-    #[must_use]
-    const fn new(extent: usize) -> Self {
-        Self(extent)
-    }
-}
-
-fn i32_extent(dimension: GridExtent) -> CellUnit {
-    CellUnit::new(i32::try_from(*dimension).unwrap_or(i32::MAX))
 }
 
 /// Fold newly visible cells into the squad's explored set; replace current FOV.

@@ -11,8 +11,8 @@ use gdtf_battle_sim::{
     emplacement::{EmplacementEntrySides, EmplacementFacing, Mounted, MountedBy},
     entity::TerrainCell,
     floor::FloorCostGrid,
-    metric::MAX_LEVELS,
-    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    metric::{CellUnit, MAX_LEVELS},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent},
     pathfinder::{Departure, MoveGrids, PlanningView, reachable_within},
     prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid, Position, Tu},
     terrain::facing::TerrainFacing,
@@ -27,9 +27,8 @@ const PLAYER_FACTION: Faction = Faction::new(0);
 const BUDGET: Tu = Tu::new(200);
 
 fn full_vision() -> SquadVisibility {
-    let (Ok(width), Ok(height)) = (i32::try_from(GRID_WIDTH), i32::try_from(GRID_HEIGHT)) else {
-        return SquadVisibility::default();
-    };
+    let width = *CellUnit::from(GridExtent::new(GRID_WIDTH));
+    let height = *CellUnit::from(GridExtent::new(GRID_HEIGHT));
     let mut all = HashSet::default();
     for level in 0..MAX_LEVELS {
         for y in 0..height {

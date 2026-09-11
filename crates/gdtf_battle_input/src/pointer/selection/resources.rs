@@ -31,7 +31,3 @@ pub(super) fn set_selection(selected: &mut ResMut<SelectedShooter>, next: Select
         **selected = next;
     }
 }
-
-pub(super) fn grid_extent_i32(extent: usize) -> i32 {
-    i32::try_from(extent).unwrap_or(i32::MAX)
-}

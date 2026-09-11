@@ -9,9 +9,7 @@ use bevy::{
 use gdtf_battle_presenter::{ActiveLevel, CELL_PX, WORLD_RENDER_LAYER, cell_to_world};
 use gdtf_battle_sim::prelude::{Cell, CellLevel, Level, OccupancyGrid};
 
-use crate::selection::resources::{
-    SELECTION_TINT, SelectedShooter, SelectionHighlight, grid_extent_i32,
-};
+use crate::selection::resources::{SELECTION_TINT, SelectedShooter, SelectionHighlight};
 
 /// Spawn or move the selection highlight to the selected ganger's cell.
 pub fn update_selection_highlight(
@@ -58,9 +56,12 @@ pub fn update_selection_highlight(
 }
 
 fn selected_cell(occupancy: &OccupancyGrid, level: Level, entity: Entity) -> Option<Cell> {
-    use gdtf_battle_sim::occupancy::{GRID_HEIGHT, GRID_WIDTH};
-    for y in 0..grid_extent_i32(GRID_HEIGHT) {
-        for x in 0..grid_extent_i32(GRID_WIDTH) {
+    use gdtf_battle_sim::{
+        metric::CellUnit,
+        occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent},
+    };
+    for y in 0..*CellUnit::from(GridExtent::new(GRID_HEIGHT)) {
+        for x in 0..*CellUnit::from(GridExtent::new(GRID_WIDTH)) {
             let cell = Cell::new(x, y);
             if occupancy.occupant(&CellLevel::new(cell, level)) == Some(entity) {
                 return Some(cell);

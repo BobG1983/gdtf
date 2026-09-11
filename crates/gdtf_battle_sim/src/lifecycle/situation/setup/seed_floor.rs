@@ -6,7 +6,7 @@ use bevy::{
 use super::super::terrain_resolve::resolve_slab_def;
 use crate::{
     metric::{Cell, CellLevel, CellUnit, Level},
-    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent},
     situation::BattleMap,
     terrain::{
         def::{TerrainDefRegistry, TerrainUuid},
@@ -26,22 +26,6 @@ fn floor_for(map: &BattleMap, at: CellLevel) -> (TerrainUuid, TerrainFacing) {
         .map_or((map.default_floor, TerrainFacing::default()), |floor| {
             (floor.piece, floor.facing)
         })
-}
-
-// One dimension of the dense grid, in cells.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
-struct GridExtent(usize);
-
-impl GridExtent {
-    #[must_use]
-    const fn new(extent: usize) -> Self {
-        Self(extent)
-    }
-}
-
-// The cell axis bound a grid extent reaches.
-fn axis_bound(extent: GridExtent) -> CellUnit {
-    CellUnit::new(i32::try_from(*extent).unwrap_or(i32::MAX))
 }
 
 // Whether a floor uuid stands a piece up: the registry holds it and it is a Slab.
@@ -81,8 +65,8 @@ pub(super) fn seed_floor_terrain(
     };
     let taken: HashSet<CellLevel> = map.authored_cells().collect();
     let mut seen: HashMap<TerrainUuid, FloorStands> = HashMap::new();
-    let width = axis_bound(GridExtent::new(GRID_WIDTH));
-    let height = axis_bound(GridExtent::new(GRID_HEIGHT));
+    let width = CellUnit::from(GridExtent::new(GRID_WIDTH));
+    let height = CellUnit::from(GridExtent::new(GRID_HEIGHT));
     for y in 0..*height {
         for x in 0..*width {
             let at = CellLevel::new(Cell::new(x, y), GROUND);

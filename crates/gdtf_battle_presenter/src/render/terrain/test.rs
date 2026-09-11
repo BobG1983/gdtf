@@ -1,8 +1,5 @@
 use bevy::math::{URect, UVec2, Vec2};
-use gdtf_battle_sim::{
-    occupancy::{GRID_HEIGHT, GRID_WIDTH},
-    prelude::Level,
-};
+use gdtf_battle_sim::prelude::Level;
 use gdtf_content_families::sprites::{
     SpriteAnchor, SpriteDef, SpriteImagePath, SpritePx, SpriteRect, SpriteSource,
 };
@@ -10,7 +7,6 @@ use gdtf_content_families::sprites::{
 use super::{
     active_level::ActiveLevel,
     resolve::{anchor_world_offset, single_rect_layout, source_parts, source_px_size},
-    static_map::i32_extent,
 };
 
 fn sheet_def(x: u32, y: u32, w: u32, h: u32, ax: u32, ay: u32) -> SpriteDef {
@@ -104,12 +100,6 @@ fn anchor_offset_center_is_zero_and_bottom_anchor_lifts() {
         Vec2::ZERO,
         "a zero-extent sprite yields the documented centered no-op (no NaN)",
     );
-}
-
-#[test]
-fn i32_extent_passes_the_real_grid_extents() {
-    assert_eq!(i32_extent(GRID_WIDTH), 60, "GRID_WIDTH is 60");
-    assert_eq!(i32_extent(GRID_HEIGHT), 60, "GRID_HEIGHT is 60");
 }
 
 #[test]

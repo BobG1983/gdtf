@@ -8,8 +8,8 @@ use gdtf_battle_input::{ShooterArms, ShotRefusal, try_fire_request};
 use gdtf_battle_sim::{
     acts::FireRequested,
     magazine::{LoadedRounds, Magazine, ReloadTu},
-    metric::{Cell, CellLevel, Level},
-    occupancy::GRID_WIDTH,
+    metric::{Cell, CellLevel, CellUnit, Level},
+    occupancy::{GRID_WIDTH, GridExtent},
     prelude::LifeState,
     test_support::{GangerEntityBuilder, single_mode, wield},
     tuning::CombatTuning,
@@ -27,7 +27,7 @@ pub(crate) fn on_grid() -> CellLevel {
 /// A target cell one column past the right edge of the battle grid.
 pub(crate) fn off_grid() -> CellLevel {
     CellLevel::new(
-        Cell::new(i32::try_from(GRID_WIDTH).unwrap_or(i32::MAX), 10),
+        Cell::new(*CellUnit::from(GridExtent::new(GRID_WIDTH)), 10),
         Level::new(0),
     )
 }

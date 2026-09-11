@@ -3,8 +3,8 @@ use crate::{
     ganger::{Aiming, LifeState, Tu, TuMax},
     injuries::HandsAvailable,
     magazine::{FireRefusal, LoadedRounds, Magazine, fire_refusal, mode_tu_cost},
-    metric::{Cell, Level},
-    occupancy::GRID_WIDTH,
+    metric::{Cell, CellUnit, Level},
+    occupancy::{GRID_WIDTH, GridExtent},
     tuning::CombatTuning,
     weapon::{Handedness, MagazineSize},
 };
@@ -19,7 +19,7 @@ fn loaded() -> Magazine {
 }
 
 fn off_grid() -> Cell {
-    Cell::new(i32::try_from(GRID_WIDTH).unwrap_or(i32::MAX), 10)
+    Cell::new(*CellUnit::from(GridExtent::new(GRID_WIDTH)), 10)
 }
 
 #[test]

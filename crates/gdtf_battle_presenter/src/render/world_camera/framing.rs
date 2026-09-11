@@ -3,7 +3,8 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
-    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    metric::CellUnit,
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent},
     prelude::{Cell, Faction, Level, Position},
 };
 
@@ -53,8 +54,8 @@ fn clamp_axis(value: f32, half: f32, min: f32, max: f32) -> f32 {
 }
 
 fn battlefield_world_bounds() -> (Vec2, Vec2) {
-    let max_x = i32::try_from(GRID_WIDTH).unwrap_or(i32::MAX);
-    let max_y = i32::try_from(GRID_HEIGHT).unwrap_or(i32::MAX);
+    let max_x = *CellUnit::from(GridExtent::new(GRID_WIDTH));
+    let max_y = *CellUnit::from(GridExtent::new(GRID_HEIGHT));
     let ground = Level::new(0);
 
     let corners = [

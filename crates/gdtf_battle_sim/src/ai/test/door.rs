@@ -8,8 +8,8 @@ use crate::{
     acts::OpenDoorRequested,
     cover::HeightBand,
     ganger::{Direction, Position, Tu},
-    metric::CellLevel,
-    occupancy::{GRID_HEIGHT, project_path_blocking, project_vision_blocking},
+    metric::{CellLevel, CellUnit},
+    occupancy::{GRID_HEIGHT, GridExtent, project_path_blocking, project_vision_blocking},
     occupancy_sync::{OccupancyMaintenancePlugin, SimSystems},
     openable::{OpenState, OpenableBlocking, apply_openable_toggle},
     surface::{SlabState, SurfaceGrid},
@@ -42,7 +42,7 @@ fn mark_present(world: &mut World, at: CellLevel) {
 
 fn seal_column(world: &mut World, door_y: i32) -> Entity {
     let mut door = Entity::PLACEHOLDER;
-    for y in 0..i32::try_from(GRID_HEIGHT).unwrap_or(0) {
+    for y in 0..*CellUnit::from(GridExtent::new(GRID_HEIGHT)) {
         let at = ground(WALL_X, y);
         mark_present(world, at);
         if y == door_y {

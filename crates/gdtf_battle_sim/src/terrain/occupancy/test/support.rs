@@ -17,10 +17,6 @@ pub(super) fn key(x: i32, y: i32, level: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(level))
 }
 
-pub(super) fn extent_i32(extent: usize) -> i32 {
-    i32::try_from(extent).unwrap_or(i32::MAX)
-}
-
 pub(super) fn grid_with(terrain: &[(CellLevel, TerrainKind)]) -> OccupancyGrid {
     let mut grid = OccupancyGrid::new();
     for &(at, kind) in terrain {

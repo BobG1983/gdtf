@@ -12,8 +12,8 @@ use super::{
 };
 use crate::{
     ganger::Position,
-    metric::{Cell, CellLevel},
-    occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid},
+    metric::{Cell, CellLevel, CellUnit},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent, OccupancyGrid},
     occupancy_sync::TerrainPieceDestroyed,
     terrain::entity::{TerrainCell, TerrainPieceKind},
 };
@@ -46,7 +46,7 @@ impl ScanDistance {
         } else {
             GRID_HEIGHT
         };
-        Self(i32::try_from(span).unwrap_or(i32::MAX))
+        Self(*CellUnit::from(GridExtent::new(span)))
     }
 }
 

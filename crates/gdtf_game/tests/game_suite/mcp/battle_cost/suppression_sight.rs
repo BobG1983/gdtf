@@ -8,7 +8,8 @@ use gdtf_battle_sim::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     entity::TerrainPieceKind,
     ganger::{Direction, Suppressed, SuppressorCell, Tu},
-    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    metric::CellUnit,
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent},
     prelude::{Cell, CellLevel},
 };
 use gdtf_game::qa_wire::{
@@ -140,7 +141,7 @@ fn line_up(app: &mut App) -> Option<BrokenLine> {
 /// Whether the cell is inside the battle grid, so a ray can be flown all the way to it.
 fn on_the_grid(cell: CellLevel) -> bool {
     let inside =
-        |value: i32, size: usize| i32::try_from(size).is_ok_and(|edge| (0..edge).contains(&value));
+        |value: i32, size: usize| (0..*CellUnit::from(GridExtent::new(size))).contains(&value);
     inside(cell.cell().x, GRID_WIDTH) && inside(cell.cell().y, GRID_HEIGHT)
 }
 

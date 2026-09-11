@@ -1,5 +1,5 @@
 use super::support::*;
-use crate::march::MarchGrids;
+use crate::{march::MarchGrids, metric::CellUnit, occupancy::GridExtent};
 
 #[test]
 fn direction_leaving_grid_immediately_is_a_graceful_miss() {
@@ -248,8 +248,8 @@ fn long_diagonal_completes_within_step_cap() {
         "a clear corner-to-corner diagonal exits the grid as a Miss",
     );
     assert!(
-        result.at.x == i32::try_from(GRID_WIDTH).unwrap_or(i32::MAX) - 1
-            || result.at.y == i32::try_from(GRID_HEIGHT).unwrap_or(i32::MAX) - 1,
+        result.at.x == *CellUnit::from(GridExtent::new(GRID_WIDTH)) - 1
+            || result.at.y == *CellUnit::from(GridExtent::new(GRID_HEIGHT)) - 1,
         "the exit cell sits on a far edge: {:?}",
         result.at,
     );

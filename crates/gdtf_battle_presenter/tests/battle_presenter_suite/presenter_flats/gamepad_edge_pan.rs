@@ -16,6 +16,8 @@ use gdtf_battle_presenter::{
 };
 use gdtf_battle_sim::{
     battle::PlayerFaction,
+    metric::CellUnit,
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent},
     prelude::{BattleInProgress, Cell, Faction, Level},
 };
 
@@ -67,8 +69,8 @@ fn camera_xy(app: &mut App) -> Vec2 {
 }
 
 fn battlefield_bounds() -> (Vec2, Vec2) {
-    let w = i32::try_from(gdtf_battle_sim::occupancy::GRID_WIDTH).unwrap_or(i32::MAX);
-    let h = i32::try_from(gdtf_battle_sim::occupancy::GRID_HEIGHT).unwrap_or(i32::MAX);
+    let w = *CellUnit::from(GridExtent::new(GRID_WIDTH));
+    let h = *CellUnit::from(GridExtent::new(GRID_HEIGHT));
     let corners = [
         cell_to_world(Cell::new(0, 0), Level::new(0)),
         cell_to_world(Cell::new(w, 0), Level::new(0)),

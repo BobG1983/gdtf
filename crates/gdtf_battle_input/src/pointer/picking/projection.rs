@@ -3,7 +3,8 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::CELL_PX;
 use gdtf_battle_sim::{
-    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    metric::CellUnit,
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent},
     prelude::{Cell, CellLevel, Level},
 };
 
@@ -20,12 +21,8 @@ pub fn world_to_cell(world: Vec2, level: Level) -> Option<CellLevel> {
 }
 
 fn in_grid(cx: i32, cy: i32) -> bool {
-    (0..grid_extent_i32(GRID_WIDTH)).contains(&cx)
-        && (0..grid_extent_i32(GRID_HEIGHT)).contains(&cy)
-}
-
-fn grid_extent_i32(extent: usize) -> i32 {
-    i32::try_from(extent).unwrap_or(i32::MAX)
+    (0..*CellUnit::from(GridExtent::new(GRID_WIDTH))).contains(&cx)
+        && (0..*CellUnit::from(GridExtent::new(GRID_HEIGHT))).contains(&cy)
 }
 
 const fn floor_to_cell_coord(scaled: f32) -> i32 {

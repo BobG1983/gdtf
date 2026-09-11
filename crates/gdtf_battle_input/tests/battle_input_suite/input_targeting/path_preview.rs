@@ -9,8 +9,8 @@ use gdtf_battle_presenter::{ActiveLevel, PathPreview, ViewMode};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
     floor::FloorCostGrid,
-    metric::MAX_LEVELS,
-    occupancy::{GRID_HEIGHT, GRID_WIDTH, TerrainKind},
+    metric::{CellUnit, MAX_LEVELS},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent, TerrainKind},
     pathfinder::{MoveGrids, PlanningView, find_path},
     prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid, Position, Tu},
     tuning::CombatTuning,
@@ -24,9 +24,8 @@ const PLAYER_FACTION: Faction = Faction::new(0);
 const BUDGET: Tu = Tu::new(200);
 
 fn full_vision() -> SquadVisibility {
-    let (Ok(width), Ok(height)) = (i32::try_from(GRID_WIDTH), i32::try_from(GRID_HEIGHT)) else {
-        return SquadVisibility::default();
-    };
+    let width = *CellUnit::from(GridExtent::new(GRID_WIDTH));
+    let height = *CellUnit::from(GridExtent::new(GRID_HEIGHT));
     let mut all = HashSet::default();
     for level in 0..MAX_LEVELS {
         for y in 0..height {

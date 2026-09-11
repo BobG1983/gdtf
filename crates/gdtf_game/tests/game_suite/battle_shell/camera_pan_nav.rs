@@ -8,7 +8,8 @@ use bevy::{
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::{
     battle::{BattleInProgress, PlayerFaction},
-    metric::{Cell, Level},
+    metric::{Cell, CellUnit, Level},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent},
 };
 use gdtf_game::test_support::BattleAppBuilder;
 
@@ -38,8 +39,8 @@ fn set_camera_xy(app: &mut bevy::app::App, to: Vec2) {
 }
 
 fn battlefield_bounds() -> (Vec2, Vec2) {
-    let w = i32::try_from(gdtf_battle_sim::occupancy::GRID_WIDTH).unwrap_or(i32::MAX);
-    let h = i32::try_from(gdtf_battle_sim::occupancy::GRID_HEIGHT).unwrap_or(i32::MAX);
+    let w = *CellUnit::from(GridExtent::new(GRID_WIDTH));
+    let h = *CellUnit::from(GridExtent::new(GRID_HEIGHT));
     let corners = [
         gdtf_battle_presenter::cell_to_world(Cell::new(0, 0), Level::new(0)),
         gdtf_battle_presenter::cell_to_world(Cell::new(w, 0), Level::new(0)),

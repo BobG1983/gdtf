@@ -2,8 +2,8 @@ use super::support::*;
 use crate::{
     ganger::{Aiming, LifeState, Tu, TuMax},
     magazine::{LoadedRounds, Magazine, can_fire, in_bounds, mode_tu_cost},
-    metric::{Cell, Level, MAX_LEVELS},
-    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    metric::{Cell, CellUnit, Level, MAX_LEVELS},
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent},
     tuning::CombatTuning,
     weapon::MagazineSize,
 };
@@ -119,8 +119,8 @@ fn can_fire_false_when_magazine_empty() {
 
 #[test]
 fn in_bounds_uses_grid_width_height_and_max_levels() {
-    let w = i32::try_from(GRID_WIDTH).unwrap_or(i32::MAX);
-    let h = i32::try_from(GRID_HEIGHT).unwrap_or(i32::MAX);
+    let w = *CellUnit::from(GridExtent::new(GRID_WIDTH));
+    let h = *CellUnit::from(GridExtent::new(GRID_HEIGHT));
 
     assert!(
         *in_bounds(Cell::new(0, 0), Level::new(0)),

@@ -11,4 +11,6 @@ mod vision;
 pub use bodies::BodyOcclusion;
 pub use stairs::{StairCell, StairEyeOffset};
 pub use storage::OccupancyGrid;
-pub use types::{Blocked, GRID_HEIGHT, GRID_WIDTH, OccludesVision, OccupancySlot, PathBlocked};
+pub use types::{
+    Blocked, GRID_HEIGHT, GRID_WIDTH, GridExtent, OccludesVision, OccupancySlot, PathBlocked,
+};

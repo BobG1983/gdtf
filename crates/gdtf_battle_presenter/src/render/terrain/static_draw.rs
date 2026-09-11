@@ -8,7 +8,8 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     battle::BattleReady,
-    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    metric::CellUnit,
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, GridExtent},
     prelude::{Cell, CellLevel, Level},
 };
 
@@ -16,7 +17,7 @@ use super::{
     band::DrawnStoreys,
     quads::TerrainQuads,
     restamp::StampedGraphic,
-    static_map::{SpriteResolveCtx, StaticMap, i32_extent, sprite_name_at, storey_has_terrain},
+    static_map::{SpriteResolveCtx, StaticMap, sprite_name_at, storey_has_terrain},
 };
 use crate::cell_to_world;
 
@@ -53,8 +54,8 @@ pub fn draw_static_battlefield(
     let defs = map.defs();
 
     for level in storeys.levels() {
-        for y in 0..i32_extent(GRID_HEIGHT) {
-            for x in 0..i32_extent(GRID_WIDTH) {
+        for y in 0..*CellUnit::from(GridExtent::new(GRID_HEIGHT)) {
+            for x in 0..*CellUnit::from(GridExtent::new(GRID_WIDTH)) {
                 let cell = Cell::new(x, y);
                 let key = CellLevel::new(cell, level);
                 if let Some(footfall) = piece_facts.get(&key).and_then(|facts| facts.footfall) {
