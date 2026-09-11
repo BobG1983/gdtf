@@ -342,10 +342,11 @@ they do NOT add. This is the locked default — do not change without a design r
 **Accessor (`InflictedInjuries::movement_cost_factor()`):** returns `self.movement` (the
 accumulated product).
 
-**Pathfinder and walk integration:** BOTH the pathfinder cost-function (move-range /
-path preview) AND the committed walk's per-step TU charge call
-`movement_cost_factor()` and scale each step by it — so the previewed path cost equals
-the TU actually charged (C3, preview == charge consistency).
+**Pathfinder and walk integration:** `dispatch_move` reads `movement_cost_factor()`
+once and hands it to the path search. `pathable_neighbors` scales each planar step's
+floor cost by it, and the committed walk charges the per-step costs that search
+returned. The factor is applied once, so the previewed path cost equals the TU
+actually charged.
 
 **Part-agnostic:** `MovementCostMul` slows the ganger regardless of which body part
 the injury struck. A Leg injury is the natural author, but the fold does not key on

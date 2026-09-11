@@ -105,14 +105,24 @@ seat holding no record has no cell to test, so it still exits.
 
 A mounted ganger's walk gives the seat up on its first step, written in the
 same system and the same tick as the step off the cell, so no tick has a
-mounted ganger standing off its seat. A walk that ends before it steps does not
-vacate: a dead mover, a reaction shot, a next cell blocked or occupied, and a
-pool that cannot pay all stop the walk before the vacate. A living mover stays
-mounted; a mover killed before its first step gives the seat up to the death
-instead. The walk's vacate sets the state back to vacant, drops the occupant
-record and the remembered origin cell, and despawns the mounted weapon. It
-writes no `Position`, so the walker keeps the cell it walked to; only the exit
-act's vacate writes the origin cell back.
+mounted ganger standing off its seat. A walk that ends before it steps does
+not vacate. Four checks stop a walk on its first pass, before any step, so
+its vacate never runs. The mover is no longer alive, which covers `Downed`
+as well as `Dead`. A reaction shot has interrupted the walk. The next cell
+is blocked, or another ganger already stands in it. The mover has less TU
+left than the next step costs. A living mover stays mounted; a mover killed
+before its first step gives the seat up to the death instead. Two more
+checks in `advance_walk` end a walk, and neither can fire that early. A
+newly visible enemy stops a walk only after it has stepped at least once,
+because `reveals_new_enemy` records the enemy cells the mover can see the
+first time it runs for a walk and answers false on that pass, so the seat
+has already been given up by the time it can stop anything. The last check
+guards a walk holding no steps at all: `dispatch_move` starts a walk only
+when the route has a step in it, and a walk that runs out of steps ends on
+the same pass as its last step. The walk's vacate sets the state back to
+vacant, drops the occupant record and the remembered origin cell, and
+despawns the mounted weapon. It writes no `Position`, so the walker keeps
+the cell it walked to; only the exit act's vacate writes the origin cell back.
 With the occupant record gone, the exit act finds no emplacement the ganger
 holds and does nothing. Its dispatch is ordered after the walk step, so an exit
 asked for in the same frame as the move reads the seat after that vacate. It
